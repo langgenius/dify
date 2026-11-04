@@ -5,11 +5,14 @@ Covers:
 - License status caching (get_cached_license_status)
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 
+from enums import DeploymentEdition
+from services.enterprise.base import MCPIdentityRefreshError, MCPNoRefreshTokenError, MCPTokenError
 from services.enterprise.enterprise_service import (
     INVALID_LICENSE_CACHE_TTL,
     LICENSE_STATUS_CACHE_KEY,
@@ -20,12 +23,19 @@ from services.enterprise.enterprise_service import (
     WorkspacePermission,
     try_join_default_workspace,
 )
+from services.entities.feature_entities import LicenseStatus
+from services.errors.enterprise import (
+    EnterpriseAPIError,
+    EnterpriseAPIForbiddenError,
+    EnterpriseAPIUnauthorizedError,
+    EnterpriseServiceError,
+)
 
 MODULE = "services.enterprise.enterprise_service"
 
 
 class TestEnterpriseServiceInfo:
-    def test_get_info_delegates(self):
+    def test_get_info_delegates(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"version": "1.0"}
             result = EnterpriseService.get_info()
@@ -33,7 +43,7 @@ class TestEnterpriseServiceInfo:
         req.send_request.assert_called_once_with("GET", "/info")
         assert result == {"version": "1.0"}
 
-    def test_get_workspace_info_delegates(self):
+    def test_get_workspace_info_delegates(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"name": "ws"}
             result = EnterpriseService.get_workspace_info("tenant-1")
@@ -43,7 +53,7 @@ class TestEnterpriseServiceInfo:
 
 
 class TestSsoSettingsLastUpdateTime:
-    def test_app_sso_parses_valid_timestamp(self):
+    def test_app_sso_parses_valid_timestamp(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = "2025-01-15T10:30:00+00:00"
             result = EnterpriseService.get_app_sso_settings_last_update_time()
@@ -51,26 +61,26 @@ class TestSsoSettingsLastUpdateTime:
         assert isinstance(result, datetime)
         assert result.year == 2025
 
-    def test_app_sso_raises_on_empty(self):
+    def test_app_sso_raises_on_empty(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = ""
             with pytest.raises(ValueError, match="No data found"):
                 EnterpriseService.get_app_sso_settings_last_update_time()
 
-    def test_app_sso_raises_on_invalid_format(self):
+    def test_app_sso_raises_on_invalid_format(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = "not-a-date"
             with pytest.raises(ValueError, match="Invalid date format"):
                 EnterpriseService.get_app_sso_settings_last_update_time()
 
-    def test_workspace_sso_parses_valid_timestamp(self):
+    def test_workspace_sso_parses_valid_timestamp(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = "2025-06-01T00:00:00+00:00"
             result = EnterpriseService.get_workspace_sso_settings_last_update_time()
 
         assert isinstance(result, datetime)
 
-    def test_workspace_sso_raises_on_empty(self):
+    def test_workspace_sso_raises_on_empty(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = None
             with pytest.raises(ValueError, match="No data found"):
@@ -78,23 +88,23 @@ class TestSsoSettingsLastUpdateTime:
 
 
 class TestWorkspacePermissionService:
-    def test_raises_on_empty_workspace_id(self):
+    def test_raises_on_empty_workspace_id(self) -> None:
         with pytest.raises(ValueError, match="workspace_id must be provided"):
             EnterpriseService.WorkspacePermissionService.get_permission("")
 
-    def test_raises_on_missing_data(self):
+    def test_raises_on_missing_data(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = None
             with pytest.raises(ValueError, match="No data found"):
                 EnterpriseService.WorkspacePermissionService.get_permission("ws-1")
 
-    def test_raises_on_missing_permission_key(self):
+    def test_raises_on_missing_permission_key(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"other": "data"}
             with pytest.raises(ValueError, match="No data found"):
                 EnterpriseService.WorkspacePermissionService.get_permission("ws-1")
 
-    def test_returns_parsed_permission(self):
+    def test_returns_parsed_permission(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {
                 "permission": {
@@ -112,30 +122,30 @@ class TestWorkspacePermissionService:
 
 
 class TestWebAppAuth:
-    def test_is_user_allowed_returns_result_field(self):
+    def test_is_user_allowed_returns_result_field(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"result": True}
             assert EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp("u1", "a1") is True
 
-    def test_is_user_allowed_defaults_false(self):
+    def test_is_user_allowed_defaults_false(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
-            req.send_request.return_value = {}
+            req.send_request.return_value = dict[str, object]()
             assert EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp("u1", "a1") is False
 
-    def test_batch_is_user_allowed_returns_empty_for_no_apps(self):
+    def test_batch_is_user_allowed_returns_empty_for_no_apps(self) -> None:
         assert EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps("u1", []) == {}
 
-    def test_batch_is_user_allowed_raises_on_empty_response(self):
+    def test_batch_is_user_allowed_raises_on_empty_response(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = None
             with pytest.raises(ValueError, match="No data found"):
                 EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps("u1", ["a1"])
 
-    def test_get_app_access_mode_raises_on_empty_app_id(self):
+    def test_get_app_access_mode_raises_on_empty_app_id(self) -> None:
         with pytest.raises(ValueError, match="app_id must be provided"):
             EnterpriseService.WebAppAuth.get_app_access_mode_by_id("")
 
-    def test_get_app_access_mode_returns_settings(self):
+    def test_get_app_access_mode_returns_settings(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"accessMode": "public"}
             result = EnterpriseService.WebAppAuth.get_app_access_mode_by_id("a1")
@@ -143,10 +153,16 @@ class TestWebAppAuth:
         assert isinstance(result, WebAppSettings)
         assert result.access_mode == "public"
 
-    def test_batch_get_returns_empty_for_no_apps(self):
+    def test_get_app_access_mode_raises_service_error_on_empty_response(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = None
+            with pytest.raises(EnterpriseServiceError, match="No data found"):
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_id("a1")
+
+    def test_batch_get_returns_empty_for_no_apps(self) -> None:
         assert EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id([]) == {}
 
-    def test_batch_get_maps_access_modes(self):
+    def test_batch_get_maps_access_modes(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"accessModes": {"a1": "public", "a2": "private"}}
             result = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(["a1", "a2"])
@@ -154,21 +170,30 @@ class TestWebAppAuth:
         assert result["a1"].access_mode == "public"
         assert result["a2"].access_mode == "private"
 
-    def test_batch_get_raises_on_invalid_format(self):
+    def test_batch_get_raises_on_invalid_format(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"accessModes": "not-a-dict"}
             with pytest.raises(ValueError, match="Invalid data format"):
                 EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(["a1"])
 
-    def test_update_access_mode_raises_on_empty_app_id(self):
+    def test_update_access_mode_raises_on_empty_app_id(self) -> None:
         with pytest.raises(ValueError, match="app_id must be provided"):
             EnterpriseService.WebAppAuth.update_app_access_mode("", "public")
 
-    def test_update_access_mode_raises_on_invalid_mode(self):
+    def test_update_access_mode_raises_on_invalid_mode(self) -> None:
         with pytest.raises(ValueError, match="access_mode must be"):
             EnterpriseService.WebAppAuth.update_app_access_mode("a1", "invalid")
 
-    def test_update_access_mode_delegates_and_returns(self):
+    def test_update_access_mode_accepts_sso_verified(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"result": True}
+            EnterpriseService.WebAppAuth.update_app_access_mode("a1", "sso_verified")
+
+        req.send_request.assert_called_once_with(
+            "POST", "/webapp/access-mode", json={"appId": "a1", "accessMode": "sso_verified"}
+        )
+
+    def test_update_access_mode_delegates_and_returns(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"result": True}
             result = EnterpriseService.WebAppAuth.update_app_access_mode("a1", "public")
@@ -178,19 +203,44 @@ class TestWebAppAuth:
             "POST", "/webapp/access-mode", json={"appId": "a1", "accessMode": "public"}
         )
 
-    def test_cleanup_webapp_raises_on_empty_app_id(self):
+    def test_cleanup_webapp_raises_on_empty_app_id(self) -> None:
         with pytest.raises(ValueError, match="app_id must be provided"):
             EnterpriseService.WebAppAuth.cleanup_webapp("")
 
-    def test_cleanup_webapp_delegates(self):
+    def test_cleanup_webapp_delegates(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             EnterpriseService.WebAppAuth.cleanup_webapp("a1")
 
         req.send_request.assert_called_once_with("DELETE", "/webapp/clean", params={"appId": "a1"})
 
+    def test_list_externally_accessible_apps_minimal_call(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": list[object](), "total": 0, "hasMore": False}
+            result = EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=1, limit=10)
+
+        assert result == {"data": [], "total": 0, "hasMore": False}
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 1, "limit": 10},
+            timeout=5.0,
+        )
+
+    def test_list_externally_accessible_apps_with_filters(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": list[object](), "total": 0, "hasMore": False}
+            EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=2, limit=5, mode="workflow", name="alpha")
+
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 2, "limit": 5, "mode": "workflow", "name": "alpha"},
+            timeout=5.0,
+        )
+
 
 class TestJoinDefaultWorkspace:
-    def test_join_default_workspace_success(self):
+    def test_join_default_workspace_success(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
         response = {"workspace_id": "22222222-2222-2222-2222-222222222222", "joined": True, "message": "ok"}
 
@@ -211,7 +261,7 @@ class TestJoinDefaultWorkspace:
                 timeout=1.0,
             )
 
-    def test_join_default_workspace_invalid_response_format_raises(self):
+    def test_join_default_workspace_invalid_response_format_raises(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
 
         with patch("services.enterprise.enterprise_service.EnterpriseRequest.send_request") as mock_send_request:
@@ -220,11 +270,11 @@ class TestJoinDefaultWorkspace:
             with pytest.raises(ValueError, match="Invalid response format"):
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
-    def test_join_default_workspace_invalid_account_id_raises(self):
-        with pytest.raises(ValueError):
+    def test_join_default_workspace_invalid_account_id_raises(self) -> None:
+        with pytest.raises(ValueError, match="account_id must be a valid UUID: not\\-a\\-uuid"):
             EnterpriseService.join_default_workspace(account_id="not-a-uuid")
 
-    def test_join_default_workspace_missing_required_fields_raises(self):
+    def test_join_default_workspace_missing_required_fields_raises(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
         response = {"workspace_id": "", "message": "ok"}  # missing "joined"
 
@@ -234,31 +284,29 @@ class TestJoinDefaultWorkspace:
             with pytest.raises(ValueError, match="Invalid response payload"):
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
-    def test_join_default_workspace_joined_without_workspace_id_raises(self):
+    def test_join_default_workspace_joined_without_workspace_id_raises(self) -> None:
         with pytest.raises(ValueError, match="workspace_id must be non-empty when joined is True"):
             DefaultWorkspaceJoinResult(workspace_id="", joined=True, message="ok")
 
 
 class TestTryJoinDefaultWorkspace:
-    def test_try_join_default_workspace_enterprise_disabled_noop(self):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = False
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
+    def test_try_join_default_workspace_non_enterprise_edition_noop(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             try_join_default_workspace("11111111-1111-1111-1111-111111111111")
 
             mock_join.assert_not_called()
 
-    def test_try_join_default_workspace_successful_join_does_not_raise(self):
+    def test_try_join_default_workspace_successful_join_does_not_raise(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="22222222-2222-2222-2222-222222222222",
                 joined=True,
@@ -270,14 +318,10 @@ class TestTryJoinDefaultWorkspace:
 
             mock_join.assert_called_once_with(account_id=account_id)
 
-    def test_try_join_default_workspace_skipped_join_does_not_raise(self):
+    def test_try_join_default_workspace_skipped_join_does_not_raise(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="",
                 joined=False,
@@ -289,14 +333,10 @@ class TestTryJoinDefaultWorkspace:
 
             mock_join.assert_called_once_with(account_id=account_id)
 
-    def test_try_join_default_workspace_api_failure_soft_fails(self):
+    def test_try_join_default_workspace_api_failure_soft_fails(self) -> None:
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.side_effect = Exception("network failure")
 
             # Should not raise
@@ -304,12 +344,9 @@ class TestTryJoinDefaultWorkspace:
 
             mock_join.assert_called_once_with(account_id=account_id)
 
-    def test_try_join_default_workspace_invalid_account_id_soft_fails(self):
-        with patch("services.enterprise.enterprise_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
-
-            # Should not raise even though UUID parsing fails inside join_default_workspace
-            try_join_default_workspace("not-a-uuid")
+    def test_try_join_default_workspace_invalid_account_id_soft_fails(self) -> None:
+        # Should not raise even though UUID parsing fails inside join_default_workspace
+        try_join_default_workspace("not-a-uuid")
 
 
 # ---------------------------------------------------------------------------
@@ -322,21 +359,19 @@ _EE_SVC = "services.enterprise.enterprise_service"
 class TestGetCachedLicenseStatus:
     """Tests for EnterpriseService.get_cached_license_status."""
 
-    def test_returns_none_when_enterprise_disabled(self):
-        with patch(f"{_EE_SVC}.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-            assert EnterpriseService.get_cached_license_status() is None
+    def test_returns_none_outside_enterprise_edition(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        assert EnterpriseService.get_cached_license_status() is None
 
-    def test_cache_hit_returns_license_status_enum(self):
-        from services.feature_service import LicenseStatus
-
+    def test_cache_hit_returns_license_status_enum(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = b"active"
 
             result = EnterpriseService.get_cached_license_status()
@@ -345,15 +380,11 @@ class TestGetCachedLicenseStatus:
             assert isinstance(result, LicenseStatus)
             mock_get_info.assert_not_called()
 
-    def test_cache_miss_fetches_api_and_caches_valid_status(self):
-        from services.feature_service import LicenseStatus
-
+    def test_cache_miss_fetches_api_and_caches_valid_status(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -364,15 +395,11 @@ class TestGetCachedLicenseStatus:
                 LICENSE_STATUS_CACHE_KEY, VALID_LICENSE_CACHE_TTL, LicenseStatus.ACTIVE
             )
 
-    def test_cache_miss_fetches_api_and_caches_invalid_status_with_short_ttl(self):
-        from services.feature_service import LicenseStatus
-
+    def test_cache_miss_fetches_api_and_caches_invalid_status_with_short_ttl(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "expired"}}
 
@@ -383,15 +410,11 @@ class TestGetCachedLicenseStatus:
                 LICENSE_STATUS_CACHE_KEY, INVALID_LICENSE_CACHE_TTL, LicenseStatus.EXPIRED
             )
 
-    def test_redis_read_failure_falls_through_to_api(self):
-        from services.feature_service import LicenseStatus
-
+    def test_redis_read_failure_falls_through_to_api(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -400,15 +423,11 @@ class TestGetCachedLicenseStatus:
             assert result == LicenseStatus.ACTIVE
             mock_get_info.assert_called_once()
 
-    def test_redis_write_failure_still_returns_status(self):
-        from services.feature_service import LicenseStatus
-
+    def test_redis_write_failure_still_returns_status(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_redis.setex.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "expiring"}}
@@ -417,27 +436,174 @@ class TestGetCachedLicenseStatus:
 
             assert result == LicenseStatus.EXPIRING
 
-    def test_api_failure_returns_none(self):
+    def test_api_failure_returns_none(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.side_effect = Exception("network failure")
 
             assert EnterpriseService.get_cached_license_status() is None
 
-    def test_api_returns_no_license_info(self):
+    def test_api_returns_no_license_info(self) -> None:
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
-            mock_get_info.return_value = {}  # no "License" key
+            mock_get_info.return_value = dict[str, object]()  # no "License" key
 
             assert EnterpriseService.get_cached_license_status() is None
             mock_redis.setex.assert_not_called()
+
+
+class TestIssueMCPToken:
+    """Coverage for EnterpriseService.issue_mcp_token (M2).
+
+    The function wraps `POST /inner/api/mcp/issue-token` and must map
+    EnterpriseServiceError subclasses to MCP-typed errors so the workflow
+    layer can halt with a precise message instead of leaking transport text.
+    """
+
+    @staticmethod
+    def _call() -> tuple[str, int]:
+        return EnterpriseService.issue_mcp_token(
+            user_id="user-uuid",
+            tenant_id="tenant-uuid",
+            app_id="app-uuid",
+            audience="https://mcp.example.com/mcp/",
+        )
+
+    def test_happy_path_returns_token_and_expiry(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "abc.def.ghi", "expires_at": 1900000000}
+            token, exp = self._call()
+
+        assert token == "abc.def.ghi"
+        assert exp == 1900000000
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/mcp/issue-token",
+            json={
+                "user_id": "user-uuid",
+                "tenant_id": "tenant-uuid",
+                "app_id": "app-uuid",
+                "audience": "https://mcp.example.com/mcp/",
+                "user_type": "account",
+            },
+        )
+
+    def test_end_user_type_is_forwarded(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000}
+            EnterpriseService.issue_mcp_token(
+                user_id="end-user-uuid",
+                tenant_id="tenant-uuid",
+                app_id="app-uuid",
+                audience="https://mcp.example.com/mcp/",
+                user_type="end_user",
+            )
+        body = req.send_request.call_args.kwargs["json"]
+        assert body["user_type"] == "end_user"
+        assert body["app_id"] == "app-uuid"
+
+    def test_401_maps_to_identity_refresh_error(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIUnauthorizedError("refresh rejected by IdP")
+            with pytest.raises(MCPIdentityRefreshError, match="refresh rejected"):
+                self._call()
+
+    def test_428_maps_to_no_refresh_token_error(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            # 428 PreconditionRequired is what EE returns when there's no
+            # stored SSO refresh token for the user.
+            req.send_request.side_effect = EnterpriseAPIError("user has not completed SSO", status_code=428)
+            with pytest.raises(MCPNoRefreshTokenError, match="SSO"):
+                self._call()
+
+    def test_403_maps_to_identity_refresh_error_for_license(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIForbiddenError("not licensed for MCP forwarding")
+            with pytest.raises(MCPIdentityRefreshError, match="not licensed"):
+                self._call()
+
+    def test_other_status_maps_to_generic_token_error(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIError("upstream 502", status_code=502)
+            with pytest.raises(MCPTokenError, match="status=502"):
+                self._call()
+
+    def test_malformed_response_shape_raises_token_error(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = "not-a-dict"
+            with pytest.raises(MCPTokenError, match="invalid response shape"):
+                self._call()
+
+    def test_missing_token_field_raises_token_error(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"expires_at": 1700000000}  # no token
+            with pytest.raises(MCPTokenError, match="missing or non-string token"):
+                self._call()
+
+    def test_float_expires_at_is_accepted(self) -> None:
+        """expires_at may arrive as float (time.time()) — must be coerced."""
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000.5}
+            token, exp = self._call()
+        assert token == "t"
+        assert exp == 1900000000
+        assert isinstance(exp, int)
+
+    def test_bool_expires_at_is_rejected(self) -> None:
+        """bool is a subclass of int — must NOT be accepted as expires_at."""
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": True}
+            with pytest.raises(MCPTokenError, match="non-numeric expires_at"):
+                self._call()
+
+
+class TestWebAppAccessModeInheritance:
+    @pytest.mark.parametrize("mode", ["public", "private", "private_all", "sso_verified"])
+    @pytest.mark.parametrize("write_result", [True, False])
+    def test_inherits_source_mode(self, mode: str, write_result: bool) -> None:
+        from unittest.mock import call
+
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [{"accessMode": mode}, {"result": write_result}]
+            assert EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target") is None
+        assert request.call_args_list == [
+            call("GET", "/webapp/access-mode/id", params={"appId": "source"}),
+            call("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": mode}),
+        ]
+
+    @pytest.mark.parametrize("response", [{}, {"accessMode": None}])
+    def test_invalid_read_falls_back_to_public(self, response: dict[str, object]) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [response, {"result": True}]
+            EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        request.assert_called_with("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": "public"})
+
+    def test_read_timeout_falls_back_to_public(self) -> None:
+        import httpx
+
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [httpx.ReadTimeout("unavailable"), {"result": True}]
+            EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        request.assert_called_with("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": "public"})
+
+    def test_unknown_mode_is_not_replaced_with_public(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.return_value = {"accessMode": "unknown"}
+            with pytest.raises(ValueError, match="access_mode must be one of"):
+                EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        assert request.call_count == 1
+
+    def test_write_error_propagates(self) -> None:
+        error = EnterpriseServiceError("write failed")
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [{"accessMode": "private"}, error]
+            with pytest.raises(EnterpriseServiceError) as raised:
+                EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        assert raised.value is error
+        assert request.call_count == 2

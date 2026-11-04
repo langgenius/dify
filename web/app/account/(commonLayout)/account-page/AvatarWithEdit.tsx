@@ -1,178 +1,201 @@
 'use client'
 
-import type { Area } from 'react-easy-crop'
-import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
-import type { AvatarProps } from '@/app/components/base/avatar'
+import type { AvatarProps } from '@langgenius/dify-ui/avatar'
+import type { ImageIconInputValue } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
-import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
-import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
-import { Avatar } from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
+import { ImageIconInput } from '@/app/components/base/icon-picker/image-input'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
-import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
+import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
-type InputImageInfo = { file: File } | { tempUrl: string, croppedAreaPixels: Area, fileName: string }
-type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
+type AvatarWithEditProps = {
+  avatar: string | null
+  name: string
+  size?: AvatarProps['size']
+}
 
-const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
-  const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
+  const { t } = useTranslation(['app', 'common'])
+  const { mutateAsync: updateProfile } = useMutation(
+    consoleQuery.account.profile.patch.mutationOptions({ context: { silent: true } }),
+  )
 
-  const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
+  const [inputImageInfo, setInputImageInfo] = useState<ImageIconInputValue | null>(null)
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
-  const [hoverArea, setHoverArea] = useState<string>('left')
 
-  const [onAvatarError, setOnAvatarError] = useState(false)
+  const canDeleteAvatar = !!avatar
 
-  const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
-    setInputImageInfo(
-      isCropped
-        ? { tempUrl: fileOrTempUrl as string, croppedAreaPixels: croppedAreaPixels!, fileName: fileName! }
-        : { file: fileOrTempUrl as File },
-    )
-  }, [setInputImageInfo])
-
-  const handleSaveAvatar = useCallback(async (uploadedFileId: string) => {
-    try {
-      await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
-      setIsShowAvatarPicker(false)
-      onSave?.()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-    }
-    catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
-    }
-  }, [notify, onSave, t])
+  const handleSaveAvatar = useCallback(
+    async (uploadedFileId: string) => {
+      try {
+        await updateProfile({ body: { avatar: uploadedFileId } })
+        setIsShowAvatarPicker(false)
+      } catch (e) {
+        toast.error((e as Error).message)
+      }
+    },
+    [updateProfile],
+  )
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
-      await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      await updateProfile({ body: { avatar: '' } })
       setIsShowDeleteConfirm(false)
-      onSave?.()
+    } catch (e) {
+      toast.error((e as Error).message)
     }
-    catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
-    }
-  }, [notify, onSave, t])
+  }, [updateProfile])
+
+  const handleDeleteAvatarClick = useCallback(() => {
+    setIsShowAvatarPicker(false)
+    setIsShowDeleteConfirm(true)
+  }, [])
 
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit: 3,
     disabled: false,
     onUpload: (imageFile: ImageFile) => {
-      if (imageFile.progress === 100) {
+      if (imageFile.progress === 100 && imageFile.fileId) {
         setUploading(false)
-        setInputImageInfo(undefined)
+        setInputImageInfo(null)
         handleSaveAvatar(imageFile.fileId)
       }
 
       // Error
-      if (imageFile.progress === -1)
-        setUploading(false)
+      if (imageFile.progress === -1) setUploading(false)
     },
   })
 
   const handleSelect = useCallback(async () => {
-    if (!inputImageInfo)
-      return
+    if (!inputImageInfo) return
     setUploading(true)
     if ('file' in inputImageInfo) {
       handleLocalFileUpload(inputImageInfo.file)
       return
     }
-    const blob = await getCroppedImg(inputImageInfo.tempUrl, inputImageInfo.croppedAreaPixels, inputImageInfo.fileName)
-    const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
+    const blob = await createCroppedAvatarImage(
+      inputImageInfo.url,
+      inputImageInfo.area,
+      inputImageInfo.fileName,
+    )
+    const file = createAvatarImageFile(blob, inputImageInfo.fileName)
     handleLocalFileUpload(file)
   }, [handleLocalFileUpload, inputImageInfo])
 
-  if (DISABLE_UPLOAD_IMAGE_AS_ICON)
-    return <Avatar {...props} />
+  if (DISABLE_UPLOAD_IMAGE_AS_ICON) {
+    return (
+      <Avatar size={size} aria-hidden="true">
+        <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
+        <AvatarImage src={avatar || undefined} alt="" />
+      </Avatar>
+    )
+  }
 
   return (
     <>
       <div>
-        <div className="group relative">
-          <Avatar {...props} onLoadingStatusChange={status => setOnAvatarError(status === 'error')} />
-          <div
-            className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
-            onClick={() => {
-              if (hoverArea === 'right' && !onAvatarError)
-                setIsShowDeleteConfirm(true)
-              else
-                setIsShowAvatarPicker(true)
-            }}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              const x = e.clientX - rect.left
-              const isRight = x > rect.width / 2
-              setHoverArea(isRight ? 'right' : 'left')
-            }}
-          >
-            {hoverArea === 'right' && !onAvatarError
-              ? (
-                  <span className="text-xs text-white">
-                    <RiDeleteBin5Line />
-                  </span>
-                )
-              : (
-                  <span className="text-xs text-white">
-                    <RiPencilLine />
-                  </span>
-                )}
-          </div>
-        </div>
+        <button
+          type="button"
+          aria-label={t(($) => $['avatar.editAction'], { ns: 'common' })}
+          className="group relative inline-flex overflow-hidden rounded-full border-none bg-transparent p-0 outline-hidden hover:opacity-90 focus-visible:ring-2 focus-visible:ring-components-input-border-hover active:opacity-80"
+          onClick={() => {
+            setInputImageInfo(null)
+            setIsShowAvatarPicker(true)
+          }}
+        >
+          <Avatar size={size} aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
+            <AvatarImage src={avatar || undefined} alt="" />
+          </Avatar>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 motion-safe:transition-opacity">
+            <span aria-hidden="true" className="i-ri-pencil-line size-5" />
+          </span>
+        </button>
       </div>
 
-      <Modal
-        closable
-        className="!w-[362px] !p-0"
-        isShow={isShowAvatarPicker}
-        onClose={() => setIsShowAvatarPicker(false)}
+      <Dialog
+        open={isShowAvatarPicker}
+        onOpenChange={(open) => !open && setIsShowAvatarPicker(false)}
       >
-        <ImageInput onImageInput={handleImageInput} cropShape="round" />
-        <Divider className="m-0" />
+        <DialogContent className="w-90.5">
+          <DialogTitle className="sr-only">
+            {t(($) => $['avatar.editAction'], { ns: 'common' })}
+          </DialogTitle>
+          <ImageIconInput onChange={setInputImageInfo} cropShape="round" />
+          <Separator decorative className="m-0 h-[0.5px]" />
 
-        <div className="flex w-full items-center justify-center gap-2 p-3">
-          <Button className="w-full" onClick={() => setIsShowAvatarPicker(false)}>
-            {t('iconPicker.cancel', { ns: 'app' })}
-          </Button>
+          <div className="flex w-full items-center justify-center gap-2 p-3">
+            {canDeleteAvatar && (
+              <Button tone="destructive" className="shrink-0" onClick={handleDeleteAvatarClick}>
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </Button>
+            )}
+            <Button className="min-w-0 flex-1" onClick={() => setIsShowAvatarPicker(false)}>
+              {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
+            </Button>
 
-          <Button variant="primary" className="w-full" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
-            {t('iconPicker.ok', { ns: 'app' })}
-          </Button>
-        </div>
-      </Modal>
+            <Button
+              variant="primary"
+              className="min-w-0 flex-1"
+              disabled={!inputImageInfo}
+              loading={uploading}
+              onClick={handleSelect}
+            >
+              {t(($) => $['iconPicker.ok'], { ns: 'app' })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <Modal
-        closable
-        className="!w-[362px] !p-6"
-        isShow={isShowDeleteConfirm}
-        onClose={() => setIsShowDeleteConfirm(false)}
+      <Dialog
+        open={isShowDeleteConfirm}
+        onOpenChange={(open) => !open && setIsShowDeleteConfirm(false)}
       >
-        <div className="mb-3 text-text-primary title-2xl-semi-bold">{t('avatar.deleteTitle', { ns: 'common' })}</div>
-        <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
+        <DialogContent className="w-90.5">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['avatar.deleteTitle'], { ns: 'common' })}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p className="text-text-secondary">
+              {t(($) => $['avatar.deleteDescription'], { ns: 'common' })}
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
 
-        <div className="flex w-full items-center justify-center gap-2">
-          <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
-            {t('operation.cancel', { ns: 'common' })}
-          </Button>
-
-          <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
-            {t('operation.delete', { ns: 'common' })}
-          </Button>
-        </div>
-      </Modal>
+            <Button
+              variant="primary"
+              tone="destructive"
+              className="w-full"
+              onClick={handleDeleteAvatar}
+            >
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

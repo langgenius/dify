@@ -8,6 +8,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
     WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin_daemon import (
@@ -17,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.base import BasePluginClient
 from core.schemas.resolver import resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -26,7 +28,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -68,7 +70,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -110,7 +112,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             data = json_response.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
@@ -144,7 +146,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[WebsiteCrawlMessage, None, None]:
+    ) -> Generator[WebsiteCrawlMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -179,7 +181,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -214,7 +216,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -249,7 +251,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         request: OnlineDriveBrowseFilesRequest,
         provider_type: str,
-    ) -> Generator[OnlineDriveBrowseFilesResponse, None, None]:
+    ) -> Generator[OnlineDriveBrowseFilesResponse]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -285,7 +287,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         request: OnlineDriveDownloadFileRequest,
         provider_type: str,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -295,7 +297,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/online_drive_download_file",
-            DatasourceMessage,
+            OnlineDriveDownloadMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -313,7 +315,14 @@ class PluginDatasourceManager(BasePluginClient):
         yield from response
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider: str,
+        plugin_id: str,
+        credentials: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> bool:
         """
         validate the credentials of the provider
@@ -331,10 +340,7 @@ class PluginDatasourceManager(BasePluginClient):
                     "credentials": credentials,
                 },
             },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:

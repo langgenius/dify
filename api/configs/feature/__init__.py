@@ -1,6 +1,7 @@
-from datetime import timedelta
+import logging
+from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import (
     AliasChoices,
@@ -11,10 +12,17 @@ from pydantic import (
     PositiveFloat,
     PositiveInt,
     computed_field,
+    field_validator,
 )
 from pydantic_settings import BaseSettings
 
 from .hosted_service import HostedServiceConfig
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_OAUTH_TTL_DAYS: Final = 14
+MIN_OAUTH_TTL_DAYS: Final = 1
+MAX_OAUTH_TTL_DAYS: Final = 365
 
 
 class SecurityConfig(BaseSettings):
@@ -23,9 +31,9 @@ class SecurityConfig(BaseSettings):
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing."
-        "Make sure you are changing this key for your deployment with a strong key."
-        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
+        description="Secret key for secure session cookie signing. "
+        "Leave empty to let Dify generate a persistent key in the storage directory, "
+        "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
     )
 
@@ -74,6 +82,15 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
+    PASSWORD_PEPPER: str = Field(
+        description="Server-side secret mixed into account password hashes. "
+        "Leave empty to keep the legacy unpeppered hashing. "
+        "Use a high-entropy random value, e.g. `openssl rand -base64 32`. "
+        "WARNING: setting, changing, or removing this value changes every password hash, "
+        "so existing passwords will no longer verify. Do not change it casually.",
+        default="",
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """
@@ -82,7 +99,7 @@ class AppExecutionConfig(BaseSettings):
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum allowed execution time for the application in seconds",
-        default=1200,
+        default=3600,
     )
     APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Default number of concurrent active requests per app (0 for unlimited)",
@@ -265,10 +282,78 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED: bool = Field(
+        description="Whether tenant plugin model providers are cached in Redis. Disable when plugins are installed "
+        "by a system other than this one, which cannot invalidate the cache when a tenant's plugins change.",
+        default=True,
+    )
+
+    PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching tenant plugin model providers in Redis",
+        default=60 * 60 * 24,
+    )
+
     PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
         description="Maximum allowed size (bytes) for plugin-generated files",
         default=50 * 1024 * 1024,
     )
+
+    NEW_USER_DEFAULT_PLUGIN_IDS: str = Field(
+        description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
+        default="",
+    )
+
+    @field_validator("PLUGIN_REMOTE_INSTALL_PORT", mode="before")
+    @classmethod
+    def _reject_host_port_shaped_plugin_remote_install_port(cls, v):
+        """Reject ``host:port``-shaped values with an actionable hint.
+
+        ``EXPOSE_PLUGIN_DEBUGGING_PORT`` is overloaded: it feeds both the
+        plugin_daemon ``ports:`` mapping (where ``127.0.0.1:5003`` is valid
+        compose syntax) and this integer app setting advertised in the console.
+        Without this guard a loopback bind spec crashloops the api container
+        with an opaque ``int_parsing`` traceback. See issue #39323.
+        """
+        if isinstance(v, str) and ":" in v.strip():
+            raise ValueError(
+                "PLUGIN_REMOTE_INSTALL_PORT must be a bare port number, got "
+                f"{v!r}. A 'host:port' value usually means "
+                "EXPOSE_PLUGIN_DEBUGGING_PORT was set to a compose publish spec "
+                "like '127.0.0.1:5003'; bind loopback via a "
+                "docker-compose.override.yaml instead of overloading this var."
+            )
+        return v
+
+    @property
+    def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
+        return [item.strip() for item in self.NEW_USER_DEFAULT_PLUGIN_IDS.split(",") if item.strip()]
+
+    NEW_USER_DEFAULT_MODELS: str = Field(
+        description=("Comma-separated default models for new users in 'model_type:provider:model' format"),
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
+        default_models: list[tuple[str, str, str]] = []
+        configured_model_types: set[str] = set()
+
+        for item in self.NEW_USER_DEFAULT_MODELS.split(","):
+            if not item.strip():
+                continue
+
+            parts = tuple(part.strip() for part in item.split(":", 2))
+            if len(parts) != 3 or not all(parts):
+                raise ValueError("NEW_USER_DEFAULT_MODELS entries must use 'model_type:provider:model' format")
+
+            model_type, provider, model = parts
+            if model_type in configured_model_types:
+                raise ValueError(f"NEW_USER_DEFAULT_MODELS contains duplicate model type: {model_type}")
+
+            configured_model_types.add(model_type)
+            default_models.append((model_type, provider, model))
+
+        return default_models
 
 
 class MarketplaceConfig(BaseSettings):
@@ -284,6 +369,27 @@ class MarketplaceConfig(BaseSettings):
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
         default=HttpUrl("https://marketplace.dify.ai"),
+    )
+
+
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for Creators Platform integration
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable Creators Platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client ID for Creators Platform integration",
+        default="",
     )
 
 
@@ -319,6 +425,36 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    BILLING_API_URL: str = Field(
+        description="Internal billing and SaaS API base URL, including the API version path; Cloud edition only. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_API_SECRET_KEY: str = Field(
+        description="Shared secret sent to the billing and SaaS APIs. Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_QUOTA_API_URL: str = Field(
+        description="Optional billing API base URL for quota requests; falls back to BILLING_API_URL. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    NETWORK_ACCESS_API_URL: str = Field(
+        description="Optional internal SaaS API base URL for network access policy requests; "
+        "falls back to BILLING_API_URL",
+        default="",
+    )
+
+    NETWORK_ACCESS_TRUSTED_PROXY_CIDRS: str = Field(
+        description="Comma-separated trusted proxy CIDRs for network-access current-IP previews. "
+        "Only verified socket peers may supply X-Forwarded-For; empty disables Cloud IP previews. "
+        "Match the Gateway trust boundary and sanitize or append the client IP at the edge.",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """
@@ -337,7 +473,10 @@ class FileAccessConfig(BaseSettings):
     INTERNAL_FILES_URL: str = Field(
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
-        " Falls back to FILES_URL if not specified.",
+        " Explicit INTERNAL_FILES_URL takes precedence; otherwise SERVER_CONSOLE_API_URL is used,"
+        " then FILES_URL.",
+        validation_alias=AliasChoices("INTERNAL_FILES_URL", "SERVER_CONSOLE_API_URL"),
+        alias_priority=1,
         default="",
     )
 
@@ -354,6 +493,11 @@ class FileUploadConfig(BaseSettings):
 
     UPLOAD_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="Maximum allowed file size for uploads in megabytes",
+        default=15,
+    )
+
+    KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN: NonNegativeInt = Field(
+        description="Maximum allowed file size for knowledge uploads on paid cloud plans in megabytes",
         default=15,
     )
 
@@ -375,6 +519,46 @@ class FileUploadConfig(BaseSettings):
     UPLOAD_AUDIO_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="audio file size limit in Megabytes for uploading files",
         default=50,
+    )
+
+    UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed Skill package size for uploads in megabytes",
+        default=50,
+    )
+
+    SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES: PositiveInt = Field(
+        description="Maximum total uncompressed size of a Skill package in bytes",
+        default=200 * 1024 * 1024,
+    )
+
+    SKILL_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in a Skill package",
+        default=5000,
+    )
+
+    SKILL_PACKAGE_MAX_SKILL_MD_BYTES: PositiveInt = Field(
+        description="Maximum allowed SKILL.md size in bytes",
+        default=1 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_BYTES: PositiveInt = Field(
+        description="Maximum allowed Agent package size in bytes",
+        default=512 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_MANIFEST_BYTES: PositiveInt = Field(
+        description="Maximum allowed size of each Agent package YAML document in bytes",
+        default=5 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in an Agent package",
+        default=5000,
+    )
+
+    APP_PACKAGE_MAX_WORKFLOW_TOOLS: PositiveInt = Field(
+        description="Maximum number of Workflow Tool workflows bundled into one App package",
+        default=20,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
@@ -489,6 +673,16 @@ class HttpConfig(BaseSettings):
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
+    WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
+        description=(
+            "Maximum Socket.IO / Engine.IO HTTP buffer size in bytes. "
+            "Large workflow collaboration payloads (sync_request graph snapshots) "
+            "exceed the Engine.IO default of 1 MiB and get rejected, which "
+            "disconnects the editor WebSocket. Default is 10 MiB."
+        ),
+        default=10 * 1024 * 1024,
+    )
+
     inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
         description="",
         validation_alias=AliasChoices("WEB_API_CORS_ALLOW_ORIGINS"),
@@ -498,6 +692,44 @@ class HttpConfig(BaseSettings):
     @computed_field
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
+
+    OPENAPI_ENABLED: bool = Field(
+        description=(
+            "Enable the /openapi/v1/* endpoint group used by difyctl and other "
+            "programmatic clients. Set to true to activate; disabled by default."
+        ),
+        validation_alias=AliasChoices("OPENAPI_ENABLED"),
+        default=False,
+    )
+
+    inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
+        description=(
+            "Comma-separated allowlist for /openapi/v1/* CORS. "
+            "Default empty = same-origin only. Browser-cookie routes within "
+            "the group reject cross-origin OPTIONS regardless of this list."
+        ),
+        validation_alias=AliasChoices("OPENAPI_CORS_ALLOW_ORIGINS"),
+        default="",
+    )
+
+    @computed_field
+    def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
+
+    inner_OPENAPI_KNOWN_CLIENT_IDS: str = Field(
+        description=(
+            "Comma-separated client_id values accepted at "
+            "POST /openapi/v1/oauth/device/code. New CLIs / SDKs added here "
+            "without code changes. Unknown client_id returns 400 unsupported_client."
+        ),
+        validation_alias=AliasChoices("OPENAPI_KNOWN_CLIENT_IDS"),
+        default="difyctl",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def OPENAPI_KNOWN_CLIENT_IDS(self) -> frozenset[str]:
+        return frozenset(c for c in self.inner_OPENAPI_KNOWN_CLIENT_IDS.split(",") if c)
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
@@ -583,7 +815,8 @@ class HttpConfig(BaseSettings):
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
-        " when the app is behind a single trusted reverse proxy.",
+        " when the app is behind a single trusted reverse proxy. Restrict API access to trusted callers"
+        " and have the proxy overwrite X-Forwarded-For with the verified client IP.",
         default=False,
     )
 
@@ -669,17 +902,6 @@ class ModelLoadBalanceConfig(BaseSettings):
     )
 
 
-class BillingConfig(BaseSettings):
-    """
-    Configuration for platform billing features
-    """
-
-    BILLING_ENABLED: bool = Field(
-        description="Enable or disable billing functionality",
-        default=False,
-    )
-
-
 class UpdateConfig(BaseSettings):
     """
     Configuration for application update checks
@@ -691,6 +913,41 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class CommunityTelemetryConfig(BaseSettings):
+    """
+    Configuration for anonymous self-hosted community telemetry.
+    """
+
+    DISABLE_TELEMETRY: bool = Field(
+        description="Disable anonymous community telemetry",
+        default=False,
+    )
+    DO_NOT_TRACK: bool = Field(
+        description="Respect the standard do-not-track opt-out signal for telemetry",
+        default=False,
+    )
+    TELEMETRY_ENDPOINT: str = Field(
+        description="Endpoint for anonymous community telemetry events",
+        default="https://otel.dify.ai/v1/events",
+    )
+    TELEMETRY_FALLBACK_ENDPOINT: str = Field(
+        description="Fallback endpoint for anonymous community telemetry events",
+        default="https://otel.dify.cn/v1/events",
+    )
+    TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="HTTP timeout in seconds for anonymous community telemetry requests",
+        default=3,
+    )
+    TELEMETRY_HEARTBEAT_INTERVAL_MINUTES: PositiveInt = Field(
+        description="Celery beat interval in minutes for checking whether heartbeat telemetry is due",
+        default=30,
+    )
+    CI: bool = Field(
+        description="Whether the process is running in CI; telemetry is skipped when true",
+        default=False,
+    )
+
+
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
         # 1000 KiB
@@ -699,7 +956,7 @@ class WorkflowVariableTruncationConfig(BaseSettings):
     )
     WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
         100000,
-        description="maximum length for string to trigger tuncation, measure in number of characters",
+        description="maximum length for string to trigger truncation, measure in number of characters",
     )
     WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
         1000,
@@ -717,9 +974,14 @@ class WorkflowConfig(BaseSettings):
         default=500,
     )
 
+    WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum concurrent node-builder LLM calls per workflow generation request",
+        default=6,
+    )
+
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
-        default=1200,
+        default=3600,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
@@ -737,26 +999,10 @@ class WorkflowConfig(BaseSettings):
         default=400_000,
     )
 
-    # GraphEngine Worker Pool Configuration
-    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
-        description="Minimum number of workers per GraphEngine instance",
-        default=1,
-    )
-
+    # Engine Worker Pool Configuration
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
-        description="Maximum number of workers per GraphEngine instance",
+        description="Number of workers per Engine instance",
         default=10,
-    )
-
-    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
-        description="Queue depth threshold that triggers worker scale up",
-        default=3,
-    )
-
-    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
-        description="Seconds of idle time before scaling down workers",
-        default=5.0,
-        ge=0.1,
     )
 
 
@@ -872,6 +1118,52 @@ class AuthConfig(BaseSettings):
     EMAIL_REGISTER_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying email register after exceeding the rate limit.",
         default=86400,
+    )
+
+    ENABLE_OAUTH_BEARER: bool = Field(
+        description="Enable OAuth bearer authentication (device-flow + Service API /v1/* bearer middleware).",
+        default=True,
+    )
+
+    OAUTH_TTL_DAYS: int = Field(
+        description="Lifetime in days of the OAuth bearer tokens the device flow issues (difyctl login). "
+        f"Values outside {MIN_OAUTH_TTL_DAYS}-{MAX_OAUTH_TTL_DAYS} are clamped; a non-integer falls back "
+        "to the default.",
+        ge=MIN_OAUTH_TTL_DAYS,
+        le=MAX_OAUTH_TTL_DAYS,
+        default=DEFAULT_OAUTH_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_ttl_days(cls, v: object) -> int:
+        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+        try:
+            value = int(str(v))
+        except ValueError:
+            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
+            return DEFAULT_OAUTH_TTL_DAYS
+        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
+        if clamped != value:
+            logger.warning(
+                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
+                value,
+                MIN_OAUTH_TTL_DAYS,
+                MAX_OAUTH_TTL_DAYS,
+                clamped,
+            )
+        return clamped
+
+    OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
+        description="Per-token rate limit on /openapi/v1/* (requests per minute). "
+        "Bucket keyed on sha256(token), shared across api replicas via Redis. "
+        "Set to 0 to disable the per-token limit entirely.",
+        default=60,
+    )
+
+    DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
+        default=10,
     )
 
 
@@ -992,6 +1284,12 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+
+class HomepageConfig(BaseSettings):
+    """
+    Configuration for homepage feature toggles exposed through system features.
+    """
+
     ENABLE_TRIAL_APP: bool = Field(
         description="Enable trial app",
         default=False,
@@ -1000,6 +1298,21 @@ class MailConfig(BaseSettings):
     ENABLE_EXPLORE_BANNER: bool = Field(
         description="Enable explore banner",
         default=False,
+    )
+
+    ENABLE_LEARN_APP: bool = Field(
+        description="Enable Learn App",
+        default=True,
+    )
+
+    ENABLE_STEP_BY_STEP_TOUR: bool = Field(
+        description="Enable account-level Step-by-step Tour eligibility checks",
+        default=False,
+    )
+
+    STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT: datetime | None = Field(
+        description="UTC timestamp after which newly initialized accounts are eligible for Step-by-step Tour",
+        default=None,
     )
 
 
@@ -1082,6 +1395,13 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class SkillConfig(BaseSettings):
+    ENABLE_SKILL: bool = Field(
+        description="Enable or disable Skill feature entry points",
+        default=True,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1116,6 +1436,43 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace_v2",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Celery queue for tracing and sandbox metering; isolate new workers during rolling upgrades.",
+    )
+    OPS_AGENT_TRACE_ENABLED: bool = Field(
+        default=False, description="Enable application-scoped Agent tracing collection and delivery."
+    )
+    OPS_AGENT_TRACE_MAX_SPANS: PositiveInt = Field(
+        default=4096, description="Maximum runtime spans per application trace."
+    )
+    OPS_AGENT_TRACE_MAX_BYTES: PositiveInt = Field(
+        default=16777216, description="Maximum runtime payload bytes per application trace."
+    )
+    OPS_AGENT_TRACE_BATCH_MAX_BYTES: PositiveInt = Field(
+        default=2097152, description="Maximum inner tracing request body bytes."
+    )
+    OPS_AGENT_TRACE_COLLECTION_TIMEOUT: PositiveInt = Field(
+        default=180, description="Seconds after terminal execution to wait for final Agent batches."
+    )
+    OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS: PositiveInt = Field(
+        default=120, description="Export lease before unconfirmed delivery becomes uncertain."
+    )
+    OPS_AGENT_TRACE_MAX_ATTEMPTS: PositiveInt = Field(
+        default=8, description="Attempts for known retryable trace export failures."
+    )
+    OPS_AGENT_TRACE_RETENTION_DAYS: PositiveInt = Field(
+        default=7, description="Retention of trace payloads and encrypted destination snapshots."
+    )
+
+    OPS_TRACE_EXPORT_MAX_ATTEMPTS: PositiveInt = Field(
+        default=6,
+        description="Attempts to send one trace to its provider when the provider is temporarily unavailable.",
+    )
+
+
 class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
@@ -1124,6 +1481,26 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
+        description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
+        default=True,
+    )
+    ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
+        description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
+    ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
+        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        default=True,
+    )
+    CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
+        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        default=5,
+    )
+    CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        default=100,
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,
@@ -1147,6 +1524,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
         description="Enable scheduled workflow run cleanup task",
         default=False,
+    )
+    ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK: bool = Field(
+        description="Enable scheduled cleanup of revoked/expired OAuth access-token rows past retention.",
+        default=True,
+    )
+    OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
+        description="Days to retain revoked OAuth access-token rows before deletion.",
+        default=30,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",
@@ -1274,6 +1659,13 @@ class PositionConfig(BaseSettings):
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
 
+class CollaborationConfig(BaseSettings):
+    ENABLE_COLLABORATION_MODE: bool = Field(
+        description="Whether to enable collaboration mode features across the workspace",
+        default=True,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1291,6 +1683,10 @@ class LoginConfig(BaseSettings):
         description="expiry time in minutes for email code login token",
         default=5,
     )
+    EMAIL_CODE_LOGIN_MAX_ATTEMPTS: PositiveInt = Field(
+        description="maximum number of verification attempts for an email code login challenge",
+        default=5,
+    )
     ALLOW_REGISTER: bool = Field(
         description="whether to enable register",
         default=False,
@@ -1302,13 +1698,18 @@ class LoginConfig(BaseSettings):
 
 
 class AccountConfig(BaseSettings):
+    ENABLE_CHANGE_EMAIL: bool = Field(
+        description="whether users can change their email address",
+        default=True,
+    )
+
     ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a account deletion token remains valid",
         default=5,
     )
 
     EDUCATION_ENABLED: bool = Field(
-        description="whether to enable education identity",
+        description="whether to enable education identity (CLOUD deployments only)",
         default=False,
     )
 
@@ -1370,8 +1771,8 @@ class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
-    BillingConfig,
     CodeExecutionSandboxConfig,
+    CreatorsPlatformConfig,
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
@@ -1380,6 +1781,7 @@ class FeatureConfig(
     EndpointConfig,
     FileAccessConfig,
     FileUploadConfig,
+    HomepageConfig,
     HttpConfig,
     InnerAPIConfig,
     IndexingConfig,
@@ -1388,17 +1790,21 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
+    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
+    CommunityTelemetryConfig,
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
+    CollaborationConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum, auto
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +16,7 @@ class ModerationInputsResult(BaseModel):
     flagged: bool = False
     action: ModerationAction
     preset_response: str = ""
-    inputs: dict = Field(default_factory=dict)
+    inputs: dict[str, Any] = Field(default_factory=dict)
     query: str = ""
 
 
@@ -33,13 +34,13 @@ class Moderation(Extensible, ABC):
 
     module: ExtensionModule = ExtensionModule.MODERATION
 
-    def __init__(self, app_id: str, tenant_id: str, config: dict | None = None):
+    def __init__(self, app_id: str, tenant_id: str, config: dict[str, Any] | None = None):
         super().__init__(tenant_id, config)
         self.app_id = app_id
 
     @classmethod
     @abstractmethod
-    def validate_config(cls, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
         """
         Validate the incoming form config data.
 
@@ -50,7 +51,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: dict[str, Any], query: str = "") -> ModerationInputsResult:
         """
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review
@@ -75,7 +76,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @classmethod
-    def _validate_inputs_and_outputs_config(cls, config: dict, is_preset_response_required: bool):
+    def _validate_inputs_and_outputs_config(cls, config: dict[str, Any], is_preset_response_required: bool):
         # inputs_config
         inputs_config = config.get("inputs_config")
         if not isinstance(inputs_config, dict):

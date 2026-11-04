@@ -1,6 +1,12 @@
 from libs.exception import BaseHTTPException
 
 
+class PaidPlanRequiredError(BaseHTTPException):
+    error_code = "paid_plan_required"
+    description = "This feature requires a paid plan."
+    code = 403
+
+
 class AlreadySetupError(BaseHTTPException):
     error_code = "already_setup"
     description = "Dify has been successfully installed. Please refresh the page or return to the dashboard homepage."
@@ -58,6 +64,12 @@ class WorkspacesLimitExceeded(BaseHTTPException):
     code = 400
 
 
+class SeatsLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create account because the licensed seats limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."
@@ -67,6 +79,12 @@ class AccountBannedError(BaseHTTPException):
 class AccountNotFound(BaseHTTPException):
     error_code = "account_not_found"
     description = "Account not found."
+    code = 400
+
+
+class InvalidAccountPasswordRequestError(BaseHTTPException):
+    error_code = "invalid_account_password"
+    description = "The password does not satisfy the account password policy."
     code = 400
 
 
@@ -86,9 +104,15 @@ class AccountInFreezeError(BaseHTTPException):
     error_code = "account_in_freeze"
     code = 400
     description = (
-        "This email account has been deleted within the past 30 days"
+        "This email account has been deleted within the past 30 days "
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EmailDomainSuspendedError(BaseHTTPException):
+    error_code = "email_domain_suspended"
+    code = 400
+    description = "This email domain has been suspended."
 
 
 class EducationVerifyLimitError(BaseHTTPException):
@@ -103,7 +127,19 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
-class ComplianceRateLimitError(BaseHTTPException):
-    error_code = "compliance_rate_limit"
-    description = "Rate limit exceeded for downloading compliance report."
-    code = 429
+class EducationVerifyFailedError(BaseHTTPException):
+    error_code = "education_verify_failed"
+    description = "We couldn't verify your education status."
+    code = 400
+
+
+class EducationActivateFailedError(BaseHTTPException):
+    error_code = "education_activate_failed"
+    description = "We couldn't activate your education discount."
+    code = 400
+
+
+class ApiKeyLimitExceededHTTPError(BaseHTTPException):
+    error_code = "max_keys_exceeded"
+    description = "The API key limit has been reached."
+    code = 400

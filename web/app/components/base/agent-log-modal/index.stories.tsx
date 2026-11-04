@@ -1,12 +1,12 @@
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastProvider } from '@/app/components/base/toast'
+import { fn } from 'storybook/test'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import AgentLogModal from '.'
 
-const MOCK_RESPONSE: AgentLogDetailResponse = {
+const MOCK_RESPONSE: AgentLogResponse = {
   meta: {
     status: 'finished',
     executor: 'Agent Runner',
@@ -15,7 +15,6 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
     total_tokens: 2589,
     agent_mode: 'ReACT',
     iterations: 2,
-    error: undefined,
   },
   iterations: [
     {
@@ -34,6 +33,7 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
             'en-US': 'Revenue Search',
           },
           time_cost: 1.8,
+          tool_parameters: {},
         },
       ],
       tool_raw: {
@@ -64,21 +64,10 @@ const MOCK_CHAT_ITEM: IChatItem = {
   conversationId: 'conv-123',
 }
 
-const AgentLogModalDemo = ({
-  width = 960,
-}: {
-  width?: number
-}) => {
+const AgentLogModalDemo = ({ width = 960, onCancel }: { width?: number; onCancel: () => void }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
 
   useEffect(() => {
-    setAppDetail({
-      id: 'app-1',
-      name: 'Analytics Agent',
-      mode: 'agent-chat',
-    } as any)
-
     originalFetchRef.current = globalThis.fetch?.bind(globalThis)
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -93,33 +82,30 @@ const AgentLogModalDemo = ({
         })
       }
 
-      if (originalFetchRef.current)
-        return originalFetchRef.current(request)
+      if (originalFetchRef.current) return originalFetchRef.current(request)
 
       throw new Error(`Unhandled request: ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
-      if (originalFetchRef.current)
-        globalThis.fetch = originalFetchRef.current
-      setAppDetail(undefined)
+      if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
     }
-  }, [setAppDetail])
+  }, [])
 
   return (
-    <ToastProvider>
-      <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
+    <>
+      <AppToaster />
+      <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
+          appId="app-1"
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}
-          onCancel={() => {
-            console.log('Agent log modal closed')
-          }}
+          onCancel={onCancel}
         />
       </div>
-    </ToastProvider>
+    </>
   )
 }
 
@@ -130,12 +116,14 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
+        component:
+          'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
       },
     },
   },
   args: {
     width: 960,
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof AgentLogModalDemo>

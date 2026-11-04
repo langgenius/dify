@@ -7,29 +7,60 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
 from uuid import UUID
 from zoneinfo import available_timezones
 
-from flask import Response, stream_with_context
+from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
+from extensions.redis_names import serialize_redis_name
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 if TYPE_CHECKING:
     from models import Account
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+@with_config(ConfigDict(extra="allow"))
+class _TokenData(TypedDict, total=False):
+    """Shared baseline token payload.
+
+    `extra='allow'` keeps TokenManager from silently stripping business-
+    specific metadata keys while still validating the common auth fields.
+    Business flows that need stronger guarantees should validate again at
+    their own boundary with a dedicated Pydantic model.
+
+    For the change-email flow specifically, `email_change_phase` is the
+    discriminator used by `services.entities.auth_entities.ChangeEmailTokenData`.
+    It is declared here so the shared token adapter can still provide baseline
+    validation for the state-machine key without taking over the full business
+    model.
+    """
+
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+    phase: str
+    email_change_phase: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -69,7 +100,7 @@ def escape_like_pattern(pattern: str) -> str:
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+def extract_tenant_id(user: "Account | EndUser") -> str | None:
     """
     Extract tenant_id from Account or EndUser object.
 
@@ -85,12 +116,13 @@ def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     from models import Account
     from models.model import EndUser
 
-    if isinstance(user, Account):
-        return user.current_tenant_id
-    elif isinstance(user, EndUser):
-        return user.tenant_id
-    else:
-        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
+    match user:
+        case Account():
+            return user.current_tenant_id
+        case EndUser():
+            return user.tenant_id
+        case _:
+            raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -98,6 +130,11 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "string", "nullable": True}
+
+    @override
     def output(self, key, obj, **kwargs):
         if obj is None:
             return None
@@ -108,41 +145,90 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return file_helpers.get_signed_file_url(obj.icon)
+            return build_icon_url(obj.icon_type, obj.icon)
         return None
 
 
-class AvatarUrlField(fields.Raw):
-    def output(self, key, obj, **kwargs):
-        if obj is None:
-            return None
-
-        from models import Account
-
-        if isinstance(obj, Account) and obj.avatar is not None:
-            if obj.avatar.startswith(("http://", "https://")):
-                return obj.avatar
-            return file_helpers.get_signed_file_url(obj.avatar)
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
         return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
+
+
+def build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
 
 
 class TimestampField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64"}
+
+    @override
     def format(self, value) -> int:
         return int(value.timestamp())
 
 
 class OptionalTimestampField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64", "nullable": True}
+
+    @override
     def format(self, value) -> int | None:
         if value is None:
             return None
         return int(value.timestamp())
 
 
+@overload
+def to_timestamp(value: datetime) -> int: ...
+
+
+@overload
+def to_timestamp(value: int) -> int: ...
+
+
+@overload
+def to_timestamp(value: None) -> None: ...
+
+
+def to_timestamp(value: datetime | int | None) -> int | None:
+    """Normalize API response timestamp values to epoch seconds."""
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+def dump_response(model: type[BaseModel], data: Any, **dump_kwargs: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output.
+
+    Extra keyword arguments are forwarded to ``model_dump`` (e.g. ``include=...``,
+    ``exclude=...``, ``exclude_unset=True``).
+    """
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json", **dump_kwargs)
+
+
+def current_timestamp() -> int:
+    """Return the current Unix timestamp in seconds."""
+    return int(time.time())
+
+
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Check if the email matches the pattern
-    if re.match(pattern, email) is not None:
+    # Reject trailing newlines as well as other unconsumed input.
+    if re.fullmatch(pattern, email) is not None:
         return email
 
     error = f"{email} is not a valid email."
@@ -152,16 +238,19 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: Any) -> str:
+def uuid_value(value: str | UUID) -> str:
+    if isinstance(value, UUID):
+        return str(value)
+
     if value == "":
         return str(value)
 
     try:
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{value} is not a valid uuid."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 def normalize_uuid(value: str | UUID) -> str:
@@ -189,9 +278,29 @@ def parse_uuid_str_or_none(value: str | None) -> str | None:
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
 
 
+def _strict_uuid(value: str | UUID) -> str:
+    if not value:
+        raise ValueError("must be a non-empty valid UUID")
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
+
+
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
-    if re.match(r"^[a-zA-Z0-9_]+$", value):
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "tool_name\n". re.fullmatch requires the entire
+    # string to match. Regression for #39666 (sibling of #39234 / #39548).
+    if re.fullmatch(r"^[a-zA-Z0-9_]+$", value):
         return value
 
     raise ValueError(f"{value} is not a valid alphanumeric value")
@@ -203,9 +312,9 @@ def timestamp_value(timestamp):
         if int_timestamp < 0:
             raise ValueError
         return int_timestamp
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{timestamp} is not a valid timestamp."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 class StrLen:
@@ -218,9 +327,7 @@ class StrLen:
     def __call__(self, value):
         length = len(value)
         if length > self.max_length:
-            error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
-                arg=self.argument, val=value, length=self.max_length
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
             raise ValueError(error)
 
         return value
@@ -234,11 +341,9 @@ class DatetimeString:
     def __call__(self, value):
         try:
             datetime.strptime(value, self.format)
-        except ValueError:
-            error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
-                arg=self.argument, val=value, format=self.format
-            )
-            raise ValueError(error)
+        except ValueError as caught_error:
+            error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
+            raise ValueError(error) from caught_error
 
         return value
 
@@ -289,13 +394,9 @@ def generate_string(n):
     return result
 
 
-def extract_remote_ip(request) -> str:
-    if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("CF-Connecting-IP"))
-    elif request.headers.getlist("X-Forwarded-For"):
-        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
-    else:
-        return cast(str, request.remote_addr)
+def extract_remote_ip(request: Request) -> str:
+    """Use the WSGI address, normalized by opt-in trusted proxy middleware."""
+    return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -304,7 +405,7 @@ def generate_text_hash(text: str) -> str:
 
 
 def compact_generate_response(
-    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | Iterable[str],
 ) -> Response:
     if isinstance(response, Mapping):
         return Response(
@@ -315,7 +416,7 @@ def compact_generate_response(
     else:
         stream_response = response
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             yield from stream_response
 
         return Response(
@@ -327,7 +428,7 @@ def compact_generate_response(
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes] | RateLimitGenerator,
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -359,22 +460,23 @@ def length_prefixed_response(
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, Mapping):
-        return Response(
-            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
-    elif isinstance(response, BaseModel):
-        return Response(
-            response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
-            status=200,
-            mimetype="application/json",
-        )
+    match response:
+        case Mapping():
+            return Response(
+                response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
+        case BaseModel():
+            return Response(
+                response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
+                status=200,
+                mimetype="application/json",
+            )
 
     stream_response = response
 
-    def generate() -> Generator[bytes, None, None]:
+    def generate() -> Generator[bytes]:
         for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
@@ -393,15 +495,12 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional["Account"] = None,
+        account_id: str | None = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
-        if account is None and email is None:
+        if account_id is None and email is None:
             raise ValueError("Account or email must be provided")
-
-        account_id = account.id if account else None
-        account_email = account.email if account else email
 
         if account_id:
             old_token = cls._get_current_token_for_account(account_id, token_type)
@@ -411,7 +510,7 @@ class TokenManager:
                 cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 
@@ -443,8 +542,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
-        return token_data
+        return dict(_token_data_adapter.validate_json(token_data_json))
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:
@@ -453,9 +551,7 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
-    ):
+    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_minutes: int | float):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_seconds = int(expiry_minutes * 60)
         redis_client.setex(key, expiry_seconds, token)
@@ -466,7 +562,12 @@ class TokenManager:
 
 
 class _RateLimiterRedisClient(Protocol):
+    def eval(self, script: str, numkeys: int, *args: str | int) -> object: ...
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
     def zadd(self, name: str | bytes, mapping: dict[str | bytes | int | float, float | int | str | bytes]) -> int: ...
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> int: ...
 
     def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
 
@@ -478,6 +579,44 @@ class _RateLimiterRedisClient(Protocol):
 def _default_rate_limit_member_factory() -> str:
     current_time = int(time.time())
     return f"{current_time}:{secrets.token_urlsafe(nbytes=8)}"
+
+
+_ACQUIRE_RATE_LIMIT_LUA = """
+-- EVAL contract: exactly 1 key and 4 arguments.
+-- KEYS[1]: Physical Redis ZSET key for one rate-limit subject. Members are
+--          unique request IDs; scores are Redis Unix timestamps in seconds.
+-- ARGV[1]: Positive rolling-window duration in seconds.
+-- ARGV[2]: Positive maximum number of accepted requests within that window.
+-- ARGV[3]: Minimum seconds between accepted requests, from 0 to ARGV[1].
+-- ARGV[4]: Unique, nonempty request ID to consume a slot if allowed; an empty
+--          string only queries the delay without consuming a slot.
+-- Returns: 0 when allowed; otherwise the positive number of seconds to wait,
+--          rounded up and accounting for both the window limit and cooldown.
+-- Every call removes scores <= now - window, retaining (now - window, now].
+-- Only an allowed, nonempty request ID is inserted and refreshes the key TTL.
+-- Rejected requests and delay queries do not consume quota or refresh TTL.
+-- Redis TIME and atomic execution keep these decisions consistent across nodes.
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
+local window = tonumber(ARGV[1])
+local maximum = tonumber(ARGV[2])
+local cooldown = tonumber(ARGV[3])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
+local count = redis.call('ZCARD', KEYS[1])
+local wait = 0
+if count >= maximum then
+    local oldest = redis.call('ZRANGE', KEYS[1], count - maximum, count - maximum, 'WITHSCORES')
+    wait = math.max(wait, tonumber(oldest[2]) + window - now)
+end
+local latest = redis.call('ZREVRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+if #latest > 0 then wait = math.max(wait, tonumber(latest[2]) + cooldown - now) end
+if wait > 0 then return math.ceil(wait) end
+if ARGV[4] ~= '' then
+    redis.call('ZADD', KEYS[1], now, ARGV[4])
+    redis.call('EXPIRE', KEYS[1], math.max(window, cooldown))
+end
+return 0
+"""
 
 
 class RateLimiter:
@@ -498,7 +637,37 @@ class RateLimiter:
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
 
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        """Reserve a slot atomically, releasing only this slot if the operation fails."""
+        key = self._get_key(email)
+        member = self._member_factory()
+        script = self._redis_client.register_script("""
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1] - ARGV[2])
+            if redis.call('ZSCORE', KEYS[1], ARGV[4]) then return 1 end
+            if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+            redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[2] * 2)
+            return 1
+        """)
+        acquired = bool(script(keys=[key], args=[int(time.time()), self.time_window, self.max_attempts, member]))
+        try:
+            yield acquired
+        except BaseException:
+            if acquired:
+                try:
+                    self._redis_client.zrem(key, member)
+                except Exception:
+                    logger.exception("Failed to release rate limit reservation")
+            raise
+
     def is_rate_limited(self, email: str) -> bool:
+        """Legacy non-consuming limit query, retained for existing admission policies.
+
+        New callers should use acquire() for atomic admission or retry_after()
+        for a delay query. Migrating existing callers requires auditing when
+        their events should consume quota.
+        """
         key = self._get_key(email)
         current_time = int(time.time())
         window_start_time = current_time - self.time_window
@@ -506,14 +675,58 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
-            return True
-        return False
+        return bool(attempts and int(attempts) >= self.max_attempts)
 
     def increment_rate_limit(self, email: str):
+        """Record an event unconditionally, without enforcing admission limits.
+
+        For atomic check-and-consume admission, use acquire() instead of calling
+        is_rate_limited() and this method separately.
+        """
         key = self._get_key(email)
         member = self._member_factory()
         current_time = int(time.time())
 
         self._redis_client.zadd(key, {member: current_time})
         self._redis_client.expire(key, self.time_window * 2)
+
+    def acquire(self, subject: str, *, cooldown_seconds: int = 0) -> int:
+        """Atomically consume a slot, or return seconds to wait without consuming it."""
+        return self._atomic_wait(subject, cooldown_seconds, self._member_factory())
+
+    def retry_after(self, subject: str, *, cooldown_seconds: int = 0) -> int:
+        """Read the combined cooldown/window delay without consuming a slot."""
+        return self._atomic_wait(subject, cooldown_seconds, "")
+
+    def _atomic_wait(self, subject: str, cooldown_seconds: int, member: str) -> int:
+        if self.max_attempts <= 0 or self.time_window <= 0 or not 0 <= cooldown_seconds <= self.time_window:
+            raise ValueError("Atomic rate limits require positive limits and a cooldown within the window")
+        # eval bypasses the wrapper's key prefix; Redis time prevents replica clock skew.
+        remaining = self._redis_client.eval(
+            _ACQUIRE_RATE_LIMIT_LUA,
+            1,
+            serialize_redis_name(self._get_key(subject)),
+            self.time_window,
+            self.max_attempts,
+            cooldown_seconds,
+            member,
+        )
+        if not isinstance(remaining, int):
+            raise ValueError("Invalid Redis rate limit response")
+        return remaining
+
+    def seconds_until_available(self, email: str) -> int:
+        """Seconds until the oldest in-window entry expires, freeing a slot.
+
+        Defensive floor of 1 second. Caller should only invoke this after
+        is_rate_limited() returned True. New callers should use retry_after(),
+        which returns 0 when no delay is required.
+        """
+        key = self._get_key(email)
+        oldest = cast(Any, self._redis_client).zrange(key, 0, 0, withscores=True)
+        if not oldest:
+            return 1
+        _member, score = oldest[0]
+        free_at = int(score) + self.time_window
+        remaining = free_at - int(time.time())
+        return max(remaining, 1)

@@ -1,130 +1,246 @@
-from typing import Literal
+from http import HTTPStatus
+from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
-from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
 
-from controllers.common.schema import register_schema_models
-from controllers.console.wraps import edit_permission_required
+from controllers.common.errors import NotFoundError
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import validate_app_token
-from extensions.ext_redis import redis_client
-from fields.annotation_fields import Annotation, AnnotationList
-from models.model import App
-from services.annotation_service import AppAnnotationService
+from controllers.service_api.flask_admission import service_api_account_admission
+from extensions.ext_application_services import application_services
+from fields.annotation_fields import (
+    Annotation,
+    AnnotationJobStatusDetailResponse,
+    AnnotationJobStatusResponse,
+    AnnotationList,
+)
+from libs.helper import dump_response
+from machinery.context import ServiceApiAccountRequestContext
+from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
+from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyJobNotFoundError
 
 
 class AnnotationCreatePayload(BaseModel):
-    question: str = Field(description="Annotation question")
-    answer: str = Field(description="Annotation answer")
+    question: str = Field(description="Annotation question.")
+    answer: str = Field(description="Annotation answer.")
 
 
 class AnnotationReplyActionPayload(BaseModel):
-    score_threshold: float = Field(description="Score threshold for annotation matching")
-    embedding_provider_name: str = Field(description="Embedding provider name")
-    embedding_model_name: str = Field(description="Embedding model name")
+    score_threshold: float = Field(
+        description=(
+            "Minimum similarity score for an annotation to be considered a match. Higher values require closer matches."
+        ),
+        json_schema_extra={"format": "float"},
+    )
+    embedding_provider_name: str = Field(description="Name of the embedding model provider.")
+    embedding_model_name: str = Field(description="Name of the embedding model to use for annotation matching.")
+
+
+class AnnotationListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number for pagination.")
+    limit: int = Field(default=20, ge=1, description="Number of items per page.")
+    keyword: str = Field(default="", description="Keyword to filter annotations by question or answer content.")
+
+
+ANNOTATION_REPLY_ACTION_PARAM = {
+    "description": "Action to perform: `enable` or `disable`.",
+    "enum": ["enable", "disable"],
+    "type": "string",
+}
 
 
 register_schema_models(
-    service_api_ns, AnnotationCreatePayload, AnnotationReplyActionPayload, Annotation, AnnotationList
+    service_api_ns,
+    AnnotationCreatePayload,
+    AnnotationReplyActionPayload,
+    AnnotationListQuery,
+)
+register_response_schema_models(
+    service_api_ns,
+    Annotation,
+    AnnotationList,
+    AnnotationJobStatusResponse,
+    AnnotationJobStatusDetailResponse,
 )
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
+    @service_api_ns.doc(
+        summary="Configure Annotation Reply",
+        description=(
+            "Enables or disables the annotation reply feature. Requires embedding model configuration "
+            "when enabling. Executes asynchronously — use [Get Annotation Reply Job "
+            "Status](/api-reference/annotations/get-annotation-reply-job-status) to track progress."
+        ),
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.OK: "Annotation reply settings task initiated.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
-    @service_api_ns.doc(params={"action": "Action to perform: 'enable' or 'disable'"})
+    @service_api_ns.doc(params={"action": ANNOTATION_REPLY_ACTION_PARAM})
     @service_api_ns.doc(
         responses={
-            200: "Action completed successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Action completed successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action or app selection.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation reply payload.",
         }
     )
-    @validate_app_token
-    def post(self, app_model: App, action: Literal["enable", "disable"]):
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Action completed successfully",
+        service_api_ns.models[AnnotationJobStatusResponse.__name__],
+    )
+    @service_api_account_admission
+    @model_validate(AnnotationReplyActionPayload)
+    def post(
+        self, payload: AnnotationReplyActionPayload, context: ServiceApiAccountRequestContext, action: str
+    ) -> tuple[dict[str, object], HTTPStatus]:
         """Enable or disable annotation reply feature."""
-        args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
-        match action:
-            case "enable":
-                result = AppAnnotationService.enable_app_annotation(args, app_model.id)
-            case "disable":
-                result = AppAnnotationService.disable_app_annotation(app_model.id)
-        return result, 200
+        validated_action = TypeAdapter(AnnotationReplyAction).validate_python(action)
+        service = application_services().annotation_reply
+        try:
+            if validated_action == "enable":
+                result = service.enable(
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    account_id=context.account_id,
+                    score_threshold=payload.score_threshold,
+                    embedding_provider_name=payload.embedding_provider_name,
+                    embedding_model_name=payload.embedding_model_name,
+                )
+            else:
+                result = service.disable(tenant_id=context.tenant_id, app_id=context.app_id)
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(AnnotationJobStatusResponse, result), HTTPStatus.OK
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
 class AnnotationReplyActionStatusApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Annotation Reply Job Status",
+        description=(
+            "Retrieves the status of an asynchronous annotation reply configuration job started by "
+            "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply)."
+        ),
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.OK: "Successfully retrieved task status.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action or app selection.",
+            HTTPStatus.NOT_FOUND: "`not_found` : The specified job does not belong to this app or no longer exists.",
+        },
+    )
     @service_api_ns.doc("get_annotation_reply_action_status")
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
-    @service_api_ns.doc(params={"action": "Action type", "job_id": "Job ID"})
     @service_api_ns.doc(
-        responses={
-            200: "Job status retrieved successfully",
-            401: "Unauthorized - invalid API token",
-            404: "Job not found",
+        params={
+            "action": ANNOTATION_REPLY_ACTION_PARAM,
+            "job_id": (
+                "Job ID returned by "
+                "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply)."
+            ),
         }
     )
-    @validate_app_token
-    def get(self, app_model: App, job_id, action):
+    @service_api_ns.doc(
+        responses={
+            HTTPStatus.OK: "Job status retrieved successfully",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+        }
+    )
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Job status retrieved successfully",
+        service_api_ns.models[AnnotationJobStatusDetailResponse.__name__],
+    )
+    @service_api_account_admission
+    def get(
+        self, context: ServiceApiAccountRequestContext, job_id: UUID, action: str
+    ) -> tuple[dict[str, object], HTTPStatus]:
         """Get the status of an annotation reply action job."""
-        job_id = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
-        cache_result = redis_client.get(app_annotation_job_key)
-        if cache_result is None:
-            raise ValueError("The job does not exist.")
-
-        job_status = cache_result.decode()
-        error_msg = ""
-        if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
-
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        validated_action = TypeAdapter(AnnotationReplyAction).validate_python(action)
+        try:
+            result = application_services().annotation_reply.get_status(
+                tenant_id=context.tenant_id, app_id=context.app_id, action=validated_action, job_id=str(job_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationReplyJobNotFoundError as exc:
+            raise NotFoundError("The job does not exist.") from exc
+        return dump_response(AnnotationJobStatusDetailResponse, result), HTTPStatus.OK
 
 
 @service_api_ns.route("/apps/annotations")
 class AnnotationListApi(Resource):
+    @service_api_ns.doc(
+        summary="List Annotations",
+        description="Retrieves a paginated list of annotations for the application. Supports keyword search filtering.",
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.OK: "Successfully retrieved annotation list.",
+        },
+    )
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
+    @service_api_ns.doc(params=query_params_from_model(AnnotationListQuery))
     @service_api_ns.doc(
         responses={
-            200: "Annotations retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Annotations retrieved successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid pagination query.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotations retrieved successfully",
         service_api_ns.models[AnnotationList.__name__],
     )
-    @validate_app_token
-    def get(self, app_model: App):
+    @service_api_account_admission
+    @model_validate(AnnotationListQuery)
+    def get(self, query: AnnotationListQuery, context: ServiceApiAccountRequestContext) -> dict[str, object]:
         """List annotations for the application."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default="", type=str)
+        try:
+            result = application_services().annotation_queries.get_page(
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                page=query.page,
+                limit=query.limit,
+                keyword=query.keyword,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(AnnotationList, result)
 
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_model.id, page, limit, keyword)
-        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
-        response = AnnotationList(
-            data=annotation_models,
-            has_more=len(annotation_list) == limit,
-            limit=limit,
-            total=total,
-            page=page,
-        )
-        return response.model_dump(mode="json")
-
+    @service_api_ns.doc(
+        summary="Create Annotation",
+        description=(
+            "Creates a new annotation. Annotations provide predefined question-answer pairs that the app "
+            "can match and return directly instead of generating a response."
+        ),
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.CREATED: "Annotation created successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("create_annotation")
     @service_api_ns.doc(description="Create a new annotation")
     @service_api_ns.doc(
         responses={
-            201: "Annotation created successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.CREATED: "Annotation created successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation payload.",
         }
     )
     @service_api_ns.response(
@@ -132,57 +248,107 @@ class AnnotationListApi(Resource):
         "Annotation created successfully",
         service_api_ns.models[Annotation.__name__],
     )
-    @validate_app_token
-    def post(self, app_model: App):
+    @service_api_account_admission
+    @model_validate(AnnotationCreatePayload)
+    def post(
+        self, payload: AnnotationCreatePayload, context: ServiceApiAccountRequestContext
+    ) -> tuple[dict[str, object], HTTPStatus]:
         """Create a new annotation."""
-        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
-        annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
-        response = Annotation.model_validate(annotation, from_attributes=True)
-        return response.model_dump(mode="json"), HTTPStatus.CREATED
+        try:
+            annotation = application_services().annotation_commands.create(
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                account_id=context.account_id,
+                question=payload.question,
+                answer=payload.answer,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(Annotation, annotation), HTTPStatus.CREATED
 
 
 @service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
+    @service_api_ns.doc(
+        summary="Update Annotation",
+        description="Updates the question and answer of an existing annotation.",
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.OK: "Annotation updated successfully.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App or annotation no longer exists.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")
-    @service_api_ns.doc(params={"annotation_id": "Annotation ID"})
+    @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to update."})
     @service_api_ns.doc(
         responses={
-            200: "Annotation updated successfully",
-            401: "Unauthorized - invalid API token",
-            403: "Forbidden - insufficient permissions",
-            404: "Annotation not found",
+            HTTPStatus.OK: "Annotation updated successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "Annotation not found",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation payload.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotation updated successfully",
         service_api_ns.models[Annotation.__name__],
     )
-    @validate_app_token
-    @edit_permission_required
-    def put(self, app_model: App, annotation_id: str):
+    @service_api_account_admission
+    @model_validate(AnnotationCreatePayload)
+    def put(
+        self, payload: AnnotationCreatePayload, context: ServiceApiAccountRequestContext, annotation_id: UUID
+    ) -> dict[str, object]:
         """Update an existing annotation."""
-        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
-        annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
-        response = Annotation.model_validate(annotation, from_attributes=True)
-        return response.model_dump(mode="json")
+        try:
+            annotation = application_services().annotation_commands.update(
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                annotation_id=str(annotation_id),
+                question=payload.question,
+                answer=payload.answer,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationNotFoundError as exc:
+            raise NotFoundError("Annotation not found") from exc
+        return dump_response(Annotation, annotation)
 
+    @service_api_ns.doc(
+        summary="Delete Annotation",
+        description="Deletes an annotation and its associated hit history.",
+        tags=["Annotations"],
+        responses={
+            HTTPStatus.NO_CONTENT: "Annotation deleted successfully.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App or annotation no longer exists.",
+        },
+    )
     @service_api_ns.doc("delete_annotation")
     @service_api_ns.doc(description="Delete an annotation")
-    @service_api_ns.doc(params={"annotation_id": "Annotation ID"})
+    @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to delete."})
     @service_api_ns.doc(
         responses={
-            204: "Annotation deleted successfully",
-            401: "Unauthorized - invalid API token",
-            403: "Forbidden - insufficient permissions",
-            404: "Annotation not found",
+            HTTPStatus.NO_CONTENT: "Annotation deleted successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "Annotation not found",
         }
     )
-    @validate_app_token
-    @edit_permission_required
-    def delete(self, app_model: App, annotation_id: str):
+    @service_api_account_admission
+    def delete(self, context: ServiceApiAccountRequestContext, annotation_id: UUID) -> tuple[str, HTTPStatus]:
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
-        return "", 204
+        try:
+            application_services().annotation_commands.delete(
+                tenant_id=context.tenant_id, app_id=context.app_id, annotation_id=str(annotation_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationNotFoundError as exc:
+            raise NotFoundError("Annotation not found") from exc
+        return "", HTTPStatus.NO_CONTENT

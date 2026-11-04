@@ -3,15 +3,12 @@ import FileListItem from './components/file-list-item'
 import UploadDropzone from './components/upload-dropzone'
 import { useLocalFileUpload } from './hooks/use-local-file-upload'
 
-export type LocalFileProps = {
+type LocalFileProps = {
   allowedExtensions: string[]
   supportBatchUpload?: boolean
 }
 
-const LocalFile = ({
-  allowedExtensions,
-  supportBatchUpload = true,
-}: LocalFileProps) => {
+const LocalFile = ({ allowedExtensions, supportBatchUpload = true }: LocalFileProps) => {
   const {
     dropRef,
     dragRef,

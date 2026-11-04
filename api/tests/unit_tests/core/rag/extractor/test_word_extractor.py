@@ -1,20 +1,53 @@
 """Primarily used for testing merged cell scenarios"""
 
 import io
+import logging
 import os
 import tempfile
-from collections import UserDict
+from collections.abc import Generator
+from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import Protocol, cast
 
 import pytest
 from docx import Document
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
+from docx.opc.packuri import PackURI
+from docx.opc.part import Part
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from httpx import Response
+from PIL import Image
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
+from extensions.storage.opendal_storage import OpenDALStorage
+from models.model import UploadFile
+from tests.helpers.unit.config_override import apply_config_overrides
+
+
+class _TextOxmlElement(Protocol):
+    text: str | None
+
+
+@dataclass
+class _CloseRecorder:
+    result: object | None = None
+    close_calls: int = 0
+
+    def close(self) -> object | None:
+        self.close_calls += 1
+        return self.result
+
+
+def _set_oxml_text(element: object, text: str) -> None:
+    cast(_TextOxmlElement, element).text = text
+
+
+def _image_part(name: str, blob: bytes = b"image-bytes") -> Part:
+    return Part(PackURI(f"/word/media/{name}"), "image/png", blob)
 
 
 def _generate_table_with_merged_cells():
@@ -61,43 +94,43 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
-def test_init_downloads_via_ssrf_proxy(monkeypatch):
+def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
     buf = io.BytesIO()
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
 
-    class FakeResponse:
-        status_code = 200
-        content = docx_bytes
+    response = Response(200, content=docx_bytes)
 
-        def close(self) -> None:
-            calls.append(("close", None))
-
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         calls.append(("get", (url, kwargs)))
-        return FakeResponse()
+        return response
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
 
     extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
     try:
         assert calls
         assert calls[0][0] == "get"
-        url, kwargs = calls[0][1]
+        first_call = calls[0][1]
+        assert first_call is not None
+        url, kwargs = first_call
         assert url == "https://example.com/test.docx"
         assert kwargs.get("timeout") is None
         assert extractor.web_path == "https://example.com/test.docx"
         assert extractor.file_path != extractor.web_path
         assert Path(extractor.file_path).read_bytes() == docx_bytes
+        assert response.is_closed
     finally:
         extractor.temp_file.close()
 
 
-def test_extract_images_from_docx(monkeypatch):
+@pytest.mark.parametrize("inject_session", [False, True])
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_session: bool, sqlite_session: Session):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
@@ -107,61 +140,31 @@ def test_extract_images_from_docx(monkeypatch):
     def save(key: str, data: bytes):
         saves.append((key, data))
 
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=save))
-
-    # Patch db.session to record adds/commit
-    class DummySession:
-        def __init__(self):
-            self.added = []
-            self.committed = False
-
-        def add(self, obj):
-            self.added.append(obj)
-
-        def commit(self):
-            self.committed = True
-
-    db_stub = SimpleNamespace(session=DummySession())
-    monkeypatch.setattr(we, "db", db_stub)
+    monkeypatch.setattr(we.storage, "save", save)
+    monkeypatch.setattr(we.db, "session", sqlite_session, raising=False)
 
     # Patch config values used for URL composition and storage type
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
-
-    # Patch UploadFile to avoid real DB models
-    class FakeUploadFile:
-        _i = 0
-
-        def __init__(self, **kwargs):  # kwargs match the real signature fields
-            type(self)._i += 1
-            self.id = f"u{self._i}"
-
-    monkeypatch.setattr(we, "UploadFile", FakeUploadFile)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     # Patch external image fetcher
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         assert url == "https://example.com/image.png"
-        return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
+        return Response(200, headers={"Content-Type": "image/png"}, content=external_bytes)
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
 
-    # A hashable internal part object with a blob attribute
-    class HashablePart:
-        def __init__(self, blob: bytes):
-            self.blob = blob
-
-        def __hash__(self) -> int:  # ensure it can be used as a dict key like real docx parts
-            return id(self)
-
-    # Build a minimal doc object with both external and internal image rels
-    internal_part = HashablePart(blob=internal_bytes)
-    rel_ext = SimpleNamespace(is_external=True, target_ref="https://example.com/image.png")
-    rel_int = SimpleNamespace(is_external=False, target_ref="word/media/image1.png", target_part=internal_part)
-    doc = SimpleNamespace(part=SimpleNamespace(rels={"rId1": rel_ext, "rId2": rel_int}))
+    doc = Document()
+    internal_part = _image_part("image1.png", internal_bytes)
+    doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image.png", "rId1", is_external=True)
+    doc.part.rels.add_relationship(RT.IMAGE, internal_part, "rId2")
 
     extractor = object.__new__(WordExtractor)
-    extractor.tenant_id = "t1"
-    extractor.user_id = "u1"
+    extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
+    extractor.user_id = "00000000-0000-0000-0000-000000000002"
+    extractor._session = sqlite_session if inject_session else None
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
 
     image_map = extractor._extract_images_from_docx(doc)
 
@@ -174,49 +177,62 @@ def test_extract_images_from_docx(monkeypatch):
     assert external_bytes in payloads
     assert internal_bytes in payloads
 
-    # DB interactions should be recorded
-    assert len(db_stub.session.added) == 2
-    assert db_stub.session.committed is True
+    assert len(sqlite_session.scalars(select(UploadFile)).all()) == 2
+    assert transaction_events == ([] if inject_session else ["commit"])
 
 
-def test_extract_images_from_docx_uses_internal_files_url():
+def test_extract_images_does_not_stage_partial_files_on_storage_failure(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    doc = Document()
+    doc.part.rels.add_relationship(RT.IMAGE, _image_part("image1.png", b"first"), "rId1")
+    doc.part.rels.add_relationship(RT.IMAGE, _image_part("image2.png", b"second"), "rId2")
+
+    save_calls = 0
+
+    def save(key: str, data: bytes) -> None:
+        nonlocal save_calls
+        save_calls += 1
+        if save_calls == 2:
+            raise RuntimeError("storage failure")
+
+    monkeypatch.setattr(we.storage, "save", save)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+
+    extractor = object.__new__(WordExtractor)
+    extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
+    extractor.user_id = "00000000-0000-0000-0000-000000000002"
+    extractor._session = sqlite_session
+
+    with pytest.raises(RuntimeError, match="storage failure"):
+        extractor._extract_images_from_docx(doc)
+
+    assert sqlite_session.scalars(select(UploadFile)).all() == []
+
+
+def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.MonkeyPatch):
     """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
     # Test the URL generation logic directly
     from configs import dify_config
 
-    # Mock the configuration values
-    original_files_url = getattr(dify_config, "FILES_URL", None)
-    original_internal_files_url = getattr(dify_config, "INTERNAL_FILES_URL", None)
+    apply_config_overrides(
+        monkeypatch,
+        FILES_URL="http://external.example.com",
+        INTERNAL_FILES_URL="http://internal.docker:5001",
+    )
 
-    try:
-        # Set both URLs - INTERNAL should take precedence
-        dify_config.FILES_URL = "http://external.example.com"
-        dify_config.INTERNAL_FILES_URL = "http://internal.docker:5001"
+    upload_file_id = "test_file_id"
 
-        # Test the URL generation logic (same as in word_extractor.py)
-        upload_file_id = "test_file_id"
+    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
 
-        # This is the pattern we fixed in the word extractor
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-        generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
-
-        # Verify that INTERNAL_FILES_URL is used instead of FILES_URL
-        assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
-        assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
-
-    finally:
-        # Restore original values
-        dify_config.FILES_URL = original_files_url
-        dify_config.INTERNAL_FILES_URL = original_internal_files_url
+    assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
+    assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
 
 
-def test_extract_hyperlinks(monkeypatch):
-    # Mock db and storage to avoid issues during image extraction (even if no images are present)
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
-    monkeypatch.setattr(we, "db", db_stub)
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    # Patch db and storage to avoid issues during image extraction (even if no images are present)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     doc = Document()
     p = doc.add_paragraph("Visit ")
@@ -228,7 +244,7 @@ def test_extract_hyperlinks(monkeypatch):
 
     new_run = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     new_run.append(t)
     hyperlink.append(new_run)
     p._p.append(hyperlink)
@@ -246,7 +262,7 @@ def test_extract_hyperlinks(monkeypatch):
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id")
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
         docs = extractor.extract()
         # Verify modern hyperlink extraction
         assert "Visit[Dify](https://dify.ai)" in docs[0].page_content
@@ -255,13 +271,9 @@ def test_extract_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch):
+def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
     # Mock db and storage
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
-    monkeypatch.setattr(we, "db", db_stub)
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     doc = Document()
     p = doc.add_paragraph()
@@ -274,33 +286,33 @@ def test_extract_legacy_hyperlinks(monkeypatch):
     # 5. w:fldChar (end)
 
     run1 = OxmlElement("w:r")
-    fldCharBegin = OxmlElement("w:fldChar")
-    fldCharBegin.set(qn("w:fldCharType"), "begin")
-    run1.append(fldCharBegin)
+    fld_char_begin = OxmlElement("w:fldChar")
+    fld_char_begin.set(qn("w:fldCharType"), "begin")
+    run1.append(fld_char_begin)
     p._p.append(run1)
 
     run2 = OxmlElement("w:r")
-    instrText = OxmlElement("w:instrText")
-    instrText.text = ' HYPERLINK "http://example.com" '
-    run2.append(instrText)
+    instr_text = OxmlElement("w:instrText")
+    _set_oxml_text(instr_text, ' HYPERLINK "http://example.com" ')
+    run2.append(instr_text)
     p._p.append(run2)
 
     run3 = OxmlElement("w:r")
-    fldCharSep = OxmlElement("w:fldChar")
-    fldCharSep.set(qn("w:fldCharType"), "separate")
-    run3.append(fldCharSep)
+    fld_char_sep = OxmlElement("w:fldChar")
+    fld_char_sep.set(qn("w:fldCharType"), "separate")
+    run3.append(fld_char_sep)
     p._p.append(run3)
 
     run4 = OxmlElement("w:r")
     t4 = OxmlElement("w:t")
-    t4.text = "Example"
+    _set_oxml_text(t4, "Example")
     run4.append(t4)
     p._p.append(run4)
 
     run5 = OxmlElement("w:r")
-    fldCharEnd = OxmlElement("w:fldChar")
-    fldCharEnd.set(qn("w:fldCharType"), "end")
-    run5.append(fldCharEnd)
+    fld_char_end = OxmlElement("w:fldChar")
+    fld_char_end.set(qn("w:fldCharType"), "end")
+    run5.append(fld_char_end)
     p._p.append(run5)
 
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
@@ -308,7 +320,7 @@ def test_extract_legacy_hyperlinks(monkeypatch):
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id")
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
         docs = extractor.extract()
         # Verify legacy hyperlink extraction
         assert "[Example](http://example.com)" in docs[0].page_content
@@ -317,25 +329,17 @@ def test_extract_legacy_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_init_rejects_invalid_url_status(monkeypatch):
-    class FakeResponse:
-        status_code = 404
-        content = b""
-        closed = False
-
-        def close(self):
-            self.closed = True
-
-    fake_response = FakeResponse()
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=lambda url, **kwargs: fake_response))
+def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
+    response = Response(404, content=b"")
+    monkeypatch.setattr(we.remote_fetcher, "make_request", lambda method, url, **kwargs: response)
 
     with pytest.raises(ValueError, match="returned status code 404"):
         WordExtractor("https://example.com/missing.docx", "tenant", "user")
 
-    assert fake_response.closed is True
+    assert response.is_closed
 
 
-def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
+def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Path):
     target_file = tmp_path / "expanded.docx"
     target_file.write_bytes(b"docx")
 
@@ -354,124 +358,145 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_del_closes_temp_file():
+def test_close_closes_temp_file():
     extractor = object.__new__(WordExtractor)
-    extractor.temp_file = MagicMock()
+    extractor._closed = False
+    with tempfile.NamedTemporaryFile() as temp_file:
+        extractor.temp_file = temp_file
 
-    WordExtractor.__del__(extractor)
+        extractor.close()
 
-    extractor.temp_file.close.assert_called_once()
+        assert temp_file.file.closed
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch):
-    class FakeTargetRef:
-        def __contains__(self, item):
-            return item == "image"
+def test_close_is_idempotent():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    with tempfile.NamedTemporaryFile() as temp_file:
+        extractor.temp_file = temp_file
 
-        def split(self, sep):
-            return [None]
+        extractor.close()
+        extractor.close()
 
-    rel_invalid_url = SimpleNamespace(is_external=True, target_ref="image-no-url")
-    rel_request_error = SimpleNamespace(is_external=True, target_ref="https://example.com/image-error")
-    rel_unknown_mime = SimpleNamespace(is_external=True, target_ref="https://example.com/image-unknown")
-    rel_internal_none_ext = SimpleNamespace(is_external=False, target_ref=FakeTargetRef(), target_part=object())
+        assert temp_file.file.closed
 
-    doc = SimpleNamespace(
-        part=SimpleNamespace(
-            rels={
-                "r1": rel_invalid_url,
-                "r2": rel_request_error,
-                "r3": rel_unknown_mime,
-                "r4": rel_internal_none_ext,
-            }
-        )
-    )
 
-    def fake_get(url, **kwargs):
+def test_close_closes_awaitable_close_result():
+    class FakeAwaitable:
+        closed: bool = False
+
+        def __await__(self) -> Generator[None]:
+            if False:
+                yield None
+            return None
+
+        def close(self) -> None:
+            self.closed = True
+
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    close_result = FakeAwaitable()
+    extractor.temp_file = _CloseRecorder(result=close_result)
+
+    extractor.close()
+
+    assert close_result.closed is True
+    assert extractor.temp_file.close_calls == 1
+
+
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    doc = Document()
+    doc.part.rels.add_relationship(RT.IMAGE, "image-no-url", "r1", is_external=True)
+    doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-error", "r2", is_external=True)
+    doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-unknown", "r3", is_external=True)
+
+    def fake_make_request(method, url, **kwargs):
+        assert method == "GET"
         if "image-error" in url:
             raise RuntimeError("network")
-        return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")
+        return Response(200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=MagicMock()))
-    monkeypatch.setattr(we, "db", db_stub)
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
+    monkeypatch.setattr(we.db, "session", sqlite_session, raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local")
 
     extractor = object.__new__(WordExtractor)
     extractor.tenant_id = "tenant"
     extractor.user_id = "user"
+    extractor._session = None
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
 
     result = extractor._extract_images_from_docx(doc)
 
     assert result == {}
-    db_stub.session.commit.assert_called_once()
+    assert transaction_events == ["commit"]
 
 
-def test_table_to_markdown_and_parse_helpers(monkeypatch):
+def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
 
-    table = SimpleNamespace(
-        rows=[
-            SimpleNamespace(cells=[1, 2]),
-            SimpleNamespace(cells=[3, 4]),
-        ]
-    )
-    parse_row_mock = MagicMock(side_effect=[["H1", "H2"], ["A", "B"]])
-    monkeypatch.setattr(extractor, "_parse_row", parse_row_mock)
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    parsed_rows = iter([["H1", "H2"], ["A", "B"]])
+    monkeypatch.setattr(extractor, "_parse_row", lambda row, image_map, total_cols: next(parsed_rows))
 
     markdown = extractor._table_to_markdown(table, {})
     assert markdown == "| H1 | H2 |\n| --- | --- |\n| A | B |"
 
-    class FakeBlip:
-        def __init__(self, image_id):
-            self.image_id = image_id
+    cell = doc.add_table(rows=1, cols=1).cell(0, 0)
+    image_part = _image_part("cell-image.png")
+    doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/ext.png", "ext", is_external=True)
+    doc.part.rels.add_relationship(RT.IMAGE, image_part, "int")
 
-        def get(self, key):
-            return self.image_id
+    def populate_paragraph(paragraph) -> None:
+        image_run = OxmlElement("w:r")
+        for image_id in (None, "ext", "int"):
+            blip = OxmlElement("a:blip")
+            if image_id is not None:
+                blip.set(qn("r:embed"), image_id)
+            image_run.append(blip)
+        paragraph._p.append(image_run)
+        paragraph.add_run("plain")
 
-    class FakeRunChild:
-        def __init__(self, blips, text=""):
-            self._blips = blips
-            self.text = text
-            self.tag = qn("w:r")
-
-        def xpath(self, pattern):
-            if pattern == ".//a:blip":
-                return self._blips
-            return []
-
-    class FakeRun:
-        def __init__(self, element, paragraph):
-            # Mirror the subset used by _parse_cell_paragraph
-            self.element = element
-            self.text = getattr(element, "text", "")
-
-    # Patch we.Run so our lightweight child objects work with the extractor
-    monkeypatch.setattr(we, "Run", FakeRun)
-
-    image_part = object()
-    paragraph = SimpleNamespace(
-        _element=[
-            FakeRunChild([FakeBlip(None), FakeBlip("ext"), FakeBlip("int")], text=""),
-            FakeRunChild([], text="plain"),
-        ],
-        part=SimpleNamespace(
-            rels={
-                "ext": SimpleNamespace(is_external=True),
-                "int": SimpleNamespace(is_external=False, target_part=image_part),
-            }
-        ),
-    )
+    paragraph = cell.paragraphs[0]
+    populate_paragraph(paragraph)
+    populate_paragraph(cell.add_paragraph())
 
     image_map = {"ext": "EXT-IMG", image_part: "INT-IMG"}
     assert extractor._parse_cell_paragraph(paragraph, image_map) == "EXT-IMGINT-IMGplain"
-
-    cell = SimpleNamespace(paragraphs=[paragraph, paragraph])
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch):
+def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
+    doc = Document()
+    doc.add_paragraph("Before table")
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Header A"
+    table.cell(0, 1).text = "Header B"
+    table.cell(1, 0).text = "Cell A"
+    table.cell(1, 1).text = "Cell B"
+    doc.add_paragraph("After table")
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    extractor = object.__new__(WordExtractor)
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
+
+    try:
+        assert extractor.parse_docx(tmp_path) == (
+            "Before table\n| Header A | Header B |\n| --- | --- |\n| Cell A | Cell B |\nAfter table"
+        )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"
@@ -479,24 +504,24 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     shape_ext_id = "shape-ext"
     shape_int_id = "shape-int"
 
-    internal_part = object()
-    shape_internal_part = object()
+    internal_part = _image_part("embedded.png")
+    shape_internal_part = _image_part("shape.png")
+    fake_doc = Document()
+    rels = fake_doc.part.rels
+    rels.add_relationship(RT.IMAGE, "https://img/ext.png", ext_image_id, is_external=True)
+    rels.add_relationship(RT.IMAGE, internal_part, int_embed_id)
+    rels.add_relationship(RT.IMAGE, "https://img/shape.png", shape_ext_id, is_external=True)
+    rels.add_relationship(RT.IMAGE, shape_internal_part, shape_int_id)
+    rels.add_relationship(RT.HYPERLINK, "https://example.com", "link-ok", is_external=True)
 
-    class Rels(UserDict):
-        def get(self, key, default=None):
-            if key == "link-bad":
-                raise RuntimeError("cannot resolve relation")
-            return super().get(key, default)
+    relationship_get = rels.get
 
-    rels = Rels(
-        {
-            ext_image_id: SimpleNamespace(is_external=True, target_ref="https://img/ext.png"),
-            int_embed_id: SimpleNamespace(is_external=False, target_part=internal_part),
-            shape_ext_id: SimpleNamespace(is_external=True, target_ref="https://img/shape.png"),
-            shape_int_id: SimpleNamespace(is_external=False, target_part=shape_internal_part),
-            "link-ok": SimpleNamespace(is_external=True, target_ref="https://example.com"),
-        }
-    )
+    def get_relationship(key, default=None):
+        if key == "link-bad":
+            raise RuntimeError("cannot resolve relation")
+        return relationship_get(key, default)
+
+    monkeypatch.setattr(rels, "get", get_relationship)
 
     image_map = {
         ext_image_id: "[EXT]",
@@ -584,8 +609,15 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             self.element = element
             self.text = getattr(element, "text", "")
 
-    paragraph_main = SimpleNamespace(
-        _element=[
+    class FakeParagraph:
+        def __init__(self, children):
+            self._element = children
+
+    class FakeTable:
+        rows: list[object] = []
+
+    paragraph_main = FakeParagraph(
+        [
             FakeChild(
                 qn("w:r"),
                 text="run-text",
@@ -610,25 +642,20 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             ),
         ]
     )
-    paragraph_empty = SimpleNamespace(_element=[FakeChild(qn("w:r"), text="   ")])
+    paragraph_empty = FakeParagraph([FakeChild(qn("w:r"), text="   ")])
+    table = FakeTable()
 
-    fake_doc = SimpleNamespace(
-        part=SimpleNamespace(rels=rels, related_parts={int_embed_id: internal_part}),
-        paragraphs=[paragraph_main, paragraph_empty],
-        tables=[SimpleNamespace(rows=[])],
-        element=SimpleNamespace(
-            body=[SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:tbl")]
-        ),
-    )
+    monkeypatch.setattr(fake_doc, "iter_inner_content", lambda: iter([paragraph_main, paragraph_empty, table]))
 
+    monkeypatch.setattr(we, "Paragraph", FakeParagraph)
+    monkeypatch.setattr(we, "Table", FakeTable)
     monkeypatch.setattr(we, "DocxDocument", lambda _: fake_doc)
     monkeypatch.setattr(we, "Run", FakeRun)
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: image_map)
     monkeypatch.setattr(extractor, "_table_to_markdown", lambda table, image_map: "TABLE-MARKDOWN")
-    logger_exception = MagicMock()
-    monkeypatch.setattr(we.logger, "exception", logger_exception)
 
-    content = extractor.parse_docx("dummy.docx")
+    with caplog.at_level(logging.ERROR, logger="core.rag.extractor.word_extractor"):
+        content = extractor.parse_docx("dummy.docx")
 
     assert "[EXT]" in content
     assert "[INT]" in content
@@ -636,7 +663,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     assert "[LinkText](https://example.com)" in content
     assert "BrokenLink" in content
     assert "TABLE-MARKDOWN" in content
-    logger_exception.assert_called_once()
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
@@ -652,7 +679,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)
@@ -692,7 +719,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "john@test.com"
+    _set_oxml_text(t, "john@test.com")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)
@@ -717,3 +744,63 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@pytest.fixture
+def local_image_storage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> OpenDALStorage:
+    local_storage = OpenDALStorage(scheme="fs", root=str(tmp_path / "storage"))
+    monkeypatch.setattr(we.storage, "storage_runner", local_storage, raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+    return local_storage
+
+
+@pytest.mark.parametrize("part_name", ["image1.png", "logo.png", "Logo.PNG"])
+def test_extract_preserves_image_relationships_regardless_of_part_name(
+    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage, part_name: str
+) -> None:
+    png = io.BytesIO()
+    Image.new("RGB", (2, 2), "red").save(png, format="PNG")
+    image_bytes = png.getvalue()
+    png.seek(0)
+    doc = Document()
+    doc.add_paragraph("Before logo")
+    doc.add_picture(png)
+    doc.add_paragraph("After logo")
+    image_rel = next(rel for rel in doc.part.rels.values() if rel.reltype == RT.IMAGE)
+    image_rel.target_part._partname = PackURI(f"/word/media/{part_name}")
+    path = tmp_path / "logo.docx"
+    doc.save(str(path))
+    assert len(Document(str(path)).inline_shapes) == 1
+
+    content = (
+        WordExtractor(
+            str(path),
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            session=sqlite_session,
+        )
+        .extract()[0]
+        .page_content
+    )
+
+    upload = sqlite_session.scalars(select(UploadFile)).one()
+    image_link = f"![image](http://files.local/files/{upload.id}/file-preview)"
+    assert content.index("Before logo") < content.index(image_link) < content.index("After logo")
+    assert local_image_storage.load_once(upload.key) == image_bytes
+
+
+def test_extract_ignores_non_image_relationship_with_image_in_target(
+    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage
+) -> None:
+    doc = Document()
+    doc.add_paragraph("Visible text")
+    metadata = Part(PackURI("/word/image-metadata.xml"), "application/xml", b"<metadata/>")
+    doc.part.rels.add_relationship(RT.CUSTOM_XML, metadata, "rIdMetadata")
+    path = tmp_path / "metadata.docx"
+    doc.save(str(path))
+
+    content = WordExtractor(str(path), "tenant", "user", session=sqlite_session).extract()[0].page_content
+
+    assert content == "Visible text"
+    assert sqlite_session.scalars(select(UploadFile)).all() == []
+    assert not local_image_storage.exists("image_files/")

@@ -9,40 +9,42 @@ type InitialFieldsProps = {
   supportFile: boolean
 }
 
-const InitialFields = ({
-  initialData,
-  supportFile,
-}: InitialFieldsProps) => withForm({
-  defaultValues: initialData,
-  render: function Render({
-    form,
-  }) {
-    const getFieldValue = useCallback((fieldName: string) => {
-      return form.getFieldValue(fieldName)
-    }, [form])
+const InitialFields = ({ initialData, supportFile }: InitialFieldsProps) =>
+  withForm({
+    defaultValues: initialData,
+    render: function Render({ form }) {
+      const getFieldValue = useCallback(
+        (fieldName: string) => {
+          return form.getFieldValue(fieldName)
+        },
+        [form],
+      )
 
-    const setFieldValue = useCallback((fieldName: string, value: any) => {
-      form.setFieldValue(fieldName, value)
-    }, [form])
+      const setFieldValue = useCallback(
+        (fieldName: string, value: any) => {
+          form.setFieldValue(fieldName, value)
+        },
+        [form],
+      )
 
-    const initialConfigurations = useConfigurations({
-      getFieldValue,
-      setFieldValue,
-      supportFile,
-    })
+      const initialConfigurations = useConfigurations({
+        getFieldValue,
+        setFieldValue,
+        supportFile,
+      })
 
-    return (
-      <>
-        {initialConfigurations.map((config, index) => {
-          const FieldComponent = InputField({
-            initialData,
-            config,
-          })
-          return <FieldComponent key={index} form={form} />
-        })}
-      </>
-    )
-  },
-})
+      return (
+        <>
+          {initialConfigurations.map((config, index) => {
+            const FieldComponent = InputField({
+              initialData,
+              config,
+            })
+            return <FieldComponent key={index} form={form} />
+          })}
+        </>
+      )
+    },
+  })
 
 export default InitialFields

@@ -1,0 +1,251 @@
+import type {
+  AgentSoulConfig,
+  WorkflowAgentComposerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
+import { debounce } from 'es-toolkit/compat'
+import isEqual from 'fast-deep-equal'
+import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  agentSoulConfigToFormState,
+  formStateToAgentSoulConfig,
+} from '@/features/agent-v2/agent-composer/conversions'
+import {
+  agentComposerDraftAtom,
+  agentComposerSavedDraftAtom,
+  isAgentComposerDirtyAtom,
+} from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
+import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
+
+const DRAFT_AUTOSAVE_WAIT = 5000
+
+function getModelProviderPluginId(provider: string) {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName) return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
+}
+
+export function getDefaultAgentSoul(defaultModel?: DefaultModelResponse): AgentSoulConfig {
+  const baseConfig: AgentSoulConfig = {
+    schema_version: 1,
+    prompt: {
+      system_prompt: '',
+    },
+  }
+
+  if (!defaultModel) return baseConfig
+
+  const modelProvider = defaultModel.provider.provider
+
+  return {
+    ...baseConfig,
+    model: {
+      model_provider: modelProvider,
+      model: defaultModel.model,
+      plugin_id: getModelProviderPluginId(modelProvider),
+    },
+  }
+}
+
+export function useWorkflowInlineAgentConfigureSync({
+  nodeId,
+  baseConfig,
+  currentModel,
+  autoSaveEnabled = true,
+  onDraftSaved,
+  enabled,
+}: {
+  nodeId: string
+  baseConfig?: AgentSoulConfig
+  currentModel?: {
+    provider: string
+    model: string
+    plugin_id?: string
+  }
+  autoSaveEnabled?: boolean
+  onDraftSaved?: (composerState: WorkflowAgentComposerResponse) => void
+  enabled: boolean
+}) {
+  const queryClient = useQueryClient()
+  const resource = useAtomValue(editorResourceAtom)
+  const store = useJotaiStore()
+  const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
+  const baseConfigRef = useRef(baseConfig)
+  const currentModelRef = useRef(currentModel)
+  const enabledRef = useRef(enabled)
+  const onDraftSavedRef = useRef(onDraftSaved)
+  const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
+  const { mutateAsync: saveAppComposer } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+  )
+  const { mutateAsync: saveSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+  )
+
+  const { mutateAsync: replaceAppComposer } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: replaceSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
+  )
+
+  useEffect(() => {
+    baseConfigRef.current = baseConfig
+    currentModelRef.current = currentModel
+    enabledRef.current = enabled
+    onDraftSavedRef.current = onDraftSaved
+  }, [baseConfig, currentModel, enabled, onDraftSaved])
+
+  const getAgentSoulDraft = useCallback(
+    () =>
+      formStateToAgentSoulConfig({
+        baseConfig: baseConfigRef.current,
+        formState: store.get(agentComposerDraftAtom),
+        currentModel: currentModelRef.current,
+      }),
+    [store],
+  )
+
+  const saveComposer = useSerialAsyncCallback(
+    async (
+      configSnapshot: AgentSoulConfig,
+      fileUpdate: 'preserve' | 'replace' = 'preserve',
+    ): Promise<WorkflowAgentComposerResponse | undefined> => {
+      if (resource.kind !== 'app' && resource.kind !== 'snippet') return
+
+      const savedDraftKey = JSON.stringify(configSnapshot)
+      const body = {
+        variant: 'workflow' as const,
+        save_strategy: 'node_job_only' as const,
+        agent_soul:
+          fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
+      }
+      // Full replacements report failures in the applying business flow; autosaves use request feedback.
+      const saveSnippet = fileUpdate === 'replace' ? replaceSnippetComposer : saveSnippetComposer
+      const saveApp = fileUpdate === 'replace' ? replaceAppComposer : saveAppComposer
+      const composerState =
+        resource.kind === 'snippet'
+          ? await saveSnippet({
+              params: {
+                snippet_id: resource.snippetId,
+                node_id: nodeId,
+              },
+              body,
+            })
+          : await saveApp({
+              params: {
+                app_id: resource.appId,
+                node_id: nodeId,
+              },
+              body,
+            })
+
+      if (resource.kind === 'snippet') {
+        queryClient.setQueryData(
+          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+            {
+              input: {
+                params: {
+                  snippet_id: resource.snippetId,
+                  node_id: nodeId,
+                },
+              },
+            },
+          ),
+          composerState,
+        )
+      } else {
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+            input: {
+              params: {
+                app_id: resource.appId,
+                node_id: nodeId,
+              },
+            },
+          }),
+          composerState,
+        )
+      }
+      setSavedDraft(agentSoulConfigToFormState(composerState.agent_soul))
+      lastAutosavedDraftKeyRef.current = savedDraftKey
+      onDraftSavedRef.current?.(composerState)
+      return composerState
+    },
+  )
+
+  const latestDraftSaveRef = useRef<() => void>(() => undefined)
+  useEffect(() => {
+    latestDraftSaveRef.current = () => {
+      void saveComposer(getAgentSoulDraft())
+    }
+  }, [getAgentSoulDraft, saveComposer])
+
+  const debouncedSaveDraft = useMemo(
+    () =>
+      debounce(() => {
+        latestDraftSaveRef.current()
+      }, DRAFT_AUTOSAVE_WAIT),
+    [],
+  )
+
+  const saveDraft = useCallback(async () => {
+    if (!enabledRef.current) return
+
+    const configSnapshot = getAgentSoulDraft()
+    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
+    debouncedSaveDraft.cancel?.()
+    if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange) return
+
+    return saveComposer(configSnapshot)
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+  const saveAgentSoulConfig = useCallback(
+    async (agentSoulConfig: AgentSoulConfig) => {
+      debouncedSaveDraft.cancel?.()
+      return saveComposer(agentSoulConfig, 'replace')
+    },
+    [debouncedSaveDraft, saveComposer],
+  )
+
+  useEffect(() => {
+    return store.sub(agentComposerDraftAtom, () => {
+      const agentSoulDraft = getAgentSoulDraft()
+      const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
+
+      if (
+        !enabledRef.current ||
+        !autoSaveEnabled ||
+        !store.get(isAgentComposerDirtyAtom) ||
+        lastAutosavedDraftKeyRef.current === agentSoulDraftKey
+      ) {
+        return
+      }
+
+      debouncedSaveDraft()
+    })
+  }, [autoSaveEnabled, debouncedSaveDraft, getAgentSoulDraft, store])
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveEnabled) debouncedSaveDraft.flush?.()
+    }
+  }, [autoSaveEnabled, debouncedSaveDraft])
+
+  return {
+    saveAgentSoulConfig,
+    saveDraft,
+  }
+}

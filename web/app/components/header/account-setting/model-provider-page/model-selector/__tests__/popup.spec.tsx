@@ -1,645 +1,722 @@
-import type { Model, ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ProviderModelWithStatusEntity } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { PopupProps } from '../popup'
+import type { consoleClient } from '@/service/console'
+import type { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useState } from 'react'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { consoleQuery } from '@/service/console'
 import {
-  ConfigurationMethodEnum,
-  ModelFeatureEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '../../declarations'
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  createModelCreditsFixture,
+  createProviderResponseFixture,
+  createProviderSummaryFixture,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { ModelFeatureEnum } from '../../declarations'
 import Popup from '../popup'
 
-let mockLanguage = 'en_US'
-
-const mockSetShowAccountSettingModal = vi.hoisted(() => vi.fn())
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
+const api = vi.hoisted(() => ({
+  summary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
+  catalog: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
+  install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
+  task: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.byTaskId.get>(),
+  lookup: vi.fn<typeof fetchPluginInfoFromMarketPlace>(),
+  providers: vi.fn<typeof consoleClient.workspaces.current.modelProviders.get>(),
+  credential:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.get>(),
+  addCredential:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.post>(),
+  editCredential:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.put>(),
+  locale: 'en-US',
 }))
-
-const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
-vi.mock('@/utils/tool-call', () => ({
-  supportFunctionCall: mockSupportFunctionCall,
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => api.locale,
 }))
-
-type MockMarketplacePlugin = {
-  plugin_id: string
-  latest_package_identifier: string
-}
-
-type MockContextProvider = Pick<ModelProvider, 'provider' | 'label' | 'icon_small' | 'icon_small_dark' | 'custom_configuration' | 'system_configuration'>
-
-const mockMarketplacePlugins = vi.hoisted(() => ({
-  current: [] as MockMarketplacePlugin[],
-  isLoading: false,
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
+  fetchPluginInfoFromMarketPlace: api.lookup,
 }))
-const mockContextModelProviders = vi.hoisted(() => ({
-  current: [] as MockContextProvider[],
-}))
-const mockTrialModels = vi.hoisted(() => ({
-  current: ['test-openai', 'test-anthropic'] as string[],
-}))
-vi.mock('../../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../../hooks')>('../../hooks')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    useLanguage: () => mockLanguage,
-    useMarketplaceAllPlugins: () => ({
-      plugins: mockMarketplacePlugins.current,
-      isLoading: mockMarketplacePlugins.isLoading,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.summary.get': api.summary,
+      'workspaces.current.modelProviders.get': api.providers,
+      'workspaces.current.modelProviders.byProvider.credentials.get': api.credential,
+      'workspaces.current.models.modelTypes.byModelType.get': api.catalog,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': api.install,
+      'workspaces.current.plugin.tasks.byTaskId.get': api.task,
+      'workspaces.current.modelProviders.byProvider.credentials.post': api.addCredential,
+      'workspaces.current.modelProviders.byProvider.credentials.put': api.editCredential,
     }),
   }
 })
 
-vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => <div>{model.provider}</div>,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: { trial_models: mockTrialModels.current },
-  }),
-}))
-
-const mockTrialCredits = vi.hoisted(() => ({
-  credits: 200,
-  totalCredits: 200,
-  isExhausted: false,
-  isLoading: false,
-  nextCreditResetDate: undefined as number | undefined,
-}))
-vi.mock('../../provider-added-card/use-trial-credits', () => ({
-  useTrialCredits: () => mockTrialCredits,
-}))
-
-vi.mock('../../provider-added-card/model-auth-dropdown/credits-exhausted-alert', () => ({
-  default: ({ hasApiKeyFallback }: { hasApiKeyFallback: boolean }) => (
-    <div data-testid="credits-exhausted-alert" data-has-api-key-fallback={String(hasApiKeyFallback)} />
+type Summary = Awaited<ReturnType<typeof api.summary>>
+type Credits = ReturnType<typeof createModelCreditsFixture>
+type HarnessProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange'>
+const OPENAI = ModelProviderQuotaGetPaid.OPENAI
+const ANTHROPIC = ModelProviderQuotaGetPaid.ANTHROPIC
+const packageId = 'langgenius/openai:1.0.0@hash'
+const installButton = () => screen.getByRole('button', { name: /selector.install OpenAI$/ })
+const searchInput = () => screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' })
+const model = (name: string, overrides: Partial<ProviderModelWithStatusEntity> = {}) =>
+  createCatalogModelFixture({
+    model: name,
+    label: { en_US: name },
+    ...overrides,
+  })
+const provider = (key: string, label: string, models: ProviderModelWithStatusEntity[]) =>
+  createModelCatalogFixture({
+    provider: key,
+    label: { en_US: label },
+    models,
+  })
+const catalog = [
+  provider(OPENAI, 'OpenAI', [
+    model('gpt-4'),
+    model('gpt-5.4-mini', { label: { en_US: 'GPT 5.4 Mini' } }),
+  ]),
+  provider(ANTHROPIC, 'Anthropic', [
+    model('claude-3', { label: { en_US: 'Claude Sonnet' } }),
+    model('claude-instant'),
+  ]),
+  provider(ModelProviderQuotaGetPaid.GEMINI, 'Gemini', [model('gemini-pro')]),
+  provider(ModelProviderQuotaGetPaid.TONGYI, 'Tongyi', [model('qwen-plus')]),
+  provider('langgenius/openrouter/openrouter', 'OpenRouter', [model('router-model')]),
+  provider('azure_openai', 'Azure', [model('azure-model')]),
+]
+const catalogLabels = [
+  'gpt-4',
+  'GPT 5.4 Mini',
+  'Claude Sonnet',
+  'claude-instant',
+  'gemini-pro',
+  'qwen-plus',
+  'router-model',
+  'azure-model',
+]
+const summaryFor = (models: PopupProps['modelList']): Summary => ({
+  data: models.map((entry) =>
+    createProviderSummaryFixture({
+      provider: entry.provider,
+      label: entry.label,
+      custom_configuration: {
+        available_credentials: [{ credential_id: 'key-1', credential_name: 'Workspace key' }],
+        current_credential_id: 'key-1',
+        current_credential_name: 'Workspace key',
+      },
+    }),
   ),
-}))
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
+  plugins: {},
 })
-
-const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromMarketPlace: () => ({ mutateAsync: mockInstallMutateAsync }),
-}))
-
-const mockRefreshPluginList = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
-  default: () => ({ refreshPluginList: mockRefreshPluginList }),
-}))
-
-const mockCheck = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => ({
-  default: () => ({ check: mockCheck }),
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.example.com'),
-}))
-
-vi.mock('../../utils', async () => {
-  const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
-  return {
-    ...actual,
-    MODEL_PROVIDER_QUOTA_GET_PAID: ['test-openai', 'test-anthropic'],
-    providerIconMap: {
-      'test-openai': ({ className }: { className?: string }) => <span className={className}>OAI</span>,
-      'test-anthropic': ({ className }: { className?: string }) => <span className={className}>ANT</span>,
+const installedSummary = (): Summary => ({
+  data: [
+    createProviderSummaryFixture({
+      provider: OPENAI,
+      label: { en_US: 'OpenAI' },
+      system_configuration: { enabled: true },
+    }),
+  ],
+  plugins: {
+    [OPENAI]: {
+      plugin_id: 'langgenius/openai',
+      installation_id: 'installed-openai',
+      plugin_unique_identifier: packageId,
+      runtime_type: 'local',
+      source: 'marketplace',
+      version: '1.0.0',
     },
-    modelNameMap: {
-      'test-openai': 'TestOpenAI',
-      'test-anthropic': 'TestAnthropic',
-    },
-    providerKeyToPluginId: {
-      'test-openai': 'langgenius/openai',
-      'test-anthropic': 'langgenius/anthropic',
-    },
-  }
+  },
+})
+const taskResponse = (status: 'success' | 'failed'): Awaited<ReturnType<typeof api.task>> => ({
+  task: {
+    id: 'install-task',
+    status,
+    total_plugins: 1,
+    completed_plugins: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    plugins: [
+      {
+        plugin_id: 'langgenius/openai',
+        plugin_unique_identifier: packageId,
+        status,
+        icon: '',
+        labels: { en_US: 'OpenAI' },
+        message: status === 'failed' ? 'Installation failed' : '',
+      },
+    ],
+  },
 })
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
-  model: 'gpt-4',
-  label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
-  model_type: ModelTypeEnum.textGeneration,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: {},
-  load_balancing_enabled: false,
-  ...overrides,
-})
+function Harness(props: HarnessProps) {
+  const [open, setOpen] = useState(true)
+  const [inputValue, setInputValue] = useState('')
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>Selected model</PopoverTrigger>
+      <PopoverContent>
+        <PopoverTitle>Model selector</PopoverTitle>
+        <Popup
+          {...props}
+          inputValue={inputValue}
+          onInputValueChange={setInputValue}
+          onHide={() => {
+            setOpen(false)
+            props.onHide()
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
-  provider: 'openai',
-  icon_small: { en_US: '', zh_Hans: '' },
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-  models: [makeModelItem()],
-  status: ModelStatusEnum.active,
-  ...overrides,
-})
-
-const makeContextProvider = (overrides: Partial<MockContextProvider> = {}): MockContextProvider => ({
-  provider: 'test-openai',
-  label: { en_US: 'Test OpenAI', zh_Hans: 'Test OpenAI' },
-  icon_small: { en_US: '', zh_Hans: '' },
-  icon_small_dark: { en_US: '', zh_Hans: '' },
-  custom_configuration: {
-    status: 'no-configure',
-  } as MockContextProvider['custom_configuration'],
-  system_configuration: {
-    enabled: false,
-  } as MockContextProvider['system_configuration'],
-  ...overrides,
-})
-
-describe('Popup', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockLanguage = 'en_US'
-    mockSupportFunctionCall.mockReturnValue(true)
-    mockMarketplacePlugins.current = []
-    mockMarketplacePlugins.isLoading = false
-    mockContextModelProviders.current = []
-    mockTrialModels.current = ['test-openai', 'test-anthropic']
-    Object.assign(mockTrialCredits, {
-      credits: 200,
-      totalCredits: 200,
-      isExhausted: false,
-      isLoading: false,
-      nextCreditResetDate: undefined,
-    })
+async function setup(
+  props: Partial<HarnessProps> = {},
+  options: {
+    summary?: Summary
+    credits?: Partial<Credits>
+    marketplace?: boolean
+    installPermission?: boolean
+    trialModels?: string[]
+    permissions?: string[]
+  } = {},
+) {
+  const modelList = props.modelList ?? catalog
+  const summary = options.summary ?? summaryFor(modelList)
+  api.summary.mockResolvedValue(summary)
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+    summary,
+  )
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    ...createModelCreditsFixture(),
+    ...options.credits,
   })
+  const onSelect = vi.fn<HarnessProps['onSelect']>()
+  const onHide = vi.fn()
+  await act(async () =>
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <ModalContextProvider>
+          <Harness modelList={modelList} onSelect={onSelect} onHide={onHide} {...props} />
+        </ModalContextProvider>
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        features: {},
+        workspacePermissionKeys:
+          options.permissions ?? (options.installPermission === false ? [] : ['plugin.install']),
+        systemFeatures: {
+          deployment_edition: 'CLOUD',
+          rbac_enabled: true,
+          enable_marketplace: options.marketplace ?? false,
+        },
+        trialModels: options.trialModels ?? [OPENAI, ANTHROPIC],
+      },
+    ),
+  )
+  return { user: userEvent.setup(), onSelect, onHide, queryClient }
+}
 
-  it('should filter models by search and allow clearing search', () => {
-    const { container } = render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('openai')).toBeInTheDocument()
-
-    const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
-    fireEvent.change(input, { target: { value: 'not-found' } })
-    expect(screen.getByText('No model found for \u201Cnot-found\u201D')).toBeInTheDocument()
-
-    const clearIcon = container.querySelector('.i-custom-vender-solid-general-x-circle')
-    expect(clearIcon).toBeInTheDocument()
-    fireEvent.click(clearIcon!)
-    expect((input as HTMLInputElement).value).toBe('')
-  })
-
-  it('should not show compatible-only helper text when no scope features are applied', () => {
-    render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown')).not.toBeInTheDocument()
-  })
-
-  it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.vision]}
-      />,
-    )
-
-    expect(screen.getByTestId('compatible-models-banner')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown')).toBeInTheDocument()
-    expect(container.querySelector('.i-ri-information-2-fill')).toBeInTheDocument()
-  })
-
-  it('should filter by scope features including toolCall and non-toolCall checks', () => {
-    const modelList = [
-      makeModel({ models: [makeModelItem({ features: [ModelFeatureEnum.toolCall, ModelFeatureEnum.vision] })] }),
-    ]
-
-    mockSupportFunctionCall.mockReturnValue(false)
-    const { unmount } = render(
-      <Popup
-        modelList={modelList}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
-      />,
-    )
-    expect(screen.getByText('No model found for \u201C\u201D')).toBeInTheDocument()
-
-    unmount()
-    mockSupportFunctionCall.mockReturnValue(true)
-    const { unmount: unmount2 } = render(
-      <Popup
-        modelList={modelList}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
-      />,
-    )
-    expect(screen.getByText('openai')).toBeInTheDocument()
-
-    unmount2()
-    const { unmount: unmount3 } = render(
-      <Popup
-        modelList={modelList}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.vision]}
-      />,
-    )
-    expect(screen.getByText('openai')).toBeInTheDocument()
-
-    unmount3()
-    render(
-      <Popup
-        modelList={[makeModel({ models: [makeModelItem({ features: undefined })] })]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.vision]}
-      />,
-    )
-    expect(screen.getByText('No model found for \u201C\u201D')).toBeInTheDocument()
-  })
-
-  it('should match model labels from fallback languages when current language key is missing', () => {
-    mockLanguage = 'fr_FR'
-
-    render(
-      <Popup
-        modelList={[
-          makeModel({
-            models: [
-              makeModelItem({
-                label: { en_US: 'OpenAI GPT', zh_Hans: 'OpenAI GPT' },
-              }),
-            ],
-          }),
-        ]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(
-      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
-      { target: { value: 'openai' } },
-    )
-
-    expect(screen.getByText('openai')).toBeInTheDocument()
-  })
-
-  it('should show credits exhausted alert when an exhausted provider supports credits', () => {
-    Object.assign(mockTrialCredits, {
-      credits: 0,
-      totalCredits: 200,
-      isExhausted: true,
-    })
-    mockContextModelProviders.current = [
-      makeContextProvider({
-        provider: 'test-openai',
-        system_configuration: {
-          enabled: true,
-        } as MockContextProvider['system_configuration'],
-      }),
-    ]
-
-    render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute('data-has-api-key-fallback', 'false')
-  })
-
-  it('should not show credits exhausted alert when only non-trial system providers are exhausted', () => {
-    Object.assign(mockTrialCredits, {
-      credits: 0,
-      totalCredits: 200,
-      isExhausted: true,
-    })
-    mockTrialModels.current = ['test-anthropic']
-    mockContextModelProviders.current = [
-      makeContextProvider({
-        provider: 'test-openai',
-        system_configuration: {
-          enabled: true,
-        } as MockContextProvider['system_configuration'],
-      }),
-    ]
-
-    render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
-  })
-
-  it('should not mark api key fallback for non-trial system providers', () => {
-    Object.assign(mockTrialCredits, {
-      credits: 0,
-      totalCredits: 200,
-      isExhausted: true,
-    })
-    mockTrialModels.current = ['test-anthropic']
-    mockContextModelProviders.current = [
-      makeContextProvider({
-        provider: 'test-openai',
+beforeEach(() => {
+  api.locale = 'en-US'
+  api.providers.mockReset().mockResolvedValue({
+    data: [
+      createProviderResponseFixture({
+        provider: OPENAI,
         custom_configuration: {
-          status: 'active',
-        } as MockContextProvider['custom_configuration'],
-        system_configuration: {
-          enabled: true,
-        } as MockContextProvider['system_configuration'],
+          available_credentials: [{ credential_id: 'key-1', credential_name: 'Workspace key' }],
+          current_credential_id: 'key-1',
+          current_credential_name: 'Workspace key',
+        },
+        provider_credential_schema: {
+          credential_form_schemas: [
+            {
+              variable: 'api_key',
+              type: 'secret-input',
+              label: { en_US: 'API key' },
+              required: true,
+              max_length: 256,
+              show_on: [],
+            },
+          ],
+        },
       }),
-    ]
+    ],
+  })
+  api.credential.mockReset().mockResolvedValue({ credentials: { api_key: 'masked-key' } })
+  api.addCredential.mockReset().mockResolvedValue({ result: 'success' })
+  api.editCredential.mockReset().mockResolvedValue({ result: 'success' })
+  api.summary.mockReset().mockResolvedValue({ data: [], plugins: {} })
+  api.catalog.mockReset().mockResolvedValue({ data: [] })
+  api.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  api.task.mockReset().mockResolvedValue(taskResponse('success'))
+  api.lookup.mockReset().mockResolvedValue({
+    data: {
+      plugin: {
+        category: 'model',
+        latest_package_identifier: packageId,
+        latest_version: '1.0.0',
+      },
+      version: { version: '1.0.0' },
+    },
+  })
+})
 
-    render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
+describe('searching real model options', () => {
+  it.each([
+    ['opnai', ['gpt-4', 'GPT 5.4 Mini', 'azure-model']],
+    ['openai', ['gpt-4', 'GPT 5.4 Mini', 'azure-model']],
+    ['sonnet', ['Claude Sonnet']],
+    ['gpt54', ['GPT 5.4 Mini']],
+    ['gemni', ['gemini-pro']],
+    ['azure_openai', ['azure-model']],
+    ['unknown-provider', []],
+  ])('filters by %s without exposing unrelated providers or models', async (query, expected) => {
+    const { user } = await setup()
+    await user.type(searchInput(), query)
+    for (const label of catalogLabels) {
+      const option = screen.queryByRole('button', { name: label })
+      if (expected.includes(label)) expect(option).toBeInTheDocument()
+      else expect(option).not.toBeInTheDocument()
+    }
+    if (!expected.length)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'modelProvider.modelProvider.selector.noModelFoundForSearch',
+      )
   })
 
-  it('should open provider settings when clicking footer link', () => {
-    const onHide = vi.fn()
-    render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={onHide}
-      />,
+  it('restores options after clearing search and selects the actual provider/model pair', async () => {
+    const { user, onSelect } = await setup()
+    await user.type(searchInput(), 'missing')
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(searchInput()).toHaveValue('')
+    expect(searchInput()).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'GPT 5.4 Mini' }))
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(
+      OPENAI,
+      expect.objectContaining({ model: 'gpt-5.4-mini' }),
     )
+  })
 
-    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
+  it('searches and renders fallback labels when the locale is unavailable', async () => {
+    api.locale = 'fr-FR'
+    const { user } = await setup({
+      modelList: [
+        provider(OPENAI, 'OpenAI', [model('writer', { label: { en_US: 'Writer model' } })]),
+      ],
     })
+    await user.type(searchInput(), 'writer')
+    expect(screen.getByRole('button', { name: 'Writer model' })).toBeInTheDocument()
   })
 
-  it('should show empty state when no providers are configured', () => {
-    const onHide = vi.fn()
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={onHide}
-      />,
-    )
-
-    expect(screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/)).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.noProviderConfiguredDesc/)).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
-    })
-  })
-
-  it('should render marketplace providers that are not installed', () => {
-    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
-    expect(screen.getByText('TestAnthropic')).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/)).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).toBeInTheDocument()
-  })
-
-  it('should show installed marketplace providers without models when AI credits are available', () => {
-    mockContextModelProviders.current = [makeContextProvider({
-      provider: 'test-anthropic',
-      system_configuration: {
-        enabled: true,
-      } as MockContextProvider['system_configuration'],
-    })]
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('test-anthropic')).toBeInTheDocument()
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
-  })
-
-  it('should hide installed marketplace providers without models when AI credits are exhausted', () => {
-    Object.assign(mockTrialCredits, {
-      credits: 0,
-      totalCredits: 200,
-      isExhausted: true,
-    })
-    mockContextModelProviders.current = [makeContextProvider({
-      provider: 'test-anthropic',
-      system_configuration: {
-        enabled: true,
-      } as MockContextProvider['system_configuration'],
-    })]
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText('test-anthropic')).not.toBeInTheDocument()
-    expect(screen.queryByText('TestAnthropic')).not.toBeInTheDocument()
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
-  })
-
-  it('should toggle marketplace section collapse', () => {
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
-
-    expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
-
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
-  })
-
-  it('should install plugin when clicking install button', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).toHaveBeenCalledWith('langgenius/openai:1.0.0')
-    })
-    expect(mockRefreshPluginList).toHaveBeenCalled()
-  })
-
-  it('should handle install failure gracefully', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).toHaveBeenCalled()
-    })
-
-    // Should not crash, install buttons should still be available
-    expect(screen.getAllByText(/common\.modelProvider\.selector\.install/).length).toBeGreaterThan(0)
-  })
-
-  it('should run checkTaskStatus when not all_installed', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
-    mockCheck.mockResolvedValue(undefined)
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
-
-    await waitFor(() => {
-      expect(mockCheck).toHaveBeenCalledWith({
-        taskId: 'task-1',
-        pluginUniqueIdentifier: 'langgenius/openai:1.0.0',
+  it.each([
+    [[ModelFeatureEnum.toolCall], ['tool-call', 'multi-tool']],
+    [[ModelFeatureEnum.vision], ['vision']],
+    [[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision], []],
+  ])(
+    'keeps scope requirements when a search matches the provider: %j',
+    async (scopeFeatures, expected) => {
+      const models = [
+        model('tool-call', { features: [ModelFeatureEnum.toolCall] }),
+        model('multi-tool', { features: [ModelFeatureEnum.multiToolCall] }),
+        model('vision', { features: [ModelFeatureEnum.vision] }),
+        model('plain'),
+      ]
+      const { user } = await setup({
+        modelList: [provider(OPENAI, 'OpenAI', models)],
+        scopeFeatures,
       })
+      await user.type(searchInput(), 'openai')
+      for (const item of models)
+        expect(screen.queryByRole('button', { name: item.model }) !== null).toBe(
+          expected.some((name) => name === item.model),
+        )
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('reveals incompatible models on demand while preserving their selection behavior', async () => {
+    const { user, onSelect } = await setup({
+      modelList: [provider(OPENAI, 'OpenAI', [model('supported'), model('legacy')])],
+      modelPredicate: (_provider, item) => item.model !== 'legacy',
     })
-    expect(mockRefreshPluginList).toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'legacy' })).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.showIncompatibleModels',
+      }),
+    )
+    expect(screen.getByRole('button', { name: 'legacy' })).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.hideIncompatibleModels',
+      }),
+    )
+    expect(screen.queryByRole('button', { name: 'legacy' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'supported' }))
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(
+      OPENAI,
+      expect.objectContaining({ model: 'supported' }),
+    )
   })
 
-  it('should skip install requests when marketplace plugins are still loading', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockMarketplacePlugins.isLoading = true
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
+  it('marks the selected model and puts its provider first', async () => {
+    await setup({ defaultModel: { provider: ANTHROPIC, model: 'claude-3' } })
+    const sections = within(
+      screen.getByRole('region', { name: 'modelProvider.modelProvider.models' }),
+    ).getAllByRole('region')
+    expect(sections[0]).toHaveAccessibleName('Anthropic')
+    expect(screen.getByRole('button', { name: 'Claude Sonnet' })).toHaveAttribute(
+      'aria-current',
+      'true',
     )
-
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).not.toHaveBeenCalled()
-    })
+    expect(screen.getByRole('button', { name: 'gpt-4' })).not.toHaveAttribute('aria-current')
   })
 
-  it('should skip install requests when the marketplace plugin cannot be found', async () => {
-    mockMarketplacePlugins.current = []
-
-    render(
-      <Popup
-        modelList={[]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).not.toHaveBeenCalled()
+  it('keeps unavailable model options unselectable', async () => {
+    const { user, onSelect } = await setup({
+      modelList: [provider(OPENAI, 'OpenAI', [model('disabled', { status: 'disabled' })])],
     })
+    const option = screen.getByRole('button', { name: 'disabled' })
+    expect(option).toBeDisabled()
+    await user.click(option)
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
-  it('should sort the selected provider to the top when a default model is provided', () => {
-    render(
-      <Popup
-        defaultModel={{ provider: 'anthropic', model: 'claude-3' }}
-        modelList={[
-          makeModel({ provider: 'openai', label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' } }),
-          makeModel({ provider: 'anthropic', label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' } }),
-        ]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
+  it('connects empty-state configuration and settings actions to their owner', async () => {
+    const configure = vi.fn()
+    const settings = vi.fn()
+    const { user } = await setup({
+      modelList: [],
+      onConfigureEmptyState: configure,
+      onOpenProviderSettings: settings,
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Model selector' })
+    expect(within(dialog).queryByRole('listbox')).not.toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.configure',
+      }),
     )
+    expect(configure).toHaveBeenCalledOnce()
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.modelProviderSettings',
+      }),
+    )
+    expect(settings).toHaveBeenCalledOnce()
+  })
+})
 
-    const providerLabels = screen.getAllByText(/openai|anthropic/)
-    expect(providerLabels[0]).toHaveTextContent('anthropic')
+describe('workspace credits and marketplace availability', () => {
+  it('updates the exhausted-credit alert when a usable API key becomes available', async () => {
+    const summary: Summary = {
+      data: [
+        createProviderSummaryFixture({
+          provider: OPENAI,
+          label: { en_US: 'OpenAI' },
+          system_configuration: { enabled: true },
+          custom_configuration: { current_credential_usable: false },
+        }),
+      ],
+      plugins: {},
+    }
+    const { queryClient } = await setup(
+      { modelList: [] },
+      { marketplace: true, summary, credits: { is_exhausted: true, remaining_credits: 0 } },
+    )
+    expect(
+      screen.getByText('modelProvider.modelProvider.card.creditsExhaustedMessage'),
+    ).toBeInTheDocument()
+    act(() =>
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+        {
+          ...summary,
+          data: summary.data.map((entry) => ({
+            ...entry,
+            custom_configuration: {
+              ...entry.custom_configuration,
+              current_credential_usable: true,
+            },
+          })),
+        },
+      ),
+    )
+    expect(
+      await screen.findByText('modelProvider.modelProvider.card.creditsExhaustedFallback'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not advertise credits for providers outside the trial list', async () => {
+    const summary: Summary = {
+      data: [
+        createProviderSummaryFixture({ provider: OPENAI, system_configuration: { enabled: true } }),
+      ],
+      plugins: {},
+    }
+    await setup(
+      { modelList: [] },
+      {
+        marketplace: true,
+        summary,
+        trialModels: [ANTHROPIC],
+        credits: { is_exhausted: true, remaining_credits: 0 },
+      },
+    )
+    expect(
+      screen.queryByText('modelProvider.modelProvider.card.creditsExhaustedMessage'),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])(
+    'offers installed providers without models only with available credits (exhausted=%s)',
+    async (exhausted) => {
+      await setup(
+        { modelList: [] },
+        {
+          marketplace: true,
+          summary: installedSummary(),
+          credits: { is_exhausted: exhausted, remaining_credits: exhausted ? 0 : 100 },
+        },
+      )
+      expect(screen.queryByRole('region', { name: 'OpenAI' }) !== null).toBe(!exhausted)
+      expect(
+        screen.queryByRole('button', { name: /selector.install OpenAI$/ }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /selector.install Anthropic$/ }),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('keeps marketplace installation hidden when disabled by the deployment', async () => {
+    await setup()
+    expect(screen.queryByRole('button', { name: /selector.install/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /discoverMoreInMarketplace/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'gpt-4' })).toBeInTheDocument()
+  })
+
+  it('keeps marketplace discovery available without installation permission', async () => {
+    await setup({ modelList: [] }, { marketplace: true, installPermission: false })
+    expect(screen.queryByRole('button', { name: /selector.install/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /discoverMoreInMarketplace/ })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/plugins\/model$/),
+    )
+  })
+})
+
+describe('installation through real polling and invalidation', () => {
+  it('refreshes the provider catalog after installation and removes the installed marketplace entry', async () => {
+    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    api.summary.mockResolvedValue(installedSummary())
+    api.catalog.mockClear()
+    await user.click(installButton())
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /selector.install OpenAI$/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(await screen.findByRole('region', { name: 'OpenAI' })).toBeInTheDocument()
+    expect(api.lookup).toHaveBeenCalledExactlyOnceWith({ org: 'langgenius', name: 'openai' })
+    expect(api.install).toHaveBeenCalledWith({ body: { plugin_unique_identifiers: [packageId] } })
+    expect(api.catalog).toHaveBeenCalledWith({ params: { model_type: 'llm' } })
+  })
+
+  it('allows retry after the install request fails without refreshing providers prematurely', async () => {
+    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    api.install.mockRejectedValueOnce(new Error('Unavailable'))
+    await user.click(installButton())
+    await waitFor(() => expect(installButton()).toBeEnabled())
+    expect(api.summary).not.toHaveBeenCalled()
+    api.summary.mockResolvedValue(installedSummary())
+    await user.click(installButton())
+    await screen.findByRole('region', { name: 'OpenAI' })
+    expect(api.install).toHaveBeenCalledTimes(2)
+  })
+
+  it('blocks another install while polling and refreshes only after a successful task', async () => {
+    const pending = createDeferred<Awaited<ReturnType<typeof api.task>>>()
+    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    api.install.mockResolvedValue({ all_installed: false, task_id: 'install-task' })
+    api.task.mockReturnValue(pending.promise)
+    await user.click(installButton())
+    await waitFor(() =>
+      expect(api.task).toHaveBeenCalledExactlyOnceWith({ params: { task_id: 'install-task' } }),
+    )
+    expect(screen.getByRole('button', { name: /installing OpenAI$/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: /selector.install Anthropic$/ }))
+    expect(api.install).toHaveBeenCalledTimes(1)
+    expect(api.summary).not.toHaveBeenCalled()
+    api.summary.mockResolvedValue(installedSummary())
+    await act(async () => pending.resolve(taskResponse('success')))
+    expect(await screen.findByRole('region', { name: 'OpenAI' })).toBeInTheDocument()
+  })
+
+  it('allows retry after a failed task without refreshing the provider catalog', async () => {
+    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    api.install.mockResolvedValue({ all_installed: false, task_id: 'install-task' })
+    api.task.mockResolvedValue(taskResponse('failed'))
+    api.catalog.mockClear()
+    await user.click(installButton())
+    await waitFor(() => expect(api.task).toHaveBeenCalled())
+    await waitFor(() => expect(installButton()).toBeEnabled())
+    expect(api.summary).not.toHaveBeenCalled()
+    expect(api.catalog).not.toHaveBeenCalled()
+    api.task.mockResolvedValue(taskResponse('success'))
+    api.summary.mockResolvedValue(installedSummary())
+    await user.click(installButton())
+    expect(await screen.findByRole('region', { name: 'OpenAI' })).toBeInTheDocument()
+  })
+
+  it.each(['lookup failure', 'missing package'])(
+    'recovers from %s without starting installation',
+    async (failure) => {
+      const { user } = await setup({ modelList: [] }, { marketplace: true })
+      if (failure === 'lookup failure') api.lookup.mockRejectedValue(new Error('Not found'))
+      else
+        api.lookup.mockResolvedValue({
+          data: {
+            plugin: { category: 'model', latest_package_identifier: '', latest_version: '1.0.0' },
+            version: { version: '1.0.0' },
+          },
+        })
+      await user.click(installButton())
+      await waitFor(() => expect(installButton()).toBeEnabled())
+      expect(api.install).not.toHaveBeenCalled()
+      expect(api.summary).not.toHaveBeenCalled()
+    },
+  )
+})
+
+describe('credentials in the model selector', () => {
+  const modelList = [catalog[0]!]
+  const credentialDialog = () =>
+    screen.findByRole('dialog', {
+      name: 'modelProvider.modelProvider.auth.apiKeyModal.title',
+    })
+
+  it('exposes model suggestions in the accessible option name', async () => {
+    await setup({
+      modelList,
+      modelSuggestionPredicate: (_provider, item) => item.model === 'gpt-4',
+    })
+    expect(
+      screen.getByRole('button', {
+        name: /gpt-4.*modelProvider.modelProvider.selector.suggestionTip/,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'GPT 5.4 Mini' })).toBeInTheDocument()
+  })
+
+  it('adds a provider credential from an unconfigured model and refreshes its displayed credential', async () => {
+    const unconfigured = [provider(OPENAI, 'OpenAI', [model('gpt-4', { status: 'no-configure' })])]
+    const summary = summaryFor(unconfigured)
+    summary.data[0]!.custom_configuration = {
+      status: 'no-configure',
+      available_credentials: [],
+      current_credential_usable: false,
+      has_custom_models: false,
+    }
+    const { user, onSelect } = await setup(
+      { modelList: unconfigured },
+      {
+        summary,
+        permissions: ['credential.create'],
+      },
+    )
+    expect(screen.getByRole('button', { name: /selector.configureRequired/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' }))
+    const dialog = await credentialDialog()
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'New key',
+    )
+    await user.type(within(dialog).getByLabelText('API key', { exact: false }), 'new-secret')
+    const updated = summaryFor(unconfigured)
+    updated.data[0]!.custom_configuration.current_credential_name = 'New key'
+    api.summary.mockResolvedValue(updated)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(api.addCredential).toHaveBeenCalledWith({
+      params: { provider: OPENAI },
+      body: { credentials: { api_key: 'new-secret' }, name: 'New key', credential_id: undefined },
+    })
+    await user.click(screen.getByRole('button', { name: 'Selected model' }))
+    expect(await screen.findByRole('button', { name: 'New key' })).toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('lets a manage-only user edit the real credential without offering use or creation', async () => {
+    const { user } = await setup({ modelList }, { permissions: ['credential.manage'] })
+    await user.click(screen.getByRole('button', { name: 'Workspace key' }))
+    const edit = await screen.findByRole('button', { name: 'common.operation.edit' })
+    expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Workspace key', pressed: true }),
+    ).not.toBeInTheDocument()
+    await user.click(edit)
+    const dialog = await credentialDialog()
+    await waitFor(() => expect(screen.queryByRole('searchbox')).not.toBeInTheDocument())
+    const name = await within(dialog).findByRole('textbox', {
+      name: 'plugin.auth.authorizationName',
+    })
+    expect(name).toHaveValue('Workspace key')
+    await user.clear(name)
+    await user.type(name, 'Renamed key')
+    const updated = summaryFor(modelList)
+    updated.data[0]!.custom_configuration.current_credential_name = 'Renamed key'
+    api.summary.mockResolvedValue(updated)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(api.credential).toHaveBeenCalledWith({
+      params: { provider: OPENAI },
+      query: { credential_id: 'key-1' },
+    })
+    expect(api.editCredential).toHaveBeenCalledWith({
+      params: { provider: OPENAI },
+      body: {
+        credential_id: 'key-1',
+        name: 'Renamed key',
+        credentials: { api_key: '[__HIDDEN__]' },
+      },
+    })
+    expect(api.addCredential).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Selected model' }))
+    expect(await screen.findByRole('button', { name: 'Renamed key' })).toBeInTheDocument()
+  })
+
+  it('keeps model selection available without permission to manage provider credentials', async () => {
+    const { user, onSelect } = await setup({ modelList }, { permissions: [] })
+    expect(screen.getByRole('button', { name: 'Workspace key' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'gpt-4' }))
+    expect(onSelect).toHaveBeenCalledWith(OPENAI, expect.objectContaining({ model: 'gpt-4' }))
+    expect(api.providers).not.toHaveBeenCalled()
   })
 })

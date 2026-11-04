@@ -1,11 +1,11 @@
+import logging
+import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, final
 
-from graphon.enums import NodeType
-from graphon.file import File, FileUploadConfig
-from graphon.variables.input_entities import VariableEntityType
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
 from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
@@ -13,15 +13,27 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+)
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.enums import NodeType
+from graphon.file import File, FileUploadConfig
+from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
-from models import Account, EndUser
+from models import Account, EndUser, Workflow, WorkflowRun
+from services.app.file_input_defaults import apply_file_input_defaults
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
     from graphon.variables.input_entities import VariableEntity
+
+logger = logging.getLogger(__name__)
+
+_WORKER_THREAD_JOIN_TIMEOUT_SECONDS = 300
 
 
 @final
@@ -32,6 +44,7 @@ class _DebuggerDraftVariableSaver:
         self,
         *,
         account: Account,
+        tenant_id: str,
         app_id: str,
         node_id: str,
         node_type: NodeType,
@@ -39,6 +52,7 @@ class _DebuggerDraftVariableSaver:
         enclosing_node_id: str | None = None,
     ) -> None:
         self._account = account
+        self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
         self._node_type = node_type
@@ -49,6 +63,7 @@ class _DebuggerDraftVariableSaver:
         with Session(db.engine) as session, session.begin():
             DraftVariableSaverImpl(
                 session=session,
+                tenant_id=self._tenant_id,
                 app_id=self._app_id,
                 node_id=self._node_id,
                 node_type=self._node_type,
@@ -60,6 +75,38 @@ class _DebuggerDraftVariableSaver:
 
 class BaseAppGenerator:
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _restore_workflow_run_graph(*, session: Session, workflow: Workflow, workflow_run_id: str | None) -> None:
+        if workflow_run_id is None:
+            raise ValueError("Workflow run id is required when resuming")
+        workflow_run = session.get(WorkflowRun, workflow_run_id)
+        if workflow_run is None or workflow_run.graph is None:
+            raise ValueError(f"Workflow run graph not found: {workflow_run_id}")
+        set_committed_value(workflow, "graph", workflow_run.graph)
+
+    @staticmethod
+    def _join_worker_thread(worker_thread: threading.Thread) -> None:
+        # Bound the wait so a leaked app worker cannot occupy an execution slot indefinitely.
+        worker_thread.join(timeout=_WORKER_THREAD_JOIN_TIMEOUT_SECONDS)
+        if worker_thread.is_alive():
+            logger.warning(
+                "Possible app worker thread leak: thread_name=%s timeout_seconds=%s; "
+                "continuing without waiting further to avoid occupying an execution slot indefinitely",
+                worker_thread.name,
+                _WORKER_THREAD_JOIN_TIMEOUT_SECONDS,
+            )
+
+    @staticmethod
+    def _wrap_stream_with_worker_thread_join[ResponseT](
+        response_stream: Generator[ResponseT],
+        worker_thread: threading.Thread,
+    ) -> Generator[ResponseT]:
+        """Keep the producer owned by the response stream until both finish."""
+        try:
+            yield from response_stream
+        finally:
+            BaseAppGenerator._join_worker_thread(worker_thread)
 
     @staticmethod
     def _bind_file_access_scope(
@@ -92,7 +139,7 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
-        user_inputs = user_inputs or {}
+        user_inputs = apply_file_input_defaults(user_inputs, variables)
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
             var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)
@@ -195,22 +242,25 @@ class BaseAppGenerator:
             )
 
         if variable_entity.type == VariableEntityType.NUMBER:
-            if isinstance(value, (int, float)):
-                return value
-            elif isinstance(value, str):
-                # handle empty string case
-                if not value.strip():
-                    return None
-                # may raise ValueError if user_input_value is not a valid number
-                try:
-                    if "." in value:
-                        return float(value)
-                    else:
-                        return int(value)
-                except ValueError:
-                    raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
-            else:
-                raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
+            match value:
+                case int() | float():
+                    return value
+                case str():
+                    # handle empty string case
+                    if not value.strip():
+                        return None
+                    # may raise ValueError if user_input_value is not a valid number
+                    try:
+                        if "." in value:
+                            return float(value)
+                        else:
+                            return int(value)
+                    except ValueError as caught_error:
+                        raise ValueError(
+                            f"{variable_entity.variable} in input form must be a valid number"
+                        ) from caught_error
+                case _:
+                    raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
         match variable_entity.type:
             case VariableEntityType.SELECT:
@@ -241,17 +291,18 @@ class BaseAppGenerator:
                         f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} files"
                     )
             case VariableEntityType.CHECKBOX:
-                if isinstance(value, str):
-                    normalized_value = value.strip().lower()
-                    if normalized_value in {"true", "1", "yes", "on"}:
-                        value = True
-                    elif normalized_value in {"false", "0", "no", "off"}:
-                        value = False
-                elif isinstance(value, (int, float)):
-                    if value == 1:
-                        value = True
-                    elif value == 0:
-                        value = False
+                match value:
+                    case str():
+                        normalized_value = value.strip().lower()
+                        if normalized_value in {"true", "1", "yes", "on"}:
+                            value = True
+                        elif normalized_value in {"false", "0", "no", "off"}:
+                            value = False
+                    case int() | float():
+                        if value == 1:
+                            value = True
+                        elif value == 0:
+                            value = False
             case VariableEntityType.JSON_OBJECT:
                 if value and not isinstance(value, dict):
                     raise ValueError(f"{variable_entity.variable} in input form must be a dict")
@@ -266,7 +317,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
         """
         Convert messages into event stream
         """
@@ -285,7 +336,12 @@ class BaseAppGenerator:
 
     @final
     @staticmethod
-    def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
+    def _get_draft_var_saver_factory(
+        invoke_from: InvokeFrom,
+        account: Account | EndUser,
+        *,
+        tenant_id: str,
+    ) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
 
@@ -298,6 +354,7 @@ class BaseAppGenerator:
             ) -> DraftVariableSaver:
                 return _DebuggerDraftVariableSaver(
                     account=account,
+                    tenant_id=tenant_id,
                     app_id=app_id,
                     node_id=node_id,
                     node_type=node_type,

@@ -1,5 +1,6 @@
 # base image
-FROM node:22-alpine AS base
+ARG NODE_VERSION=24.22.1
+FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -25,13 +26,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
 COPY web/package.json /app/web/
 COPY e2e/package.json /app/e2e/
 COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+COPY packages /app/packages
 
 # Use packageManager from package.json
 RUN corepack install
 
-# Install only the web workspace to keep image builds from pulling in
-# unrelated workspace dependencies such as e2e tooling.
-RUN pnpm install --filter ./web... --frozen-lockfile
+# Install workspace dependencies for the Docker build environment.
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # build resources
 FROM base AS builder
@@ -41,20 +42,21 @@ COPY . .
 
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN pnpm build
+ENV pnpm_config_verify_deps_before_run=false
+RUN pnpm build && pnpm build:vinext
 
 
 # production stage
 FROM base AS production
 
 ENV NODE_ENV=production
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
+ENV EXPERIMENTAL_ENABLE_VINEXT=false
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # set timezone
@@ -72,9 +74,10 @@ RUN addgroup -S -g ${dify_uid} dify && \
 
 WORKDIR /app
 
-COPY --from=builder --chown=dify:dify /app/web/public ./web/public
-COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
-COPY --from=builder --chown=dify:dify /app/web/.next/static ./web/.next/static
+COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
+COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
+COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
+COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
 
 COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
 

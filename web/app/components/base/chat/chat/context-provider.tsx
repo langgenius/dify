@@ -14,11 +14,13 @@ export const ChatContextProvider = ({
   config,
   isResponding,
   chatList,
-  showPromptLog,
+  onOpenLog,
+  canOpenLog,
   questionIcon,
   answerIcon,
   onSend,
   onRegenerate,
+  showRegenerate,
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
@@ -27,23 +29,26 @@ export const ChatContextProvider = ({
   getHumanInputNodeData,
 }: ChatContextProviderProps) => {
   return (
-    <ChatContext.Provider value={{
-      config,
-      readonly,
-      isResponding,
-      chatList: chatList || [],
-      showPromptLog,
-      questionIcon,
-      answerIcon,
-      onSend,
-      onRegenerate,
-      onAnnotationEdited,
-      onAnnotationAdded,
-      onAnnotationRemoved,
-      disableFeedback,
-      onFeedback,
-      getHumanInputNodeData,
-    }}
+    <ChatContext.Provider
+      value={{
+        config,
+        readonly,
+        isResponding,
+        chatList: chatList || [],
+        onOpenLog,
+        canOpenLog,
+        questionIcon,
+        answerIcon,
+        onSend,
+        onRegenerate,
+        showRegenerate,
+        onAnnotationEdited,
+        onAnnotationAdded,
+        onAnnotationRemoved,
+        disableFeedback,
+        onFeedback,
+        getHumanInputNodeData,
+      }}
     >
       {children}
     </ChatContext.Provider>

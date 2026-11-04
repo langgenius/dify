@@ -1,88 +1,29 @@
 'use client'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
-import type { EChartsOption } from 'echarts'
-import type { FC } from 'react'
-import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
-import dayjs from 'dayjs'
-import Decimal from 'decimal.js'
-import ReactECharts from 'echarts-for-react'
-import { get } from 'es-toolkit/compat'
+import type { SelectorParam } from 'i18next'
+import type { ReactNode } from 'react'
+import type { ChartRow } from './app-chart-utils'
+import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useQueries } from '@tanstack/react-query'
+import ReactECharts from 'echarts-for-react/esm/core'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Basic from '@/app/components/app-sidebar/basic'
-import Loading from '@/app/components/base/loading'
+import { echarts } from '@/app/components/base/line-chart/echarts'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { consoleQuery } from '@/service/console'
 import {
-  useAppAverageResponseTime,
-  useAppAverageSessionInteractions,
-  useAppDailyConversations,
-  useAppDailyEndUsers,
-  useAppDailyMessages,
-  useAppSatisfactionRate,
-  useAppTokenCosts,
-  useAppTokensPerSecond,
-  useWorkflowAverageInteractions,
-  useWorkflowDailyConversations,
-  useWorkflowDailyTerminals,
-  useWorkflowTokenCosts,
-} from '@/service/use-apps'
-import { formatNumber } from '@/utils/format'
-
-const valueFormatter = (v: string | number) => v
-
-const COLOR_TYPE_MAP = {
-  green: {
-    lineColor: 'rgba(6, 148, 162, 1)',
-    bgColor: ['rgba(6, 148, 162, 0.2)', 'rgba(67, 174, 185, 0.08)'],
-  },
-  orange: {
-    lineColor: 'rgba(255, 138, 76, 1)',
-    bgColor: ['rgba(254, 145, 87, 0.2)', 'rgba(255, 138, 76, 0.1)'],
-  },
-  blue: {
-    lineColor: 'rgba(28, 100, 242, 1)',
-    bgColor: ['rgba(28, 100, 242, 0.3)', 'rgba(28, 100, 242, 0.1)'],
-  },
-}
-
-const COMMON_COLOR_MAP = {
-  label: '#9CA3AF',
-  splitLineLight: '#F3F4F6',
-  splitLineDark: '#E5E7EB',
-}
-
-type IColorType = 'green' | 'orange' | 'blue'
-type IChartType = 'messages' | 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
-type IChartConfigType = { colorType: IColorType, showTokens?: boolean }
-
-const commonDateFormat = 'MMM D, YYYY'
-
-const CHART_TYPE_CONFIG: Record<string, IChartConfigType> = {
-  messages: {
-    colorType: 'green',
-  },
-  conversations: {
-    colorType: 'green',
-  },
-  endUsers: {
-    colorType: 'orange',
-  },
-  costs: {
-    colorType: 'blue',
-    showTokens: true,
-  },
-  workflowCosts: {
-    colorType: 'blue',
-  },
-}
-
-const sum = (arr: Decimal.Value[]): number => {
-  return Decimal.sum(...arr).toNumber()
-}
-
-const defaultPeriod = {
-  start: dayjs().subtract(7, 'day').format(commonDateFormat),
-  end: dayjs().format(commonDateFormat),
-}
+  buildChartOptions,
+  CHART_TYPE_CONFIG,
+  defaultPeriod,
+  getChartValueField,
+  getDefaultChartData,
+  getSummaryValue,
+  getTokenSummary,
+  hasNonZeroChartData,
+} from './app-chart-utils'
 
 export type PeriodParams = {
   name: string
@@ -102,24 +43,71 @@ export type PeriodParamsWithTimeRange = {
   query?: TimeRange
 }
 
-export type IBizChartProps = {
+type AppChartsProps = {
+  appMode: AppDetailWithSite['mode']
   period: PeriodParams
   id: string
 }
 
-export type IChartProps = {
+type IChartProps = {
   className?: string
-  basicInfo: { title: string, explanation: string, timePeriod: string }
+  basicInfo: { title: string; explanation: string; timePeriod: string }
   valueKey?: string
   isAvg?: boolean
   unit?: string
   yMax?: number
-  chartType: IChartType
-  chartData: AppDailyMessagesResponse | AppDailyConversationsResponse | AppDailyEndUsersResponse | AppTokenCostsResponse | { data: Array<{ date: string, count: number }> }
+  chartType: keyof typeof CHART_TYPE_CONFIG
+  chartData: { data: ChartRow[] }
 }
 
+function ChartFrame({
+  title,
+  explanation,
+  className,
+  busy,
+  children,
+}: {
+  title: string
+  explanation: string
+  className?: string
+  busy?: boolean
+  children: ReactNode
+}) {
+  const titleId = React.useId()
+  return (
+    <section
+      aria-labelledby={titleId}
+      aria-busy={busy || undefined}
+      className={`flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-120 ${className ?? ''}`}
+    >
+      <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
+        <div className="flex min-w-0 items-center">
+          <div
+            id={titleId}
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
+            {title}
+          </div>
+          {explanation && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipContent aria-labelledby={titleId} className="w-60">
+                {explanation}
+              </InfotipContent>
+            </Infotip>
+          )}
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+const ECHARTS_RENDER_OPTIONS = { renderer: 'svg' as const }
+
 const Chart: React.FC<IChartProps> = ({
-  basicInfo: { title, explanation, timePeriod },
+  basicInfo: { title, explanation },
   chartType = 'conversations',
   chartData,
   valueKey,
@@ -128,384 +116,420 @@ const Chart: React.FC<IChartProps> = ({
   yMax,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const statistics = chartData.data
-  const statisticsLen = statistics.length
-  const markLineLength = statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen
-  const extraDataForMarkLine = Array.from({ length: markLineLength }, () => '1')
-  extraDataForMarkLine.push('')
-  extraDataForMarkLine.unshift('')
-
-  const xData = statistics.map(({ date }) => date)
-  const yField = valueKey || Object.keys(statistics[0]).find(name => name.includes('count')) || ''
-  const yData = statistics.map((item) => {
-    // @ts-expect-error field is valid
-    return item[yField] || 0
+  const yField = getChartValueField(statistics, valueKey)
+  const options = buildChartOptions({
+    statistics,
+    chartType,
+    yField,
+    yMax,
   })
-
-  const options: EChartsOption = {
-    dataset: {
-      dimensions: ['date', yField],
-      source: statistics,
-    },
-    grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
-    tooltip: {
-      trigger: 'item',
-      position: 'top',
-      borderWidth: 0,
-    },
-    xAxis: [{
-      type: 'category',
-      boundaryGap: false,
-      axisLabel: {
-        color: COMMON_COLOR_MAP.label,
-        hideOverlap: true,
-        overflow: 'break',
-        formatter(value) {
-          return dayjs(value).format(commonDateFormat)
-        },
-      },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: COMMON_COLOR_MAP.splitLineLight,
-          width: 1,
-          type: [10, 10],
-        },
-        interval(index) {
-          return index === 0 || index === xData.length - 1
-        },
-      },
-    }, {
-      position: 'bottom',
-      boundaryGap: false,
-      data: extraDataForMarkLine,
-      axisLabel: { show: false },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: COMMON_COLOR_MAP.splitLineDark,
-        },
-        interval(_index, value) {
-          return !!value
-        },
-      },
-    }],
-    yAxis: {
-      max: yMax ?? 'dataMax',
-      type: 'value',
-      axisLabel: { color: COMMON_COLOR_MAP.label, hideOverlap: true },
-      splitLine: {
-        lineStyle: {
-          color: COMMON_COLOR_MAP.splitLineLight,
-        },
-      },
-    },
-    series: [
-      {
-        type: 'line',
-        showSymbol: true,
-        // symbol: 'circle',
-        // triggerLineEvent: true,
-        symbolSize: 4,
-        lineStyle: {
-          color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].lineColor,
-          width: 2,
-        },
-        itemStyle: {
-          color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].lineColor,
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0,
-              color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[0],
-            }, {
-              offset: 1,
-              color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[1],
-            }],
-            global: false,
-          },
-        },
-        tooltip: {
-          padding: [8, 12, 8, 12],
-          formatter(params) {
-            return `<div style='color:#6B7280;font-size:12px'>${params.name}</div>
-                          <div style='font-size:14px;color:#1F2A37'>${valueFormatter((params.data as any)[yField])}
-                              ${!CHART_TYPE_CONFIG[chartType].showTokens
-                                ? ''
-                                : `<span style='font-size:12px'>
-                                  <span style='margin-left:4px;color:#6B7280'>(</span>
-                                  <span style='color:#FF8A4C'>~$${get(params.data, 'total_price', 0)}</span>
-                                  <span style='color:#6B7280'>)</span>
-                              </span>`}
-                          </div>`
-          },
-        },
-      },
-    ],
-  }
-  const sumData = isAvg ? (sum(yData) / yData.length) : sum(yData)
+  const summaryValue = getSummaryValue({
+    chartType,
+    statistics,
+    yField,
+    isAvg,
+    unit,
+  })
+  const tokenSummary = getTokenSummary(statistics)
+  const showTokenSummary =
+    CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
+  const isZeroSummary = !hasNonZeroChartData(statistics, yField)
 
   return (
-    <div className={`flex w-full flex-col rounded-xl bg-components-chart-bg px-6 py-4 shadow-xs ${className ?? ''}`}>
-      <div className="mb-3">
-        <Basic name={title} type={timePeriod} hoverTip={explanation} />
+    <ChartFrame title={title} explanation={explanation} className={className}>
+      <div className="flex h-8 shrink-0 items-baseline gap-1 px-6 py-1">
+        <div
+          className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}
+        >
+          {summaryValue}
+        </div>
+        {showTokenSummary && (
+          <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
+            {t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens{' '}
+            <span>(</span>
+            <span className="text-orange-400">~{tokenSummary}</span>
+            <span>)</span>
+          </div>
+        )}
       </div>
-      <div className="mb-4 flex-1">
-        <Basic
-          isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
-          name={chartType !== 'costs' ? (`${sumData.toLocaleString()} ${unit}`) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
-          type={!CHART_TYPE_CONFIG[chartType].showTokens
-            ? ''
-            : (
-                <span>
-                  {t('analysis.tokenUsage.consumed', { ns: 'appOverview' })}
-                  {' '}
-                  Tokens
-                  <span className="text-sm">
-                    <span className="ml-1 text-text-tertiary">(</span>
-                    <span className="text-orange-400">
-                      ~
-                      {sum(statistics.map(item => Number.parseFloat(String(get(item, 'total_price', '0'))))).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 })}
-                    </span>
-                    <span className="text-text-tertiary">)</span>
-                  </span>
-                </span>
-              )}
-          textStyle={{ main: `!text-3xl !font-normal ${sumData === 0 ? '!text-text-quaternary' : ''}` }}
+      <div className="h-60 shrink-0 px-6 pb-4">
+        <ReactECharts
+          echarts={echarts}
+          option={options}
+          opts={ECHARTS_RENDER_OPTIONS}
+          style={{ height: '100%', width: '100%' }}
         />
       </div>
-      <ReactECharts option={options} style={{ height: 160 }} />
-    </div>
+    </ChartFrame>
   )
 }
 
-const getDefaultChartData = ({ start, end, key = 'count' }: { start: string, end: string, key?: string }) => {
-  const diffDays = dayjs(end).diff(dayjs(start), 'day')
-  return Array.from({ length: diffDays || 1 }, () => ({ date: '', [key]: 0 })).map((item, index) => {
-    item.date = dayjs(start).add(index, 'day').format(commonDateFormat)
-    return item
+type ChartResponse = {
+  data: ChartRow[]
+}
+
+type ChartQueryOptions<TData extends ChartResponse> = (
+  id: string,
+  query?: PeriodParams['query'],
+) => UseQueryOptions<TData, Error, TData, QueryKey>
+
+const CHART_TRANSLATION_SELECTOR_MAP = {
+  'analysis.activeUsers.explanation': ($) => $['analysis.activeUsers.explanation'],
+  'analysis.activeUsers.title': ($) => $['analysis.activeUsers.title'],
+  'analysis.avgResponseTime.explanation': ($) => $['analysis.avgResponseTime.explanation'],
+  'analysis.avgResponseTime.title': ($) => $['analysis.avgResponseTime.title'],
+  'analysis.avgSessionInteractions.explanation': ($) =>
+    $['analysis.avgSessionInteractions.explanation'],
+  'analysis.avgSessionInteractions.title': ($) => $['analysis.avgSessionInteractions.title'],
+  'analysis.avgUserInteractions.explanation': ($) => $['analysis.avgUserInteractions.explanation'],
+  'analysis.avgUserInteractions.title': ($) => $['analysis.avgUserInteractions.title'],
+  'analysis.ms': ($) => $['analysis.ms'],
+  'analysis.tokenPS': ($) => $['analysis.tokenPS'],
+  'analysis.tokenUsage.explanation': ($) => $['analysis.tokenUsage.explanation'],
+  'analysis.tokenUsage.title': ($) => $['analysis.tokenUsage.title'],
+  'analysis.totalConversations.explanation': ($) => $['analysis.totalConversations.explanation'],
+  'analysis.totalConversations.title': ($) => $['analysis.totalConversations.title'],
+  'analysis.totalMessages.explanation': ($) => $['analysis.totalMessages.explanation'],
+  'analysis.totalMessages.title': ($) => $['analysis.totalMessages.title'],
+  'analysis.tps.explanation': ($) => $['analysis.tps.explanation'],
+  'analysis.tps.title': ($) => $['analysis.tps.title'],
+  'analysis.userSatisfactionRate.explanation': ($) =>
+    $['analysis.userSatisfactionRate.explanation'],
+  'analysis.userSatisfactionRate.title': ($) => $['analysis.userSatisfactionRate.title'],
+} satisfies Record<string, SelectorParam<'appOverview'>>
+
+type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
+
+type BizChartConfig<TData extends ChartResponse> = {
+  chartType: keyof typeof CHART_TYPE_CONFIG
+  titleKey: ChartTranslationKey
+  explanationKey: ChartTranslationKey
+  queryOptions: ChartQueryOptions<TData>
+  valueKey?: string
+  emptyValueKey?: string
+  yMaxWhenEmpty: number
+  isAvg?: boolean
+  unitKey?: ChartTranslationKey
+  className?: string
+}
+
+function ChartCard({
+  response,
+  pending,
+  failed,
+  retry,
+  period,
+  config: {
+    chartType,
+    titleKey,
+    explanationKey,
+    valueKey,
+    emptyValueKey,
+    yMaxWhenEmpty,
+    isAvg,
+    unitKey,
+    className,
+  },
+}: {
+  config: BizChartConfig<ChartResponse>
+  response: ChartResponse | undefined
+  pending: boolean
+  failed: boolean
+  retry: () => void
+  period: PeriodParams
+}) {
+  const { t } = useTranslation(['appOverview', 'common'])
+  const fallbackKey = emptyValueKey ?? valueKey
+  const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
+  const explanationSelector: SelectorParam<'appOverview'> =
+    CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+  const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
+    ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
+    : undefined
+  const title = t(titleSelector, { ns: 'appOverview', defaultValue: titleKey })
+  const explanation = t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey })
+
+  if (pending || !response) {
+    return (
+      <ChartFrame title={title} explanation={explanation} className={className} busy={pending}>
+        {!pending && failed ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6">
+            <p role="alert" className="system-sm-regular text-text-tertiary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+            <Button variant="secondary" onClick={retry}>
+              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : (
+          <div
+            role="status"
+            aria-label={t(($) => $.loading, { ns: 'common' })}
+            className="flex flex-1 flex-col gap-4 px-6 pt-1 pb-4"
+          >
+            <SkeletonRectangle className="h-6 w-16" />
+            <SkeletonRectangle className="w-full flex-1" />
+          </div>
+        )}
+      </ChartFrame>
+    )
+  }
+
+  const noDataFlag = !response.data || response.data.length === 0
+  const fallbackData = {
+    data: getDefaultChartData({
+      ...(period.query ?? defaultPeriod),
+      ...(fallbackKey ? { key: fallbackKey } : {}),
+    }),
+  }
+
+  return (
+    <Chart
+      basicInfo={{
+        title,
+        explanation,
+        timePeriod: period.name,
+      }}
+      chartData={noDataFlag ? fallbackData : response}
+      chartType={chartType}
+      valueKey={valueKey}
+      isAvg={isAvg}
+      unit={
+        unitKey && unitSelector
+          ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey })
+          : undefined
+      }
+      className={className}
+      {...(noDataFlag && { yMax: yMaxWhenEmpty })}
+    />
+  )
+}
+
+const MessagesChart: BizChartConfig<ChartResponse> = {
+  chartType: 'messages',
+  titleKey: 'analysis.totalMessages.title',
+  explanationKey: 'analysis.totalMessages.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyMessages.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'message_count',
+  emptyValueKey: 'message_count',
+  yMaxWhenEmpty: 500,
+}
+
+const ConversationsChart: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.totalConversations.title',
+  explanationKey: 'analysis.totalConversations.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'conversation_count',
+  emptyValueKey: 'conversation_count',
+  yMaxWhenEmpty: 500,
+}
+
+const EndUsersChart: BizChartConfig<ChartResponse> = {
+  chartType: 'endUsers',
+  titleKey: 'analysis.activeUsers.title',
+  explanationKey: 'analysis.activeUsers.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyEndUsers.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'terminal_count',
+  emptyValueKey: 'terminal_count',
+  yMaxWhenEmpty: 500,
+}
+
+const AvgSessionInteractions: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.avgSessionInteractions.title',
+  explanationKey: 'analysis.avgSessionInteractions.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageSessionInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'interactions',
+  emptyValueKey: 'interactions',
+  yMaxWhenEmpty: 500,
+  isAvg: true,
+}
+
+const AvgResponseTime: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.avgResponseTime.title',
+  explanationKey: 'analysis.avgResponseTime.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageResponseTime.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'latency',
+  emptyValueKey: 'latency',
+  yMaxWhenEmpty: 500,
+  isAvg: true,
+  unitKey: 'analysis.ms',
+}
+
+const TokenPerSecond: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.tps.title',
+  explanationKey: 'analysis.tps.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokensPerSecond.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'tps',
+  emptyValueKey: 'tps',
+  yMaxWhenEmpty: 100,
+  isAvg: true,
+  unitKey: 'analysis.tokenPS',
+  className: 'min-w-0',
+}
+
+const UserSatisfactionRate: BizChartConfig<ChartResponse> = {
+  chartType: 'endUsers',
+  titleKey: 'analysis.userSatisfactionRate.title',
+  explanationKey: 'analysis.userSatisfactionRate.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.userSatisfactionRate.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'rate',
+  emptyValueKey: 'rate',
+  yMaxWhenEmpty: 1000,
+  isAvg: true,
+  className: 'h-full',
+}
+
+const CostChart: BizChartConfig<ChartResponse> = {
+  chartType: 'costs',
+  titleKey: 'analysis.tokenUsage.title',
+  explanationKey: 'analysis.tokenUsage.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'token_count',
+  emptyValueKey: 'token_count',
+  yMaxWhenEmpty: 100,
+}
+
+const WorkflowMessagesChart: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.totalMessages.title',
+  explanationKey: 'analysis.totalMessages.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'runs',
+  emptyValueKey: 'runs',
+  yMaxWhenEmpty: 500,
+}
+
+const WorkflowDailyTerminalsChart: BizChartConfig<ChartResponse> = {
+  chartType: 'endUsers',
+  titleKey: 'analysis.activeUsers.title',
+  explanationKey: 'analysis.activeUsers.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyTerminals.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'terminal_count',
+  emptyValueKey: 'terminal_count',
+  yMaxWhenEmpty: 500,
+}
+
+const WorkflowCostChart: BizChartConfig<ChartResponse> = {
+  chartType: 'workflowCosts',
+  titleKey: 'analysis.tokenUsage.title',
+  explanationKey: 'analysis.tokenUsage.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'token_count',
+  emptyValueKey: 'token_count',
+  yMaxWhenEmpty: 100,
+}
+
+const AvgUserInteractions: BizChartConfig<ChartResponse> = {
+  chartType: 'conversations',
+  titleKey: 'analysis.avgUserInteractions.title',
+  explanationKey: 'analysis.avgUserInteractions.explanation',
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.averageAppInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
+  valueKey: 'interactions',
+  emptyValueKey: 'interactions',
+  yMaxWhenEmpty: 500,
+  isAvg: true,
+}
+const workflowCharts = [
+  WorkflowMessagesChart,
+  WorkflowDailyTerminalsChart,
+  WorkflowCostChart,
+  AvgUserInteractions,
+]
+const completionCharts = [
+  ConversationsChart,
+  EndUsersChart,
+  AvgResponseTime,
+  TokenPerSecond,
+  UserSatisfactionRate,
+  CostChart,
+]
+const chatCharts = [
+  ConversationsChart,
+  EndUsersChart,
+  AvgSessionInteractions,
+  TokenPerSecond,
+  UserSatisfactionRate,
+  CostChart,
+  MessagesChart,
+]
+
+export function AppCharts({ id, period, appMode }: AppChartsProps) {
+  const configs =
+    appMode === 'workflow'
+      ? workflowCharts
+      : appMode === 'completion'
+        ? completionCharts
+        : chatCharts
+  const queries = useQueries({
+    queries: configs.map((config) => config.queryOptions(id, period.query)),
   })
-}
-
-export const MessagesChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppDailyMessages(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
+  const pending = queries.some((query) => query.isPending)
+  const retryFailedQueries = () => {
+    queries
+      .filter((query) => query.isError && !query.data)
+      .forEach((query) => {
+        void query.refetch()
+      })
+  }
   return (
-    <Chart
-      basicInfo={{ title: t('analysis.totalMessages.title', { ns: 'appOverview' }), explanation: t('analysis.totalMessages.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="messages"
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppDailyConversations(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.totalConversations.title', { ns: 'appOverview' }), explanation: t('analysis.totalConversations.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="conversations"
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-
-  const { data: response, isLoading } = useAppDailyEndUsers(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.activeUsers.title', { ns: 'appOverview' }), explanation: t('analysis.activeUsers.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="endUsers"
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const AvgSessionInteractions: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppAverageSessionInteractions(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.avgSessionInteractions.title', { ns: 'appOverview' }), explanation: t('analysis.avgSessionInteractions.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'interactions' }) } as any}
-      chartType="conversations"
-      valueKey="interactions"
-      isAvg
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppAverageResponseTime(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.avgResponseTime.title', { ns: 'appOverview' }), explanation: t('analysis.avgResponseTime.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'latency' }) } as any}
-      valueKey="latency"
-      chartType="conversations"
-      isAvg
-      unit={t('analysis.ms', { ns: 'appOverview' }) as string}
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppTokensPerSecond(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.tps.title', { ns: 'appOverview' }), explanation: t('analysis.tps.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'tps' }) } as any}
-      valueKey="tps"
-      chartType="conversations"
-      isAvg
-      unit={t('analysis.tokenPS', { ns: 'appOverview' }) as string}
-      {...(noDataFlag && { yMax: 100 })}
-      className="min-w-0"
-    />
-  )
-}
-
-export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useAppSatisfactionRate(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.userSatisfactionRate.title', { ns: 'appOverview' }), explanation: t('analysis.userSatisfactionRate.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'rate' }) } as any}
-      valueKey="rate"
-      chartType="endUsers"
-      isAvg
-      {...(noDataFlag && { yMax: 1000 })}
-      className="h-full"
-    />
-  )
-}
-
-export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-
-  const { data: response, isLoading } = useAppTokenCosts(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.tokenUsage.title', { ns: 'appOverview' }), explanation: t('analysis.tokenUsage.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="costs"
-      {...(noDataFlag && { yMax: 100 })}
-    />
-  )
-}
-
-export const WorkflowMessagesChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useWorkflowDailyConversations(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.totalMessages.title', { ns: 'appOverview' }), explanation: t('analysis.totalMessages.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'runs' }) } as any}
-      chartType="conversations"
-      valueKey="runs"
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const WorkflowDailyTerminalsChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-
-  const { data: response, isLoading } = useWorkflowDailyTerminals(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.activeUsers.title', { ns: 'appOverview' }), explanation: t('analysis.activeUsers.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="endUsers"
-      {...(noDataFlag && { yMax: 500 })}
-    />
-  )
-}
-
-export const WorkflowCostChart: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-
-  const { data: response, isLoading } = useWorkflowTokenCosts(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.tokenUsage.title', { ns: 'appOverview' }), explanation: t('analysis.tokenUsage.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) } as any}
-      chartType="workflowCosts"
-      {...(noDataFlag && { yMax: 100 })}
-    />
-  )
-}
-
-export const AvgUserInteractions: FC<IBizChartProps> = ({ id, period }) => {
-  const { t } = useTranslation()
-  const { data: response, isLoading } = useWorkflowAverageInteractions(id, period.query)
-  if (isLoading || !response)
-    return <Loading />
-  const noDataFlag = !response.data || response.data.length === 0
-  return (
-    <Chart
-      basicInfo={{ title: t('analysis.avgUserInteractions.title', { ns: 'appOverview' }), explanation: t('analysis.avgUserInteractions.explanation', { ns: 'appOverview' }), timePeriod: period.name }}
-      chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'interactions' }) } as any}
-      chartType="conversations"
-      valueKey="interactions"
-      isAvg
-      {...(noDataFlag && { yMax: 500 })}
-    />
+    <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2" aria-busy={pending || undefined}>
+      {configs.map((config, index) => {
+        const query = queries[index]!
+        return (
+          <ChartCard
+            key={config.titleKey}
+            config={config}
+            response={query.data}
+            pending={pending}
+            failed={query.isError}
+            retry={retryFailedQueries}
+            period={period}
+          />
+        )
+      })}
+    </div>
   )
 }
 

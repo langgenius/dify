@@ -1,10 +1,11 @@
+from collections.abc import Mapping
 from typing import Any, Literal, Protocol
 
-from graphon.model_runtime.entities import LLMUsage
-from graphon.nodes.llm.entities import ModelConfig
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from graphon.model_runtime.entities import LLMUsage
+from graphon.nodes.llm.entities import ModelConfig
 
 from .entities import MetadataFilteringCondition
 
@@ -85,5 +86,7 @@ class KnowledgeRetrievalRequest(BaseModel):
 class RAGRetrievalProtocol(Protocol):
     @property
     def llm_usage(self) -> LLMUsage: ...
+
+    def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None: ...
 
     def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]: ...

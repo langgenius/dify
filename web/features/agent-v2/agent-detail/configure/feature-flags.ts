@@ -1,0 +1,3 @@
+export const ENABLE_AGENT_CLI_TOOLS = false
+export const ENABLE_AGENT_CONTENT_MODERATION = false
+export const ENABLE_AGENT_SECRET_ENV_VARIABLES = false

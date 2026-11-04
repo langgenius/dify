@@ -1,45 +1,53 @@
 import sys
 import types
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
+from models.dataset import Dataset
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def test_get_keyword_factory_returns_jieba_factory(monkeypatch):
+def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_module = types.ModuleType("core.rag.datasource.keyword.jieba.jieba")
 
     class FakeJieba:
         pass
 
-    fake_module.Jieba = FakeJieba
+    vars(fake_module)["Jieba"] = FakeJieba
     monkeypatch.setitem(sys.modules, "core.rag.datasource.keyword.jieba.jieba", fake_module)
 
     assert Keyword.get_keyword_factory(KeyWordType.JIEBA) is FakeJieba
 
 
-def test_get_keyword_factory_raises_for_unsupported_type():
+def test_get_keyword_factory_raises_for_unsupported_type() -> None:
     with pytest.raises(ValueError, match="Keyword store unsupported is not supported"):
         Keyword.get_keyword_factory("unsupported")
 
 
-def test_keyword_initialization_uses_configured_factory(monkeypatch):
-    dataset = SimpleNamespace(id="dataset-1")
+def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    dataset = Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Test Dataset",
+        description="",
+        created_by="account-1",
+    )
     fake_processor = MagicMock()
 
-    monkeypatch.setattr("core.rag.datasource.keyword.keyword_factory.dify_config.KEYWORD_STORE", KeyWordType.JIEBA)
-    monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda keyword_type: lambda _: fake_processor))
+    apply_config_overrides(monkeypatch, KEYWORD_STORE=KeyWordType.JIEBA)
+    monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda _keyword_type: lambda _: fake_processor))
 
     keyword = Keyword(dataset)
 
     assert keyword._keyword_processor is fake_processor
 
 
-def test_keyword_methods_forward_to_processor():
+def test_keyword_methods_forward_to_processor(unbound_session: Session) -> None:
     processor = MagicMock()
     processor.text_exists.return_value = True
     processor.search.return_value = [Document(page_content="matched", metadata={"doc_id": "doc-1"})]
@@ -48,37 +56,38 @@ def test_keyword_methods_forward_to_processor():
     keyword._keyword_processor = processor
 
     docs = [Document(page_content="doc", metadata={"doc_id": "doc-1"})]
-    keyword.create(docs, foo="bar")
-    keyword.add_texts(docs, batch=True)
-    assert keyword.text_exists("doc-1") is True
-    keyword.delete_by_ids(["doc-1"])
-    keyword.delete()
-    assert keyword.search("query", top_k=1) == processor.search.return_value
+    session = unbound_session
+    keyword.create(docs, session, foo="bar")
+    keyword.add_texts(docs, session, batch=True, keywords_list=[["kw"]])
+    assert keyword.text_exists("doc-1", session=session) is True
+    keyword.delete_by_ids(["doc-1"], session)
+    keyword.delete(session=session)
+    assert keyword.search("query", session=session, top_k=1) == processor.search.return_value
 
-    processor.create.assert_called_once_with(docs, foo="bar")
-    processor.add_texts.assert_called_once_with(docs, batch=True)
-    processor.text_exists.assert_called_once_with("doc-1")
-    processor.delete_by_ids.assert_called_once_with(["doc-1"])
-    processor.delete.assert_called_once()
-    processor.search.assert_called_once_with("query", top_k=1)
+    processor.create.assert_called_once_with(docs, session, foo="bar")
+    processor.add_texts.assert_called_once_with(docs, session, batch=True, keywords_list=[["kw"]])
+    processor.text_exists.assert_called_once_with("doc-1", session=session)
+    processor.delete_by_ids.assert_called_once_with(["doc-1"], session)
+    processor.delete.assert_called_once_with(session=session)
+    processor.search.assert_called_once_with("query", session=session, top_k=1)
 
 
-def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes():
+def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes() -> None:
     class Processor:
         value = 1
 
         @staticmethod
-        def custom():
+        def custom() -> str:
             return "ok"
 
     keyword = Keyword.__new__(Keyword)
-    keyword._keyword_processor = Processor()
+    keyword._keyword_processor = Processor()  # pyrefly: ignore[bad-assignment]
 
     assert keyword.custom() == "ok"
 
     with pytest.raises(AttributeError):
         _ = keyword.value
 
-    keyword._keyword_processor = None
+    keyword._keyword_processor = None  # pyrefly: ignore[bad-assignment]
     with pytest.raises(AttributeError):
         _ = keyword.missing_method

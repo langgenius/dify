@@ -1,11 +1,15 @@
 import json
 import time
-from typing import Any, NotRequired, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
-from typing_extensions import TypedDict
 
+from core.helper import ssrf_proxy
 from extensions.ext_storage import storage
+
+# Bounded connect/read timeout so a slow or hanging Firecrawl endpoint cannot
+# block extraction indefinitely (mirrors the WaterCrawl extractor client).
+_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 
 class FirecrawlDocumentData(TypedDict):
@@ -107,7 +111,7 @@ class FirecrawlApp:
                             storage.delete(file_key)
                         storage.save(file_key, json.dumps(url_data_list).encode("utf-8"))
                     except Exception as e:
-                        raise Exception(f"Error saving crawl data: {e}")
+                        raise Exception(f"Error saving crawl data: {e}") from e
                 return self._format_crawl_status_response("completed", crawl_status_response, url_data_list)
             else:
                 return self._format_crawl_status_response(
@@ -175,21 +179,25 @@ class FirecrawlApp:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
+        response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.post(url, headers=headers, json=data)
+            response = ssrf_proxy.post(url, headers=headers, json=data, timeout=_REQUEST_TIMEOUT, max_retries=0)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
+        assert response is not None, "retries must be at least 1"
         return response
 
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
+        response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.get(url, headers=headers)
+            response = ssrf_proxy.get(url, headers=headers, timeout=_REQUEST_TIMEOUT, max_retries=0)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
+        assert response is not None, "retries must be at least 1"
         return response
 
     def _handle_error(self, response, action):

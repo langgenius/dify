@@ -1,0 +1,118 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RefObject } from 'react'
+import type { KnowledgeRetrievalNodeType } from '../types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fetchDatasets } from '@/service/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
+
+type ModelIdentity = {
+  provider?: string
+  model?: string
+}
+
+type Params = {
+  inputs: KnowledgeRetrievalNodeType
+  inputRef: RefObject<KnowledgeRetrievalNodeType>
+  setInputs: (inputs: KnowledgeRetrievalNodeType) => void
+  payloadRetrievalMode: RETRIEVE_TYPE
+  updateDatasetsDetail: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
+  fallbackRerankModel: ModelIdentity
+}
+
+const useKnowledgeDatasetSelection = ({
+  inputs,
+  inputRef,
+  setInputs,
+  payloadRetrievalMode,
+  updateDatasetsDetail,
+  fallbackRerankModel,
+}: Params) => {
+  const [selectedDatasets, setSelectedDatasets] = useState<
+    DatasetDetailWithPartialMembersResponse[]
+  >([])
+  const [selectedDatasetsLoaded, setSelectedDatasetsLoaded] = useState(false)
+  const [rerankModelOpen, setRerankModelOpen] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      const currentInputs = inputRef.current
+      const datasetIds = currentInputs.dataset_ids
+      if (datasetIds.length > 0) {
+        const { data: dataSetsWithDetail } = await fetchDatasets({
+          params: {
+            page: 1,
+            ids: datasetIds,
+          },
+        })
+        setSelectedDatasets(dataSetsWithDetail)
+      }
+
+      setSelectedDatasetsLoaded(true)
+    })()
+  }, [inputRef])
+
+  const handleOnDatasetsChange = useCallback(
+    (newDatasets: DatasetDetailWithPartialMembersResponse[]) => {
+      const {
+        mixtureHighQualityAndEconomic,
+        mixtureInternalAndExternal,
+        inconsistentEmbeddingModel,
+        allInternal,
+        allExternal,
+      } = getSelectedDatasetsMode(newDatasets)
+      const noMultiModalDatasets = newDatasets.every((dataset) => !dataset.is_multimodal)
+
+      const nextInputs = produce(inputs, (draft) => {
+        draft.dataset_ids = newDatasets.map((dataset) => dataset.id)
+
+        if (payloadRetrievalMode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
+          draft.multiple_retrieval_config = getMultipleRetrievalConfig(
+            draft.multiple_retrieval_config!,
+            newDatasets,
+            selectedDatasets,
+            fallbackRerankModel,
+          )
+        }
+
+        if (noMultiModalDatasets) draft.query_attachment_selector = []
+      })
+
+      updateDatasetsDetail(newDatasets)
+      setInputs(nextInputs)
+      setSelectedDatasets(newDatasets)
+
+      if (
+        (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)) ||
+        mixtureInternalAndExternal ||
+        allExternal
+      ) {
+        setRerankModelOpen(true)
+      }
+    },
+    [
+      fallbackRerankModel,
+      inputs,
+      payloadRetrievalMode,
+      selectedDatasets,
+      setInputs,
+      updateDatasetsDetail,
+    ],
+  )
+
+  const showImageQueryVarSelector = useMemo(() => {
+    return selectedDatasets.some((dataset) => dataset.is_multimodal)
+  }, [selectedDatasets])
+
+  return {
+    selectedDatasets,
+    selectedDatasetsLoaded,
+    rerankModelOpen,
+    setRerankModelOpen,
+    handleOnDatasetsChange,
+    showImageQueryVarSelector,
+  }
+}
+
+export default useKnowledgeDatasetSelection

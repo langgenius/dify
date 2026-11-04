@@ -1,19 +1,18 @@
-import type { CSSProperties } from 'react'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Slider } from '@/app/components/base/ui/slider'
-
-const weightedScoreSliderStyle: CSSProperties & Record<'--slider-track' | '--slider-range', string> = {
-  '--slider-track': 'var(--color-util-colors-teal-teal-500)',
-  '--slider-range': 'var(--color-util-colors-blue-light-blue-light-500)',
-}
 
 const formatNumber = (value: number) => {
-  if (value > 0 && value < 1)
-    return `0.${value * 10}`
-  else if (value === 1)
-    return '1.0'
+  if (value > 0 && value < 1) return `0.${value * 10}`
+  else if (value === 1) return '1.0'
 
   return value
 }
@@ -27,39 +26,50 @@ type WeightedScoreProps = {
   onChange: (value: Value) => void
   readonly?: boolean
 }
-const WeightedScore = ({
-  value,
-  onChange = noop,
-  readonly = false,
-}: WeightedScoreProps) => {
-  const { t } = useTranslation()
+const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedScoreProps) => {
+  const { t } = useTranslation(['dataset'])
+  const semanticLabel = t(($) => $['weightedScore.semantic'], { ns: 'dataset' })
+  const keywordLabel = t(($) => $['weightedScore.keyword'], { ns: 'dataset' })
+  const semanticWeight = value.value[0]!
+  const keywordWeight = value.value[1]!
 
   return (
     <div>
-      <div className="space-x-3 rounded-lg border border-components-panel-border px-3 pb-2 pt-5">
-        <div className="grow" style={weightedScoreSliderStyle}>
+      <div className="space-x-3 rounded-lg border border-components-panel-border px-3 pt-5 pb-2">
+        <div className="grow">
           <Slider
             className="grow"
             max={1.0}
             min={0}
             step={0.1}
-            value={value.value[0]}
-            onValueChange={v => !readonly && onChange({ value: [v, (10 - v * 10) / 10] })}
+            value={semanticWeight}
+            onValueChange={(v) => !readonly && onChange({ value: [v, (10 - v * 10) / 10] })}
             disabled={readonly}
-            aria-label={t('weightedScore.semantic', { ns: 'dataset' })}
-          />
+          >
+            <SliderLabel className="sr-only">{semanticLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack className="bg-util-colors-teal-teal-500">
+                <SliderIndicator className="bg-util-colors-blue-light-blue-light-500" />
+                <SliderThumb
+                  getAriaValueText={(_formattedValue, sliderValue) =>
+                    `${semanticLabel}: ${formatNumber(sliderValue)}, ${keywordLabel}: ${formatNumber((10 - sliderValue * 10) / 10)}`
+                  }
+                />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
-        <div className="mt-3 flex justify-between">
-          <div className="flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500 system-xs-semibold-uppercase">
-            <div className="mr-1 truncate uppercase" title={t('weightedScore.semantic', { ns: 'dataset' }) || ''}>
-              {t('weightedScore.semantic', { ns: 'dataset' })}
+        <div className="mt-3 flex flex-wrap justify-between gap-2">
+          <div className="flex w-22.5 shrink-0 items-center system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500">
+            <div className="mr-1 truncate uppercase" title={semanticLabel || ''}>
+              {semanticLabel}
             </div>
-            {formatNumber(value.value[0])}
+            {formatNumber(semanticWeight)}
           </div>
-          <div className="flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500 system-xs-semibold-uppercase">
-            {formatNumber(value.value[1])}
-            <div className="ml-1 truncate uppercase" title={t('weightedScore.keyword', { ns: 'dataset' }) || ''}>
-              {t('weightedScore.keyword', { ns: 'dataset' })}
+          <div className="flex w-22.5 shrink-0 items-center justify-end system-xs-semibold-uppercase text-util-colors-teal-teal-500">
+            {formatNumber(keywordWeight)}
+            <div className="ml-1 truncate uppercase" title={keywordLabel || ''}>
+              {keywordLabel}
             </div>
           </div>
         </div>

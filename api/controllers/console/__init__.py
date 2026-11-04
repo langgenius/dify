@@ -1,11 +1,34 @@
+from collections import OrderedDict
+from http import HTTPStatus
 from importlib import import_module
+from types import ModuleType
+from typing import cast
 
-from flask import Blueprint
+from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
+from controllers.common.errors import (
+    InternalServerError,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    register_credential_refresh_error_handler,
+    register_permission_error_handler,
+)
+from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from controllers.console.workspace.error import AccountNotInitializedError
 from libs.external_api import ExternalApi
+from machinery.errors import ActiveWorkspaceRequiredError
+from services.retention.workflow_run.archive_log_service import (
+    WorkflowRunArchiveDownloadNotReadyError,
+    WorkflowRunArchiveDownloadTaskNotFoundError,
+    WorkflowRunArchiveInvalidMonthError,
+    WorkflowRunArchiveNotFoundError,
+)
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
+register_app_access_error_metadata(bp, surface="console")
 
 api = ExternalApi(
     bp,
@@ -13,6 +36,86 @@ api = ExternalApi(
     title="Console API",
     description="Console management APIs for app configuration, monitoring, and administration",
 )
+register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
+# Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
+# input); any operation may answer with them, so no operation lists them. The shared
+# ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
+# exceptions already produce on every operation, so documenting them per operation adds nothing.
+api.document_generic_errors(
+    NotSetupError,
+    NotInitValidateError,
+    AccountNotInitializedError,
+    UnauthorizedAndForceLogout,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    InternalServerError,
+)
+
+
+@api.errorhandler(ActiveWorkspaceRequiredError)  # pyrefly: ignore[not-callable] - Flask-RESTX decorator typing
+def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
+    """Map a broken Console admission invariant without exposing internal details."""
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.INTERNAL_SERVER_ERROR
+    return {
+        "code": error.error_code,
+        "message": status.phrase,
+        "status": status.value,
+    }, status.value
+
+
+@api.errorhandler(WorkflowRunArchiveInvalidMonthError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+def _handle_workflow_run_archive_invalid_month_error(
+    error: WorkflowRunArchiveInvalidMonthError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.BAD_REQUEST
+    return {"code": "bad_request", "message": str(error), "status": status.value}, status.value
+
+
+@api.errorhandler(WorkflowRunArchiveNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+def _handle_workflow_run_archive_not_found_error(
+    error: WorkflowRunArchiveNotFoundError | WorkflowRunArchiveDownloadTaskNotFoundError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.NOT_FOUND
+    return {"code": "not_found", "message": str(error), "status": status.value}, status.value
+
+
+@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+def _handle_workflow_run_archive_download_not_ready_error(
+    error: WorkflowRunArchiveDownloadNotReadyError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.CONFLICT
+    return {"code": "conflict", "message": str(error), "status": status.value}, status.value
+
+
+# Flask-RESTX dispatches in registration order; the shared Exception handler
+# must not shadow these Console-specific error mappings.
+for error_type in (
+    ActiveWorkspaceRequiredError,
+    WorkflowRunArchiveInvalidMonthError,
+    WorkflowRunArchiveNotFoundError,
+    WorkflowRunArchiveDownloadTaskNotFoundError,
+    WorkflowRunArchiveDownloadNotReadyError,
+):
+    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(error_type, last=False)
+# What those handlers emit, so the document resolves a declared error to its status and code and the
+# contract check admits the codes they serve.
+api.document_error_handler(
+    ActiveWorkspaceRequiredError,
+    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    code=ActiveWorkspaceRequiredError.error_code,
+)
+api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatus.BAD_REQUEST, code="bad_request")
+api.document_error_handler(WorkflowRunArchiveNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadTaskNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadNotReadyError, status=HTTPStatus.CONFLICT, code="conflict")
+
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
@@ -30,26 +133,266 @@ RESOURCE_MODULES = (
 for module_name in RESOURCE_MODULES:
     import_module(module_name)
 
-# Ensure resource modules are imported so route decorators are evaluated.
-# Import other controllers
-from . import (
-    admin,
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    # Ensure resource modules are imported so route decorators are evaluated.
+    # Import other controllers
+    from . import (
+        apikey,
+        extension,
+        feature,
+        human_input_form,
+        init_validate,
+        notification,
+        onboarding,
+        resource_access_token,
+        setup,
+        spec,
+        system,
+        workflow_run_archive,
+    )
+    from .agent import composer as agent_composer
+    from .agent import roster as agent_roster
+    from .agent import tracing as agent_tracing
+    from .agent import tracing_runs as agent_tracing_runs
+
+    # Import app controllers
+    from .app import (
+        advanced_prompt_template,
+        agent,
+        agent_app_access,
+        agent_app_feature,
+        agent_app_sandbox,
+        agent_config_inspector,
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        conversation_variables,
+        generator,
+        mcp_server,
+        message,
+        model_config,
+        ops_trace,
+        site,
+        statistic,
+        workflow,
+        workflow_app_log,
+        workflow_comment,
+        workflow_draft_variable,
+        workflow_human_input_v2,
+        workflow_node_output_inspector,
+        workflow_run,
+        workflow_statistic,
+        workflow_trigger,
+    )
+
+    # Import auth controllers
+    from .auth import (
+        activate,
+        data_source_bearer_auth,
+        data_source_oauth,
+        email_register,
+        forgot_password,
+        login,
+        oauth,
+        oauth_server,
+    )
+
+    # Import billing controllers
+    from .billing import billing, compliance
+
+    # Import datasets controllers
+    from .datasets import (
+        data_source,
+        datasets,
+        datasets_document,
+        datasets_segments,
+        external,
+        hit_testing,
+        metadata,
+        website,
+    )
+    from .datasets.rag_pipeline import (
+        datasource_auth,
+        datasource_content_preview,
+        rag_pipeline,
+        rag_pipeline_datasets,
+        rag_pipeline_draft_variable,
+        rag_pipeline_import,
+        rag_pipeline_workflow,
+    )
+
+    # Import explore controllers
+    from .explore import (
+        banner,
+        installed_app,
+        parameter,
+        recommended_app,
+        saved_message,
+        trial,
+    )
+    from .human_input_v2 import channel as human_input_channel
+    from .human_input_v2 import contact as human_input_contact
+    from .human_input_v2 import form as human_input_v2_form
+    from .knowledge_fs import features as knowledge_fs_features
+    from .knowledge_fs import resources as knowledge_fs_resources
+    from .snippets import snippet_workflow, snippet_workflow_draft_variable
+    from .socketio import workflow as socketio_workflow
+
+    # Import tag controllers
+    from .tag import tags
+
+    # Import workspace controllers
+    from .workspace import (
+        account,
+        agent_providers,
+        endpoint,
+        load_balancing_config,
+        members,
+        model_providers,
+        models,
+        network_access_group,
+        plugin,
+        rbac,
+        skills,
+        snippets,
+        tool_providers,
+        trigger_providers,
+        workspace,
+    )
+
+    return (
+        apikey,
+        extension,
+        feature,
+        human_input_form,
+        human_input_channel,
+        human_input_v2_form,
+        init_validate,
+        notification,
+        onboarding,
+        resource_access_token,
+        setup,
+        spec,
+        system,
+        workflow_run_archive,
+        agent_composer,
+        agent_roster,
+        agent_tracing,
+        agent_tracing_runs,
+        advanced_prompt_template,
+        agent,
+        agent_app_access,
+        agent_app_feature,
+        agent_app_sandbox,
+        agent_config_inspector,
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        conversation_variables,
+        generator,
+        mcp_server,
+        message,
+        model_config,
+        ops_trace,
+        site,
+        statistic,
+        workflow,
+        workflow_app_log,
+        workflow_comment,
+        workflow_draft_variable,
+        workflow_human_input_v2,
+        workflow_node_output_inspector,
+        workflow_run,
+        workflow_statistic,
+        workflow_trigger,
+        activate,
+        data_source_bearer_auth,
+        data_source_oauth,
+        email_register,
+        forgot_password,
+        login,
+        oauth,
+        oauth_server,
+        billing,
+        compliance,
+        data_source,
+        datasets,
+        datasets_document,
+        datasets_segments,
+        external,
+        hit_testing,
+        metadata,
+        website,
+        datasource_auth,
+        datasource_content_preview,
+        rag_pipeline,
+        rag_pipeline_datasets,
+        rag_pipeline_draft_variable,
+        rag_pipeline_import,
+        rag_pipeline_workflow,
+        banner,
+        installed_app,
+        parameter,
+        recommended_app,
+        saved_message,
+        trial,
+        knowledge_fs_features,
+        knowledge_fs_resources,
+        snippet_workflow,
+        snippet_workflow_draft_variable,
+        socketio_workflow,
+        tags,
+        account,
+        agent_providers,
+        endpoint,
+        human_input_contact,
+        load_balancing_config,
+        members,
+        model_providers,
+        models,
+        network_access_group,
+        plugin,
+        rbac,
+        skills,
+        snippets,
+        tool_providers,
+        trigger_providers,
+        workspace,
+    )
+
+
+(
     apikey,
     extension,
     feature,
     human_input_form,
+    human_input_channel,
+    human_input_v2_form,
     init_validate,
     notification,
-    ping,
+    onboarding,
+    resource_access_token,
     setup,
     spec,
-    version,
-)
-
-# Import app controllers
-from .app import (
+    system,
+    workflow_run_archive,
+    agent_composer,
+    agent_roster,
+    agent_tracing,
+    agent_tracing_runs,
     advanced_prompt_template,
     agent,
+    agent_app_access,
+    agent_app_feature,
+    agent_app_sandbox,
+    agent_config_inspector,
     annotation,
     app,
     audio,
@@ -65,14 +408,13 @@ from .app import (
     statistic,
     workflow,
     workflow_app_log,
+    workflow_comment,
     workflow_draft_variable,
+    workflow_human_input_v2,
+    workflow_node_output_inspector,
     workflow_run,
     workflow_statistic,
     workflow_trigger,
-)
-
-# Import auth controllers
-from .auth import (
     activate,
     data_source_bearer_auth,
     data_source_oauth,
@@ -81,13 +423,8 @@ from .auth import (
     login,
     oauth,
     oauth_server,
-)
-
-# Import billing controllers
-from .billing import billing, compliance
-
-# Import datasets controllers
-from .datasets import (
+    billing,
+    compliance,
     data_source,
     datasets,
     datasets_document,
@@ -96,8 +433,6 @@ from .datasets import (
     hit_testing,
     metadata,
     website,
-)
-from .datasets.rag_pipeline import (
     datasource_auth,
     datasource_content_preview,
     rag_pipeline,
@@ -105,45 +440,52 @@ from .datasets.rag_pipeline import (
     rag_pipeline_draft_variable,
     rag_pipeline_import,
     rag_pipeline_workflow,
-)
-
-# Import explore controllers
-from .explore import (
     banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
     trial,
-)
-
-# Import tag controllers
-from .tag import tags
-
-# Import workspace controllers
-from .workspace import (
+    knowledge_fs_features,
+    knowledge_fs_resources,
+    snippet_workflow,
+    snippet_workflow_draft_variable,
+    socketio_workflow,
+    tags,
     account,
     agent_providers,
     endpoint,
+    human_input_contact,
     load_balancing_config,
     members,
     model_providers,
     models,
+    network_access_group,
     plugin,
+    rbac,
+    skills,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
-)
+) = _register_controllers()
 
 api.add_namespace(console_ns)
 
 __all__ = [
     "account",
     "activate",
-    "admin",
     "advanced_prompt_template",
     "agent",
+    "agent_app_access",
+    "agent_app_feature",
+    "agent_app_sandbox",
+    "agent_composer",
+    "agent_config_inspector",
     "agent_providers",
+    "agent_roster",
+    "agent_tracing",
+    "agent_tracing_runs",
     "annotation",
     "api",
     "apikey",
@@ -173,9 +515,14 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
+    "human_input_channel",
+    "human_input_contact",
     "human_input_form",
+    "human_input_v2_form",
     "init_validate",
     "installed_app",
+    "knowledge_fs_features",
+    "knowledge_fs_resources",
     "load_balancing_config",
     "login",
     "mcp_server",
@@ -185,34 +532,46 @@ __all__ = [
     "model_config",
     "model_providers",
     "models",
+    "network_access_group",
     "notification",
     "oauth",
     "oauth_server",
+    "onboarding",
     "ops_trace",
     "parameter",
-    "ping",
     "plugin",
     "rag_pipeline",
     "rag_pipeline_datasets",
     "rag_pipeline_draft_variable",
     "rag_pipeline_import",
     "rag_pipeline_workflow",
+    "rbac",
     "recommended_app",
+    "resource_access_token",
     "saved_message",
     "setup",
     "site",
+    "skills",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
+    "socketio_workflow",
     "spec",
     "statistic",
+    "system",
     "tags",
     "tool_providers",
     "trial",
     "trigger_providers",
-    "version",
     "website",
     "workflow",
     "workflow_app_log",
+    "workflow_comment",
     "workflow_draft_variable",
+    "workflow_human_input_v2",
+    "workflow_node_output_inspector",
     "workflow_run",
+    "workflow_run_archive",
     "workflow_statistic",
     "workflow_trigger",
     "workspace",

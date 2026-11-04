@@ -1,10 +1,9 @@
 import re
-from typing import cast
-
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from typing import Any, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import AppModelConfigDict
 
 _ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(
@@ -46,6 +45,8 @@ class BasicVariablesConfigManager:
 
         # variables and external_data_tools
         for variables in config.get("user_input_form", []):
+            if not variables:
+                continue
             variable_type = list(variables.keys())[0]
             if variable_type == VariableEntityType.EXTERNAL_DATA_TOOL:
                 variable = variables[variable_type]
@@ -82,7 +83,7 @@ class BasicVariablesConfigManager:
         return variable_entities, external_data_variables
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -99,7 +100,7 @@ class BasicVariablesConfigManager:
         return config, related_config_keys
 
     @classmethod
-    def validate_variables_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_variables_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -113,6 +114,8 @@ class BasicVariablesConfigManager:
 
         variables = []
         for item in config["user_input_form"]:
+            if not item:
+                raise ValueError("Each item in user_input_form must be a non-empty object")
             key = list(item.keys())[0]
             # if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
             if key not in {
@@ -140,7 +143,7 @@ class BasicVariablesConfigManager:
                 raise ValueError("variable in user_input_form must be of string type")
 
             pattern = re.compile(r"^(?!\d)[\u4e00-\u9fa5A-Za-z0-9_\U0001F300-\U0001F64F\U0001F680-\U0001F6FF]{1,100}$")
-            if pattern.match(form_item["variable"]) is None:
+            if pattern.fullmatch(form_item["variable"]) is None:
                 raise ValueError("variable in user_input_form must be a string, and cannot start with a number")
 
             variables.append(form_item["variable"])
@@ -164,7 +167,9 @@ class BasicVariablesConfigManager:
         return config, ["user_input_form"]
 
     @classmethod
-    def validate_external_data_tools_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_external_data_tools_and_set_defaults(
+        cls, tenant_id: str, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for external data fetch feature
 

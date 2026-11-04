@@ -1,3 +1,5 @@
+import type { LayoutResult } from '../../utils/elk-layout'
+import { createNode as createWorkflowNode } from '../../__tests__/fixtures'
 import { BlockEnum } from '../../types'
 import {
   applyContainerSizeChanges,
@@ -7,31 +9,8 @@ import {
   getLayoutContainerNodes,
 } from '../use-workflow-organize.helpers'
 
-type TestNode = {
-  id: string
-  type: string
-  parentId?: string
-  position: { x: number, y: number }
-  width: number
-  height: number
-  data: {
-    type: BlockEnum
-    title: string
-    desc: string
-    width?: number
-    height?: number
-  }
-}
-
-const createNode = (overrides: Record<string, unknown> = {}) => ({
-  id: 'node',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 100,
-  height: 80,
-  data: { type: BlockEnum.Code, title: 'Code', desc: '' },
-  ...overrides,
-}) as TestNode
+const createNode = (overrides: Parameters<typeof createWorkflowNode>[0] = {}) =>
+  createWorkflowNode({ width: 100, height: 80, ...overrides })
 
 describe('use-workflow-organize helpers', () => {
   it('filters top-level container nodes and computes size changes', () => {
@@ -41,13 +20,13 @@ describe('use-workflow-organize helpers', () => {
       createNode({ id: 'nested-loop', parentId: 'loop', data: { type: BlockEnum.Loop } }),
       createNode({ id: 'code', data: { type: BlockEnum.Code } }),
     ])
-    expect(containers.map(node => node.id)).toEqual(['loop', 'iteration'])
+    expect(containers.map((node) => node.id)).toEqual(['loop', 'iteration'])
 
     const sizeChanges = getContainerSizeChanges(containers, {
       loop: {
         bounds: { minX: 10, minY: 20, maxX: 180, maxY: 150 },
         nodes: new Map([['child', { x: 10, y: 20, width: 50, height: 40 }]]),
-      } as unknown as Parameters<typeof getContainerSizeChanges>[1][string],
+      } satisfies LayoutResult,
     })
     expect(sizeChanges.loop).toEqual({ width: 290, height: 250 })
     expect(sizeChanges.iteration).toBeUndefined()
@@ -67,32 +46,34 @@ describe('use-workflow-organize helpers', () => {
         ['root-b', { x: 210, y: 120, width: 80, height: 80, layer: 0 }],
         ['loop', { x: 320, y: 40, width: 200, height: 180, layer: 1 }],
       ]),
-    } as unknown as Parameters<typeof createLayerMap>[0]
+    } satisfies LayoutResult
     const childLayoutsMap = {
       loop: {
         bounds: { minX: 50, minY: 25, maxX: 180, maxY: 90 },
         nodes: new Map([['loop-child', { x: 100, y: 45, width: 80, height: 40 }]]),
       },
-    } as unknown as Parameters<typeof applyLayoutToNodes>[0]['childLayoutsMap']
+    } satisfies Record<string, LayoutResult>
 
     const layerMap = createLayerMap(layout)
     expect(layerMap.get(0)).toEqual({ minY: 100, maxHeight: 80 })
 
     const resized = applyContainerSizeChanges(rootNodes, { loop: { width: 260, height: 220 } })
-    expect(resized.find(node => node.id === 'loop')).toEqual(expect.objectContaining({
-      width: 260,
-      height: 220,
-      data: expect.objectContaining({ width: 260, height: 220 }),
-    }))
+    expect(resized.find((node) => node.id === 'loop')).toEqual(
+      expect.objectContaining({
+        width: 260,
+        height: 220,
+        data: expect.objectContaining({ width: 260, height: 220 }),
+      }),
+    )
 
     const laidOut = applyLayoutToNodes({
       nodes: rootNodes,
       layout,
-      parentNodes: [rootNodes[2]],
+      parentNodes: [rootNodes[2]!],
       childLayoutsMap,
     })
-    expect(laidOut.find(node => node.id === 'root-b')?.position).toEqual({ x: 210, y: 100 })
-    expect(laidOut.find(node => node.id === 'loop-child')?.position).toEqual({ x: 110, y: 80 })
+    expect(laidOut.find((node) => node.id === 'root-b')?.position).toEqual({ x: 210, y: 100 })
+    expect(laidOut.find((node) => node.id === 'loop-child')?.position).toEqual({ x: 110, y: 80 })
   })
 
   it('keeps original positions when layer or child layout data is missing', () => {
@@ -104,20 +85,18 @@ describe('use-workflow-organize helpers', () => {
     ]
     const layout = {
       bounds: { minX: 0, minY: 0, maxX: 100, maxY: 100 },
-      nodes: new Map([
-        ['root-a', { x: 20, y: 30, width: 50, height: 20 }],
-      ]),
-    } as unknown as Parameters<typeof applyLayoutToNodes>[0]['layout']
+      nodes: new Map([['root-a', { x: 20, y: 30, width: 50, height: 20 }]]),
+    } satisfies LayoutResult
 
     const laidOut = applyLayoutToNodes({
       nodes,
       layout,
-      parentNodes: [nodes[2]],
+      parentNodes: [nodes[2]!],
       childLayoutsMap: {},
     })
 
-    expect(laidOut.find(node => node.id === 'root-a')?.position).toEqual({ x: 20, y: 30 })
-    expect(laidOut.find(node => node.id === 'root-b')?.position).toEqual({ x: 3, y: 4 })
-    expect(laidOut.find(node => node.id === 'loop-child')?.position).toEqual({ x: 7, y: 8 })
+    expect(laidOut.find((node) => node.id === 'root-a')?.position).toEqual({ x: 20, y: 30 })
+    expect(laidOut.find((node) => node.id === 'root-b')?.position).toEqual({ x: 3, y: 4 })
+    expect(laidOut.find((node) => node.id === 'loop-child')?.position).toEqual({ x: 7, y: 8 })
   })
 })

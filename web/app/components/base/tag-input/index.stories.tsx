@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { useState } from 'react'
+import type { ComponentProps } from 'react'
+import { useId, useState } from 'react'
+import { fn } from 'storybook/test'
 import TagInput from '.'
 
 const meta = {
@@ -9,7 +11,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Tag input component for managing a list of string tags. Features auto-sizing input, duplicate detection, length validation (max 20 chars), and customizable confirm key (Enter or Tab).',
+        component:
+          'Tag input component for managing a list of string tags. Features auto-sizing input, duplicate detection, length validation (max 20 chars), and customizable confirm key (Enter or Tab).',
       },
     },
   },
@@ -46,9 +49,7 @@ const meta = {
     },
   },
   args: {
-    onChange: (items) => {
-      console.log('Tags updated:', items)
-    },
+    onChange: fn(),
   },
 } satisfies Meta<typeof TagInput>
 
@@ -56,7 +57,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
-const TagInputDemo = (args: any) => {
+const TagInputDemo = (args: ComponentProps<typeof TagInput>) => {
   const [items, setItems] = useState(args.items || [])
 
   return (
@@ -66,19 +67,16 @@ const TagInputDemo = (args: any) => {
         items={items}
         onChange={(newItems) => {
           setItems(newItems)
-          console.log('Tags updated:', newItems)
+          args.onChange(newItems)
         }}
       />
       {items.length > 0 && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">
-            Current Tags (
-            {items.length}
+            Current Tags ({items.length}
             ):
           </div>
-          <div className="font-mono text-sm text-gray-800">
-            {JSON.stringify(items, null, 2)}
-          </div>
+          <div className="font-mono text-sm text-gray-800">{JSON.stringify(items, null, 2)}</div>
         </div>
       )}
     </div>
@@ -87,7 +85,7 @@ const TagInputDemo = (args: any) => {
 
 // Default state (empty)
 export const Default: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: [],
     placeholder: 'Add a tag...',
@@ -97,7 +95,7 @@ export const Default: Story = {
 
 // With initial tags
 export const WithInitialTags: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['React', 'TypeScript', 'Next.js'],
     placeholder: 'Add more tags...',
@@ -107,7 +105,7 @@ export const WithInitialTags: Story = {
 
 // Tab to confirm
 export const TabToConfirm: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['keyword1', 'keyword2'],
     placeholder: 'Press Tab to add...',
@@ -117,7 +115,7 @@ export const TabToConfirm: Story = {
 
 // Disable remove
 export const DisableRemove: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['Permanent', 'Tags', 'Cannot be removed'],
     disableRemove: true,
@@ -127,7 +125,7 @@ export const DisableRemove: Story = {
 
 // Disable add
 export const DisableAdd: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['Read', 'Only', 'Mode'],
     disableAdd: true,
@@ -136,7 +134,7 @@ export const DisableAdd: Story = {
 
 // Required tags
 export const RequiredTags: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: [],
     placeholder: 'Add required tags...',
@@ -173,6 +171,7 @@ export const SkillTags: Story = {
 
 // Real-world example - Email tags
 const EmailTagsDemo = () => {
+  const id = useId()
   const [recipients, setRecipients] = useState(['john@example.com', 'jane@example.com'])
 
   return (
@@ -180,8 +179,14 @@ const EmailTagsDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Send Email</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">To:</label>
+          <label
+            htmlFor={`${id}-recipients`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            To:
+          </label>
           <TagInput
+            id={`${id}-recipients`}
             items={recipients}
             onChange={setRecipients}
             placeholder="Add recipient email..."
@@ -189,8 +194,11 @@ const EmailTagsDemo = () => {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Subject:</label>
+          <label htmlFor={`${id}-subject`} className="mb-2 block text-sm font-medium text-gray-700">
+            Subject:
+          </label>
           <input
+            id={`${id}-subject`}
             type="text"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             placeholder="Enter subject..."
@@ -198,11 +206,9 @@ const EmailTagsDemo = () => {
         </div>
         <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-gray-700">
           <strong>
-            Recipients (
-            {recipients.length}
+            Recipients ({recipients.length}
             ):
-          </strong>
-          {' '}
+          </strong>{' '}
           {recipients.join(', ')}
         </div>
       </div>
@@ -217,6 +223,7 @@ export const EmailTags: Story = {
 
 // Real-world example - Search filters
 const SearchFiltersDemo = () => {
+  const id = useId()
   const [filters, setFilters] = useState(['urgent', 'pending'])
 
   const mockResults = [
@@ -226,16 +233,20 @@ const SearchFiltersDemo = () => {
     { id: 4, title: 'Task 4', tags: ['completed'] },
   ]
 
-  const filteredResults = filters.length > 0
-    ? mockResults.filter(item => filters.some(filter => item.tags.includes(filter)))
-    : mockResults
+  const filteredResults =
+    filters.length > 0
+      ? mockResults.filter((item) => filters.some((filter) => item.tags.includes(filter)))
+      : mockResults
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Filter Tasks</h3>
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">Active Filters:</label>
+        <label htmlFor={`${id}-filters`} className="mb-2 block text-sm font-medium text-gray-700">
+          Active Filters:
+        </label>
         <TagInput
+          id={`${id}-filters`}
           items={filters}
           onChange={setFilters}
           placeholder="Add filter tag..."
@@ -244,21 +255,18 @@ const SearchFiltersDemo = () => {
       </div>
       <div className="mt-6">
         <div className="mb-3 text-sm font-medium text-gray-700">
-          Results (
-          {filteredResults.length}
-          {' '}
-          of
-          {' '}
-          {mockResults.length}
-          )
+          Results ({filteredResults.length} of {mockResults.length})
         </div>
         <div className="space-y-2">
-          {filteredResults.map(item => (
+          {filteredResults.map((item) => (
             <div key={item.id} className="rounded-lg bg-gray-50 p-3">
               <div className="text-sm font-medium">{item.title}</div>
               <div className="mt-1 flex gap-1">
-                {item.tags.map(tag => (
-                  <span key={tag} className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                {item.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
+                  >
                     {tag}
                   </span>
                 ))}
@@ -278,6 +286,7 @@ export const SearchFilters: Story = {
 
 // Real-world example - Product categories
 const ProductCategoriesDemo = () => {
+  const id = useId()
   const [categories, setCategories] = useState(['Electronics', 'Computers'])
 
   return (
@@ -285,8 +294,11 @@ const ProductCategoriesDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Product Details</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Product Name</label>
+          <label htmlFor={`${id}-name`} className="mb-2 block text-sm font-medium text-gray-700">
+            Product Name
+          </label>
           <input
+            id={`${id}-name`}
             type="text"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             placeholder="Enter product name..."
@@ -294,8 +306,14 @@ const ProductCategoriesDemo = () => {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Categories</label>
+          <label
+            htmlFor={`${id}-categories`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Categories
+          </label>
           <TagInput
+            id={`${id}-categories`}
             items={categories}
             onChange={setCategories}
             placeholder="Add category..."
@@ -306,8 +324,14 @@ const ProductCategoriesDemo = () => {
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Description</label>
+          <label
+            htmlFor={`${id}-description`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Description
+          </label>
           <textarea
+            id={`${id}-description`}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             rows={3}
             placeholder="Enter product description..."
@@ -325,16 +349,18 @@ export const ProductCategories: Story = {
 
 // Real-world example - Keyword extraction
 const KeywordExtractionDemo = () => {
+  const id = useId()
   const [keywords, setKeywords] = useState(['AI', 'machine learning', 'automation'])
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">SEO Keywords</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label htmlFor={`${id}-keywords`} className="mb-2 block text-sm font-medium text-gray-700">
           Meta Keywords
         </label>
         <TagInput
+          id={`${id}-keywords`}
           items={keywords}
           onChange={setKeywords}
           placeholder="Add keyword..."
@@ -349,8 +375,7 @@ const KeywordExtractionDemo = () => {
         <div className="mb-2 text-xs font-medium text-gray-600">Meta Tag Preview:</div>
         <code className="text-xs text-gray-700">
           &lt;meta name="keywords" content="
-          {keywords.join(', ')}
-          " /&gt;
+          {keywords.join(', ')}" /&gt;
         </code>
       </div>
     </div>
@@ -364,6 +389,7 @@ export const KeywordExtraction: Story = {
 
 // Real-world example - Tags with suggestions
 const TagsWithSuggestionsDemo = () => {
+  const id = useId()
   const [tags, setTags] = useState(['design', 'frontend'])
   const suggestions = ['backend', 'devops', 'mobile', 'testing', 'security']
 
@@ -371,10 +397,11 @@ const TagsWithSuggestionsDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Project Tags</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label htmlFor={`${id}-tags`} className="mb-2 block text-sm font-medium text-gray-700">
           Add Tags
         </label>
         <TagInput
+          id={`${id}-tags`}
           items={tags}
           onChange={setTags}
           placeholder="Type or select..."
@@ -385,16 +412,14 @@ const TagsWithSuggestionsDemo = () => {
         <div className="mb-2 text-xs font-medium text-gray-600">Suggestions:</div>
         <div className="flex flex-wrap gap-2">
           {suggestions
-            .filter(s => !tags.includes(s))
-            .map(suggestion => (
+            .filter((s) => !tags.includes(s))
+            .map((suggestion) => (
               <button
                 key={suggestion}
-                className="cursor-pointer rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                className="cursor-pointer rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
                 onClick={() => setTags([...tags, suggestion])}
               >
-                +
-                {' '}
-                {suggestion}
+                + {suggestion}
               </button>
             ))}
         </div>
@@ -410,6 +435,7 @@ export const TagsWithSuggestions: Story = {
 
 // Real-world example - Stop sequences (Tab mode)
 const StopSequencesDemo = () => {
+  const id = useId()
   const [stopSequences, setStopSequences] = useState(['Human:', 'AI:'])
 
   return (
@@ -417,10 +443,14 @@ const StopSequencesDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">AI Model Configuration</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor={`${id}-temperature`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Temperature
           </label>
           <input
+            id={`${id}-temperature`}
             type="range"
             min="0"
             max="2"
@@ -430,10 +460,14 @@ const StopSequencesDemo = () => {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor={`${id}-stop-sequences`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Stop Sequences
           </label>
           <TagInput
+            id={`${id}-stop-sequences`}
             items={stopSequences}
             onChange={setStopSequences}
             placeholder="Press Tab to add..."
@@ -444,10 +478,14 @@ const StopSequencesDemo = () => {
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor={`${id}-max-tokens`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Max Tokens
           </label>
           <input
+            id={`${id}-max-tokens`}
             type="number"
             defaultValue="2000"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
@@ -465,16 +503,21 @@ export const StopSequences: Story = {
 
 // Real-world example - Multi-language tags
 const MultiLanguageTagsDemo = () => {
+  const id = useId()
   const [tags, setTags] = useState(['Hello', '你好', 'Bonjour', 'Hola'])
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Internationalization</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label
+          htmlFor={`${id}-translations`}
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
           Greeting Translations
         </label>
         <TagInput
+          id={`${id}-translations`}
           items={tags}
           onChange={setTags}
           placeholder="Add translation..."
@@ -486,7 +529,7 @@ const MultiLanguageTagsDemo = () => {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         {tags.map((tag, index) => (
-          <div key={index} className="rounded bg-gray-50 p-2 text-sm">
+          <div key={index} className="rounded-sm bg-gray-50 p-2 text-sm">
             <span className="font-mono">{tag}</span>
           </div>
         ))}
@@ -542,7 +585,7 @@ export const ValidationShowcase: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: args => <TagInputDemo {...args} />,
+  render: (args) => <TagInputDemo {...args} />,
   args: {
     items: ['tag1', 'tag2'],
     placeholder: 'Add a tag...',

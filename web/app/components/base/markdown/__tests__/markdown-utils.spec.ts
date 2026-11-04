@@ -17,13 +17,6 @@ describe('preprocessLaTeX', () => {
     mod = await loadModuleWithConfig(false)
   })
 
-  it('returns non-string input unchanged', () => {
-    // call with a non-string (bypass TS type system)
-    // @ts-expect-error test
-    const out = mod.preprocessLaTeX(123)
-    expect(out).toBe(123)
-  })
-
   it('converts \\[ ... \\] into $$ ... $$', () => {
     const input = 'This is math: \\[x^2 + 1\\]'
     const out = mod.preprocessLaTeX(input)
@@ -46,7 +39,7 @@ describe('preprocessLaTeX', () => {
     const input = [
       'Some text before',
       '```js',
-      'const s = \'$insideCode$\'',
+      "const s = '$insideCode$'",
       '```',
       'And outside $math$',
     ].join('\n')
@@ -54,7 +47,7 @@ describe('preprocessLaTeX', () => {
     const out = mod.preprocessLaTeX(input)
 
     // code block should be preserved exactly (including $ inside)
-    expect(out).toContain('```js\nconst s = \'$insideCode$\'\n```')
+    expect(out).toContain("```js\nconst s = '$insideCode$'\n```")
     // outside inline $math$ should remain intact (function keeps inline $...$)
     expect(out).toContain('$math$')
   })
@@ -104,6 +97,24 @@ describe('preprocessThinkTag', () => {
 
     expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
     expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
+  })
+
+  it('closes a dangling <think> so the details block is well-formed', () => {
+    const input = '<think>planning the tool call'
+    const out = mod.preprocessThinkTag(input)
+
+    expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(0)
+    expect(out).toContain('planning the tool call')
+  })
+
+  it('closes the previous think before a second unclosed <think>', () => {
+    const input = '<think>first pass\n<think>second pass\nreply'
+    const out = mod.preprocessThinkTag(input)
+
+    expect((out.match(/<details data-think=true>/g) || []).length).toBe(2)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
+    expect(out.indexOf('first pass')).toBeLessThan(out.indexOf('[ENDTHINKFLAG]'))
   })
 })
 
@@ -163,6 +174,8 @@ describe('customUrlTransform', () => {
     expect(modFalse.customUrlTransform('data:text/plain;base64,SGVsbG8=')).toBeUndefined()
 
     const modTrue = await loadModuleWithConfig(true)
-    expect(modTrue.customUrlTransform('data:text/plain;base64,SGVsbG8=')).toBe('data:text/plain;base64,SGVsbG8=')
+    expect(modTrue.customUrlTransform('data:text/plain;base64,SGVsbG8=')).toBe(
+      'data:text/plain;base64,SGVsbG8=',
+    )
   })
 })

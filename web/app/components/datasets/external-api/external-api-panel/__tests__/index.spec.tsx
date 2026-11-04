@@ -1,207 +1,109 @@
-import type { ExternalAPIItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createExternalAPI } from '@/service/datasets'
+import { renderWithConfigurationModals as render } from '@/test/configuration-modals'
 import ExternalAPIPanel from '../index'
 
-// Mock external contexts (only mock context providers, not base components)
-const mockSetShowExternalKnowledgeAPIModal = vi.fn()
-const mockMutateExternalKnowledgeApis = vi.fn()
-let mockIsLoading = false
-let mockExternalKnowledgeApiList: ExternalAPIItem[] = []
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowExternalKnowledgeAPIModal: mockSetShowExternalKnowledgeAPIModal,
-  }),
+const { getApis } = vi.hoisted(() => ({ getApis: vi.fn() }))
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  createExternalAPI: vi.fn(),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.externalKnowledgeApi.get': getApis,
+    }),
+  }
+})
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
-    isLoading: mockIsLoading,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
-// Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
-vi.mock('../../external-knowledge-api-card', () => ({
-  default: ({ api }: { api: ExternalAPIItem }) => (
-    <div data-testid={`api-card-${api.id}`}>{api.name}</div>
-  ),
-}))
-
-// i18n mock returns 'namespace.key' format
+const response: ExternalKnowledgeApiListResponse = {
+  data: [
+    {
+      id: 'api-1',
+      tenant_id: 'tenant-1',
+      name: 'Product knowledge',
+      description: '',
+      settings: { endpoint: 'https://knowledge.example.com', api_key: 'key' },
+      dataset_bindings: [],
+      created_by: 'user-1',
+      created_at: '2021-01-01T00:00:00Z',
+    },
+  ],
+  has_more: false,
+  limit: 20,
+  page: 1,
+  total: 1,
+}
 
 describe('ExternalAPIPanel', () => {
-  const defaultProps = {
-    onClose: vi.fn(),
-  }
-
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsLoading = false
-    mockExternalKnowledgeApiList = []
+    getApis.mockResolvedValue(response)
+    vi.mocked(createExternalAPI).mockResolvedValue(response.data[0]!)
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
-    })
-
-    it('should render panel title and description', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalAPIPanelDescription')).toBeInTheDocument()
-    })
-
-    it('should render documentation link', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
-      expect(docLink).toBeInTheDocument()
-      expect(docLink.closest('a')).toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
-    })
-
-    it('should render create button', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.createExternalAPI')).toBeInTheDocument()
-    })
-
-    it('should render close button', () => {
-      const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton = container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
-      expect(closeButton).toBeInTheDocument()
-    })
+  it('replaces loading with API cards and allows the panel to close', async () => {
+    const user = userEvent.setup()
+    let resolve!: (value: ExternalKnowledgeApiListResponse) => void
+    getApis.mockReturnValue(
+      new Promise<ExternalKnowledgeApiListResponse>((done) => {
+        resolve = done
+      }),
+    )
+    const onClose = vi.fn()
+    render(<ExternalAPIPanel canManageExternalKnowledgeApi onClose={onClose} />)
+    expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
+    await act(async () => resolve(response))
+    expect(await screen.findByText('Product knowledge')).toBeInTheDocument()
+    expect(screen.getByText('https://knowledge.example.com')).toBeInTheDocument()
+    expect(screen.queryByLabelText('common.loading')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
-  describe('Loading State', () => {
-    it('should render loading indicator when isLoading is true', () => {
-      mockIsLoading = true
-      const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      // Loading component should be rendered
-      const loadingElement = container.querySelector('[class*="loading"]')
-        || container.querySelector('.animate-spin')
-        || screen.queryByRole('status')
-      expect(loadingElement || container.textContent).toBeTruthy()
-    })
+  it('shows read-only API cards when management is unavailable', async () => {
+    render(<ExternalAPIPanel canManageExternalKnowledgeApi={false} onClose={vi.fn()} />)
+    expect(await screen.findByText('Product knowledge')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.createExternalAPI' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /common.operation.edit/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common.operation.delete/ }),
+    ).not.toBeInTheDocument()
   })
 
-  describe('API List Rendering', () => {
-    it('should render empty list when no APIs exist', () => {
-      mockExternalKnowledgeApiList = []
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.queryByTestId(/api-card-/)).not.toBeInTheDocument()
+  it('opens a blank creation form and refreshes the actual list after save', async () => {
+    const user = userEvent.setup()
+    getApis.mockResolvedValueOnce({ ...response, data: [], total: 0 })
+    render(<ExternalAPIPanel canManageExternalKnowledgeApi onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'dataset.createExternalAPI' }))
+    const dialog = await screen.findByRole('dialog', { name: 'dataset.createExternalAPI' })
+    expect(within(dialog).getByLabelText(/Name/)).toHaveValue('')
+    expect(within(dialog).getByLabelText(/API Endpoint/)).toHaveValue('')
+    expect(within(dialog).getByLabelText(/API Key/)).toHaveValue('')
+    await user.type(within(dialog).getByLabelText(/Name/), 'Product knowledge')
+    await user.type(within(dialog).getByLabelText(/API Endpoint/), 'https://knowledge.example.com')
+    await user.type(within(dialog).getByLabelText(/API Key/), 'secret-key')
+    await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(createExternalAPI).toHaveBeenCalledWith({
+      body: {
+        name: 'Product knowledge',
+        settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
+      },
     })
-
-    it('should render API cards when APIs exist', () => {
-      mockExternalKnowledgeApiList = [
-        {
-          id: 'api-1',
-          tenant_id: 'tenant-1',
-          name: 'Test API 1',
-          description: '',
-          settings: { endpoint: 'https://api1.example.com', api_key: 'key1' },
-          dataset_bindings: [],
-          created_by: 'user-1',
-          created_at: '2021-01-01T00:00:00Z',
-        },
-        {
-          id: 'api-2',
-          tenant_id: 'tenant-1',
-          name: 'Test API 2',
-          description: '',
-          settings: { endpoint: 'https://api2.example.com', api_key: 'key2' },
-          dataset_bindings: [],
-          created_by: 'user-1',
-          created_at: '2021-01-01T00:00:00Z',
-        },
-      ]
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByTestId('api-card-api-1')).toBeInTheDocument()
-      expect(screen.getByTestId('api-card-api-2')).toBeInTheDocument()
-      expect(screen.getByText('Test API 1')).toBeInTheDocument()
-      expect(screen.getByText('Test API 2')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', () => {
-      const onClose = vi.fn()
-      render(<ExternalAPIPanel onClose={onClose} />)
-      // Find the close button (ActionButton with close icon)
-      const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(btn => btn.querySelector('svg[class*="ri-close"]'))
-        || buttons[0]
-      fireEvent.click(closeButton)
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should open external API modal when create button is clicked', async () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
-      fireEvent.click(createButton)
-
-      await waitFor(() => {
-        expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalledTimes(1)
-        expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalledWith(
-          expect.objectContaining({
-            payload: { name: '', settings: { endpoint: '', api_key: '' } },
-            datasetBindings: [],
-            isEditMode: false,
-          }),
-        )
-      })
-    })
-
-    it('should call mutateExternalKnowledgeApis in onSaveCallback', async () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
-      fireEvent.click(createButton)
-
-      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
-      callArgs.onSaveCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
-    })
-
-    it('should call mutateExternalKnowledgeApis in onCancelCallback', async () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
-      fireEvent.click(createButton)
-
-      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
-      callArgs.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle single API in list', () => {
-      mockExternalKnowledgeApiList = [
-        {
-          id: 'single-api',
-          tenant_id: 'tenant-1',
-          name: 'Single API',
-          description: '',
-          settings: { endpoint: 'https://single.example.com', api_key: 'key' },
-          dataset_bindings: [],
-          created_by: 'user-1',
-          created_at: '2021-01-01T00:00:00Z',
-        },
-      ]
-      render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByTestId('api-card-single-api')).toBeInTheDocument()
-    })
-
-    it('should render documentation link with correct target', () => {
-      render(<ExternalAPIPanel {...defaultProps} />)
-      const docLink = screen.getByText('dataset.externalAPIPanelDocumentation').closest('a')
-      expect(docLink).toHaveAttribute('target', '_blank')
-    })
+    expect(await screen.findByText('Product knowledge')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common.operation.edit Product knowledge/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common.operation.delete Product knowledge/ }),
+    ).toBeInTheDocument()
   })
 })

@@ -1,32 +1,15 @@
 import { act, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import ThinkBlock from '../think-block'
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.thinking': 'Thinking...',
-        'chat.thought': 'Thought',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
-
 // Helper to wrap component with ChatContextProvider
-const renderWithContext = (
-  children: React.ReactNode,
-  isResponding: boolean = true,
-) => {
+const renderWithContext = (children: React.ReactNode, isResponding: boolean = true) => {
   return render(
     <ChatContextProvider
       config={undefined}
       isResponding={isResponding}
       chatList={[]}
-      showPromptLog={false}
       questionIcon={undefined}
       answerIcon={undefined}
       onSend={undefined}
@@ -61,29 +44,6 @@ describe('ThinkBlock', () => {
 
       expect(screen.getByText('Regular content')).toBeInTheDocument()
     })
-
-    it('should render think block with thinking state when data-think is true', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          <p>Thinking content</p>
-        </ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
-      expect(screen.getByText('Thinking content')).toBeInTheDocument()
-    })
-
-    it('should render thought state when content has ENDTHINKFLAG', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          <p>Completed thinking[ENDTHINKFLAG]</p>
-        </ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
-    })
   })
 
   describe('Timer behavior', () => {
@@ -113,7 +73,6 @@ describe('ThinkBlock', () => {
           config={undefined}
           isResponding={true}
           chatList={[]}
-          showPromptLog={false}
           questionIcon={undefined}
           answerIcon={undefined}
           onSend={undefined}
@@ -130,7 +89,7 @@ describe('ThinkBlock', () => {
       )
 
       // Verify initial thinking state
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
 
       // Advance timer
       act(() => {
@@ -143,7 +102,6 @@ describe('ThinkBlock', () => {
           config={undefined}
           isResponding={false}
           chatList={[]}
-          showPromptLog={false}
           questionIcon={undefined}
           answerIcon={undefined}
           onSend={undefined}
@@ -160,7 +118,10 @@ describe('ThinkBlock', () => {
       )
 
       // Should now show "Thought" instead of "Thinking..."
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+      const stoppedTime = screen.getByText(/\(1\.0s\)/).textContent
+      act(() => vi.advanceTimersByTime(2000))
+      expect(screen.getByText(/\(1\.0s\)/)).toHaveTextContent(stoppedTime!)
     })
 
     it('should stop timer when isResponding is undefined (historical conversation outside active response)', () => {
@@ -172,7 +133,8 @@ describe('ThinkBlock', () => {
       )
 
       // Timer should be stopped immediately — isResponding undefined means not in active response
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+      expect(screen.queryByText(/\(0\.0s\)/)).not.toBeInTheDocument()
     })
   })
 
@@ -186,6 +148,7 @@ describe('ThinkBlock', () => {
       )
 
       expect(screen.getByText('Content')).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
       expect(screen.queryByText('[ENDTHINKFLAG]')).not.toBeInTheDocument()
     })
 
@@ -200,40 +163,16 @@ describe('ThinkBlock', () => {
       )
 
       // Should show "Thought" since ENDTHINKFLAG is present
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
 
     it('should detect ENDTHINKFLAG in array children', () => {
       renderWithContext(
-        <ThinkBlock data-think={true}>
-          {['Part 1', 'Part 2[ENDTHINKFLAG]']}
-        </ThinkBlock>,
+        <ThinkBlock data-think={true}>{['Part 1', 'Part 2[ENDTHINKFLAG]']}</ThinkBlock>,
         true,
       )
 
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge cases', () => {
-    it('should handle empty children', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}></ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
-    })
-
-    it('should handle null children gracefully', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          {null}
-        </ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
   })
 })

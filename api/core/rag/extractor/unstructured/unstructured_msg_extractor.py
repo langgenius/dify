@@ -1,4 +1,5 @@
 import logging
+from typing import override
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -21,6 +22,7 @@ class UnstructuredMsgExtractor(BaseExtractor):
         self._api_url = api_url
         self._api_key = api_key
 
+    @override
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api

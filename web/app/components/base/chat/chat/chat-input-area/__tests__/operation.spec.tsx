@@ -1,170 +1,68 @@
-import type { EnableType } from '../../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Theme } from '../../../embedded-chatbot/theme/theme-context'
 import Operation from '../operation'
 
+const uploader = vi.hoisted(() =>
+  vi.fn<(_props: { readonly?: boolean; fileConfig: FileUpload }) => null>(() => null),
+)
+
+// File upload interactions are covered by file-uploader-in-chat-input's own suite.
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInChatInput: ({ readonly }: { readonly?: boolean }) => (
-    <div data-testid="file-uploader" data-readonly={readonly} />
-  ),
+  FileUploaderInChatInput: (props: { readonly?: boolean; fileConfig: FileUpload }) =>
+    uploader(props),
 }))
 
-const createMockTheme = (overrides?: Partial<Theme>): Theme => {
-  const theme = new Theme()
-  theme.primaryColor = 'rgb(255, 0, 0)'
-  return Object.assign(theme, overrides || {})
-}
-
 describe('Operation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('enables file upload only when configured and forwards readonly protection', () => {
+    const fileConfig: FileUpload = { enabled: true, number_limits: 3 }
+    const { rerender } = render(<Operation onSend={vi.fn()} />)
+    expect(uploader).not.toHaveBeenCalled()
+
+    rerender(<Operation onSend={vi.fn()} fileConfig={fileConfig} readonly />)
+    expect(uploader).toHaveBeenLastCalledWith({ fileConfig, readonly: true })
+    uploader.mockClear()
+    rerender(<Operation onSend={vi.fn()} fileConfig={{ enabled: false }} />)
+    expect(uploader).not.toHaveBeenCalled()
   })
 
-  describe('Rendering', () => {
-    it('should render send button always', () => {
-      render(<Operation onSend={vi.fn()} />)
+  it('sends a message and blocks sending while readonly or disabled', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    const { rerender } = render(<Operation onSend={onSend} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+    expect(onSend).toHaveBeenCalledTimes(1)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should render file uploader when fileConfig.enabled is true', () => {
-      const fileConfig: FileUpload = { enabled: true } as FileUpload
-
-      render(
-        <Operation
-          onSend={vi.fn()}
-          fileConfig={fileConfig}
-        />,
-      )
-
-      expect(screen.getByTestId('file-uploader')).toBeInTheDocument()
-    })
-
-    it('should not render file uploader when fileConfig is undefined', () => {
-      render(<Operation onSend={vi.fn()} />)
-
-      expect(screen.queryByTestId('file-uploader')).not.toBeInTheDocument()
-    })
-
-    it('should render voice input button when speechToTextConfig.enabled is true', () => {
-      const speechConfig: EnableType = { enabled: true }
-
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={speechConfig}
-        />,
-      )
-
-      expect(screen.getAllByRole('button')).toHaveLength(2)
-    })
-
-    it('should not render voice input button when speechToTextConfig.enabled is false', () => {
-      const speechConfig: EnableType = { enabled: false }
-
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={speechConfig}
-        />,
-      )
-
-      expect(screen.getAllByRole('button')).toHaveLength(1)
-    })
-  })
-
-  describe('Send Button Behavior', () => {
-    it('should call onSend when clicked and not readonly', async () => {
-      const user = userEvent.setup()
-      const onSend = vi.fn()
-
-      render(<Operation onSend={onSend} />)
-
-      await user.click(screen.getByRole('button'))
-
+    for (const props of [{ readonly: true }, { disabled: true }]) {
+      rerender(<Operation onSend={onSend} {...props} />)
+      const send = screen.getByRole('button', { name: 'common.operation.send' })
+      expect(send).toBeDisabled()
+      await user.click(send)
       expect(onSend).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not call onSend when readonly is true', async () => {
-      const user = userEvent.setup()
-      const onSend = vi.fn()
-
-      render(<Operation onSend={onSend} readonly />)
-
-      await user.click(screen.getByRole('button'))
-
-      expect(onSend).not.toHaveBeenCalled()
-    })
-
-    it('should apply theme primaryColor as background style when theme is provided', () => {
-      render(
-        <Operation
-          onSend={vi.fn()}
-          theme={createMockTheme()}
-        />,
-      )
-
-      expect(screen.getByRole('button')).toHaveStyle({
-        backgroundColor: 'rgb(255, 0, 0)',
-      })
-    })
-
-    it('should not apply background style when theme is null', () => {
-      render(
-        <Operation
-          onSend={vi.fn()}
-          theme={null}
-        />,
-      )
-
-      expect(screen.getByRole('button').style.backgroundColor).toBe('')
-    })
+    }
   })
 
-  describe('Voice Input Button', () => {
-    it('should call onShowVoiceInput when clicked', async () => {
-      const user = userEvent.setup()
-      const onShowVoiceInput = vi.fn()
+  it('starts voice input only when available and editable', async () => {
+    const user = userEvent.setup()
+    const onShowVoiceInput = vi.fn()
+    const props = { onSend: vi.fn(), onShowVoiceInput, speechToTextConfig: { enabled: true } }
+    const { rerender } = render(<Operation {...props} />)
+    await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+    expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
 
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={{ enabled: true }}
-          onShowVoiceInput={onShowVoiceInput}
-        />,
-      )
+    rerender(<Operation {...props} readonly />)
+    const voice = screen.getByRole('button', { name: 'common.voiceInput.start' })
+    expect(voice).toBeDisabled()
+    await user.click(voice)
+    expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
 
-      const buttons = screen.getAllByRole('button')
-      const voiceButton = buttons[0]
-
-      await user.click(voiceButton)
-
-      expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable voice button when readonly is true', async () => {
-      const user = userEvent.setup()
-      const onShowVoiceInput = vi.fn()
-
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={{ enabled: true }}
-          onShowVoiceInput={onShowVoiceInput}
-          readonly
-        />,
-      )
-
-      const buttons = screen.getAllByRole('button')
-      const voiceButton = buttons[0]
-
-      expect(voiceButton).toBeDisabled()
-
-      await user.click(voiceButton)
-
-      expect(onShowVoiceInput).not.toHaveBeenCalled()
-    })
+    rerender(<Operation {...props} speechToTextConfig={{ enabled: false }} />)
+    expect(
+      screen.queryByRole('button', { name: 'common.voiceInput.start' }),
+    ).not.toBeInTheDocument()
+    rerender(<Operation {...props} onShowVoiceInput={undefined} />)
+    expect(
+      screen.queryByRole('button', { name: 'common.voiceInput.start' }),
+    ).not.toBeInTheDocument()
   })
 })

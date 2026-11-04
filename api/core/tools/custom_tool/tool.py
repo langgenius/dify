@@ -2,11 +2,11 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union
+from typing import Any, override
 from urllib.parse import urlencode
 
 import httpx
-from graphon.file.file_manager import download
+from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -14,6 +14,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
+from graphon.file.file_manager import download
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
@@ -25,7 +26,7 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
 
-    content: Union[str, dict]
+    content: str | dict
     is_json: bool
 
     def to_string(self) -> str:
@@ -45,6 +46,7 @@ class ApiTool(Tool):
         self.api_bundle = api_bundle
         self.provider_id = provider_id
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime):
         """
         fork a new tool with metadata
@@ -77,6 +79,7 @@ class ApiTool(Tool):
         # For credential validation, always return as string
         return parsed_response.to_string()
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
 
@@ -100,16 +103,17 @@ class ApiTool(Tool):
             elif not isinstance(credentials["api_key_value"], str):
                 raise ToolProviderCredentialValidationError("api_key_value must be a string")
 
+            api_key_value = credentials["api_key_value"]
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
-                if api_key_header_prefix == "basic" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Basic {credentials['api_key_value']}"
-                elif api_key_header_prefix == "bearer" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
+                if api_key_header_prefix == "basic" and api_key_value:
+                    api_key_value = f"Basic {api_key_value}"
+                elif api_key_header_prefix == "bearer" and api_key_value:
+                    api_key_value = f"Bearer {api_key_value}"
                 elif api_key_header_prefix == "custom":
                     pass
 
-            headers[api_key_header] = credentials["api_key_value"]
+            headers[api_key_header] = api_key_value
 
         elif credentials["auth_type"] == "api_key_query":
             # For query parameter authentication, we don't add anything to headers
@@ -275,7 +279,7 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        _METHOD_MAP = {
+        _method_map = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
             "post": ssrf_proxy.post,
@@ -284,9 +288,9 @@ class ApiTool(Tool):
             "patch": ssrf_proxy.patch,
         }
         method_lc = method.lower()
-        if method_lc not in _METHOD_MAP:
+        if method_lc not in _method_map:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[
+        response: httpx.Response = _method_map[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
@@ -357,15 +361,16 @@ class ApiTool(Tool):
                     if value is None:
                         return None
                 elif property["type"] == "object" or property["type"] == "array":
-                    if isinstance(value, str):
-                        try:
-                            return json.loads(value)
-                        except ValueError:
+                    match value:
+                        case str():
+                            try:
+                                return json.loads(value)
+                            except ValueError:
+                                return value
+                        case dict():
                             return value
-                    elif isinstance(value, dict):
-                        return value
-                    else:
-                        return value
+                        case _:
+                            return value
                 else:
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif "anyOf" in property and isinstance(property["anyOf"], list):
@@ -373,14 +378,16 @@ class ApiTool(Tool):
         except ValueError:
             return value
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke http request
         """

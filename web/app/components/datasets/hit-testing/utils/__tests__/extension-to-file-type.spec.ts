@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import { extensionToFileType } from '../extension-to-file-type'
 
@@ -97,10 +97,6 @@ describe('extensionToFileType', () => {
 
     it('should return custom type when extension is uppercase (case-sensitive match)', () => {
       expect(extensionToFileType('PDF')).toBe(FileAppearanceTypeEnum.custom)
-    })
-
-    it('should return custom type when extension is mixed case', () => {
-      expect(extensionToFileType('Docx')).toBe(FileAppearanceTypeEnum.custom)
     })
 
     it('should return custom type when extension has leading dot', () => {

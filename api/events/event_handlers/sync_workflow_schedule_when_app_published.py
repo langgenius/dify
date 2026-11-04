@@ -2,7 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
 from events.app_event import app_published_workflow_was_updated
@@ -45,7 +45,7 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
     Returns:
         Updated or created WorkflowSchedulePlan, or None if no schedule node
     """
-    with Session(db.engine) as session:
+    with sessionmaker(db.engine).begin() as session:
         schedule_config = ScheduleService.extract_schedule_config(workflow)
 
         existing_plan = session.scalar(
@@ -59,7 +59,6 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
             if existing_plan:
                 logger.info("No schedule node in workflow for app %s, removing schedule plan", app_id)
                 ScheduleService.delete_schedule(session=session, schedule_id=existing_plan.id)
-                session.commit()
             return None
 
         if existing_plan:
@@ -73,7 +72,6 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
                 schedule_id=existing_plan.id,
                 updates=updates,
             )
-            session.commit()
             return updated_plan
         else:
             new_plan = ScheduleService.create_schedule(
@@ -82,5 +80,4 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
                 app_id=app_id,
                 config=schedule_config,
             )
-            session.commit()
             return new_plan

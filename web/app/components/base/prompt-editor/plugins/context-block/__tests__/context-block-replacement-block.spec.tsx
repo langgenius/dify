@@ -18,16 +18,14 @@ function createEditorConfig() {
   return {
     namespace: 'test',
     nodes: [CustomTextNode, ContextBlockNode],
-    onError: (error: Error) => { throw error },
+    onError: (error: Error) => {
+      throw error
+    },
   }
 }
 
 function TestWrapper({ children }: { children: ReactNode }) {
-  return (
-    <LexicalComposer initialConfig={createEditorConfig()}>
-      {children}
-    </LexicalComposer>
-  )
+  return <LexicalComposer initialConfig={createEditorConfig()}>{children}</LexicalComposer>
 }
 
 function renderWithEditor(ui: ReactNode) {
@@ -41,7 +39,11 @@ const defaultOnCapture = (editor: LexicalEditor) => {
   capturedEditor = editor
 }
 
-function EditorCapture({ onCapture = defaultOnCapture }: { onCapture?: (e: LexicalEditor) => void }) {
+function EditorCapture({
+  onCapture = defaultOnCapture,
+}: {
+  onCapture?: (e: LexicalEditor) => void
+}) {
   const [editor] = useLexicalComposerContext()
   React.useEffect(() => {
     onCapture(editor)
@@ -51,23 +53,25 @@ function EditorCapture({ onCapture = defaultOnCapture }: { onCapture?: (e: Lexic
 
 type ReadResult = {
   count: number
-  datasets: Array<{ id: string, name: string, type: string }>
+  datasets: Array<{ id: string; name: string; type: string | null }>
   canNotAddContext: boolean
 }
 
 function insertTextAndRead(text: string): ReadResult {
-  if (!capturedEditor)
-    throw new Error('Editor not captured')
+  if (!capturedEditor) throw new Error('Editor not captured')
 
   // Insert CustomTextNode with the given text
-  capturedEditor.update(() => {
-    const root = $getRoot()
-    root.clear()
-    const paragraph = $createParagraphNode()
-    const textNode = $createCustomTextNode(text)
-    paragraph.append(textNode)
-    root.append(paragraph)
-  }, { discrete: true })
+  capturedEditor.update(
+    () => {
+      const root = $getRoot()
+      root.clear()
+      const paragraph = $createParagraphNode()
+      const textNode = $createCustomTextNode(text)
+      paragraph.append(textNode)
+      root.append(paragraph)
+    },
+    { discrete: true },
+  )
 
   // Read the resulting state — extract all properties inside .read()
   const result: ReadResult = { count: 0, datasets: [], canNotAddContext: false }
@@ -75,8 +79,8 @@ function insertTextAndRead(text: string): ReadResult {
     const nodes = $nodesOfType(ContextBlockNode)
     result.count = nodes.length
     if (nodes.length > 0) {
-      result.datasets = nodes[0].getDatasets()
-      result.canNotAddContext = nodes[0].getCanNotAddContext()
+      result.datasets = nodes[0]!.getDatasets()
+      result.canNotAddContext = nodes[0]!.getCanNotAddContext()
     }
   })
   return result
@@ -88,45 +92,14 @@ describe('ContextBlockReplacementBlock', () => {
     capturedEditor = null
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithEditor(
-        <>
-          <ContextBlockReplacementBlock />
-          <EditorCapture />
-        </>,
-      )
-      expect(capturedEditor).not.toBeNull()
-    })
-
-    it('should return null (no visible output from the plugin itself)', () => {
-      const { container } = renderWithEditor(
-        <>
-          <ContextBlockReplacementBlock />
-          <EditorCapture />
-        </>,
-      )
-      expect(container.querySelector('[data-testid]')).toBeNull()
-    })
-  })
-
   describe('Editor Node Registration Check', () => {
-    it('should not throw when ContextBlockNode is registered', () => {
-      expect(() => {
-        renderWithEditor(
-          <>
-            <ContextBlockReplacementBlock />
-            <EditorCapture />
-          </>,
-        )
-      }).not.toThrow()
-    })
-
     it('should throw when ContextBlockNode is not registered', () => {
       const configWithoutNode = {
         namespace: 'test',
         nodes: [CustomTextNode],
-        onError: (error: Error) => { throw error },
+        onError: (error: Error) => {
+          throw error
+        },
       }
 
       expect(() => {
@@ -150,6 +123,8 @@ describe('ContextBlockReplacementBlock', () => {
 
       const result = insertTextAndRead('{{#context#}}')
       expect(result.count).toBe(1)
+      expect(result.datasets).toEqual([])
+      expect(result.canNotAddContext).toBe(false)
     })
 
     it('should not replace text that is not the placeholder', () => {
@@ -232,55 +207,7 @@ describe('ContextBlockReplacementBlock', () => {
     })
   })
 
-  describe('Props Defaults', () => {
-    it('should default datasets to empty array', () => {
-      renderWithEditor(
-        <>
-          <ContextBlockReplacementBlock />
-          <EditorCapture />
-        </>,
-      )
-
-      const result = insertTextAndRead('{{#context#}}')
-      expect(result.datasets).toEqual([])
-    })
-
-    it('should default canNotAddContext to false', () => {
-      renderWithEditor(
-        <>
-          <ContextBlockReplacementBlock />
-          <EditorCapture />
-        </>,
-      )
-
-      const result = insertTextAndRead('{{#context#}}')
-      expect(result.canNotAddContext).toBe(false)
-    })
-  })
-
   describe('Edge Cases', () => {
-    it('should handle undefined datasets prop', () => {
-      expect(() => {
-        renderWithEditor(
-          <>
-            <ContextBlockReplacementBlock datasets={undefined} />
-            <EditorCapture />
-          </>,
-        )
-      }).not.toThrow()
-    })
-
-    it('should handle empty datasets array', () => {
-      expect(() => {
-        renderWithEditor(
-          <>
-            <ContextBlockReplacementBlock datasets={[]} />
-            <EditorCapture />
-          </>,
-        )
-      }).not.toThrow()
-    })
-
     it('should handle empty string text', () => {
       renderWithEditor(
         <>
@@ -292,5 +219,31 @@ describe('ContextBlockReplacementBlock', () => {
       const result = insertTextAndRead('')
       expect(result.count).toBe(0)
     })
+  })
+  it('uses updated datasets, restrictions, and callback for subsequent replacements', () => {
+    const previousInsert = vi.fn()
+    const nextInsert = vi.fn()
+    const { rerender } = renderWithEditor(
+      <>
+        <ContextBlockReplacementBlock onInsert={previousInsert} />
+        <EditorCapture />
+      </>,
+    )
+    insertTextAndRead('{{#context#}}')
+    expect(previousInsert).toHaveBeenCalledTimes(1)
+    const datasets = [{ id: 'new', name: 'Updated context', type: 'text' }]
+    rerender(
+      <>
+        <ContextBlockReplacementBlock datasets={datasets} canNotAddContext onInsert={nextInsert} />
+        <EditorCapture />
+      </>,
+    )
+    expect(insertTextAndRead('{{#context#}}')).toEqual({
+      count: 1,
+      datasets,
+      canNotAddContext: true,
+    })
+    expect(nextInsert).toHaveBeenCalledTimes(1)
+    expect(previousInsert).toHaveBeenCalledTimes(1)
   })
 })

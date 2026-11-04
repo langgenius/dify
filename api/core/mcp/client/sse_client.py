@@ -2,8 +2,8 @@ import logging
 import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
-from typing import Any, TypeAlias, final
+from contextlib import contextmanager, suppress
+from typing import Any, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -33,9 +33,9 @@ class _StatusError:
 
 
 # Type aliases for better readability
-ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
-WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
-StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
+type ReadQueue = queue.Queue[SessionMessage | Exception | None]
+type WriteQueue = queue.Queue[SessionMessage | Exception | None]
+type StatusQueue = queue.Queue[_StatusReady | _StatusError]
 
 
 class SSETransport:
@@ -208,15 +208,16 @@ class SSETransport:
         """
         try:
             status = status_queue.get(timeout=1)
-        except queue.Empty:
-            raise ValueError("failed to get endpoint URL")
+        except queue.Empty as caught_error:
+            raise ValueError("failed to get endpoint URL") from caught_error
 
-        if isinstance(status, _StatusReady):
-            return status.endpoint_url
-        elif isinstance(status, _StatusError):
-            raise status.exc
-        else:
-            raise ValueError("failed to get endpoint URL")
+        match status:
+            case _StatusReady():
+                return status.endpoint_url
+            case _StatusError():
+                raise status.exc
+            case _:
+                raise ValueError("failed to get endpoint URL")
 
     def connect(
         self,
@@ -260,7 +261,7 @@ def sse_client(
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 1 * 60,
-) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
+) -> Generator[tuple[ReadQueue, WriteQueue]]:
     """
     Client transport for SSE.
     `sse_read_timeout` determines how long (in seconds) the client will wait for a new
@@ -294,18 +295,23 @@ def sse_client(
 
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:
-            raise MCPAuthError(response=exc.response)
-        raise MCPConnectionError()
+            raise MCPAuthError(response=exc.response) from exc
+        raise MCPConnectionError() from exc
+    except httpx.RequestError as exc:
+        # Transport-level failures (refused connection, DNS, protocol errors, timeouts)
+        # must keep the MCP error contract: MCPClient only falls back to streamable
+        # HTTP on MCPConnectionError, and the console API only turns MCP errors into
+        # a 4xx. A raw httpx error skips both and surfaces as an opaque 500.
+        logger.exception("Error connecting to SSE endpoint")
+        raise MCPConnectionError(f"Failed to connect to SSE endpoint: {exc}") from exc
     except Exception:
         logger.exception("Error connecting to SSE endpoint")
         raise
     finally:
         # Close the SSE connection to unblock the reader thread
         if transport.event_source is not None:
-            try:
+            with suppress(RuntimeError):
                 transport.event_source.response.close()
-            except RuntimeError:
-                pass
 
         # Clean up queues
         if read_queue:
@@ -344,7 +350,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
 
 def read_messages(
     sse_client: SSEClient,
-) -> Generator[SessionMessage | Exception, None, None]:
+) -> Generator[SessionMessage | Exception]:
     """
     Read messages from the SSE client.
 

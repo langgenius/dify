@@ -1,60 +1,27 @@
 import type { ListFilterNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
+import { act } from '@testing-library/react'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { ComparisonOperator } from '../../if-else/types'
 import { OrderBy } from '../types'
 import useConfig from '../use-config'
-
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockGetCurrentVariableType = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getBeforeNodesInSameBranch: () => [
-      { id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } },
-    ],
-  }),
-  useWorkflowVariables: () => ({
-    getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  ...createNodeCrudModuleMock<ListFilterNodeType>(mockSetInputs),
-}))
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useStoreApi: () => ({
-      getState: () => ({
-        getNodes: () => [
-          { id: 'list-node', parentId: 'iteration-parent' },
-          { id: 'iteration-parent', data: { title: 'Iteration', type: BlockEnum.Iteration } },
-        ],
-      }),
-    }),
-  }
-})
-
 const createPayload = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNodeType => ({
   title: 'List Filter',
   desc: '',
   type: BlockEnum.ListFilter,
-  variable: ['node-1', 'items'],
-  var_type: VarType.arrayString,
-  item_var_type: VarType.string,
+  variable: ['start', 'files'],
+  var_type: VarType.arrayFile,
+  item_var_type: VarType.file,
   filter_by: {
-    enabled: true,
-    conditions: [{
-      key: '',
-      comparison_operator: ComparisonOperator.equal,
-      value: '',
-    }],
+    enabled: false,
+    conditions: [
+      {
+        key: '',
+        comparison_operator: ComparisonOperator.contains,
+        value: '',
+      },
+    ],
   },
   extract_by: {
     enabled: false,
@@ -63,121 +30,75 @@ const createPayload = (overrides: Partial<ListFilterNodeType> = {}): ListFilterN
   order_by: {
     enabled: false,
     key: '',
-    value: OrderBy.DESC,
+    value: OrderBy.ASC,
   },
   limit: {
     enabled: false,
     size: 10,
   },
+  isInIteration: false,
+  isInLoop: false,
   ...overrides,
 })
 
-describe('useConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetCurrentVariableType.mockReturnValue(VarType.arrayString)
-  })
-
-  it('should expose derived variable metadata and filter array-like vars', () => {
-    const { result } = renderHook(() => useConfig('list-node', createPayload()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.varType).toBe(VarType.arrayString)
-    expect(result.current.itemVarType).toBe(VarType.string)
-    expect(result.current.itemVarTypeShowName).toBe('String')
-    expect(result.current.hasSubVariable).toBe(false)
-    expect(result.current.filterVar({ type: VarType.arrayBoolean } as never)).toBe(true)
-    expect(result.current.filterVar({ type: VarType.object } as never)).toBe(false)
-  })
-
-  it('should reset filter conditions when the variable changes to file arrays', () => {
-    mockGetCurrentVariableType.mockReturnValue(VarType.arrayFile)
-    const payload = createPayload({
-      order_by: {
-        enabled: true,
-        key: '',
-        value: OrderBy.DESC,
+describe('list-operator/use-config', () => {
+  it('derives file types from the graph and preserves the complete filter, extraction and ordering config', () => {
+    const payload = createPayload()
+    const source = createNode({
+      id: 'start',
+      data: {
+        type: BlockEnum.Start,
+        variables: [
+          { variable: 'files', label: 'Files', type: InputVarType.multiFiles, required: false },
+        ],
       },
     })
-    const { result } = renderHook(() => useConfig('list-node', payload))
-
-    result.current.handleVarChanges(['node-2', 'files'])
-
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variable: ['node-2', 'files'],
-      var_type: VarType.arrayFile,
-      item_var_type: VarType.file,
-      filter_by: {
-        enabled: true,
-        conditions: [{
-          key: 'name',
-          comparison_operator: ComparisonOperator.contains,
-          value: '',
-        }],
-      },
-      order_by: expect.objectContaining({
-        key: 'name',
-      }),
-    }))
-  })
-
-  it('should update filter, extract, limit and order-by settings', () => {
-    const { result } = renderHook(() => useConfig('list-node', createPayload()))
-
-    result.current.handleFilterEnabledChange(false)
-    result.current.handleFilterChange({
+    const { result } = renderNodeConfig(useConfig, payload, {
+      nodes: [source, createNode({ id: 'node', data: payload })],
+      edges: [createEdge({ source: 'start', target: 'node' })],
+    })
+    expect(result.current.config.varType).toBe(VarType.arrayFile)
+    expect(result.current.config.itemVarType).toBe(VarType.file)
+    expect(result.current.config.hasSubVariable).toBe(true)
+    act(() => result.current.config.handleFilterEnabledChange(true))
+    const condition = {
       key: 'size',
       comparison_operator: ComparisonOperator.largerThan,
-      value: 3,
+      value: '2',
+    }
+    act(() => result.current.config.handleFilterChange(condition))
+    act(() => result.current.config.handleLimitChange({ enabled: true, size: 3 }))
+    act(() => result.current.config.handleExtractsEnabledChange(true))
+    act(() => result.current.config.handleExtractsChange('5'))
+    act(() => result.current.config.handleOrderByEnabledChange(true))
+    act(() => result.current.config.handleOrderByKeyChange('size'))
+    act(() => result.current.config.handleOrderByTypeChange(OrderBy.DESC)())
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      filter_by: { enabled: true, conditions: [condition] },
+      limit: { enabled: true, size: 3 },
+      extract_by: { enabled: true, serial: '5' },
+      order_by: { enabled: true, key: 'size', value: OrderBy.DESC },
     })
-    result.current.handleLimitChange({ enabled: true, size: 5 })
-    result.current.handleExtractsEnabledChange(true)
-    result.current.handleExtractsChange('2')
-    result.current.handleOrderByEnabledChange(true)
-    result.current.handleOrderByKeyChange('size')
-    result.current.handleOrderByTypeChange(OrderBy.ASC)()
-
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      filter_by: expect.objectContaining({ enabled: false }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      filter_by: expect.objectContaining({
-        conditions: [{
-          key: 'size',
-          comparison_operator: ComparisonOperator.largerThan,
-          value: 3,
-        }],
-      }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      limit: { enabled: true, size: 5 },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      extract_by: { enabled: true, serial: '1' },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      extract_by: { enabled: false, serial: '2' },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        enabled: true,
-        value: OrderBy.ASC,
-        key: '',
-      }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        enabled: false,
-        key: 'size',
-        value: OrderBy.DESC,
-      }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        enabled: false,
-        key: '',
-        value: OrderBy.ASC,
-      }),
-    }))
+  })
+  it('derives numeric item types after changing the selected list', () => {
+    const payload = createPayload({ order_by: { enabled: true, key: 'size', value: OrderBy.ASC } })
+    const source = createNode({
+      id: 'source',
+      data: {
+        type: BlockEnum.Code,
+        outputs: { numbers: { type: VarType.arrayNumber, children: null } },
+      },
+    })
+    const { result } = renderNodeConfig(useConfig, payload, {
+      nodes: [source, createNode({ id: 'node', data: payload })],
+      edges: [createEdge({ source: 'source', target: 'node' })],
+    })
+    act(() => result.current.config.handleVarChanges(['source', 'numbers']))
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      variable: ['source', 'numbers'],
+      var_type: VarType.arrayNumber,
+      item_var_type: VarType.number,
+    })
+    expect(result.current.config.hasSubVariable).toBe(false)
   })
 })

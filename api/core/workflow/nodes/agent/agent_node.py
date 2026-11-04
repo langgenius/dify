@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
-
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
-from graphon.nodes.base.node import Node
-from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from functools import singledispatchmethod
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeEvent
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
+from .events import AgentLogEvent, NodeRunAgentLogEvent
 from .exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
@@ -22,8 +23,7 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -36,21 +36,21 @@ class AgentNode(Node[AgentNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        node_id: str,
+        data: AgentNodeData,
         *,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
         message_transformer: AgentMessageTransformer,
     ) -> None:
         super().__init__(
-            id=id,
-            config=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            node_id=node_id,
+            data=data,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._strategy_resolver = strategy_resolver
         self._presentation_provider = presentation_provider
@@ -58,9 +58,11 @@ class AgentNode(Node[AgentNodeData]):
         self._message_transformer = message_transformer
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def populate_start_event(self, event) -> None:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         event.extras["agent_strategy"] = {
@@ -71,7 +73,31 @@ class AgentNode(Node[AgentNodeData]):
             ),
         }
 
-    def _run(self) -> Generator[NodeEventBase, None, None]:
+    @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        return NodeRunAgentLogEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            message_id=event.message_id,
+            label=event.label,
+            node_execution_id=event.node_execution_id,
+            parent_id=event.parent_id,
+            error=event.error,
+            status=event.status,
+            data=event.data,
+            metadata=event.metadata,
+        )
+
+    @override
+    def _run(self) -> Generator[NodeEventPayload]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -96,7 +122,7 @@ class AgentNode(Node[AgentNodeData]):
 
         parameters = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -106,7 +132,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         parameters_for_log = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -117,7 +143,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(
@@ -169,6 +195,7 @@ class AgentNode(Node[AgentNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

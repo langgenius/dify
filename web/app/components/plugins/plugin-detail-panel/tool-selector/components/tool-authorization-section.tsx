@@ -1,11 +1,7 @@
 'use client'
-import type { FC } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import Divider from '@/app/components/base/divider'
-import {
-  AuthCategory,
-  PluginAuthInAgent,
-} from '@/app/components/plugins/plugin-auth'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
 import { CollectionType } from '@/app/components/tools/types'
 
 type ToolAuthorizationSectionProps = {
@@ -14,22 +10,22 @@ type ToolAuthorizationSectionProps = {
   onAuthorizationItemClick: (id: string) => void
 }
 
-const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
+export function ToolAuthorizationSection({
   currentProvider,
   credentialId,
   onAuthorizationItemClick,
-}) => {
+}: ToolAuthorizationSectionProps) {
   // Only show for built-in providers that allow deletion
-  const shouldShow = currentProvider
-    && currentProvider.type === CollectionType.builtIn
-    && currentProvider.allow_delete
+  const shouldShow =
+    currentProvider &&
+    currentProvider.type === CollectionType.builtIn &&
+    currentProvider.allow_delete
 
-  if (!shouldShow)
-    return null
+  if (!shouldShow) return null
 
   return (
     <>
-      <Divider className="my-1 w-full" />
+      <Separator className="my-1 h-[0.5px]" />
       <div className="px-4 py-2">
         <PluginAuthInAgent
           pluginPayload={{
@@ -44,5 +40,3 @@ const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
     </>
   )
 }
-
-export default ToolAuthorizationSection

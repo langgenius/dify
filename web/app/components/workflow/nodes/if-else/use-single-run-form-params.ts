@@ -6,10 +6,10 @@ import { useCallback } from 'react'
 type Params = {
   id: string
   payload: IfElseNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }
@@ -20,15 +20,17 @@ const useSingleRunFormParams = ({
   getInputVars,
   varSelectorsToVarInputs,
 }: Params) => {
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, unknown>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
   const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
+    const vars: Record<string, unknown> = {}
+    Object.keys(runInputData).forEach((key) => {
+      vars[key] = runInputData[key]
+    })
     return vars
   })()
 
@@ -36,7 +38,7 @@ const useSingleRunFormParams = ({
     const vars: ValueSelector[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getVarSelectorsFromCondition(condition)
         vars.push(...conditionVars)
       })
@@ -46,8 +48,7 @@ const useSingleRunFormParams = ({
 
   const getVarSelectorsFromCondition = (condition: Condition) => {
     const vars: ValueSelector[] = []
-    if (condition.variable_selector)
-      vars.push(condition.variable_selector)
+    if (condition.variable_selector) vars.push(condition.variable_selector)
 
     if (condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
       vars.push(...getVarSelectorsFromCase(condition.sub_variable_condition))
@@ -58,7 +59,7 @@ const useSingleRunFormParams = ({
     const vars: InputVar[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getInputVarsFromConditionValue(condition)
         vars.push(...conditionVars)
       })
@@ -94,8 +95,7 @@ const useSingleRunFormParams = ({
     const existVarsKey: Record<string, boolean> = {}
     const uniqueVarInputs: InputVar[] = []
     varInputs.forEach((input) => {
-      if (!input)
-        return
+      if (!input) return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
         uniqueVarInputs.push(input)
@@ -114,7 +114,7 @@ const useSingleRunFormParams = ({
     const vars: ValueSelector[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getVarFromCondition(condition)
         vars.push(...conditionVars)
       })
@@ -123,8 +123,7 @@ const useSingleRunFormParams = ({
   }
   const getVarFromCondition = (condition: Condition): ValueSelector[] => {
     const vars: ValueSelector[] = []
-    if (condition.variable_selector)
-      vars.push(condition.variable_selector)
+    if (condition.variable_selector) vars.push(condition.variable_selector)
 
     if (condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
       vars.push(...getVarFromCaseItem(condition.sub_variable_condition))

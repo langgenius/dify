@@ -5,22 +5,21 @@ import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, override
 
-from graphon.nodes.human_input.entities import FormDefinition
-from graphon.nodes.human_input.enums import HumanInputFormStatus
-from graphon.nodes.human_input.human_input_node import HumanInputNode
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.entities.execution_extra_content import (
-    ExecutionExtraContentDomainModel,
+    HumanInputContent as HumanInputContentDomainModel,
+)
+from core.entities.execution_extra_content import (
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
-from core.entities.execution_extra_content import (
-    HumanInputContent as HumanInputContentDomainModel,
-)
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
 )
@@ -28,7 +27,11 @@ from models.execution_extra_content import (
     HumanInputContent as HumanInputContentModel,
 )
 from models.human_input import HumanInputFormRecipient, RecipientType
-from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
+from repositories.execution_extra_content_repository import (
+    ExecutionExtraContentRepository,
+    HumanInputFormReference,
+    StoredExecutionExtraContent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +48,12 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
     def __init__(self, session_maker: sessionmaker[Session]):
         self._session_maker = session_maker
 
-    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[ExecutionExtraContentDomainModel]]:
+    @override
+    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[StoredExecutionExtraContent]]:
         if not message_ids:
             return []
 
-        grouped_contents: dict[str, list[ExecutionExtraContentDomainModel]] = {
-            message_id: [] for message_id in message_ids
-        }
+        grouped_contents: dict[str, list[StoredExecutionExtraContent]] = {message_id: [] for message_id in message_ids}
 
         stmt = (
             select(ExecutionExtraContentModel)
@@ -94,8 +96,12 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
         self,
         model: ExecutionExtraContentModel,
         recipients_by_form_id: dict[str, list[HumanInputFormRecipient]],
-    ) -> ExecutionExtraContentDomainModel | None:
+    ) -> StoredExecutionExtraContent | None:
         if isinstance(model, HumanInputContentModel):
+            # V2 forms live in a separate repository. Preserve their references
+            # so the service can restore presentation and initiator access.
+            if model.form is None:
+                return HumanInputFormReference(workflow_run_id=model.workflow_run_id, form_id=model.form_id)
             return self._map_human_input_content(model, recipients_by_form_id)
 
         logger.debug("Unsupported execution extra content type encountered: %s", model.type)
@@ -117,29 +123,33 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                 definition_payload["expiration_time"] = form.expiration_time
             form_definition = FormDefinition.model_validate(definition_payload)
         except ValueError:
-            logger.warning("Failed to load form definition for HumanInputContent(id=%s)", model.id)
+            logger.warning("Failed to load form definition for HumanInputContent(id=%s)", model.id, exc_info=True)
             return None
         node_title = form_definition.node_title or form.node_id
         display_in_ui = bool(form_definition.display_in_ui)
 
         submitted = form.submitted_at is not None or form.status == HumanInputFormStatus.SUBMITTED
+        # Only a waiting form can still be answered; a timed-out or expired one gets no token.
+        answerable = not submitted and form.status == HumanInputFormStatus.WAITING
+        form_token = self._resolve_form_token(recipients_by_form_id.get(form.id, [])) if answerable else None
+        form_definition_domain_model = HumanInputFormDefinition(
+            form_id=form.id,
+            node_id=form.node_id,
+            node_title=node_title,
+            form_content=form.rendered_content,
+            inputs=form_definition.inputs,
+            actions=form_definition.user_actions,
+            display_in_ui=display_in_ui,
+            form_token=form_token,
+            resolved_default_values=form_definition.default_values,
+            expiration_time=int(form.expiration_time.timestamp()),
+        )
+
         if not submitted:
-            form_token = self._resolve_form_token(recipients_by_form_id.get(form.id, []))
             return HumanInputContentDomainModel(
                 workflow_run_id=model.workflow_run_id,
                 submitted=False,
-                form_definition=HumanInputFormDefinition(
-                    form_id=form.id,
-                    node_id=form.node_id,
-                    node_title=node_title,
-                    form_content=form.rendered_content,
-                    inputs=form_definition.inputs,
-                    actions=form_definition.user_actions,
-                    display_in_ui=display_in_ui,
-                    form_token=form_token,
-                    resolved_default_values=form_definition.default_values,
-                    expiration_time=int(form.expiration_time.timestamp()),
-                ),
+                form_definition=form_definition_domain_model,
             )
 
         selected_action_id = form.selected_action_id
@@ -160,21 +170,24 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                 logger.warning("Failed to load submitted data for HumanInputContent(id=%s)", model.id)
                 return None
 
-        rendered_content = HumanInputNode.render_form_content_with_outputs(
+        rendered_content = DifyHITLCallback.render_form_content_with_outputs(
             form.rendered_content,
             submitted_data,
             _extract_output_field_names(form_definition.form_content),
+            form_definition.inputs,
         )
 
         return HumanInputContentDomainModel(
             workflow_run_id=model.workflow_run_id,
-            submitted=True,
+            submitted=submitted,
+            form_definition=form_definition_domain_model,
             form_submission_data=HumanInputFormSubmissionData(
                 node_id=form.node_id,
                 node_title=node_title,
                 rendered_content=rendered_content,
                 action_id=selected_action_id,
                 action_text=action_text,
+                submitted_data=submitted_data,
             ),
         )
 
