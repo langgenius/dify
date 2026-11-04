@@ -1,15 +1,11 @@
 import type { RecipientData } from '../../../../types'
-import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render } from '@/test/console/render'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Recipient from '../index'
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({ currentWorkspace: { name: "Dify's Lab" } }))
-})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -51,21 +47,24 @@ it('retains member and external recipients through additions, deletions and work
       </>
     )
   }
-  const user = userEvent.setup()
-  render(<RecipientForm />, {
-    wrapper: createAccountProfileQueryWrapper({ email: 'owner@example.com' }),
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: { email: 'owner@example.com' },
+    currentWorkspace: { name: "Dify's Lab" },
   })
-  await user.click(screen.getByRole('button', { name: /memberSelector.trigger/ }))
-  await user.click(await screen.findByRole('button', { name: /Member One/ }))
-  await waitFor(() =>
-    expect(screen.queryByRole('button', { name: /Member One/ })).not.toBeInTheDocument(),
-  )
-  expect(screen.getByText('member-1@example.com')).toBeVisible()
-  const input = screen.getByRole('textbox')
-  await user.type(input, 'external@example.com{Enter}')
-  expect(screen.getByText('external@example.com')).toBeVisible()
-  await user.type(input, 'member-2@example.com{Enter}')
-  expect(screen.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
+  await render(<RecipientForm />, { wrapper })
+  await userEvent.click(page.getByRole('button', { name: /memberSelector.trigger/ }))
+  await userEvent.click(page.getByRole('button', { name: /Member One/ }))
+  await expect.element(page.getByRole('button', { name: /Member One/ })).not.toBeInTheDocument()
+  await expect.element(page.getByText('member-1@example.com')).toBeVisible()
+  const input = page.getByRole('textbox')
+  await input.fill('external@example.com')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByText('external@example.com')).toBeVisible()
+  await input.fill('member-2@example.com')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
     JSON.stringify({
       whole_workspace: false,
       items: [
@@ -75,12 +74,14 @@ it('retains member and external recipients through additions, deletions and work
       ],
     }),
   )
-  await user.keyboard('{Backspace}{Backspace}')
-  expect(screen.queryByText('external@example.com')).not.toBeInTheDocument()
-  expect(screen.queryByText('member-2@example.com')).not.toBeInTheDocument()
-  await user.click(screen.getByRole('switch', { name: /allMembers/ }))
-  expect(screen.getByRole('switch')).toBeChecked()
-  expect(screen.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
+  await userEvent.keyboard('{Backspace}')
+  await expect.element(page.getByText('member-2@example.com')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Backspace}')
+  await expect.element(page.getByText('external@example.com')).not.toBeInTheDocument()
+  await expect.element(page.getByText('member-2@example.com')).not.toBeInTheDocument()
+  await userEvent.click(page.getByRole('switch', { name: /allMembers/ }))
+  await expect.element(page.getByRole('switch')).toBeChecked()
+  await expect.element(page.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
     JSON.stringify({
       whole_workspace: true,
       items: [{ type: 'member', user_id: 'member-1' }],

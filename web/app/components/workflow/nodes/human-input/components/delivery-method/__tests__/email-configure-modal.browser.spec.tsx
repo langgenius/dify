@@ -1,8 +1,8 @@
 import type { EmailConfig } from '../../../types'
-import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWorkflowEditor as render } from '@/test/workflow-editor'
+import { page } from 'vite-plus/test/browser'
+import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import EmailConfigureModal from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
@@ -36,9 +36,8 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
 const prefix = 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure'
 
 it('saves edited email content with an inserted request URL token', async () => {
-  const user = userEvent.setup()
   const handleConfirm = vi.fn()
-  render(
+  await render(
     <EmailConfigureModal
       open
       config={createEmailConfig({
@@ -50,16 +49,14 @@ it('saves edited email content with an inserted request URL token', async () => 
     />,
   )
 
-  const subject = screen.getByRole('textbox', { name: `${prefix}.subject` })
-  await user.clear(subject)
-  await user.type(subject, 'Budget alert')
-  const body = screen.getByRole('textbox', { name: `${prefix}.body` })
-  await user.clear(body)
-  await user.paste('Please review {{#url#}} now')
-  await waitFor(() => expect(body).toHaveTextContent('Please review'))
-  await user.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
-  await user.click(screen.getByRole('switch', { name: `${prefix}.debugMode` }))
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  const subject = page.getByRole('textbox', { name: `${prefix}.subject` })
+  await subject.fill('Budget alert')
+  const body = page.getByRole('textbox', { name: `${prefix}.body` })
+  await body.fill('Please review {{#url#}} now')
+  await expect.element(body.getByText('Please review', { exact: false })).toBeVisible()
+  await page.getByRole('switch', { name: /emailConfigure.allMembers/ }).click()
+  await page.getByRole('switch', { name: `${prefix}.debugMode` }).click()
+  await page.getByRole('button', { name: 'common.operation.save' }).click()
 
   expect(handleConfirm).toHaveBeenCalledExactlyOnceWith({
     recipients: { whole_workspace: true, items: [] },
@@ -87,9 +84,8 @@ it.each<{
     error: 'recipientsRequired',
   },
 ])('rejects $scenario without saving', async ({ config, error }) => {
-  const user = userEvent.setup()
   const handleConfirm = vi.fn()
-  render(
+  await render(
     <EmailConfigureModal
       open
       config={createEmailConfig(config)}
@@ -97,7 +93,7 @@ it.each<{
       onConfirm={handleConfirm}
     />,
   )
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await page.getByRole('button', { name: 'common.operation.save' }).click()
   expect(mockToastError).toHaveBeenCalledExactlyOnceWith(
     expect.stringContaining(`${prefix}.${error}`),
   )
@@ -119,9 +115,13 @@ function DismissibleEmailConfig() {
 it.each(['common.operation.close', 'common.operation.cancel'])(
   'dismisses email configuration through %s',
   async (name) => {
-    const user = userEvent.setup()
-    render(<DismissibleEmailConfig />)
-    await user.click(screen.getByRole('button', { name }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await render(<DismissibleEmailConfig />)
+    await page.getByRole('button', { name }).click()
+    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   },
 )
+
+beforeEach(async () => {
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
+})
