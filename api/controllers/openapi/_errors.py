@@ -35,6 +35,7 @@ from werkzeug.exceptions import HTTPException
 
 from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
+from services.errors.app import TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
 
 
 class OpenApiErrorCode(StrEnum):
@@ -544,6 +545,14 @@ class AppModeMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.APP_MODE_MISMATCH
     description = "This op does not serve apps of this mode."
     hint = "describe.console_app shows the app's mode."
+
+
+class TriggerWorkflowNotRunnable(OpenApiError):  # noqa: N818
+    """The app's trigger entry refuses the run, not the caller's permission, so it is no 403."""
+
+    code = 422
+    error_code = OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
 
 
 class ServiceApiDisabled(OpenApiError):  # noqa: N818
