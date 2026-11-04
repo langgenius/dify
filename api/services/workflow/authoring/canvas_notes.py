@@ -114,14 +114,16 @@ def is_note(node: object) -> TypeGuard[dict[str, Any]]:
     return isinstance(node.get("data"), dict)
 
 
-def coverable_nodes(nodes: Sequence[object]) -> dict[str, Mapping[str, Any]]:
-    """The nodes a note can cover, by id: every top-level node that is not a note."""
+def coverable_nodes(nodes: Sequence[object], *, parent: str | None = None) -> dict[str, Mapping[str, Any]]:
+    """The nodes directly inside `parent` that are not notes, by id; by default the top-level ones, which a note
+    can cover.
+    """
     return {
         node["id"]: node
         for node in nodes
         if isinstance(node, Mapping)
         if isinstance(node.get("id"), str)
-        if not node.get(_PARENT_KEY)
+        if (node.get(_PARENT_KEY) or None) == parent
         if node.get("type") != CANVAS_NOTE_TYPE
     }
 
