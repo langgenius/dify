@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { AgentBuildGridTexture } from '../build-grid-texture'
+import { BuildGridTexture } from '@/app/components/base/build-grid-texture'
 
 export function AgentBuildPanelBackground({ visible }: { visible: boolean }) {
   return (
@@ -10,8 +10,8 @@ export function AgentBuildPanelBackground({ visible }: { visible: boolean }) {
         visible && 'opacity-100',
       )}
     >
-      <AgentBuildGridTexture className="absolute top-0 left-0" />
-      <AgentBuildGridTexture className="absolute bottom-0 left-0 origin-center scale-y-[-1]" />
+      <BuildGridTexture className="absolute top-0 left-0" />
+      <BuildGridTexture className="absolute bottom-0 left-0 origin-center scale-y-[-1]" />
     </div>
   )
 }

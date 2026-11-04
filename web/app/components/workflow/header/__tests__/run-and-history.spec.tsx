@@ -7,7 +7,7 @@ import RunAndHistory from '../run-and-history'
 vi.mock('../view-history', () => ({ default: () => null }))
 vi.mock('../checklist', () => ({ default: () => null }))
 
-it('disables runs and previews while the draft has a conflict', async () => {
+it('uses supplied run access for both custom runs and previews', async () => {
   const user = userEvent.setup()
   const startPreview = vi.fn()
   const CustomRunMode = ({ text, disabled }: { text?: string; disabled?: boolean }) => (
@@ -23,8 +23,10 @@ it('disables runs and previews while the draft has a conflict', async () => {
       components={{ RunMode: CustomRunMode }}
     />,
     {
-      initialStoreState: { hasWorkflowDraftConflict: true },
-      hooksStoreProps: { handleWorkflowStartRunInChatflow: startPreview },
+      hooksStoreProps: {
+        handleWorkflowStartRunInChatflow: startPreview,
+        accessControl: { ...fullWorkflowAccessControl, canRun: false },
+      },
     },
   )
   expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()

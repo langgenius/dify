@@ -11,8 +11,8 @@ import { createWorkflowStore } from '../store/workflow'
 import 'reactflow/dist/style.css'
 import '../style.css'
 
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
+vi.mock('../hooks/use-schedule-draft-save', () => ({
+  useScheduleDraftSave: () => ({ handleSyncWorkflowDraft: vi.fn() }),
 }))
 vi.mock('../hooks/use-workflow-history', () => ({
   WorkflowHistoryEvent: { NodeDragStop: 'NodeDragStop' },

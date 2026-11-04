@@ -94,13 +94,17 @@ describe('workflow zoom controls', () => {
 
   it('zooms out and in through the inline controls and reports the real viewport', async () => {
     const user = userEvent.setup()
-    renderZoomInOut()
+    const { store, doSyncWorkflowDraft } = renderZoomInOut()
 
     await user.click(getZoomControls().zoomOutTrigger)
     await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('83%'))
+    act(() => store.getState().flushPendingSync())
+    expect(doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
 
     await user.click(getZoomControls().zoomInTrigger)
     await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('100%'))
+    act(() => store.getState().flushPendingSync())
+    expect(doSyncWorkflowDraft).toHaveBeenCalledTimes(2)
   })
 
   it.each([
@@ -204,10 +208,10 @@ describe('workflow zoom controls', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
-  it('allows zooming and fitting while Builder owns the graph', async () => {
+  it('allows zooming and fitting while canvas editing is locked', async () => {
     const user = userEvent.setup()
     const { store, doSyncWorkflowDraft } = renderZoomInOut()
-    act(() => store.getState().setWorkflowDraftSyncPhase('builder'))
+    act(() => store.getState().setCanvasReadOnly(true))
 
     await user.click(getZoomControls().zoomInTrigger)
     await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('120%'))

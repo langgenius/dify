@@ -1,3 +1,4 @@
+import type { WorkflowChecklistProps } from './checklist'
 import type { ViewHistoryProps } from './view-history'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -5,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '../hooks-store'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowStartRun } from '../hooks/use-workflow-start-run'
-import { useStore } from '../store'
 import Checklist from './checklist'
 import RunMode from './run-mode'
 import ViewHistory from './view-history'
@@ -28,7 +28,7 @@ const PreviewMode = memo(({ disabled = false }: { disabled?: boolean }) => {
         if (!isDisabled) handleWorkflowStartRunInChatflow()
       }}
     >
-      <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+      <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
       {t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
     </button>
   )
@@ -41,6 +41,7 @@ export type RunAndHistoryProps = {
   showPreviewButton?: boolean
   viewHistoryProps?: ViewHistoryProps
   components?: {
+    Checklist?: React.ComponentType<WorkflowChecklistProps>
     RunMode?: React.ComponentType<{
       text?: string
       disabled?: boolean
@@ -55,22 +56,22 @@ const RunAndHistory = ({
   components,
 }: RunAndHistoryProps) => {
   const { nodesReadOnly } = useNodesReadOnly()
-  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const { RunMode: CustomRunMode } = components || {}
+  const ChecklistComponent = components?.Checklist ?? Checklist
 
   return (
     <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
       {showRunButton &&
         (CustomRunMode ? (
-          <CustomRunMode text={runButtonText} disabled={!canRun || hasWorkflowDraftConflict} />
+          <CustomRunMode text={runButtonText} disabled={!canRun} />
         ) : (
-          <RunMode text={runButtonText} disabled={!canRun || hasWorkflowDraftConflict} />
+          <RunMode text={runButtonText} disabled={!canRun} />
         ))}
-      {showPreviewButton && <PreviewMode disabled={!canRun || hasWorkflowDraftConflict} />}
+      {showPreviewButton && <PreviewMode disabled={!canRun} />}
       <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
-      <Checklist disabled={nodesReadOnly} />
+      <ChecklistComponent disabled={nodesReadOnly} />
     </div>
   )
 }

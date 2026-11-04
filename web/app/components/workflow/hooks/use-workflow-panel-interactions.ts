@@ -7,7 +7,6 @@ import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-withou
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useSelectionInteractions } from './use-selection-interactions'
 import { useNodesReadOnly } from './use-workflow'
-import { isBuilderCanvasActive } from './use-workflow-viewport'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -35,8 +34,8 @@ export const useWorkflowMoveMode = () => {
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const isRestoring = useStore((s) => s.isRestoring)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
-  const builderCanvasActive = useStore(isBuilderCanvasActive)
-  const moveModeReadOnly = nodesReadOnly && !builderCanvasActive
+  const canvasReadOnly = useStore((state) => state.canvasReadOnly)
+  const moveModeReadOnly = nodesReadOnly && !canvasReadOnly
   const { handleSelectionCancel } = useSelectionInteractions()
   const { data: isCommentModeAvailable } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -51,13 +50,13 @@ export const useWorkflowMoveMode = () => {
   const canUseCommentMode = !!(!isCommentModeOperationBlocked && isCommentModeAvailable)
 
   const handleModePointer = useCallback(() => {
-    if (getNodesReadOnly() && !isBuilderCanvasActive(workflowStore.getState())) return
+    if (getNodesReadOnly() && !workflowStore.getState().canvasReadOnly) return
 
     setControlMode(ControlMode.Pointer)
   }, [getNodesReadOnly, setControlMode, workflowStore])
 
   const handleModeHand = useCallback(() => {
-    if (getNodesReadOnly() && !isBuilderCanvasActive(workflowStore.getState())) return
+    if (getNodesReadOnly() && !workflowStore.getState().canvasReadOnly) return
 
     setControlMode(ControlMode.Hand)
     handleSelectionCancel()

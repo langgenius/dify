@@ -19,8 +19,8 @@ const setup = (state: Partial<Shape> = {}) =>
     },
   )
 
-it('allows hand and pointer modes while Builder keeps nodes read-only', () => {
-  const { result, store } = setup({ workflowDraftSyncPhase: 'builder' })
+it('allows hand and pointer modes while canvas editing is locked', () => {
+  const { result, store } = setup({ canvasReadOnly: true })
   act(() => result.current.mode.handleModeHand())
   expect(store.getState().controlMode).toBe(ControlMode.Hand)
   act(() => result.current.mode.handleModePointer())

@@ -17,7 +17,7 @@ import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/perm
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
-import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from './hooks/use-schedule-draft-save'
 import { useNodesReadOnly } from './hooks/use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { handleWorkflowMenuKeyDown } from './shortcuts/handle-workflow-menu-key-down'
@@ -266,7 +266,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
     state.getNodes().filter((node) => node.selected),
   )
   const edges = useReactFlowStore((state) => state.edges)
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { saveStateToHistory } = useWorkflowHistory()
   const { createSnippetDialog, handleOpenCreateSnippet, isCreateSnippetDialogOpen } =
     useCreateSnippetFromSelection({

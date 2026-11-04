@@ -1,12 +1,11 @@
-import type { SessionView } from '../../dify-builder/types'
 import type { HeaderProps } from '@/app/components/workflow/header'
+import type { SessionView } from '@/features/dify-builder/types'
 import { screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
-import { WorkflowContext } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
+import { difyBuilderSessionViewAtom } from '@/features/dify-builder/session/state'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWorkflowComponent } from '../../../__tests__/workflow-test-env'
 import WorkflowHeader from '../index'
 
 const mocks = vi.hoisted(() => ({
@@ -17,9 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/header', () => ({
   default: (props: HeaderProps) => {
     mocks.header(props)
-    return props.normal?.controls?.showDifyBuilderButton ? (
-      <button type="button">Builder</button>
-    ) : null
+    return props.normal?.components?.actions
   },
 }))
 
@@ -38,17 +35,17 @@ vi.mock('../features-trigger', () => ({
 const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | null = null) => {
   const store = createStore()
   store.set(difyBuilderSessionViewAtom, sessionView)
-  const workflowStore = createWorkflowStore({})
+  const { queryClient } = createConsoleQueryWrapper({
+    features: { dify_builder_enabled: difyBuilderEnabled },
+  })
 
-  return renderWithConsoleQuery(
+  return renderWorkflowComponent(
     <Provider store={store}>
-      <WorkflowContext value={workflowStore}>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-          <WorkflowHeader />
-        </EditorResourceScope>
-      </WorkflowContext>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <WorkflowHeader />
+      </EditorResourceScope>
     </Provider>,
-    { features: { dify_builder_enabled: difyBuilderEnabled } },
+    { queryClient, initialStoreState: { canvasReadOnly: !!sessionView } },
   )
 }
 
@@ -60,16 +57,18 @@ describe('WorkflowHeader', () => {
   it('should hide Builder while its feature is disabled', () => {
     renderHeader(false)
 
-    expect(screen.queryByRole('button', { name: 'Builder' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'difyBuilder.buttonTooltip' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should show Builder after its feature is enabled', () => {
     renderHeader(true)
 
-    expect(screen.getByRole('button', { name: 'Builder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeEnabled()
   })
 
-  it('should tell the shared header when an existing Builder session can be resumed', () => {
+  it('keeps an existing Builder session available while canvas editing is locked', () => {
     renderHeader(true, {
       canvas_read_only: true,
       conversation_last_seq: -1,
@@ -81,14 +80,6 @@ describe('WorkflowHeader', () => {
       version: 1,
     })
 
-    expect(mocks.header).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        normal: expect.objectContaining({
-          controls: expect.objectContaining({
-            hasDifyBuilderSession: true,
-          }),
-        }),
-      }),
-    )
+    expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeEnabled()
   })
 })

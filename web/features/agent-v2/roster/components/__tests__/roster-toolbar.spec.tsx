@@ -13,7 +13,7 @@ vi.mock('@/features/agent-v2/permissions', () => ({
   useCanImportAgents: () => permissions.canImport,
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
+vi.mock('@/features/app-creation/dsl-dialog', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
       <div role="dialog" aria-label="agentRoster.roster.importDSL">

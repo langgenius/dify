@@ -1,19 +1,19 @@
-import type { useNodesSyncDraft } from './use-nodes-sync-draft'
+import type { useWorkflowDraftSave } from '../draft/use-draft-save'
 import type { useWorkflowRun } from './use-workflow-run'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
 import { useWorkflowRunByCanEdit } from './use-workflow-run'
 
 type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
-type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
 
 const useWorkflowStartRunBase = (
   handleRun: HandleRun,
@@ -304,7 +304,7 @@ const useWorkflowStartRunBase = (
 
 export const useWorkflowStartRunByCanEdit = (canEdit: boolean) => {
   const { handleRun } = useWorkflowRunByCanEdit(canEdit)
-  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
 
   return useWorkflowStartRunBase(handleRun, doSyncWorkflowDraft)
 }

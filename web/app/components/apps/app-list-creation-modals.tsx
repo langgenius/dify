@@ -2,10 +2,10 @@
 
 import dynamic from 'next/dynamic'
 
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+const CreateFromDSLModal = dynamic(() => import('@/features/app-creation/dsl-dialog'), {
   ssr: false,
 })
-const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
+const CreateAppTemplateDialog = dynamic(() => import('@/features/app-creation/template-dialog'), {
   ssr: false,
 })
 

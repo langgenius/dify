@@ -14,7 +14,7 @@ import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStore } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../hooks/use-schedule-draft-save'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
 import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
@@ -58,10 +58,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const zoom = useStore((state) => state.transform[2])
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
-  const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()
-  const viewportReadOnly = workflowReadOnly && !builderCanvasActive
+  const { canvasReadOnly, handleViewportUserInteraction } = useWorkflowViewport()
+  const viewportReadOnly = workflowReadOnly && !canvasReadOnly
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
@@ -122,7 +122,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   ]
 
   const handleZoom = (type: ZoomType) => {
-    if (getWorkflowReadOnly() && !builderCanvasActive) return
+    if (getWorkflowReadOnly() && !canvasReadOnly) return
 
     if (type === ZoomType.toggleUserComments) {
       if (!isCommentMode) onToggleUserComments?.()
@@ -175,6 +175,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               e.stopPropagation()
               handleViewportUserInteraction()
               zoomOut()
+              handleSyncWorkflowDraft()
             }}
           >
             <span
@@ -282,6 +283,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               e.stopPropagation()
               handleViewportUserInteraction()
               zoomIn()
+              handleSyncWorkflowDraft()
             }}
           >
             <span

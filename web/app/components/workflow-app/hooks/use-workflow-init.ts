@@ -5,8 +5,11 @@ import { ORPCError } from '@orpc/client'
 import { CancelledError, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useWorkflowAppSelector as useStore,
+  useWorkflowAppStore as useWorkflowStore,
+} from '@/app/components/workflow-app/store/workflow'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -14,7 +17,7 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
+import { useWorkflowDraftGraphForCanvas } from '../draft/use-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const emptyAccount = {

@@ -242,9 +242,11 @@
 
 # Frontend - App - List and Creation
 /web/app/components/apps/ @JzoNgKVO @iamjoel
-/web/app/components/app/create-app-dialog/ @JzoNgKVO @iamjoel
-/web/app/components/app/create-app-modal/ @JzoNgKVO @iamjoel
-/web/app/components/app/create-from-dsl-modal/ @JzoNgKVO @iamjoel
+
+# Frontend - Builder and App Creation
+/web/features/dify-builder/ @WTW0313
+/web/features/app-creation/ @WTW0313
+/web/features/dsl-import/ @WTW0313
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel

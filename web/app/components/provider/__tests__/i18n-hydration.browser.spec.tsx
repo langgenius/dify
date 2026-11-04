@@ -4,8 +4,8 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToReadableStream } from 'react-dom/server.browser'
 import { useTranslation } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
-import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
+import { RosterCreateActions } from '@/features/agent-v2/roster/components/create-menu-actions'
 import { serializeResourceUpdate } from '@/i18n/streamed-resources'
 
 vi.mock('react-i18next', async (importOriginal) => await importOriginal())
@@ -32,7 +32,7 @@ function FeaturePage() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <CreateAppMenu onCreateBlank={() => {}} />
+      <RosterCreateActions onCreateBlank={() => {}} />
       <button onClick={() => setOpen(true)}>Show deferred feature</button>
       {open && <DeferredFeature />}
     </>

@@ -1,3 +1,4 @@
+import type { ResultPanelProps } from '../run/result-panel'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,12 +26,9 @@ import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
-type WorkflowPreviewProps = {
-  onFixRun?: (runId: string) => void
-  fixWithBuilderDisabled?: boolean
-}
+type WorkflowPreviewProps = Pick<ResultPanelProps, 'renderFailureActions'>
 
-const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewProps) => {
+const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
@@ -292,8 +290,7 @@ const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewPr
                   : undefined
               }
               onOpenTracingTab={handleOpenTracingTab}
-              onFixRun={onFixRun}
-              fixWithBuilderDisabled={fixWithBuilderDisabled}
+              renderFailureActions={renderFailureActions}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

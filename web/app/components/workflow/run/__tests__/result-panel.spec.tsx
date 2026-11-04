@@ -60,26 +60,34 @@ const createAgentLog = (label: string): AgentLogItemWithChildren => ({
 })
 
 describe('ResultPanel', () => {
-  it('offers Builder only for a failed workflow run', async () => {
+  it('renders supplied actions only for a failed workflow run', async () => {
     const user = userEvent.setup()
     const onFixRun = vi.fn()
     const { rerender } = render(
       <ResultPanel
         status={WorkflowRunningStatus.Failed}
         workflowRunId="failed-run"
-        onFixRun={onFixRun}
+        renderFailureActions={(runId) => (
+          <button type="button" onClick={() => onFixRun(runId)}>
+            Recover run
+          </button>
+        )}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))
+    await user.click(screen.getByRole('button', { name: 'Recover run' }))
     expect(onFixRun).toHaveBeenCalledWith('failed-run')
     rerender(
       <ResultPanel
         status={WorkflowRunningStatus.Succeeded}
         workflowRunId="successful-run"
-        onFixRun={onFixRun}
+        renderFailureActions={(runId) => (
+          <button type="button" onClick={() => onFixRun(runId)}>
+            Recover run
+          </button>
+        )}
       />,
     )
-    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Recover run' })).not.toBeInTheDocument()
   })
   it('should render status, editors, alerts, error strategy tip, and metadata', () => {
     render(

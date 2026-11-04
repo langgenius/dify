@@ -1,19 +1,19 @@
-import type { useDifyBuilderSessionController } from '@/app/components/workflow-app/components/dify-builder/session/use-session-controller'
+import type { useDifyBuilderSessionController } from '@/features/dify-builder/session/use-session-controller'
 import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
-import { CreateAppEntry } from '@/app/components/app/create-app-entry'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { CreateAppEntry } from '@/features/app-creation/entry'
 import {
   builderDefaultModel,
   builderModel,
   builderModelList,
   builderModelListQueryKey,
   createBuilderQueryClient,
-} from '@/app/components/workflow-app/components/dify-builder/__tests__/model-fixtures'
-import DifyBuilderComposer from '@/app/components/workflow-app/components/dify-builder/composer'
-import { DifyBuilderProvider } from '@/app/components/workflow-app/components/dify-builder/provider'
+} from '@/features/dify-builder/__tests__/model-fixtures'
+import DifyBuilderComposer from '@/features/dify-builder/composer'
+import { DifyBuilderProvider } from '@/features/dify-builder/editor'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -87,23 +87,20 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
   }),
 }))
-vi.mock('@/app/components/workflow-app/components/dify-builder/provider/use-run-events', () => ({
+vi.mock('@/features/dify-builder/editor/use-run-events', () => ({
   useDifyBuilderRunEvents: () => mocks.runEvents,
 }))
-vi.mock(
-  '@/app/components/workflow-app/components/dify-builder/session/use-session-controller',
-  () => ({
-    useDifyBuilderSessionController: (
-      ...args: Parameters<typeof useDifyBuilderSessionController>
-    ) => {
-      mocks.useSessionController(...args)
-      return {
-        startBuild: mocks.startBuild,
-        onCanvasRefreshed: mocks.runEvents.onCanvasRefreshed,
-      }
-    },
-  }),
-)
+vi.mock('@/features/dify-builder/session/use-session-controller', () => ({
+  useDifyBuilderSessionController: (
+    ...args: Parameters<typeof useDifyBuilderSessionController>
+  ) => {
+    mocks.useSessionController(...args)
+    return {
+      startBuild: mocks.startBuild,
+      onCanvasRefreshed: mocks.runEvents.onCanvasRefreshed,
+    }
+  },
+}))
 
 const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: mocks.updateUrl })
 

@@ -40,8 +40,8 @@ import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/task
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCanImportAgents } from '@/features/agent-v2/permissions'
+import { useImportDSL } from '@/features/app-creation/use-import-dsl'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
@@ -55,7 +55,7 @@ import { HomeTemplatesHeader } from './templates-header'
 
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 const DSLConfirmModal = dynamic(
-  () => import('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'),
+  () => import('@/features/app-creation/dsl-version-confirm-dialog'),
   { ssr: false },
 )
 

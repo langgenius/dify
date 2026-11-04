@@ -1,8 +1,8 @@
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
+import { renderWorkflowFlowHook } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createWorkflowSlice } from '../../store/workflow/workflow-slice'
 import { useAutoOnboarding } from '../use-auto-onboarding'
 

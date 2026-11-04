@@ -34,8 +34,6 @@ export type PanelSliceShape = {
   setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
   activeCommentId?: string | null
   setActiveCommentId: (commentId: string | null) => void
-  showDifyBuilderPanel: boolean
-  setShowDifyBuilderPanel: (showDifyBuilderPanel: boolean) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
@@ -77,6 +75,4 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
   setInitShowLastRunTab: (initShowLastRunTab) => set(() => ({ initShowLastRunTab })),
   activeCommentId: null,
   setActiveCommentId: (commentId: string | null) => set(() => ({ activeCommentId: commentId })),
-  showDifyBuilderPanel: false,
-  setShowDifyBuilderPanel: (showDifyBuilderPanel) => set(() => ({ showDifyBuilderPanel })),
 })

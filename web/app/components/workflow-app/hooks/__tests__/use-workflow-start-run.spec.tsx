@@ -6,11 +6,9 @@ import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import {
-  baseRunningData,
-  renderWorkflowCanvasHook,
-} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { baseRunningData } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
@@ -19,8 +17,8 @@ import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
 const mockHandleRun = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 
-vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({
+vi.mock('../../draft/use-draft-save', () => ({
+  useWorkflowDraftSaveByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))

@@ -9,7 +9,7 @@ import Options from './options'
 
 type DocumentProcessingProps = {
   dataSourceNodeId: string
-  onProcess: (data: Record<string, unknown>) => void
+  onProcess: (data: Record<string, unknown>) => void | Promise<void>
   onBack: () => void
 }
 

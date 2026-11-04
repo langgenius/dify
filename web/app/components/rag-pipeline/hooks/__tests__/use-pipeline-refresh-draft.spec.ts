@@ -1,4 +1,4 @@
-import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
+import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -32,11 +32,11 @@ const createDraft = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const renderRefreshDraft = () =>
+const renderRefreshDraft = (initialStoreState: Partial<Shape> = {}) =>
   renderWorkflowCanvasHook(() => usePipelineRefreshDraft(), {
     resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
     injectWorkflowStoreSliceFn: createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn,
-    initialStoreState: { syncWorkflowDraftHash: 'old-hash' },
+    initialStoreState: { syncWorkflowDraftHash: 'old-hash', ...initialStoreState },
   })
 
 describe('usePipelineRefreshDraft', () => {
@@ -48,15 +48,23 @@ describe('usePipelineRefreshDraft', () => {
     mockFetchWorkflowDraft.mockReturnValue(pending.promise)
     const { result, store } = renderRefreshDraft()
 
-    act(() => result.current.handleRefreshWorkflowDraft())
+    let refreshing!: ReturnType<typeof result.current.handleRefreshWorkflowDraft>
+    act(() => {
+      refreshing = result.current.handleRefreshWorkflowDraft()
+    })
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/test-pipeline-id/workflows/draft',
+    await waitFor(() =>
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        '/rag/pipelines/test-pipeline-id/workflows/draft',
+      ),
     )
     expect(store.getState().isSyncingWorkflowDraft).toBe(true)
     expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
 
-    await act(async () => pending.resolve(draft))
+    await act(async () => {
+      pending.resolve(draft)
+      await refreshing
+    })
 
     await waitFor(() => expect(store.getState().isSyncingWorkflowDraft).toBe(false))
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledExactlyOnceWith(draft.graph)
@@ -77,7 +85,9 @@ describe('usePipelineRefreshDraft', () => {
     )
     const { result, store } = renderRefreshDraft()
 
-    act(() => result.current.handleRefreshWorkflowDraft())
+    await act(async () => {
+      await result.current.handleRefreshWorkflowDraft()
+    })
 
     await waitFor(() => expect(store.getState().isSyncingWorkflowDraft).toBe(false))
     expect(store.getState()).toMatchObject({
@@ -91,17 +101,16 @@ describe('usePipelineRefreshDraft', () => {
 
   it('clears environment state when the draft has no environment variables', async () => {
     mockFetchWorkflowDraft.mockResolvedValue(createDraft({ environment_variables: undefined }))
-    const { result, store } = renderRefreshDraft()
-    act(() => {
-      store.setState({
-        envSecrets: { stale: 'value' },
-        environmentVariables: [
-          { id: 'stale', name: 'STALE', value_type: 'string', value: 'x', description: '' },
-        ],
-      })
+    const { result, store } = renderRefreshDraft({
+      envSecrets: { stale: 'value' },
+      environmentVariables: [
+        { id: 'stale', name: 'STALE', value_type: 'string', value: 'x', description: '' },
+      ],
     })
 
-    act(() => result.current.handleRefreshWorkflowDraft())
+    await act(async () => {
+      await result.current.handleRefreshWorkflowDraft()
+    })
 
     await waitFor(() => expect(store.getState().isSyncingWorkflowDraft).toBe(false))
     expect(store.getState()).toMatchObject({ envSecrets: {}, environmentVariables: [] })

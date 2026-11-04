@@ -13,7 +13,7 @@ import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-inp
 import { Markdown } from '@/app/components/base/markdown'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
@@ -149,7 +149,7 @@ const PreviewButton = ({
 const ServerPreviewTrigger = ({ nodeId }: PreviewTriggerProps & { nodeId: string }) => {
   const { t } = useTranslation(['workflow', 'common'])
   const resource = useAtomValue(editorResourceAtom)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useScheduleDraftSave()
   const panelWidth = useStore((state) => state.panelWidth)
   const [open, setOpen] = React.useState(false)
   const buttonRef = React.useRef<HTMLButtonElement>(null)

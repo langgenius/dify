@@ -3,7 +3,7 @@ import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from '../store'
 import { getLayoutByELK, getLayoutForChildNodes } from '../utils/elk-layout'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useScheduleDraftSave } from './use-schedule-draft-save'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 import {
@@ -19,7 +19,7 @@ export const useWorkflowOrganize = () => {
   const reactflow = useReactFlow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
 
   const handleLayout = useCallback(async () => {
     if (getNodesReadOnly()) return

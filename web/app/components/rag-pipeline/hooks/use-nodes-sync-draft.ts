@@ -1,25 +1,24 @@
-import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { SyncDraftCallback, SyncDraftResult } from '@/app/components/workflow/hooks-store'
 import { safe } from '@orpc/client'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
 } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
+import { useRagPipelineStore } from '../store'
 import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
-  const workflowStore = useWorkflowStore()
+  const workflowStore = useRagPipelineStore()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
   const getPostParams = useCallback(() => {
@@ -27,8 +26,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const nodesOriginal = getNodes()
     const nodes = nodesOriginal.filter((node) => !node.data._isTempNode)
     const [x, y, zoom] = transform
-    const { environmentVariables, syncWorkflowDraftHash, ragPipelineVariables } =
-      workflowStore.getState()
+    const {
+      environmentVariables,
+      syncWorkflowDraftHash,
+      ragPipelineVariables,
+      pipelineDraftGeneration,
+    } = workflowStore.getState()
 
     if (pipelineId && !!nodes.length) {
       const producedNodes = produce(nodes, (draft) => {
@@ -47,6 +50,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       })
       return {
         pipelineId,
+        generation: pipelineDraftGeneration,
         url: `/rag/pipelines/${pipelineId}/workflows/draft`,
         params: {
           graph: {
@@ -78,8 +82,15 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
       notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
-    ) => {
-      if (getNodesReadOnly()) return
+    ): Promise<SyncDraftResult | null> => {
+      if (
+        getNodesReadOnly() ||
+        baseParams.generation !== workflowStore.getState().pipelineDraftGeneration ||
+        workflowStore.getState().isSyncingWorkflowDraft
+      ) {
+        callback?.onSettled?.()
+        return null
+      }
 
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
         workflowStore.getState()
@@ -93,15 +104,17 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         ),
       )
       try {
+        if (baseParams.generation !== workflowStore.getState().pipelineDraftGeneration) return null
         if (error) {
           if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft()
           callback?.onError?.()
-          return
+          return null
         }
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
+        return { hash: res.hash, updatedAt: res.updated_at }
       } finally {
         callback?.onSettled?.()
       }
@@ -109,18 +122,22 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     [getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft],
   )
 
-  const queueSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
   const doSyncWorkflowDraft = useCallback(
     (notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
-      if (getNodesReadOnly()) return Promise.resolve()
+      if (getNodesReadOnly() || workflowStore.getState().isSyncingWorkflowDraft)
+        return Promise.resolve(null)
 
       // Capture before ReactFlow resets its store during route unmount.
       const postParams = getPostParams()
-      if (!postParams) return Promise.resolve()
+      if (!postParams) return Promise.resolve(null)
 
-      return queueSyncWorkflowDraft(postParams, notRefreshWhenSyncError, callback)
+      return workflowStore
+        .getState()
+        .enqueuePipelineDraftOperation(() =>
+          performSync(postParams, notRefreshWhenSyncError, callback),
+        )
     },
-    [getNodesReadOnly, getPostParams, queueSyncWorkflowDraft],
+    [getNodesReadOnly, getPostParams, performSync, workflowStore],
   )
 
   return {

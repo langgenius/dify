@@ -1,10 +1,10 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { useHydrateAtoms } from 'jotai/utils'
 import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { difyBuilderPendingCreationAtom } from '../../components/dify-builder/creation'
-import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
+import { useWorkflowDraftGraphForCanvas } from '../../draft/use-draft-graph-for-canvas'
 import { useWorkflowTemplate } from '../use-workflow-template'
 
 const renderTemplateHook = (mode: AppMode, pendingCreationAppId?: string) => {

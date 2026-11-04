@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
-import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createTestWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
@@ -60,8 +60,8 @@ vi.mock('@/service/base', async (importOriginal) => ({
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
 
-vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({
+vi.mock('../../draft/use-draft-save', () => ({
+  useWorkflowDraftSaveByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))

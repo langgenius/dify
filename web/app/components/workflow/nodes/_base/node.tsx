@@ -23,7 +23,6 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { useToolIcon } from '../../hooks/use-tool-icon'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
-import { BuilderEditBorder } from './builder-edit-border'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -67,7 +66,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
-  const isBuilderEditTarget = useStore((s) => s.builderEditTargetNodeIds.includes(id))
+  const renderNodeDecoration = useHooksStore((s) => s.renderNodeDecoration)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
   )
@@ -176,7 +175,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
-      {isBuilderEditTarget && <BuilderEditBorder />}
+      {renderNodeDecoration?.(id)}
       {pluginInstallLocked && (
         <button
           type="button"

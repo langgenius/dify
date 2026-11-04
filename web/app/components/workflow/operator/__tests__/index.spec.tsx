@@ -7,11 +7,11 @@ import Operator from '../index'
 const mockEmit = vi.fn()
 const mockDeleteAllInspectorVars = vi.fn()
 
-vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+vi.mock('../../hooks/use-schedule-draft-save', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-schedule-draft-save')>()
   return {
     ...actual,
-    useNodesSyncDraft: () => ({
+    useScheduleDraftSave: () => ({
       handleSyncWorkflowDraft: vi.fn(),
     }),
   }

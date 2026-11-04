@@ -1,19 +1,22 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
-import type { WorkflowDraftRefreshResult } from '../../hooks/use-workflow-refresh-draft'
-import type { SessionView } from '../dify-builder/types'
+import type { WorkflowDraftRefreshResult } from '../../draft/use-draft-refresh'
+import type { SessionView } from '@/features/dify-builder/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
+import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import {
+  builderModel,
+  createBuilderQueryClient,
+} from '@/features/dify-builder/__tests__/model-fixtures'
+import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
+import { difyBuilderDraftAtom, difyBuilderErrorAtom } from '@/features/dify-builder/state'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { builderModel, createBuilderQueryClient } from '../dify-builder/__tests__/model-fixtures'
-import { difyBuilderPendingCreationAtom } from '../dify-builder/creation'
-import { difyBuilderDraftAtom, difyBuilderErrorAtom } from '../dify-builder/store'
 import WorkflowMain from '../workflow-main'
 
 let workflowStore: ReturnType<typeof createWorkflowStore>
@@ -39,9 +42,11 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: () => undefined,
   useFeaturesStore: () => ({ getState: () => ({ features: {} }) }),
 }))
-vi.mock('@/app/components/workflow/store', async () => {
+vi.mock('@/app/components/workflow/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/workflow/store')>()
   const { useStore } = await import('zustand')
   return {
+    ...actual,
     useStore: <T,>(selector: (value: ReturnType<typeof workflowStore.getState>) => T) =>
       useStore(workflowStore, selector),
     useWorkflowStore: () => workflowStore,
@@ -137,10 +142,10 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
   useSetWorkflowVarsWithValue: () => ({}),
 }))
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
+vi.mock('../../draft/use-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({}),
 }))
-vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
+vi.mock('../../draft/use-draft-refresh', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mocks.refreshDraft }),
 }))
 vi.mock('../../hooks/use-workflow-run', () => ({ useWorkflowRunByCanEdit: () => ({}) }))
@@ -189,7 +194,7 @@ describe('Workflow creation with App Builder', () => {
     mocks.collaborative = true
     mocks.graphReady = false
     mocks.graphReadyListener = undefined
-    workflowStore = createWorkflowStore({})
+    workflowStore = createWorkflowStore()
     workflowStore.setState({
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'initial-hash',

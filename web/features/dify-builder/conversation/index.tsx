@@ -1,0 +1,246 @@
+import type { DifyBuilderMaterialReceiptResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  ConversationItem,
+  DifyBuilderLocalInteractionResponse,
+  DifyBuilderLocalUserMessage,
+  FormField,
+} from '../types'
+import type { DifyBuilderConversationGroup } from './group-conversation-items'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useDifyBuilderLocale } from '../i18n/use-builder-locale'
+import { ConversationCard, UserMessage } from './conversation-card'
+import { groupConversationItems } from './group-conversation-items'
+import { StreamingAssistantTurn } from './streaming-assistant-turn'
+
+type ConversationRenderEntry =
+  | DifyBuilderConversationGroup
+  | { type: 'local-user'; message: DifyBuilderLocalUserMessage }
+  | { type: 'local-interaction'; response: DifyBuilderLocalInteractionResponse }
+
+type FormResponse = Extract<ConversationItem, { kind: 'interaction_response' }>
+
+const sourceFormFieldsFor = (
+  items: ConversationItem[],
+  response: FormResponse,
+): FormField[] | undefined => {
+  if (response.payload.interaction_kind !== 'form') return undefined
+  const responseFields = response.payload.fields ?? []
+  let source: Extract<ConversationItem, { kind: 'form' }> | undefined
+  for (const item of items) {
+    if (item.kind !== 'form' || item.at_version >= response.at_version) continue
+    const fields = item.payload.fields ?? []
+    if (
+      fields.length !== responseFields.length ||
+      !fields.every((field, index) => field.key === responseFields[index]?.key)
+    )
+      continue
+    if (
+      !source ||
+      item.at_version > source.at_version ||
+      (item.at_version === source.at_version && item.seq > source.seq)
+    )
+      source = item
+  }
+  return source?.payload.fields
+}
+
+const firstSequence = (group: DifyBuilderConversationGroup) =>
+  group.type === 'standalone' ? group.item.seq : (group.cards[0]?.seq ?? group.turn.seq)
+
+const insertLocalEntry = (
+  entries: ConversationRenderEntry[],
+  entry: ConversationRenderEntry,
+  afterSequence: number,
+) => {
+  const insertionIndex = entries.findIndex(
+    (candidate) =>
+      candidate.type !== 'local-user' &&
+      candidate.type !== 'local-interaction' &&
+      firstSequence(candidate) > afterSequence,
+  )
+  if (insertionIndex < 0) return [...entries, entry]
+  return [...entries.slice(0, insertionIndex), entry, ...entries.slice(insertionIndex)]
+}
+
+const addLocalEntries = (
+  groups: DifyBuilderConversationGroup[],
+  items: ConversationItem[],
+  message?: DifyBuilderLocalUserMessage | null,
+  interactionResponse?: DifyBuilderLocalInteractionResponse | null,
+): ConversationRenderEntry[] => {
+  let entries: ConversationRenderEntry[] = [...groups]
+  if (
+    message &&
+    !items.some(
+      (item) =>
+        item.kind === 'user' &&
+        (message.turnId
+          ? item.payload.turn_id === message.turnId
+          : item.payload.text === message.text),
+    )
+  )
+    entries = insertLocalEntry(entries, { type: 'local-user', message }, message.afterSequence)
+  if (
+    interactionResponse &&
+    !items.some(
+      (item) =>
+        item.kind === 'interaction_response' &&
+        item.at_version === interactionResponse.item.at_version,
+    )
+  )
+    entries = insertLocalEntry(
+      entries,
+      { type: 'local-interaction', response: interactionResponse },
+      interactionResponse.afterSequence,
+    )
+  return entries
+}
+
+export const DifyBuilderConversation = memo(
+  ({
+    attachments = [],
+    busy,
+    interrupted,
+    items,
+    localInteractionResponse,
+    localUserMessage,
+    onStreamingContentChange,
+  }: {
+    attachments?: DifyBuilderMaterialReceiptResponse[]
+    busy: boolean
+    interrupted: boolean
+    items: ConversationItem[]
+    localInteractionResponse?: DifyBuilderLocalInteractionResponse | null
+    localUserMessage?: DifyBuilderLocalUserMessage | null
+    onStreamingContentChange?: () => void
+  }) => {
+    const locale = useDifyBuilderLocale()
+    const { t } = useTranslation(['difyBuilder'], { lng: locale })
+    const groups = useMemo(() => groupConversationItems(items), [items])
+    const sourceFormFieldsByResponse = useMemo(() => {
+      const result = new Map<number, FormField[]>()
+      for (const item of items) {
+        if (item.kind !== 'interaction_response') continue
+        const sourceFields = sourceFormFieldsFor(items, item)
+        if (sourceFields) result.set(item.seq, sourceFields)
+      }
+      return result
+    }, [items])
+    const localSourceFormFields = useMemo(
+      () =>
+        localInteractionResponse
+          ? sourceFormFieldsFor(items, localInteractionResponse.item)
+          : undefined,
+      [items, localInteractionResponse],
+    )
+    const entries = useMemo(
+      () => addLocalEntries(groups, items, localUserMessage, localInteractionResponse),
+      [groups, items, localInteractionResponse, localUserMessage],
+    )
+    return (
+      <div className="flex flex-col gap-3 px-4 py-4">
+        {interrupted && (
+          <div
+            role="alert"
+            className="rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
+          >
+            {t(($) => $.interrupted, { ns: 'difyBuilder' })}
+          </div>
+        )}
+        <div
+          role="log"
+          aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
+          aria-live="polite"
+          aria-relevant="additions"
+          className="flex flex-col gap-3"
+        >
+          {entries.map((group) => {
+            if (group.type === 'local-user') {
+              return <UserMessage key={`user-${group.message.localId}`} text={group.message.text} />
+            }
+
+            if (group.type === 'local-interaction') {
+              return (
+                <ConversationCard
+                  key={`interaction-${group.response.item.at_version}`}
+                  item={group.response.item}
+                  invalidated={false}
+                  sourceFormFields={localSourceFormFields}
+                />
+              )
+            }
+
+            if (group.type === 'standalone') {
+              if (group.item.kind === 'user') {
+                return (
+                  <UserMessage
+                    key={`user-${group.item.payload.turn_id}`}
+                    text={group.item.payload.text}
+                  />
+                )
+              }
+              return (
+                <ConversationCard
+                  key={
+                    group.item.kind === 'interaction_response'
+                      ? `interaction-${group.item.at_version}`
+                      : `${group.item.seq}-${group.item.kind}`
+                  }
+                  item={group.item}
+                  invalidated={false}
+                  sourceFormFields={sourceFormFieldsByResponse.get(group.item.seq)}
+                />
+              )
+            }
+
+            return (
+              <div
+                key={`${group.turn.seq}-${group.turn.kind}`}
+                className={cn('flex flex-col gap-3', group.invalidated && 'opacity-70')}
+              >
+                {group.invalidated && (
+                  <div className="flex items-center gap-1.5 px-1 system-2xs-medium-uppercase text-text-tertiary">
+                    <span aria-hidden className="i-ri-history-line size-3.5" />
+                    <span>{t(($) => $.invalidated, { ns: 'difyBuilder' })}</span>
+                  </div>
+                )}
+                <ConversationCard item={group.turn} invalidated={group.invalidated} />
+                {group.cards.map((item) => (
+                  <ConversationCard
+                    key={`${item.seq}-${item.kind}`}
+                    item={item}
+                    invalidated={group.invalidated}
+                    sourceFormFields={sourceFormFieldsByResponse.get(item.seq)}
+                  />
+                ))}
+              </div>
+            )
+          })}
+        </div>
+        {attachments.flatMap((receipt) =>
+          receipt.attachments.map((file) => (
+            <div
+              key={`${receipt.id}-${file.upload_file_id}`}
+              className="flex items-center gap-2 rounded-lg border border-components-panel-border px-3 py-2 system-xs-regular"
+            >
+              <span aria-hidden className="i-ri-attachment-2 size-4 shrink-0 text-text-tertiary" />
+              <span className="min-w-0 flex-1 truncate text-text-secondary">{file.name}</span>
+              <span className="shrink-0 text-text-tertiary">
+                {t(
+                  ($) =>
+                    $[
+                      `attachments.${receipt.status === 'superseded' ? 'superseded' : file.status}`
+                    ],
+                  { ns: 'difyBuilder' },
+                )}
+              </span>
+            </div>
+          )),
+        )}
+        <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
+      </div>
+    )
+  },
+)
