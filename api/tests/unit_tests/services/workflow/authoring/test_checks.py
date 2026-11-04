@@ -2,7 +2,7 @@ import io
 import itertools
 import zipfile
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Sized
 from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.impl.tool import PluginToolManager
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from libs.archive_writer import ArchiveLimits
@@ -22,11 +23,12 @@ from repositories.app.dsl_import_repository import DslImportRepository
 from services.app.console_service import ConsoleAppNotFoundError
 from services.tools.tool_sources import resolve_tool
 from services.workflow.authoring import FillContext, PackageCheck, check_package, fill_package, tool_reference
+from services.workflow.authoring.canvas_defaults import CanvasNode, with_canvas_defaults
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check, DslCheckRequest
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
-from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph, data_loc
 from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
 
 pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
@@ -36,6 +38,7 @@ CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 LIMITS = ArchiveLimits(max_entries=64, max_bytes=16 * 1024 * 1024)
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 APP = "app.yaml"
+MISSING_ERROR_TYPE = "missing"
 MANIFEST = "manifest.yaml"
 ITERATION_AND_NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
 # basic_chatflow.yml is left out of the clean exports and of the quiet purpose test: the export never picked a model.
@@ -403,6 +406,65 @@ def test_an_unknown_node_version_gets_no_purpose_issue(dsl: DslCheckRequest) -> 
     check = _chain(dsl, START, future, END)
 
     assert _empty_locs(check, "human") == set()
+
+
+@pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
+def test_a_filled_bare_container_still_needs_its_start_child(container: str, dsl: DslCheckRequest) -> None:
+    check = _check(dsl, [START, {"id": "box", "data": {"type": container}}, END])
+
+    invalid = {issue.loc for issue in _issues_of(check, "box") if issue.code == IssueCode.NODE_DATA_INVALID}
+    assert _data("box", "start_node_id") in invalid
+
+
+def _plain_seed(node: CanvasNode) -> dict[str, object]:
+    version = get_node_type_classes_mapping()[node.value][LATEST_VERSION].version()
+    return {"type": node.value, "version": version, "title": node.value}
+
+
+def _field(loc: tuple[str | int, ...]) -> str | int | None:
+    relative = loc[len(data_loc("node")) :]
+    return relative[0] if relative else None
+
+
+def _missing_fields(data: dict[str, object]) -> set[str | int | None]:
+    issues = check_graph({"nodes": [{"id": "node", "data": data}], "edges": []}, mode=AppMode.WORKFLOW)
+    return {
+        _field(issue.loc)
+        for issue in issues
+        if issue.code == IssueCode.NODE_DATA_INVALID
+        if issue.error_type == MISSING_ERROR_TYPE
+    }
+
+
+# Empty canvas values that are a true "none": a code node with no outputs, a request with no headers or params.
+NONE_DEFAULTS = frozenset(
+    {(CanvasNode.CODE, "outputs"), (CanvasNode.HTTP_REQUEST, "headers"), (CanvasNode.HTTP_REQUEST, "params")}
+)
+
+
+def _holds_nothing(data: Mapping[str, object], field: str | int | None) -> bool:
+    value = data.get(str(field))
+    if isinstance(value, Sized):
+        return len(value) == 0
+    return value is None
+
+
+@pytest.mark.parametrize("node", list(CanvasNode))
+def test_fill_never_hides_a_required_field_behind_an_empty_canvas_value(node: CanvasNode, dsl: DslCheckRequest) -> None:
+    seed = _plain_seed(node)
+    filled = with_canvas_defaults(seed)
+
+    check = _check(dsl, [{"id": "node", "data": seed}])
+
+    reported = {
+        _field(issue.loc)
+        for issue in _issues_of(check, "node")
+        if issue.code in {IssueCode.NODE_DATA_INVALID, AuthoringIssueCode.FIELD_EMPTY}
+    }
+    unset = {
+        field for field in _missing_fields(seed) if (node, field) not in NONE_DEFAULTS if _holds_nothing(filled, field)
+    }
+    assert unset <= reported
 
 
 @pytest.mark.parametrize(

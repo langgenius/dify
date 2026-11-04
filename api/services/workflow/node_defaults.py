@@ -45,20 +45,6 @@ def _cases_from_legacy_conditions(data: Mapping[str, Any]) -> Mapping[str, Any]:
     return {**data, "cases": [case]}
 
 
-_HUMAN_INPUT_V1: Final = "1"
-
-
-def _is_human_input_v1(data: Mapping[str, Any]) -> bool:
-    """Version 2 of human-input keeps its recipients, not `delivery_methods`; a node with no version is version 1."""
-    version = data.get("version")
-    return version is None or version == _HUMAN_INPUT_V1
-
-
-# The types whose empty containers belong to some of their nodes only.
-_EMPTIES_APPLY: Final[Mapping[str, Callable[[Mapping[str, Any]], bool]]] = {
-    BuiltinNodeTypes.HUMAN_INPUT: _is_human_input_v1,
-}
-
 # Rewrites of old shapes to the one the editor reads, applied before the empty defaults.
 _NORMALIZERS: Final[Mapping[str, Callable[[Mapping[str, Any]], Mapping[str, Any]]]] = {
     BuiltinNodeTypes.IF_ELSE: _cases_from_legacy_conditions,
@@ -131,9 +117,6 @@ def editor_empties(data: Mapping[str, Any]) -> dict[str, Any]:
     """`data` plus the empty containers the editor reads for its type; keys already present win."""
     node_type = data.get("type")
     if not isinstance(node_type, str):
-        return dict(data)
-    applies = _EMPTIES_APPLY.get(node_type)
-    if applies is not None and not applies(data):
         return dict(data)
     return {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
 
