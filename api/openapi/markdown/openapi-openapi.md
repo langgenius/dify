@@ -3156,13 +3156,24 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
 
+#### FieldHintItemRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out | No |
+| description | string |  | Yes |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] |  | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
+
 #### FieldHintRow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default |  | The value the node runs with when the field is left out | No |
 | description | string |  | Yes |
-| example |  | The value the web canvas gives a new node at this field; left out when the canvas has none | No |
+| items | [ [FieldHintItemRow](#fieldhintitemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] |  | Yes |
 | required | boolean |  | Yes |
@@ -3825,7 +3836,7 @@ Query parameters for GET /node-types/<node_type>.
 | type | string |  | Yes |
 | version | string | The node's current version, the one the seed names | Yes |
 
-#### NodeTypeFieldRow
+#### NodeTypeFieldItemRow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -3833,7 +3844,18 @@ Query parameters for GET /node-types/<node_type>.
 | description | string | The first line of the field's description; include_schema=true has the whole text | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] | The values the field accepts | No |
-| purpose | boolean | True when the web canvas rejects the node with this field left empty | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
+
+#### NodeTypeFieldRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out; left out when there is none or it is null | No |
+| description | string | The first line of the field's description; include_schema=true has the whole text | No |
+| items | [ [NodeTypeFieldItemRow](#nodetypefielditemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] | The values the field accepts | No |
 | required | boolean |  | Yes |
 | type | string |  | Yes |
 
