@@ -118,7 +118,6 @@ def test_a_human_input_node_without_a_version_is_version_one_and_gains_no_v2_key
     filled = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, **data})
 
     assert V2_ONLY_KEYS.isdisjoint(filled)
-    assert filled["delivery_methods"] == []
     assert filled["timeout_unit"] == "day"
 
 
@@ -140,8 +139,8 @@ def test_a_filled_human_input_node_has_the_keys_of_its_version_only() -> None:
 
     assert V2_ONLY_KEYS.isdisjoint(filled["v1"])
     assert V2_ONLY_KEYS.isdisjoint(filled["v1-written"])
-    assert "delivery_methods" in filled["v1"]
-    assert set(filled["v2"]) >= V2_ONLY_KEYS
+    assert "timeout_unit" in filled["v1"]
+    assert "debug_mode" in filled["v2"]
     assert "delivery_methods" not in filled["v2"]
 
 
@@ -181,7 +180,7 @@ def test_a_written_value_wins_at_every_depth() -> None:
     assert filled["method"] == "post"
     assert filled["timeout"] == {"max_connect_timeout": 0, "max_read_timeout": 30, "max_write_timeout": 0}
     assert filled["retry_config"] == {"retry_enabled": False, "max_retries": 3, "retry_interval": 100}
-    assert filled["url"] == ""
+    assert "url" not in filled
 
 
 def test_a_nested_dict_the_node_wrote_is_not_merged_a_second_level_down() -> None:
@@ -189,7 +188,7 @@ def test_a_nested_dict_the_node_wrote_is_not_merged_a_second_level_down() -> Non
 
     filled = with_canvas_defaults(written)
 
-    assert filled["model"] == {"name": "gpt-4", "completion_params": {"top_p": 0.5}, "provider": "", "mode": "chat"}
+    assert filled["model"] == {"name": "gpt-4", "completion_params": {"top_p": 0.5}, "mode": "chat"}
 
 
 @pytest.mark.parametrize(
@@ -210,7 +209,7 @@ def test_a_block_whose_type_was_not_written_is_left_alone(authorization: dict[st
 def test_a_block_whose_type_matches_gets_the_missing_keys() -> None:
     written = {"type": BuiltinNodeTypes.HTTP_REQUEST, "body": {"type": "none"}}
 
-    assert with_canvas_defaults(written)["body"] == {"type": "none", "data": []}
+    assert with_canvas_defaults(written)["body"] == {"type": "none"}
 
 
 def test_lists_and_scalars_are_never_merged() -> None:
@@ -244,7 +243,6 @@ def test_an_llm_for_a_completion_model_gets_no_chat_prompt() -> None:
     assert filled["model"] == {
         "mode": "completion",
         "name": "m",
-        "provider": "",
         "completion_params": {"temperature": 0.7},
     }
     assert filled["vision"] == CanvasNode.LLM.data["vision"]
@@ -292,9 +290,17 @@ def test_data_without_a_canvas_node_is_returned_as_it_is(data: dict[str, object]
     assert with_canvas_defaults(data) == data
 
 
-def test_no_generated_key_starts_with_an_underscore_and_no_value_is_none() -> None:
-    for path, value in _walk(GENERATED):
-        assert value is not None, path
+EMPTY_VALUES: tuple[object, ...] = (None, "", [], {})
+
+
+def test_no_generated_value_is_empty() -> None:
+    for name, entry in GENERATED.items():
+        for path, value in _walk(entry)[1:]:
+            assert not any(value == empty and type(value) is type(empty) for empty in EMPTY_VALUES), (name, path)
+
+
+def test_no_generated_key_starts_with_an_underscore() -> None:
+    for path, _value in _walk(GENERATED):
         assert not (path and path[-1].startswith("_")), path
 
 
@@ -308,9 +314,8 @@ def test_every_purpose_loc_names_a_field() -> None:
 
 
 def test_canvas_value_is_the_canvas_value_at_a_loc() -> None:
-    assert canvas_value(BuiltinNodeTypes.LLM, ("model", "provider")) == ""
+    assert canvas_value(BuiltinNodeTypes.LLM, ("model", "mode")) == "chat"
     assert canvas_value(BuiltinNodeTypes.LLM, ("prompt_template", WILDCARD, "role")) == "system"
-    assert canvas_value(BuiltinNodeTypes.LLM, ("prompt_template", 0, "text")) == ""
     assert canvas_value(BuiltinNodeTypes.CODE, ("code_language",)) == "python3"
 
 
@@ -320,6 +325,8 @@ def test_canvas_value_is_the_canvas_value_at_a_loc() -> None:
         (BuiltinNodeTypes.LLM, ("nothing",)),
         (BuiltinNodeTypes.LLM, ("model", "provider", "deeper")),
         (BuiltinNodeTypes.LLM, ("prompt_template", 5)),
+        (BuiltinNodeTypes.LLM, ("prompt_template", 0, "text")),
+        (BuiltinNodeTypes.LLM, ("model", "provider")),
         (BuiltinNodeTypes.LLM, ("model", WILDCARD)),
         (BuiltinNodeTypes.END, ("outputs", WILDCARD)),
         (BuiltinNodeTypes.TOOL, ("tool_parameters",)),
@@ -370,7 +377,7 @@ def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
 def test_a_bare_if_else_fills_to_the_canvas_case() -> None:
     filled = _filled_data([{"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}])
 
-    assert filled["branch"]["cases"] == [{"case_id": "true", "conditions": [], "logical_operator": "and"}]
+    assert filled["branch"]["cases"] == [{"case_id": "true", "logical_operator": "and"}]
 
 
 def test_a_container_child_gets_canvas_defaults() -> None:

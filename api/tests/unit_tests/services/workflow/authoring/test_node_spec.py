@@ -226,7 +226,7 @@ def test_an_open_field_carries_the_canvas_example() -> None:
     spec = _spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "title": "LLM"}})
 
     fields = {hint.loc: hint for hint in spec.open_fields}
-    assert fields[("context",)].example == {"enabled": False, "variable_selector": []}
+    assert fields[("context",)].example == {"enabled": False}
     assert fields[("memory",)].example is None
 
 
@@ -236,7 +236,7 @@ def test_a_node_data_invalid_hint_carries_the_canvas_example() -> None:
 
     hint = node.hint(("context",), required=True)
 
-    assert hint.example == {"enabled": False, "variable_selector": []}
+    assert hint.example == {"enabled": False}
     assert hint.required is True
 
 
@@ -249,7 +249,7 @@ def test_a_hint_leaves_out_the_example_of_what_fill_withholds() -> None:
     assert chat_node is not None
 
     assert completion_node.hint(("prompt_template",), required=True).example is None
-    assert chat_node.hint(("prompt_template",), required=True).example == [{"role": "system", "text": ""}]
+    assert chat_node.hint(("prompt_template",), required=True).example == [{"role": "system"}]
 
 
 def test_a_hint_under_a_list_item_takes_the_example_of_the_first_item() -> None:
