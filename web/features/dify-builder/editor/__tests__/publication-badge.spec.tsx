@@ -2,7 +2,7 @@ import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.ge
 import type { SessionRunEvents } from '../../session/types'
 import type { CanvasEventData } from '../../types'
 import { act, waitFor } from '@testing-library/react'
-import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/store/workflow'
+import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-store'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
