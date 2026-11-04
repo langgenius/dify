@@ -16,7 +16,7 @@ from typing import Final, Self
 from pydantic import TypeAdapter
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
-from core.workflow.llm_environment_variable import parse_llm_model_selector
+from core.workflow.llm_environment_variable import parse_llm_model_selector, should_resolve_llm_model_selector
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
@@ -32,6 +32,8 @@ _TEXT_KEY: Final = "text"
 _JINJA2_TEXT_KEY: Final = "jinja2_text"
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _START_NODE_ID_KEY: Final = "start_node_id"
+_ITERATOR_SELECTOR_KEY: Final = "iterator_selector"
+_OUTPUT_SELECTOR_KEY: Final = "output_selector"
 _DELIVERY_METHODS_KEY: Final = "delivery_methods"
 _MODEL_SELECTOR_KEY: Final = "model_selector"
 _VARIABLES_KEY: Final = "variables"
@@ -55,6 +57,13 @@ def _nothing_withheld(_written: Mapping[str, object]) -> frozenset[str]:
 def _start_child_is_written_by_the_agent(_written: Mapping[str, object]) -> frozenset[str]:
     """A container's start child is a node id; the canvas's empty id is no default, and it hides the missing child."""
     return frozenset({_START_NODE_ID_KEY})
+
+
+def _iteration_references_are_written_by_the_agent(written: Mapping[str, object]) -> frozenset[str]:
+    """Like the start child, the selectors an iteration reads and writes have no default; the canvas's empty ones make
+    the node unreadable to check.
+    """
+    return _start_child_is_written_by_the_agent(written) | {_ITERATOR_SELECTOR_KEY, _OUTPUT_SELECTOR_KEY}
 
 
 def _completion_model_has_no_chat_prompt(written: Mapping[str, object]) -> frozenset[str]:
@@ -103,19 +112,24 @@ def _empty_llm_prompt(written: Mapping[str, object], loc: Loc) -> list[Loc]:
     return [loc] if _llm_prompt_is_empty(written) else []
 
 
-def _model_from_environment(written: Mapping[str, object]) -> bool:
-    """The node takes its model from the environment variable its `['env', name]` selector names."""
+def _names_an_environment_model(selector: object) -> bool:
     try:
-        parse_llm_model_selector(written.get(_MODEL_SELECTOR_KEY))
+        parse_llm_model_selector(selector)
     except ValueError:
         return False
     return True
 
 
 def _empty_llm_model(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    if _model_from_environment(written):
+    """A selector meant for an environment model (llm/utils.ts isEnvironmentModelSource) replaces the written model:
+    it passes when it names one, and asks for the model whatever is written when it doesn't (llm/default.ts:92-99).
+    """
+    selector = written.get(_MODEL_SELECTOR_KEY)
+    if not should_resolve_llm_model_selector(selector):
+        return _empty_purpose(written, loc)
+    if _names_an_environment_model(selector):
         return []
-    return _empty_purpose(written, loc)
+    return [loc]
 
 
 def _groups_enabled(written: Mapping[str, object]) -> bool:
@@ -261,14 +275,14 @@ class CanvasNode(StrEnum):
         ("cases", WILDCARD, "conditions", WILDCARD, "variable_selector"),
         ("cases", WILDCARD, "conditions", WILDCARD, "comparison_operator"),
     )
-    # iteration/default.ts:32, 39
+    # iteration/default.ts:32, 39; the canvas sets start_node_id itself, and a run fails without it
     ITERATION = (
         BuiltinNodeTypes.ITERATION,
         CanvasEdition(
             None,
             BuiltinNodeTypes.ITERATION,
-            (("iterator_selector",), ("output_selector",)),
-            withheld=_start_child_is_written_by_the_agent,
+            ((_ITERATOR_SELECTOR_KEY,), (_OUTPUT_SELECTOR_KEY,), (_START_NODE_ID_KEY,)),
+            withheld=_iteration_references_are_written_by_the_agent,
         ),
     )
     # knowledge-retrieval/default.ts:35; the model is required only for single retrieval (:41-45)
@@ -294,13 +308,14 @@ class CanvasNode(StrEnum):
             },
         ),
     )
-    # loop/default.ts:36, 51, 57
+    # loop/default.ts:36, 51, 57; start_node_id as for iteration
     LOOP = (
         BuiltinNodeTypes.LOOP,
         CanvasEdition(
             None,
             BuiltinNodeTypes.LOOP,
             (
+                (_START_NODE_ID_KEY,),
                 ("loop_variables", WILDCARD, "label"),
                 ("break_conditions", WILDCARD, "variable_selector"),
                 ("break_conditions", WILDCARD, "comparison_operator"),
