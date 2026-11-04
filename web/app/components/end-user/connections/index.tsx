@@ -4,6 +4,7 @@ import type { ConsumerConnectionProviderResponse } from '@dify/contracts/api/web
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
+import { getConnectionProviderLabel } from './model'
 import ProviderIcon from './provider-icon'
 
 type Props = {
@@ -35,7 +36,7 @@ export default function Connections({ providers }: Props) {
                 <ProviderIcon provider={provider} />
                 <div className="min-w-0 flex-1">
                   <h2 className="system-xl-semibold leading-5 wrap-anywhere text-text-secondary">
-                    {provider.label[language] || provider.label.en_US || provider.provider}
+                    {getConnectionProviderLabel(provider, language)}
                   </h2>
                   <p className="mt-1 system-sm-regular wrap-anywhere text-text-tertiary">
                     {provider.description[language] ?? provider.description.en_US}

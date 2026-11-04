@@ -5,8 +5,10 @@ import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useGetLanguage } from '@/context/i18n'
 import { getAvatarInitial } from '@/utils/avatar'
 import EmptyState from '../../empty-state'
+import { getConnectionProviderLabel } from '../model'
 import LinkedAppsDialog from './linked-apps-dialog'
 import RemoveConnectionDialog from './remove-connection-dialog'
 
@@ -67,6 +69,8 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
 
 export default function ProviderConnections({ provider, connections, onRemove }: Props) {
   const { t } = useTranslation(['app'])
+  const language = useGetLanguage()
+  const name = getConnectionProviderLabel(provider, language)
   const [removal, setRemoval] = useState<EndUserConnection | null>(null)
   const [removalOpen, setRemovalOpen] = useState(false)
   const removalTriggerRef = useRef<HTMLButtonElement | null>(null)
@@ -78,7 +82,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
       <div className="overflow-x-auto rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
         <table className="w-full min-w-180 table-fixed border-collapse has-[caption:focus-visible]:inset-ring-2 has-[caption:focus-visible]:inset-ring-state-accent-solid">
           <caption ref={captionRef} tabIndex={-1} className="sr-only">
-            {provider.provider}
+            {name}
           </caption>
           <colgroup>
             <col className="w-76" />
@@ -123,7 +127,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
                     title={t(($) => $['endUser.noProviderConnections'], { ns: 'app' })}
                     description={t(($) => $['endUser.noProviderConnectionsDescription'], {
                       ns: 'app',
-                      provider: provider.provider,
+                      provider: name,
                     })}
                   />
                 </td>

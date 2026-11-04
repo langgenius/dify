@@ -16,6 +16,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getEndUserAppHref } from '@/app/components/end-user/app-link'
 import Link from '@/next/link'
 import { webAppQuery } from '@/service/webapp'
@@ -34,6 +35,8 @@ function LinkedAppItem({ app }: { app: ConsumerAppResponse }) {
     <li className="h-16 border-b border-divider-subtle">
       <Link
         href={getEndUserAppHref(app)}
+        target="_blank"
+        rel="noopener noreferrer"
         aria-labelledby={nameId}
         aria-describedby={descriptionId}
         className="-ms-2 flex h-full items-center gap-3 rounded-md py-3 ps-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
@@ -97,7 +100,7 @@ function LinkedAppsContent({ connection }: { connection: EndUserConnection }) {
 
   return (
     <>
-      {apps.isPending && <p role="status">{t(($) => $.loading, { ns: 'common' })}</p>}
+      {apps.isPending && <LoadingPlaceholder className="py-8" />}
       {apps.isError && (
         <div className="space-y-2">
           <p role="alert" className="system-sm-regular text-text-destructive">

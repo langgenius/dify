@@ -2,11 +2,15 @@
 
 import type { ConnectionProvider } from './model'
 import { useTranslation } from 'react-i18next'
+import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
+import { getConnectionProviderLabel } from './model'
 import ProviderIcon from './provider-icon'
 
 export default function ProviderHeader({ provider }: { provider: ConnectionProvider }) {
   const { t } = useTranslation(['app'])
+  const language = useGetLanguage()
+  const name = getConnectionProviderLabel(provider, language)
 
   return (
     <header className="flex flex-col items-start gap-4 px-5 pt-3.5 pb-4 sm:px-8">
@@ -20,13 +24,11 @@ export default function ProviderHeader({ provider }: { provider: ConnectionProvi
       <div className="flex min-w-0 items-center gap-4">
         <ProviderIcon provider={provider} size="large" />
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="title-3xl-semi-bold wrap-anywhere text-text-primary">
-            {provider.provider}
-          </h1>
+          <h1 className="title-3xl-semi-bold wrap-anywhere text-text-primary">{name}</h1>
           <p className="system-sm-regular text-text-tertiary">
             {t(($) => $['endUser.providerConnectionsDescription'], {
               ns: 'app',
-              provider: provider.provider,
+              provider: name,
             })}
           </p>
         </div>
