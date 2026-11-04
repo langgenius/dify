@@ -49,6 +49,7 @@ import { isOutput } from '../../human-input/utils'
 import { getRequestURLCount } from '../message-template-utils'
 import useConfiguredChannels from '../use-configured-channels'
 import MessageTemplateBody from './message-template-body'
+import MessageTemplateSubject from './message-template-subject'
 
 const getTemplateVariableType = (selector: ValueSelector, availableVars: NodeOutPutVar[]) => {
   const vars = availableVars.find((item) => item.nodeId === selector[0])?.vars
@@ -287,14 +288,22 @@ const MessageTemplateSession = ({
       <DialogBody className="min-h-65 space-y-5">
         <Field name="subject" invalid={errors.subject && !draft.subject.trim()}>
           <FieldLabel
+            id={`${nodeId}-message-subject-label`}
             htmlFor={`${nodeId}-message-subject`}
+            onClick={() => {
+              if (!readonly && !pending)
+                document.getElementById(`${nodeId}-message-subject`)?.focus()
+            }}
             className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
           >
             {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
           </FieldLabel>
-          <Input
+          <MessageTemplateSubject
             id={`${nodeId}-message-subject`}
             value={draft.subject}
+            availableVars={availableVars}
+            availableNodes={availableNodes}
+            aria-labelledby={`${nodeId}-message-subject-label`}
             disabled={readonly || pending}
             aria-invalid={errors.subject && !draft.subject.trim()}
             aria-describedby={
@@ -302,9 +311,9 @@ const MessageTemplateSession = ({
                 ? `${nodeId}-message-subject-error`
                 : undefined
             }
-            onChange={(event) => {
+            onValueChange={(subject) => {
               resetTestResult()
-              setDraft((current) => ({ ...current, subject: event.target.value }))
+              setDraft((current) => ({ ...current, subject }))
             }}
             placeholder={t(($) => $['nodes.humanInputV2.template.subjectPlaceholder'], {
               ns: 'workflow',

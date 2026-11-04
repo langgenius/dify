@@ -5,6 +5,7 @@ import type {
 import type { HumanInputV2NodeType } from '../types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -89,8 +90,7 @@ describe('Human Input v2 panel composition', () => {
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.configure' }))
     const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
-    await user.clear(subject)
-    await user.type(subject, 'Updated subject')
+    await replacePromptEditorText(subject, 'Updated subject')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(data().message_template).toEqual({
       subject: 'Updated subject',
