@@ -164,6 +164,34 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:consumer-service-boundary]
+name = Account consumer use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.consumer_service
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    configs
+    tasks
+    flask
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:consumer-transport-boundary]
+name = Account consumer transport uses application services
+type = forbidden
+source_modules =
+    controllers.web.me
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:machinery-framework-boundary]
 name = API machinery is framework neutral
 type = forbidden
@@ -196,6 +224,18 @@ forbidden_modules =
     services.workspace.gateways
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-workspace-controller-boundary]
+name = Console workspace operations reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.workspace
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:network-access-group-service-boundary]
 name = Network access group application service is framework and persistence neutral
@@ -1236,3 +1276,31 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:workflow-test-credential-service]
+name = Builder test credential use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workflow_test_credentials
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    core
+    configs
+    tasks
+    flask
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workflow-test-credential-controller]
+name = Builder test credential transport uses the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.test_credentials
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True

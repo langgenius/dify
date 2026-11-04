@@ -19,6 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
+from core.plugin.plugin_service import PluginService
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -26,6 +27,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
+from extensions.application_services.consumer import build_consumer_service
 from extensions.application_services.data_sources import (
     DataSourceServices,
     build_data_source_credentials,
@@ -135,6 +137,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.consumer_service import ConsumerService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
@@ -147,6 +150,7 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.rbac_service import RBACService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -234,6 +238,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_test_credential_adapters import (
+    BuilderTestAccessGateway,
+    DraftTestCredentialPlanner,
+    WorkspaceTestCredentialGateway,
+)
+from services.workflow_test_credentials import WorkflowTestCredentialService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -284,11 +294,13 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    consumer: ConsumerService
     rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
+    workflow_test_credentials: WorkflowTestCredentialService
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
@@ -437,6 +449,8 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
+        plugin_readme=PluginService.fetch_plugin_readme,
+        plugin_asset=PluginService.extract_asset,
         connection_revisions=PluginConnectionRevisions(
             providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
             snapshots=EndUserConnectionRepository(session_factory=database_client),
@@ -585,6 +599,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
     end_user_connection_preflight = build_end_user_connection_preflight(
         database_client=database_client, connections=end_user_connections
     )
@@ -601,11 +616,44 @@ def build_application_services(
         now=lambda: datetime.now(UTC),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
+    installed_apps = build_installed_app_services(
+        database_client=database_client,
+        webapp_access=webapp_access,
+        get_workspace_role=workspace_repository.get_account_role,
+        webapp_auth_enabled=webapp_auth_enabled,
+    )
     return ApplicationServices(
+        consumer=build_consumer_service(
+            database_client=database_client,
+            access=installed_apps.access,
+            shared_apps_enabled=webapp_auth_enabled,
+            management=end_user_connections,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+        ),
         rbac=rbac,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
+        workflow_test_credentials=WorkflowTestCredentialService(
+            drafts=AppDefinitionQueryRepository(session_factory=database_client),
+            access=BuilderTestAccessGateway(
+                memberships=AppDefinitionQueryRepository(session_factory=database_client),
+                rbac_enabled=dify_config.RBAC_ENABLED,
+                can_run=lambda scope: RBACService.CheckAccess.check(
+                    scope.tenant_id,
+                    scope.account_id,
+                    scene="app_test_and_run",
+                    resource_type="app",
+                    resource_id=scope.app_id,
+                ),
+            ),
+            planner=DraftTestCredentialPlanner(),
+            credentials=WorkspaceTestCredentialGateway(
+                queries=CredentialQueryRepository(session_factory=database_client),
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
@@ -672,12 +720,7 @@ def build_application_services(
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
-        installed_apps=build_installed_app_services(
-            database_client=database_client,
-            webapp_access=webapp_access,
-            get_workspace_role=workspace_repository.get_account_role,
-            webapp_auth_enabled=webapp_auth_enabled,
-        ),
+        installed_apps=installed_apps,
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
             file_service=file_service,
@@ -759,6 +802,7 @@ def build_application_services(
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
+            require_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
         ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,
@@ -814,7 +858,7 @@ def build_application_services(
         ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,
-        end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
+        end_user_connection_oauth=end_user_connection_oauth,
         web_passport=web_passport,
         api_based_extensions=APIBasedExtensionApplicationService(
             extensions=APIBasedExtensionRepository(session_factory=database_client),

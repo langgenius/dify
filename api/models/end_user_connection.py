@@ -140,6 +140,7 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
         # Selection FKs prevent a valid ID from being paired with another tenant or Provider.
         sa.UniqueConstraint("id", "tenant_id", "provider", name="end_user_connection_scope_key"),
         sa.Index("end_user_connection_account_idx", "tenant_id", "account_id", "id"),
+        sa.Index("end_user_connection_consumer_idx", "account_id", "provider", "credential_type", "id"),
         sa.Index("end_user_connection_end_user_idx", "tenant_id", "end_user_id", "id"),
         sa.Index("end_user_connection_activity_idx", "last_active_at", "id"),
     )

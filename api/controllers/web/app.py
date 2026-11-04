@@ -1,7 +1,8 @@
+import io
 import logging
 from typing import Any
 
-from flask import request
+from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
@@ -9,7 +10,7 @@ from werkzeug.exceptions import Unauthorized
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.errors import InvalidArgumentError
-from controllers.common.fields import AccessModeResponse, BooleanResultResponse, Parameters
+from controllers.common.fields import AccessModeResponse, BinaryFileResponse, BooleanResultResponse, Parameters
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
@@ -21,9 +22,11 @@ from controllers.web.error import (
     WebAppNotFoundError,
 )
 from controllers.web.wraps import WebApiResource
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -63,6 +66,24 @@ class AppMetaResponse(BaseModel):
     )
 
 
+class ConnectionReadmeQuery(BaseModel):
+    plugin_unique_identifier: str = Field(
+        min_length=1, description="Exact plugin artifact from connection_requirements"
+    )
+    language: str = Field(default="en-US", min_length=1, description="README language, as in the Console plugin API")
+
+
+class ConnectionReadmeResponse(ResponseModel):
+    readme: str
+
+
+class ConnectionAssetQuery(BaseModel):
+    plugin_unique_identifier: str = Field(
+        min_length=1, description="Exact plugin artifact from connection_requirements"
+    )
+    file_name: str = Field(min_length=1, description="Asset filename relative to the plugin's _assets directory")
+
+
 class WebAppParametersResponse(Parameters, ResponseModel):
     account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
     allow_anonymous_end_user_auth: bool = Field(
@@ -93,6 +114,8 @@ register_response_schema_models(
     AppMetaResponse,
     AccessModeResponse,
     BooleanResultResponse,
+    ConnectionReadmeResponse,
+    BinaryFileResponse,
 )
 
 
@@ -133,6 +156,50 @@ class AppParameterApi(WebApiResource):
                 else None,
             },
         )
+
+
+@web_ns.route("/connections/readme")
+class ConnectionReadmeApi(WebApiResource):
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
+    @web_ns.doc(params=query_params_from_model(ConnectionReadmeQuery))
+    @web_ns.doc(description="Read plugin documentation for a published personal Connection requirement.")
+    @web_ns.response(200, "Plugin README", web_ns.models[ConnectionReadmeResponse.__name__])
+    def get(self, app_model: App, end_user: EndUser):
+        query = ConnectionReadmeQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            readme = application_services().app_definitions.get_web_plugin_readme(
+                app_model.id, app_model.tenant_id, query.plugin_unique_identifier, query.language
+            )
+        except AppDefinitionNotPublishedError:
+            raise AgentNotPublishedError() from None
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(ConnectionReadmeResponse, {"readme": readme})
+
+
+@web_ns.route("/connections/asset")
+class ConnectionAssetApi(WebApiResource):
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
+    @web_ns.doc(params=query_params_from_model(ConnectionAssetQuery))
+    @web_ns.doc(
+        description="Read a plugin README asset for a published personal Connection requirement.",
+        produces=["application/octet-stream"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/octet-stream"]},
+    )
+    @web_ns.response(200, "Plugin asset", web_ns.models[BinaryFileResponse.__name__])
+    def get(self, app_model: App, end_user: EndUser):
+        query = ConnectionAssetQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            binary = application_services().app_definitions.get_web_plugin_asset(
+                app_model.id, app_model.tenant_id, query.plugin_unique_identifier, query.file_name
+            )
+        except AppDefinitionNotPublishedError:
+            raise AgentNotPublishedError() from None
+        except (AppDefinitionUnavailableError, PluginDaemonClientSideError):
+            raise AppUnavailableError() from None
+        response = send_file(io.BytesIO(binary), mimetype="application/octet-stream")
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 @web_ns.route("/meta")

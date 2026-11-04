@@ -474,6 +474,44 @@ const zAgentNotPublishedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTestCredentialCheck = /* @__PURE__ */ (() =>
+  z.object({
+    reason_code: z.string().nullable(),
+    retryable: z.boolean(),
+    status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+  }))()
+
+const zTestCredentialState = /* @__PURE__ */ (() =>
+  z.object({
+    check: zTestCredentialCheck.nullable(),
+    credential_id: z.string().nullable(),
+    node_id: z.string(),
+    node_ids: z.array(z.string()),
+    status: z.enum([
+      'connected',
+      'disconnected',
+      'incompatible',
+      'invalid',
+      'reconnect_required',
+      'temporarily_unavailable',
+    ]),
+  }))()
+
+const zTestCredentialReadiness = /* @__PURE__ */ (() =>
+  z.object({
+    credentials: z.array(zTestCredentialState),
+    ready: z.boolean().readonly(),
+  }))()
+
+const zTestCredentialsNotReadyError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('test_credentials_not_ready'),
+      details: zTestCredentialReadiness.optional(),
+      status: z.literal(400),
+    }),
+  ))()
+
 export const getErrors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const post2Errors = {
@@ -496,13 +534,20 @@ export const post4Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const post5Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post6Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+}
 
-export const post7Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post7Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+}
 
 export const post8Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
 export const get6Errors = {
@@ -909,9 +954,15 @@ export const post48Errors = { app_not_found: { status: 404, data: zAppNotFoundEr
 
 export const post49Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post50Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post50Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+}
 
-export const post51Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post51Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+}
 
 export const get69Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -960,7 +1011,10 @@ export const put5Errors = {
 
 export const get71Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post56Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post56Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+}
 
 export const post57Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -971,6 +1025,7 @@ export const get72Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const post58Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
+  test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
 export const get73Errors = {
@@ -998,12 +1053,12 @@ export const get76Errors = {
 
 export const get77Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post59Errors = {
+export const post60Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
 
-export const post60Errors = {
+export const post61Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
@@ -1028,14 +1083,14 @@ export const get80Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
 }
 
-export const post61Errors = {
+export const post62Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
 
 export const get81Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post62Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post63Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get82Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -1065,7 +1120,7 @@ export const get86Errors = {
   webhook_trigger_not_found: { status: 404, data: zWebhookTriggerNotFoundError },
 }
 
-export const post63Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post64Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const delete14Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -1073,7 +1128,7 @@ export const patch3Errors = { app_not_found: { status: 404, data: zAppNotFoundEr
 
 export const get87Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post64Errors = {
+export const post65Errors = {
   agent_not_published: { status: 409, data: zAgentNotPublishedError },
   max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
 }

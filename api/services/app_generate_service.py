@@ -23,6 +23,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
+from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution
@@ -36,6 +37,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
+from services.workflow_test_execution import require_workflow_test_credentials
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
 logger = logging.getLogger(__name__)
@@ -119,7 +121,8 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
-        return cls._run_with_guardrails(
+        used_at = naive_utc_now()
+        result = cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
             action=lambda rate_limit, request_id: cls._dispatch_generate(
@@ -134,6 +137,27 @@ class AppGenerateService:
                 request_id=request_id,
             ),
         )
+        if (
+            invoke_from == InvokeFrom.WEB_APP
+            and isinstance(user, EndUser)
+            and user.account_id is not None
+            and app_model.mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+        ):
+            from extensions.ext_application_services import application_services
+            from services.consumer_service import ConsumerIdentity
+
+            try:
+                application_services().consumer.record_usage(
+                    ConsumerIdentity(user.account_id),
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    end_user_id=user.id,
+                    used_at=used_at,
+                )
+            except Exception:
+                # A preference write must not fail an already accepted execution.
+                logger.warning("Failed to record personal WebApp usage for App %s", app_model.id)
+        return result
 
     @classmethod
     def _run_with_guardrails(
@@ -248,6 +272,15 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    require_workflow_test_credentials(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        node_id=None,
+                    )
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
                     prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
@@ -319,6 +352,15 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    require_workflow_test_credentials(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        node_id=None,
+                    )
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
@@ -430,6 +472,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -443,6 +491,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -475,6 +529,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
@@ -488,6 +548,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,

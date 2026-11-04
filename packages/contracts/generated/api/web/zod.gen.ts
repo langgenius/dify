@@ -93,6 +93,13 @@ export const zAudioToTextResponse = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * BooleanResultResponse
  */
 export const zBooleanResultResponse = z.object({
@@ -249,10 +256,85 @@ export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reco
 export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
 
 /**
+ * ConnectionReadmeResponse
+ */
+export const zConnectionReadmeResponse = z.object({
+  readme: z.string(),
+})
+
+/**
  * ConnectionRevisionChangeDetails
  */
 export const zConnectionRevisionChangeDetails = z.object({
   connection_revision: z.uuid().nullable(),
+})
+
+/**
+ * ConsumerAppResponse
+ */
+export const zConsumerAppResponse = z.object({
+  app_code: z.string(),
+  connection_status: z.literal('not_configured').nullish(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  id: z.string(),
+  is_favorite: z.boolean(),
+  last_used_at: z.int().nullable(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
+ * ConsumerAppsResponse
+ */
+export const zConsumerAppsResponse = z.object({
+  data: z.array(zConsumerAppResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConsumerConnectionProviderResponse
+ */
+export const zConsumerConnectionProviderResponse = z.object({
+  connections_count: z.int().gte(1),
+  description: z.record(z.string(), z.string()),
+  icon: z.string().nullable(),
+  icon_dark: z.string().nullable(),
+  label: z.record(z.string(), z.string()),
+  provider: z.string(),
+})
+
+/**
+ * ConsumerConnectionProvidersResponse
+ */
+export const zConsumerConnectionProvidersResponse = z.object({
+  data: z.array(zConsumerConnectionProviderResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConsumerConnectionResponse
+ */
+export const zConsumerConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  connection_type: zConnectionCredentialType,
+  key: z.uuid(),
+  name: z.string(),
+  provider: z.string(),
+  webapps_count: z.int().gte(0),
+})
+
+/**
+ * ConsumerConnectionsResponse
+ */
+export const zConsumerConnectionsResponse = z.object({
+  data: z.array(zConsumerConnectionResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
 })
 
 /**
@@ -1843,6 +1925,17 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * WebAccountProfileResponse
+ */
+export const zWebAccountProfileResponse = z.object({
+  avatar: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
+  name: z.string(),
+})
+
+/**
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
@@ -2441,6 +2534,16 @@ export const zGeneratedAppResponseWritable = zShallowJsonValue
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
+ * WebAccountProfileResponse
+ */
+export const zWebAccountProfileResponseWritable = z.object({
+  avatar: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
+  name: z.string(),
+})
+
+/**
  * WebMessageListItem
  */
 export const zWebMessageListItemWritable = z.object({
@@ -2477,6 +2580,11 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
 })
+
+/**
+ * Account profile
+ */
+export const zGetAccountProfileResponse = zWebAccountProfileResponse
 
 /**
  * Success
@@ -2533,6 +2641,18 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
 
+export const zGetConnectionsAssetQuery = z.object({
+  file_name: z.string().min(1),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin asset
+ */
+export const zGetConnectionsAssetResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),
 })
@@ -2572,6 +2692,16 @@ export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
  * Connection statuses and preflight readiness
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
+
+export const zGetConnectionsReadmeQuery = z.object({
+  language: z.string().min(1).optional().default('en-US'),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin README
+ */
+export const zGetConnectionsReadmeResponse = zConnectionReadmeResponse
 
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),
@@ -2776,6 +2906,92 @@ export const zGetLoginStatusResponse = zLoginStatusResponse
  * Logout successful
  */
 export const zPostLogoutResponse = zSimpleResultResponse
+
+export const zGetMeAppsQuery = z.object({
+  cursor: z.string().max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(255).optional(),
+  view: z.enum(['favorites', 'recent', 'shared']).optional().default('recent'),
+})
+
+/**
+ * Accessible personal Apps
+ */
+export const zGetMeAppsResponse = zConsumerAppsResponse
+
+export const zDeleteMeAppsByAppIdPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App removed from personal lists
+ */
+export const zDeleteMeAppsByAppIdResponse = z.void()
+
+export const zDeleteMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App unfavorited
+ */
+export const zDeleteMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zPutMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App favorited
+ */
+export const zPutMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zGetMeConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(255).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Account Connection Providers
+ */
+export const zGetMeConnectionsResponse = zConsumerConnectionProvidersResponse
+
+export const zGetMeConnectionsProvidersByProviderConnectionsPath = z.object({
+  provider: z.string(),
+})
+
+export const zGetMeConnectionsProvidersByProviderConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Account Connections
+ */
+export const zGetMeConnectionsProvidersByProviderConnectionsResponse = zConsumerConnectionsResponse
+
+export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
+  connection_key: z.uuid(),
+})
+
+/**
+ * Connection group disconnected
+ */
+export const zDeleteMeConnectionsByConnectionKeyResponse = z.void()
+
+export const zGetMeConnectionsByConnectionKeyAppsPath = z.object({
+  connection_key: z.uuid(),
+})
+
+export const zGetMeConnectionsByConnectionKeyAppsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Associated WebApps
+ */
+export const zGetMeConnectionsByConnectionKeyAppsResponse = zConsumerAppsResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),

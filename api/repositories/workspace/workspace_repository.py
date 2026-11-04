@@ -41,6 +41,7 @@ from services.oauth_device_application_service import DeviceWorkspaceQuery
 from services.oauth_device_contracts import DeviceWorkspace
 from services.workspace.contracts import (
     CreatedWorkspace,
+    WorkspaceActivation,
     WorkspaceCreation,
     WorkspaceCustomConfig,
     WorkspaceMemberRecord,
@@ -95,12 +96,15 @@ class WorkspaceRepository(
         back locally, so a competing sign-in must skip before creating either.
         The application supplies these external actions; this repository only
         controls when they can run. Notifications run after this method commits.
+
+        A recorded Builder origin is immutable. Migrations backfill historical
+        origins; runtime assigns an origin only when committing a first creation.
         """
         with self._session_factory.begin() as session:
             if account is not None:
                 owner_id = SQLAlchemyAccountRepository.add(account, session=session).id
             elif owner_id is not None:
-                owner = session.get(Account, owner_id, with_for_update=only_if_no_active_workspace)
+                owner = session.get(Account, owner_id, with_for_update=True)
                 if owner is None:
                     raise WorkspaceOwnerNotFoundError()
             if (
@@ -141,6 +145,12 @@ class WorkspaceRepository(
                 )
             )
             session.flush()
+            if owner_id is not None:
+                session.execute(
+                    update(Account)
+                    .where(Account.id == owner_id, Account.first_workspace_created_at.is_(None))
+                    .values(first_workspace_created_at=tenant.created_at)
+                )
             return CreatedWorkspace(
                 tenant.id,
                 tenant.name,
@@ -151,6 +161,21 @@ class WorkspaceRepository(
                 tenant.encrypt_public_key,
                 dict(tenant.custom_config_dict),
             )
+
+    def get_activation(self, account_id: str) -> WorkspaceActivation:
+        """Read only this Account's durable origin and first usable membership."""
+        with self._session_factory() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                raise WorkspaceOwnerNotFoundError()
+            workspace_id = session.scalar(
+                select(Tenant.id)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == account_id, Tenant.status == TenantStatus.NORMAL)
+                .order_by(TenantAccountJoin.current.desc(), TenantAccountJoin.id.asc())
+                .limit(1)
+            )
+            return WorkspaceActivation(workspace_id, account.first_workspace_created_at)
 
     @override
     def list_for_account(self, account_id: str) -> tuple[WorkspaceRecord, ...]:

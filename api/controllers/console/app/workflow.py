@@ -39,6 +39,7 @@ from controllers.console.app.error import (
     DraftWorkflowNotSync,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
+from controllers.console.app.test_credentials import test_credential_errors
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
@@ -101,6 +102,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow.tool_credentials import WorkflowToolEndUserAuthError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -742,6 +744,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @model_validate(AdvancedChatWorkflowRunPayload)
+    @test_credential_errors
     def post(self, payload: AdvancedChatWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -797,6 +800,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(IterationNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -846,6 +850,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(IterationNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -891,6 +896,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(LoopNodeRunPayload)
+    @test_credential_errors
     def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -939,6 +945,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(LoopNodeRunPayload)
+    @test_credential_errors
     def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -1190,6 +1197,7 @@ class DraftWorkflowRunApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(DraftWorkflowRunPayload)
+    @test_credential_errors
     def post(self, payload: DraftWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1265,6 +1273,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(DraftWorkflowNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: DraftWorkflowNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow node
@@ -1346,13 +1355,16 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
+            try:
+                workflow = workflow_service.publish_workflow(
+                    session=session,
+                    app_model=app_model,
+                    account=current_user,
+                    marked_name=args.marked_name or "",
+                    marked_comment=args.marked_comment or "",
+                )
+            except WorkflowToolEndUserAuthError as exc:
+                raise BadRequest(str(exc)) from exc
 
             # Update app_model within the same session to ensure atomicity
             app_model_in_session = session.get(App, app_model.id)

@@ -12,6 +12,20 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
+### [GET] /account/profile
+**Return the Account profile authenticated by the WebApp login cookie**
+
+Get the authenticated WebApp user's profile
+The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
+A missing, invalid, expired, or unavailable Account identity returns 401.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account profile | **application/json**: [WebAccountProfileResponse](#webaccountprofileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /audio-to-text
 **Convert audio to text**
 
@@ -148,6 +162,24 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections/asset
+Read a plugin README asset for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| file_name | query | Asset filename relative to the plugin's _assets directory | Yes | string |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin asset | **application/octet-stream**: binary<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /connections/configuration
 Read saved choices and whether authorization must be renewed, without checking credentials.
 
@@ -261,6 +293,24 @@ Read API-key form fields for an authorized published tool node; no credential va
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/readme
+Read plugin documentation for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | README language, as in the Console plugin API | No | string, <br>**Default:** en-US |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin README | **application/json**: [ConnectionReadmeResponse](#connectionreadmeresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /connections/{connection_id}
@@ -764,6 +814,141 @@ Logout user from web application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/apps
+List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| name | query |  | No | string |
+| view | query |  | No | string, <br>**Available values:** "favorites", "recent", "shared", <br>**Default:** recent |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Accessible personal Apps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}
+Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App removed from personal lists |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App unfavorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App favorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections
+List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connection Providers | **application/json**: [ConsumerConnectionProvidersResponse](#consumerconnectionprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/providers/{provider}/connections
+List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connections | **application/json**: [ConsumerConnectionsResponse](#consumerconnectionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/connections/{connection_key}
+Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Connection group disconnected |  |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/{connection_key}/apps
+List accessible WebApps associated with a Connection group from a Provider's list.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated WebApps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
@@ -1426,6 +1611,12 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
 
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
+
 #### BooleanResultResponse
 
 | Name | Type | Description | Required |
@@ -1658,6 +1849,12 @@ OAuth authorization could not be completed. Start authorization again.
 | node_id | string | Independent authorization node ID to use as the selection key. | Yes |
 | status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
 
+#### ConnectionReadmeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| readme | string |  | Yes |
+
 #### ConnectionReauthorizationRequiredError
 
 The OAuth client changed or is unavailable. Start authorization again.
@@ -1687,6 +1884,68 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
+
+#### ConsumerAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| connection_status | string | App-level personal Connection status. not_configured means required End User tool nodes lack saved Connections; null means this action is not required. | No |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | string |  | Yes |
+| id | string |  | Yes |
+| is_favorite | boolean |  | Yes |
+| last_used_at | integer | Time of the Account's latest accepted WebApp execution, independent of retained execution logs. | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+
+#### ConsumerAppsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections_count | integer | Number of personal Connection groups under this Provider. | Yes |
+| description | object |  | Yes |
+| icon | string | Public plugin icon URL; null if the Provider is unavailable. | Yes |
+| icon_dark | string | Public dark icon URL; null if unavailable or not declared. | Yes |
+| label | object |  | Yes |
+| provider | string |  | Yes |
+
+#### ConsumerConnectionProvidersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionProviderResponse](#consumerconnectionproviderresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| connection_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| key | string (uuid) | Representative Connection ID for associated WebApp queries and disconnect. | Yes |
+| name | string | Name of the group member with the smallest Connection ID. | Yes |
+| provider | string |  | Yes |
+| webapps_count | integer | Number of distinct accessible WebApps associated with this group. | Yes |
+
+#### ConsumerConnectionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionResponse](#consumerconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
 
 #### ConversationInfiniteScrollPagination
 
@@ -2794,6 +3053,16 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WebAccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | Yes |
+| avatar_url | string |  | Yes |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| name | string |  | Yes |
 
 #### WebAppAuthModel
 

@@ -205,17 +205,19 @@ def test_register_creates_account_and_logs_it_in(
         timezone: str,
         ip_address: str,
         check_normalized_email: bool,
+        status: str,
     ) -> Account:
         assert password == "ValidPass123!"
         assert ip_address == "127.0.0.1"
         assert check_normalized_email is True
+        assert status == "uninitialized"
         account = make_account(email=email, name=name, interface_language=interface_language, timezone=timezone)
         with sqlite_session_factory.begin() as session:
             session.add(account)
         return account
 
     mocker.patch(
-        "services.account.email_registration_adapters.AccountService.create_account_and_tenant",
+        "services.account.email_registration_adapters.AccountService.create_account",
         side_effect=provision_account,
     )
     login = mocker.patch(

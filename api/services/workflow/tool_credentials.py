@@ -155,14 +155,30 @@ def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
     A declared EndUser requirement must stay visible even if its configuration
     is incomplete; publication validation and Preflight diagnose that separately.
     """
-    return any(
-        isinstance(node, Mapping)
-        and node.get("type") != "custom-note"
-        and isinstance(data := node.get("data"), Mapping)
-        and data.get("type") == BuiltinNodeTypes.TOOL
-        and data.get("credential_source") == "end_user"
-        for node in graph.get("nodes", [])
+    return first_end_user_tool_node(graph) is not None
+
+
+def first_end_user_tool_node(graph: Mapping[str, Any]) -> str | None:
+    """Find the node declaring personal credentials, including incomplete drafts."""
+    return next(
+        (
+            str(node.get("id", "unknown"))
+            for node in graph.get("nodes", [])
+            if (
+                isinstance(node, Mapping)
+                and node.get("type") != "custom-note"
+                and isinstance(data := node.get("data"), Mapping)
+                and data.get("type") == BuiltinNodeTypes.TOOL
+                and data.get("credential_source") == "end_user"
+            )
+        ),
+        None,
     )
+
+
+class WorkflowToolEndUserAuthError(ValueError):
+    def __init__(self, node_id: str) -> None:
+        super().__init__(f"Node {node_id}: EndUser credentials are not supported in workflow tools.")
 
 
 def _same_provider(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
