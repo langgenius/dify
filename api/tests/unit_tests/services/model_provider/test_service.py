@@ -14,6 +14,8 @@ from core.entities.provider_configuration import ProviderConfigurations
 from core.entities.provider_entities import CredentialConfiguration, CustomModelConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
+from core.provider_manager import ProviderManager
+from core.provider_manager import ProviderManager
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
@@ -34,7 +36,7 @@ from services.model_provider.service import ModelProviderService, _ProviderSumma
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
-    manager = MagicMock()
+    manager = create_autospec(ProviderManager, instance=True)
     service = ModelProviderService()
     service._get_provider_manager = MagicMock(return_value=manager)  # pyrefly: ignore[method-assign]
     return service, manager

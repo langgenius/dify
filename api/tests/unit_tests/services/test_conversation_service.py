@@ -79,32 +79,37 @@ class ConversationServiceTestDataFactory:
         return account
 
     @staticmethod
-    def create_app(app_id: str = APP_ID, tenant_id: str = TENANT_ID, **kwargs) -> App:  # pyrefly: ignore[implicit-any-parameter]
+    def create_app(
+        app_id: str = APP_ID,
+        tenant_id: str = TENANT_ID,
+        name: str = "Test App",
+        mode: AppMode = AppMode.CHAT,
+        status: AppStatus = AppStatus.NORMAL,
+    ) -> App:
         """
         Create an App object.
 
         Args:
             app_id: Unique identifier for the app
             tenant_id: Tenant/workspace identifier
-            **kwargs: Additional attributes to set on the model
+            name: Display name of the app
+            mode: App mode
+            status: App lifecycle status
 
         Returns:
             App object with specified attributes
         """
-        app = App(
+        return App(
             id=app_id,
             tenant_id=tenant_id,
-            name=kwargs.get("name", "Test App"),
-            mode=kwargs.get("mode", AppMode.CHAT),
-            status=kwargs.get("status", AppStatus.NORMAL),
+            name=name,
+            mode=mode,
+            status=status,
             description="",
             enable_site=False,
             enable_api=False,
             max_active_requests=None,
         )
-        for key, value in kwargs.items():
-            setattr(app, key, value)
-        return app
 
     @staticmethod
     def create_conversation(
