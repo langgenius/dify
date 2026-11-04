@@ -152,8 +152,8 @@ catalog:
   '@typescript/native': npm:typescript@7.1.0-beta
   '@vitejs/plugin-react': 6.1.2
   '@vitejs/plugin-rsc': 0.5.38
-  '@vitest/browser-playwright': 5.0.5
-  '@vitest/coverage-v8': 5.0.5
+  '@vitest/browser-playwright': 5.1.0
+  '@vitest/coverage-v8': 5.1.0
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.2
   agentation: 3.1.2
@@ -275,10 +275,10 @@ catalog:
   vinext: 1.4.0
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
-  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
   vite-plugin-inspect: 12.1.0
-  vite-plus: 1.4.0
-  vitest: 5.0.5
+  vite-plus: 1.5.0
+  vitest: 5.1.0
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
   yaml: 2.9.1
