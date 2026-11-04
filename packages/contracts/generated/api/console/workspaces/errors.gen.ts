@@ -258,6 +258,22 @@ const zCurrentWorkspaceArchivedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTriggerOauthClientConfigInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_client_config_invalid'),
+      status: z.literal(500),
+    }),
+  ))()
+
+const zTriggerOauthClientChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_client_changed'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zFilenameNotExistsError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -490,6 +506,15 @@ export const post68Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const get101Errors = {
   current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
+}
+
+export const get127Errors = {
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+}
+
+export const post84Errors = {
+  trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
 }
 
 export const post92Errors = {
