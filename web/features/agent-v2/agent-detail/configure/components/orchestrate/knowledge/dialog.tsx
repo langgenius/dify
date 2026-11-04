@@ -334,7 +334,16 @@ function AgentKnowledgeRetrievalForm({
     getValue: (option) => option.value,
     getLabel: (option) => option.name,
   })
-  const visibleBindings = getVisibleKnowledgeRetrievals(draft, knowledgeFsEnabled)
+  // Settings cards follow the picker's row order, not the order items were ticked in.
+  const rowOrder = new Map(
+    [...classicOptions, ...spaceOptions.values()].map((option, index) => [option.value, index]),
+  )
+  const rowIndex = (item: AgentKnowledgeRetrievalItem) =>
+    rowOrder.get(item.controlSpaceId ? spaceValue(item.controlSpaceId) : bindingValue(item.id)) ??
+    Number.POSITIVE_INFINITY
+  const visibleBindings = [...getVisibleKnowledgeRetrievals(draft, knowledgeFsEnabled)].sort(
+    (a, b) => rowIndex(a) - rowIndex(b),
+  )
   const validation = validateKnowledgeRetrievals(visibleBindings, draft)
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
