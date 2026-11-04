@@ -422,7 +422,8 @@ class AppPackageCheckApi(Resource):
     included, then the package's own checks. Pass ``app_id`` to check against an existing app's mode, as an
     overwrite import would. ``valid`` is false while any issue is an error. ``refuses_import`` marks the issues
     the package import refuses today; the others are what the app still needs to run. ``node_specs`` gives, for
-    every node, its data schema, its plugin's declared parameters and every field it has not written yet.
+    each node that has an issue of any severity, its data schema, its plugin's declared parameters and every
+    field it has not written yet; it is empty when no node has an issue.
     Returns 400 ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413
     for one over this server's limits, as fill does. Returns 400 for an ``app.yaml`` the DSL check cannot read,
     and 404 for an ``app_id`` outside the workspace, as the DSL check does.

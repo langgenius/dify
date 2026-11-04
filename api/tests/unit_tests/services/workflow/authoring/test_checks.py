@@ -191,7 +191,7 @@ def test_warnings_alone_leave_the_package_valid(dsl: DslCheckRequest) -> None:
 def test_a_clean_graph_has_no_issues(dsl: DslCheckRequest) -> None:
     check = _chain(dsl, START, END)
 
-    assert check == PackageCheck(valid=True, issues=(), node_specs=check.node_specs)
+    assert check == PackageCheck(valid=True, issues=(), node_specs=())
 
 
 def test_an_empty_graph_has_no_root_node(dsl: DslCheckRequest) -> None:
@@ -387,10 +387,17 @@ def test_an_unknown_node_type_is_reported_not_raised(dsl: DslCheckRequest) -> No
     assert "future" not in {spec.node_id for spec in check.node_specs}
 
 
-def test_every_readable_node_gets_a_spec(dsl: DslCheckRequest) -> None:
+def test_only_a_node_with_an_issue_gets_a_spec(dsl: DslCheckRequest) -> None:
     check = _chain(dsl, START, LLM_WITHOUT_MODEL, END)
 
-    assert [spec.node_id for spec in check.node_specs] == ["start", "llm", "end"]
+    assert [spec.node_id for spec in check.node_specs] == ["llm"]
+
+
+def test_a_node_with_only_a_warning_gets_a_spec(dsl: DslCheckRequest) -> None:
+    check = _unconnected_branch(dsl)
+
+    assert {issue.severity for issue in _issues_of(check, "if")} == {IssueSeverity.WARNING}
+    assert [spec.node_id for spec in check.node_specs] == ["if"]
 
 
 @pytest.mark.parametrize("content", ["{not yaml", "- a list\n"])
@@ -416,7 +423,7 @@ def test_a_console_export_with_an_iteration_and_notes_has_no_issues(dsl: DslChec
 
     assert _beyond_missing_models(check) == []
     assert check.valid is True
-    assert {spec.type for spec in check.node_specs} >= {BuiltinNodeTypes.START, BuiltinNodeTypes.ITERATION}
+    assert {spec.node_id for spec in check.node_specs} == {issue.node_id for issue in check.issues}
 
 
 @pytest.mark.parametrize("fixture", CLEAN_EXPORTS)

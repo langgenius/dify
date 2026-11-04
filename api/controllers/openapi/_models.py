@@ -979,7 +979,9 @@ class AuthoringIssueRow(BaseModel):
 class PackageCheckResponse(Hinted):
     valid: bool = Field(description="No error-severity issues")
     issues: list[AuthoringIssueRow]
-    node_specs: list[NodeSpecRow] = Field(description="What each node, as written, still needs")
+    node_specs: list[NodeSpecRow] = Field(
+        description="What each node that has an issue, as written, still needs; empty when no node has one"
+    )
 
     @classmethod
     def of(cls, check: PackageCheck) -> Self:
