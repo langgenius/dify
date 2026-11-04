@@ -383,7 +383,8 @@ class AppPackageFillApi(Resource):
     placed again as the canvas's Organize does, and each note is framed around the nodes it covers.
 
     Nothing is saved. Filling a filled package changes nothing. Returns 400 ``app_package_invalid`` for a
-    package that cannot be read and 413 for one over this server's limits. A package already at the entry
+    package that cannot be read, including one whose ``app.yaml`` is not a YAML mapping or uses YAML anchors or
+    aliases, and 413 for one over this server's limits. A package already at the entry
     limit without a ``manifest.yaml`` is refused with 413, because fill adds one.
     """
 
@@ -424,8 +425,8 @@ class AppPackageCheckApi(Resource):
     the package import refuses today; the others are what the app still needs to run. ``node_specs`` gives, for
     each node that has an issue of any severity, its data schema, its plugin's declared parameters and every
     field it has not written yet; it is empty when no node has an issue.
-    Returns 400 ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413
-    for one over this server's limits, as fill does. Returns 400 for an ``app.yaml`` the DSL check cannot read,
+    Returns 400 ``app_package_invalid`` for a package that cannot be read as fill reads it, or has no ``app.yaml``,
+    and 413 for one over this server's limits. Returns 400 for an ``app.yaml`` the DSL check cannot read,
     and 404 for an ``app_id`` outside the workspace, as the DSL check does.
     """
 

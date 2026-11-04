@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 _MISSING_ERROR_TYPE: Final = "missing"
 _NODES_LOC: Final = "nodes"
 _MANIFEST_APPS_KEY: Final = "apps"
-_NO_APP_MAPPING: Final = f"The package has no {APP_PATH} that reads as a YAML mapping"
+_NO_APP: Final = f"The package has no {APP_PATH}"
 
 
 class AuthoringIssueCode(StrEnum):
@@ -440,15 +440,13 @@ def check_package(
 
     `node_specs` holds a spec only for each node that has an issue of any severity.
     Each plugin reference is looked up once here, and every check and node spec reads that one lookup. Raises what
-    `fill_package` raises, `PackageUnreadableError` when there is no `app.yaml` that is a YAML mapping, and what
+    `fill_package` raises, `PackageUnreadableError` when there is no `app.yaml`, and what
     `DslCheckRequest.issues` raises.
     """
     root = filled_package(entries, ctx, limits=limits).root
     if root is None:
-        raise PackageUnreadableError(_NO_APP_MAPPING)
+        raise PackageUnreadableError(_NO_APP)
     document = root.document
-    if document is None:
-        raise PackageUnreadableError(_NO_APP_MAPPING)
     target = CheckTarget(
         document=document,
         nodes=_read_nodes(document, ctx),

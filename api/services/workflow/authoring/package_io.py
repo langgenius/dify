@@ -26,7 +26,7 @@ from libs.archive_writer import (
 )
 from services.agent.errors import RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import RosterAgentPackageApp
-from services.agent.roster_package_reader import PackageYamlLoader
+from services.agent.roster_package_reader import PackageYamlAliasError, PackageYamlLoader
 from services.app_package_service import AppPackageManifest
 
 APP_PATH: Final = "app.yaml"
@@ -44,6 +44,8 @@ _ZIP_ERRORS: Final = (
     lzma.LZMAError,
 )
 _YAML_ERRORS: Final = (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError)
+_APP_USES_ALIASES: Final = f"{APP_PATH} uses YAML anchors or aliases; write each value out"
+_APP_NOT_MAPPING: Final = f"{APP_PATH} must be a YAML mapping"
 
 
 class PackageUnreadableError(ValueError):
@@ -144,9 +146,28 @@ def manifest_is_stale(manifest: bytes, app: bytes) -> bool:
 def load_member_yaml(content: bytes) -> object:
     """A member's YAML data, read as the package reader reads it; None when it cannot be parsed."""
     try:
-        return yaml.load(content, Loader=PackageYamlLoader)  # noqa: S506
+        return _load_yaml(content)
     except _YAML_ERRORS:
         return None
+
+
+def read_app_document(content: bytes) -> dict[str, Any]:
+    """The `app.yaml` mapping, read as the package import reads it, which refuses aliases, duplicate keys and keys
+    that are not text. Raises `PackageUnreadableError` naming the cause.
+    """
+    try:
+        document = _load_yaml(content)
+    except PackageYamlAliasError as error:
+        raise PackageUnreadableError(_APP_USES_ALIASES) from error
+    except _YAML_ERRORS as error:
+        raise PackageUnreadableError(f"{APP_PATH} is not valid YAML: {error}") from error
+    if not isinstance(document, dict):
+        raise PackageUnreadableError(_APP_NOT_MAPPING)
+    return document
+
+
+def _load_yaml(content: bytes) -> object:
+    return yaml.load(content, Loader=PackageYamlLoader)  # noqa: S506
 
 
 def _describes(root: dict[str, Any], resource: RosterAgentPackageApp) -> bool:
