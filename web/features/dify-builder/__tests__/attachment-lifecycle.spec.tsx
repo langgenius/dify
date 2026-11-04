@@ -184,7 +184,7 @@ it.each([
   { scenario: 'build', edit: false },
   { scenario: 'edit', edit: true },
 ])(
-  'removes admitted initial files before the $scenario stream finishes and sends only new files',
+  'removes admitted files immediately and allows new attachments only after the $scenario stream settles',
   async ({ edit }) => {
     const user = userEvent.setup()
     const response = createControlledEventStream()
@@ -208,14 +208,23 @@ it.each([
     await act(async () => response.push(commandStartedEvent(createSessionView())))
     await waitFor(() => expect(screen.queryByText('first.txt')).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'difyBuilder.taskControl.stop' })).toBeEnabled()
-    await user.click(screen.getByRole('button', { name: 'Select second file' }))
-    await user.click(sendButton())
-    expect(api.message.mock.calls[0]![0].body.attachments).toEqual([{ upload_file_id: 'second' }])
+    expect(prompt()).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'common.fileUploader.uploadFromComputer' }),
+    ).toBeDisabled()
+    expect(api.message).not.toHaveBeenCalled()
     expect(api.create.mock.calls[0]![1].signal.aborted).toBe(false)
     await act(async () => {
       response.push(stateEvent(createSessionView({ version: 5, run_status: 'waiting_input' })))
       response.close()
     })
+    await waitFor(() => expect(prompt()).toBeEnabled())
+    expect(
+      screen.getByRole('button', { name: 'common.fileUploader.uploadFromComputer' }),
+    ).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Select second file' }))
+    await user.click(sendButton())
+    expect(api.message.mock.calls[0]![0].body.attachments).toEqual([{ upload_file_id: 'second' }])
   },
 )
 
@@ -305,36 +314,31 @@ it('clears the file draft when the session is explicitly reset', async () => {
 
 it('does not restore pending files or text after an authoritative conversation clear', async () => {
   const user = userEvent.setup()
-  const response = createControlledEventStream()
   const material = createControlledEventStream()
-  api.create.mockResolvedValue(response.iterable)
+  api.get.mockResolvedValue(
+    createSessionView({ version: 4, run_status: 'waiting_input', canvas_read_only: false }),
+  )
   api.message.mockResolvedValue(material.iterable)
   renderSession()
-  await user.type(prompt(), 'Initial goal')
-  await user.click(sendButton())
-  await waitFor(() => expect(api.create).toHaveBeenCalledOnce())
-  await act(async () => response.push(commandStartedEvent(createSessionView())))
+  await user.click(screen.getByRole('button', { name: 'Restore session' }))
+  await waitFor(() => expect(prompt()).toBeEnabled())
   await user.click(screen.getByRole('button', { name: 'Select first file' }))
   await user.type(prompt(), 'Supplement')
   await user.click(sendButton())
   await waitFor(() => expect(api.message).toHaveBeenCalledOnce())
-  await act(async () =>
-    response.push(
-      stateEvent(
-        createSessionView({
-          version: 5,
-          conversation_cleared: true,
-          lifecycle_settlement: 'pending',
-          run_status: 'complete',
-          task_status: 'abandoned',
-        }),
-      ),
-    ),
+  api.get.mockResolvedValue(
+    createSessionView({
+      version: 5,
+      conversation_cleared: true,
+      lifecycle_settlement: 'pending',
+      run_status: 'complete',
+      task_status: 'abandoned',
+    }),
   )
+  await user.click(screen.getByRole('button', { name: 'Refresh session' }))
   await waitFor(() => expect(api.message.mock.calls[0]![1].signal.aborted).toBe(true))
   await act(async () => {
     material.close()
-    response.close()
   })
   expect(screen.queryByText('first.txt')).not.toBeInTheDocument()
   expect(prompt()).toHaveValue('')

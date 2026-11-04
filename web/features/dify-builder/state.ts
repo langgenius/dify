@@ -273,7 +273,7 @@ export const difyBuilderCanAddMaterialAtom = atom((get) => {
     material
   )
     return false
-  return get(difyBuilderSessionIdAtom) !== null || get(difyBuilderCanComposeAtom)
+  return get(difyBuilderCanComposeAtom)
 })
 export const difyBuilderCheckMaterialAtom = atom(null, (get) => {
   const runtime = get(difyBuilderRuntimeAtom)
