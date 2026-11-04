@@ -62,7 +62,7 @@ _JudgeOutputT = TypeVar("_JudgeOutputT", bound=BaseModel)
 
 class CriterionAssessment(BaseModel):
     applicable: bool = True
-    score: float | None = Field(ge=0, le=1, multiple_of=0.25)
+    score: float | None = Field(ge=0, le=1)
     reason: str = Field(min_length=1, max_length=2_000)
     evidence_step_ids: list[str] = Field(default_factory=list, max_length=30)
 

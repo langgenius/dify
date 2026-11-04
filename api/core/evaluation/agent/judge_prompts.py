@@ -30,7 +30,8 @@ SECURITY AND EVIDENCE RULES
 
 SCORING RULES
 
-Assign each applicable rubric criterion exactly one of these scores:
+Assign each applicable rubric criterion a score anywhere from 0 to 1, inclusive.
+Use the full continuous range when the evidence falls between these reference points:
 
 - 1.00: Fully satisfies the criterion with no material issue.
 - 0.75: Mostly satisfies the criterion; only minor issues remain.
@@ -38,10 +39,11 @@ Assign each applicable rubric criterion exactly one of these scores:
 - 0.25: Barely satisfies the criterion; major deficiencies substantially affect quality.
 - 0.00: Completely fails the criterion or provides no useful evidence of satisfying it.
 
-Do not default to 0.50 when uncertain. Base every score on specific evidence.
+Scores between the reference points are valid. Do not default to 0.50 when uncertain.
+Base every score on specific evidence.
 
 For an inapplicable criterion, set applicable to false, set score to null, and briefly explain why it is
-inapplicable. Otherwise set applicable to true and provide one allowed score.
+inapplicable. Otherwise set applicable to true and provide a score between 0 and 1.
 
 Calculate the overall score as the weighted mean of applicable criterion scores. The overall score must
 be between 0 and 1. The application will independently recompute it from the criterion scores.
