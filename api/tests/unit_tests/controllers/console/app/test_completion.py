@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from flask.typing import ResponseReturnValue
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
@@ -100,7 +101,7 @@ def test_chat_message_rejects_empty_agent_tool_as_invalid_param(
     sqlite_session.commit()
 
     class ChatMessageHttpResource(Resource):
-        def post(self):
+        def post(self) -> ResponseReturnValue:
             # Admission is supplied by this harness; parsing, generation validation,
             # and HTTP error translation remain the real production path.
             return unwrap(completion_module.ChatMessageApi.post)(
