@@ -17,10 +17,11 @@ from core.app.entities.queue_entities import (
 from graphon.model_runtime.entities.llm_entities import LLMResult
 
 
-def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture) -> None:
+def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     manager = PipelineQueueManager(task_id="t", user_id="u", invoke_from=InvokeFrom.WEB_APP, app_mode="rag")
     manager._q = mocker.MagicMock()
-    manager.stop_listen = mocker.MagicMock()
+    stop_listen = mocker.MagicMock()
+    monkeypatch.setattr(manager, "stop_listen", stop_listen)
     manager._is_stopped = mocker.MagicMock(return_value=True)
 
     with pytest.raises(GenerateTaskStoppedError):
@@ -29,13 +30,14 @@ def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture) -
             PublishFrom.APPLICATION_MANAGER,
         )
 
-    manager.stop_listen.assert_called_once()
+    stop_listen.assert_called_once()
 
 
-def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture) -> None:
+def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     manager = PipelineQueueManager(task_id="t", user_id="u", invoke_from=InvokeFrom.WEB_APP, app_mode="rag")
     manager._q = mocker.MagicMock()
-    manager.stop_listen = mocker.MagicMock()
+    stop_listen = mocker.MagicMock()
+    monkeypatch.setattr(manager, "stop_listen", stop_listen)
     manager._is_stopped = mocker.MagicMock(return_value=False)
 
     for event in [
@@ -45,17 +47,18 @@ def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture) -> None:
         QueueWorkflowFailedEvent(error="failed", exceptions_count=1),
         QueueWorkflowPartialSuccessEvent(exceptions_count=1),
     ]:
-        manager.stop_listen.reset_mock()
+        stop_listen.reset_mock()
         manager._publish(event, PublishFrom.TASK_PIPELINE)
-        manager.stop_listen.assert_called_once()
+        stop_listen.assert_called_once()
 
 
-def test_publish_non_stop_event_no_stop_listen(mocker: MockerFixture) -> None:
+def test_publish_non_stop_event_no_stop_listen(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     manager = PipelineQueueManager(task_id="t", user_id="u", invoke_from=InvokeFrom.WEB_APP, app_mode="rag")
     manager._q = mocker.MagicMock()
-    manager.stop_listen = mocker.MagicMock()
+    stop_listen = mocker.MagicMock()
+    monkeypatch.setattr(manager, "stop_listen", stop_listen)
     manager._is_stopped = mocker.MagicMock(return_value=False)
 
     non_stop_event = QueuePingEvent()
     manager._publish(non_stop_event, PublishFrom.TASK_PIPELINE)
-    manager.stop_listen.assert_not_called()
+    stop_listen.assert_not_called()

@@ -13,6 +13,7 @@ from controllers.common.errors import (
     InvalidArgumentError,
     NotFoundError,
     UnauthorizedError,
+    register_credential_refresh_error_handler,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -36,6 +37,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -52,7 +54,7 @@ api.document_generic_errors(
 )
 
 
-@api.errorhandler(ActiveWorkspaceRequiredError)
+@api.errorhandler(ActiveWorkspaceRequiredError)  # pyrefly: ignore[not-callable] - Flask-RESTX decorator typing
 def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
     """Map a broken Console admission invariant without exposing internal details."""
     got_request_exception.send(current_app, exception=error)
@@ -64,7 +66,7 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
     }, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveInvalidMonthError)
+@api.errorhandler(WorkflowRunArchiveInvalidMonthError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_invalid_month_error(
     error: WorkflowRunArchiveInvalidMonthError,
 ) -> tuple[dict[str, str | int], int]:
@@ -73,8 +75,8 @@ def _handle_workflow_run_archive_invalid_month_error(
     return {"code": "bad_request", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveNotFoundError)
-@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)
+@api.errorhandler(WorkflowRunArchiveNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_not_found_error(
     error: WorkflowRunArchiveNotFoundError | WorkflowRunArchiveDownloadTaskNotFoundError,
 ) -> tuple[dict[str, str | int], int]:
@@ -83,7 +85,7 @@ def _handle_workflow_run_archive_not_found_error(
     return {"code": "not_found", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)
+@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_download_not_ready_error(
     error: WorkflowRunArchiveDownloadNotReadyError,
 ) -> tuple[dict[str, str | int], int]:

@@ -2,8 +2,10 @@
 
 import re
 
+from faker import Faker
 
-def generate_valid_password(fake, length: int = 12) -> str:
+
+def generate_valid_password(fake: Faker, length: int = 12) -> str:
     """Generate a password that always satisfies the project's password validation rules.
 
     The password validation rule in ``api/libs/password.py`` requires passwords to

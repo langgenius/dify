@@ -10,6 +10,30 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zComplianceDownloadForbiddenError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('compliance_download_forbidden'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zComplianceDocumentNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('compliance_document_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zBillingRequestInProgressError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_request_in_progress'),
+      status: z.literal(429),
+    }),
+  ))()
+
 const zComplianceRateLimitError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -36,6 +60,9 @@ const zBillingUnavailableError = /* @__PURE__ */ (() =>
 
 export const getErrors = {
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  compliance_document_not_found: { status: 404, data: zComplianceDocumentNotFoundError },
+  compliance_download_forbidden: { status: 403, data: zComplianceDownloadForbiddenError },
   compliance_rate_limit: { status: 429, data: zComplianceRateLimitError },
 }

@@ -15,6 +15,7 @@ from core.errors.error import QuotaExceededError
 from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
+from services.billing_client import billing
 from services.credit_pool_service import (
     CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
     CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
@@ -253,13 +254,9 @@ def test_get_pool_uses_billing_quota_balance_when_enabled(config_overrides: Call
     with (
         patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
     ):
-        quota_get_balance.return_value = {
-            "quota": 1000,
-            "usage": 250,
-            "available": 750,
-            "reserved": 0,
-            "exhausted_at": 1748908800,
-        }
+        quota_get_balance.return_value = billing.QuotaGetBalanceReply(
+            quota=1000, usage=250, available=750, reserved=0, exhausted_at=1748908800
+        )
 
         pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=ProviderQuotaType.PAID)
 
@@ -282,7 +279,7 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         reservation = CreditPoolService.reserve_credits(
             tenant_id="tenant-1",
@@ -330,7 +327,7 @@ def test_reserve_credits_releases_billing_reservation() -> None:
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         reservation = CreditPoolService.reserve_credits(
             tenant_id="tenant-1",
@@ -378,7 +375,7 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled(
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         result = CreditPoolService.check_and_deduct_credits(
             tenant_id=tenant_id,
@@ -422,7 +419,7 @@ def test_check_and_deduct_credits_forwards_deterministic_billing_identity(
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         result = CreditPoolService.check_and_deduct_credits(
             tenant_id="tenant-1",
@@ -464,7 +461,7 @@ def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient(
     with (
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
     ):
-        quota_reserve.return_value = {"reservation_id": "", "available": 1, "reserved": 0}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="", available=1, reserved=0)
 
         with pytest.raises(QuotaExceededError, match="Insufficient credits remaining"):
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
@@ -479,7 +476,7 @@ def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         with pytest.raises(RuntimeError, match="commit failed"):
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
@@ -504,7 +501,7 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
             "services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed")
         ) as quota_release,
     ):
-        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3)
 
         with pytest.raises(RuntimeError, match="commit failed"):
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
@@ -528,13 +525,9 @@ def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled(
     with (
         patch("services.billing_service.BillingService.quota_consume_capped") as quota_consume_capped,
     ):
-        quota_consume_capped.return_value = {
-            "deducted": 2,
-            "available": 0,
-            "reserved": 0,
-            "quota": 10,
-            "usage": 10,
-        }
+        quota_consume_capped.return_value = billing.QuotaConsumeCappedReply(
+            deducted=2, available=0, reserved=0, quota=10, usage=10
+        )
 
         result = CreditPoolService.deduct_credits_capped(
             tenant_id=tenant_id,

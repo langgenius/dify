@@ -178,6 +178,49 @@ describe('ChatClient', () => {
     })
   })
 
+  it.each([
+    [
+      'conversations',
+      (chat: ChatClient, cursor: string) => chat.getConversations('user', cursor, 10),
+    ],
+    [
+      'messages',
+      (chat: ChatClient, cursor: string) =>
+        chat.getConversationMessages('user', 'conv', cursor, 10),
+    ],
+    [
+      'conversation variables',
+      (chat: ChatClient, cursor: string) =>
+        chat.getConversationVariables('conv', 'user', cursor, 10),
+    ],
+  ])('accepts an empty first-page cursor for %s', async (_name, call) => {
+    const { client, fetchMock } = createHttpClient()
+    fetchMock.mockResolvedValue(new Response('{"data":[]}', { status: 200 }))
+    const chat = new ChatClient(client)
+
+    await call(chat, '')
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const url = new URL(fetchMock.mock.calls[0]![0] as string)
+    expect(url.searchParams.get('user')).toBe('user')
+    expect(url.searchParams.get('limit')).toBe('10')
+    expect(url.searchParams.has('last_id')).toBe(false)
+    expect(url.searchParams.has('first_id')).toBe(false)
+  })
+
+  it.each([
+    ['conversations', (chat: ChatClient) => chat.getConversations('user', ' ')],
+    ['messages', (chat: ChatClient) => chat.getConversationMessages('user', 'conv', ' ')],
+    [
+      'conversation variables',
+      (chat: ChatClient) => chat.getConversationVariables('conv', 'user', ' '),
+    ],
+  ])('still rejects a whitespace-only cursor for %s', (_name, call) => {
+    const { client, fetchMock } = createHttpClient()
+    expect(() => call(new ChatClient(client))).toThrow(ValidationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('renames conversations with optional auto-generate', async () => {
     const { client, request } = createHttpClientWithSpies()
     const chat = new ChatClient(client)

@@ -8,10 +8,9 @@ export type ComplianceDownloadResponse = {
   url: string
 }
 
-export type BillingUnprocessableEntityErrorResponse = {
-  code: 'unprocessable_entity'
-  message: string
-  status: 422
+export type ComplianceDownloadForbiddenError = ErrorResponse & {
+  code: 'compliance_download_forbidden'
+  status: 403
 }
 
 export type ErrorResponse = {
@@ -24,9 +23,25 @@ export type ErrorResponse = {
   status: number
 }
 
+export type ComplianceDocumentNotFoundError = ErrorResponse & {
+  code: 'compliance_document_not_found'
+  status: 404
+}
+
+export type BillingUnprocessableEntityErrorResponse = {
+  code: 'unprocessable_entity'
+  message: string
+  status: 422
+}
+
 export type ComplianceRateLimitErrorResponse = {
   code: 'compliance_rate_limit'
   message: string
+  status: 429
+}
+
+export type BillingRequestInProgressError = ErrorResponse & {
+  code: 'billing_request_in_progress'
   status: 429
 }
 
@@ -67,8 +82,14 @@ export type GetComplianceDownloadData = {
 }
 
 export type GetComplianceDownloadErrors = {
+  403: ComplianceDownloadForbiddenError | ErrorResponse
+  404: ComplianceDocumentNotFoundError | ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
-  429: ComplianceRateLimitErrorResponse | ComplianceRateLimitError | ErrorResponse
+  429:
+    | ComplianceRateLimitErrorResponse
+    | BillingRequestInProgressError
+    | ComplianceRateLimitError
+    | ErrorResponse
   502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
   503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse
   default: ErrorResponse

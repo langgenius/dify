@@ -146,6 +146,7 @@ describe('Knowledge document deletion', () => {
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.remove).toHaveBeenCalledWith(
       expect.objectContaining({ body: { expectedRevision: 2 } }),
+      { context: { silent: true } },
     )
   })
 
@@ -184,9 +185,9 @@ describe('Knowledge document deletion', () => {
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(new Error('Deletion service unavailable'))
     await expect
-      .element(screen.getByText('knowledgeSpace.documentsErrorDescription', { exact: true }))
+      .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

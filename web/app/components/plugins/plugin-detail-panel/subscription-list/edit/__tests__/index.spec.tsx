@@ -89,10 +89,13 @@ it.each([
     await user.type(input, 'updated')
     await user.click(save())
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    expect(requests.update).toHaveBeenCalledExactlyOnceWith({
-      params: { subscription_id: 'subscription-1' },
-      body: { name: 'Renamed', [payloadKey]: { [field]: 'updated' } },
-    })
+    expect(requests.update).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { subscription_id: 'subscription-1' },
+        body: { name: 'Renamed', [payloadKey]: { [field]: 'updated' } },
+      },
+      { context: { silent: true } },
+    )
     expect(requests.refetch).toHaveBeenCalledOnce()
   },
 )
@@ -122,10 +125,13 @@ it('verifies edited API credentials before saving them with the configuration', 
   await screen.findByRole('textbox', { name: subscriptionName })
   await user.click(save())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(requests.update).toHaveBeenCalledWith({
-    params: { subscription_id: 'subscription-1' },
-    body: { name: 'Original', parameters: undefined, credentials: { api_key: 'new-secret' } },
-  })
+  expect(requests.update).toHaveBeenCalledWith(
+    {
+      params: { subscription_id: 'subscription-1' },
+      body: { name: 'Original', parameters: undefined, credentials: { api_key: 'new-secret' } },
+    },
+    { context: { silent: true } },
+  )
 })
 
 it('preserves unchanged hidden credentials and leaves the dialog open if saving fails', async () => {
@@ -138,10 +144,13 @@ it('preserves unchanged hidden credentials and leaves the dialog open if saving 
   await user.click(save())
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Save failed'))
   expect(onClose).not.toHaveBeenCalled()
-  expect(requests.update).toHaveBeenCalledWith({
-    params: { subscription_id: 'subscription-1' },
-    body: { name: 'Original', parameters: undefined, credentials: undefined },
-  })
+  expect(requests.update).toHaveBeenCalledWith(
+    {
+      params: { subscription_id: 'subscription-1' },
+      body: { name: 'Original', parameters: undefined, credentials: undefined },
+    },
+    { context: { silent: true } },
+  )
   await user.click(save())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 })

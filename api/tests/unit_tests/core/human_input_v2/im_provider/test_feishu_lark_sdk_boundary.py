@@ -588,7 +588,7 @@ def sdk_server(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunningServer]:
     state = _ServerState()
     server = _SDKHTTPServer(("127.0.0.1", 0), _SDKRequestHandler)
     server.state = state
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         host, port = server.server_address[:2]
@@ -1716,7 +1716,7 @@ def test_synchronous_channel_installs_write_hook_during_public_ready_boundary(
         domain="https://open.feishu.cn",
         callback=lambda _event, acknowledge: acknowledge(),
     )
-    channel._fetch_bot_identity_sync = lambda: None
+    monkeypatch.setattr(channel, "_fetch_bot_identity_sync", lambda: None)
 
     original_install = channel._install_wire_ack_hook
 
@@ -1725,7 +1725,7 @@ def test_synchronous_channel_installs_write_hook_during_public_ready_boundary(
         assert isinstance(ws_client, ReadyClient)
         ws_client.hook_installed.set()
 
-    channel._install_wire_ack_hook = install_and_release
+    monkeypatch.setattr(channel, "_install_wire_ack_hook", install_and_release)
 
     asyncio.run(channel.connect_until_ready(timeout=1))
     writer = channel._ws_client
