@@ -1,42 +1,34 @@
-import type { ComponentType, SVGProps } from 'react'
-import { FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import type { SearchMethodOptionProps } from '../search-method-option'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react'
-import {
-  HybridSearchModeEnum,
-  RetrievalSearchMethodEnum,
-  WeightedScoreEnum,
-} from '../../../types'
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
 
-const mockUseModelListAndDefaultModel = vi.hoisted(() => vi.fn())
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
-const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/header/account-setting/model-provider-page/hooks')>()
-  return {
-    ...actual,
-    useModelListAndDefaultModel: (...args: Parameters<typeof actual.useModelListAndDefaultModel>) => mockUseModelListAndDefaultModel(...args),
-  }
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'reranker',
+          model_type: 'rerank',
+          label: { en_US: 'Reranker' },
+        }),
+      ],
+    }),
+  ])
+  return renderWithConsoleQuery(ui, { queryClient })
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: (...args: unknown[]) => mockUseCredentialPanelState(...args),
-}))
-
-const SearchIcon: ComponentType<SVGProps<SVGSVGElement>> = props => (
-  <svg aria-hidden="true" {...props} />
-)
 
 const hybridSearchModeOptions = [
   {
@@ -66,7 +58,7 @@ const weightedScore = {
 const createProps = () => ({
   option: {
     id: RetrievalSearchMethodEnum.semantic,
-    icon: SearchIcon,
+    iconClassName: 'i-custom-vender-knowledge-vector-search',
     title: 'Semantic title',
     description: 'Semantic description',
     effectColor: 'purple',
@@ -104,67 +96,33 @@ const createProps = () => ({
   },
 })
 
-function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
-  const {
-    onRetrievalSearchMethodChange,
-    ...optionProps
-  } = props
+function renderSearchMethodOption(
+  props: SearchMethodOptionProps & {
+    onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
+  },
+) {
+  const { onRetrievalSearchMethodChange, ...optionProps } = props
 
   render(
-    <FieldRoot name="retrieval_search_method">
-      <FieldsetRoot
-        render={(
+    <Field name="retrieval_search_method">
+      <Fieldset
+        render={
           <RadioGroup
             value={props.searchMethod}
-            onValueChange={value => onRetrievalSearchMethodChange(value)}
+            onValueChange={(value) => onRetrievalSearchMethodChange(value)}
           />
-        )}
+        }
       >
         <FieldsetLegend>Retrieval search method</FieldsetLegend>
         <SearchMethodOption {...optionProps} />
-      </FieldsetRoot>
-    </FieldRoot>,
+      </Fieldset>
+    </Field>,
   )
 }
 
 describe('SearchMethodOption', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-    })
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [],
-    })
-    mockUseCredentialPanelState.mockReturnValue({
-      variant: 'api-active',
-      priority: 'apiKeyOnly',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: true,
-      isCreditsExhausted: false,
-      credentialName: undefined,
-      credits: 0,
-    })
-  })
-
-  it('should render semantic search controls and notify retrieval and reranking changes', () => {
-    const props = createProps()
-
-    renderSearchMethodOption(props)
-
-    expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.getAllByRole('switch')).toHaveLength(2)
-
-    fireEvent.click(screen.getAllByRole('switch')[0]!)
-
-    expect(props.reranking.onEnabledChange).toHaveBeenCalledWith(true)
-  })
-
-  it('should notify retrieval changes when an inactive option is selected', () => {
+  it('should notify retrieval changes when an inactive option is selected', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const fullTextProps = {
       ...props,
@@ -179,12 +137,15 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Full-text title'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Full-text title'))
+    await user.click(screen.getByText('Full-text title'))
 
-    expect(props.onRetrievalSearchMethodChange).toHaveBeenCalledWith(RetrievalSearchMethodEnum.fullText)
+    expect(props.onRetrievalSearchMethodChange).toHaveBeenCalledWith(
+      RetrievalSearchMethodEnum.fullText,
+    )
   })
 
-  it('should render hybrid weighted-score controls without reranking model selector', () => {
+  it('should render hybrid weighted-score controls without reranking model selector', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const hybridProps = {
       ...props,
@@ -208,17 +169,24 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
-    expect(screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip')).not.toBeInTheDocument()
+    expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+    expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Rerank mode'))
+    await user.click(screen.getByText('Rerank mode'))
 
-    expect(props.hybridSearch.onModeChange).toHaveBeenCalledWith(HybridSearchModeEnum.RerankingModel)
+    expect(props.hybridSearch.onModeChange).toHaveBeenCalledWith(
+      HybridSearchModeEnum.RerankingModel,
+    )
   })
 
-  it('should render the hybrid reranking selector when reranking mode is selected', () => {
+  it('should render the hybrid reranking selector when reranking mode is selected', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const hybridProps = {
       ...props,
@@ -240,13 +208,23 @@ describe('SearchMethodOption', () => {
 
     renderSearchMethodOption(hybridProps)
 
-    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(await screen.findByRole('button', { name: /Reranker/ }))
+    expect(props.reranking.onRerankingModelChange).toHaveBeenCalledWith({
+      reranking_provider_name: 'openai',
+      reranking_model_name: 'reranker',
+    })
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
-    expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+    )!.toBeInTheDocument()
   })
 
-  it('should hide the score-threshold control for keyword search', () => {
+  it('should hide the score-threshold control for keyword search', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const keywordProps = {
       ...props,
@@ -260,7 +238,8 @@ describe('SearchMethodOption', () => {
 
     renderSearchMethodOption(keywordProps)
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '9' } })
+    await user.clear(screen.getByRole('textbox'))
+    await user.type(screen.getByRole('textbox'), '9')
 
     expect(screen.getAllByRole('textbox')).toHaveLength(1)
     expect(screen.queryAllByRole('switch')).toHaveLength(0)

@@ -1,54 +1,60 @@
 'use client'
+
+import type { RelatedAppResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { RelatedApp } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 
 type ILikedItemProps = Readonly<{
   appStatus?: boolean
-  detail: RelatedApp
+  detail: RelatedAppResponse
   isMobile: boolean
 }>
 
-const appTypeMap = {
-  [AppModeEnum.CHAT]: 'Chatbot',
-  [AppModeEnum.COMPLETION]: 'Completion',
-  [AppModeEnum.AGENT_CHAT]: 'Agent',
-  [AppModeEnum.ADVANCED_CHAT]: 'Chatflow',
-  [AppModeEnum.WORKFLOW]: 'Workflow',
+const appTypeMap: Partial<Record<RelatedAppResponse['mode'], string>> = {
+  chat: 'Chatbot',
+  completion: 'Completion',
+  'agent-chat': 'Agent',
+  'advanced-chat': 'Chatflow',
+  workflow: 'Workflow',
 }
 
-const LikedItem = ({
-  detail,
-  isMobile,
-}: ILikedItemProps) => {
+const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
   return (
-    <Link className={cn('group/link-item flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2 hover:bg-state-base-hover', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
+    <Link
+      className={cn(
+        'group/link-item flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2 hover:bg-state-base-hover',
+        isMobile && 'justify-center',
+      )}
+      href={`/app/${detail?.id}/overview`}
+    >
       <div className="flex items-center">
         <div className={cn('relative size-6 rounded-md')}>
-          <AppIcon size="tiny" iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
+          <AppIcon size="tiny" icon={detail} />
         </div>
-        {!isMobile && <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>{detail?.name || '--'}</div>}
+        {!isMobile && (
+          <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>
+            {detail?.name || '--'}
+          </div>
+        )}
       </div>
-      <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary group-hover/link-item:hidden">{appTypeMap[detail.mode]}</div>
+      <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary group-hover/link-item:hidden">
+        {appTypeMap[detail.mode]}
+      </div>
       <RiArrowRightUpLine className="hidden size-4 text-text-tertiary group-hover/link-item:block" />
     </Link>
   )
 }
 
 type Props = Readonly<{
-  relatedApps: RelatedApp[]
+  relatedApps: RelatedAppResponse[]
   isMobile: boolean
 }>
 
-const LinkedAppsPanel: FC<Props> = ({
-  relatedApps,
-  isMobile,
-}) => {
+const LinkedAppsPanel: FC<Props> = ({ relatedApps, isMobile }) => {
   return (
     <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
       {relatedApps.map((item, index) => (

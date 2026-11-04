@@ -11,6 +11,7 @@ from core.trigger.constants import (
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
+    DATASET_API_KEY = "dataset_api_key"
 
     @classmethod
     @override
@@ -91,14 +92,6 @@ class AppStatus(StrEnum):
     """App Status Enum"""
 
     NORMAL = "normal"
-
-
-class AppMCPServerStatus(StrEnum):
-    """AppMCPServer Status Enum"""
-
-    NORMAL = "normal"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
 
 
 class ConversationStatus(StrEnum):
@@ -208,11 +201,15 @@ class InvokeFrom(StrEnum):
 class EndUserType(StrEnum):
     """Persisted type values for the ``end_users.type`` column."""
 
+    APP_DEPLOY = "app-deploy"
     BROWSER = "browser"
     MCP = "mcp"
     OPENAPI = "openapi"
     SERVICE_API = "service-api"
     TRIGGER = "trigger"
+
+
+DEFAULT_END_USER_SESSION_ID = "DEFAULT-USER"
 
 
 class DocumentDocType(StrEnum):
@@ -237,6 +234,7 @@ class TagType(StrEnum):
     KNOWLEDGE = "knowledge"
     APP = "app"
     SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class DatasetMetadataType(StrEnum):
@@ -291,6 +289,7 @@ class TidbAuthBindingStatus(StrEnum):
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
 
 
 class MessageFileBelongsTo(StrEnum):
@@ -369,6 +368,13 @@ class ApiTokenType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+
+
+class ApiTokenBindingResourceType(StrEnum):
+    """Kind of knowledge base a dataset API key binding row points at."""
+
+    DATASET = "dataset"
+    KNOWLEDGE_FS_SPACE = "knowledge_fs_space"
 
 
 class PermissionEnum(StrEnum):

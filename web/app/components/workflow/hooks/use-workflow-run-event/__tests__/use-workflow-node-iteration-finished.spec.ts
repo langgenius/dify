@@ -32,11 +32,18 @@ describe('useWorkflowNodeIterationFinished', () => {
       result.current.handleWorkflowNodeIterationFinished(createIterationFinishedResponse())
     })
 
+    expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(
+      NodeRunningStatus.Succeeded,
+    )
     expect(store.getState().iterTimes).toBe(DEFAULT_ITER_TIMES)
 
     await waitFor(() => {
-      expect(getNodeRuntimeState(result.current.nodes[0])._runningStatus).toBe(NodeRunningStatus.Succeeded)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(NodeRunningStatus.Succeeded)
+      expect(getNodeRuntimeState(result.current.nodes[0])._runningStatus).toBe(
+        NodeRunningStatus.Succeeded,
+      )
+      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+        NodeRunningStatus.Succeeded,
+      )
     })
   })
 })

@@ -34,7 +34,7 @@ const VirtualPageList = ({
   selectionMode,
   showPreview,
 }: VirtualPageListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({
@@ -78,29 +78,25 @@ const VirtualPageList = ({
   })
 
   return (
-    <div
-      ref={scrollRef}
-      className="h-[296px] overflow-auto"
-      data-testid="virtual-list"
-    >
+    <div ref={scrollRef} className="h-74 overflow-auto" data-testid="virtual-list">
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
           position: 'relative',
         }}
       >
-        {selectionMode === 'single'
-          ? (
-              <RadioGroup
-                aria-label={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
-                value={selectedPageId}
-                onValueChange={onSelect}
-                className="contents"
-              >
-                {rowNodes}
-              </RadioGroup>
-            )
-          : rowNodes}
+        {selectionMode === 'single' ? (
+          <RadioGroup
+            aria-label={t(($) => $['dataSource.notion.selector.headerTitle'], { ns: 'common' })}
+            value={selectedPageId}
+            onValueChange={onSelect}
+            className="contents"
+          >
+            {rowNodes}
+          </RadioGroup>
+        ) : (
+          rowNodes
+        )}
       </div>
     </div>
   )

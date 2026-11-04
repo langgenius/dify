@@ -2,12 +2,15 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
     ChatAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -16,7 +19,6 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from extensions.ext_database import db
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Conversation, Message
@@ -35,9 +37,13 @@ class ChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
+        session: Session,
     ):
-        """
-        Run application
+        """Run the application without retaining ``session`` during model I/O.
+
+        Database preparation is committed and the connection is released before
+        the provider response is requested or consumed.
+
         :param application_generate_entity: application generate entity
         :param queue_manager: application queue manager
         :param conversation: conversation
@@ -47,10 +53,10 @@ class ChatAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        with create_session() as session:
-            app_record = session.scalar(stmt)
+        with create_session() as read_session:
+            app_record = read_session.scalar(stmt)
             if app_record:
-                session.expunge(app_record)
+                read_session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -121,7 +127,10 @@ class ChatAppRunner(AppRunner):
                 query=query,
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
+                session=session,
             )
+            session.commit()
+            session.close()
 
             if annotation_reply:
                 queue_manager.publish(
@@ -163,6 +172,7 @@ class ChatAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -184,6 +194,9 @@ class ChatAppRunner(AppRunner):
                 ),
             )
             context_files = retrieved_files or []
+
+        session.commit()
+        session.close()
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -220,15 +233,16 @@ class ChatAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
-        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
-        # is not held for the lifetime of the provider response.
-        db.session.close()
+        request_metadata: dict[str, object] = {"app_id": app_config.app_id}
+        request_metadata["app_type"] = get_credit_usage_app_type(app_config.app_mode)
+        request_metadata["created_by"] = get_credit_usage_created_by(app_config.app_mode)
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
+            request_metadata=request_metadata,
         )
 
         # handle invoke result

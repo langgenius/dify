@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetOauthDataSourceBindingByProviderPath,
   zGetOauthDataSourceBindingByProviderQuery,
@@ -15,6 +14,7 @@ import {
   zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery,
   zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse,
   zGetOauthPluginByProviderToolAuthorizationUrlPath,
+  zGetOauthPluginByProviderToolAuthorizationUrlQuery,
   zGetOauthPluginByProviderToolAuthorizationUrlResponse,
   zPostOauthProviderAccountBody,
   zPostOauthProviderAccountResponse,
@@ -24,7 +24,7 @@ import {
   zPostOauthProviderResponse,
   zPostOauthProviderTokenBody,
   zPostOauthProviderTokenResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Bind OAuth data source with authorization code
@@ -138,7 +138,12 @@ export const get5 = oc
     path: '/oauth/plugin/{provider}/tool/authorization-url',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetOauthPluginByProviderToolAuthorizationUrlPath }))
+  .input(
+    z.object({
+      params: zGetOauthPluginByProviderToolAuthorizationUrlPath,
+      query: zGetOauthPluginByProviderToolAuthorizationUrlQuery.optional(),
+    }),
+  )
   .output(zGetOauthPluginByProviderToolAuthorizationUrlResponse)
 
 export const authorizationUrl = {

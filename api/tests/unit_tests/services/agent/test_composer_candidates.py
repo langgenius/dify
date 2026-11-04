@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Iterable
+from unittest.mock import Mock
 
 from fields.agent_fields import AgentComposerCandidatesResponse
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, DeclaredOutputType
+from models.dataset import Dataset
 from services.agent.composer_candidates import (
     MAX_CANDIDATES_PER_LIST,
     previous_node_output_candidates,
@@ -23,8 +25,24 @@ _GRAPH = {
             },
         },
         {"id": "llm-1", "data": {"type": "llm", "title": "LLM"}},
-        {"id": "agent-up", "data": {"type": "agent", "version": "2", "title": "Upstream Agent"}},
-        {"id": "agent-target", "data": {"type": "agent", "version": "2", "title": "Target Agent"}},
+        {
+            "id": "agent-up",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Upstream Agent",
+            },
+        },
+        {
+            "id": "agent-target",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Target Agent",
+            },
+        },
         {"id": "end", "data": {"type": "end", "title": "END"}},
     ],
     "edges": [
@@ -48,7 +66,7 @@ def _draft_vars(nid: str) -> list[tuple[str, str | None]]:
     return []
 
 
-def _collect(node_id: str, *, system_vars=()):
+def _collect(node_id: str, *, system_vars: Iterable[tuple[str, str]] = ()) -> tuple[list[dict[str, object]], bool]:
     entries, truncated = previous_node_output_candidates(
         graph=_GRAPH,
         node_id=node_id,
@@ -59,7 +77,7 @@ def _collect(node_id: str, *, system_vars=()):
     return entries, truncated
 
 
-def test_upstream_outputs_follow_inspector_semantics():
+def test_upstream_outputs_follow_inspector_semantics() -> None:
     entries, truncated = _collect("agent-target", system_vars=[("query", "string")])
 
     assert truncated is False
@@ -90,7 +108,7 @@ def test_upstream_outputs_follow_inspector_semantics():
     assert "end" not in by_node
 
 
-def test_results_differ_per_node_id():
+def test_results_differ_per_node_id() -> None:
     entries_target, _ = _collect("agent-target")
     entries_llm, _ = _collect("llm-1")
 
@@ -98,17 +116,42 @@ def test_results_differ_per_node_id():
     assert {e["node_id"] for e in entries_llm} == {"start-1"}
 
 
-def test_previous_outputs_capped_and_flagged():
+def test_historical_agent_version_two_uses_inferred_outputs() -> None:
     graph = {
-        "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": []}}, {"id": "t"}],
+        "nodes": [
+            {"id": "legacy", "data": {"type": "agent", "version": "2", "title": "Legacy"}},
+            {
+                "id": "target",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
+        ],
+        "edges": [{"source": "legacy", "target": "target"}],
+    }
+    declared_loader = Mock(return_value=[DeclaredOutputConfig(name="declared", type=DeclaredOutputType.STRING)])
+
+    entries, _ = previous_node_output_candidates(
+        graph=graph,
+        node_id="target",
+        declared_outputs_loader=declared_loader,
+        draft_variables_loader=lambda node_id: [("legacy_output", "string")] if node_id == "legacy" else [],
+        system_variables_loader=lambda: [],
+    )
+
+    assert [entry["output"] for entry in entries] == ["legacy_output"]
+    declared_loader.assert_not_called()
+
+
+def test_previous_outputs_capped_and_flagged() -> None:
+    graph = {
+        "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": list[object]()}}, {"id": "t"}],
         "edges": [{"source": "start-1", "target": "t"}],
     }
     many: list[tuple[str, str | None]] = [(f"v{i}", "string") for i in range(MAX_CANDIDATES_PER_LIST + 5)]
     entries, truncated = previous_node_output_candidates(
         graph=graph,
         node_id="t",
-        declared_outputs_loader=lambda nid: None,
-        draft_variables_loader=lambda nid: [],
+        declared_outputs_loader=lambda _nid: None,
+        draft_variables_loader=lambda _nid: [],
         system_variables_loader=lambda: many,
     )
     assert len(entries) == MAX_CANDIDATES_PER_LIST
@@ -124,16 +167,34 @@ def _soul() -> AgentSoulConfig:
                     {"id": "ct-2", "name": "disabled-one", "enabled": False},
                 ],
             },
-            "knowledge": {"datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}]},
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "kb-1",
+                        "name": "产品知识",
+                        "description": "knowledge set",
+                        "datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
 
 
-def test_soul_candidates_lists_configured_items_only():
+def test_soul_candidates_lists_configured_items_only() -> None:
+    dataset = Dataset(
+        id="ds-1",
+        tenant_id="tenant-1",
+        name="产品手册",
+        description="desc",
+        created_by="account-1",
+    )
     lists, truncated = soul_candidates(
         agent_soul=_soul(),
-        dataset_lookup=lambda ids: {"ds-1": SimpleNamespace(name="产品手册", description="desc")},
+        dataset_lookup=lambda _ids: {"ds-1": dataset},
         workspace_tools_loader=lambda: [
             {"id": "tavily/tavily_search", "name": "tavily_search", "provider": "tavily", "plugin_id": "lg/tavily"}
         ],
@@ -143,17 +204,21 @@ def test_soul_candidates_lists_configured_items_only():
     assert [item["name"] for item in lists["cli_tools"]] == ["ffmpeg"]
     # the stable mention id flows through so the frontend can mint [§cli_tool:<id>§]
     assert [item["id"] for item in lists["cli_tools"]] == ["ct-1"]
-    # enriched from DB; dangling dataset kept with missing flag (placeholder, 0522)
-    knowledge = {item["id"]: item for item in lists["knowledge_datasets"]}
-    assert knowledge["ds-1"]["name"] == "产品手册"
-    assert knowledge["ds-1"]["missing"] is False
-    assert knowledge["ds-gone"]["missing"] is True
-    assert knowledge["ds-gone"]["name"] == "已删"
+    # Knowledge mentions point at set ids; nested datasets are hydrated for context.
+    knowledge_set = lists["knowledge_sets"][0]
+    assert knowledge_set["id"] == "kb-1"
+    assert knowledge_set["name"] == "产品知识"
+    assert knowledge_set["missing_dataset_ids"] == ["ds-gone"]
+    datasets = {item["id"]: item for item in knowledge_set["datasets"]}
+    assert datasets["ds-1"]["name"] == "产品手册"
+    assert datasets["ds-1"]["missing"] is False
+    assert datasets["ds-gone"]["missing"] is True
+    assert datasets["ds-gone"]["name"] == "已删"
     assert lists["human_contacts"][0]["id"] == "c-1"
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
 
 
-def test_candidates_response_omits_legacy_skill_file_candidates():
+def test_candidates_response_omits_legacy_skill_file_candidates() -> None:
     response = AgentComposerCandidatesResponse.model_validate(
         {
             "variant": "agent_app",
@@ -168,20 +233,20 @@ def test_candidates_response_omits_legacy_skill_file_candidates():
     assert "skills_files" not in response["allowed_soul_candidates"]
 
 
-def test_soul_candidates_empty_config_yields_empty_lists():
+def test_soul_candidates_empty_config_yields_empty_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [],
     )
     assert truncated is False
     assert all(value == [] for value in lists.values())
 
 
-def test_soul_candidates_caps_lists():
+def test_soul_candidates_caps_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [{"id": str(i)} for i in range(MAX_CANDIDATES_PER_LIST + 1)],
     )
     assert len(lists["dify_tools"]) == MAX_CANDIDATES_PER_LIST

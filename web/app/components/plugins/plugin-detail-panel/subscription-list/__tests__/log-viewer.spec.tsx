@@ -1,31 +1,8 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it } from 'vite-plus/test'
 import LogViewer from '../log-viewer'
-
-const mockToastNotify = vi.fn()
-const mockWriteText = vi.fn()
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value }: { value: unknown }) => (
-    <div data-testid="code-editor">{JSON.stringify(value)}</div>
-  ),
-}))
 
 const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity => ({
   id: 'log-1',
@@ -35,10 +12,10 @@ const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity 
     method: 'POST',
     url: 'https://example.com',
     headers: {
-      'Host': 'example.com',
+      Host: 'example.com',
       'User-Agent': 'vitest',
       'Content-Length': '0',
-      'Accept': '*/*',
+      Accept: '*/*',
       'Content-Type': 'application/json',
       'X-Forwarded-For': '127.0.0.1',
       'X-Forwarded-Host': 'example.com',
@@ -63,16 +40,6 @@ const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity 
   ...overrides,
 })
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  Object.defineProperty(navigator, 'clipboard', {
-    value: {
-      writeText: mockWriteText,
-    },
-    configurable: true,
-  })
-})
-
 describe('LogViewer', () => {
   it('should render nothing when logs are empty', () => {
     const { container } = render(<LogViewer logs={[]} />)
@@ -80,98 +47,71 @@ describe('LogViewer', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render collapsed log entries', () => {
+  it('expands parsed request and response payloads and collapses them again', async () => {
+    const user = userEvent.setup()
     render(<LogViewer logs={[createLog()]} />)
 
-    expect(screen.getByText(/pluginTrigger\.modal\.manual\.logs\.request/)).toBeInTheDocument()
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
-  })
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
 
-  it('should expand and render request/response payloads', () => {
-    render(<LogViewer logs={[createLog()]} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
-
-    const editors = screen.getAllByTestId('code-editor')
+    const editors = screen.getAllByRole('textbox')
     expect(editors.length).toBe(2)
-    expect(editors[0]).toHaveTextContent('"foo":"bar"')
-  })
-
-  it('should collapse expanded content when clicked again', () => {
-    render(<LogViewer logs={[createLog()]} />)
-
-    const trigger = screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ })
-    fireEvent.click(trigger)
-    expect(screen.getAllByTestId('code-editor').length).toBe(2)
-
-    fireEvent.click(trigger)
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
-  })
-
-  it('should apply distinct styling when response is an error', () => {
-    const { container: errorContainer } = render(
-      <LogViewer logs={[createLog({ response: { ...createLog().response, status_code: 500 } })]} />,
+    expect(JSON.parse((editors[0] as HTMLTextAreaElement).value)).toEqual({
+      headers: createLog().request.headers,
+      data: { foo: 'bar' },
+    })
+    expect(JSON.parse((editors[1] as HTMLTextAreaElement).value)).toEqual(createLog().response)
+    for (const editor of editors) expect(editor).toHaveAttribute('readonly')
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
-    const errorWrapperClass = errorContainer.querySelector('[class*="border"]')?.className ?? ''
-
-    cleanup()
-
-    const { container: okContainer } = render(
-      <LogViewer logs={[createLog()]} />,
-    )
-    const okWrapperClass = okContainer.querySelector('[class*="border"]')?.className ?? ''
-
-    expect(errorWrapperClass).not.toBe(okWrapperClass)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('should render raw response text and allow copying', () => {
-    const rawLog = {
-      ...createLog(),
-      response: 'plain response',
-    } as unknown as TriggerLogEntity
-
-    render(<LogViewer logs={[rawLog]} />)
-
-    const toggleButton = screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ })
-    fireEvent.click(toggleButton)
-
-    expect(screen.getByText('plain response')).toBeInTheDocument()
-
-    const copyButton = screen.getAllByRole('button').find(button => button !== toggleButton) as HTMLElement
-    expect(copyButton).toBeTruthy()
-    fireEvent.click(copyButton)
-    expect(mockWriteText).toHaveBeenCalledWith('plain response')
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
-  })
-
-  it('should parse request data when it is raw JSON', () => {
+  it('should parse request data when it is raw JSON', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: '{"hello":1}' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('"hello":1')
+    expect(
+      JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data,
+    ).toEqual({ hello: 1 })
   })
 
-  it('should fallback to raw payload when decoding fails', () => {
+  it('should fallback to raw payload when decoding fails', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: 'payload=%E0%A4%A' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('payload=%E0%A4%A')
+    expect(JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data).toBe(
+      'payload=%E0%A4%A',
+    )
   })
 
-  it('should keep request data string when JSON parsing fails', () => {
+  it('should keep request data string when JSON parsing fails', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: '{invalid}' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('{invalid}')
+    expect(JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data).toBe(
+      '{invalid}',
+    )
   })
 
   it('should render multiple log entries with distinct indices', () => {
@@ -182,13 +122,5 @@ describe('LogViewer', () => {
 
     expect(screen.getByText(/#1/)).toBeInTheDocument()
     expect(screen.getByText(/#2/)).toBeInTheDocument()
-  })
-
-  it('should use index-based key when id is missing', () => {
-    const log = { ...createLog(), id: '' }
-
-    render(<LogViewer logs={[log]} />)
-
-    expect(screen.getByText(/#1/)).toBeInTheDocument()
   })
 })

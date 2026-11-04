@@ -1,0 +1,49 @@
+import { resolveImportedAppRedirectionTarget } from './imported-app-redirection'
+
+const mockFetchAppDetail = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        get: (...args: unknown[]) => mockFetchAppDetail(...args),
+      },
+    },
+  },
+}))
+
+describe('resolveImportedAppRedirectionTarget', () => {
+  beforeEach(() => {
+    mockFetchAppDetail.mockReset()
+  })
+
+  it('resolves the backing Agent ID for an imported Agent App', async () => {
+    mockFetchAppDetail.mockResolvedValue({ bound_agent_id: 'agent-1' })
+
+    await expect(
+      resolveImportedAppRedirectionTarget({
+        id: 'app-1',
+        mode: 'agent' as const,
+        permission_keys: ['app.acl.view_layout'],
+      }),
+    ).resolves.toEqual({
+      id: 'app-1',
+      mode: 'agent' as const,
+      permission_keys: ['app.acl.view_layout'],
+      bound_agent_id: 'agent-1',
+    })
+    expect(mockFetchAppDetail).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+    })
+  })
+
+  it('keeps the roster fallback when resolving the imported Agent App fails', async () => {
+    mockFetchAppDetail.mockRejectedValue(new Error('Failed to fetch App detail'))
+    const target = {
+      id: 'app-1',
+      mode: 'agent' as const,
+    }
+
+    await expect(resolveImportedAppRedirectionTarget(target)).resolves.toEqual(target)
+  })
+})

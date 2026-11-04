@@ -1,5 +1,5 @@
-import type { ManagedProcess } from './process'
-import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process'
+import type { ManagedProcess } from './process.ts'
+import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process.ts'
 
 type WebServerStartOptions = {
   baseURL: string
@@ -34,8 +34,7 @@ export const startWebServer = async ({
 }: WebServerStartOptions) => {
   const { host, port } = getUrlHostAndPort(baseURL)
 
-  if (reuseExistingServer && (await isPortReachable(host, port)))
-    return
+  if (reuseExistingServer && (await isPortReachable(host, port))) return
 
   activeProcess = await startLoggedProcess({
     command,
@@ -50,8 +49,7 @@ export const startWebServer = async ({
     startupError = error
   })
   activeProcess.childProcess.once('exit', (code, signal) => {
-    if (startupError)
-      return
+    if (startupError) return
 
     startupError = new Error(
       `Web server exited before readiness (code: ${code ?? 'unknown'}, signal: ${signal ?? 'none'}).`,
@@ -63,14 +61,15 @@ export const startWebServer = async ({
     if (startupError) {
       await stopManagedProcess(activeProcess)
       activeProcess = undefined
-      throw startupError
+      throw startupError instanceof Error
+        ? startupError
+        : new Error('Web server startup failed with a non-Error value.', { cause: startupError })
     }
 
     try {
       await waitForUrl(baseURL, 1_000, 250, 1_000)
       return
-    }
-    catch {
+    } catch {
       // Continue polling until timeout or child exit.
     }
   }

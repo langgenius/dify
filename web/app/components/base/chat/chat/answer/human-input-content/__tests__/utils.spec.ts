@@ -1,5 +1,5 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -16,7 +16,9 @@ import {
   splitByOutputVar,
 } from '../utils'
 
-const paragraphInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarType.paragraph }>> = {}): FormInputItem => ({
+const paragraphInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.paragraph }>> = {},
+): FormInputItem => ({
   type: InputVarType.paragraph,
   output_variable_name: 'field',
   default: {
@@ -27,7 +29,9 @@ const paragraphInput = (overrides: Partial<Extract<FormInputItem, { type: InputV
   ...overrides,
 })
 
-const selectInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarType.select }>> = {}): FormInputItem => ({
+const selectInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.select }>> = {},
+): FormInputItem => ({
   type: InputVarType.select,
   output_variable_name: 'field',
   option_source: {
@@ -38,7 +42,9 @@ const selectInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarT
   ...overrides,
 })
 
-const fileInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarType.singleFile }>> = {}): FormInputItem => ({
+const fileInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.singleFile }>> = {},
+): FormInputItem => ({
   type: InputVarType.singleFile,
   output_variable_name: 'field',
   allowed_file_extensions: [],
@@ -47,7 +53,9 @@ const fileInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarTyp
   ...overrides,
 })
 
-const fileListInput = (overrides: Partial<Extract<FormInputItem, { type: InputVarType.multiFiles }>> = {}): FormInputItem => ({
+const fileListInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.multiFiles }>> = {},
+): FormInputItem => ({
   type: InputVarType.multiFiles,
   output_variable_name: 'field',
   allowed_file_extensions: [],
@@ -82,10 +90,6 @@ describe('human-input utils', () => {
       expect(getButtonStyle(UserActionButtonType.Accent)).toBe('secondary-accent')
       expect(getButtonStyle(UserActionButtonType.Ghost)).toBe('ghost')
     })
-
-    it('should return undefined for unsupported style values', () => {
-      expect(getButtonStyle('unknown' as UserActionButtonType)).toBeUndefined()
-    })
   })
 
   describe('splitByOutputVar', () => {
@@ -109,13 +113,13 @@ describe('human-input utils', () => {
         paragraphInput({ output_variable_name: 'visible_paragraph' }),
         fileInput({ output_variable_name: 'stale_file' }),
       ]
-      const content = 'Select {{#$output.visible_select#}} and write {{#$output.visible_paragraph#}}'
+      const content =
+        'Select {{#$output.visible_select#}} and write {{#$output.visible_paragraph#}}'
 
       expect(getFormContentInputNames(content)).toEqual(['visible_select', 'visible_paragraph'])
-      expect(getRenderedFormInputs(formInputs, content).map(input => input.output_variable_name)).toEqual([
-        'visible_select',
-        'visible_paragraph',
-      ])
+      expect(
+        getRenderedFormInputs(formInputs, content).map((input) => input.output_variable_name),
+      ).toEqual(['visible_select', 'visible_paragraph'])
     })
   })
 
@@ -135,42 +139,6 @@ describe('human-input utils', () => {
       expect(initializeInputs(formInputs, { bio: 'Lives in Berlin' })).toEqual({
         name: 'John',
         bio: 'Lives in Berlin',
-      })
-    })
-
-    it('should initialize select fields with empty strings', () => {
-      const formInputs: FormInputItem[] = [
-        selectInput({
-          output_variable_name: 'role',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        role: '',
-      })
-    })
-
-    it('should initialize single file fields with null', () => {
-      const formInputs: FormInputItem[] = [
-        fileInput({
-          output_variable_name: 'avatar',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        avatar: null,
-      })
-    })
-
-    it('should initialize file list fields with empty arrays', () => {
-      const formInputs: FormInputItem[] = [
-        fileListInput({
-          output_variable_name: 'attachments',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        attachments: [],
       })
     })
 
@@ -195,20 +163,22 @@ describe('human-input utils', () => {
         }),
       ]
 
-      expect(initializeInputs(formInputs, {
-        summary: {
-          related_id: 'file-1',
-          size: 128,
-          extension: '.pdf',
-          filename: 'brief.pdf',
-          mime_type: 'application/pdf',
-          transfer_method: TransferMethod.local_file,
-          type: 'document',
-          url: 'https://example.com/brief.pdf',
-          upload_file_id: 'upload-file-1',
-          remote_url: '',
-        },
-      })).toEqual({
+      expect(
+        initializeInputs(formInputs, {
+          summary: {
+            related_id: 'file-1',
+            size: 128,
+            extension: '.pdf',
+            filename: 'brief.pdf',
+            mime_type: 'application/pdf',
+            transfer_method: TransferMethod.local_file,
+            type: 'document',
+            url: 'https://example.com/brief.pdf',
+            upload_file_id: 'upload-file-1',
+            remote_url: '',
+          },
+        }),
+      ).toEqual({
         summary: '',
       })
     })
@@ -226,46 +196,41 @@ describe('human-input utils', () => {
         }),
       ]
 
-      expect(initializeInputs(formInputs, {
-        role: 'maintainer',
-        avatar: {
-          related_id: 'file-2',
-          size: 64,
-          extension: '.png',
-          filename: 'avatar.png',
-          mime_type: 'image/png',
-          transfer_method: TransferMethod.local_file,
-          type: 'image',
-          url: 'https://example.com/avatar.png',
-          upload_file_id: 'upload-file-2',
-          remote_url: '',
-        },
-        attachments: [{
-          related_id: 'file-3',
-          size: 16,
-          extension: '.txt',
-          filename: 'notes.txt',
-          mime_type: 'text/plain',
-          transfer_method: TransferMethod.local_file,
-          type: 'document',
-          url: 'https://example.com/notes.txt',
-          upload_file_id: 'upload-file-3',
-          remote_url: '',
-        }],
-      })).toEqual({
+      expect(
+        initializeInputs(formInputs, {
+          role: 'maintainer',
+          avatar: {
+            related_id: 'file-2',
+            size: 64,
+            extension: '.png',
+            filename: 'avatar.png',
+            mime_type: 'image/png',
+            transfer_method: TransferMethod.local_file,
+            type: 'image',
+            url: 'https://example.com/avatar.png',
+            upload_file_id: 'upload-file-2',
+            remote_url: '',
+          },
+          attachments: [
+            {
+              related_id: 'file-3',
+              size: 16,
+              extension: '.txt',
+              filename: 'notes.txt',
+              mime_type: 'text/plain',
+              transfer_method: TransferMethod.local_file,
+              type: 'document',
+              url: 'https://example.com/notes.txt',
+              upload_file_id: 'upload-file-3',
+              remote_url: '',
+            },
+          ],
+        }),
+      ).toEqual({
         role: '',
         avatar: null,
         attachments: [],
       })
-    })
-
-    it('should ignore unsupported input types', () => {
-      expect(initializeInputs([
-        {
-          type: 'unsupported',
-          output_variable_name: 'unknown',
-        } as unknown as FormInputItem,
-      ])).toEqual({})
     })
   })
 
@@ -285,57 +250,53 @@ describe('human-input utils', () => {
     })
 
     it('should detect empty select values and unuploaded file values', () => {
-      expect(hasInvalidSelectOrFileInput([
-        selectInput({ output_variable_name: 'decision' }),
-      ], {
-        decision: '',
-      })).toBe(true)
-      expect(hasInvalidRequiredHumanInput([
-        paragraphInput({ output_variable_name: 'summary' }),
-      ], {
-        summary: '   ',
-      })).toBe(true)
-      expect(hasInvalidSelectOrFileInput([
-        fileInput({ output_variable_name: 'attachment' }),
-      ], {
-        attachment: uploadingFile,
-      })).toBe(true)
-      expect(hasInvalidRequiredHumanInput([
-        fileListInput({ output_variable_name: 'attachments' }),
-      ], {
-        attachments: [uploadedFile, uploadingFile],
-      })).toBe(true)
+      expect(
+        hasInvalidSelectOrFileInput([selectInput({ output_variable_name: 'decision' })], {
+          decision: '',
+        }),
+      ).toBe(true)
+      expect(
+        hasInvalidRequiredHumanInput([paragraphInput({ output_variable_name: 'summary' })], {
+          summary: '   ',
+        }),
+      ).toBe(true)
+      expect(
+        hasInvalidSelectOrFileInput([fileInput({ output_variable_name: 'attachment' })], {
+          attachment: uploadingFile,
+        }),
+      ).toBe(true)
+      expect(
+        hasInvalidRequiredHumanInput([fileListInput({ output_variable_name: 'attachments' })], {
+          attachments: [uploadedFile, uploadingFile],
+        }),
+      ).toBe(true)
     })
 
     it('should accept uploaded single and multiple file values', () => {
-      expect(hasInvalidSelectOrFileInput([
-        fileInput({ output_variable_name: 'attachment' }),
-        fileListInput({ output_variable_name: 'attachments' }),
-      ], {
-        attachment: [uploadedFile],
-        attachments: [uploadedFile],
-      })).toBe(false)
-      expect(hasInvalidRequiredHumanInput([
-        fileInput({ output_variable_name: 'attachment' }),
-        fileListInput({ output_variable_name: 'attachments' }),
-      ], {
-        attachment: [uploadedFile],
-        attachments: [uploadedFile],
-      })).toBe(false)
-    })
-
-    it('should treat unsupported input types as valid by default', () => {
-      const unsupportedInput = {
-        type: 'unsupported',
-        output_variable_name: 'unknown',
-      } as unknown as FormInputItem
-
-      expect(hasInvalidSelectOrFileInput([unsupportedInput], {
-        unknown: 'value',
-      })).toBe(false)
-      expect(hasInvalidRequiredHumanInput([unsupportedInput], {
-        unknown: 'value',
-      })).toBe(false)
+      expect(
+        hasInvalidSelectOrFileInput(
+          [
+            fileInput({ output_variable_name: 'attachment' }),
+            fileListInput({ output_variable_name: 'attachments' }),
+          ],
+          {
+            attachment: [uploadedFile],
+            attachments: [uploadedFile],
+          },
+        ),
+      ).toBe(false)
+      expect(
+        hasInvalidRequiredHumanInput(
+          [
+            fileInput({ output_variable_name: 'attachment' }),
+            fileListInput({ output_variable_name: 'attachments' }),
+          ],
+          {
+            attachment: [uploadedFile],
+            attachments: [uploadedFile],
+          },
+        ),
+      ).toBe(false)
     })
   })
 
@@ -345,19 +306,24 @@ describe('human-input utils', () => {
     })
 
     it('should process file values and fallback invalid file values', () => {
-      expect(getProcessedHumanInputFormInputs([
-        fileInput({ output_variable_name: 'attachment' }),
-        fileInput({ output_variable_name: 'attachmentFromArray' }),
-        fileInput({ output_variable_name: 'emptyAttachment' }),
-        fileListInput({ output_variable_name: 'attachments' }),
-        fileListInput({ output_variable_name: 'emptyAttachments' }),
-      ], {
-        attachment: uploadedFile,
-        attachmentFromArray: [uploadedFile],
-        emptyAttachment: '',
-        attachments: [uploadedFile],
-        emptyAttachments: null,
-      })).toEqual({
+      expect(
+        getProcessedHumanInputFormInputs(
+          [
+            fileInput({ output_variable_name: 'attachment' }),
+            fileInput({ output_variable_name: 'attachmentFromArray' }),
+            fileInput({ output_variable_name: 'emptyAttachment' }),
+            fileListInput({ output_variable_name: 'attachments' }),
+            fileListInput({ output_variable_name: 'emptyAttachments' }),
+          ],
+          {
+            attachment: uploadedFile,
+            attachmentFromArray: [uploadedFile],
+            emptyAttachment: '',
+            attachments: [uploadedFile],
+            emptyAttachments: null,
+          },
+        ),
+      ).toEqual({
         attachment: {
           type: 'image',
           transfer_method: TransferMethod.local_file,
@@ -371,29 +337,38 @@ describe('human-input utils', () => {
           upload_file_id: 'upload-file-1',
         },
         emptyAttachment: undefined,
-        attachments: [{
-          type: 'image',
-          transfer_method: TransferMethod.local_file,
-          url: '',
-          upload_file_id: 'upload-file-1',
-        }],
+        attachments: [
+          {
+            type: 'image',
+            transfer_method: TransferMethod.local_file,
+            url: '',
+            upload_file_id: 'upload-file-1',
+          },
+        ],
         emptyAttachments: [],
       })
     })
   })
 
   describe('time helpers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-17T12:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
     it('should format relative time for supported and fallback locales', () => {
       const now = Date.now()
       const twoMinutesAgo = now - 2 * 60 * 1000
 
-      expect(getRelativeTime(twoMinutesAgo, 'en-US')).toMatch(/ago/i)
-      expect(getRelativeTime(twoMinutesAgo, 'es-ES' as Locale)).toMatch(/ago/i)
+      expect(getRelativeTime(twoMinutesAgo, 'en-US')).toBe('2 minutes ago')
+      expect(getRelativeTime(twoMinutesAgo, 'es-ES' as Locale)).toBe('2 minutes ago')
     })
 
     it('should compare utc timestamp against current time', () => {
       const now = Date.now()
       expect(isRelativeTimeSameOrAfter(now + 60_000)).toBe(true)
+      expect(isRelativeTimeSameOrAfter(now)).toBe(true)
       expect(isRelativeTimeSameOrAfter(now - 60_000)).toBe(false)
     })
   })

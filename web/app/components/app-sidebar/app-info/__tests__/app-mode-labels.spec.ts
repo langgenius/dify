@@ -1,27 +1,27 @@
 import type { TFunction } from 'i18next'
-import { AppModeEnum } from '@/types/app'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { getAppModeLabel } from '../app-mode-labels'
 
 describe('getAppModeLabel', () => {
-  const t: TFunction = ((key: string, options?: Record<string, unknown>) => {
+  const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
     const ns = (options?.ns as string | undefined) ?? ''
     return ns ? `${ns}.${key}` : key
-  }) as TFunction
+  }, 'app') as unknown as TFunction<['app']>
 
   it('should return advanced chat label', () => {
-    expect(getAppModeLabel(AppModeEnum.ADVANCED_CHAT, t)).toBe('app.types.advanced')
+    expect(getAppModeLabel('advanced-chat', t)).toBe('app.types.advanced')
   })
 
   it('should return agent chat label', () => {
-    expect(getAppModeLabel(AppModeEnum.AGENT_CHAT, t)).toBe('app.types.agent')
+    expect(getAppModeLabel('agent-chat', t)).toBe('app.types.agent')
   })
 
   it('should return chatbot label', () => {
-    expect(getAppModeLabel(AppModeEnum.CHAT, t)).toBe('app.types.chatbot')
+    expect(getAppModeLabel('chat', t)).toBe('app.types.chatbot')
   })
 
   it('should return completion label', () => {
-    expect(getAppModeLabel(AppModeEnum.COMPLETION, t)).toBe('app.types.completion')
+    expect(getAppModeLabel('completion', t)).toBe('app.types.completion')
   })
 
   it('should return workflow label for unknown mode', () => {
@@ -29,6 +29,6 @@ describe('getAppModeLabel', () => {
   })
 
   it('should return workflow label for workflow mode', () => {
-    expect(getAppModeLabel(AppModeEnum.WORKFLOW, t)).toBe('app.types.workflow')
+    expect(getAppModeLabel('workflow', t)).toBe('app.types.workflow')
   })
 })

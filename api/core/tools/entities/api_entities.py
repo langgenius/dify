@@ -74,8 +74,6 @@ class ToolProviderApiEntity(BaseModel):
                 for parameter in tool.get("parameters"):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
-                    if parameter.get("input_schema") is None:
-                        parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
         match self.type:

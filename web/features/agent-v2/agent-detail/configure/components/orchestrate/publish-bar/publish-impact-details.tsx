@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -13,45 +13,50 @@ type AgentPublishImpactDetailsProps = {
   references: AgentReferencingWorkflowResponse[]
 }
 
-const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) => `/app/${reference.app_id}/workflow`
+const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =>
+  `/app/${reference.app_id}/workflow`
 
 export function AgentPublishImpactDetails({
   publishActionLabel,
   agentName,
   references,
 }: AgentPublishImpactDetailsProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const titleId = useId()
 
   return (
-    <section
-      aria-labelledby={titleId}
-      className="flex w-full max-w-full flex-col"
-    >
+    <section aria-labelledby={titleId} className="flex w-full max-w-full flex-col">
       <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
-        <h2 id={titleId} className="w-full px-1 pr-8 system-xl-semibold wrap-break-word text-text-primary">
-          {t('agentDetail.configure.publishImpact.title', {
+        <h2
+          id={titleId}
+          className="w-full px-1 pr-8 system-xl-semibold wrap-break-word text-text-primary"
+        >
+          {t(($) => $['agentDetail.configure.publishImpact.title'], {
             action: publishActionLabel,
-            name: agentName || t('agentDetail.configure.publishImpact.fallbackAgentName'),
+            name: agentName || t(($) => $['agentDetail.configure.publishImpact.fallbackAgentName']),
           })}
         </h2>
         <p className="px-1 system-xs-regular wrap-break-word text-text-warning">
-          {t('agentDetail.configure.publishImpact.descriptionPrefix')}
-          {' '}
+          {t(($) => $['agentDetail.configure.publishImpact.descriptionPrefix'])}{' '}
           <span className="system-xs-medium">
-            {t('agentDetail.configure.publishImpact.workflowCount', { count: references.length })}
+            {t(($) => $['agentDetail.configure.publishImpact.workflowCount'], {
+              count: references.length,
+            })}
           </span>
-          {t('agentDetail.configure.publishImpact.descriptionSuffix')}
+          {t(($) => $['agentDetail.configure.publishImpact.descriptionSuffix'])}
         </p>
       </div>
 
       <div className="flex w-full flex-col gap-1 px-4 py-2">
         <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
-          {t('agentDetail.configure.publishImpact.affectedWorkflows')}
+          {t(($) => $['agentDetail.configure.publishImpact.affectedWorkflows'])}
         </div>
-        <div className="flex max-h-[123px] flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
-          {references.map(reference => (
-            <ReferenceLink key={`${reference.app_id}-${reference.workflow_id}`} reference={reference} />
+        <div className="flex max-h-30.75 flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
+          {references.map((reference) => (
+            <ReferenceLink
+              key={`${reference.app_id}-${reference.workflow_id}`}
+              reference={reference}
+            />
           ))}
         </div>
       </div>
@@ -59,17 +64,10 @@ export function AgentPublishImpactDetails({
   )
 }
 
-function ReferenceLink({
-  reference,
-}: {
-  reference: AgentReferencingWorkflowResponse
-}) {
+function ReferenceLink({ reference }: { reference: AgentReferencingWorkflowResponse }) {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const imageUrl = (reference.app_icon_type === 'image' || reference.app_icon_type === 'link') ? reference.app_icon : undefined
-  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as AgentIconType | null | undefined
-  const updatedAt = reference.app_updated_at == null
-    ? null
-    : formatTimeFromNow(reference.app_updated_at * 1000)
+  const updatedAt =
+    reference.app_updated_at == null ? null : formatTimeFromNow(reference.app_updated_at * 1000)
 
   return (
     <Link
@@ -81,10 +79,12 @@ function ReferenceLink({
       <span aria-hidden className="shrink-0">
         <AppIcon
           size="tiny"
-          iconType={iconType}
-          icon={reference.app_icon ?? undefined}
-          background={reference.app_icon_background}
-          imageUrl={imageUrl}
+          icon={{
+            icon_type: reference.app_icon_type,
+            icon: reference.app_icon,
+            icon_url: reference.app_icon,
+            icon_background: reference.app_icon_background,
+          }}
         />
       </span>
       <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>

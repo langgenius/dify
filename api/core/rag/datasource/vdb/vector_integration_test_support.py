@@ -1,4 +1,4 @@
-"""Shared helpers for vector DB integration tests (used by workspace packages under ``api/packages``).
+"""Shared helpers for vector DB provider tests (used by workspace packages under ``api/packages``).
 
 :class:`AbstractVectorTest` and helper functions live here so package tests can import
 ``core.rag.datasource.vdb.vector_integration_test_support`` without relying on the
@@ -8,13 +8,26 @@ The ``setup_mock_redis`` fixture lives in ``api/packages/conftest.py`` and is
 auto-discovered by pytest for all package tests.
 """
 
+import types
 import uuid
+from typing import override
 
 import pytest
 
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+
+class FakeModule(types.ModuleType):
+    """A stand-in SDK module for provider unit tests, whose attributes the test sets one by one.
+
+    Declaring ``__setattr__`` lets the type checker accept those assignments on a module object.
+    """
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
 
 
 def get_example_text() -> str:

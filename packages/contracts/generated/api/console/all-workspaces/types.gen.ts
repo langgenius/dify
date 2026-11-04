@@ -4,12 +4,22 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type WorkspaceListResponse = {
+export type WorkspacePaginationResponse = {
   data: Array<WorkspaceListItemResponse>
   has_more: boolean
   limit: number
   page: number
   total: number
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
 }
 
 export type WorkspaceListItemResponse = {
@@ -29,8 +39,14 @@ export type GetAllWorkspacesData = {
   url: '/all-workspaces'
 }
 
+export type GetAllWorkspacesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAllWorkspacesError = GetAllWorkspacesErrors[keyof GetAllWorkspacesErrors]
+
 export type GetAllWorkspacesResponses = {
-  200: WorkspaceListResponse
+  200: WorkspacePaginationResponse
 }
 
 export type GetAllWorkspacesResponse = GetAllWorkspacesResponses[keyof GetAllWorkspacesResponses]

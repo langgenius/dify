@@ -1,142 +1,255 @@
 from inspect import unwrap
-from unittest.mock import ANY, patch
+from io import BytesIO
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
+import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
-from models import Account
+from libs.external_api import ExternalApi
+from machinery.context import RequestContext
 from models.model import AppMode, IconType
+from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
+from services.recommended_app_query_service import (
+    LearnDifyAppListResult,
+    RecommendedAppDetailSummary,
+    RecommendedAppInfoRecord,
+    RecommendedAppListResult,
+    RecommendedAppSummary,
+)
+from services.recommended_app_query_service import (
+    RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError,
+)
 
 
-def make_account(interface_language: str | None) -> Account:
-    account = Account(name="Test User", email="user@example.com")
-    account.id = "account-1"
-    account.interface_language = interface_language
-    return account
+@pytest.mark.parametrize("format", [None, "ifpkg", "yaml"])
+def test_template_export_works_without_browser_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    format: str | None,
+) -> None:
+    app = Flask(__name__)
+    app_id, version_id = uuid4(), uuid4()
+    artifact = RosterAgentPackageExport(archive=BytesIO(b"package-bytes"), filename="sample.ifpkg", size=13)
+    sources, exporter = MagicMock(), MagicMock()
+    sources.get_package_source.return_value = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
+    exporter.export.return_value = artifact
+    exporter.export_yaml.return_value = "kind: app\n"
+    packages = RecommendedAppPackageService(sources=sources, exporter=exporter)
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=packages))
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    query = {"version_id": str(version_id)}
+    if format is not None:
+        query["format"] = format
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
+    assert response.status_code == 200
+    if format == "yaml":
+        assert response.json == {"data": "kind: app\n"}
+        assert response.mimetype == "application/json"
+        exporter.export.assert_not_called()
+        exporter.export_yaml.assert_called_once_with(
+            tenant_id="source-tenant",
+            agent_id="source-agent",
+            version_id=version_id,
+        )
+    else:
+        assert response.data == b"package-bytes"
+        assert response.mimetype == "application/zip"
+        exporter.export_yaml.assert_not_called()
+        exporter.export.assert_called_once_with(
+            tenant_id="source-tenant", agent_id="source-agent", version_id=version_id
+        )
+    assert response.headers["Cache-Control"] == "no-store"
+    sources.get_package_source.assert_called_once_with(str(app_id), version_id)
+    response.close()
+    if format != "yaml":
+        assert artifact.archive.closed
+    else:
+        artifact.close()
+
+    exporter.reset_mock()
+    sources.get_package_source.return_value = None
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
+    assert response.status_code == 404
+    assert response.json is not None
+    assert response.json["code"] == "recommended_app_not_found"
+    exporter.export.assert_not_called()
+    exporter.export_yaml.assert_not_called()
+
+
+@pytest.mark.parametrize("option", [{"format": "json"}, {"include_secret": "true"}])
+def test_template_export_rejects_unsupported_options(
+    monkeypatch: pytest.MonkeyPatch,
+    option: dict[str, str],
+) -> None:
+    app = Flask(__name__)
+    exports = MagicMock()
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=exports))
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    response = app.test_client().get(
+        f"/trial-apps/{uuid4()}/export",
+        query_string={"version_id": str(uuid4()), **option},
+    )
+    assert response.status_code == 422
+    exports.export.assert_not_called()
+
+
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
 
 
 class TestRecommendedAppListApi:
-    def test_get_with_language_param(self, app: Flask):
+    def test_get_with_language_param(self, app: Flask) -> None:
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
-        result_data = {"recommended_apps": [], "categories": []}
+        queries = MagicMock()
+        queries.list_recommended.return_value = RecommendedAppListResult(recommended_apps=(), categories=())
 
         with (
             app.test_request_context("/", query_string={"language": "en-US"}),
             patch.object(
-                module.RecommendedAppService,
-                "get_recommended_apps_and_categories",
-                return_value=result_data,
-            ) as service_mock,
+                module,
+                "application_services",
+                return_value=SimpleNamespace(recommended_app_queries=queries),
+            ),
         ):
-            result = method(api, make_account("fr-FR"))
+            result = method(api, module.RecommendedAppsQuery(language="en-US"), _request_context())
 
-        service_mock.assert_called_once_with(ANY, "en-US")
-        assert result == result_data
-
-    def test_get_fallback_to_user_language(self, app: Flask):
-        api = module.RecommendedAppListApi()
-        method = unwrap(api.get)
-
-        result_data = {"recommended_apps": [], "categories": []}
-
-        with (
-            app.test_request_context("/", query_string={"language": "invalid"}),
-            patch.object(
-                module.RecommendedAppService,
-                "get_recommended_apps_and_categories",
-                return_value=result_data,
-            ) as service_mock,
-        ):
-            result = method(api, make_account("fr-FR"))
-
-        service_mock.assert_called_once_with(ANY, "fr-FR")
-        assert result == result_data
-
-    def test_get_fallback_to_default_language(self, app: Flask):
-        api = module.RecommendedAppListApi()
-        method = unwrap(api.get)
-
-        result_data = {"recommended_apps": [], "categories": []}
-
-        with (
-            app.test_request_context("/"),
-            patch.object(
-                module.RecommendedAppService,
-                "get_recommended_apps_and_categories",
-                return_value=result_data,
-            ) as service_mock,
-        ):
-            result = method(api, make_account(None))
-
-        service_mock.assert_called_once_with(ANY, module.languages[0])
-        assert result == result_data
+        queries.list_recommended.assert_called_once_with(
+            language="en-US",
+        )
+        assert result == {"recommended_apps": [], "categories": []}
 
 
 class TestLearnDifyAppListApi:
-    def test_get_with_language_param(self, app: Flask):
+    def test_get_uses_default_language(self, app: Flask) -> None:
         api = module.LearnDifyAppListApi()
         method = unwrap(api.get)
 
-        result_data = {"recommended_apps": []}
-
-        with (
-            app.test_request_context("/", query_string={"language": "en-US"}),
-            patch.object(
-                module.RecommendedAppService,
-                "get_learn_dify_apps",
-                return_value=result_data,
-            ) as service_mock,
-        ):
-            result = method(api, make_account("fr-FR"))
-
-        service_mock.assert_called_once_with(ANY, "en-US")
-        assert result == result_data
-
-    def test_get_fallback_to_user_language(self, app: Flask):
-        api = module.LearnDifyAppListApi()
-        method = unwrap(api.get)
-
-        result_data = {"recommended_apps": []}
-
-        with (
-            app.test_request_context("/", query_string={"language": "invalid"}),
-            patch.object(
-                module.RecommendedAppService,
-                "get_learn_dify_apps",
-                return_value=result_data,
-            ) as service_mock,
-        ):
-            result = method(api, make_account("fr-FR"))
-
-        service_mock.assert_called_once_with(ANY, "fr-FR")
-        assert result == result_data
-
-
-class TestRecommendedAppApi:
-    def test_get_success(self, app: Flask):
-        api = module.RecommendedAppApi()
-        method = unwrap(api.get)
-
-        result_data = {"id": "app1"}
+        queries = MagicMock()
+        queries.list_learn_dify.return_value = LearnDifyAppListResult(recommended_apps=())
 
         with (
             app.test_request_context("/"),
             patch.object(
-                module.RecommendedAppService,
-                "get_recommend_app_detail",
-                return_value=result_data,
-            ) as service_mock,
+                module,
+                "application_services",
+                return_value=SimpleNamespace(recommended_app_queries=queries),
+            ),
         ):
-            result = method(api, "11111111-1111-1111-1111-111111111111")
+            result = method(api, module.RecommendedAppsQuery(), _request_context())
 
-        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
-        assert result == result_data
+        queries.list_learn_dify.assert_called_once_with(
+            language="en-US",
+        )
+        assert result == {"recommended_apps": []}
+
+
+class TestRecommendedAppApi:
+    def test_get_success(self, app: Flask) -> None:
+        api = module.RecommendedAppApi()
+        method = unwrap(api.get)
+
+        queries = MagicMock()
+        queries.get_detail.return_value = RecommendedAppDetailSummary(
+            id="app1",
+            name="App",
+            icon=None,
+            icon_background=None,
+            mode="chat",
+            export_data="{}",
+            can_trial=False,
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch.object(
+                module,
+                "application_services",
+                return_value=SimpleNamespace(recommended_app_queries=queries),
+            ),
+        ):
+            result = method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
+
+        queries.get_detail.assert_called_once_with("11111111-1111-1111-1111-111111111111")
+        assert result == {
+            "id": "app1",
+            "name": "App",
+            "icon": None,
+            "icon_background": None,
+            "mode": "chat",
+            "export_data": "{}",
+            "can_trial": False,
+            "package_url": None,
+            "version_id": None,
+        }
+
+    def test_get_missing_raises_stable_not_found_error(self, app: Flask) -> None:
+        api = module.RecommendedAppApi()
+        method = unwrap(api.get)
+        queries = MagicMock()
+        queries.get_detail.side_effect = RecommendedAppQueryNotFoundError
+
+        with (
+            app.test_request_context("/"),
+            patch.object(
+                module,
+                "application_services",
+                return_value=SimpleNamespace(recommended_app_queries=queries),
+            ),
+        ):
+            with pytest.raises(module.RecommendedAppNotFoundError) as exc_info:
+                method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
+
+        assert exc_info.value.data == {
+            "code": "recommended_app_not_found",
+            "message": "Recommended app not found.",
+            "status": 404,
+        }
 
 
 class TestRecommendedAppResponseModels:
-    def test_recommended_app_info_response_computes_icon_url(self):
+    def test_query_service_records_serialize_through_controller_contract(self) -> None:
+        result = RecommendedAppListResult(
+            recommended_apps=(
+                RecommendedAppSummary(
+                    app=RecommendedAppInfoRecord(
+                        id="app-1",
+                        name="App",
+                        mode="chat",
+                        icon=None,
+                        icon_type=None,
+                        icon_background=None,
+                    ),
+                    app_id="app-1",
+                    description=None,
+                    copyright=None,
+                    privacy_policy=None,
+                    custom_disclaimer=None,
+                    categories=("Workflow",),
+                    position=1,
+                    is_listed=True,
+                    can_trial=False,
+                ),
+            ),
+            categories=("Workflow",),
+        )
+
+        response = module.dump_response(module.RecommendedAppListResponse, result)
+
+        assert response["recommended_apps"][0]["app"]["id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["Workflow"]
+
+    def test_recommended_app_info_response_computes_icon_url(self) -> None:
         with patch.object(module, "build_icon_url", return_value="https://signed/icon.png"):
             payload = module.RecommendedAppInfoResponse.model_validate(
                 {
@@ -151,7 +264,7 @@ class TestRecommendedAppResponseModels:
 
         assert payload["icon_url"] == "https://signed/icon.png"
 
-    def test_recommended_app_list_response_serialization(self):
+    def test_recommended_app_list_response_serialization(self) -> None:
         response = module.RecommendedAppListResponse.model_validate(
             {
                 "recommended_apps": [
@@ -180,7 +293,7 @@ class TestRecommendedAppResponseModels:
         assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
         assert response["categories"] == ["cat"]
 
-    def test_learn_dify_app_list_response_serialization(self):
+    def test_learn_dify_app_list_response_serialization(self) -> None:
         response = module.LearnDifyAppListResponse.model_validate(
             {
                 "recommended_apps": [
@@ -198,6 +311,7 @@ class TestRecommendedAppResponseModels:
                         "categories": ["Workflow"],
                         "position": 1,
                         "is_listed": True,
+                        "can_trial": False,
                     }
                 ],
             }
@@ -205,3 +319,7 @@ class TestRecommendedAppResponseModels:
 
         assert response["recommended_apps"][0]["app_id"] == "app-1"
         assert response["recommended_apps"][0]["categories"] == ["Workflow"]
+
+    def test_recommended_app_response_requires_can_trial(self) -> None:
+        with pytest.raises(ValidationError):
+            module.RecommendedAppResponse.model_validate({"app_id": "app-1"})

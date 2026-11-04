@@ -1,514 +1,139 @@
+import type { Viewport } from 'reactflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { cleanup, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { act, screen } from '@testing-library/react'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
+import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
-
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { usePipelineInit } from '../hooks'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import RagPipelineWrapper from '../index'
-import { processNodesWithoutDataSource } from '../utils'
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn(),
+const requests = vi.hoisted(() => ({
+  draft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
 }))
-
-vi.mock('../hooks', () => ({
-  usePipelineInit: vi.fn(),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ datasetId: 'dataset-1' }),
 }))
-
-vi.mock('../store', () => ({
-  createRagPipelineSliceSlice: vi.fn(() => ({})),
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  fetchWorkflowDraft: requests.draft,
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.get': async () => [],
+      'rag.pipelines.byPipelineId.workflows.publish.get': async () => null,
+      'files.upload.get': async () => createFileUploadConfigFixture(),
+      'rag.pipelines.datasourcePlugins.get': async () => [],
+    }),
+  }
+})
 
-vi.mock('../utils', () => ({
-  processNodesWithoutDataSource: vi.fn((nodes, viewport) => ({
-    nodes,
-    viewport,
-  })),
-}))
-
-vi.mock('../components/conversion', () => ({
-  default: () => <div data-testid="conversion-component">Conversion Component</div>,
-}))
-
+// Full pipeline editing has its own suite; retain the real initialization/provider boundary.
 vi.mock('../components/rag-pipeline-main', () => ({
-  default: ({ nodes, edges, viewport }: { nodes?: unknown[], edges?: unknown[], viewport?: { zoom?: number } }) => (
-    <div data-testid="rag-pipeline-main">
-      <span data-testid="nodes-count">{nodes?.length ?? 0}</span>
-      <span data-testid="edges-count">{edges?.length ?? 0}</span>
-      <span data-testid="viewport-zoom">{viewport?.zoom ?? 'none'}</span>
-    </div>
+  default: ({ viewport }: { viewport: Viewport }) => (
+    <>
+      <WorkflowInitializationProbe />
+      <output aria-label="Initial viewport">{JSON.stringify(viewport)}</output>
+    </>
   ),
 }))
 
-vi.mock('@/app/components/workflow', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-default-context">{children}</div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
-  ),
-}))
-
-const mockUseDatasetDetailContextWithSelector = vi.mocked(useDatasetDetailContextWithSelector)
-const mockUsePipelineInit = vi.mocked(usePipelineInit)
-const mockProcessNodesWithoutDataSource = vi.mocked(processNodesWithoutDataSource)
-
-const mockSelectorWithDataset = (pipelineId: string | null | undefined) => {
-  mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    const mockState = { dataset: pipelineId ? { pipeline_id: pipelineId } : null }
-    return selector(mockState)
-  })
-}
-
-const createMockWorkflowData = (overrides?: Partial<FetchWorkflowDraftResponse>): FetchWorkflowDraftResponse => ({
+const draft = (): FetchWorkflowDraftResponse => ({
+  id: 'draft-1',
   graph: {
     nodes: [
-      { id: 'node-1', type: 'custom', data: { type: BlockEnum.Start, title: 'Start' }, position: { x: 100, y: 100 } },
-      { id: 'node-2', type: 'custom', data: { type: BlockEnum.End, title: 'End' }, position: { x: 300, y: 100 } },
+      createNode({
+        id: 'source',
+        data: {
+          type: BlockEnum.DataSource,
+          title: 'Local files',
+          plugin_id: 'langgenius/file',
+          provider_type: 'local_file',
+          provider_name: 'file',
+          datasource_name: 'local-file',
+          datasource_label: 'Local files',
+          datasource_parameters: {},
+          datasource_configurations: {},
+        },
+      }),
+      createNode({
+        id: 'knowledge',
+        data: {
+          ...knowledgeBaseDefault.defaultValue,
+          type: BlockEnum.KnowledgeBase,
+          title: 'Knowledge',
+        },
+      }),
     ],
-    edges: [
-      { id: 'edge-1', source: 'node-1', target: 'node-2', type: 'custom' },
-    ],
-    viewport: { x: 0, y: 0, zoom: 1 },
+    edges: [createEdge({ source: 'source', target: 'knowledge' })],
+    viewport: { x: 80, y: 40, zoom: 1.5 },
   },
-  hash: 'test-hash-123',
-  updated_at: 1234567890,
+  hash: 'draft-hash',
+  created_at: 1_712_300_000,
+  updated_at: 1_712_345_678,
+  created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+  updated_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
   tool_published: false,
-  environment_variables: [],
-  ...overrides,
-} as FetchWorkflowDraftResponse)
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
+  version: 'draft',
+  marked_name: '',
+  marked_comment: '',
 })
 
-describe('RagPipelineWrapper', () => {
-  describe('Rendering', () => {
-    it('should render Conversion component when pipelineId is null', () => {
-      mockSelectorWithDataset(null)
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
+const renderPipeline = (pipelineId: string | null = 'pipeline-1') => {
+  const DatasetProvider = DatasetDetailContext.Provider
+  return renderWithConsoleQuery(
+    <DatasetProvider value={{ dataset: createDatasetFixture({ pipeline_id: pipelineId }) }}>
+      <RagPipelineWrapper />
+    </DatasetProvider>,
+  )
+}
 
-      render(<RagPipelineWrapper />)
+beforeEach(() => requests.draft.mockReset().mockResolvedValue(draft()))
 
-      expect(screen.getByTestId('conversion-component')).toBeInTheDocument()
-      expect(screen.queryByTestId('workflow-context-provider')).not.toBeInTheDocument()
-    })
-
-    it('should render Conversion component when pipelineId is undefined', () => {
-      mockSelectorWithDataset(undefined)
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('conversion-component')).toBeInTheDocument()
-    })
-
-    it('should render Conversion component when pipelineId is empty string', () => {
-      mockSelectorWithDataset('')
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('conversion-component')).toBeInTheDocument()
-    })
-
-    it('should render WorkflowContextProvider when pipelineId exists', () => {
-      mockSelectorWithDataset('pipeline-123')
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
-      expect(screen.queryByTestId('conversion-component')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props Variations', () => {
-    it('should pass injectWorkflowStoreSliceFn to WorkflowContextProvider', () => {
-      mockSelectorWithDataset('pipeline-456')
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
-    })
-  })
-})
+const expectGraph = async () => {
+  expect(await screen.findByRole('status', { name: 'Initialized nodes' })).toHaveTextContent(
+    'source:Local files,knowledge:Knowledge',
+  )
+  expect(screen.getByRole('status', { name: 'Initialized edges' })).toHaveTextContent(
+    'source->knowledge',
+  )
+  expect(screen.getByRole('status', { name: 'Initial viewport' })).toHaveTextContent(
+    JSON.stringify({ x: 80, y: 40, zoom: 1.5 }),
+  )
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+}
 
 describe('RagPipeline', () => {
-  beforeEach(() => {
-    mockSelectorWithDataset('pipeline-123')
+  it('offers conversion when the dataset has no pipeline', () => {
+    renderPipeline(null)
+    expect(
+      screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }),
+    ).toBeInTheDocument()
+    expect(requests.draft).not.toHaveBeenCalled()
   })
-
-  describe('Loading State', () => {
-    it('should render Loading component when isLoading is true', () => {
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
-
-    it('should render Loading component when data is undefined', () => {
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
-
-    it('should render Loading component when both data is undefined and isLoading is true', () => {
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
+  it('keeps the editor gated until the pipeline draft arrives', async () => {
+    const pending = createDeferred<FetchWorkflowDraftResponse>()
+    requests.draft.mockReturnValue(pending.promise)
+    renderPipeline()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Initialized nodes' })).not.toBeInTheDocument()
+    await act(async () => pending.resolve(draft()))
+    await expectGraph()
   })
-
-  describe('Data Loaded State', () => {
-    it('should render RagPipelineMain when data is loaded', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('rag-pipeline-main')).toBeInTheDocument()
-      expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
-    })
-
-    it('should pass processed nodes to RagPipelineMain', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('nodes-count').textContent).toBe('2')
-    })
-
-    it('should pass edges to RagPipelineMain', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('edges-count').textContent).toBe('1')
-    })
-
-    it('should pass viewport to RagPipelineMain', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 100, y: 200, zoom: 1.5 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('viewport-zoom').textContent).toBe('1.5')
-    })
-  })
-
-  describe('Memoization Logic', () => {
-    it('should process nodes through initialNodes when data is loaded', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('rag-pipeline-main')).toBeInTheDocument()
-    })
-
-    it('should process edges through initialEdges when data is loaded', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('edges-count').textContent).toBe('1')
-    })
-
-    it('should call processNodesWithoutDataSource with nodesData and viewport', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(mockProcessNodesWithoutDataSource).toHaveBeenCalled()
-    })
-
-    it('should not process nodes when data is undefined', () => {
-      mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(mockProcessNodesWithoutDataSource).not.toHaveBeenCalled()
-    })
-
-    it('should use memoized values when data reference is same', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      const { rerender } = render(<RagPipelineWrapper />)
-
-      mockProcessNodesWithoutDataSource.mockClear()
-
-      rerender(<RagPipelineWrapper />)
-
-      // Note: React strict mode may cause double render, so we check it's not excessive
-      expect(mockProcessNodesWithoutDataSource.mock.calls.length).toBeLessThanOrEqual(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty nodes array', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('nodes-count').textContent).toBe('0')
-    })
-
-    it('should handle empty edges array', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [{ id: 'node-1', type: 'custom', data: { type: BlockEnum.Start, title: 'Start', desc: '' }, position: { x: 0, y: 0 } }],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('edges-count').textContent).toBe('0')
-    })
-
-    it('should handle undefined viewport', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: undefined as never,
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('rag-pipeline-main')).toBeInTheDocument()
-    })
-
-    it('should handle null viewport', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: null as never,
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('rag-pipeline-main')).toBeInTheDocument()
-    })
-
-    it('should handle large number of nodes', () => {
-      const largeNodesArray = Array.from({ length: 100 }, (_, i) => ({
-        id: `node-${i}`,
-        type: 'custom',
-        data: { type: BlockEnum.Start, title: `Node ${i}`, desc: '' },
-        position: { x: i * 100, y: 0 },
-      }))
-
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: largeNodesArray,
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('nodes-count').textContent).toBe('100')
-    })
-
-    it('should handle viewport with edge case zoom values', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: -1000, y: -1000, zoom: 0.25 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('viewport-zoom').textContent).toBe('0.25')
-    })
-
-    it('should handle viewport with maximum zoom', () => {
-      const mockData = createMockWorkflowData({
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 4 },
-        },
-      })
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('viewport-zoom').textContent).toBe('4')
-    })
-  })
-
-  describe('Component Integration', () => {
-    it('should render WorkflowWithDefaultContext as wrapper', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
-    })
-
-    it('should nest RagPipelineMain inside WorkflowWithDefaultContext', () => {
-      const mockData = createMockWorkflowData()
-      mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-      render(<RagPipelineWrapper />)
-
-      const workflowContext = screen.getByTestId('workflow-default-context')
-      const ragPipelineMain = screen.getByTestId('rag-pipeline-main')
-
-      expect(workflowContext).toContainElement(ragPipelineMain)
-    })
-  })
-})
-
-describe('processNodesWithoutDataSource utility integration', () => {
-  beforeEach(() => {
-    mockSelectorWithDataset('pipeline-123')
-  })
-
-  it('should process nodes through processNodesWithoutDataSource', () => {
-    const mockData = createMockWorkflowData()
-    mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-    mockProcessNodesWithoutDataSource.mockReturnValue({
-      nodes: [{ id: 'processed-node', type: 'custom', data: { type: BlockEnum.Start, title: 'Processed', desc: '' }, position: { x: 0, y: 0 } }] as unknown as ReturnType<typeof processNodesWithoutDataSource>['nodes'],
-      viewport: { x: 0, y: 0, zoom: 2 },
-    })
-
-    render(<RagPipelineWrapper />)
-
-    expect(mockProcessNodesWithoutDataSource).toHaveBeenCalled()
-    expect(screen.getByTestId('nodes-count').textContent).toBe('1')
-    expect(screen.getByTestId('viewport-zoom').textContent).toBe('2')
-  })
-
-  it('should handle processNodesWithoutDataSource returning modified viewport', () => {
-    const mockData = createMockWorkflowData()
-    mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-    mockProcessNodesWithoutDataSource.mockReturnValue({
-      nodes: [],
-      viewport: { x: 500, y: 500, zoom: 0.5 },
-    })
-
-    render(<RagPipelineWrapper />)
-
-    expect(screen.getByTestId('viewport-zoom').textContent).toBe('0.5')
-  })
-})
-
-describe('Conditional Rendering Flow', () => {
-  it('should transition from loading to loaded state', () => {
-    mockSelectorWithDataset('pipeline-123')
-
-    mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-    const { rerender } = render(<RagPipelineWrapper />)
-
-    expect(screen.getByRole('status')).toBeInTheDocument()
-
-    const mockData = createMockWorkflowData()
-    mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-    rerender(<RagPipelineWrapper />)
-
-    expect(screen.getByTestId('rag-pipeline-main')).toBeInTheDocument()
-  })
-
-  it('should switch from Conversion to Pipeline when pipelineId becomes available', () => {
-    mockSelectorWithDataset(null)
-    mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: false })
-
-    const { rerender } = render(<RagPipelineWrapper />)
-
-    expect(screen.getByTestId('conversion-component')).toBeInTheDocument()
-
-    mockSelectorWithDataset('new-pipeline-id')
-    mockUsePipelineInit.mockReturnValue({ data: undefined, isLoading: true })
-    rerender(<RagPipelineWrapper />)
-
-    expect(screen.queryByTestId('conversion-component')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
-  })
-})
-
-describe('Error Handling', () => {
-  beforeEach(() => {
-    mockSelectorWithDataset('pipeline-123')
-  })
-
-  it('should throw when graph nodes is null', () => {
-    const mockData = {
-      graph: {
-        nodes: null,
-        edges: null,
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-      hash: 'test',
-      updated_at: 123,
-    } as unknown as FetchWorkflowDraftResponse
-
-    mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    expect(() => render(<RagPipelineWrapper />)).toThrow()
-
-    consoleSpy.mockRestore()
-  })
-
-  it('should throw when graph property is missing', () => {
-    const mockData = {
-      hash: 'test',
-      updated_at: 123,
-    } as unknown as FetchWorkflowDraftResponse
-
-    mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
-
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    expect(() => render(<RagPipelineWrapper />)).toThrow()
-
-    consoleSpy.mockRestore()
+  it('loads the dataset pipeline into the real workflow provider', async () => {
+    renderPipeline()
+    await expectGraph()
+    expect(requests.draft).toHaveBeenCalledExactlyOnceWith(
+      '/rag/pipelines/pipeline-1/workflows/draft',
+    )
   })
 })

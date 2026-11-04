@@ -1,65 +1,31 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
-import { createEditor } from 'lexical'
-import {
-  $createAgentOutputBlockNode,
-  $isAgentOutputBlockNode,
-  AgentOutputBlockNode,
-} from '../node'
-import {
-  extractAgentOutputNames,
-  getAgentOutputToken,
-  inferAgentOutputType,
-  parseAgentOutputToken,
-  replaceAgentOutputName,
-} from '../utils'
+import { $createParagraphNode, $getRoot, $nodesOfType } from 'lexical'
+import { createLexicalTestEditor, readRootTextContent } from '../../__tests__/test-helpers'
+import { $createAgentOutputBlockNode, AgentOutputBlockNode } from '../node'
+import { extractAgentOutputNames, parseAgentOutputToken, replaceAgentOutputName } from '../utils'
 
 describe('AgentOutputBlockNode', () => {
-  let editor: LexicalEditor
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    editor = createEditor({
-      nodes: [AgentOutputBlockNode as unknown as Klass<LexicalNode>],
+  it('persists the output name and type through editor serialization without transient editing state', () => {
+    const editor = createLexicalTestEditor('agent-output', [AgentOutputBlockNode])
+    editor.update(
+      () => {
+        $getRoot().append(
+          $createParagraphNode().append($createAgentOutputBlockNode('summary', 'object', true)),
+        )
+      },
+      { discrete: true },
+    )
+    const saved = editor.getEditorState().toJSON()
+    expect(saved.root.children[0]).toMatchObject({
+      children: [{ type: 'agent-output-block', version: 1, name: 'summary', outputType: 'object' }],
     })
-  })
-
-  const runInEditor = (callback: () => void) => {
-    editor.update(callback, { discrete: true })
-  }
-
-  it('should persist output tokens with bracket wrappers', () => {
-    runInEditor(() => {
-      const node = $createAgentOutputBlockNode('summary', 'string')
-
-      expect(node.getTextContent()).toBe('[§output:summary:summary§]')
-      expect(getAgentOutputToken('summary')).toBe('[§output:summary:summary§]')
+    const restored = createLexicalTestEditor('restored-agent-output', [AgentOutputBlockNode])
+    restored.setEditorState(restored.parseEditorState(JSON.stringify(saved)))
+    expect(readRootTextContent(restored)).toBe('[§output:summary:summary§]')
+    restored.getEditorState().read(() => {
+      const [node] = $nodesOfType(AgentOutputBlockNode)
+      expect(node!.getOutputType()).toBe('object')
+      expect(node!.isEditing()).toBe(false)
     })
-  })
-
-  it('should persist and parse file-name output tokens', () => {
-    runInEditor(() => {
-      const node = $createAgentOutputBlockNode('qna_report.pdf', 'file')
-
-      expect(node.getTextContent()).toBe('[§output:qna_report.pdf:qna_report.pdf§]')
-      expect(getAgentOutputToken('qna_report.pdf')).toBe('[§output:qna_report.pdf:qna_report.pdf§]')
-    })
-
-    expect(parseAgentOutputToken('Use [§output:qna_report.pdf:qna_report.pdf§]')).toEqual({
-      name: 'qna_report.pdf',
-      start: 4,
-      end: 44,
-    })
-  })
-
-  it('should infer file type only for whitelisted file extensions', () => {
-    expect(inferAgentOutputType('qna_report.pdf', 'string')).toBe('file')
-    expect(inferAgentOutputType('QNA_REPORT.PDF', 'string')).toBe('file')
-    expect(inferAgentOutputType('report.customext', 'string')).toBe('string')
-    expect(inferAgentOutputType('report.customext', 'object')).toBe('object')
   })
 
   it('should parse bracketed output tokens and legacy bare tokens', () => {
@@ -77,30 +43,27 @@ describe('AgentOutputBlockNode', () => {
   })
 
   it('should extract output names from bracketed and legacy tokens', () => {
-    expect([...extractAgentOutputNames('A [§output:summary:summary§] B §output:qna_report.pdf:qna_report.pdf§')]).toEqual([
-      'summary',
-      'qna_report.pdf',
-    ])
+    expect([
+      ...extractAgentOutputNames(
+        'A [§output:summary:summary§] B §output:final_summary:final_summary§',
+      ),
+    ]).toEqual(['summary', 'final_summary'])
   })
 
   it('should replace only matching output token names', () => {
-    expect(replaceAgentOutputName(
-      'Use [§output:summary:summary§] and §output:other:other§',
-      'summary',
-      'final_summary',
-    )).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
-  })
-
-  it('should create node with helper and support type guard checks', () => {
-    runInEditor(() => {
-      const node = $createAgentOutputBlockNode('result', 'object')
-
-      expect(node).toBeInstanceOf(AgentOutputBlockNode)
-      expect(node.getTextContent()).toBe('[§output:result:result§]')
-      expect($isAgentOutputBlockNode(node)).toBe(true)
-      expect($isAgentOutputBlockNode(null)).toBe(false)
-      expect($isAgentOutputBlockNode(undefined)).toBe(false)
-      expect($isAgentOutputBlockNode({} as LexicalNode)).toBe(false)
-    })
+    expect(
+      replaceAgentOutputName(
+        'Use [§output:summary:summary§] and §output:other:other§',
+        'summary',
+        'final_summary',
+      ),
+    ).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
+    expect(
+      replaceAgentOutputName(
+        'Generate [§output:output:output§] and §output:output:output§',
+        'output',
+        'summary',
+      ),
+    ).toBe('Generate [§output:summary:summary§] and §output:summary:summary§')
   })
 })

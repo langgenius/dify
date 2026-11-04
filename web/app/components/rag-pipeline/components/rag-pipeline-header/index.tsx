@@ -1,18 +1,14 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { useAtomValue } from 'jotai'
+import { memo, useMemo } from 'react'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
-import {
-  useStore,
-} from '@/app/components/workflow/store'
 import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
-import RunMode from './run-mode'
+import { RunMode } from './run-mode'
 
 const RagPipelineHeader = () => {
-  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
 
   const viewHistoryProps = useMemo(() => {
     return {
@@ -41,9 +37,7 @@ const RagPipelineHeader = () => {
     }
   }, [viewHistoryProps])
 
-  return (
-    <Header {...headerProps} />
-  )
+  return <Header {...headerProps} />
 }
 
 export default memo(RagPipelineHeader)
