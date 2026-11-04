@@ -1,22 +1,7 @@
+import type { ConsumerConnectionResponse } from '@dify/contracts/api/web/types.gen'
+
 export type ConnectionProvider = {
   id: string
-  name: string
-  description: string
-  iconClassName: string
 }
 
-export type LinkedApp = {
-  id: string
-  name: string
-  description: string
-  icon: string
-  iconBackground: string
-  href: string
-}
-
-export type EndUserConnection = {
-  id: string
-  name: string
-  type: 'oauth' | 'api-key'
-  apps: readonly LinkedApp[]
-}
+export type EndUserConnection = ConsumerConnectionResponse

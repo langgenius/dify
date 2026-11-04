@@ -11,6 +11,28 @@ import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-au
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
   url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
   fetch: async (input, init, options) => {
+    const baseURL = new URL(PUBLIC_API_PREFIX, window.location.origin)
+    const url = new URL(input.url)
+    const basePath = baseURL.pathname.replace(/\/$/, '')
+    const path = url.pathname.slice(basePath.length)
+    if (path.startsWith('/me/') || path === '/account/profile') {
+      const sessionRevision = options.context.authSession ?? getWebAppAuthSessionSnapshot()
+      const assertCurrentAccount = () => {
+        if (sessionRevision !== getWebAppAuthSessionSnapshot())
+          throw new DOMException('The Web App account changed.', 'AbortError')
+      }
+      assertCurrentAccount()
+      // oxlint-disable-next-line typescript/no-deprecated -- The generated account client uses the existing Cookie, HTTP error, and account-session transport.
+      const response = await request<Response>(url.href, init, {
+        isPublicAPI: true,
+        isWebAppAccountAPI: true,
+        fetchCompat: true,
+        request: input,
+        silent: options.context.silent,
+      })
+      assertCurrentAccount()
+      return response
+    }
     // Capture scope per request; a shared client must never retain the previous App.
     const address = options.context.address ?? resolveWebAppAddress()
     if (!address) throw new DOMException('No active Web App.', 'AbortError')
@@ -29,10 +51,7 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     }
 
     assertCurrentApp()
-    const baseURL = new URL(PUBLIC_API_PREFIX, window.location.origin)
-    const url = new URL(input.url)
-    const basePath = baseURL.pathname.replace(/\/$/, '')
-    url.pathname = basePath + getWebAppPublicApiPath(address, url.pathname.slice(basePath.length))
+    url.pathname = basePath + getWebAppPublicApiPath(address, path)
     let scopedRequest = input
     if (url.href !== input.url) {
       // Passing input.body directly turns buffered JSON or files into streaming uploads.

@@ -1,10 +1,15 @@
+import type { WebAccountProfileResponse } from '@dify/contracts/api/web/types.gen'
+import type { ComponentProps } from 'react'
 import type { WebAppEntryState } from '../../webapp-entry'
 import type { SiteInfo } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AccessMode } from '@/models/access-control'
+import { startWebAppAccountSession } from '@/service/webapp-auth'
+import { createTestQueryClient } from '@/test/query-client'
 import TextGenerationMenu from '../text-generation-menu'
 
 const mockSetTheme = vi.fn()
@@ -51,13 +56,31 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
-vi.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/webapp-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/webapp-auth')>()),
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
 }))
 
-vi.mock('@/service/webapp-address', () => ({
+vi.mock('@/service/webapp-address', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/webapp-address')>()),
   resolveWebAppAddress: () => webAppAddress,
 }))
+
+const profile: WebAccountProfileResponse = {
+  name: 'Alice Chen',
+  avatar: 'avatar-file-id',
+  avatar_url: 'https://example.com/signed-avatar.png',
+}
+const queryClients: ReturnType<typeof createTestQueryClient>[] = []
+function renderMenu(props: ComponentProps<typeof TextGenerationMenu> = {}) {
+  const queryClient = createTestQueryClient()
+  queryClients.push(queryClient)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <TextGenerationMenu {...props} />
+    </QueryClientProvider>,
+  )
+}
 
 describe('TextGenerationMenu', () => {
   const siteInfo: SiteInfo = { title: 'Test App', icon: '🚀', icon_type: 'emoji' }
@@ -65,14 +88,16 @@ describe('TextGenerationMenu', () => {
     mockWebAppLogout.mockResolvedValue(undefined)
     mockAccessMode = AccessMode.SPECIFIC_GROUPS_MEMBERS
     mockEntry = null
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json(profile))
   })
   afterEach(() => {
+    for (const queryClient of queryClients.splice(0)) queryClient.clear()
     vi.restoreAllMocks()
   })
 
   it('exposes the selected theme and keeps the menu open when changing it', async () => {
     const user = userEvent.setup()
-    render(<TextGenerationMenu data={siteInfo} />)
+    renderMenu({ data: siteInfo })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitemradio', { name: 'common.theme.auto' })).toHaveAttribute(
       'aria-checked',
@@ -87,7 +112,7 @@ describe('TextGenerationMenu', () => {
     'only links to a configured privacy policy (%s)',
     async (privacy_policy) => {
       const user = userEvent.setup()
-      render(<TextGenerationMenu data={{ ...siteInfo, privacy_policy }} />)
+      renderMenu({ data: { ...siteInfo, privacy_policy } })
       await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       const link = screen.queryByRole('menuitem', { name: 'share.chat.privacyPolicyMiddle' })
       if (privacy_policy) {
@@ -101,7 +126,7 @@ describe('TextGenerationMenu', () => {
 
   it('hides logout when requested', async () => {
     const user = userEvent.setup()
-    render(<TextGenerationMenu data={siteInfo} hideLogout />)
+    renderMenu({ data: siteInfo, hideLogout: true })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(
       screen.queryByRole('menuitem', { name: 'common.userProfile.logout' }),
@@ -110,7 +135,7 @@ describe('TextGenerationMenu', () => {
 
   it('logs out of the current web app and redirects back to its sign-in route', async () => {
     const user = userEvent.setup()
-    render(<TextGenerationMenu data={siteInfo} />)
+    renderMenu({ data: siteInfo })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }))
     await waitFor(() =>
@@ -125,7 +150,7 @@ describe('TextGenerationMenu', () => {
       const user = userEvent.setup()
       mockAccessMode = accessMode
 
-      render(<TextGenerationMenu data={siteInfo} />)
+      renderMenu({ data: siteInfo })
       await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       expect(
         screen.queryByRole('menuitem', { name: 'common.userProfile.logout' }),
@@ -146,9 +171,11 @@ describe('TextGenerationMenu', () => {
         }),
     )
 
-    render(<TextGenerationMenu data={siteInfo} />)
-    const accountMenu = screen.getByRole('button', { name: 'Joel' })
-    expect(accountMenu).toHaveTextContent('Joel')
+    renderMenu({ data: siteInfo })
+    const accountMenu = await screen.findByRole('button', { name: profile.name })
+    expect(accountMenu).toHaveTextContent(profile.name)
+    expect(within(accountMenu).getByAltText('')).toHaveAttribute('src', profile.avatar_url)
+    expect(within(accountMenu).getByText('A')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
     await user.click(accountMenu)
     await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }))
@@ -165,11 +192,58 @@ describe('TextGenerationMenu', () => {
     mockAccessMode = AccessMode.PUBLIC
     mockEntry = authenticatedEntry
 
-    render(<TextGenerationMenu data={siteInfo} hideLogout />)
-    await user.click(screen.getByRole('button', { name: 'Joel' }))
+    renderMenu({ data: siteInfo, hideLogout: true })
+    await user.click(await screen.findByRole('button', { name: profile.name }))
     expect(
       screen.queryByRole('menuitem', { name: 'common.userProfile.logout' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('clears the previous profile while the next account is loading', async () => {
+    mockEntry = authenticatedEntry
+    let resolveNextProfile!: (response: Response) => void
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(Response.json(profile))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveNextProfile = resolve
+          }),
+      )
+    renderMenu({ data: siteInfo })
+    await screen.findByRole('button', { name: profile.name })
+
+    act(() => startWebAppAccountSession())
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('button', { name: profile.name })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeEnabled()
+    expect(screen.getByAltText('')).not.toHaveAttribute('src', profile.avatar_url)
+
+    resolveNextProfile(Response.json({ name: 'Bob Smith', avatar: null, avatar_url: null }))
+    const nextAccountMenu = await screen.findByRole('button', { name: 'Bob Smith' })
+    expect(within(nextAccountMenu).getByText('B')).toBeInTheDocument()
+  })
+
+  it('keeps account actions available after a profile failure and retries from the menu', async () => {
+    const user = userEvent.setup()
+    mockAccessMode = AccessMode.PUBLIC
+    mockEntry = authenticatedEntry
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ code: 'unavailable', message: 'Profile unavailable' }, { status: 503 }),
+    )
+    renderMenu({ data: siteInfo })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Profile unavailable')
+    expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' })).toBeEnabled()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('button', { name: profile.name })).toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the settings trigger for an anonymous personal account', async () => {
@@ -177,17 +251,18 @@ describe('TextGenerationMenu', () => {
     mockAccessMode = AccessMode.PUBLIC
     mockEntry = { ...authenticatedEntry, account: 'anonymous', showSignIn: true }
 
-    render(<TextGenerationMenu data={siteInfo} />)
-    expect(screen.queryByRole('button', { name: 'Joel' })).not.toBeInTheDocument()
+    renderMenu({ data: siteInfo })
+    expect(screen.queryByRole('button', { name: profile.name })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(
       screen.queryByRole('menuitem', { name: 'common.userProfile.logout' }),
     ).not.toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('opens app information from the menu and closes the real dialog', async () => {
     const user = userEvent.setup()
-    render(<TextGenerationMenu data={siteInfo} />)
+    renderMenu({ data: siteInfo })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.about' }))
     const dialog = await screen.findByRole('dialog', { name: 'Test App' })

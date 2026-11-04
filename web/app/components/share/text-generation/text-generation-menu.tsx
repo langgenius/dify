@@ -1,7 +1,7 @@
 'use client'
 import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SiteInfo } from '@/models/share'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -15,15 +15,22 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
+import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { webAppQuery } from '@/service/webapp'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { webAppLogout } from '@/service/webapp-auth'
+import {
+  getWebAppAuthSessionSnapshot,
+  subscribeWebAppAuthSession,
+  webAppLogout,
+} from '@/service/webapp-auth'
+import { getAvatarInitial } from '@/utils/avatar'
 import { useWebAppEntry } from '../webapp-entry'
 import InfoModal from './info-modal'
 
@@ -34,16 +41,30 @@ type Props = Readonly<
   }
 >
 
-// Replace the preview identity when the Webapp account profile API is available.
-const accountName = 'Joel'
-
 function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const entry = useWebAppEntry()
   const accountAuthenticated = entry && 'account' in entry && entry.account === 'authenticated'
+  const authSession = useSyncExternalStore(
+    subscribeWebAppAuthSession,
+    getWebAppAuthSessionSnapshot,
+    () => 0,
+  )
+  const profile = useQuery(
+    webAppQuery.account.profile.get.queryOptions({
+      queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
+      context: { authSession, silent: true },
+      enabled: Boolean(accountAuthenticated),
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+    }),
+  )
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation(['common', 'share'])
+  const accountProfile = profile.isError ? undefined : profile.data
+  const accountName = accountProfile?.name || t(($) => $['operation.more'], { ns: 'common' })
 
   const handleLogout = async () => {
     const address = resolveWebAppAddress()
@@ -71,8 +92,9 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
                 className="h-auto max-w-full gap-0 rounded-full p-0.5 data-popup-open:bg-state-base-hover"
               >
                 <Avatar size="sm" className="rounded-full" aria-hidden="true">
+                  <AvatarImage keepMounted src={accountProfile?.avatar_url ?? undefined} alt="" />
                   <AvatarFallback className="rounded-full border-[0.5px] border-divider-regular bg-components-panel-bg">
-                    <span className="i-ri-robot-2-fill size-4 text-text-accent" />
+                    {getAvatarInitial(accountProfile?.name)}
                   </AvatarFallback>
                 </Avatar>
                 <span className="min-w-0 px-2 system-sm-medium text-text-secondary">
@@ -91,6 +113,23 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
           }
         />
         <MenuContent side={side} align={align} className="w-56">
+          {accountAuthenticated && profile.isError && (
+            <>
+              <p role="alert" className="px-3 py-2 system-sm-regular text-text-secondary">
+                {profile.error.message || t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+              <MenuItem
+                closeOnClick={false}
+                disabled={profile.isFetching}
+                onClick={() => {
+                  void profile.refetch()
+                }}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
           <MenuRadioGroup
             value={theme ?? 'system'}
             onValueChange={setTheme}

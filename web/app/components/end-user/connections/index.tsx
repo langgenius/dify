@@ -1,15 +1,15 @@
 'use client'
 
-import type { ConnectionProvider } from './model'
+import type { EndUserConnection } from './model'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import ProviderIcon from './provider-icon'
 
 type Props = {
-  providers: readonly ConnectionProvider[]
+  connections: readonly EndUserConnection[]
 }
 
-export default function Connections({ providers }: Props) {
+export default function Connections({ connections }: Props) {
   const { t } = useTranslation(['app'])
 
   return (
@@ -23,21 +23,18 @@ export default function Connections({ providers }: Props) {
         </p>
       </header>
       <ul className="grid grid-cols-1 gap-3 px-5 pb-8 sm:px-8 lg:grid-cols-2 xl:grid-cols-3">
-        {providers.map((provider) => (
-          <li key={provider.id}>
+        {connections.map((connection) => (
+          <li key={connection.key}>
             <Link
-              href={`/connections/${encodeURIComponent(provider.id)}`}
+              href={`/connections/${encodeURIComponent(connection.provider)}`}
               className="flex min-w-0 items-center gap-6 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <ProviderIcon provider={provider} />
+                <ProviderIcon provider={{ id: connection.provider }} />
                 <div className="min-w-0 flex-1">
                   <h2 className="system-xl-semibold leading-5 wrap-anywhere text-text-secondary">
-                    {provider.name}
+                    {connection.provider}
                   </h2>
-                  <p className="mt-0.5 truncate system-sm-regular text-text-tertiary">
-                    {provider.description}
-                  </p>
                 </div>
               </div>
               <span

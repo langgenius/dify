@@ -1,5 +1,4 @@
 import type { ConnectionProvider } from './model'
-import { cn } from '@langgenius/dify-ui/cn'
 import AppIcon from '@/app/components/base/app-icon'
 
 type Props = {
@@ -7,14 +6,14 @@ type Props = {
   size?: 'small' | 'medium' | 'large'
 }
 
-export default function ProviderIcon({ provider, size = 'medium' }: Props) {
+export default function ProviderIcon({ size = 'medium' }: Props) {
   return (
     <AppIcon
       size={size === 'small' ? 'small' : size === 'large' ? 'xl' : 'large'}
       className="rounded-lg"
       decorative
       fallback={{
-        content: <span className={cn('size-6 text-text-secondary', provider.iconClassName)} />,
+        content: <span className="i-ri-plug-line size-6 text-text-secondary" />,
         background: 'var(--color-background-default-dodge)',
       }}
     />

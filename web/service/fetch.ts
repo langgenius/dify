@@ -183,7 +183,7 @@ async function base<T>(
       beforeRequest: [
         ...(baseHooks.beforeRequest || []),
         assertAuthSessionCurrent,
-        isPublicAPI && beforeRequestPublicWithCode,
+        isPublicAPI && !otherOptions.isWebAppAccountAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         assertAuthSessionCurrent,

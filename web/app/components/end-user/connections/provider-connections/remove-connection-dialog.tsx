@@ -79,7 +79,7 @@ export default function RemoveConnectionDialog({
           <AlertDialogBody>
             <div className="space-y-5">
               <div className="flex items-center gap-3">
-                {connection.type === 'oauth' ? (
+                {connection.connection_type === 'oauth2' ? (
                   <ProviderIcon provider={provider} size="small" />
                 ) : (
                   <span
@@ -90,7 +90,7 @@ export default function RemoveConnectionDialog({
                   </span>
                 )}
                 <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
-                  {connection.name}
+                  {connection.account_label ?? connection.name}
                 </span>
               </div>
               <AlertDialogDescription>

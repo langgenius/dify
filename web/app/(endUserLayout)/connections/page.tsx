@@ -1,5 +1,4 @@
-import Connections from '@/app/components/end-user/connections'
-import { demoProviders } from '@/app/components/end-user/connections/demo-data'
+import ConnectionsPage from '@/app/components/end-user/connections/connections-page'
 import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
@@ -7,5 +6,5 @@ export function generateMetadata() {
 }
 
 export default function Page() {
-  return <Connections providers={demoProviders} />
+  return <ConnectionsPage />
 }
