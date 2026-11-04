@@ -221,15 +221,25 @@ def _required_first(hint: FieldHint) -> tuple[bool, Loc]:
     return (not hint.required, hint.loc)
 
 
-def top_level_hints(node: NodeTarget, schema: Mapping[str, Any], *, skip: Container[str] = ()) -> tuple[FieldHint, ...]:
-    """A hint for each top-level field of the node's data except those in `skip`, the required ones first and each
-    group by loc. `schema` is the node's data schema.
+def _no_example(_loc: Loc) -> None:
+    return None
+
+
+def top_level_hints(
+    model: type[BaseModel],
+    schema: Mapping[str, Any],
+    *,
+    skip: Container[str] = (),
+    example: Callable[[Loc], object | None] = _no_example,
+) -> tuple[FieldHint, ...]:
+    """A hint for each top-level field of `model`, the node's data model, except those in `skip`, the required ones
+    first and each group by loc. `schema` is the model's JSON schema; `example` gives a field's canvas example.
     """
     return tuple(
         sorted(
             (
-                replace(_field_hint(schema, (key,), required=field.is_required()), example=node.example((key,)))
-                for name, field in node.model.model_fields.items()
+                replace(_field_hint(schema, (key,), required=field.is_required()), example=example((key,)))
+                for name, field in model.model_fields.items()
                 if (key := field.alias or name) not in skip
             ),
             key=_required_first,
@@ -246,5 +256,5 @@ def node_spec(node: NodeTarget) -> NodeSpec:
         version=node.node_class.version(),
         schema=schema,
         plugin_parameters=_declared_parameters(node),
-        open_fields=top_level_hints(node, schema, skip=node.data),
+        open_fields=top_level_hints(node.model, schema, skip=node.data, example=node.example),
     )

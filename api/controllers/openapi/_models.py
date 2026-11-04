@@ -862,6 +862,11 @@ def _omitted_without_default(description: str) -> Any:
     )
 
 
+def _omitted_when_none(description: str, *, alias: str | None = None) -> Any:
+    """An optional field that is left out of the response when it is None."""
+    return Field(None, alias=alias, exclude_if=lambda value: value is None, description=description)
+
+
 class FieldHintRow(BaseModel):
     loc: list[str | int] = Field(description="Where the field sits in the node's data")
     type: str | None
@@ -869,10 +874,8 @@ class FieldHintRow(BaseModel):
     description: str | None
     required: bool
     default: Any = _omitted_without_default("The value the node runs with when the field is left out")
-    example: Any = Field(
-        None,
-        exclude_if=lambda value: value is None,
-        description="The value the web canvas gives a new node at this field; left out when the canvas has none",
+    example: Any = _omitted_when_none(
+        "The value the web canvas gives a new node at this field; left out when the canvas has none"
     )
 
     @classmethod
@@ -1153,15 +1156,11 @@ class NodeTypeFieldRow(BaseModel):
     options: list[str] = Field(
         default_factory=list, exclude_if=lambda value: not value, description="The values the field accepts"
     )
-    description: str | None = Field(
-        None,
-        exclude_if=lambda value: value is None,
-        description="The first line of the field's description; include_schema=true has the whole text",
+    description: str | None = _omitted_when_none(
+        "The first line of the field's description; include_schema=true has the whole text"
     )
-    default: Any = Field(
-        None,
-        exclude_if=lambda value: value is None,
-        description="The value the node runs with when the field is left out; left out when there is none",
+    default: Any = _omitted_when_none(
+        "The value the node runs with when the field is left out; left out when there is none or it is null"
     )
 
     @classmethod
@@ -1187,11 +1186,8 @@ class NodeTypeDetailResponse(BaseModel):
         description="Every top-level field of the node's data, the required ones first"
     )
     handles: list[str] = Field(description="Every source handle the node has, in the order the canvas draws them")
-    schema_: dict[str, Any] | None = Field(
-        None,
-        alias="schema",
-        exclude_if=lambda value: value is None,
-        description="The JSON schema of the node's data; only with include_schema=true",
+    schema_: dict[str, Any] | None = _omitted_when_none(
+        "The JSON schema of the node's data; only with include_schema=true", alias="schema"
     )
 
 

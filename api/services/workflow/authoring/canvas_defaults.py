@@ -322,12 +322,11 @@ def canvas_example(data: Mapping[str, object], loc: Loc) -> object | None:
     return canvas_value(str(data[_TYPE_KEY]), loc, version=data.get(_VERSION_KEY))
 
 
-def purpose_fields(node_type: str, version: object = None) -> frozenset[str | int]:
-    """The top-level fields that hold a purpose loc of a block type at `version`; none for a type or version the
-    canvas does not know.
+def purpose_fields(data: Mapping[str, object]) -> frozenset[str | int]:
+    """The top-level fields that hold a purpose loc of the node `data` is, by its type and version; none for a type or
+    version the canvas does not know.
     """
-    node = canvas_node(node_type)
-    edition = node.edition(version) if node is not None else None
+    edition = _edition_of(data)
     if edition is None:
         return frozenset()
     return frozenset(loc[0] for loc in edition.purpose)
