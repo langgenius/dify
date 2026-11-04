@@ -1215,7 +1215,7 @@ describe('KnowledgeFS composer interaction', () => {
 
   it('does not mutate a read-only composer', () => {
     setup([binding], { readOnly: true })
-    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.remove/ }),
     ).not.toBeInTheDocument()
