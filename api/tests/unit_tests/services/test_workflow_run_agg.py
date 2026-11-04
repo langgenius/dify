@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock
+from typing import Never
 from uuid import uuid4
 
 import pytest
@@ -75,6 +75,10 @@ from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _in
 from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 def _pipeline_tool_runner(
@@ -168,7 +172,7 @@ def _pipeline_tool_runner(
         user,
         "pipe",
         WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
-        upload_file=MagicMock(),
+        upload_file=_unexpected_upload_file,
     )
     return runner, runs, nodes
 
@@ -359,7 +363,7 @@ def make_workflow_runner(
         user=user,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        upload_file=MagicMock(),
+        upload_file=_unexpected_upload_file,
     )
     runner = WorkflowAppRunner(
         application_generate_entity=entity,

@@ -4,6 +4,7 @@ import contextlib
 import contextvars
 import json
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -52,6 +53,10 @@ from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 class _TraceRecorder:
@@ -186,7 +191,7 @@ def _repositories(
             user=end_user,
             app_id=app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            upload_file=MagicMock(),
+            upload_file=_unexpected_workflow_offload,
         ),
     )
 

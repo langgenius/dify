@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Protocol, cast
+from typing import Never, Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -71,6 +71,10 @@ class _TaskWithRequestContext(Protocol):
     def push_request(self, *, retries: int) -> None: ...
 
     def pop_request(self) -> None: ...
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 def _execution(
@@ -429,7 +433,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
             app_id=APP_ID,
             user=user,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            upload_file=MagicMock(),
+            upload_file=_unexpected_upload_file,
         )
         if writer == "sql":
             repository.save(execution)

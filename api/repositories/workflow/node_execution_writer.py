@@ -409,6 +409,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             session.commit()
 
     def _update_existing(self, existing: WorkflowNodeExecutionModel, incoming: WorkflowNodeExecutionModel) -> None:
+        """Copy an owner-validated snapshot while preserving independent workspace bindings."""
         self._validate_owner(existing, incoming.workflow_id, incoming.workflow_run_id)
         process_data = keep_agent_and_tool_ids(existing.process_data_dict, incoming.process_data_dict)
         incoming.process_data = _deterministic_json_dump(process_data) if process_data is not None else None
@@ -416,28 +417,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             incoming.triggered_from_workflow_id = existing.triggered_from_workflow_id
         if incoming.triggered_from_node_execution_id is None:
             incoming.triggered_from_node_execution_id = existing.triggered_from_node_execution_id
-        for key in (
-            "index",
-            "predecessor_node_id",
-            "node_execution_id",
-            "node_id",
-            "node_type",
-            "title",
-            "inputs",
-            "process_data",
-            "outputs",
-            "status",
-            "error",
-            "elapsed_time",
-            "execution_metadata",
-            "created_at",
-            "created_by_role",
-            "created_by",
-            "finished_at",
-            "triggered_from_workflow_id",
-            "triggered_from_node_execution_id",
-        ):
-            setattr(existing, key, getattr(incoming, key))
+        existing.index = incoming.index
+        existing.predecessor_node_id = incoming.predecessor_node_id
+        existing.node_execution_id = incoming.node_execution_id
+        existing.node_id = incoming.node_id
+        existing.node_type = incoming.node_type
+        existing.title = incoming.title
+        existing.inputs = incoming.inputs
+        existing.process_data = incoming.process_data
+        existing.outputs = incoming.outputs
+        existing.status = incoming.status
+        existing.error = incoming.error
+        existing.elapsed_time = incoming.elapsed_time
+        existing.execution_metadata = incoming.execution_metadata
+        existing.created_at = incoming.created_at
+        existing.created_by_role = incoming.created_by_role
+        existing.created_by = incoming.created_by
+        existing.finished_at = incoming.finished_at
+        existing.triggered_from_workflow_id = incoming.triggered_from_workflow_id
+        existing.triggered_from_node_execution_id = incoming.triggered_from_node_execution_id
 
     def _apply_durable_stop(self, session: Session, execution: WorkflowNodeExecutionModel) -> None:
         apply_workflow_stop_to_node(
@@ -475,7 +473,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model = self._to_db_model(domain_model)
             original_offloads = {}
 
-        original_data = {type_: getattr(db_model, f"{type_.value}_dict") for type_ in ExecutionOffLoadType}
+        original_data = {
+            ExecutionOffLoadType.INPUTS: db_model.inputs_dict,
+            ExecutionOffLoadType.PROCESS_DATA: db_model.process_data_dict,
+            ExecutionOffLoadType.OUTPUTS: db_model.outputs_dict,
+        }
         prepared: dict[ExecutionOffLoadType, _InputsOutputsTruncationResult | None] = {}
 
         if domain_model.inputs is not None:
@@ -537,22 +539,29 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 current.offload_data = []
                 session.add(current)
             self._apply_durable_stop(session, current)
+            current_data = {
+                ExecutionOffLoadType.INPUTS: current.inputs_dict,
+                ExecutionOffLoadType.PROCESS_DATA: current.process_data_dict,
+                ExecutionOffLoadType.OUTPUTS: current.outputs_dict,
+            }
             for type_, result in prepared.items():
-                field = type_.value
                 # Uploads run outside the transaction. Do not overwrite a newer
                 # payload written while storage I/O was in progress.
                 current_offload = next((item.id for item in current.offload_data if item.type_ == type_), None)
-                if getattr(current, f"{field}_dict") != original_data[
-                    type_
-                ] or current_offload != original_offloads.get(type_):
-                    continue
-                setattr(current, field, getattr(db_model, field))
-                # Keep unrelated data and the latest execution state. Merging
-                # the detached row would also restore its stale status/metadata.
-                current.offload_data = [item for item in current.offload_data if item.type_ != type_]
-                session.flush()  # Unlink the old offload before reusing its unique slot.
-                if result is not None:
-                    current.offload_data.append(result.offload)
+                if current_data[type_] == original_data[type_] and current_offload == original_offloads.get(type_):
+                    match type_:
+                        case ExecutionOffLoadType.INPUTS:
+                            current.inputs = db_model.inputs
+                        case ExecutionOffLoadType.PROCESS_DATA:
+                            current.process_data = db_model.process_data
+                        case ExecutionOffLoadType.OUTPUTS:
+                            current.outputs = db_model.outputs
+                    # Keep unrelated data and the latest execution state. Merging
+                    # the detached row would also restore its stale status/metadata.
+                    current.offload_data = [item for item in current.offload_data if item.type_ != type_]
+                    session.flush()  # Unlink the old offload before reusing its unique slot.
+                    if result is not None:
+                        current.offload_data.append(result.offload)
 
     def get_db_models_by_workflow_run(
         self,

@@ -27,9 +27,11 @@ from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
-from models.account import Account, Tenant
-from models.base import Base, TypeBase, gen_uuidv4_string
-from models.enums import (
+from models.utils.file_input_compat import build_file_from_input_mapping
+
+from .account import Account, Tenant
+from .base import Base, TypeBase, gen_uuidv4_string
+from .enums import (
     ApiTokenBindingResourceType,
     ApiTokenType,
     AppStatus,
@@ -49,14 +51,13 @@ from models.enums import (
     ProviderQuotaType,
     TagType,
 )
-from models.provider_ids import GenericProviderID
-from models.types import EnumText, LongText, StringUUID
-from models.utils.file_input_compat import build_file_from_input_mapping
+from .provider_ids import GenericProviderID
+from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
-    from models.agent import Agent
-    from models.dataset import DatasetCollectionBinding
-    from models.workflow import Workflow
+    from .agent import Agent
+    from .dataset import DatasetCollectionBinding
+    from .workflow import Workflow
 
 
 # --- TypedDict definitions for structured dict return types ---
@@ -496,7 +497,7 @@ class App(TypeBase):
 
     def workflow_with_session(self, *, session: Session) -> Workflow | None:
         if self.workflow_id:
-            from models.workflow import Workflow
+            from .workflow import Workflow
 
             return session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
@@ -526,7 +527,7 @@ class App(TypeBase):
         """
         if self.mode != AppMode.AGENT:
             return None
-        from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
+        from .agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 
         conditions = [
             Agent.tenant_id == self.tenant_id,
@@ -1977,7 +1978,7 @@ class AppAnnotationSetting(TypeBase):
     )
 
     def collection_binding_detail(self, session: Session) -> DatasetCollectionBinding | None:
-        from models.dataset import DatasetCollectionBinding
+        from .dataset import DatasetCollectionBinding
 
         return session.scalar(
             select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
@@ -1989,7 +1990,7 @@ def load_annotation_reply_config(session: Session, app_id: str) -> AnnotationRep
     if annotation_setting is None:
         return {"enabled": False}
 
-    from models.dataset import DatasetCollectionBinding
+    from .dataset import DatasetCollectionBinding
 
     collection_binding_detail = session.scalar(
         select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == annotation_setting.collection_binding_id)

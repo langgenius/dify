@@ -1,13 +1,13 @@
 """Backend behavior that permissive repository substitutes previously hid."""
 
 import json
+from dataclasses import dataclass
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Mapper, Session, sessionmaker
 
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -22,6 +22,23 @@ from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.repositories.workflow.storage_contracts.entities import START, node, run
 from tests.unit_tests.repositories.workflow.storage_contracts.harness import StorageContract
+
+
+@dataclass(frozen=True)
+class _DraftWorkflow:
+    id: str
+
+    def get_node_config_by_id(self, node_id: str) -> dict[str, object]:
+        del node_id
+        return {}
+
+    def get_enclosing_node_type_and_id(self, config: dict[str, object]) -> None:
+        del config
+
+
+@dataclass(frozen=True)
+class _Database:
+    engine: Engine
 
 
 def _apply_mysql_datetime_precision(sessions: sessionmaker[Session], *, round_fraction: bool) -> None:
@@ -144,10 +161,10 @@ def test_datasource_debug_returns_result_and_saves_draft_before_async_delivery(
     pipeline.id = "app-1"
     actor = make_account(account_id="actor-1")
     execution = node().model_copy(update={"node_type": BuiltinNodeTypes.DATASOURCE})
-    workflow = SimpleNamespace(
-        id="workflow-1", get_node_config_by_id=lambda _node_id: {}, get_enclosing_node_type_and_id=lambda _config: None
-    )
-    monkeypatch.setattr(pipeline_module, "db", SimpleNamespace(engine=storage.sessions.kw["bind"]))
+    workflow = _DraftWorkflow(id="workflow-1")
+    engine = storage.sessions.kw["bind"]
+    assert isinstance(engine, Engine)
+    monkeypatch.setattr(pipeline_module, "db", _Database(engine=engine))
     trace = Mock()
     monkeypatch.setattr(pipeline_module, "enqueue_draft_node_execution_trace", trace)
     with storage.sessions() as session:

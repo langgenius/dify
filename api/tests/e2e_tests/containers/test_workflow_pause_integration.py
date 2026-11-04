@@ -39,6 +39,7 @@ from models.workflow import Workflow, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.workflow.pause_repository import _WorkflowRunError
 from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.workflow.run_repository import WorkflowRunNotPausedError
 
 
 @dataclass
@@ -488,7 +489,7 @@ class TestWorkflowPauseIntegration:
         self.session.add(workflow_run)
         self.session.commit()
 
-        with pytest.raises(_WorkflowRunError):
+        with pytest.raises(WorkflowRunNotPausedError):
             repository.resume_workflow_pause(
                 workflow_run_id=workflow_run.id,
                 pause_entity=pause_entity,

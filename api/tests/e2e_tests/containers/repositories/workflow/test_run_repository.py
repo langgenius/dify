@@ -39,6 +39,7 @@ from repositories.workflow.pause_repository import (
 )
 from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow.run_entities import WorkflowPauseEntity
+from services.workflow.run_repository import WorkflowRunNotPausedError
 
 
 class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
@@ -741,7 +742,7 @@ class TestResumeWorkflowPause:
         db_session_with_containers: Session,
         test_scope: _TestScope,
     ) -> None:
-        """Raise _WorkflowRunError when workflow run is not in PAUSED status."""
+        """Raise WorkflowRunNotPausedError when workflow run is not in PAUSED status."""
 
         workflow_run = _create_workflow_run(
             db_session_with_containers,
@@ -750,7 +751,7 @@ class TestResumeWorkflowPause:
         )
         pause_entity = _unpersisted_pause(workflow_id=test_scope.workflow_id, workflow_run_id=workflow_run.id)
 
-        with pytest.raises(_WorkflowRunError, match="WorkflowRun is not in PAUSED status"):
+        with pytest.raises(WorkflowRunNotPausedError, match="WorkflowRun is not in PAUSED status"):
             repository.resume_workflow_pause(
                 workflow_run_id=workflow_run.id,
                 pause_entity=pause_entity,

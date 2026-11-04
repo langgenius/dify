@@ -490,7 +490,10 @@ def test_celery_and_sync_insert_race_updates_the_original_row(
     finished = started.model_copy(update={"status": WorkflowNodeExecutionStatus.SUCCEEDED, "outputs": {"ok": True}})
     event.listen(WorkflowNodeExecutionModel, "before_insert", deliver_before_insert)
     try:
-        getattr(writer, operation)(finished)
+        if operation == "save_synchronously":
+            writer.save_synchronously(finished)
+        else:
+            writer.save_execution_data(finished)
     finally:
         event.remove(WorkflowNodeExecutionModel, "before_insert", deliver_before_insert)
     assert interleaved

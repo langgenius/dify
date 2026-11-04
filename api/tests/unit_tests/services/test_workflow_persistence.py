@@ -4,7 +4,7 @@ import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, override
+from typing import Any, Never, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -93,6 +93,10 @@ in isolation by patching just the moving parts they touch
 the publisher module's call sites. This keeps the test compact and tied to
 the contract, not the implementation.
 """
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -381,7 +385,7 @@ def _make_sql_layer(session_factory, *, node_run_indices=None):
             user=user,
             app_id="caller-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            upload_file=MagicMock(),
+            upload_file=_unexpected_workflow_offload,
         ),
     )
     layer._application_generate_entity.app_config.app_id = "caller-app"

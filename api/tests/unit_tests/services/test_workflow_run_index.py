@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock
+from typing import Never
 
 import pytest
 from sqlalchemy import select
@@ -23,6 +23,10 @@ from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeEx
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _history(execution_id: str, index: int) -> WorkflowNodeExecution:
@@ -83,7 +87,7 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
         user=user,
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        upload_file=MagicMock(),
+        upload_file=_unexpected_workflow_offload,
     )
     history = _history("earlier", 7)
     node_repo.save(history)

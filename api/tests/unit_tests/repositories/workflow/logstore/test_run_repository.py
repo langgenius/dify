@@ -1,11 +1,12 @@
 import datetime
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.workflow import WorkflowRun
 from repositories.workflow.logstore.records import workflow_run_from_log
 from repositories.workflow.logstore.run_repository import (
     LogstoreWorkflowRunRepository,
@@ -54,17 +55,16 @@ def test_tenant_lookup_rejects_a_log_from_another_tenant(sqlite_session_factory:
 
 
 @pytest.mark.parametrize(
-    ("method_name", "args"),
+    "read_control",
     [
-        ("get_workflow_run_by_id", ("tenant-1", "app-1", "run-1")),
-        ("get_workflow_run_by_id_and_tenant_id", ("tenant-1", "run-1")),
-        ("get_workflow_run_by_id_without_tenant", ("run-1",)),
+        lambda repository: repository.get_workflow_run_by_id("tenant-1", "app-1", "run-1"),
+        lambda repository: repository.get_workflow_run_by_id_and_tenant_id("tenant-1", "run-1"),
+        lambda repository: repository.get_workflow_run_by_id_without_tenant("run-1"),
     ],
 )
 def test_task_control_row_takes_precedence_over_logstore(
     sqlite_session_factory: sessionmaker[Session],
-    method_name: str,
-    args: tuple[str, ...],
+    read_control: Callable[[LogstoreWorkflowRunRepository], WorkflowRun | None],
 ) -> None:
     control = workflow_run_from_log(dict(_BASE))
     control.task_id = "task-1"
@@ -73,7 +73,7 @@ def test_task_control_row_takes_precedence_over_logstore(
     with patch("repositories.workflow.logstore.run_repository.AliyunLogStore", autospec=True) as client:
         repository = LogstoreWorkflowRunRepository(sqlite_session_factory)
 
-        result = getattr(repository, method_name)(*args)
+        result = read_control(repository)
 
     assert result is not None
     assert result.task_id == "task-1"

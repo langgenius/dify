@@ -58,6 +58,10 @@ def _upload_file(*, key: str = "storage-key") -> UploadFile:
     )
 
 
+def _unexpected_upload(*, filename: str, content: bytes) -> UploadFile:
+    raise AssertionError(f"unexpected upload: {filename} ({len(content)} bytes)")
+
+
 def _offload(type_: ExecutionOffLoadType, *, file_id: str = "file-1") -> WorkflowNodeExecutionOffload:
     return WorkflowNodeExecutionOffload(
         tenant_id="tenant-1",
@@ -169,7 +173,7 @@ def test_init_rejects_invalid_factory_and_missing_tenant() -> None:
             user=user,
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            upload_file=Mock(),
+            upload_file=_unexpected_upload,
         )
 
 
@@ -617,13 +621,17 @@ def test_offload_rejects_disallowed_files_before_storage_or_sql(
         UPLOAD_FILE_SIZE_LIMIT=15 if reject_extension else 0,
         WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=1,
     )
-    save = Mock()
+    save_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def save(*args: object, **kwargs: object) -> None:
+        save_calls.append((args, kwargs))
+
     monkeypatch.setattr("repositories.workflow.node_execution_writer.storage.save", save)
     repo = _repository(sqlite_session_factory)
     from services.errors.file import BlockedFileExtensionError, FileTooLargeError
 
     with pytest.raises(BlockedFileExtensionError if reject_extension else FileTooLargeError):
         repo._truncate_and_upload({"value": "payload"}, "execution-1", ExecutionOffLoadType.OUTPUTS)
-    save.assert_not_called()
+    assert save_calls == []
     with sqlite_session_factory() as session:
         assert session.scalar(select(UploadFile.id)) is None

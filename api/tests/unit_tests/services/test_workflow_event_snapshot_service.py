@@ -7,7 +7,7 @@ from decimal import Decimal
 from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
-from typing import Any, cast, override
+from typing import Any, Never, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -418,6 +418,11 @@ class _Topic:
 class _StaticSubscription:
     def receive(self, timeout: int = 1) -> None:
         return None
+
+
+class _UnexpectedPauseRepository:
+    def get_workflow_pause(self, _workflow_run_id: str) -> Never:
+        pytest.fail("A running workflow must not load pause state")
 
 
 @dataclass(frozen=True)
@@ -1044,7 +1049,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    workflow_run_repo = _UnexpectedPauseRepository()
     node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
     factory = SimpleNamespace(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
@@ -1099,7 +1104,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    workflow_run_repo = _UnexpectedPauseRepository()
     node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
     factory = SimpleNamespace(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),

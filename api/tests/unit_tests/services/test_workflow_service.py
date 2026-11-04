@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Never, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
 from uuid import uuid4
 
@@ -96,6 +96,10 @@ This test suite covers:
 - Version management
 - Execution triggering
 """
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -4194,11 +4198,18 @@ class TestWorkflowHumanInputDeliveryCases:
             return_value=("form-1", [])
         )
 
-        test_service_instance = MagicMock()
+        sent_methods: list[Any] = []
+
+        class RecordingDeliveryTestService:
+            def send_test(self, *, context: Any, method: Any) -> None:
+                _ = context
+                sent_methods.append(method)
+
+        test_service_instance = RecordingDeliveryTestService()
         monkeypatch.setattr(
             workflow_service_module,
             "HumanInputDeliveryTestService",
-            MagicMock(return_value=test_service_instance),
+            lambda: test_service_instance,
         )
 
         app_model = _app()
@@ -4212,8 +4223,8 @@ class TestWorkflowHumanInputDeliveryCases:
             session=sqlite_session,
         )
 
-        test_service_instance.send_test.assert_called_once()
-        sent_method = test_service_instance.send_test.call_args.kwargs["method"]
+        assert len(sent_methods) == 1
+        sent_method = sent_methods[0]
         assert isinstance(sent_method, EmailDeliveryMethod)
         assert sent_method.config.debug_mode is True
         assert sent_method.config.recipients.include_bound_group is False
@@ -4280,7 +4291,7 @@ class TestWorkflowAgentPreviewIdentityCases:
             account,
             app_id,
             WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-            upload_file=MagicMock(),
+            upload_file=_unexpected_upload_file,
         )
         observed_created_at = []
         execution_ids: list[str] = []

@@ -4,6 +4,7 @@ from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -42,6 +43,10 @@ from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRep
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
 from tests.helpers.unit.model_factories import make_account
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -496,7 +501,7 @@ def test_node_completion_preserves_workspace_binding_and_sandbox_access(
         make_account(),
         scope.app_id,
         WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        upload_file=MagicMock(),
+        upload_file=_unexpected_workflow_offload,
     )
     execution = WorkflowNodeExecution(
         id=scope.node_execution_id,

@@ -9,8 +9,7 @@ from datetime import UTC, datetime
 from functools import partial
 from threading import Event, get_ident
 from types import TracebackType
-from typing import override
-from unittest.mock import MagicMock
+from typing import Never, override
 
 import pytest
 from flask import current_app, g
@@ -145,6 +144,10 @@ from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersi
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _workflow_tool_container_workflow_tool_node(
@@ -1754,7 +1757,7 @@ class TestWorkflowToolEventDeliveryCases:
                 user=user,
                 app_id="outer-app",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-                upload_file=MagicMock(),
+                upload_file=_unexpected_workflow_offload,
             ),
             trace_scope=None,
         )
