@@ -162,7 +162,14 @@ class ConsumerAppsStore(Protocol):
     def record_consumer_usage(
         self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, end_user_id: str, used_at: datetime
     ) -> None:
-        """Validate the complete Browser identity chain and preserve the latest accepted use."""
+        """Validate the complete Browser identity chain and atomically record accepted use.
+
+        Lock the personal App state to preserve its latest use. A conditional
+        Account update preserves the earliest event across Apps and out-of-order
+        writes; a non-matching update means an equal or earlier event is recorded.
+        Both timestamps commit in one transaction. A null first_app_used_at means
+        no qualifying use is known.
+        """
         ...
 
     def remove(self, identity: ConsumerIdentity, app_id: str) -> None:

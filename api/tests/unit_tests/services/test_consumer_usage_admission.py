@@ -51,6 +51,10 @@ def test_only_accepted_account_browser_webapp_executions_record_usage(
     with base.sessions() as session:
         count = session.scalar(sa.select(sa.func.count()).select_from(AccountWebApp))
         assert count == int(actor == "browser" and source == InvokeFrom.WEB_APP and mode != AppMode.CHAT)
+        first_used_at = session.scalar(
+            sa.select(Account.first_app_used_at).where(Account.id == harness.identity.account_id)
+        )
+        assert (first_used_at is not None) == bool(count)
 
 
 def test_rejected_executions_do_not_record_usage(
@@ -70,6 +74,11 @@ def test_rejected_executions_do_not_record_usage(
         with pytest.raises(ValueError, match="Rejected"):
             AppGenerateService.generate(app, user, {}, InvokeFrom.WEB_APP, session=session)
     assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Account.first_app_used_at).where(Account.id == harness.identity.account_id))
+            is None
+        )
 
 
 def test_preference_write_failure_does_not_fail_an_accepted_execution(

@@ -54,6 +54,7 @@ class Account(UserMixin, TypeBase):
     status: Mapped[AccountStatus] = mapped_column(EnumText(AccountStatus, length=16), default=AccountStatus.ACTIVE)
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     first_workspace_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    first_app_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )

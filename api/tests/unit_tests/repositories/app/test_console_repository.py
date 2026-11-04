@@ -3,28 +3,33 @@
 import json
 from collections.abc import Callable
 from dataclasses import asdict
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
 from flask import has_request_context
-from sqlalchemy import Engine, event, func, select, text
+from sqlalchemy import Engine, delete, event, func, select, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from fields.app_fields import AppPagination
 from machinery.context import RequestContext
+from models.account import Account, AccountStatus
+from models.account_webapp import AccountWebApp
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
-from models.enums import CustomizeTokenStrategy
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Site
+from models.enums import CustomizeTokenStrategy, EndUserType
+from models.model import App, AppMode, AppModelConfig, AppStar, EndUser, IconType, Site
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_tracing_config_service import AppTraceSettings
+from services.consumer_service import ConsumerIdentity
 from services.entities.app_entities import (
     AppListParams,
     AppRecord,
     StarredAppListParams,
     UpdateAppParams,
 )
+from tests.helpers.end_user_api_key import make_harness
 
 WORKSPACE = str(uuid4())
 ACTOR = str(uuid4())
@@ -343,3 +348,83 @@ def test_trace_settings_preserve_stored_json_validation(
 ) -> None:
     app = persist_app(sqlite_session, tracing='{"enabled": "false", "obsolete_field": true}')
     assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()
+
+
+@pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED])
+def test_first_app_usage_preserves_earliest_event_across_apps_and_removal(
+    repository: ConsoleAppRepository, sqlite_session_factory: sessionmaker[Session], status: AccountStatus
+) -> None:
+    base = make_harness(sqlite_session_factory)
+    other = make_harness(sqlite_session_factory)
+    assert base.context.account_id is not None
+    identity = ConsumerIdentity(base.context.account_id)
+    moment = datetime(2026, 11, 4, 10)
+    with sqlite_session_factory.begin() as session:
+        session.execute(update(Account).where(Account.id == identity.account_id).values(status=status))
+        session.execute(
+            update(EndUser).where(EndUser.id == other.context.end_user_id).values(account_id=identity.account_id)
+        )
+    for app, used_at, earliest in (
+        (base, moment, moment),
+        (other, moment + timedelta(hours=1), moment),
+        (other, moment - timedelta(hours=1), moment - timedelta(hours=1)),
+        (base, moment, moment - timedelta(hours=1)),
+    ):
+        repository.record_consumer_usage(
+            identity,
+            tenant_id=app.context.tenant_id,
+            app_id=app.context.app_id,
+            end_user_id=app.context.end_user_id,
+            used_at=used_at,
+        )
+        with sqlite_session_factory() as session:
+            assert (
+                session.scalar(select(Account.first_app_used_at).where(Account.id == identity.account_id)) == earliest
+            )
+    repository.remove(identity, base.context.app_id)
+    with sqlite_session_factory.begin() as session:
+        session.execute(delete(AccountWebApp).where(AccountWebApp.account_id == identity.account_id))
+    repository.record_consumer_usage(
+        identity,
+        tenant_id=base.context.tenant_id,
+        app_id=base.context.app_id,
+        end_user_id=base.context.end_user_id,
+        used_at=moment + timedelta(days=1),
+    )
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account.first_app_used_at).where(Account.id == identity.account_id)) == (
+            moment - timedelta(hours=1)
+        )
+        assert session.scalar(select(Account.first_app_used_at).where(Account.id == other.context.account_id)) is None
+
+
+@pytest.mark.parametrize("mismatch", ["account", "tenant", "app", "end_user", "type", "mode", "status", "guest"])
+def test_invalid_consumer_usage_does_not_record_first_app_time(
+    repository: ConsoleAppRepository, sqlite_session_factory: sessionmaker[Session], mismatch: str
+) -> None:
+    base = make_harness(sqlite_session_factory)
+    assert base.context.account_id is not None
+    identity = ConsumerIdentity(str(uuid4()) if mismatch == "account" else base.context.account_id)
+    with sqlite_session_factory.begin() as session:
+        if mismatch == "type":
+            session.execute(
+                update(EndUser).where(EndUser.id == base.context.end_user_id).values(type=EndUserType.SERVICE_API)
+            )
+        elif mismatch == "mode":
+            session.execute(update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHAT))
+        elif mismatch == "status":
+            session.execute(
+                update(Account).where(Account.id == identity.account_id).values(status=AccountStatus.BANNED)
+            )
+        elif mismatch == "guest":
+            session.execute(update(EndUser).where(EndUser.id == base.context.end_user_id).values(account_id=None))
+    repository.record_consumer_usage(
+        identity,
+        tenant_id=str(uuid4()) if mismatch == "tenant" else base.context.tenant_id,
+        app_id=str(uuid4()) if mismatch == "app" else base.context.app_id,
+        end_user_id=str(uuid4()) if mismatch == "end_user" else base.context.end_user_id,
+        used_at=datetime(2026, 11, 4),
+    )
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account.first_app_used_at).where(Account.id == base.context.account_id)) is None
+        assert session.scalar(select(func.count()).select_from(AccountWebApp)) == 0
