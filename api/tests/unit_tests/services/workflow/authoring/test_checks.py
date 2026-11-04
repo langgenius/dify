@@ -1,3 +1,4 @@
+import copy
 import io
 import itertools
 import zipfile
@@ -230,6 +231,33 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked(dsl: DslCheckRequest) 
 
 def _data(node_id: str, *loc: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *loc)
+
+
+def _relative_issues(check: PackageCheck, node_id: str) -> set[tuple[str, tuple[str | int, ...]]]:
+    return {(issue.code, issue.loc[len(_data(node_id)) :]) for issue in _issues_of(check, node_id)}
+
+
+@pytest.mark.parametrize(
+    ("data", "code"),
+    [
+        pytest.param({"type": BuiltinNodeTypes.LLM}, IssueCode.NODE_DATA_INVALID, id="missing-field"),
+        pytest.param(
+            {"type": BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "variable_selector": []},
+            IssueCode.REFERENCE_EMPTY,
+            id="empty-selector",
+        ),
+    ],
+)
+def test_a_node_in_an_iteration_gets_the_issues_it_gets_at_the_top_level(
+    data: dict[str, object], code: IssueCode, dsl: DslCheckRequest
+) -> None:
+    box = {"id": "box", "data": {"type": BuiltinNodeTypes.ITERATION}}
+    child = {"id": "child", "parentId": "box", "data": copy.deepcopy(data)}
+
+    check = _check(dsl, [START, box, {"id": "top", "data": copy.deepcopy(data)}, child, END])
+
+    assert code in {issue_code for issue_code, _loc in _relative_issues(check, "top")}
+    assert _relative_issues(check, "child") == _relative_issues(check, "top")
 
 
 @pytest.mark.parametrize("member", list(CanvasNode))
