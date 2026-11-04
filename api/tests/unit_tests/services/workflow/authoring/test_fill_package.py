@@ -27,10 +27,11 @@ from services.agent.errors import RosterAgentPackageTooLargeError
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
+from services.workflow.authoring import fill as fill_module
 from services.workflow.authoring.canvas_defaults import with_canvas_defaults
 from services.workflow.authoring.canvas_notes import NOTE_PADDING, NoteSize
 from services.workflow.authoring.fill import FilledPackage, FilledRoot, SubmittedRoot, fill_graph_document
-from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
+from services.workflow.authoring.package_io import PackageUnreadableError, read_app_document, read_package_entries
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, CONTAINER_NODE_TYPES, IssueCode, check_graph
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 from tests.helpers.unit.services.canvas_boxes import (
@@ -454,11 +455,30 @@ def test_the_shared_value_app_yaml_is_written_with_an_alias() -> None:
     assert b"*id001" in _shared_value_app_yaml()
 
 
+def test_a_value_fill_shares_between_two_keys_is_written_out_and_reads_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def share(document: dict[str, object], _ctx: FillContext) -> None:
+        document["a"] = document["b"] = {"type": "text"}
+
+    monkeypatch.setattr(fill_module, "fill_graph_document", share)
+    entries = entries_from_folder({APP: io.BytesIO(yaml.safe_dump({"app": {"name": "Shared"}}).encode())})
+
+    filled = _members(fill_package(entries, CTX, limits=LIMITS))[APP]
+
+    assert read_app_document(filled) == {"app": {"name": "Shared"}, "a": {"type": "text"}, "b": {"type": "text"}}
+    assert _fill(_zip({APP: filled}))
+
+
 @pytest.mark.parametrize(
     ("content", "cause"),
     [
-        pytest.param(_shared_value_app_yaml(), "anchors or aliases", id="alias"),
-        pytest.param(b"app: [unclosed", "not valid YAML", id="syntax"),
+        pytest.param(_shared_value_app_yaml(), "uses YAML aliases", id="alias"),
+        pytest.param(
+            b"app: [unclosed",
+            r"not valid YAML: .+ \(line 1, column \d+\)$",
+            id="syntax",
+        ),
         pytest.param(b"- a list\n", "YAML mapping", id="not-a-mapping"),
         pytest.param(b"app: 1\napp: 2\n", "duplicate YAML key: app", id="duplicate-key"),
         pytest.param(b"1: a\n", "keys must be strings", id="non-string-key"),
@@ -468,8 +488,10 @@ def test_the_shared_value_app_yaml_is_written_with_an_alias() -> None:
 def test_an_app_yaml_the_package_reader_refuses_is_refused_with_its_cause(content: bytes, cause: str) -> None:
     entries = entries_from_folder({APP: io.BytesIO(content), "notes.txt": io.BytesIO(b"n")})
 
-    with pytest.raises(PackageUnreadableError, match=cause):
+    with pytest.raises(PackageUnreadableError, match=cause) as refused:
         fill_package(entries, CTX, limits=LIMITS)
+
+    assert "\n" not in str(refused.value)
 
 
 def test_reading_keeps_sub_folder_paths_and_skips_directories() -> None:

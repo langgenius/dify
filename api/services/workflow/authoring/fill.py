@@ -8,8 +8,6 @@ from dataclasses import dataclass
 from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
-import yaml
-
 from configs import dify_config
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from models.model import AppMode
@@ -22,6 +20,7 @@ from services.workflow.authoring.package_io import (
     APP_PATH,
     MANIFEST_PATH,
     bytes_entry,
+    dump_app_document,
     merge_manifest,
     new_manifest,
     read_app_document,
@@ -130,7 +129,7 @@ def _filled_app(app: _App, ctx: FillContext) -> _App:
     fill_graph_document(document, ctx)
     if document == app.document:
         return app
-    return _App(yaml.dump(document, allow_unicode=True).encode(), document)
+    return _App(dump_app_document(document), document)
 
 
 def fill_graph_document(document: dict[str, Any], ctx: FillContext) -> None:
