@@ -56,6 +56,8 @@ Browser input is real and nothing waits between keys. Split a `userEvent.keyboar
 
 When file-input click/reset behavior is the contract, exercise the native click separately and await the cleared input value before uploading again. File-upload helpers can assign files without invoking the click handler; repeated uploads alone do not prove same-file reselection.
 
+For controls revealed by hover or focus, move the pointer outside the hover owner before proving keyboard disclosure. Browser Mode's `toBeVisible` accepts `opacity: 0`; pair native focus and activation with an actual opacity assertion when visible disclosure is the contract.
+
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
 ## Assert Behavior, Not Implementation
@@ -156,6 +158,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 ## Provenance
 
+- [#45553], `chat-with-history/sidebar/item`: removing keyboard opacity disclosure survived a visibility-only assertion. Keep the pointer off the row and verify the focused control is actually opaque.
+
 - [#45517], `new-rag/upgrade/knowledge-upgrade-dialog`: Browser Mode must exclude a retired model with a partial-text matcher; negated whole-text equality would also accept a longer label containing that model.
 
 - [#45513], `image-uploader/uploader`: a same-file upload test needs an explicit native click and cleared-value assertion to catch removal of the input reset handler.
@@ -177,6 +181,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 [#45513]: https://github.com/langgenius/dify/pull/45513
 [#45517]: https://github.com/langgenius/dify/pull/45517
+[#45553]: https://github.com/langgenius/dify/pull/45553
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
