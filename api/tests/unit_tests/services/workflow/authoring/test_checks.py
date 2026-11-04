@@ -478,12 +478,50 @@ def test_an_llm_with_a_selector_that_names_no_environment_model_is_asked_for_one
     assert {_data("llm", "model", "provider"), _data("llm", "model", "name")} <= _empty_locs(check, "llm")
 
 
+@pytest.mark.parametrize("selector", [[], ["env"], ["env", ""], "env"])
+def test_a_malformed_environment_selector_asks_for_the_model_even_when_one_is_written(
+    selector: object, dsl: DslCheckRequest
+) -> None:
+    model = {"provider": "openai", "name": "gpt-4o", "mode": "chat"}
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": model, "model_selector": selector}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert {_data("llm", "model", "provider"), _data("llm", "model", "name")} <= _empty_locs(check, "llm")
+
+
+def test_an_old_style_selector_keeps_the_written_model(dsl: DslCheckRequest) -> None:
+    model = {"provider": "openai", "name": "gpt-4o", "mode": "chat"}
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": model, "model_selector": ["start", "MODEL"]}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert not {_data("llm", "model", "provider"), _data("llm", "model", "name")} & _empty_locs(check, "llm")
+
+
 @pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
 def test_a_filled_bare_container_still_needs_its_start_child(container: str, dsl: DslCheckRequest) -> None:
     check = _check(dsl, [START, {"id": "box", "data": {"type": container}}, END])
 
     invalid = {issue.loc for issue in _issues_of(check, "box") if issue.code == IssueCode.NODE_DATA_INVALID}
     assert _data("box", "start_node_id") in invalid
+
+
+@pytest.mark.parametrize("member", list(CanvasNode))
+def test_every_filled_bare_node_can_be_read(member: CanvasNode, dsl: DslCheckRequest) -> None:
+    check = _check(dsl, [START, {"id": "node", "data": {"type": member.value}}, END])
+
+    assert _data("node") not in {issue.loc for issue in _issues_of(check, "node")}
+
+
+@pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
+def test_a_container_whose_start_id_was_written_empty_is_asked_for_it(container: str, dsl: DslCheckRequest) -> None:
+    selectors = {"iterator_selector": ["start", "items"], "output_selector": ["box", "item"]}
+    box = {"id": "box", "data": {"type": container, "start_node_id": "", **selectors}}
+
+    check = _check(dsl, [START, box, END])
+
+    assert _data("box", "start_node_id") in _empty_locs(check, "box")
 
 
 def _plain_seed(node: CanvasNode) -> dict[str, object]:
