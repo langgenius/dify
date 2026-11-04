@@ -81,6 +81,11 @@ def _is_block(node_type: str, model: type[BaseModel]) -> bool:
     return model not in {kind.seeded_model for kind in NodeOptionKind}
 
 
+def block_seed(node_type: str, version: str) -> dict[str, object]:
+    """The seed of a block: its type, version and title, plus what the canvas gives a new node of that type."""
+    return with_canvas_defaults({"type": node_type, "version": version, "title": node_type})
+
+
 def _block(node_type: str, node_class: type[Node]) -> NodeOption:
     version = node_class.version()
     return NodeOption(
@@ -89,7 +94,7 @@ def _block(node_type: str, node_class: type[Node]) -> NodeOption:
         version=version,
         label=node_type,
         description=None,
-        seed=with_canvas_defaults({"type": node_type, "version": version, "title": node_type}),
+        seed=block_seed(node_type, version),
     )
 
 

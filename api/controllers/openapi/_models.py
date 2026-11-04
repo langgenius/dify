@@ -1133,13 +1133,36 @@ class NodeTypeListResponse(BaseModel):
     data: list[NodeTypeRow]
 
 
+class NodeTypeDescribeQuery(BaseModel):
+    """Query parameters for GET /node-types/<node_type>."""
+
+    include_schema: bool = Field(False, description="Also return the full JSON schema of the node's data")
+
+
+class NodeTypeFieldRow(FieldHintRow):
+    purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
+
+    @classmethod
+    def describing(cls, hint: FieldHint, *, purpose: bool) -> Self:
+        return cls(**dict(FieldHintRow.of(hint)), purpose=purpose)
+
+
 class NodeTypeDetailResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type: str
-    version: str
-    schema_: dict[str, Any] = Field(alias="schema")
-    default_config: dict[str, Any]
+    version: str = Field(description="The node's current version, the one the seed names")
+    seed: dict[str, Any] = Field(description="The node data to copy into the graph: the canvas's new node")
+    fields: list[NodeTypeFieldRow] = Field(
+        description="Every top-level field of the node's data, the required ones first"
+    )
+    handles: list[str] = Field(description="Every source handle the node has, in the order the canvas draws them")
+    schema_: dict[str, Any] | None = Field(
+        None,
+        alias="schema",
+        exclude_if=lambda value: value is None,
+        description="The JSON schema of the node's data; only with include_schema=true",
+    )
 
 
 _GRAPH_MODE_VALUES: Final = sorted(mode.value for mode in GRAPH_MODES)
