@@ -15,10 +15,31 @@ const sse = (events: object[]) =>
 
 const OP_ID = 'thing.export'
 
-function render(kind: string, res: Response, flags: CallFlags = {}) {
+function render(
+  kind: string,
+  res: Response,
+  flags: CallFlags = {},
+  input: Record<string, unknown> = {},
+) {
   const buf = bufferStreams()
   const io = ioService(buf)
-  return { buf, code: rendererFor(kind, io)(res, io, flags, OP_ID) }
+  return { buf, code: rendererFor(kind, io)(res, io, flags, { opId: OP_ID, input }) }
+}
+
+const BUN_SUFFIX = 'For more information, pass `verbose: true` in the second argument to fetch()'
+
+function brokenSse(events: object[], message: string) {
+  const chunks = events.map((e) => new TextEncoder().encode(`data: ${JSON.stringify(e)}\n\n`))
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      pull(controller) {
+        const next = chunks.shift()
+        if (next === undefined) controller.error(new Error(message))
+        else controller.enqueue(next)
+      },
+    }),
+    { headers: { 'content-type': 'text/event-stream' } },
+  )
 }
 
 it('object and list print the body unchanged, hints included', async () => {
@@ -73,6 +94,73 @@ it('sse exit code follows the fold in both modes', async () => {
   const events = [{ event: 'error', message: 'boom', code: 'x' }]
   expect(await render('sse', sse(events)).code).toBe(1)
   expect(await render('sse', sse(events), { stream: true }).code).toBe(1)
+})
+
+it('a stream that breaks after the run started keeps its ids and points at the run', async () => {
+  const r = render(
+    'sse',
+    brokenSse(
+      [{ event: 'workflow_started', workflow_run_id: 'run-9', task_id: 'task-9', data: {} }],
+      `The socket connection was closed unexpectedly. ${BUN_SUFFIX}`,
+    ),
+    {},
+    { app_id: 'app-1', inputs: {} },
+  )
+  expect(await r.code).toBe(1)
+  const result = JSON.parse(r.buf.outBuf())
+  expect(result).toMatchObject({ status: 'incomplete', run_id: 'run-9', task_id: 'task-9' })
+  expect(result.hints).toEqual([
+    expect.objectContaining({ op: 'describe.run', input: { app_id: 'app-1', run_id: 'run-9' } }),
+    expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } }),
+  ])
+  expect(result.hints[0].summary).toMatch(/still be running/)
+})
+
+it('a stream that breaks before any event says no run id arrived and lists the runs', async () => {
+  const r = render(
+    'sse',
+    brokenSse([], 'The socket connection was closed unexpectedly.'),
+    {},
+    { app_id: 'app-1' },
+  )
+  expect(await r.code).toBe(1)
+  const result = JSON.parse(r.buf.outBuf())
+  expect(result.status).toBe('incomplete')
+  expect(result.run_id).toBeUndefined()
+  expect(result.hints).toEqual([
+    expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } }),
+  ])
+  expect(result.hints[0].summary).toMatch(/No run id arrived/)
+})
+
+it('a broken stream without an app id still hints at the run list', async () => {
+  const r = render('sse', brokenSse([], 'boom'))
+  expect(await r.code).toBe(1)
+  const [hint] = JSON.parse(r.buf.outBuf()).hints
+  expect(hint.op).toBe('get.run')
+  expect(hint).not.toHaveProperty('input')
+})
+
+it('the stderr notice drops the runtime suffix and keeps the failure', async () => {
+  const r = render(
+    'sse',
+    brokenSse([], `The socket connection was closed unexpectedly. ${BUN_SUFFIX}`),
+  )
+  await r.code
+  expect(r.buf.errBuf()).toBe('stream ended early: The socket connection was closed unexpectedly\n')
+})
+
+it('a notice without the suffix is unchanged', async () => {
+  const r = render('sse', brokenSse([], 'terminated'))
+  await r.code
+  expect(r.buf.errBuf()).toBe('stream ended early: terminated\n')
+})
+
+it('a stream that finished, paused or failed keeps its exit code', async () => {
+  const ended = [{ event: 'workflow_finished', data: { status: 'succeeded' } }]
+  expect(await render('sse', sse(ended)).code).toBe(0)
+  const paused = [{ event: 'human_input_required', hints: [] }]
+  expect(await render('sse', sse(paused)).code).toBe(0)
 })
 
 it('unknown kind renders as object with one warning line', async () => {

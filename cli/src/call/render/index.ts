@@ -9,11 +9,14 @@ import { objectRenderer } from './object'
 import { sseRenderer } from './sse'
 import { textRenderer } from './text'
 
+/** The operation being rendered and the input it was called with. */
+export type RenderCall = Readonly<{ opId: string; input: Readonly<Record<string, unknown>> }>
+
 export type Renderer = (
   res: Response,
   io: IOService,
   flags: CallFlags,
-  opId: string,
+  call: RenderCall,
 ) => Promise<ExitCodeValue>
 
 const RENDERERS: Readonly<Record<Kind, Renderer>> = {
