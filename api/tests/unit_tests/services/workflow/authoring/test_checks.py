@@ -292,14 +292,18 @@ def test_an_llm_prompt_is_empty_only_when_no_message_has_text(
     assert (_data("llm", "prompt_template") in _empty_locs(check, "llm")) is empty
 
 
+def _no_conditions() -> list[object]:
+    return []
+
+
 def test_an_if_else_case_without_conditions_is_reported_per_case(dsl: DslCheckRequest) -> None:
     branch = {
         "id": "if",
         "data": {
             "type": BuiltinNodeTypes.IF_ELSE,
             "cases": [
-                {"case_id": "a", "logical_operator": "and", "conditions": []},
-                {"case_id": "b", "logical_operator": "and", "conditions": []},
+                {"case_id": "a", "logical_operator": "and", "conditions": _no_conditions()},
+                {"case_id": "b", "logical_operator": "and", "conditions": _no_conditions()},
             ],
         },
     }
