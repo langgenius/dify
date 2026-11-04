@@ -1139,12 +1139,42 @@ class NodeTypeDescribeQuery(BaseModel):
     include_schema: bool = Field(False, description="Also return the full JSON schema of the node's data")
 
 
-class NodeTypeFieldRow(FieldHintRow):
+def _first_line(text: str | None) -> str | None:
+    if text is None:
+        return None
+    return next((line.strip() for line in text.splitlines() if line.strip()), None)
+
+
+class NodeTypeFieldRow(BaseModel):
+    loc: list[str | int] = Field(description="Where the field sits in the node's data")
+    type: str | None
+    required: bool
     purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
+    options: list[str] = Field(
+        default_factory=list, exclude_if=lambda value: not value, description="The values the field accepts"
+    )
+    description: str | None = Field(
+        None,
+        exclude_if=lambda value: value is None,
+        description="The first line of the field's description; include_schema=true has the whole text",
+    )
+    default: Any = Field(
+        None,
+        exclude_if=lambda value: value is None,
+        description="The value the node runs with when the field is left out; left out when there is none",
+    )
 
     @classmethod
     def describing(cls, hint: FieldHint, *, purpose: bool) -> Self:
-        return cls(**dict(FieldHintRow.of(hint)), purpose=purpose)
+        return cls(
+            loc=list(hint.loc),
+            type=hint.type,
+            required=hint.required,
+            purpose=purpose,
+            options=list(hint.options),
+            description=_first_line(hint.description),
+            default=None if hint.default is NO_DEFAULT else hint.default,
+        )
 
 
 class NodeTypeDetailResponse(BaseModel):
