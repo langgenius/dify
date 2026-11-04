@@ -1033,12 +1033,50 @@ describe('Dify Builder store', () => {
   })
 })
 
-it('sends at most five uploaded material refs while busy, restores failed drafts, and checks unknown without resending', async () => {
+it.each([
+  {
+    scenario: 'running task',
+    view: createSessionView({ run_status: 'processing' }),
+    busy: false,
+  },
+  {
+    scenario: 'pending command',
+    view: createSessionView({ run_status: 'waiting_input' }),
+    busy: true,
+  },
+  {
+    scenario: 'unresolved native test',
+    view: createSessionView({
+      run_status: 'waiting_confirmation',
+      test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'approval' }),
+    }),
+    busy: false,
+  },
+])(
+  'rejects attachment submission during a $scenario and preserves the draft',
+  async ({ view, busy }) => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, view)
+    store.set(difyBuilderSessionBusyAtom, busy)
+    store.set(difyBuilderDraftAtom, 'Material context')
+
+    expect(
+      await store.set(difyBuilderSendDraftAtom, builderModel, {
+        attachments: [{ upload_file_id: 'upload-1' }],
+      }),
+    ).toBe(false)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Material context')
+    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+  },
+)
+
+it('sends at most five uploaded material refs when input is available, restores failed drafts, and checks unknown without resending', async () => {
   const store = createStore()
   const runtime = createRuntime(vi.fn(async () => true))
   store.set(difyBuilderRuntimeAtom, runtime)
-  store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
-  store.set(difyBuilderSessionBusyAtom, true)
+  store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
   store.set(difyBuilderDraftAtom, 'Material context')
   const attachments = [{ upload_file_id: 'upload-1' }]
   runtime.session.sendMessage.mockResolvedValueOnce(false)
