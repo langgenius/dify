@@ -438,6 +438,7 @@ def check_package(
 ) -> PackageCheck:
     """Fill the package, run `check.console_app.dsl` on the filled `app.yaml`, then run every check on its root app.
 
+    `node_specs` holds a spec only for each node that has an issue of any severity.
     Each plugin reference is looked up once here, and every check and node spec reads that one lookup. Raises what
     `fill_package` raises, `PackageUnreadableError` when there is no `app.yaml` that is a YAML mapping, and what
     `DslCheckRequest.issues` raises.
@@ -455,8 +456,9 @@ def check_package(
         dsl_issues=dsl.issues(root.app, document),
     )
     issues = tuple(issue for check in _CHECKS for issue in check.run(target))
+    flagged = {issue.node_id for issue in issues}
     return PackageCheck(
         valid=not any(issue.severity == IssueSeverity.ERROR for issue in issues),
         issues=issues,
-        node_specs=tuple(node_spec(node) for node in target.nodes),
+        node_specs=tuple(node_spec(node) for node in target.nodes if node.id in flagged),
     )

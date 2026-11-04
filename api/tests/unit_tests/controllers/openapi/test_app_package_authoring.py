@@ -187,7 +187,7 @@ def test_fill_names_a_package_without_a_readable_app_name_app_ifpkg(app: Flask, 
     assert "filename=app.ifpkg" in response.headers["Content-Disposition"]
 
 
-def test_check_reports_a_missing_field_with_a_hint_and_a_spec_per_node(app: Flask) -> None:
+def test_check_reports_a_missing_field_with_a_hint_and_a_spec_for_that_node(app: Flask) -> None:
     response, status = _check(app, _folder({_APP: _chain_dsl(_start(), _EXTRACTOR_WITHOUT_PARAMETERS, _end())}))
 
     assert (status, response.valid) == (200, False)
@@ -196,7 +196,7 @@ def test_check_reports_a_missing_field_with_a_hint_and_a_spec_per_node(app: Flas
     assert (parameters.severity, parameters.refuses_import, parameters.node_id) == ("error", True, "extractor")
     assert parameters.hint is not None
     assert (parameters.hint.loc, parameters.hint.required) == (["parameters"], True)
-    assert {spec.node_id for spec in response.node_specs} == {"start", "extractor", "end"}
+    assert {spec.node_id for spec in response.node_specs} == {"extractor"}
     [extractor] = [spec for spec in response.node_specs if spec.node_id == "extractor"]
     assert (extractor.type, extractor.version) == (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "1")
     assert extractor.schema_["properties"]
@@ -322,7 +322,7 @@ def test_check_answers_over_the_wire_with_the_schema_named_schema(admitted_beare
     assert response.status_code == 200, response.get_json()
     body = response.get_json()
     assert body["valid"] is False
-    assert {spec["node_id"] for spec in body["node_specs"]} == {"start", "llm", "end"}
+    assert {spec["node_id"] for spec in body["node_specs"]} == {"llm"}
     assert all("schema" in spec for spec in body["node_specs"])
 
 
