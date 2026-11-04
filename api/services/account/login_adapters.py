@@ -243,15 +243,16 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
 
 class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGateway):
-    def __init__(self, *, accounts: SQLAlchemyAccountRepository) -> None:
+    def __init__(self, *, accounts: SQLAlchemyAccountRepository, defer_workspace_creation: bool = False) -> None:
         self._accounts = accounts
+        self._defer_workspace_creation = defer_workspace_creation
 
     @override
     def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
         now = naive_utc_now()
         account = (
             self._accounts.get(account_id)
-            if mode == LoginMode.END_USER
+            if mode == LoginMode.END_USER or self._defer_workspace_creation
             else self._accounts.load_identity(account_id, now=now)
         )
         if account is None:

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import bp, login
@@ -14,7 +15,7 @@ from services.web_passport_service import WebPassportUnauthorizedError
 
 
 @pytest.fixture
-def profile_client(monkeypatch: pytest.MonkeyPatch):
+def profile_client(monkeypatch: pytest.MonkeyPatch) -> tuple[FlaskClient, Mock, Mock]:
     profile = Mock()
     consumer = Mock()
     consumer.authenticate.return_value = ConsumerIdentity(account_id="account-1")
@@ -29,9 +30,21 @@ def profile_client(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("avatar", [None, "https://example.com/avatar.png", "file-id"])
-def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pytest.MonkeyPatch, avatar: str | None):
+@pytest.mark.parametrize("membership", ["none", "member", "owner"])
+def test_profile_returns_console_avatar_fields(
+    profile_client: tuple[FlaskClient, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    avatar: str | None,
+    membership: str,
+) -> None:
     client, consumer, profile = profile_client
-    profile.get.return_value = SimpleNamespace(name="Alice", avatar=avatar, email="private@example.com")
+    profile.get.return_value = SimpleNamespace(
+        name="Alice",
+        avatar=avatar,
+        email="private@example.com",
+        has_owned_tenant=membership == "owner",
+        has_tenant=membership != "none",
+    )
     monkeypatch.setattr(login, "build_avatar_url", lambda value: f"signed:{value}" if value == "file-id" else value)
 
     response = client.get("/api/account/profile")
@@ -42,6 +55,8 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
         "name": "Alice",
         "avatar": avatar,
         "avatar_url": "signed:file-id" if avatar == "file-id" else avatar,
+        "has_owned_tenant": membership == "owner",
+        "has_tenant": membership != "none",
     }
     context = profile.get.call_args.args[0]
     assert isinstance(context, AccountRequestContext)
@@ -56,7 +71,9 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
         pytest.param(COOKIE_NAME_WEBAPP_ACCESS_TOKEN, None, id="missing-webapp-cookie"),
     ],
 )
-def test_profile_requires_webapp_account_cookie(profile_client, cookie_name, cookie_value):
+def test_profile_requires_webapp_account_cookie(
+    profile_client: tuple[FlaskClient, Mock, Mock], cookie_name: str, cookie_value: str | None
+) -> None:
     client, consumer, profile = profile_client
     client.delete_cookie(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)
     if cookie_value is not None:
@@ -75,7 +92,9 @@ def test_profile_requires_webapp_account_cookie(profile_client, cookie_name, coo
         pytest.param(WebPassportUnauthorizedError("Invalid token."), id="token"),
     ],
 )
-def test_invalid_webapp_account_login_requires_login(profile_client, error):
+def test_invalid_webapp_account_login_requires_login(
+    profile_client: tuple[FlaskClient, Mock, Mock], error: WebIdentityError | WebPassportUnauthorizedError
+) -> None:
     client, consumer, profile = profile_client
     consumer.authenticate.side_effect = error
 
@@ -83,7 +102,7 @@ def test_invalid_webapp_account_login_requires_login(profile_client, error):
     profile.get.assert_not_called()
 
 
-def test_deleted_account_requires_login(profile_client):
+def test_deleted_account_requires_login(profile_client: tuple[FlaskClient, Mock, Mock]) -> None:
     client, _, profile = profile_client
     profile.get.side_effect = AccountNotFoundError
 

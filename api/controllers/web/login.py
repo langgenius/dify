@@ -89,6 +89,14 @@ class LoginStatusQuery(BaseModel):
 class WebAccountProfileResponse(ResponseModel):
     name: str
     avatar: str | None
+    has_owned_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account owns an existing tenant, including archived tenants. Null means unavailable.",
+    )
+    has_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account has a tenant membership, including ownership. Null means unavailable.",
+    )
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property

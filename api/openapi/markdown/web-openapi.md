@@ -3060,6 +3060,8 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | Yes |
 | avatar_url | string |  | Yes |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
 | name | string |  | Yes |
 
 #### WebAppAuthModel

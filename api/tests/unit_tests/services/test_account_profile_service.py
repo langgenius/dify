@@ -32,14 +32,21 @@ def accounts(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyAccount
 def test_get_returns_framework_neutral_account_snapshot(
     accounts: SQLAlchemyAccountRepository, mocker: MockerFixture, context: AccountRequestContext | RequestContext
 ) -> None:
-    expected = accounts.get("account-1")
-    lookup = mocker.spy(accounts, "get")
+    expected = accounts.get_profile("account-1")
+    lookup = mocker.spy(accounts, "get_profile")
     service = AccountProfileService(accounts=accounts)
 
     result = service.get(context)
 
     assert result == expected
     lookup.assert_called_once_with("account-1")
+
+
+def test_get_rejects_missing_account(sqlite_session_factory: sessionmaker[Session]) -> None:
+    service = AccountProfileService(accounts=SQLAlchemyAccountRepository(sqlite_session_factory))
+
+    with pytest.raises(AccountNotFoundError):
+        service.get(_context())
 
 
 def test_update_applies_profile_changes(accounts: SQLAlchemyAccountRepository, mocker: MockerFixture) -> None:

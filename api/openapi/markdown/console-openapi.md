@@ -302,7 +302,7 @@ Deprecated. Use PATCH /account/profile instead.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| 200 | Success | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -14203,6 +14203,21 @@ Returns information about why and where the workflow is paused.
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /workspaces/activate
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceActivationPayload](#workspaceactivationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace ready | **application/json**: [WorkspaceActivationResponse](#workspaceactivationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[LimitExceededError](#limitexceedederror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
@@ -18433,6 +18448,26 @@ Account not link tenant.
 | name | string |  | No |
 | timezone | string |  | No |
 
+#### AccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountResponse
 
 | Name | Type | Description | Required |
@@ -18441,6 +18476,7 @@ Account not link tenant.
 | avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
 | id | string |  | Yes |
 | interface_language | string |  | No |
 | interface_theme | string |  | No |
@@ -36057,6 +36093,19 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### WorkspaceActivationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+
+#### WorkspaceActivationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_workspace_created_at | integer |  | Yes |
+| workspace_id | string |  | Yes |
 
 #### WorkspaceCustomConfigPayload
 
