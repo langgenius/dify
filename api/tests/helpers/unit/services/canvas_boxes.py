@@ -3,15 +3,12 @@
 import itertools
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final
 
 from services.workflow.authoring.canvas_layout import CONTAINER_PADDING, START_CHILD_SIZE
-from services.workflow.authoring.canvas_notes import NoteSize, is_number, measured_length
+from services.workflow.authoring.canvas_notes import UNMEASURED_SIZE, NoteSize, drawn_from, is_number, node_length
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, START_NODE_ID_KEY
 
 type CanvasNode = Mapping[str, object]
-
-_UNMEASURED: Final[Mapping[NoteSize, float]] = {size: size.node_default for size in NoteSize}
 
 
 @dataclass(frozen=True)
@@ -31,20 +28,15 @@ class Box:
         return self.top < other.bottom
 
 
-def node_box(node: CanvasNode, *, unmeasured: Mapping[NoteSize, float] = _UNMEASURED) -> Box:
-    """The node's box at its position, its measured size, else `unmeasured`'s."""
+def node_box(node: CanvasNode, *, unmeasured: Mapping[NoteSize, float] = UNMEASURED_SIZE) -> Box:
+    """The node's box at its position, at the size the canvas draws it, else `unmeasured`'s."""
     position = node.get("position")
     assert isinstance(position, Mapping)
     left, top = position.get("x"), position.get("y")
     assert is_number(left)
     assert is_number(top)
-    width, height = (_length(node, size, unmeasured) for size in NoteSize)
+    width, height = (node_length(*drawn_from(node), size=size, unmeasured=unmeasured) for size in NoteSize)
     return Box(left, top, left + width, top + height)
-
-
-def _length(node: CanvasNode, size: NoteSize, unmeasured: Mapping[NoteSize, float]) -> float:
-    measured = measured_length(node, size=size)
-    return unmeasured[size] if measured is None else measured
 
 
 def top_level_boxes(nodes: Sequence[CanvasNode]) -> dict[str, Box]:
@@ -63,7 +55,7 @@ def child_boxes(nodes: Sequence[CanvasNode], container: CanvasNode) -> dict[str,
     assert isinstance(data, Mapping)
     start = data.get(START_NODE_ID_KEY)
     return {
-        str(node["id"]): node_box(node, unmeasured=START_CHILD_SIZE if node["id"] == start else _UNMEASURED)
+        str(node["id"]): node_box(node, unmeasured=START_CHILD_SIZE if node["id"] == start else UNMEASURED_SIZE)
         for node in nodes
         if node.get("parentId") == container["id"]
     }
