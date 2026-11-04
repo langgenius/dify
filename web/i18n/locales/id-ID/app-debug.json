@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Buat beberapa teks sekaligus, lalu edit dan lanjutkan membuat",
   "feature.moreLikeThis.tip": "Menggunakan fitur ini akan dikenakan overhead token tambahan",
   "feature.moreLikeThis.title": "Lebih seperti ini",
+  "feature.showThoughts.description": "Tampilkan isi pemikiran model dalam percakapan.",
+  "feature.showThoughts.title": "Tampilkan proses berpikir",
   "feature.speechToText.description": "Input suara dapat digunakan dalam obrolan.",
   "feature.speechToText.title": "Ucapan ke Teks",
   "feature.suggestedQuestionsAfterAnswer.description": "Menyiapkan saran pertanyaan berikutnya dapat memberi pengguna obrolan yang lebih baik.",

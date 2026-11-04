@@ -72,7 +72,8 @@ and configure [HTTPS](#configure-https-and-telemetry) and
 | `.env` | Deployment inputs and explicit overrides, including Compose settings | Yes |
 | `envs/**/*.defaults` | Tracked defaults for the matching services | Yes, automatically |
 | `envs/**/*.env` | Optional service or provider overrides | Yes, when the matching service references the file |
-| `envs/**/*.env.example` | Templates for optional application and provider settings | No; remove only `.example` when copying |
+| `envs/**/*.env.example` | Templates for optional application and provider settings | No; remove `.example`, except for the middleware template below |
+| `envs/middleware.env.example` | Template for the separate source-code development stack | No; copy to `middleware.env` in `docker/` |
 
 Keep settings with usable defaults out of the root `.env.example`. To customize a
 service, copy its `.defaults` file to the override path named in its comments,
@@ -85,13 +86,13 @@ in the settings before use.
 Find settings in:
 
 - [Core services](envs/core-services/): API, workers, web, plugin daemon, and
-  sandboxes. [shared.defaults](envs/core-services/shared.defaults) contains the
+  sandboxes. [api-worker.defaults](envs/core-services/api-worker.defaults) contains the
   common API, worker, and Beat settings, grouped by function. API process options
   live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
 - [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
 - [Vector stores](envs/vectorstores/): bundled and external vector databases,
   including their API/worker client settings. Providers without a dedicated
-  template are documented in `shared.defaults`.
+  template are documented in `api-worker.defaults`.
 - [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
 
 ### Change a service setting
@@ -165,23 +166,101 @@ These optional overrides do not need to be added to `.env.example`.
 
 ### Select a database or vector store
 
-Set `DB_TYPE` or `VECTOR_STORE` and the provider's connection settings in the
-appropriate override file. In root `.env`, update `COMPOSE_PROFILES` to select the
-matching bundled services. Omit a service's profile when that service runs
-externally. Starting a different database does not migrate existing data.
+In root `.env`, set `VECTOR_STORE` and update `COMPOSE_PROFILES` to select the
+matching bundled vector store. Compose supplies its connection defaults to the
+API, workers and Beat automatically. For example, a new deployment with Qdrant
+and PostgreSQL uses:
+
+```dotenv
+VECTOR_STORE=qdrant
+COMPOSE_PROFILES=qdrant,postgresql,collaboration
+```
+
+Changing `VECTOR_STORE` selects the default for new indexes. Existing knowledge
+bases keep using their stored backend, so preserve its connection settings and
+keep its service running. If any use bundled Weaviate, retain its profile with
+`COMPOSE_PROFILES=weaviate,qdrant,postgresql,collaboration` for this example.
+
+Bundled Weaviate connection defaults remain available when another provider is
+selected. An unchanged bundled service needs no additional connection settings;
+existing overrides in `weaviate.env`, `api-worker.env`, and `shared.env` still
+apply, with root `.env` taking precedence.
+
+To customize the connection, copy the provider's `.defaults` file under
+`envs/vectorstores/` to its `.env` path if that file does not already exist. Edit
+the copy or the existing `.env` file. Elasticsearch's two selectors use
+`elasticsearch.env`. Existing provider `.env` and `shared.env`
+overrides remain supported. Keep `VECTOR_STORE` in root `.env`, since Compose
+selects the defaults file before reading service files.
+
+For an external vector store, omit its bundled profile and provide its connection
+settings and credentials. For databases with stored user passwords, change the
+password in the database before updating the corresponding client setting.
+Starting a different database or vector store does not migrate existing data.
+
+For OpenSearch HTTPS connections, `OPENSEARCH_VERIFY_CERTS` defaults to `true`
+whenever `VECTOR_STORE=opensearch`, even without the bundled `opensearch` profile.
+Keep verification enabled for production and external HTTPS servers, and use
+certificates trusted by the client.
+
+The bundled OpenSearch image uses demo certificates. For local development with
+those certificates, explicitly set `OPENSEARCH_VERIFY_CERTS=false` in
+`envs/vectorstores/opensearch.env` or root `.env`. To keep verification enabled,
+configure certificates trusted by the client.
 
 For example, the default deployment selects PostgreSQL and Weaviate with
 `COMPOSE_PROFILES=weaviate,postgresql,collaboration`. The `collaboration` profile
-starts the WebSocket API. See the [database](envs/databases/) and
+starts the WebSocket API. Set `DB_TYPE` and the SQL database's connection settings
+when changing that provider. See the [database](envs/databases/) and
 [vector store](envs/vectorstores/) files for provider-specific settings.
+
+For a new deployment using bundled MySQL and Weaviate, set the complete connection
+in root `.env`:
+
+```dotenv
+DB_TYPE=mysql
+DB_HOST=db_mysql
+DB_PORT=3306
+DB_USERNAME=root
+COMPOSE_PROFILES=weaviate,mysql,collaboration
+```
+
+Keep your selected vector-store profile if it differs from this example. The
+MySQL profile starts the database; it does not replace the PostgreSQL connection
+defaults. Set `DB_PASSWORD` to the same value used to initialize the MySQL server.
+Changing these settings on an existing PostgreSQL deployment does not migrate its data.
+
+### Configure sandbox credentials
+
+Set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` only in root `.env`, using the secret
+generated during setup. Compose supplies it to both the Agent backend and its
+local sandbox. Move any existing copy of this token from `dify-agent.env` to root
+`.env` and remove the duplicate; keep the same secret during the move.
+
+The separate Code sandbox uses two settings that must match: `SANDBOX_API_KEY`
+in `envs/core-services/sandbox.env` and `CODE_EXECUTION_API_KEY` in
+`envs/security.env` (copied from `security.env.example`). Use the same generated
+secret in both files, then run `docker compose up -d` to apply both changes.
+You can also set both variables to the same value in root `.env`.
 
 ### Understand which value takes effect
 
-For settings loaded through these env files, precedence is:
+For services that load root `.env`, precedence is:
 
 1. Root `.env` overrides.
 2. Optional service `.env` overrides.
 3. Tracked `.defaults` values, followed by application defaults for unset settings.
+
+Other services, including databases, vector stores, and nginx, receive root values
+only through `${...}` expressions in their defaults or explicit Compose mappings.
+For those inputs, root `.env` takes precedence over the service file. Arbitrary
+native container variables do not inherit this precedence: for example, put
+Weaviate's `ASYNC_INDEXING` in `envs/vectorstores/weaviate.env`; adding it to root
+`.env` alone does not configure the Weaviate container.
+
+The `knowledge_fs_unstructured` parser loads its defaults followed by
+`envs/core-services/knowledge-fs-unstructured.env`, without loading root `.env`.
+Set its parsing options in that service file.
 
 Shell variables take precedence when Compose interpolates `${...}` expressions.
 An explicit Compose `environment` entry also takes precedence over service env
@@ -214,7 +293,7 @@ not application readiness.
 | A service still uses its old value | Run `docker compose up -d`. Check for a higher-priority value in root `.env`, the shell, or an explicit Compose `environment` entry. |
 | A port or profile change has no effect | Put the setting in root `.env`; these settings cannot be supplied through a service env file. |
 | Service overrides resolve unexpectedly | Check that Docker Compose is v2.35.0 or later and that container-variable mapping expressions are intact. |
-| Python sandbox code returns `operation not permitted` | Check the network-setting note in [sandbox.defaults](envs/core-services/sandbox.defaults). On sandbox 0.2.15/ARM64, requests with networking disabled can trigger a runtime syscall restriction. |
+| Python sandbox code returns `operation not permitted` | Check the network-setting note in [sandbox.defaults](envs/core-services/sandbox.defaults). Sandbox 0.2.15 restricts the `epoll_pwait` syscall when networking is disabled on both ARM64 and AMD64. The runtime failure has been reproduced on ARM64. |
 
 ## Review configuration after an upgrade
 
@@ -222,15 +301,21 @@ Review the new root `.env.example` for required deployment inputs and the matchi
 `.defaults` files for changed service defaults. Preserve your existing `.env`
 files; a copied service file can pin values from an older release.
 
+Review any saved `OPENSEARCH_VERIFY_CERTS=false`: it stays in effect after an
+upgrade. Remove the assignment or set it to `true` to enable certificate
+verification.
+
 Bundled service templates now use the `.defaults` extension. Existing service
 `.env` paths still work. Root `.env.example` remains the only required starting
 template, and the Compose generator creates only a missing root `.env`.
 
-The shared application reference is now consolidated in
-[shared.defaults](envs/core-services/shared.defaults). Existing `shared.env`
-and other override paths still work; do not replace or rename your local files.
-New customizations use the matching template listed above. Root `.env` retains
-precedence, including for settings that have moved to a provider template.
+Common API and worker application settings are documented in
+[api-worker.defaults](envs/core-services/api-worker.defaults). New customizations
+use `envs/core-services/api-worker.env`. Existing `shared.env` files and other
+service override paths remain supported; keep local files and edit them in place.
+If both `shared.env` and `api-worker.env` exist, `api-worker.env` takes precedence
+for matching settings. Root `.env` retains precedence over both files, including
+for settings documented in a provider template.
 
 Review accidental empty assignments left by older template copies. For example,
 `CELERY_WORKER_AMOUNT=` overrides the Docker default of `4` and lets the worker
@@ -275,7 +360,7 @@ Weaviate. Update that value if you need different profiles.
 
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).
 
-For OpenTelemetry, create `envs/core-services/shared.env` from `shared.defaults`
+For OpenTelemetry, create `envs/core-services/api-worker.env` from `api-worker.defaults`
 if it does not exist. Uncomment `ENABLE_OTEL` and set it to `true`; uncomment
 `OTLP_BASE_ENDPOINT` and set it to your collector's endpoint, reachable from
 the API and worker containers. The same file documents optional `OTEL_*`
@@ -298,7 +383,7 @@ provider's interaction configuration after changing the public origin.
 ### Ops tracing rolling upgrades
 
 New tracing tasks use `OPS_TRACE_QUEUE=ops_trace_v2` by default. Set it consistently on the API,
-workers, and Beat in `docker/envs/core-services/shared.env` (or `docker/.env`). Default worker
+workers, and Beat in `docker/envs/core-services/api-worker.env` (or `docker/.env`). Default worker
 subscriptions follow this value; explicit `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` lists must
 include it and exclude legacy `ops_trace` while old workers are draining.
 
@@ -445,10 +530,10 @@ For a directly exposed API, leave `RESPECT_XFORWARD_HEADERS_ENABLED=false`.
 The Python configuration and `api/.env.example` retain that default. To override
 the Compose default, set the variable in `docker/.env`, the shell used by Compose,
 or a Compose override. The API services' explicit `environment` entry takes
-precedence over `envs/core-services/shared.env`.
+precedence over `envs/core-services/api-worker.env` and legacy `shared.env` files.
 Existing `false` overrides in `docker/.env`, the invoking shell, or a Compose
 override remain in effect during upgrades. Move settings previously supplied only
-by `shared.env` to one of those override locations if you need to preserve them.
+by `api-worker.env` or `shared.env` to one of those override locations if you need to preserve them.
 After establishing the trusted ingress boundary, enable the setting to retain
 visitor IPs.
 

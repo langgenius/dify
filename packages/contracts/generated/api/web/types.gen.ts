@@ -1424,6 +1424,9 @@ export type WebAppParametersResponse = {
   sensitive_word_avoidance: {
     enabled?: boolean
   }
+  show_thoughts?: {
+    enabled?: boolean
+  }
   speech_to_text: {
     enabled?: boolean
   }

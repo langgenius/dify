@@ -46,7 +46,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         with (self.project / ".env").open("a") as target:
             target.write("\n" + "\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
 
-    def render(self, *compose_args):
+    def render(self, *compose_args, all_profiles=True):
         inputs = set(re.findall(r"\$\{(\w+)", (DOCKER_DIR / "docker-compose.yaml").read_text()))
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
             inputs.update(re.findall(r"\$\{(\w+)", source.read_text()))
@@ -56,8 +56,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 "docker",
                 "compose",
                 *compose_args,
-                "--profile",
-                "*",
+                *(["--profile", "*"] if all_profiles else []),
                 "config",
                 "--format",
                 "json",
@@ -99,6 +98,520 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(services["elasticsearch"]["environment"]["xpack.security.enabled"], "true")
         self.assertEqual(services["elasticsearch"]["environment"]["discovery.type"], "single-node")
 
+    def test_qdrant_nofile_limits_use_defaults_and_root_overrides(self):
+        services = self.render()
+        self.assertEqual(
+            services["qdrant"]["ulimits"]["nofile"],
+            {"soft": 524288, "hard": 524288},
+        )
+        for name in ("qdrant", "api"):
+            self.assertNotIn("QDRANT_NOFILE_SOFT", services[name]["environment"], name)
+            self.assertNotIn("QDRANT_NOFILE_HARD", services[name]["environment"], name)
+
+        self.override_root(
+            {
+                "QDRANT_NOFILE_SOFT": "65536",
+                "QDRANT_NOFILE_HARD": "131072",
+            }
+        )
+        services = self.render()
+        self.assertEqual(
+            services["qdrant"]["ulimits"]["nofile"],
+            {"soft": 65536, "hard": 131072},
+        )
+        self.assertNotIn("QDRANT_NOFILE_SOFT", services["qdrant"]["environment"])
+        self.assertNotIn("QDRANT_NOFILE_HARD", services["qdrant"]["environment"])
+
+    def test_documented_mysql_root_configuration_reaches_database_clients(self):
+        values = {
+            "DB_TYPE": "mysql",
+            "DB_HOST": "db_mysql",
+            "DB_PORT": "3306",
+            "DB_USERNAME": "root",
+            "DB_PASSWORD": "mysql-root-override",
+        }
+        self.override_root({**values, "COMPOSE_PROFILES": "weaviate,mysql,collaboration"})
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat", "plugin_daemon"):
+            for key, expected in values.items():
+                self.assertEqual(services[name]["environment"][key], expected, f"{name}.{key}")
+        self.assertEqual(services["db_mysql"]["environment"]["MYSQL_ROOT_PASSWORD"], values["DB_PASSWORD"])
+        self.assertEqual(services["db_mysql"]["environment"]["MYSQL_DATABASE"], "dify")
+
+    def test_code_sandbox_credentials_must_be_configured_as_a_pair(self):
+        clients = ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat")
+        for source, target, key in (
+            ("core-services/sandbox.defaults", "core-services/sandbox.env", "SANDBOX_API_KEY"),
+            ("security.env.example", "security.env", "CODE_EXECUTION_API_KEY"),
+        ):
+            with self.subTest(source=source):
+                self.copy_template(f"envs/{source}", f"envs/{target}", {key: "service-sandbox-key"})
+                services = self.render()
+                self.assertEqual(
+                    services["sandbox"]["environment"]["API_KEY"],
+                    "service-sandbox-key" if key == "SANDBOX_API_KEY" else "dify-sandbox",
+                )
+                for name in clients:
+                    self.assertEqual(
+                        services[name]["environment"].get("CODE_EXECUTION_API_KEY", "dify-sandbox"),
+                        "service-sandbox-key" if key == "CODE_EXECUTION_API_KEY" else "dify-sandbox",
+                        name,
+                    )
+                (self.project / "envs" / target).unlink()
+
+        self.override_root({"SANDBOX_API_KEY": "root-sandbox-key", "CODE_EXECUTION_API_KEY": "root-sandbox-key"})
+        services = self.render()
+        self.assertEqual(services["sandbox"]["environment"]["API_KEY"], "root-sandbox-key")
+        for name in clients:
+            self.assertEqual(services[name]["environment"]["CODE_EXECUTION_API_KEY"], "root-sandbox-key", name)
+
+    def test_root_overrides_only_reach_mapped_inputs_on_services_without_root_env_file(self):
+        root = self.project / ".env"
+        original = root.read_text()
+        for template, target, service, local_values, root_values, expected in (
+            (
+                "vectorstores/weaviate.defaults",
+                "vectorstores/weaviate.env",
+                "weaviate",
+                {"WEAVIATE_QUERY_DEFAULTS_LIMIT": "66"},
+                {"WEAVIATE_QUERY_DEFAULTS_LIMIT": "67", "ASYNC_INDEXING": "true"},
+                {"QUERY_DEFAULTS_LIMIT": "67", "ASYNC_INDEXING": "false"},
+            ),
+            (
+                "core-services/knowledge-fs-unstructured.env.example",
+                "core-services/knowledge-fs-unstructured.env",
+                "knowledge_fs_unstructured",
+                {"PDF_RENDER_DPI": "200"},
+                {"PDF_RENDER_DPI": "72"},
+                {"PDF_RENDER_DPI": "200"},
+            ),
+        ):
+            with self.subTest(service=service):
+                self.copy_template(f"envs/{template}", f"envs/{target}", local_values)
+                local = self.project / "envs" / target
+                if service == "weaviate":
+                    local.write_text(local.read_text() + "\nASYNC_INDEXING=false\n")
+                before = self.render()[service]["environment"]
+                self.assertEqual(
+                    before.get("QUERY_DEFAULTS_LIMIT", before.get("PDF_RENDER_DPI")),
+                    "66" if service == "weaviate" else "200",
+                )
+                self.override_root(root_values)
+                values = self.render()[service]["environment"]
+                for key, value in expected.items():
+                    self.assertEqual(values[key], value, f"{service}.{key}")
+                local.unlink()
+                root.write_text(original)
+
+    def test_middleware_template_is_loaded_from_docker_directory(self):
+        shutil.copyfile(DOCKER_DIR / "docker-compose.middleware.yaml", self.project / "docker-compose.middleware.yaml")
+        self.copy_template(
+            "envs/middleware.env.example",
+            "middleware.env",
+            {"DB_PASSWORD": "middleware-db-key", "EXPOSE_POSTGRES_PORT": "15432", "POSTGRES_MAX_CONNECTIONS": "121"},
+        )
+        services = self.render("--env-file", "middleware.env", "-f", "docker-compose.middleware.yaml", "-p", "dify")
+        postgres = services["db_postgres"]
+        self.assertEqual(postgres["environment"]["POSTGRES_PASSWORD"], "middleware-db-key")
+        self.assertEqual(postgres["ports"][0]["published"], "15432")
+        self.assertIn("max_connections=121", postgres["command"])
+
+    def test_agent_sandbox_token_is_a_root_input_for_both_consumers(self):
+        template = (DOCKER_DIR / "envs/core-services/dify-agent.defaults").read_text()
+        self.assertNotRegex(template, r"(?m)^DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=")
+        self.copy_template(
+            "envs/core-services/dify-agent.defaults",
+            "envs/core-services/dify-agent.env",
+        )
+        local = self.project / "envs/core-services/dify-agent.env"
+        local.write_text(local.read_text() + "\nDIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=service-only-token\n")
+        root = self.project / ".env"
+        original = root.read_text()
+        for setting, expected in (
+            ("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=root-token", "root-token"),
+            (
+                "DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=\nDIFY_AGENT_SHELLCTL_AUTH_TOKEN=legacy-token",
+                "legacy-token",
+            ),
+            ("DIFY_AGENT_SHELLCTL_AUTH_TOKEN=legacy-token", "legacy-token"),
+            ("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=", ""),
+        ):
+            with self.subTest(setting=setting):
+                root.write_text(
+                    re.sub(
+                        r"(?m)^DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=.*$",
+                        setting,
+                        original,
+                    )
+                )
+                services = self.render()
+                self.assertEqual(
+                    services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN"],
+                    expected,
+                )
+                self.assertEqual(
+                    services["local_sandbox"]["environment"]["SHELLCTL_AUTH_TOKEN"],
+                    expected,
+                )
+
+    def test_legacy_agent_names_and_canonical_overrides(self):
+        self.override_root({"DIFY_AGENT_SHELLCTL_ENTRYPOINT": "http://legacy-sandbox:5004", "ENABLE_AGENT_V2": "false"})
+        services = self.render()
+        self.assertEqual(
+            services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT"], "http://legacy-sandbox:5004"
+        )
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
+        self.override_root(
+            {"DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT": "http://current-sandbox:5004", "NEXT_PUBLIC_ENABLE_AGENT_V2": "false"}
+        )
+        services = self.render()
+        self.assertEqual(
+            services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT"], "http://current-sandbox:5004"
+        )
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "false")
+        self.override_root({"NEXT_PUBLIC_ENABLE_AGENT_V2": ""})
+        self.assertEqual(self.render()["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
+
+    def test_bundled_vector_defaults_and_isolated_overrides(self):
+        cases = {
+            "weaviate": {"WEAVIATE_ENDPOINT": "http://weaviate:8080"},
+            "qdrant": {
+                "QDRANT_URL": "http://qdrant:6333",
+                "QDRANT_API_KEY": "difyai123456",
+            },
+            "oceanbase": {
+                "OCEANBASE_VECTOR_HOST": "oceanbase",
+                "OCEANBASE_VECTOR_USER": "root@test",
+                "OCEANBASE_VECTOR_PASSWORD": "difyai123456",
+                "OCEANBASE_VECTOR_DATABASE": "test",
+            },
+            "seekdb": {
+                "OCEANBASE_VECTOR_HOST": "seekdb",
+                "OCEANBASE_VECTOR_USER": "root",
+                "OCEANBASE_VECTOR_PASSWORD": "difyai123456",
+                "OCEANBASE_VECTOR_DATABASE": "test",
+            },
+            "couchbase": {
+                "COUCHBASE_CONNECTION_STRING": "couchbase://couchbase-server",
+                "COUCHBASE_USER": "Administrator",
+                "COUCHBASE_PASSWORD": "password",
+                "COUCHBASE_BUCKET_NAME": "Embeddings",
+                "COUCHBASE_SCOPE_NAME": "_default",
+            },
+            "pgvector": {
+                "PGVECTOR_HOST": "pgvector",
+                "PGVECTOR_PORT": "5432",
+                "PGVECTOR_USER": "postgres",
+                "PGVECTOR_PASSWORD": "difyai123456",
+                "PGVECTOR_DATABASE": "dify",
+            },
+            "pgvecto-rs": {
+                "PGVECTO_RS_HOST": "pgvecto-rs",
+                "PGVECTO_RS_PORT": "5432",
+                "PGVECTO_RS_USER": "postgres",
+                "PGVECTO_RS_PASSWORD": "difyai123456",
+                "PGVECTO_RS_DATABASE": "dify",
+            },
+            "vastbase": {
+                "VASTBASE_HOST": "vastbase",
+                "VASTBASE_PORT": "5432",
+                "VASTBASE_USER": "dify",
+                "VASTBASE_PASSWORD": "Difyai123456",
+                "VASTBASE_DATABASE": "dify",
+            },
+            "chroma": {
+                "CHROMA_HOST": "chroma",
+                "CHROMA_AUTH_CREDENTIALS": "difyai123456",
+                "CHROMA_AUTH_PROVIDER": "chromadb.auth.token_authn.TokenAuthClientProvider",
+            },
+            "iris": {"IRIS_HOST": "iris"},
+            "oracle": {
+                "ORACLE_DSN": "oracle:1521/FREEPDB1",
+                "ORACLE_USER": "dify",
+                "ORACLE_PASSWORD": "dify",
+            },
+            "milvus": {
+                "MILVUS_URI": "http://milvus-standalone:19530",
+                "MILVUS_USER": "root",
+                "MILVUS_PASSWORD": "Milvus",
+                "MILVUS_DATABASE": "default",
+            },
+            "opensearch": {
+                "OPENSEARCH_HOST": "opensearch",
+                "OPENSEARCH_USER": "admin",
+                "OPENSEARCH_PASSWORD": "Qazwsxedc!@#123",
+                "OPENSEARCH_SECURE": "true",
+                "OPENSEARCH_VERIFY_CERTS": "true",
+            },
+            "opengauss": {
+                "OPENGAUSS_HOST": "opengauss",
+                "OPENGAUSS_USER": "postgres",
+                "OPENGAUSS_PASSWORD": "Dify@123",
+                "OPENGAUSS_DATABASE": "dify",
+            },
+            "myscale": {
+                "MYSCALE_HOST": "myscale",
+                "MYSCALE_PORT": "8123",
+                "MYSCALE_USER": "default",
+                "MYSCALE_PASSWORD": "",
+                "MYSCALE_DATABASE": "dify",
+            },
+            "matrixone": {
+                "MATRIXONE_HOST": "matrixone",
+                "MATRIXONE_PORT": "6001",
+                "MATRIXONE_USER": "dump",
+                "MATRIXONE_PASSWORD": "111",
+                "MATRIXONE_DATABASE": "dify",
+            },
+            "elasticsearch": {
+                "ELASTICSEARCH_HOST": "elasticsearch",
+                "ELASTICSEARCH_PASSWORD": "elastic",
+            },
+            "elasticsearch-ja": {
+                "ELASTICSEARCH_HOST": "elasticsearch",
+                "ELASTICSEARCH_PASSWORD": "elastic",
+            },
+        }
+        consumers = (
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+        )
+        root = self.project / ".env"
+        original = root.read_text()
+        for provider, expected in cases.items():
+            with self.subTest(provider=provider):
+                root.write_text(original)
+                self.override_root(
+                    {
+                        "VECTOR_STORE": provider,
+                        "COMPOSE_PROFILES": f"{provider},postgresql,collaboration",
+                    }
+                )
+                selected = root.read_text()
+                template = "elasticsearch" if provider == "elasticsearch-ja" else provider
+                source = f"envs/vectorstores/{template}.defaults"
+                target = f"envs/vectorstores/{template}.env"
+                key = next(iter(expected))
+                try:
+                    baseline = self.render()
+                    for name in consumers:
+                        for variable, value in expected.items():
+                            self.assertEqual(
+                                baseline[name]["environment"].get(variable),
+                                value,
+                                f"{name}.{variable}",
+                            )
+                        server = {
+                            "milvus": "milvus-standalone",
+                            "couchbase": "couchbase-server",
+                            "elasticsearch-ja": "elasticsearch",
+                        }.get(provider, provider)
+                        self.assertTrue(
+                            set(baseline[name]["networks"]) & set(baseline[server]["networks"]),
+                            name,
+                        )
+
+                    # Change only the root file, then restore it before exercising the provider file.
+                    self.override_root({key: "root-only"})
+                    root_only = self.render()
+                    for name in consumers:
+                        self.assertEqual(root_only[name]["environment"][key], "root-only", name)
+                    root.write_text(selected)
+
+                    self.copy_template(source, target)
+                    copied = self.render()
+                    for name in consumers:
+                        for variable, value in expected.items():
+                            self.assertEqual(
+                                copied[name]["environment"][variable],
+                                value,
+                                f"copy: {name}.{variable}",
+                            )
+                    self.copy_template(source, target, {key: "provider-only"})
+                    customized = self.render()
+                    for name in consumers:
+                        self.assertEqual(customized[name]["environment"][key], "provider-only", name)
+
+                    self.override_root({key: "root-wins"})
+                    overridden = self.render()
+                    for name in consumers:
+                        self.assertEqual(overridden[name]["environment"][key], "root-wins", name)
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(original)
+
+    def test_external_opensearch_tls_verification_and_overrides(self):
+        self.override_root(
+            {
+                "VECTOR_STORE": "opensearch",
+                "COMPOSE_PROFILES": "postgresql,collaboration",
+                "OPENSEARCH_HOST": "search.example.test",
+                "OPENSEARCH_PORT": "443",
+                "OPENSEARCH_SECURE": "true",
+            }
+        )
+        root = self.project / ".env"
+        original = root.read_text()
+        source = "envs/vectorstores/opensearch.defaults"
+        target = "envs/vectorstores/opensearch.env"
+
+        def assert_verification(expected):
+            services = self.render(all_profiles=False)
+            self.assertNotIn("opensearch", services)
+            for name in ("api", "api_websocket", "worker", "worker_beat"):
+                values = services[name]["environment"]
+                self.assertEqual(values["OPENSEARCH_HOST"], "search.example.test", name)
+                self.assertEqual(values["OPENSEARCH_SECURE"], "true", name)
+                self.assertEqual(values["OPENSEARCH_VERIFY_CERTS"], expected, name)
+
+        assert_verification("true")
+        self.copy_template(source, target)
+        assert_verification("true")
+        self.copy_template(source, target, {"OPENSEARCH_VERIFY_CERTS": "false"})
+        assert_verification("false")
+        self.override_root({"OPENSEARCH_VERIFY_CERTS": "true"})
+        assert_verification("true")
+        root.write_text(original)
+        assert_verification("false")
+        (self.project / target).unlink()
+        assert_verification("true")
+        self.override_root({"OPENSEARCH_VERIFY_CERTS": "false"})
+        assert_verification("false")
+
+    def test_weaviate_connections_survive_selecting_another_vector_store(self):
+        self.override_root({"VECTOR_STORE": "qdrant", "COMPOSE_PROFILES": "weaviate,qdrant,postgresql,collaboration"})
+        root = self.project / ".env"
+        original = root.read_text()
+        defaults = {
+            "WEAVIATE_ENDPOINT": "http://weaviate:8080",
+            "WEAVIATE_API_KEY": "WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih",
+            "WEAVIATE_GRPC_ENDPOINT": "grpc://weaviate:50051",
+        }
+        custom = {
+            "WEAVIATE_ENDPOINT": "https://existing-weaviate:443",
+            "WEAVIATE_API_KEY": "",
+            "WEAVIATE_GRPC_ENDPOINT": "",
+        }
+        root_values = {
+            "WEAVIATE_ENDPOINT": "https://root-weaviate:443",
+            "WEAVIATE_API_KEY": "root-weaviate-key",
+            "WEAVIATE_GRPC_ENDPOINT": "grpcs://root-weaviate:443",
+        }
+
+        def assert_connections(expected):
+            services = self.render()
+            for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat"):
+                values = services[name]["environment"]
+                self.assertEqual(values["VECTOR_STORE"], "qdrant", name)
+                self.assertEqual(values["QDRANT_URL"], "http://qdrant:6333", name)
+                for key, value in expected.items():
+                    self.assertEqual(values.get(key), value, f"{name}.{key}")
+
+        active = self.render(all_profiles=False)
+        self.assertIn("weaviate", active)
+        self.assertIn("qdrant", active)
+        assert_connections(defaults)
+        for source, target in (
+            ("core-services/api-worker.defaults", "core-services/api-worker.env"),
+            ("core-services/api-worker.defaults", "core-services/shared.env"),
+            ("vectorstores/weaviate.defaults", "vectorstores/weaviate.env"),
+        ):
+            with self.subTest(source=target):
+                try:
+                    self.copy_template(f"envs/{source}", f"envs/{target}")
+                    assert_connections(defaults)
+                    self.copy_template(f"envs/{source}", f"envs/{target}", custom)
+                    assert_connections(custom)
+                    self.override_root(root_values)
+                    assert_connections(root_values)
+                    root.write_text(original)
+                    assert_connections(custom)
+                finally:
+                    (self.project / "envs" / target).unlink(missing_ok=True)
+                    root.write_text(original)
+        assert_connections(defaults)
+        self.override_root(root_values)
+        assert_connections(root_values)
+
+    def test_selected_vector_defaults_preserve_credentials_and_existing_overrides(self):
+        root = self.project / ".env"
+        original = root.read_text()
+        cases = (
+            ("qdrant", "QDRANT_API_KEY", "QDRANT_API_KEY", "qdrant", "QDRANT__SERVICE__API_KEY"),
+            ("pgvector", "PGVECTOR_PGUSER", "PGVECTOR_USER", "pgvector", "POSTGRES_USER"),
+            ("pgvector", "PGVECTOR_POSTGRES_DB", "PGVECTOR_DATABASE", "pgvector", "POSTGRES_DB"),
+            ("pgvecto-rs", "PGVECTOR_PGUSER", "PGVECTO_RS_USER", "pgvecto-rs", "POSTGRES_USER"),
+            ("pgvecto-rs", "PGVECTOR_POSTGRES_DB", "PGVECTO_RS_DATABASE", "pgvecto-rs", "POSTGRES_DB"),
+            (
+                "pgvector",
+                "PGVECTOR_POSTGRES_PASSWORD",
+                "PGVECTOR_PASSWORD",
+                "pgvector",
+                "POSTGRES_PASSWORD",
+            ),
+            (
+                "pgvecto-rs",
+                "PGVECTOR_POSTGRES_PASSWORD",
+                "PGVECTO_RS_PASSWORD",
+                "pgvecto-rs",
+                "POSTGRES_PASSWORD",
+            ),
+            (
+                "chroma",
+                "CHROMA_SERVER_AUTHN_CREDENTIALS",
+                "CHROMA_AUTH_CREDENTIALS",
+                "chroma",
+                "CHROMA_SERVER_AUTHN_CREDENTIALS",
+            ),
+            (
+                "opensearch",
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD",
+                "OPENSEARCH_PASSWORD",
+                "opensearch",
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD",
+            ),
+        )
+        for provider, key, client_key, server, server_key in cases:
+            with self.subTest(provider=provider):
+                root.write_text(original)
+                self.override_root({"VECTOR_STORE": provider})
+                target = f"envs/vectorstores/{provider}.env"
+                try:
+                    self.copy_template(
+                        f"envs/vectorstores/{provider}.defaults",
+                        target,
+                        {key: "provider-password"},
+                    )
+                    for value in ("provider-password", "root-password"):
+                        if value == "root-password":
+                            self.override_root({key: value})
+                        services = self.render()
+                        for name in ("api", "worker", "worker_beat"):
+                            self.assertEqual(services[name]["environment"][client_key], value, name)
+                        self.assertEqual(services[server]["environment"][server_key], value)
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(original)
+
+        self.override_root({"VECTOR_STORE": "qdrant"})
+        legacy = self.project / "envs/core-services/shared.env"
+        legacy.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
+        services = self.render()
+        for name in ("api", "worker", "worker_beat"):
+            values = services[name]["environment"]
+            self.assertEqual(values["QDRANT_URL"], "http://existing-qdrant:6333")
+            self.assertEqual(values["QDRANT_API_KEY"], "")
+            self.assertEqual(values["WEAVIATE_ENDPOINT"], "http://weaviate:8080")
+            self.assertNotIn("PGVECTOR_HOST", values)
+
+        # External providers have no bundled defaults file and keep their explicit connection settings.
+        root.write_text(original)
+        self.override_root({"VECTOR_STORE": "relyt", "RELYT_HOST": "external-relyt"})
+        self.assertEqual(self.render()["api"]["environment"]["RELYT_HOST"], "external-relyt")
+
     def test_copying_defaults_without_changes_preserves_service_values(self):
         baseline = self.render()
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
@@ -116,9 +629,17 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def test_api_and_weaviate_defaults_and_isolated_overrides(self):
         cases = [
-            ("core-services/shared", "worker", "CELERY_WORKER_AMOUNT", "CELERY_WORKER_AMOUNT", "4", "2", "3"),
-            ("core-services/shared", "api", "SERVER_WORKER_CLASS", "SERVER_WORKER_CLASS", "gevent", "sync", "gthread"),
-            ("core-services/shared", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
+            ("core-services/api-worker", "worker", "CELERY_WORKER_AMOUNT", "CELERY_WORKER_AMOUNT", "4", "2", "3"),
+            (
+                "core-services/api-worker",
+                "api",
+                "SERVER_WORKER_CLASS",
+                "SERVER_WORKER_CLASS",
+                "gevent",
+                "sync",
+                "gthread",
+            ),
+            ("core-services/api-worker", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
             (
                 "vectorstores/weaviate",
                 "weaviate",
@@ -156,11 +677,53 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
 
-    def test_copying_shared_defaults_does_not_activate_optional_settings(self):
+    def test_copying_api_worker_defaults_does_not_activate_optional_settings(self):
         baseline = self.render()
-        self.copy_template("envs/core-services/shared.defaults", "envs/core-services/shared.env")
+        self.copy_template("envs/core-services/api-worker.defaults", "envs/core-services/api-worker.env")
         # Compare the entire configuration, including extra variables introduced by an unsafe copy.
         self.assertEqual(self.render(), baseline)
+
+    def test_api_worker_overrides_preserve_legacy_settings_and_precedence(self):
+        consumers = (
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+            "plugin_daemon",
+        )
+        baseline = self.render()
+        legacy = self.project / "envs/core-services/shared.env"
+        legacy.write_text("DB_HOST=legacy-db\n")
+
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "legacy-db", name)
+
+        source = "envs/core-services/api-worker.defaults"
+        target = "envs/core-services/api-worker.env"
+        # An unchanged copy must not mask existing shared.env customizations.
+        self.copy_template(source, target)
+        self.assertEqual(self.render(), services)
+
+        self.copy_template(source, target, {"DB_HOST": "api-worker-db"})
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "api-worker-db", name)
+        for name in baseline.keys() - set(consumers):
+            self.assertEqual(services[name], baseline[name], name)
+
+        # Change only the root file while retaining both local override files.
+        self.override_root({"DB_HOST": "root-db"})
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "root-db", name)
+        self.assertEqual(legacy.read_text(), "DB_HOST=legacy-db\n")
 
     def test_consolidated_settings_reach_consumers_and_respect_root_precedence(self):
         api_services = ("api", "api_websocket")
@@ -176,7 +739,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         vector_clients = (*api_services, "worker", "worker_knowledge_fs_upgrade", "worker_beat")
         cases = [
             (
-                "core-services/shared.defaults",
+                "core-services/api-worker.defaults",
                 (*api_services, *worker_services, "worker_beat"),
                 {
                     "CODE_MAX_STRING_LENGTH": ("500000", "600000"),
@@ -209,7 +772,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 {"OCEANBASE_VECTOR_HOST": ("custom-oceanbase", "root-oceanbase")},
             ),
             ("vectorstores/pgvector.defaults", vector_clients, {"PGVECTOR_MIN_CONNECTION": ("2", "3")}),
-            ("vectorstores/milvus.env.example", vector_clients, {"MILVUS_DATABASE": ("custom_dify", "root_dify")}),
+            ("vectorstores/milvus.defaults", vector_clients, {"MILVUS_DATABASE": ("custom_dify", "root_dify")}),
         ]
         root = self.project / ".env"
         initial_root = root.read_text()
@@ -369,7 +932,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def test_database_redis_overrides_reach_clients_and_commands(self):
         for name in (
-            "shared",
+            "api-worker",
             "api",
             "worker",
             "worker-beat",
@@ -451,7 +1014,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             self.assertFalse((self.project / "should-not-exist").exists())
 
     def test_root_plugin_credentials_reach_every_consumer(self):
-        for name in ("shared", "api", "worker", "worker-beat", "plugin-daemon", "dify-agent"):
+        for name in ("api-worker", "api", "worker", "worker-beat", "plugin-daemon", "dify-agent"):
             self.copy_template(f"envs/core-services/{name}.defaults", f"envs/core-services/{name}.env")
         api_services = (
             "api",

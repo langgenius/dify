@@ -499,7 +499,7 @@ describe('NormalForm', () => {
     })
   })
 
-  it('should describe password visibility through its changing action name', async () => {
+  it('should report password visibility through the toggle pressed state', async () => {
     const user = userEvent.setup()
     mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
 
@@ -510,7 +510,7 @@ describe('NormalForm', () => {
 
     await user.click(showPasswordButton)
 
-    expect(screen.getByRole('button', { name: 'login.hidePassword' })).toBeInTheDocument()
+    expect(showPasswordButton).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByLabelText('login.password')).toHaveAttribute('type', 'text')
   })
 

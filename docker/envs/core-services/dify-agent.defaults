@@ -62,8 +62,7 @@ DIFY_AGENT_INNER_API_KEY=${DIFY_AGENT_INNER_API_KEY:-${PLUGIN_DIFY_INNER_API_KEY
 # Select exactly one coherent Home Snapshot + Sandbox backend.
 DIFY_AGENT_RUNTIME_BACKEND=${DIFY_AGENT_RUNTIME_BACKEND:-local}
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=${DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT:-${DIFY_AGENT_SHELLCTL_ENTRYPOINT:-http://local_sandbox:5004}}
-# Required nonblank secret for Local. Set in docker/.env to also configure shellctl.
-DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
+# Set DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN only in docker/.env; Compose supplies it to both services.
 # E2B_API_KEY and E2B_API_TOKEN remain accepted as deployment-level fallbacks.
 DIFY_AGENT_E2B_API_KEY=${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
 DIFY_AGENT_E2B_TEMPLATE=${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}

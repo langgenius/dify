@@ -42,6 +42,7 @@ type AnswerProps = {
     item: ChatItem
     responding?: boolean
     content?: string
+    showThoughts?: boolean
   }) => ReactNode
   humanInputFormDisabled?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
@@ -145,7 +146,12 @@ const Answer: FC<AnswerProps> = ({
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
   const agentContentNode = renderAgentContent ? (
-    renderAgentContent({ item, responding, content })
+    renderAgentContent({
+      item,
+      responding,
+      content,
+      showThoughts: !!config?.show_thoughts?.enabled,
+    })
   ) : (
     <AgentContent item={item} responding={responding} content={content} />
   )

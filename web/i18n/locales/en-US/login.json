@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "Please enter your email address to reset your password. We will send you an email with instructions on how to reset your password.",
   "go": "Go to Dify",
   "goToInit": "If you have not initialized the account, please go to the initialization page",
-  "hidePassword": "Hide password",
   "history.add": "Migrate all conversations",
   "history.addAndContinue": "Migrate and continue",
   "history.addDescription": "Access these conversations when signed in.",

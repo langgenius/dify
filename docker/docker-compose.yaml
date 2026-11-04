@@ -9,6 +9,8 @@ x-shared-api-config: &shared-api-config
   env_file:
     - path: ./envs/core-services/shared.env
       required: false
+    - path: ./envs/core-services/api-worker.env
+      required: false
     - path: ./envs/security.env
       required: false
     - path: ./envs/databases/db-postgres.env
@@ -66,7 +68,9 @@ x-shared-api-config: &shared-api-config
     - path: ./envs/core-services/api.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/api.defaults
   networks:
     - ssrf_proxy_network
@@ -76,6 +80,8 @@ x-shared-api-config: &shared-api-config
 x-shared-worker-config: &shared-worker-config
   env_file:
     - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
       required: false
@@ -134,7 +140,9 @@ x-shared-worker-config: &shared-worker-config
     - path: ./envs/core-services/worker.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker.defaults
   networks:
     - ssrf_proxy_network
@@ -153,6 +161,8 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
   env_file:
     - path: ./envs/core-services/shared.env
       required: false
+    - path: ./envs/core-services/api-worker.env
+      required: false
     - path: ./envs/security.env
       required: false
     - path: ./envs/databases/db-postgres.env
@@ -168,7 +178,7 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
     - path: ./envs/core-services/worker.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker.defaults
   environment: &knowledge-fs-celery-environment
     MODE: worker
@@ -191,6 +201,8 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
     - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
       required: false
@@ -249,7 +261,9 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/core-services/worker-beat.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker-beat.defaults
   networks:
     - ssrf_proxy_network
@@ -606,6 +620,8 @@ services:
     env_file:
       - path: ./envs/core-services/shared.env
         required: false
+      - path: ./envs/core-services/api-worker.env
+        required: false
       - path: ./envs/core-services/plugin-daemon.env
         required: false
       - path: ./envs/security.env
@@ -617,7 +633,7 @@ services:
       - path: ./envs/databases/redis.env
         required: false
       - ./.env
-      - ./envs/core-services/shared.defaults
+      - ./envs/core-services/api-worker.defaults
       - ./envs/core-services/plugin-daemon.defaults
     networks:
       - ssrf_proxy_network
@@ -740,6 +756,8 @@ services:
         required: false
       - ./.env
       - ./envs/core-services/dify-agent.defaults
+    environment:
+      DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
     depends_on:
       redis:
         condition: service_started
@@ -941,6 +959,10 @@ services:
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT:-524288}
+        hard: ${QDRANT_NOFILE_HARD:-524288}
 
   # The Couchbase vector store.
   couchbase-server:
@@ -1168,6 +1190,7 @@ services:
       - 9091:9091
     networks:
       - milvus
+      - default
 
   # Opensearch vector database
   opensearch:
@@ -1190,6 +1213,7 @@ services:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
     networks:
       - opensearch-net
+      - default
 
   opensearch-dashboards:
     container_name: opensearch-dashboards

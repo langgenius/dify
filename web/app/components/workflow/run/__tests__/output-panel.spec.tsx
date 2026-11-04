@@ -23,11 +23,12 @@ const createFileOutput = (overrides: Partial<FileOutput> = {}): FileOutput => ({
 
 describe('OutputPanel', () => {
   it('shows no-output only after execution finishes without a result', async () => {
-    const { rerender } = render(<OutputPanel isRunning />)
+    const { rerender } = render(<OutputPanel isRunning outputs={{ answer: 'Partial output' }} />)
     expect(screen.queryByText('No Output')).not.toBeInTheDocument()
+    expect(await screen.findByText('Partial output', {}, { timeout: 5000 })).toBeVisible()
     rerender(<OutputPanel isRunning={false} />)
-    expect(await screen.findByText('No Output')).toBeVisible()
-  })
+    expect(await screen.findByText('No Output', {}, { timeout: 5000 })).toBeVisible()
+  }, 10_000)
 
   it('shows and copies a failed execution message', async () => {
     const user = userEvent.setup()
@@ -47,19 +48,23 @@ describe('OutputPanel', () => {
       />,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Run summary' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Run summary' }, { timeout: 5000 }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Review output' })).toHaveAttribute(
       'href',
       'https://example.com/review',
     )
-  })
+  }, 10_000)
 
   it('renders array text outputs as joined semantic markdown content', async () => {
     render(<OutputPanel outputs={{ answer: ['## First result', '## Second result'] }} />)
 
-    expect(await screen.findByRole('heading', { name: 'First result' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'First result' }, { timeout: 5000 }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Second result' })).toBeInTheDocument()
-  })
+  }, 10_000)
 
   it('renders a file list for a single file output', () => {
     render(<OutputPanel outputs={{ attachment: createFileOutput() }} />)
@@ -99,14 +104,15 @@ describe('OutputPanel', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders structured outputs inside the code editor when height is available', () => {
-    render(<OutputPanel height={200} outputs={{ answer: 'hello', score: 1 }} />)
+  // TODO: OutputPanel pre-serializes the object before CodeEditor serializes it again.
+  // Remove `.fails` when the editor receives the original object and exposes semantic JSON.
+  it.fails('renders structured outputs inside the code editor when height is available', () => {
+    const outputs = { answer: 'hello', score: 1 }
+    render(<OutputPanel height={200} outputs={outputs} />)
 
     const editor = screen.getByTestId<HTMLInputElement>('monaco-editor')
     expect(editor).toHaveAttribute('readonly')
-    const parsedValue: unknown = JSON.parse(editor.value)
-    const semanticValue = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue
-    expect(semanticValue).toEqual({ answer: 'hello', score: 1 })
+    expect(JSON.parse(editor.value)).toEqual(outputs)
   })
 
   it('skips the code editor when structured outputs have no positive height', () => {

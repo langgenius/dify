@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법에 대한 이메일을 보내드리겠습니다.",
   "go": "Dify 로 이동",
   "goToInit": "계정이 초기화되지 않았다면 초기화 페이지로 이동하세요.",
-  "hidePassword": "비밀번호 숨기기",
   "history.add": "모든 대화 이전",
   "history.addAndContinue": "이전하고 계속",
   "history.addDescription": "로그인하면 이 대화에 액세스할 수 있습니다.",
