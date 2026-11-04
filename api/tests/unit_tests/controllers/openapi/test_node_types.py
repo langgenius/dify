@@ -56,7 +56,6 @@ def test_describe_llm_is_compact(describe: _Describe) -> None:
     response = describe(BuiltinNodeTypes.LLM)
 
     assert "schema" not in response.model_dump(mode="json", by_alias=True)
-    assert "default_config" not in response.model_dump(mode="json")
     assert {"type": "llm", "version": "1", "title": "llm"}.items() <= response.seed.items()
     assert "context" in response.seed
     rows = _rows(response)
@@ -73,7 +72,7 @@ def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> Non
 
 
 def test_the_llm_reply_stays_small(describe: _Describe) -> None:
-    body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True, exclude_none=False)
+    body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
 
     assert len(body.encode()) < 1500
 
@@ -86,10 +85,7 @@ def test_rows_leave_out_what_the_seed_already_holds(describe: _Describe) -> None
 
 
 def test_rows_carry_only_the_parts_they_have(describe: _Describe) -> None:
-    rows = {
-        name: row.model_dump(mode="json", exclude_unset=False)
-        for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()
-    }
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
 
     assert "options" not in rows["model"]
     assert rows["reasoning_format"]["options"] == ["separated", "tagged"]

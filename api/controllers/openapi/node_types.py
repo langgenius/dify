@@ -18,10 +18,10 @@ from controllers.openapi._models import (
     NodeTypeRow,
 )
 from controllers.openapi.auth.context import Context
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, node_data_model
 from services.workflow.authoring.canvas_defaults import purpose_fields
 from services.workflow.authoring.node_options import block_seed
-from services.workflow.authoring.node_spec import NodeTarget, top_level_hints
+from services.workflow.authoring.node_spec import top_level_hints
 from services.workflow.node_defaults import node_data_schema
 from services.workflow_variable_reference_validator import source_handle_order
 
@@ -68,15 +68,14 @@ class NodeTypeDetailApi(Resource):
         version = node_class.version()
         seed = block_seed(node_type, version)
         schema = node_data_schema(node_class)
-        target = NodeTarget(id="", data=seed, node_class=node_class, top_level=True, references=())
-        purposes = purpose_fields(node_type, version)
+        purposes = purpose_fields(seed)
         return NodeTypeDetailResponse(
             type=node_type,
             version=version,
             seed=seed,
             fields=[
                 NodeTypeFieldRow.describing(hint, purpose=hint.loc[0] in purposes)
-                for hint in top_level_hints(target, schema, skip=_IDENTITY_FIELDS)
+                for hint in top_level_hints(node_data_model(node_class), schema, skip=_IDENTITY_FIELDS)
             ],
             handles=list(source_handle_order(seed)),
             schema=schema if query.include_schema else None,
