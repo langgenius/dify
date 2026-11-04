@@ -158,6 +158,35 @@ class TestRerankModelRunner(_UsesSQLiteSession):
         assert result[3].metadata["score"] == 0.65
         assert result[0].page_content == sample_documents[2].page_content
 
+    def test_out_of_range_index_is_rejected(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
+        """A provider index past the documents sent must not be used to index the list."""
+        mock_model_instance.invoke_rerank.return_value = RerankResult(
+            model="bge-reranker-base",
+            docs=[
+                RerankDocument(index=0, text=sample_documents[0].page_content, score=0.9),
+                RerankDocument(index=len(sample_documents), text="out of range", score=0.8),
+            ],
+        )
+
+        with pytest.raises(ValueError, match="out of range"):
+            rerank_runner.run(query="q", documents=sample_documents)
+
+    def test_negative_index_is_rejected(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
+        """A negative index silently wraps to the wrong document in Python; reject it instead."""
+        mock_model_instance.invoke_rerank.return_value = RerankResult(
+            model="bge-reranker-base",
+            docs=[
+                RerankDocument(index=-1, text="negative", score=0.9),
+            ],
+        )
+
+        with pytest.raises(ValueError, match="out of range"):
+            rerank_runner.run(query="q", documents=sample_documents)
+
     def test_score_threshold_filtering(
         self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
     ):
@@ -1831,9 +1860,8 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
         """Test handling when rerank result indices don't match input.
 
         Verifies:
-        - Out of bounds indices are handled
-        - IndexError is raised or handled gracefully
-        - Invalid results don't corrupt output
+        - Out of bounds indices are rejected with an explicit error
+        - The error names the index and the number of documents
         """
         # Arrange: Rerank result with invalid index
         mock_model_instance = create_model_instance()
@@ -1856,8 +1884,8 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
 
         runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
 
-        # Act & Assert: Should raise IndexError or handle gracefully
-        with pytest.raises(IndexError):
+        # Act & Assert: the provider index is rejected before it can index the list
+        with pytest.raises(ValueError, match="out of range"):
             runner.run(query="test", documents=documents)
 
     def test_factory_with_missing_required_parameters(self):
