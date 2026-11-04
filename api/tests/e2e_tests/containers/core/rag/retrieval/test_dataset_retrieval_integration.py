@@ -573,7 +573,7 @@ class TestKnowledgeRetrievalIntegration:
                 candidates=(),
                 top_k=5,
                 queried_dataset_ids=(),
-                timer={},
+                timer=None,
                 usage=LLMUsage.empty_usage(),
             ),
         ):

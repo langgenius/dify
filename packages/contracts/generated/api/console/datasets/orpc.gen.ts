@@ -15,6 +15,7 @@ import {
   zIndexingEstimateError,
   zInvalidActionError,
   zInvalidMetadataError,
+  zKnowledgeFsUpgradeModelsUnavailableError,
   zMaxKeysExceededError,
   zModelCurrentlyNotSupportError,
   zProviderNotInitializeError,
@@ -182,6 +183,7 @@ import {
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
   zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
   zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
   zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
@@ -1553,11 +1555,18 @@ export const post19 = oc
   })
   .input(
     z.object({
+      body: zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
       headers: zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
       params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
     }),
   )
   .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+  .errors({
+    knowledge_fs_upgrade_models_unavailable: {
+      status: 422,
+      data: zKnowledgeFsUpgradeModelsUnavailableError,
+    },
+  })
 
 export const knowledgeFsUpgrades = {
   get: get29,

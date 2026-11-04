@@ -1,8 +1,10 @@
 """Session-owning dataset administration adapters."""
 
 import datetime
+from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -14,6 +16,7 @@ from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
 from models import Dataset, Document
 from models.dataset import DatasetPermissionEnum
+from models.provider import TenantDefaultModel
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_list_actor_role,
@@ -31,7 +34,11 @@ from repositories.knowledge.document_query_repository import (
     list_dataset_documents,
 )
 from services.app.query_service import RelatedApps
-from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeModelPreferences,
+    KnowledgeFSUpgradeSnapshotService,
+    upgrade_discovery_response,
+)
 from services.enterprise import rbac_service
 from services.feature_service import FeatureService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -43,6 +50,7 @@ from services.knowledge.datasets.contracts import (
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
+from services.knowledge_fs.product_dto import KnowledgeFSUpgradeModelChoice
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
@@ -59,6 +67,13 @@ def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
     if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
         item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
     return item
+
+
+def _upgrade_model_choice(provider: object, model: object) -> KnowledgeFSUpgradeModelChoice | None:
+    """Return a complete model choice; invalid legacy values map to ``None``."""
+    if not isinstance(provider, str) or not provider or not isinstance(model, str) or not model:
+        return None
+    return KnowledgeFSUpgradeModelChoice(provider=provider, model=model)
 
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
@@ -116,6 +131,39 @@ class SQLAlchemyDatasetOperations:
             model_type=ModelType.TEXT_EMBEDDING, only_active=True
         )
         return {f"{model.model}:{model.provider.provider}" for model in models}
+
+    def get_upgrade_model_preferences(self, ref: DatasetRef) -> tuple[str, KnowledgeFSUpgradeModelPreferences]:
+        """Return choices and defaults for one tenant-owned dataset.
+
+        ``ref`` supplies the complete tenant and dataset scope. The result includes
+        only that tenant's defaults; invalid legacy choices become ``None``. A
+        missing or foreign-scoped dataset raises ``DatasetNotFoundError``.
+        """
+        with self._sessions() as session:
+            dataset = require_dataset(session, ref)
+            defaults: dict[ModelType, KnowledgeFSUpgradeModelChoice] = {}
+            rows = session.scalars(
+                select(TenantDefaultModel).where(
+                    TenantDefaultModel.tenant_id == ref.tenant_id,
+                    TenantDefaultModel.model_type.in_((ModelType.TEXT_EMBEDDING, ModelType.RERANK, ModelType.LLM)),
+                )
+            )
+            for row in rows:
+                choice = _upgrade_model_choice(row.provider_name, row.model_name)
+                if choice is not None:
+                    defaults[row.model_type] = choice
+            retrieval = dataset.retrieval_model if isinstance(dataset.retrieval_model, Mapping) else {}
+            reranking = retrieval.get("reranking_model") or {}
+            if not isinstance(reranking, Mapping):
+                reranking = {}
+            return str(dataset.provider or ""), KnowledgeFSUpgradeModelPreferences(
+                embedding=_upgrade_model_choice(dataset.embedding_model_provider, dataset.embedding_model),
+                rerank=_upgrade_model_choice(
+                    reranking.get("reranking_provider_name"),
+                    reranking.get("reranking_model_name"),
+                ),
+                defaults=defaults,
+            )
 
     def list_datasets(
         self,

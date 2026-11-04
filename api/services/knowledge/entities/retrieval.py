@@ -2,13 +2,13 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel, Field, JsonValue
 
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.nodes.llm.entities import ModelConfig
+from libs.datetime_utils import Timing
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.retrieval_settings import RerankingModelDict, WeightsDict
 
@@ -105,7 +105,7 @@ class RetrievedTraceDocument:
 @dataclass(frozen=True, slots=True)
 class KnowledgeRetrievalTrace:
     documents: tuple[RetrievedTraceDocument, ...]
-    timer: Mapping[str, datetime | None]
+    timer: Timing
 
 
 @dataclass(frozen=True, slots=True)

@@ -57,7 +57,7 @@ class DatasetCollectionBindingTestDataFactory:
 class TestGetOrCreateDatasetCollectionBinding:
     """Exercise repository retrieval and creation for collection bindings."""
 
-    def test_get_dataset_collection_binding_existing_binding_success(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_existing_binding_success(self, db_session_with_containers: Session) -> None:
         """
         Test successful retrieval of an existing collection binding.
 
@@ -89,7 +89,9 @@ class TestGetOrCreateDatasetCollectionBinding:
         assert result.id == existing_binding.id
         assert result.collection_name == "existing-collection"
 
-    def test_get_dataset_collection_binding_create_new_binding_success(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_create_new_binding_success(
+        self, db_session_with_containers: Session
+    ) -> None:
         """
         Test successful creation of a new collection binding when none exists.
 
@@ -116,7 +118,9 @@ class TestGetOrCreateDatasetCollectionBinding:
         assert result.type == collection_type
         assert result.collection_name is not None
 
-    def test_get_dataset_collection_binding_different_collection_type(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_different_collection_type(
+        self, db_session_with_containers: Session
+    ) -> None:
         """Test get_dataset_collection_binding with different collection type."""
         # Arrange
         provider_name = "openai"
@@ -136,7 +140,7 @@ class TestGetOrCreateDatasetCollectionBinding:
         assert result.provider_name == provider_name
         assert result.model_name == model_name
 
-    def test_get_dataset_collection_binding_default_collection_type(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_default_collection_type(self, db_session_with_containers: Session) -> None:
         """Test get_dataset_collection_binding with default collection type parameter."""
         # Arrange
         provider_name = "openai"
@@ -156,7 +160,7 @@ class TestGetOrCreateDatasetCollectionBinding:
 
     def test_get_dataset_collection_binding_different_provider_model_combination(
         self, db_session_with_containers: Session
-    ):
+    ) -> None:
         """Test get_dataset_collection_binding with various provider/model combinations."""
         # Arrange
         combinations = [
@@ -185,7 +189,7 @@ class TestGetOrCreateDatasetCollectionBinding:
 class TestGetDatasetCollectionBinding:
     """Exercise repository lookup by binding ID and collection type."""
 
-    def test_get_dataset_collection_binding_by_id_and_type_success(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_by_id_and_type_success(self, db_session_with_containers: Session) -> None:
         """Test successful retrieval of collection binding by ID and type."""
         # Arrange
         binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(
@@ -211,7 +215,7 @@ class TestGetDatasetCollectionBinding:
         assert result.collection_name == "test-collection"
         assert result.type == CollectionBindingType.DATASET
 
-    def test_get_dataset_collection_binding_by_id_and_type_not_found(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_by_id_and_type_not_found(self, db_session_with_containers: Session) -> None:
         """Test lookup when a collection binding does not exist."""
         # Arrange
         non_existent_id = str(uuid4())
@@ -228,7 +232,7 @@ class TestGetDatasetCollectionBinding:
 
     def test_get_dataset_collection_binding_by_id_and_type_different_collection_type(
         self, db_session_with_containers: Session
-    ):
+    ) -> None:
         """Test retrieval by ID and type with different collection type."""
         # Arrange
         binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(
@@ -253,7 +257,7 @@ class TestGetDatasetCollectionBinding:
 
     def test_get_dataset_collection_binding_by_id_and_type_default_collection_type(
         self, db_session_with_containers: Session
-    ):
+    ) -> None:
         """Test retrieval by ID with default collection type."""
         # Arrange
         binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(
@@ -272,7 +276,9 @@ class TestGetDatasetCollectionBinding:
         assert result.id == binding.id
         assert result.type == CollectionBindingType.DATASET
 
-    def test_get_dataset_collection_binding_by_id_and_type_wrong_type(self, db_session_with_containers: Session):
+    def test_get_dataset_collection_binding_by_id_and_type_wrong_type(
+        self, db_session_with_containers: Session
+    ) -> None:
         """Test lookup when a binding exists under another collection type."""
         # Arrange
         binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(

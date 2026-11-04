@@ -6,7 +6,7 @@ import threading
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Literal, Protocol
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -14,7 +14,6 @@ from pydantic import TypeAdapter
 
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelManager
-from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -26,6 +25,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from libs.datetime_utils import Timing, measure_time
 from services.errors.knowledge_retrieval import (
     InvalidModelTypeError,
     ModelCredentialsNotInitializedError,
@@ -74,7 +74,7 @@ class CandidateSearchResult:
     candidates: tuple[Document, ...]
     top_k: int
     queried_dataset_ids: tuple[str, ...]
-    timer: Mapping[str, Any]
+    timer: Timing | None
     usage: LLMUsage
 
 
@@ -270,7 +270,7 @@ class CandidateSearch:
         metadata_condition: MetadataFilteringCondition | None,
     ) -> CandidateSearchResult:
         if request.metadata_filtering_mode != "disabled" and dataset.provider != "external" and document_filter is None:
-            return self._result([], request.top_k, (), {}, LLMUsage.empty_usage())
+            return self._result([], request.top_k, (), None, LLMUsage.empty_usage())
         model = self._retrieval_model(dataset)
         configured_top_k = model.get("top_k", 4)
         top_k = (
@@ -302,7 +302,7 @@ class CandidateSearch:
         routing_usage: LLMUsage,
     ) -> CandidateSearchResult:
         if request.metadata_filtering_mode != "disabled" and dataset.provider != "external" and document_filter is None:
-            return self._result([], 0, (), {}, routing_usage)
+            return self._result([], 0, (), None, routing_usage)
         model = self._retrieval_model(dataset)
         if dataset.provider == "external":
             config = ExternalRetrievalConfig.from_mapping(dataset.retrieval_model)
@@ -337,7 +337,7 @@ class CandidateSearch:
         unmodified, and the returned candidates carry the aggregate usage and timing data.
         """
         if not datasets:
-            return self._result([], request.top_k, (), {}, LLMUsage.empty_usage())
+            return self._result([], request.top_k, (), None, LLMUsage.empty_usage())
         weights = request.weights
         if request.reranking_enable and request.reranking_mode == RerankMode.WEIGHTED_SCORE and weights is None:
             raise ValueError("weights is required for weighted score reranking")
@@ -750,13 +750,13 @@ class CandidateSearch:
         documents: Sequence[Document],
         top_k: int,
         queried_dataset_ids: Sequence[str],
-        timer: Mapping[str, Any],
+        timer: Timing | None,
         usage: LLMUsage,
     ) -> CandidateSearchResult:
         return CandidateSearchResult(
             candidates=tuple(documents),
             top_k=top_k,
             queried_dataset_ids=tuple(queried_dataset_ids),
-            timer=dict(timer),
+            timer=timer,
             usage=usage,
         )

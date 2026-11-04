@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.workflow.file_reference import build_file_reference
 from enums.creator import CreatorUserRole
 from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetProcessRule, Document
@@ -262,15 +263,26 @@ def test_process_rule_preserves_null_and_legacy_delimiter(
     assert result["rules"] == rules
 
 
+@pytest.mark.parametrize(
+    ("source_type", "source_info"),
+    [
+        (DataSourceType.UPLOAD_FILE, {"upload_file_id": "upload-1"}),
+        (DataSourceType.LOCAL_FILE, {"real_file_id": "upload-1"}),
+        (DataSourceType.LOCAL_FILE, {"related_id": "upload-1"}),
+        (DataSourceType.LOCAL_FILE, {"reference": build_file_reference(record_id="upload-1")}),
+    ],
+)
 def test_download_url_resolves_scoped_upload_file(
     operations: SQLAlchemyDocumentOperations,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    source_type: DataSourceType,
+    source_info: dict[str, str],
 ) -> None:
     with sqlite_session_factory.begin() as session:
         document = session.get_one(Document, "document-1")
-        document.data_source_type = DataSourceType.UPLOAD_FILE
-        document.data_source_info = json.dumps({"upload_file_id": "upload-1"})
+        document.data_source_type = source_type
+        document.data_source_info = json.dumps(source_info)
         session.add(
             make_upload_file(file_id="upload-1", tenant_id="tenant-1", name="document.txt", created_by="actor-1")
         )
@@ -285,6 +297,36 @@ def test_download_url_resolves_scoped_upload_file(
 
     assert operations.get_download_url(REF.document("document-1")) == "https://files.example/document"
     assert signed_ids == ["upload-1"]
+    assert operations._download_uploads(REF, ["document-1"])["document-1"].id == "upload-1"
+
+
+@pytest.mark.parametrize(
+    ("source_type", "source_info", "file_tenant_id"),
+    [
+        (DataSourceType.LOCAL_FILE, {}, "tenant-1"),
+        (DataSourceType.LOCAL_FILE, {"real_file_id": "upload-1"}, "other-tenant"),
+        (DataSourceType.NOTION_IMPORT, {"real_file_id": "upload-1"}, "tenant-1"),
+    ],
+)
+def test_download_url_rejects_missing_foreign_or_non_file_source(
+    operations: SQLAlchemyDocumentOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    source_type: DataSourceType,
+    source_info: dict[str, str],
+    file_tenant_id: str,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        document = session.get_one(Document, "document-1")
+        document.data_source_type = source_type
+        document.data_source_info = json.dumps(source_info)
+        session.add(
+            make_upload_file(file_id="upload-1", tenant_id=file_tenant_id, name="document.txt", created_by="actor-1")
+        )
+
+    with pytest.raises(DocumentNotFoundError):
+        operations.get_download_url(REF.document("document-1"))
+    with pytest.raises(DocumentNotFoundError):
+        operations._download_uploads(REF, ["document-1"])
 
 
 @dataclass(frozen=True)

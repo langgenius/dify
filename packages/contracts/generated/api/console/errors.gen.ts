@@ -371,6 +371,7 @@ export { post18Errors as 'POST /knowledge-fs/spaces/{control_space_id}/query-str
 export { post18Errors as 'POST /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run' } from './rag/errors.gen.ts'
 export { post19Errors as 'POST /agent/{agent_id}/trace' } from './agent/errors.gen.ts'
 export { post19Errors as 'POST /apps/{app_id}/audio-to-text' } from './apps/errors.gen.ts'
+export { post19Errors as 'POST /datasets/{dataset_id}/knowledge-fs-upgrades' } from './datasets/errors.gen.ts'
 export { post19Errors as 'POST /knowledge-fs/spaces/{control_space_id}/research-tasks/plan' } from './knowledge-fs/errors.gen.ts'
 export { post19Errors as 'POST /rag/pipelines/{pipeline_id}/workflows/published/run' } from './rag/errors.gen.ts'
 export { post20Errors as 'POST /agent/{agent_id}/trace-config' } from './agent/errors.gen.ts'

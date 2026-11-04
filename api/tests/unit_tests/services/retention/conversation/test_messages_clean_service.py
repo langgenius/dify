@@ -1,10 +1,10 @@
 import datetime
 import math
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any, TypedDict
+from typing import TypedDict
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,6 +24,8 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 from services.retention.conversation import messages_clean_service as messages_clean_service_module
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
@@ -417,10 +419,12 @@ def make_simple_message(msg_id: str, app_id: str) -> SimpleMessage:
     return SimpleMessage(id=msg_id, app_id=app_id, created_at=datetime.datetime(2024, 1, 1))
 
 
-def make_plan_provider(tenant_plans: dict[str, Any]) -> MagicMock:
-    """Helper to create a mock plan_provider that returns the given tenant_plans."""
-    provider = MagicMock()
-    provider.return_value = tenant_plans
+def make_plan_provider(
+    tenant_plans: dict[str, SubscriptionPlanItem],
+) -> Callable[[Sequence[str]], dict[str, SubscriptionPlanItem]]:
+    def provider(_tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlanItem]:
+        return tenant_plans
+
     return provider
 
 
@@ -433,14 +437,14 @@ class TestMessagesCleanServiceCases:
         GRACEFUL_PERIOD_DAYS = 8
         GRACEFUL_PERIOD_SECONDS = GRACEFUL_PERIOD_DAYS * 24 * 60 * 60
 
-        def test_missing_tenant_mapping_excluded(self):
+        def test_missing_tenant_mapping_excluded(self) -> None:
             """Test that messages with missing app-to-tenant mapping are excluded."""
             # Arrange
             messages = [
                 make_simple_message("msg1", "app1"),
                 make_simple_message("msg2", "app2"),
             ]
-            app_to_tenant = {}  # No mapping
+            app_to_tenant: dict[str, str] = {}  # No mapping
             tenant_plans = {"tenant1": builders.plan_item("sandbox", -1)}
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -456,7 +460,7 @@ class TestMessagesCleanServiceCases:
             # Assert
             assert list(result) == []
 
-        def test_missing_tenant_plan_excluded(self):
+        def test_missing_tenant_plan_excluded(self) -> None:
             """Test that messages with missing tenant plan are excluded (safe default)."""
             # Arrange
             messages = [
@@ -464,7 +468,7 @@ class TestMessagesCleanServiceCases:
                 make_simple_message("msg2", "app2"),
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2"}
-            tenant_plans = {}  # No plans
+            tenant_plans: dict[str, SubscriptionPlanItem] = {}  # No plans
             plan_provider = make_plan_provider(tenant_plans)
 
             policy = BillingSandboxPolicy(
@@ -479,7 +483,7 @@ class TestMessagesCleanServiceCases:
             # Assert
             assert list(result) == []
 
-        def test_non_sandbox_plan_excluded(self):
+        def test_non_sandbox_plan_excluded(self) -> None:
             """Test that messages from non-sandbox plans (PROFESSIONAL/TEAM) are excluded."""
             # Arrange
             messages = [
@@ -507,7 +511,7 @@ class TestMessagesCleanServiceCases:
             # Assert - only msg3 (sandbox tenant) should be included
             assert set(result) == {"msg3"}
 
-        def test_whitelist_skip(self):
+        def test_whitelist_skip(self) -> None:
             """Test that whitelisted tenants are excluded even if sandbox + expired."""
             # Arrange
             messages = [
@@ -537,7 +541,7 @@ class TestMessagesCleanServiceCases:
             # Assert - only msg2 should be included
             assert set(result) == {"msg2"}
 
-        def test_no_previous_subscription_included(self):
+        def test_no_previous_subscription_included(self) -> None:
             """Test that messages with expiration_date=-1 (no previous subscription) are included."""
             # Arrange
             messages = [
@@ -563,7 +567,7 @@ class TestMessagesCleanServiceCases:
             # Assert - all messages should be included
             assert set(result) == {"msg1", "msg2"}
 
-        def test_within_grace_period_excluded(self):
+        def test_within_grace_period_excluded(self) -> None:
             """Test that messages within grace period are excluded."""
             # Arrange
             now = self.CURRENT_TIMESTAMP
@@ -596,7 +600,7 @@ class TestMessagesCleanServiceCases:
             # Assert - all within 8-day grace period, none should be included
             assert list(result) == []
 
-        def test_exactly_at_boundary_excluded(self):
+        def test_exactly_at_boundary_excluded(self) -> None:
             """Test that messages exactly at grace period boundary are excluded (code uses >)."""
             # Arrange
             now = self.CURRENT_TIMESTAMP
@@ -621,7 +625,7 @@ class TestMessagesCleanServiceCases:
             # Assert - exactly at boundary (==) should be excluded (code uses >)
             assert list(result) == []
 
-        def test_beyond_grace_period_included(self):
+        def test_beyond_grace_period_included(self) -> None:
             """Test that messages beyond grace period are included."""
             # Arrange
             now = self.CURRENT_TIMESTAMP
@@ -651,7 +655,7 @@ class TestMessagesCleanServiceCases:
             # Assert - both beyond grace period, should be included
             assert set(result) == {"msg1", "msg2"}
 
-        def test_empty_messages_returns_empty(self):
+        def test_empty_messages_returns_empty(self) -> None:
             """Test that empty messages returns empty list."""
             # Arrange
             messages: list[SimpleMessage] = []
@@ -670,7 +674,7 @@ class TestMessagesCleanServiceCases:
             # Assert
             assert list(result) == []
 
-        def test_plan_provider_called_with_correct_tenant_ids(self):
+        def test_plan_provider_called_with_correct_tenant_ids(self) -> None:
             """Test that plan_provider is called with correct tenant_ids."""
             # Arrange
             messages = [
@@ -679,7 +683,11 @@ class TestMessagesCleanServiceCases:
                 make_simple_message("msg3", "app3"),
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2", "app3": "tenant1"}  # tenant1 appears twice
-            plan_provider = make_plan_provider({})
+            calls: list[list[str]] = []
+
+            def plan_provider(tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlanItem]:
+                calls.append(list(tenant_ids))
+                return {}
 
             policy = BillingSandboxPolicy(
                 plan_provider=plan_provider,
@@ -691,11 +699,12 @@ class TestMessagesCleanServiceCases:
             policy.filter_message_ids(messages, app_to_tenant)
 
             # Assert - plan_provider should be called once with unique tenant_ids
-            plan_provider.assert_called_once()
-            called_tenant_ids = set(plan_provider.call_args[0][0])
+            assert len(calls) == 1
+            assert len(calls[0]) == 2
+            called_tenant_ids = set(calls[0])
             assert called_tenant_ids == {"tenant1", "tenant2"}
 
-        def test_complex_mixed_scenario(self):
+        def test_complex_mixed_scenario(self) -> None:
             """Test complex scenario with mixed plans, expirations, whitelist, and missing mappings."""
             # Arrange
             now = self.CURRENT_TIMESTAMP
@@ -748,7 +757,7 @@ class TestMessagesCleanServiceCases:
     class TestBillingDisabledPolicyFilterMessageIds:
         """Unit tests for BillingDisabledPolicy.filter_message_ids method."""
 
-        def test_returns_all_message_ids(self):
+        def test_returns_all_message_ids(self) -> None:
             """Test that all message IDs are returned (order-preserving)."""
             # Arrange
             messages = [
@@ -766,7 +775,7 @@ class TestMessagesCleanServiceCases:
             # Assert - all message IDs returned in order
             assert list(result) == ["msg1", "msg2", "msg3"]
 
-        def test_ignores_app_to_tenant(self):
+        def test_ignores_app_to_tenant(self) -> None:
             """Test that app_to_tenant mapping is ignored."""
             # Arrange
             messages = [
@@ -783,7 +792,7 @@ class TestMessagesCleanServiceCases:
             # Assert - all message IDs still returned
             assert list(result) == ["msg1", "msg2"]
 
-        def test_empty_messages_returns_empty(self):
+        def test_empty_messages_returns_empty(self) -> None:
             """Test that empty messages returns empty list."""
             # Arrange
             messages: list[SimpleMessage] = []
@@ -800,7 +809,7 @@ class TestMessagesCleanServiceCases:
     class TestCreateMessageCleanPolicy:
         """Unit tests for create_message_clean_policy factory function."""
 
-        def test_non_cloud_edition_returns_billing_disabled_policy(self, config_overrides):
+        def test_non_cloud_edition_returns_billing_disabled_policy(self, config_overrides: Callable[..., None]) -> None:
             """Test that the Community edition returns BillingDisabledPolicy."""
             # Arrange
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
@@ -811,21 +820,30 @@ class TestMessagesCleanServiceCases:
             # Assert
             assert isinstance(policy, BillingDisabledPolicy)
 
-        @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
-        def test_cloud_edition_policy_has_correct_internals(self, mock_billing_service, config_overrides):
+        def test_cloud_edition_policy_has_correct_internals(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ) -> None:
             """Test that BillingSandboxPolicy is created with correct internal values."""
             # Arrange
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             whitelist = ["tenant1", "tenant2"]
-            mock_billing_service.get_expired_subscription_cleanup_whitelist.return_value = whitelist
-            mock_plan_provider = MagicMock()
-            mock_billing_service.get_plan_bulk_with_cache = mock_plan_provider
+            whitelist_calls: list[None] = []
+
+            def get_whitelist() -> list[str]:
+                whitelist_calls.append(None)
+                return whitelist
+
+            mock_plan_provider = make_plan_provider({})
+            monkeypatch.setattr(
+                BillingService, "get_expired_subscription_cleanup_whitelist", staticmethod(get_whitelist)
+            )
+            monkeypatch.setattr(BillingService, "get_plan_bulk_with_cache", staticmethod(mock_plan_provider))
 
             # Act
             policy = create_message_clean_policy(graceful_period_days=14, current_timestamp=1234567)
 
             # Assert
-            mock_billing_service.get_expired_subscription_cleanup_whitelist.assert_called_once()
+            assert len(whitelist_calls) == 1
             assert isinstance(policy, BillingSandboxPolicy)
             assert policy._graceful_period_days == 14
             assert list(policy._tenant_whitelist) == whitelist
@@ -835,7 +853,7 @@ class TestMessagesCleanServiceCases:
     class TestMessagesCleanServiceFromTimeRange:
         """Unit tests for MessagesCleanService.from_time_range factory method."""
 
-        def test_start_from_end_before_raises_value_error(self):
+        def test_start_from_end_before_raises_value_error(self) -> None:
             """Test that start_from == end_before raises ValueError."""
             policy = BillingDisabledPolicy()
 
@@ -862,7 +880,7 @@ class TestMessagesCleanServiceCases:
                     end_before=end_before,
                 )
 
-        def test_batch_size_raises_value_error(self):
+        def test_batch_size_raises_value_error(self) -> None:
             """Test that batch_size=0 raises ValueError."""
             # Arrange
             start_from = datetime.datetime(2024, 1, 1)
@@ -891,7 +909,7 @@ class TestMessagesCleanServiceCases:
                     batch_size=-100,
                 )
 
-        def test_valid_params_creates_instance(self):
+        def test_valid_params_creates_instance(self) -> None:
             """Test that valid parameters create a correctly configured instance."""
             # Arrange
             start_from = datetime.datetime(2024, 1, 1, 0, 0, 0)
@@ -917,7 +935,7 @@ class TestMessagesCleanServiceCases:
             assert service._batch_size == batch_size
             assert service._dry_run == dry_run
 
-        def test_default_params(self):
+        def test_default_params(self) -> None:
             """Test that default parameters are applied correctly."""
             # Arrange
             start_from = datetime.datetime(2024, 1, 1)
@@ -935,7 +953,7 @@ class TestMessagesCleanServiceCases:
             assert service._batch_size == 1000  # default
             assert service._dry_run is False  # default
 
-        def test_explicit_task_label(self):
+        def test_explicit_task_label(self) -> None:
             start_from = datetime.datetime(2024, 1, 1)
             end_before = datetime.datetime(2024, 1, 2)
             policy = BillingDisabledPolicy()
@@ -952,7 +970,7 @@ class TestMessagesCleanServiceCases:
     class TestMessagesCleanServiceFromDays:
         """Unit tests for MessagesCleanService.from_days factory method."""
 
-        def test_days_raises_value_error(self):
+        def test_days_raises_value_error(self) -> None:
             """Test that days < 0 raises ValueError."""
             # Arrange
             policy = BillingDisabledPolicy()
@@ -970,7 +988,7 @@ class TestMessagesCleanServiceCases:
             # Assert
             assert service._end_before == fixed_now
 
-        def test_batch_size_raises_value_error(self):
+        def test_batch_size_raises_value_error(self) -> None:
             """Test that batch_size=0 raises ValueError."""
             # Arrange
             policy = BillingDisabledPolicy()
@@ -983,7 +1001,7 @@ class TestMessagesCleanServiceCases:
             with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
                 MessagesCleanService.from_days(policy=policy, days=30, batch_size=-500)
 
-        def test_valid_params_creates_instance(self):
+        def test_valid_params_creates_instance(self) -> None:
             """Test that valid parameters create a correctly configured instance."""
             # Arrange
             policy = BillingDisabledPolicy()
@@ -1011,7 +1029,7 @@ class TestMessagesCleanServiceCases:
             assert service._batch_size == batch_size
             assert service._dry_run == dry_run
 
-        def test_default_params(self):
+        def test_default_params(self) -> None:
             """Test that default parameters are applied correctly."""
             # Arrange
             policy = BillingDisabledPolicy()
@@ -1032,7 +1050,7 @@ class TestMessagesCleanServiceCases:
     class TestMessagesCleanServiceRun:
         """Unit tests for MessagesCleanService.run instrumentation behavior."""
 
-        def test_run_records_completion_metrics_on_success(self):
+        def test_run_records_completion_metrics_on_success(self) -> None:
             # Arrange
             service = MessagesCleanService(
                 policy=BillingDisabledPolicy(),
@@ -1059,7 +1077,7 @@ class TestMessagesCleanServiceCases:
             assert len(completion_calls) == 1
             assert completion_calls[0]["status"] == "success"
 
-        def test_run_records_completion_metrics_on_failure(self):
+        def test_run_records_completion_metrics_on_failure(self) -> None:
             # Arrange
             service = MessagesCleanService(
                 policy=BillingDisabledPolicy(),

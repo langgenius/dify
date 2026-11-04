@@ -13,7 +13,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: createAccountProfileQueryWrapper() })
 
 describe('Metadata date field', () => {
-  it('keeps a read-only metadata date focusable without editing or clearing it', async () => {
+  it('keeps a read-only metadata date focusable and browsable without editing or clearing it', async () => {
     const user = userEvent.setup()
     const changed = vi.fn()
     render(
@@ -29,7 +29,8 @@ describe('Metadata date field', () => {
     await user.tab()
     expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('grid')).toHaveAttribute('aria-readonly', 'true')
+    await user.keyboard('{Escape}')
     expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
     expect(changed).not.toHaveBeenCalled()
   })

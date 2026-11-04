@@ -253,8 +253,20 @@ class AdmittedAccount:
     status: str
 
 
+@pytest.fixture(scope="module")
+def console_app() -> Flask:
+    """Build the console namespace once; each test installs its own application services."""
+    app = Flask(__name__)
+    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
+    api = ExternalApi(app)
+    api.error_handlers = console_api.error_handlers.copy()
+    api.add_namespace(console_ns, path="/console/api")
+    return app
+
+
 @pytest.fixture
 def collaborators(
+    console_app: Flask,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
 ) -> ControllerCollaborators:
@@ -264,12 +276,6 @@ def collaborators(
         RBAC_ENABLED=False,
         CONSOLE_API_URL="https://console-api.example.com",
     )
-    app = Flask(__name__)
-    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
-    api = ExternalApi(app)
-    api.error_handlers = console_api.error_handlers.copy()
-    api.add_namespace(console_ns, path="/console/api")
-
     account = AdmittedAccount(id=ACCOUNT_ID, role="owner", status="active")
     account_with_tenant = AccountWithTenant(account=cast("Account", account), tenant_id=TENANT_ID)
     monkeypatch.setattr(
@@ -324,7 +330,7 @@ def collaborators(
     )
     estimates = RecordingEstimateService()
     tasks = create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True)
-    app.extensions["application_services"] = ApplicationServiceRegistry(
+    services = ApplicationServiceRegistry(
         data_sources=DataSourceApplicationServices(
             bindings=DataSourceBindingApplicationService(bindings=bindings),
             notion_imports=NotionImportApplicationService(
@@ -343,8 +349,9 @@ def collaborators(
             indexing_estimates=estimates,
         ),
     )
+    monkeypatch.setitem(console_app.extensions, "application_services", services)
     return ControllerCollaborators(
-        client=app.test_client(),
+        client=console_app.test_client(),
         account=account,
         bindings=bindings,
         notion_source=notion_source,

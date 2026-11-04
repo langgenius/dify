@@ -218,7 +218,6 @@ class SegmentApi(DatasetApiResource):
         args = query_params_from_request(
             SegmentListQuery,
             list_fields=("status",),
-            use_defaults_for_malformed_ints=True,
         )
         try:
             result = application_services().knowledge.segments.list_segments_requiring_embedding_model(
@@ -438,7 +437,7 @@ class ChildChunkApi(DatasetApiResource):
         200, "Child chunks retrieved successfully", service_api_ns.models[ChildChunkListResponse.__name__]
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
+        args = query_params_from_request(ChildChunkListQuery)
         try:
             result = application_services().knowledge.segments.list_child_chunks(
                 workspace_id=request_context.active_workspace_id,

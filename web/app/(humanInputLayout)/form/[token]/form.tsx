@@ -65,6 +65,7 @@ const FormContent = () => {
   if (success) {
     return (
       <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
         iconClassName="i-ri-checkbox-circle-fill text-text-success"
         title={t(($) => $['humanInput.thanks'], { ns: 'share' })}
         subtitle={t(($) => $['humanInput.recorded'], { ns: 'share' })}
@@ -78,6 +79,7 @@ const FormContent = () => {
   if (expired) {
     return (
       <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
         iconClassName="i-ri-information-2-fill text-text-accent"
         title={t(($) => $['humanInput.sorry'], { ns: 'share' })}
         subtitle={t(($) => $['humanInput.expired'], { ns: 'share' })}
@@ -89,6 +91,7 @@ const FormContent = () => {
   if (submitted) {
     return (
       <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
         iconClassName="i-ri-information-2-fill text-text-accent"
         title={t(($) => $['humanInput.sorry'], { ns: 'share' })}
         subtitle={t(($) => $['humanInput.completed'], { ns: 'share' })}
@@ -100,6 +103,7 @@ const FormContent = () => {
   if (rateLimitExceeded) {
     return (
       <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
         iconClassName="i-ri-error-warning-fill text-text-destructive"
         title={t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })}
       />
@@ -109,6 +113,7 @@ const FormContent = () => {
   if (!formData) {
     return (
       <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
         iconClassName="i-ri-error-warning-fill text-text-destructive"
         title={t(($) => $['humanInput.formNotFound'], { ns: 'share' })}
       />

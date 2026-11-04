@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import Mock
 
 import httpx
@@ -277,14 +278,14 @@ def _stub_workflow_app_logs(monkeypatch: pytest.MonkeyPatch) -> _WorkflowAppLogs
 class TestWorkflowRunPayload:
     """Test suite for WorkflowRunPayload Pydantic model."""
 
-    def test_payload_with_required_inputs(self):
+    def test_payload_with_required_inputs(self) -> None:
         """Test payload with required inputs field."""
         payload = WorkflowRunPayload(inputs={"key": "value"})
         assert payload.inputs == {"key": "value"}
         assert payload.files is None
         assert payload.response_mode is None
 
-    def test_payload_with_all_fields(self):
+    def test_payload_with_all_fields(self) -> None:
         """Test payload with all fields populated."""
         files = [{"type": "image", "url": "http://example.com/img.png"}]
         payload = WorkflowRunPayload(inputs={"param1": "value1", "param2": 123}, files=files, response_mode="streaming")
@@ -292,12 +293,12 @@ class TestWorkflowRunPayload:
         assert payload.files == files
         assert payload.response_mode == "streaming"
 
-    def test_payload_response_mode_blocking(self):
+    def test_payload_response_mode_blocking(self) -> None:
         """Test payload with blocking response mode."""
         payload = WorkflowRunPayload(inputs={}, response_mode="blocking")
         assert payload.response_mode == "blocking"
 
-    def test_payload_with_complex_inputs(self):
+    def test_payload_with_complex_inputs(self) -> None:
         """Test payload with nested complex inputs."""
         complex_inputs = {
             "config": {"nested": {"value": 123}},
@@ -307,12 +308,12 @@ class TestWorkflowRunPayload:
         payload = WorkflowRunPayload(inputs=complex_inputs)
         assert payload.inputs == complex_inputs
 
-    def test_payload_with_empty_inputs(self):
+    def test_payload_with_empty_inputs(self) -> None:
         """Test payload with empty inputs dict."""
         payload = WorkflowRunPayload(inputs={})
         assert payload.inputs == {}
 
-    def test_payload_with_multiple_files(self):
+    def test_payload_with_multiple_files(self) -> None:
         """Test payload with multiple file attachments."""
         files = [
             {"type": "image", "url": "http://example.com/img1.png"},
@@ -327,7 +328,7 @@ class TestWorkflowRunPayload:
 class TestWorkflowLogQuery:
     """Test suite for WorkflowLogQuery Pydantic model."""
 
-    def test_query_with_defaults(self):
+    def test_query_with_defaults(self) -> None:
         """Test query with default values."""
         query = WorkflowLogQuery()
         assert query.keyword is None
@@ -339,7 +340,7 @@ class TestWorkflowLogQuery:
         assert query.page == 1
         assert query.limit == 20
 
-    def test_query_with_all_filters(self):
+    def test_query_with_all_filters(self) -> None:
         """Test query with all filter fields populated."""
         query = WorkflowLogQuery(
             keyword="search term",
@@ -361,12 +362,12 @@ class TestWorkflowLogQuery:
         assert query.limit == 50
 
     @pytest.mark.parametrize("status", ["succeeded", "failed", "stopped"])
-    def test_query_valid_status_values(self, status):
+    def test_query_valid_status_values(self, status: Literal["succeeded", "failed", "stopped"]) -> None:
         """Test all valid status values."""
         query = WorkflowLogQuery(status=status)
         assert query.status == status
 
-    def test_query_pagination_limits(self):
+    def test_query_pagination_limits(self) -> None:
         """Test query pagination boundaries."""
         query_min_page = WorkflowLogQuery(page=1)
         assert query_min_page.page == 1
@@ -380,12 +381,12 @@ class TestWorkflowLogQuery:
         query_max_limit = WorkflowLogQuery(limit=100)
         assert query_max_limit.limit == 100
 
-    def test_query_with_keyword_search(self):
+    def test_query_with_keyword_search(self) -> None:
         """Test query with keyword filter."""
         query = WorkflowLogQuery(keyword="workflow execution")
         assert query.keyword == "workflow execution"
 
-    def test_query_with_date_filters(self):
+    def test_query_with_date_filters(self) -> None:
         """Test query with before/after date filters."""
         query = WorkflowLogQuery(created_at__before="2024-12-31T23:59:59Z", created_at__after="2024-01-01T00:00:00Z")
         assert query.created_at__before == "2024-12-31T23:59:59Z"
@@ -393,7 +394,7 @@ class TestWorkflowLogQuery:
 
 
 class TestWorkflowRunResponse:
-    def test_validates_workflow_run_object_shape_and_clears_paused_outputs(self):
+    def test_validates_workflow_run_object_shape_and_clears_paused_outputs(self) -> None:
         run = _make_workflow_run(run_id="run-paused")
         run.status = WorkflowExecutionStatus.PAUSED
         run.outputs = json.dumps({"should": "not leak"})
@@ -419,7 +420,7 @@ class TestWorkflowRunRepository:
     """Test workflow run repository interface."""
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
-    def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session):
+    def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session) -> None:
         """Test repository lookup against committed tenant-scoped state."""
         run = _make_workflow_run(run_id=str(uuid.uuid4()))
         sqlite_session.add(run)
@@ -895,7 +896,7 @@ class TestWorkflowRunDetailApiGet:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
         sqlite_session: Session,
-    ):
+    ) -> None:
         """Test successful workflow run detail retrieval."""
         run = _make_workflow_run(
             run_id="run-1",
@@ -929,7 +930,7 @@ class TestWorkflowRunDetailApiGet:
             "elapsed_time": 0.1,
         }
 
-    def test_get_workflow_run_wrong_app_mode(self, app: Flask):
+    def test_get_workflow_run_wrong_app_mode(self, app: Flask) -> None:
         """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
@@ -952,7 +953,7 @@ class TestWorkflowAppLogApiGet:
         app: Flask,
         workflow_app: App,
         monkeypatch: pytest.MonkeyPatch,
-    ):
+    ) -> None:
         """Test successful workflow log retrieval."""
         _stub_workflow_app_logs(monkeypatch)
 

@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.trace import StatusCode, get_current_span
 
 from core.rag.models.document import Document
+from libs.datetime_utils import Timing
 from services.knowledge.admission.application import DatasetAdmissionLimits
 from services.knowledge.entities.metadata import Condition
 from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest
@@ -207,7 +208,7 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
             "knowledge-retrieval-node"
         ) as node_span,
     ):
-        retrieval.search_multiple(
+        result = retrieval.search_multiple(
             request=_request(retrieval_dataset),
             datasets=[retrieval_dataset],
             document_filters={retrieval_dataset.id: DatasetDocumentFilter(None, None)},
@@ -215,6 +216,8 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
         )
 
     assert observed_trace_ids == [node_span.get_span_context().trace_id]
+    assert isinstance(result.timer, Timing)
+    assert result.timer.ended_at >= result.timer.started_at
 
 
 def test_retriever_thread_exception_sets_error_span_and_is_collected(

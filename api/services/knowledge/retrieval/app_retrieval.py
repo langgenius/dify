@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from dify_trace_sdk.events import DatasetRetrieved
 from pydantic import JsonValue
 
 from core.app.app_config.entities import DatasetEntity
@@ -11,8 +12,6 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceTask
 from core.rag.models.document import Document
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
@@ -122,20 +121,28 @@ def retrieve_app_context(
         hit_callback=hit_callback,
     )
 
-    if result.trace is not None and result.trace.documents and application_generate_entity.trace_manager is not None:
-        application_generate_entity.trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.DATASET_RETRIEVAL_TRACE,
+    trace_scope = application_generate_entity.trace_scope
+    if result.trace is not None and result.trace.documents and trace_scope is not None:
+        trace_scope.emit(
+            DatasetRetrieved(
                 message_id=message_id,
                 documents=[
                     Document(
                         page_content=document.page_content,
                         provider=document.provider,
                         metadata=dict(document.metadata),
+                    ).model_dump(
+                        mode="json",
+                        exclude={
+                            "vector": True,
+                            "children": {"__all__": {"vector"}},
+                            "attachments": {"__all__": {"vector"}},
+                        },
                     )
                     for document in result.trace.documents
                 ],
-                timer=dict(result.trace.timer),
+                started_at=result.trace.timer.started_at,
+                ended_at=result.trace.timer.ended_at,
             )
         )
 

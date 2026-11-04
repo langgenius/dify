@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.workflow.file_reference import resolve_file_record_id
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models import Account
@@ -1534,10 +1535,14 @@ class SQLAlchemyDocumentRepository:
             }
 
     def get_upload_file_ids(self, dataset_ref: DatasetRef, document_ids: Sequence[str]) -> dict[str, str] | None:
-        """Return upload ownership for a complete set of uploaded-file documents.
+        """Return upload ownership for a complete set of file-backed documents.
 
-        ``None`` means at least one requested document is missing, belongs to a
-        different owner, or is not backed by an upload file.
+        ``dataset_ref`` is the required complete tenant/dataset scope. Success
+        returns one upload id for every unique document, including an empty mapping
+        for an empty request. ``None`` means at least one document is missing,
+        foreign-scoped, unsupported, or lacks a valid file reference. Legacy uploads
+        use ``upload_file_id``; converted pipeline documents use their local-file
+        reference. This read does not validate that the UploadFile still exists.
         """
         unique_ids = tuple(dict.fromkeys(document_ids))
         if not unique_ids:
@@ -1554,9 +1559,17 @@ class SQLAlchemyDocumentRepository:
             return None
         result: dict[str, str] = {}
         for document in documents:
-            if str(document.data_source_type) != "upload_file":
+            source_type = str(document.data_source_type)
+            source_info = document.data_source_info_dict
+            if source_type == "upload_file":
+                upload_file_id = source_info.get("upload_file_id")
+            elif source_type == "local_file":
+                reference = (
+                    source_info.get("real_file_id") or source_info.get("related_id") or source_info.get("reference")
+                )
+                upload_file_id = resolve_file_record_id(reference) if isinstance(reference, str) else None
+            else:
                 return None
-            upload_file_id = document.data_source_info_dict.get("upload_file_id")
             if not upload_file_id:
                 return None
             result[document.id] = str(upload_file_id)

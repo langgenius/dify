@@ -1790,6 +1790,7 @@ class TestWorkflowToolEventDeliveryCases:
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 files=build_file_service(session_factory=sqlite_session_factory),
             ),
+            trace_scope=None,
         )
         index = WorkflowRunIndex(())
         index.seed_source(source.app_id, source.workflow_id, ())

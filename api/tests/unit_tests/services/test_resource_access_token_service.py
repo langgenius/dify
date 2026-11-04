@@ -276,3 +276,20 @@ def test_dataset_collection_grant_rejects_token_without_a_usable_binding(
         service.resolve_datasets_for_service_api(token="secret", dataset_id=None)
 
     assert store.usage_calls == []
+
+
+@pytest.mark.parametrize("dataset_id", [None, "dataset"])
+def test_dataset_scope_rejects_inactive_workspace_without_recording_usage(
+    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore, dataset_id: str | None
+) -> None:
+    store.access = ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        False,
+        (BoundResource(ResourceType.KNOWLEDGE, "dataset", True, True),),
+    )
+
+    with pytest.raises(ResourceAccessTokenForbiddenError, match="workspace unavailable"):
+        service.resolve_datasets_for_service_api(token="secret", dataset_id=dataset_id)
+
+    assert store.usage_calls == []

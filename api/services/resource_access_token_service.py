@@ -123,8 +123,15 @@ class ResourceAccessTokenService:
     def resolve_datasets_for_service_api(
         self, *, token: str, dataset_id: str | None
     ) -> ResourceAccessTokenDatasetGrant:
-        """Authorize a dataset route while retaining every usable knowledge binding."""
+        """Authorize a live workspace token and optional requested dataset binding.
+
+        Return every live, enabled knowledge binding for the admitted request.
+        Record usage only after workspace and resource checks succeed; rejected
+        requests preserve the store's usage state.
+        """
         access = self._tokens.access_by_secret(token)
+        if not access.workspace_active:
+            raise ResourceAccessTokenForbiddenError("workspace unavailable")
         knowledge_resources = tuple(
             resource for resource in access.resources if resource.type == ResourceAccessTokenResourceType.KNOWLEDGE
         )

@@ -20,6 +20,7 @@ from enums import DeploymentEdition
 from enums.creator import CreatorUserRole
 from fields.service_api.dataset import DatasetCreatePayload as ServiceDatasetCreatePayload
 from fields.service_api.dataset import DatasetUpdatePayload as ServiceDatasetUpdatePayload
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -41,12 +42,14 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import ApiToken, AppMode, DatasetApiTokenBinding
+from models.provider import TenantDefaultModel
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import (
     SQLAlchemyDatasetRepository,
     SQLAlchemyRagPipelineDatasetUpdates,
 )
+from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeModelPreferences
 from services.enterprise import rbac_service
 from services.enterprise.base import EnterpriseRequest
 from services.knowledge.dataset_access import (
@@ -64,6 +67,7 @@ from services.knowledge.datasets.contracts import (
 from services.knowledge.entities.datasets import DatasetCleanupRecord
 from services.knowledge.entities.model_configuration import EmbeddingModelConfiguration
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge_fs.product_dto import KnowledgeFSUpgradeModelChoice
 from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -230,6 +234,77 @@ def operations(
         members=rbac_domain.rbac.members,
         datasets=mutations,
     )
+
+
+def test_upgrade_model_preferences_are_tenant_scoped_and_tolerate_invalid_legacy_settings(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        row = session.get_one(Dataset, REF.dataset_id)
+        row.provider = "vendor"
+        row.embedding_model_provider = "legacy-provider"
+        row.embedding_model = "legacy-embedding"
+        row.retrieval_model = {
+            "reranking_model": {
+                "reranking_provider_name": "legacy-rerank-provider",
+                "reranking_model_name": "legacy-rerank",
+            }
+        }
+        session.add_all(
+            [
+                TenantDefaultModel(
+                    tenant_id=REF.tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    provider_name="default-embedding-provider",
+                    model_name="default-embedding",
+                ),
+                TenantDefaultModel(
+                    tenant_id=REF.tenant_id,
+                    model_type=ModelType.RERANK,
+                    provider_name="default-rerank-provider",
+                    model_name="default-rerank",
+                ),
+                TenantDefaultModel(
+                    tenant_id=REF.tenant_id,
+                    model_type=ModelType.LLM,
+                    provider_name="default-llm-provider",
+                    model_name="default-llm",
+                ),
+                TenantDefaultModel(
+                    tenant_id="other",
+                    model_type=ModelType.LLM,
+                    provider_name="foreign-provider",
+                    model_name="foreign-model",
+                ),
+            ]
+        )
+
+    provider, preferences = operations.get_upgrade_model_preferences(REF)
+
+    assert provider == "vendor"
+    assert preferences == KnowledgeFSUpgradeModelPreferences(
+        embedding=KnowledgeFSUpgradeModelChoice(provider="legacy-provider", model="legacy-embedding"),
+        rerank=KnowledgeFSUpgradeModelChoice(provider="legacy-rerank-provider", model="legacy-rerank"),
+        defaults={
+            ModelType.TEXT_EMBEDDING: KnowledgeFSUpgradeModelChoice(
+                provider="default-embedding-provider", model="default-embedding"
+            ),
+            ModelType.RERANK: KnowledgeFSUpgradeModelChoice(provider="default-rerank-provider", model="default-rerank"),
+            ModelType.LLM: KnowledgeFSUpgradeModelChoice(provider="default-llm-provider", model="default-llm"),
+        },
+    )
+
+    with sqlite_session_factory.begin() as session:
+        row = session.get_one(Dataset, REF.dataset_id)
+        row.embedding_model_provider = None
+        row.embedding_model = None
+        row.retrieval_model = {"reranking_model": "invalid"}
+
+    _, invalid = operations.get_upgrade_model_preferences(REF)
+    assert invalid.embedding is None
+    assert invalid.rerank is None
+    assert invalid.defaults == preferences.defaults
 
 
 @pytest.fixture

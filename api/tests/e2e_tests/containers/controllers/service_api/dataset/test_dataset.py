@@ -39,6 +39,7 @@ class TestDatasetTagsApiGet:
             response, status = DatasetTagsApi().get(RequestContext("request", None, account.id, tenant.id))
 
         assert status == 200
+        assert isinstance(response, list)
         assert any(item["name"] == "Integration Tag" for item in response)
         assert all(set(item) == {"id", "name", "type", "binding_count"} for item in response)
         assert all(isinstance(item["binding_count"], str) for item in response)

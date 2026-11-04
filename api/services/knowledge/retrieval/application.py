@@ -131,9 +131,9 @@ class KnowledgeRetrievalApplicationService:
         trace = (
             KnowledgeRetrievalTrace(
                 documents=finalized.trace_documents,
-                timer=dict(search_result.timer),
+                timer=search_result.timer,
             )
-            if finalized.trace_documents
+            if finalized.trace_documents and search_result.timer is not None
             else None
         )
         return KnowledgeRetrievalResult(
@@ -170,13 +170,13 @@ class KnowledgeRetrievalApplicationService:
             raise ValueError(f"Unsupported retrieval mode: {request.retrieval_mode}")
         routed = self._candidate_search.route_dataset(request=request, datasets=datasets)
         if routed.dataset_id is None:
-            return CandidateSearchResult((), 0, (), {}, routed.usage)
+            return CandidateSearchResult((), 0, (), None, routed.usage)
         selected = self._repository.get_available_dataset(
             tenant_id=request.tenant_id,
             dataset_id=routed.dataset_id,
         )
         if selected is None or all(selected.id != dataset.id for dataset in datasets):
-            return CandidateSearchResult((), 0, (), {}, routed.usage)
+            return CandidateSearchResult((), 0, (), None, routed.usage)
         selected_filters = self._document_filters(
             request=request,
             datasets=(selected,),

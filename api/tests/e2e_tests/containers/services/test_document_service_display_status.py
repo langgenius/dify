@@ -28,7 +28,7 @@ def _create_document(
     *,
     dataset_id: str,
     tenant_id: str,
-    indexing_status: str,
+    indexing_status: IndexingStatus,
     enabled: bool = True,
     archived: bool = False,
     is_paused: bool = False,
