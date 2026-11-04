@@ -218,6 +218,7 @@ SPECIAL RULES
 - Accept alternative representations permitted by the schema that preserve the intended meaning.
 - Do not penalize parameters injected by the system and omitted from the model-visible schema.
 - Tool execution failure does not by itself prove that arguments were incorrect.
+- Keep each tool-call reason within 500 characters and each rubric criterion reason within 300 characters.
 - The application attaches each assessment's tool call ID and tool reference from the supplied key.
 - The application averages the weighted scores from all assessed tool calls to produce the metric score.
 """
@@ -230,7 +231,7 @@ AGENT_JUDGE_PROMPTS: dict[str, tuple[str, str]] = {
         TOOL_SELECTION_CORRECTNESS_PROMPT,
     ),
     EvaluationMetricName.TOOL_ARGUMENT_CORRECTNESS.value: (
-        "agent.tool_argument_correctness.v3",
+        "agent.tool_argument_correctness.v4",
         TOOL_ARGUMENT_CORRECTNESS_PROMPT,
     ),
 }

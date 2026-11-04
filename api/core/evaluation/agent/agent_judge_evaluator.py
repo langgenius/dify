@@ -30,6 +30,9 @@ _MAX_COLLECTION_ITEMS = 80
 _MAX_TRAJECTORY_STEPS = 80
 _MAX_PAYLOAD_CHARS = 64_000
 _MAX_NESTING_DEPTH = 12
+_TOOL_ARGUMENT_REASON_MAX_CHARS = 500
+_TOOL_ARGUMENT_CRITERION_REASON_MAX_CHARS = 300
+_TRUNCATED_REASON_SUFFIX = "… [truncated]"
 _SENSITIVE_KEY = re.compile(
     r"^(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|credentials?|private[_-]?key)$",
     flags=re.IGNORECASE,
@@ -145,8 +148,39 @@ class ToolCallArgumentAssessment(BaseModel):
 class ToolArgumentJudgeOutput(_JudgeOutputBase):
     """The judge's assessment of one tool call's arguments."""
 
+    reason: str = Field(min_length=1, max_length=_TOOL_ARGUMENT_REASON_MAX_CHARS)
     criteria: ToolArgumentCriteria
     failed_parameter_paths: list[str] = Field(default_factory=list, max_length=50)
+
+    @model_validator(mode="before")
+    @classmethod
+    def truncate_explanations(cls, value: Any) -> Any:
+        if not isinstance(value, Mapping):
+            return value
+        normalized = dict(value)
+        reason = normalized.get("reason")
+        if isinstance(reason, str):
+            normalized["reason"] = _truncate_reason(reason, _TOOL_ARGUMENT_REASON_MAX_CHARS)
+        criteria = normalized.get("criteria")
+        if isinstance(criteria, Mapping):
+            normalized_criteria = dict(criteria)
+            for name, criterion in normalized_criteria.items():
+                if not isinstance(criterion, Mapping):
+                    continue
+                criterion_reason = criterion.get("reason")
+                if isinstance(criterion_reason, str):
+                    normalized_criteria[name] = {
+                        **criterion,
+                        "reason": _truncate_reason(criterion_reason, _TOOL_ARGUMENT_CRITERION_REASON_MAX_CHARS),
+                    }
+            normalized["criteria"] = normalized_criteria
+        return normalized
+
+
+def _truncate_reason(value: str, max_chars: int) -> str:
+    if len(value) <= max_chars:
+        return value
+    return value[: max_chars - len(_TRUNCATED_REASON_SUFFIX)] + _TRUNCATED_REASON_SUFFIX
 
 
 @lru_cache(maxsize=_MAX_COLLECTION_ITEMS)
