@@ -989,7 +989,7 @@ export const zRerankingModel = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
