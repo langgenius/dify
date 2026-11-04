@@ -57,6 +57,8 @@ class NodeOption:
     label: str
     description: str | None
     seed: Mapping[str, Any]
+    # What the option is called besides its label; a keyword finds the option by any of them.
+    names: Sequence[str]
 
 
 @dataclass(frozen=True)
@@ -95,6 +97,7 @@ def _block(node_type: str, node_class: type[Node]) -> NodeOption:
         label=node_type,
         description=None,
         seed=block_seed(node_type, version),
+        names=(node_type,),
     )
 
 
@@ -116,6 +119,7 @@ def _tools(request: _Request) -> Iterable[NodeOption]:
                     label=identity.tool_label,
                     description=localized(tool.description, request.language),
                     seed={"type": node_type, **names, "tool_node_version": TOOL_NODE_VERSION},
+                    names=(identity.provider_name, identity.provider_id, identity.tool_name),
                 )
 
 
@@ -157,6 +161,7 @@ def _agents(request: _Request) -> Iterable[NodeOption]:
                 "title": agent["name"],
                 "agent_binding": {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, "agent_id": agent["id"]},
             },
+            names=(agent["name"],),
         )
 
 
@@ -171,6 +176,7 @@ def _notes(request: _Request) -> Iterable[NodeOption]:
             label=CANVAS_NOTE_TYPE,
             description=_NOTE_DESCRIPTION,
             seed={"type": CANVAS_NOTE_TYPE, "data": data},
+            names=(CANVAS_NOTE_TYPE,),
         )
     ]
 
@@ -207,7 +213,8 @@ class NodeOptionKind(StrEnum):
 def _matches(option: NodeOption, keyword: str | None) -> bool:
     if keyword is None:
         return True
-    return keyword.casefold() in option.label.casefold()
+    needle = keyword.casefold()
+    return any(needle in text.casefold() for text in (option.label, *option.names))
 
 
 def list_node_options(
@@ -222,8 +229,8 @@ def list_node_options(
 ) -> list[NodeOption]:
     """Every option an app of `mode` can add, of `kind` or of every kind when None, sorted by kind then label.
 
-    Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label contains
-    it, ignoring case. Types `mode` refuses are never offered.
+    Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label or any
+    of whose names contains it, ignoring case. Types `mode` refuses are never offered.
     Agents are read from `roster` page by page until none are left, limited to the ids `accessible_agent_ids` returns
     when it returns any; it is called only when agents are listed.
     Reads only; a failing tool source or roster raises its own error.
