@@ -4,20 +4,43 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+import yaml
+from pydantic import BaseModel, ValidationError
 from typing_extensions import TypedDict
 
+from core.workflow.node_factory import (
+    LATEST_VERSION,
+    get_node_type_classes_mapping,
+    node_data_model,
+    resolve_workflow_node_class,
+)
 from graphon.enums import BuiltinNodeTypes
 from models import AppMode
 from services.workflow.authoring import FillContext, canvas_defaults
-from services.workflow.authoring.canvas_defaults import CanvasNode, canvas_node, with_canvas_defaults
+from services.workflow.authoring.canvas_defaults import (
+    CanvasEdition,
+    CanvasNode,
+    _without_required_empties,
+    canvas_node,
+    with_canvas_defaults,
+)
 from services.workflow.authoring.fill import fill_graph_document
-from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
-from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
+from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, block_seed, list_node_options
+from services.workflow.node_defaults import editor_defaults, fill_graph, rewrite_old_shapes
 from tests.unit_tests.services.workflow.authoring.conftest import V2_ONLY_KEYS
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 LIST_ITEM = "*"
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
+EDITIONS = [(node, edition) for node in CanvasNode for edition in node.editions.values()]
+MISSING_ERROR_TYPE = "missing"
+# The engine types if-else `cases` as `list[Case] | None`, which the sub-model walk does not reach, so fill keeps the
+# canvas's empty conditions of a case.
+UNREACHED_REQUIRED_EMPTIES: dict[str, list[tuple[str | int, ...]]] = {
+    CanvasNode.IF_ELSE.value: [("cases", 0, "conditions")]
+}
+
+type _Loc = tuple[str | int, ...]
 
 
 class _NoRoster:
@@ -96,8 +119,8 @@ def test_a_human_input_node_gets_the_defaults_of_its_version() -> None:
     v1 = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "1"})
     v2 = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "2"})
 
-    assert v1 == {"type": "human-input", "version": "1", **GENERATED["human-input"]}
-    assert v2 == {"type": "human-input", "version": "2", **GENERATED["human-input-v2"]}
+    assert v1 == {"type": "human-input", "version": "1", **CanvasNode.HUMAN_INPUT.editions["1"].data}
+    assert v2 == {"type": "human-input", "version": "2", **CanvasNode.HUMAN_INPUT.editions["2"].data}
     assert "delivery_methods" not in v2
 
 
@@ -129,7 +152,7 @@ def test_each_human_input_version_gets_no_key_of_the_other() -> None:
     assert V2_ONLY_KEYS.isdisjoint(filled["v1-written"])
     assert "timeout_unit" in filled["v1"]
     assert "delivery_methods" not in filled["v2"]
-    assert GENERATED["human-input-v2"].keys() <= filled["v2"].keys()
+    assert CanvasNode.HUMAN_INPUT.editions["2"].data.keys() <= filled["v2"].keys()
 
 
 def test_the_version_is_ignored_for_a_type_with_one_edition() -> None:
@@ -193,7 +216,7 @@ def test_a_block_whose_type_was_not_written_is_left_alone(authorization: dict[st
 def test_a_block_whose_type_matches_gets_the_missing_keys() -> None:
     written = {"type": BuiltinNodeTypes.HTTP_REQUEST, "body": {"type": "none"}}
 
-    assert with_canvas_defaults(written)["body"] == {"type": "none"}
+    assert with_canvas_defaults(written)["body"] == {"type": "none", "data": []}
 
 
 def test_lists_and_scalars_are_never_merged() -> None:
@@ -235,7 +258,7 @@ def test_a_prompt_written_for_a_completion_model_is_kept() -> None:
 def test_the_input_and_the_table_are_not_changed_by_a_fill() -> None:
     written = {"type": BuiltinNodeTypes.LLM, "model": {"name": "gpt-4"}}
     before = copy.deepcopy(written)
-    table = copy.deepcopy(GENERATED)
+    canvas = copy.deepcopy(dict(CanvasNode.LLM.data))
 
     filled = with_canvas_defaults(written)
     model = filled["model"]
@@ -246,7 +269,7 @@ def test_the_input_and_the_table_are_not_changed_by_a_fill() -> None:
     prompt[0]["text"] = "changed"
 
     assert written == before
-    assert CanvasNode.LLM.data == table["llm"]
+    assert CanvasNode.LLM.data == canvas
 
 
 def test_filling_twice_changes_nothing() -> None:
@@ -260,13 +283,144 @@ def test_data_without_a_canvas_node_is_returned_as_it_is(data: dict[str, object]
     assert with_canvas_defaults(data) == data
 
 
-EMPTY_VALUES: tuple[object, ...] = (None, "", [], {})
+def test_no_generated_value_is_none() -> None:
+    for path, value in _walk(GENERATED):
+        assert value is not None, path
 
 
-def test_no_generated_value_is_empty() -> None:
-    for name, entry in GENERATED.items():
-        for path, value in _walk(entry)[1:]:
-            assert not any(value == empty and type(value) is type(empty) for empty in EMPTY_VALUES), (name, path)
+def _is_empty(value: object) -> bool:
+    return isinstance(value, (str, list, dict)) and not value
+
+
+def _empty_locs(value: object, loc: _Loc = ()) -> list[_Loc]:
+    """The loc of each empty string, list or dict below `value`."""
+    children: list[tuple[str | int, object]] = []
+    if isinstance(value, dict):
+        children = list(value.items())
+    if isinstance(value, list):
+        children = list(enumerate(value))
+    found = [inner for key, item in children for inner in _empty_locs(item, (*loc, key))]
+    return [*found, loc] if loc and _is_empty(value) else found
+
+
+def _without_empties(value: object) -> object:
+    """`value` with every empty value dropped at any depth, as the generator once wrote the table."""
+    if isinstance(value, dict):
+        kept = {key: _without_empties(item) for key, item in value.items()}
+        return {key: item for key, item in kept.items() if not _is_empty(item)}
+    if isinstance(value, list):
+        return [item for item in map(_without_empties, value) if not _is_empty(item)]
+    return value
+
+
+def _without_loc(value: object, loc: _Loc) -> object:
+    """A copy of `value` without the key or item at `loc`."""
+    head, *rest = loc
+    if isinstance(value, dict):
+        kept = {key: item for key, item in value.items() if rest or key != head}
+        return {key: _without_loc(item, tuple(rest)) if rest and key == head else item for key, item in kept.items()}
+    if isinstance(value, list):
+        kept_items = [(index, item) for index, item in enumerate(value) if rest or index != head]
+        return [_without_loc(item, tuple(rest)) if rest and index == head else item for index, item in kept_items]
+    return value
+
+
+def _missing_locs(model: type[BaseModel], data: object) -> set[_Loc]:
+    try:
+        model.model_validate(data)
+    except ValidationError as error:
+        return {tuple(problem["loc"]) for problem in error.errors() if problem["type"] == MISSING_ERROR_TYPE}
+    return set()
+
+
+def _data_model(node: CanvasNode, edition: CanvasEdition) -> type[BaseModel]:
+    version = LATEST_VERSION if edition.version is None else edition.version
+    return node_data_model(resolve_workflow_node_class(node_type=node.value, node_version=version))
+
+
+def _edition_id(param: tuple[CanvasNode, CanvasEdition]) -> str:
+    return param[1].entry
+
+
+@pytest.mark.parametrize("param", EDITIONS, ids=_edition_id)
+def test_an_edition_holds_no_empty_value_in_a_required_field(param: tuple[CanvasNode, CanvasEdition]) -> None:
+    node, edition = param
+    model = _data_model(node, edition)
+    data = dict(edition.data)
+
+    required = [loc for loc in _empty_locs(data) if loc in _missing_locs(model, _without_loc(data, loc))]
+
+    assert required == UNREACHED_REQUIRED_EMPTIES.get(edition.entry, [])
+
+
+@pytest.mark.parametrize("param", EDITIONS, ids=_edition_id)
+def test_an_edition_leaves_out_only_empty_values_of_the_table(param: tuple[CanvasNode, CanvasEdition]) -> None:
+    _node, edition = param
+    table = GENERATED[edition.entry]
+
+    assert _without_empties(dict(edition.data)) == _without_empties(table)
+    assert set(_empty_locs(dict(edition.data))) <= set(_empty_locs(table))
+
+
+class _Inner(BaseModel):
+    name: str
+
+
+class _Outer(BaseModel):
+    required: _Inner
+    optional: _Inner | None = None
+    items: list[_Inner]
+
+
+def test_a_block_left_empty_by_the_pruning_goes_only_when_its_own_field_is_required() -> None:
+    data = {"required": {"name": ""}, "optional": {"name": ""}, "items": [{"name": ""}], "extra": ""}
+
+    assert _without_required_empties(_Outer, data) == {"optional": {}, "items": [{}], "extra": ""}
+
+
+def test_a_bare_llm_keeps_the_empty_context_but_not_an_empty_model_name() -> None:
+    seed = block_seed(
+        BuiltinNodeTypes.LLM, get_node_type_classes_mapping()[BuiltinNodeTypes.LLM][LATEST_VERSION].version()
+    )
+    filled = _filled_data([{"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}])["llm"]
+
+    for data in (seed, filled):
+        assert data["context"] == {"enabled": False, "variable_selector": []}
+        model = data["model"]
+        assert isinstance(model, dict)
+        assert {"provider", "name"}.isdisjoint(model)
+
+
+@pytest.mark.parametrize("written", [{}, {"context": {"enabled": False}}], ids=["no-context", "context-disabled"])
+def test_an_llm_in_a_loop_reaches_the_import_with_an_empty_context_selector(written: dict[str, object]) -> None:
+    graph = _Graph(
+        nodes=[
+            {"id": "loop", "data": {"type": BuiltinNodeTypes.LOOP, "start_node_id": "loop-start"}},
+            {"id": "loop-start", "parentId": "loop", "data": {"type": BuiltinNodeTypes.LOOP_START}},
+            {"id": "llm", "parentId": "loop", "data": {"type": BuiltinNodeTypes.LLM, **copy.deepcopy(written)}},
+        ],
+        edges=[],
+    )
+    document = {"app": {"mode": AppMode.WORKFLOW.value, "name": "App"}, "workflow": {"graph": graph}}
+
+    fill_graph_document(document, CTX)
+    imported = {node["id"]: node["data"] for node in fill_graph(graph)["nodes"]}
+
+    assert imported["llm"]["context"] == {"enabled": False, "variable_selector": []}
+
+
+def test_fill_writes_the_empty_lists_the_editor_reads() -> None:
+    filled = _filled_data(
+        [
+            {"id": "http", "data": {"type": BuiltinNodeTypes.HTTP_REQUEST}},
+            {"id": "list", "data": {"type": BuiltinNodeTypes.LIST_OPERATOR}},
+        ]
+    )
+
+    assert filled["http"]["body"] == {"type": "none", "data": []}
+    filter_by = filled["list"]["filter_by"]
+    assert isinstance(filter_by, dict)
+    assert filter_by["conditions"] == []
 
 
 def test_no_generated_key_starts_with_an_underscore() -> None:
@@ -306,7 +460,7 @@ def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
 def test_a_bare_if_else_fills_to_the_canvas_case() -> None:
     filled = _filled_data([{"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}])
 
-    assert filled["branch"]["cases"] == [{"case_id": "true", "logical_operator": "and"}]
+    assert filled["branch"]["cases"] == [{"case_id": "true", "conditions": [], "logical_operator": "and"}]
 
 
 def test_a_container_child_gets_canvas_defaults() -> None:
@@ -323,11 +477,11 @@ def test_a_container_child_gets_canvas_defaults() -> None:
 
 
 @pytest.mark.parametrize("node", [CanvasNode.ITERATION, CanvasNode.LOOP])
-def test_a_container_gets_no_start_node_id_but_keeps_a_written_one(node: CanvasNode) -> None:
+def test_a_container_gets_no_start_node_id_or_selector_but_keeps_a_written_one(node: CanvasNode) -> None:
     bare = {"type": node.value}
     written = {"type": node.value, "start_node_id": "inner-start"}
 
-    assert "start_node_id" not in with_canvas_defaults(bare)
+    assert {"start_node_id", "iterator_selector", "output_selector"}.isdisjoint(with_canvas_defaults(bare))
     assert with_canvas_defaults(written)["start_node_id"] == "inner-start"
 
 
@@ -339,12 +493,8 @@ def _bare_nodes() -> list[dict[str, object]]:
     ]
 
 
-def _empty_paths(value: object) -> list[tuple[str, ...]]:
-    return [path for path, item in _walk(value)[1:] if item in ("", [], {})]
-
-
 @pytest.mark.parametrize("data", _bare_nodes(), ids=lambda data: f"{data['type']}-{data.get('version')}")
-def test_fill_writes_no_empty_value(data: dict[str, object]) -> None:
+def test_fill_writes_the_edition_at_the_top_and_in_a_container(data: dict[str, object]) -> None:
     filled = _filled_data(
         [
             {"id": "box", "data": {"type": BuiltinNodeTypes.ITERATION}},
@@ -353,8 +503,8 @@ def test_fill_writes_no_empty_value(data: dict[str, object]) -> None:
         ]
     )
 
-    assert _empty_paths(filled["top"]) == []
-    assert _empty_paths(filled["child"]) == []
+    assert with_canvas_defaults(data).items() <= filled["top"].items()
+    assert with_canvas_defaults(data).items() <= filled["child"].items()
 
 
 @pytest.mark.parametrize(
@@ -372,15 +522,19 @@ def test_fill_leaves_types_and_versions_it_does_not_know_as_written(data: dict[s
 
 
 def test_a_second_fill_changes_no_byte() -> None:
-    nodes: list[_Node] = [{"id": str(index), "data": data} for index, data in enumerate(_bare_nodes())]
+    nodes: list[_Node] = [{"id": "box", "data": {"type": BuiltinNodeTypes.LOOP}}]
+    for index, data in enumerate(_bare_nodes()):
+        top: _Node = {"id": f"top-{index}", "data": dict(data)}
+        child: _Node = {"id": f"child-{index}", "parentId": "box", "data": data}
+        nodes += [top, child]
     graph = _Graph(nodes=nodes, edges=[])
     document = {"app": {"mode": AppMode.WORKFLOW.value, "name": "App"}, "workflow": {"graph": graph}}
 
     fill_graph_document(document, CTX)
-    once = copy.deepcopy(document)
+    once = yaml.dump(document, allow_unicode=True)
     fill_graph_document(document, CTX)
 
-    assert document == once
+    assert yaml.dump(document, allow_unicode=True) == once
 
 
 def test_a_container_start_child_is_never_touched() -> None:

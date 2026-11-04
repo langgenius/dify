@@ -23,7 +23,7 @@ class _EndpointView(Protocol):
 type _Describe = Callable[..., NodeTypeDetailResponse]
 
 NO_CANVAS_KEYS = frozenset({"example", "purpose"})
-EMPTY_VALUES: tuple[object, ...] = (None, "", [], {})
+EMPTY_VALUES: tuple[object, ...] = ("", [], {})
 
 
 @pytest.fixture
@@ -72,21 +72,22 @@ def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> Non
     assert order == sorted(order)
 
 
-def test_describe_llm_seed_has_no_empty_value(describe: _Describe) -> None:
-    seed = describe(BuiltinNodeTypes.LLM).seed
+def test_describe_llm_seed_has_no_empty_value_in_a_required_field(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM)
+    rows = _rows(response)
+    seed = response.seed
 
-    assert not [
-        key
-        for key, value in seed.items()
-        if any(value == empty and type(value) is type(empty) for empty in EMPTY_VALUES)
-    ]
+    assert not [key for key, value in seed.items() if value in EMPTY_VALUES and rows[key].required]
+    assert seed["context"] == {"enabled": False, "variable_selector": []}
+    assert {"provider", "name"}.isdisjoint(seed["model"])
 
 
 def test_the_llm_reply_stays_small_with_items_included(describe: _Describe) -> None:
     body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
 
     assert len(body.encode()) < 1900, (
-        "items included: prompt_template and default_value list their item fields; no example or purpose key"
+        "measured 1871 bytes: prompt_template and default_value list their item fields, no example or purpose key, "
+        "and the seed keeps the canvas's empty values outside required fields"
     )
 
 

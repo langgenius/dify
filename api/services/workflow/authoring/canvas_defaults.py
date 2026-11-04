@@ -1,6 +1,7 @@
-"""What the web canvas gives a new node of each block type: settings only, never an empty value.
+"""What the web canvas gives a new node of each block type.
 
-The values are generated from the web's `default.ts` files (web/scripts/generate-node-defaults.ts).
+The values are generated from the web's `default.ts` files (web/scripts/generate-node-defaults.ts). An empty value
+in a field the engine requires is left out, so check reports the field as missing.
 """
 
 from __future__ import annotations
@@ -9,14 +10,18 @@ import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import cached_property
 from importlib import resources
 from typing import Final, Self
 
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
+from pydantic.fields import FieldInfo
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
+from core.workflow.node_factory import LATEST_VERSION
 from graphon.enums import BuiltinNodeTypes
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
+from services.workflow.node_defaults import data_model_of, rewrite_sub_objects
 
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
@@ -27,16 +32,43 @@ _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
 )
 
 
+def _is_required_empty(field: FieldInfo | None, value: object) -> bool:
+    if field is None:
+        return False
+    if not field.is_required():
+        return False
+    return isinstance(value, str | list | dict) and not value
+
+
+def _without_required_empties(model: type[BaseModel], data: Mapping[str, object]) -> dict[str, object]:
+    """`data` less each empty value in a field `model` requires, at any depth its sub-models reach.
+
+    A sub-object is pruned first, so one left empty goes too when its own field is required.
+    """
+    pruned = rewrite_sub_objects(model, data, _without_required_empties)
+    fields = model.model_fields
+    return {key: value for key, value in pruned.items() if not _is_required_empty(fields.get(key), value)}
+
+
 @dataclass(frozen=True)
 class CanvasEdition:
-    """What the canvas gives a node of one version of a block type, from the web entry `entry`."""
+    """What the canvas gives a node of one version of a block type, from the web entry `entry`.
 
+    A `version` of None stands for every version; the latest one's model decides what is required.
+    """
+
+    node_type: str
     version: str | None
     entry: str
 
-    @property
+    @cached_property
     def data(self) -> Mapping[str, object]:
-        return _DEFAULTS.get(self.entry, {})
+        canvas = _DEFAULTS.get(self.entry, {})
+        version = LATEST_VERSION if self.version is None else self.version
+        model = data_model_of({_TYPE_KEY: self.node_type, _VERSION_KEY: version})
+        if model is None:
+            return canvas
+        return _without_required_empties(model, canvas)
 
 
 class CanvasNode(StrEnum):
@@ -46,15 +78,17 @@ class CanvasNode(StrEnum):
     which is the version a node without one has. `edition` picks by a node's version.
     """
 
-    data: Mapping[str, object]
     editions: Mapping[str | None, CanvasEdition]
 
     def __new__(cls, value: str, *editions: CanvasEdition) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
-        member.editions = {edition.version: edition for edition in editions or (CanvasEdition(None, value),)}
-        member.data = next(iter(member.editions.values())).data
+        member.editions = {edition.version: edition for edition in editions or (CanvasEdition(value, None, value),)}
         return member
+
+    @property
+    def data(self) -> Mapping[str, object]:
+        return next(iter(self.editions.values())).data
 
     def edition(self, version: object = None) -> CanvasEdition | None:
         """The edition for a node's version; None when this type has editions and the version is not one of them."""
@@ -73,9 +107,9 @@ class CanvasNode(StrEnum):
     HTTP_REQUEST = (BuiltinNodeTypes.HTTP_REQUEST,)
     HUMAN_INPUT = (
         BuiltinNodeTypes.HUMAN_INPUT,
-        CanvasEdition("1", BuiltinNodeTypes.HUMAN_INPUT),
+        CanvasEdition(BuiltinNodeTypes.HUMAN_INPUT, "1", BuiltinNodeTypes.HUMAN_INPUT),
         # the table keeps the v2 defaults under their own entry
-        CanvasEdition("2", _HUMAN_INPUT_V2_ENTRY),
+        CanvasEdition(BuiltinNodeTypes.HUMAN_INPUT, "2", _HUMAN_INPUT_V2_ENTRY),
     )
     IF_ELSE = (BuiltinNodeTypes.IF_ELSE,)
     ITERATION = (BuiltinNodeTypes.ITERATION,)

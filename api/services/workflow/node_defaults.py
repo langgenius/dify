@@ -80,21 +80,29 @@ def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
     return {**filled, **value}
 
 
-def complete_sub_models(model: type[BaseModel], data: Mapping[str, Any]) -> dict[str, Any]:
-    """Add the keys each sub-object's model defaults; keys already present win."""
+type SubObjectRewrite = Callable[[type[BaseModel], Mapping[str, Any]], dict[str, Any]]
+
+
+def rewrite_sub_objects(model: type[BaseModel], data: Mapping[str, Any], rewrite: SubObjectRewrite) -> dict[str, Any]:
+    """`data` with each sub-object its field's model reaches, as a mapping or a list item, passed through `rewrite`."""
     fields = model.model_fields
-    completed = dict(data)
+    rewritten = dict(data)
     for key, value in data.items():
         field = fields.get(key)
         if field is None:
             continue
         models = _sub_models(field.annotation)
         if isinstance(value, Mapping) and models.value:
-            completed[key] = _fill(models.value, value)
+            rewritten[key] = rewrite(models.value, value)
         elif isinstance(value, list) and models.item:
             item_model = models.item
-            completed[key] = [_fill(item_model, item) if isinstance(item, Mapping) else item for item in value]
-    return completed
+            rewritten[key] = [rewrite(item_model, item) if isinstance(item, Mapping) else item for item in value]
+    return rewritten
+
+
+def complete_sub_models(model: type[BaseModel], data: Mapping[str, Any]) -> dict[str, Any]:
+    """Add the keys each sub-object's model defaults; keys already present win."""
+    return rewrite_sub_objects(model, data, _fill)
 
 
 def node_data_schema(node_class: type[Node]) -> dict[str, Any]:
@@ -126,18 +134,26 @@ def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
     return _editor_empties(rewrite_old_shapes(data))
 
 
-def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
-    filled = editor_defaults(data)
-    node_type = filled.get("type")
+def data_model_of(data: Mapping[str, Any]) -> type[BaseModel] | None:
+    """The engine's model of a node's data, by its type and version; None for a type the engine does not know."""
+    node_type = data.get("type")
     if not isinstance(node_type, str):
-        return filled
+        return None
     try:
         node_class = resolve_workflow_node_class(
-            node_type=node_type, node_version=str(filled.get("version", "1")), node_data=filled
+            node_type=node_type, node_version=str(data.get("version", "1")), node_data=data
         )
     except ValueError:
+        return None
+    return node_data_model(node_class)
+
+
+def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
+    filled = editor_defaults(data)
+    model = data_model_of(filled)
+    if model is None:
         return filled
-    return complete_sub_models(node_data_model(node_class), filled)
+    return complete_sub_models(model, filled)
 
 
 def fill_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
