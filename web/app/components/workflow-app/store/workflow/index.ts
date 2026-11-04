@@ -1,8 +1,7 @@
 import type { StoreApi } from 'zustand'
 import type { WorkflowSliceShape } from './workflow-slice'
-import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
-import { createWorkflowStore, useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { createWorkflowSlice } from './workflow-slice'
+import type { createWorkflowStore, Shape } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 
 export type WorkflowAppState = Shape & WorkflowSliceShape
 export type WorkflowAppStore = Omit<
@@ -10,11 +9,6 @@ export type WorkflowAppStore = Omit<
   'getState' | 'setState'
 > &
   StoreApi<WorkflowAppState>
-
-export const createWorkflowAppStore = () =>
-  createWorkflowStore({
-    injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
-  }) as WorkflowAppStore
 
 export const useWorkflowAppStore = () => useWorkflowStore() as WorkflowAppStore
 
