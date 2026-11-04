@@ -9,7 +9,6 @@ decrypt makes KMS reject a blob wrapped under a different key instead of quietly
 import json
 from collections.abc import Callable
 from typing import NoReturn, TypedDict
-from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError
@@ -95,7 +94,7 @@ def fake_kms_client(monkeypatch: pytest.MonkeyPatch) -> FakeKmsClient:
     client = FakeKmsClient()
     monkeypatch.setattr(
         "libs.key_providers.aws_kms_key_provider.boto3.client",
-        MagicMock(return_value=client),
+        lambda *_args, **_kwargs: client,
     )
     FakeKmsClient.disabled_keys = set()
     return client
@@ -220,7 +219,7 @@ def test_transport_failure_surfaces_as_value_error(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(
         "libs.key_providers.aws_kms_key_provider.boto3.client",
-        MagicMock(return_value=client),
+        lambda *_args, **_kwargs: client,
     )
     monkeypatch.setattr(client, "generate_data_key", _boom)
 
