@@ -41,7 +41,9 @@ def describe(app: Flask, sqlite_session: Session) -> _Describe:
         query = NodeTypeDescribeQuery(include_schema=include_schema)
         handler = cast(_EndpointView, api.get).__handler__
         with app.test_request_context(f"/openapi/v1/node-types/{node_type}"):
-            return cast(NodeTypeDetailResponse, handler(api, ctx, node_type, query=query))
+            response = handler(api, ctx, node_type, query=query)
+        assert isinstance(response, NodeTypeDetailResponse)
+        return response
 
     return run
 
