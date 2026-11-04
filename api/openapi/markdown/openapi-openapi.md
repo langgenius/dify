@@ -3894,7 +3894,7 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | ---- | ---- | ----------- | -------- |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | issues | [ [AuthoringIssueRow](#authoringissuerow) ] |  | Yes |
-| node_specs | [ [NodeSpecRow](#nodespecrow) ] | What each node, as written, still needs | Yes |
+| node_specs | [ [NodeSpecRow](#nodespecrow) ] | What each node that has an issue, as written, still needs; empty when no node has one | Yes |
 | valid | boolean | No error-severity issues | Yes |
 
 #### PermittedExternalAppsListQuery
