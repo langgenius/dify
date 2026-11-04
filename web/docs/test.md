@@ -54,6 +54,8 @@ Each `*.browser.spec.{ts,tsx}` must make its behavioral contract and browser evi
 
 Browser input is real and nothing waits between keys. Split a `userEvent.keyboard` sequence wherever a later key depends on state an earlier key produces, such as an opened menu or moved focus, and await that state with `expect.element` before continuing.
 
+When file-input click/reset behavior is the contract, exercise the native click separately and await the cleared input value before uploading again. File-upload helpers can assign files without invoking the click handler; repeated uploads alone do not prove same-file reselection.
+
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
 ## Assert Behavior, Not Implementation
@@ -152,6 +154,10 @@ vp test run --project unit --coverage path/to/spec-or-directory
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
 
+## Provenance
+
+- [#45513], `image-uploader/uploader`: a same-file upload test needs an explicit native click and cleared-value assertion to catch removal of the input reset handler.
+
 ## References
 
 - [Vitest documentation]
@@ -167,6 +173,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 - [Testing Library user-event guidance]
 - [Testing Library user-event convenience APIs]
 
+[#45513]: https://github.com/langgenius/dify/pull/45513
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
