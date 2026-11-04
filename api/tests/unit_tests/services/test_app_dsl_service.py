@@ -59,7 +59,7 @@ def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCO
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="DSL author", email=f"{account_id}@example.com")
+    account = Account(name="DSL author", email=f"{account_id}@example.com", interface_language="en-US")
     account.id = account_id
     tenant = Tenant(name="DSL workspace")
     tenant.id = tenant_id
