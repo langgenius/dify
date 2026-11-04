@@ -1,7 +1,8 @@
+// @vitest-environment node
+
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { resolveServerConsoleApiUrl } from '@/service/server'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userProfileQueryOptions } from '../client'
 
 const headersMock = vi.fn()
@@ -18,7 +19,9 @@ vi.mock('@/next/headers', () => ({
   cookies: () => cookiesMock(),
 }))
 
-const createProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetAccountProfileResponse => ({
+const createProfile = (
+  overrides: Partial<GetAccountProfileResponse> = {},
+): GetAccountProfileResponse => ({
   id: 'account-id',
   name: 'Dify User',
   email: 'user@example.com',
@@ -27,6 +30,8 @@ const createProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetA
   is_password_set: true,
   ...overrides,
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('serverUserProfileQueryOptions', () => {
   beforeEach(() => {
@@ -38,19 +43,21 @@ describe('serverUserProfileQueryOptions', () => {
   })
 
   it('should reuse the client profile query key and return the same data shape', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(createProfile()), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-        'x-version': '1.2.3',
-        'x-env': 'DEVELOPMENT',
-      },
-    }))
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(createProfile()), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'x-version': '1.2.3',
+          'x-env': 'DEVELOPMENT',
+        },
+      }),
+    )
     vi.stubGlobal('fetch', fetchMock)
     const { serverUserProfileQueryOptions } = await import('../server')
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    const data = await queryClient.fetchQuery(serverUserProfileQueryOptions())
+    const data = await queryClient.query(serverUserProfileQueryOptions())
 
     expect(serverUserProfileQueryOptions().queryKey).toEqual(userProfileQueryOptions().queryKey)
     expect(data).toEqual({
@@ -60,22 +67,10 @@ describe('serverUserProfileQueryOptions', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:5001/console/api/account/profile',
-      expect.objectContaining({
-        method: 'GET',
-        cache: 'no-store',
-        headers: expect.any(Headers),
-      }),
-    )
-  })
-
-  it('should skip relative API prefixes unless a server API origin is configured', () => {
-    expect(resolveServerConsoleApiUrl('/account/profile', undefined, '/console/api')).toBeNull()
-    expect(resolveServerConsoleApiUrl('/account/profile', 'https://console.example.com/console/api', '/console/api')).toBe('https://console.example.com/console/api/account/profile')
-  })
-
-  it('should preserve absolute API prefixes', () => {
-    expect(resolveServerConsoleApiUrl('/account/profile', undefined, 'https://console.example.com/console/api')).toBe('https://console.example.com/console/api/account/profile')
+    const [request, init] = fetchMock.mock.calls[0]!
+    expect(request.url).toBe('http://localhost:5001/console/api/account/profile')
+    expect(request.method).toBe('GET')
+    expect(request.headers.get('cookie')).toBe('session=abc')
+    expect(init).toMatchObject({ cache: 'no-store' })
   })
 })

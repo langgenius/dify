@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from configs import dify_config
 from core.helper.trace_id_helper import generate_traceparent_header
 from services.errors.enterprise import (
     EnterpriseAPIBadRequestError,
@@ -96,12 +97,14 @@ class BaseRequest:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
         with httpx.Client(mounts=mounts) as client:
-            # IMPORTANT:
-            # - In httpx, passing timeout=None disables timeouts (infinite) and overrides the library default.
-            # - To preserve httpx's default timeout behavior for existing call sites, only pass the kwarg when set.
-            request_kwargs: dict[str, Any] = {"json": json, "params": params, "headers": headers}
-            if timeout is not None:
-                request_kwargs["timeout"] = timeout
+            # Callers that pass an explicit timeout keep it; everyone else gets the
+            # configured budget rather than httpx's implicit 5s default.
+            request_kwargs: dict[str, Any] = {
+                "json": json,
+                "params": params,
+                "headers": headers,
+                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_REQUEST_TIMEOUT,
+            }
 
             response = client.request(method, url, **request_kwargs)
 
@@ -182,6 +185,14 @@ class EnterpriseRequest(BaseRequest):
         inner_headers: dict[str, str] = {INNER_TENANT_ID_HEADER: tenant_id}
         if account_id:
             inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
+
+        if (
+            not cls.rbac_base_url.startswith("http")
+            and not cls.rbac_base_url.startswith("https")
+            and not cls.rbac_base_url
+        ):
+            raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
+
         url = f"{cls.rbac_base_url}{endpoint}"
         mounts = cls._build_mounts()
 
@@ -198,9 +209,8 @@ class EnterpriseRequest(BaseRequest):
                 "json": json,
                 "params": params,
                 "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
+                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
             }
-            if timeout is not None:
-                request_kwargs["timeout"] = timeout
             response = client.request(method, url, **request_kwargs)
             if not response.is_success:
                 cls._handle_error_response(response)

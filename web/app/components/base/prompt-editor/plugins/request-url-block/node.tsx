@@ -1,8 +1,6 @@
-import type { LexicalNode, SerializedLexicalNode } from 'lexical'
+import type { SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import RequestURLBlockComponent from './component'
-
-type SerializedNode = SerializedLexicalNode
 
 export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
   static override getType(): string {
@@ -37,7 +35,7 @@ export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  override exportJSON(): SerializedLexicalNode {
     return {
       type: 'request-url-block',
       version: 1,
@@ -50,10 +48,4 @@ export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
 }
 export function $createRequestURLBlockNode(): RequestURLBlockNode {
   return new RequestURLBlockNode()
-}
-
-export function $isRequestURLBlockNode(
-  node: RequestURLBlockNode | LexicalNode | null | undefined,
-): node is RequestURLBlockNode {
-  return node instanceof RequestURLBlockNode
 }

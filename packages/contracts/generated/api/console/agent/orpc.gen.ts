@@ -2,21 +2,75 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zAgentBackendUnreachableError,
+  zAgentBuildSandboxNotFoundError,
+  zAgentHomeSnapshotCreateFailedError,
+  zAgentHomeSnapshotTooLargeError,
+  zAgentModelNotConfiguredError,
+  zAgentNameConflictError,
+  zAgentNotFoundError,
+  zAgentNotPublishedError,
+  zAgentSoulLockedError,
+  zAgentVersionNotFoundError,
+  zAppNotFoundError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zBindingFileDownloadUnavailableError,
+  zCompletionRequestError,
+  zInspectorUnavailableError,
+  zInvalidComposerConfigError,
+  zInvalidTracingConfigError,
+  zMaxKeysExceededError,
+  zMessageFeedbackRatingRequiredError,
+  zModelCurrentlyNotSupportError,
+  zNoActiveBindingError,
+  zNoAudioUploadedError,
+  zPlaintextSecretNotAllowedError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zSpeechToTextDisabledError,
+  zTraceConfigAlreadyExistsError,
+  zTraceConfigNotFoundError,
+  zTracingAlreadyAcceptedError,
+  zTracingConfigConflictError,
+  zTracingConfigProcessingFailedError,
+  zTracingConfigVerificationFailedError,
+  zTracingDuplicateAcknowledgementRequiredError,
+  zTracingNodeNotFoundError,
+  zTracingProviderUnavailableError,
+  zTracingRetryNotAllowedError,
+  zTracingRunNotFoundError,
+  zTracingSourceNotFoundError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedTracingProviderError,
+} from './zod.gen.ts'
 import {
   zDeleteAgentByAgentIdApiKeysByApiKeyIdPath,
   zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse,
-  zDeleteAgentByAgentIdFilesPath,
-  zDeleteAgentByAgentIdFilesQuery,
-  zDeleteAgentByAgentIdFilesResponse,
+  zDeleteAgentByAgentIdBuildDraftPath,
+  zDeleteAgentByAgentIdBuildDraftResponse,
+  zDeleteAgentByAgentIdConfigFilesByNamePath,
+  zDeleteAgentByAgentIdConfigFilesByNameQuery,
+  zDeleteAgentByAgentIdConfigFilesByNameResponse,
+  zDeleteAgentByAgentIdConfigSkillsByNamePath,
+  zDeleteAgentByAgentIdConfigSkillsByNameQuery,
+  zDeleteAgentByAgentIdConfigSkillsByNameResponse,
   zDeleteAgentByAgentIdPath,
   zDeleteAgentByAgentIdResponse,
-  zDeleteAgentByAgentIdSkillsBySlugPath,
-  zDeleteAgentByAgentIdSkillsBySlugResponse,
+  zDeleteAgentByAgentIdTraceConfigPath,
+  zDeleteAgentByAgentIdTraceConfigQuery,
+  zDeleteAgentByAgentIdTraceConfigResponse,
   zGetAgentByAgentIdApiAccessPath,
   zGetAgentByAgentIdApiAccessResponse,
   zGetAgentByAgentIdApiKeysPath,
   zGetAgentByAgentIdApiKeysResponse,
+  zGetAgentByAgentIdBuildDraftPath,
+  zGetAgentByAgentIdBuildDraftResponse,
   zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath,
   zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse,
   zGetAgentByAgentIdChatMessagesPath,
@@ -26,19 +80,35 @@ import {
   zGetAgentByAgentIdComposerCandidatesResponse,
   zGetAgentByAgentIdComposerPath,
   zGetAgentByAgentIdComposerResponse,
-  zGetAgentByAgentIdDriveFilesDownloadPath,
-  zGetAgentByAgentIdDriveFilesDownloadQuery,
-  zGetAgentByAgentIdDriveFilesDownloadResponse,
-  zGetAgentByAgentIdDriveFilesPath,
-  zGetAgentByAgentIdDriveFilesPreviewPath,
-  zGetAgentByAgentIdDriveFilesPreviewQuery,
-  zGetAgentByAgentIdDriveFilesPreviewResponse,
-  zGetAgentByAgentIdDriveFilesQuery,
-  zGetAgentByAgentIdDriveFilesResponse,
-  zGetAgentByAgentIdDriveSkillsBySkillPathInspectPath,
-  zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse,
-  zGetAgentByAgentIdDriveSkillsPath,
-  zGetAgentByAgentIdDriveSkillsResponse,
+  zGetAgentByAgentIdConfigFilesByNameDownloadPath,
+  zGetAgentByAgentIdConfigFilesByNameDownloadQuery,
+  zGetAgentByAgentIdConfigFilesByNameDownloadResponse,
+  zGetAgentByAgentIdConfigFilesByNamePreviewPath,
+  zGetAgentByAgentIdConfigFilesByNamePreviewQuery,
+  zGetAgentByAgentIdConfigFilesByNamePreviewResponse,
+  zGetAgentByAgentIdConfigFilesPath,
+  zGetAgentByAgentIdConfigFilesQuery,
+  zGetAgentByAgentIdConfigFilesResponse,
+  zGetAgentByAgentIdConfigManifestPath,
+  zGetAgentByAgentIdConfigManifestQuery,
+  zGetAgentByAgentIdConfigManifestResponse,
+  zGetAgentByAgentIdConfigSkillsByNameDownloadPath,
+  zGetAgentByAgentIdConfigSkillsByNameDownloadQuery,
+  zGetAgentByAgentIdConfigSkillsByNameDownloadResponse,
+  zGetAgentByAgentIdConfigSkillsByNameFilesContentPath,
+  zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse,
+  zGetAgentByAgentIdConfigSkillsByNameFilesDownloadPath,
+  zGetAgentByAgentIdConfigSkillsByNameFilesDownloadQuery,
+  zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse,
+  zGetAgentByAgentIdConfigSkillsByNameFilesPreviewPath,
+  zGetAgentByAgentIdConfigSkillsByNameFilesPreviewQuery,
+  zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse,
+  zGetAgentByAgentIdConfigSkillsByNameInspectPath,
+  zGetAgentByAgentIdConfigSkillsByNameInspectQuery,
+  zGetAgentByAgentIdConfigSkillsByNameInspectResponse,
+  zGetAgentByAgentIdConfigSkillsPath,
+  zGetAgentByAgentIdConfigSkillsQuery,
+  zGetAgentByAgentIdConfigSkillsResponse,
   zGetAgentByAgentIdLogsByConversationIdMessagesPath,
   zGetAgentByAgentIdLogsByConversationIdMessagesQuery,
   zGetAgentByAgentIdLogsByConversationIdMessagesResponse,
@@ -59,9 +129,26 @@ import {
   zGetAgentByAgentIdSandboxFilesReadQuery,
   zGetAgentByAgentIdSandboxFilesReadResponse,
   zGetAgentByAgentIdSandboxFilesResponse,
+  zGetAgentByAgentIdSandboxPath,
+  zGetAgentByAgentIdSandboxQuery,
+  zGetAgentByAgentIdSandboxResponse,
   zGetAgentByAgentIdStatisticsSummaryPath,
   zGetAgentByAgentIdStatisticsSummaryQuery,
   zGetAgentByAgentIdStatisticsSummaryResponse,
+  zGetAgentByAgentIdTextToAudioVoicesPath,
+  zGetAgentByAgentIdTextToAudioVoicesQuery,
+  zGetAgentByAgentIdTextToAudioVoicesResponse,
+  zGetAgentByAgentIdTraceCapabilitiesPath,
+  zGetAgentByAgentIdTraceCapabilitiesQuery,
+  zGetAgentByAgentIdTraceCapabilitiesResponse,
+  zGetAgentByAgentIdTraceConfigPath,
+  zGetAgentByAgentIdTraceConfigQuery,
+  zGetAgentByAgentIdTraceConfigResponse,
+  zGetAgentByAgentIdTracePath,
+  zGetAgentByAgentIdTraceResponse,
+  zGetAgentByAgentIdTraceRunsByMessageIdPath,
+  zGetAgentByAgentIdTraceRunsByMessageIdQuery,
+  zGetAgentByAgentIdTraceRunsByMessageIdResponse,
   zGetAgentByAgentIdVersionsByVersionIdPath,
   zGetAgentByAgentIdVersionsByVersionIdResponse,
   zGetAgentByAgentIdVersionsPath,
@@ -70,47 +157,85 @@ import {
   zGetAgentInviteOptionsResponse,
   zGetAgentQuery,
   zGetAgentResponse,
+  zPatchAgentByAgentIdTraceConfigBody,
+  zPatchAgentByAgentIdTraceConfigPath,
+  zPatchAgentByAgentIdTraceConfigResponse,
   zPostAgentBody,
   zPostAgentByAgentIdApiEnableBody,
   zPostAgentByAgentIdApiEnablePath,
   zPostAgentByAgentIdApiEnableResponse,
   zPostAgentByAgentIdApiKeysPath,
   zPostAgentByAgentIdApiKeysResponse,
+  zPostAgentByAgentIdAudioToTextBody,
+  zPostAgentByAgentIdAudioToTextPath,
+  zPostAgentByAgentIdAudioToTextResponse,
+  zPostAgentByAgentIdBuildChatFinalizePath,
+  zPostAgentByAgentIdBuildChatFinalizeResponse,
+  zPostAgentByAgentIdBuildDraftApplyPath,
+  zPostAgentByAgentIdBuildDraftApplyResponse,
+  zPostAgentByAgentIdBuildDraftCheckoutBody,
+  zPostAgentByAgentIdBuildDraftCheckoutPath,
+  zPostAgentByAgentIdBuildDraftCheckoutResponse,
   zPostAgentByAgentIdChatMessagesByTaskIdStopPath,
   zPostAgentByAgentIdChatMessagesByTaskIdStopResponse,
   zPostAgentByAgentIdComposerValidateBody,
   zPostAgentByAgentIdComposerValidatePath,
   zPostAgentByAgentIdComposerValidateResponse,
+  zPostAgentByAgentIdConfigFilesBatchBody,
+  zPostAgentByAgentIdConfigFilesBatchPath,
+  zPostAgentByAgentIdConfigFilesBatchQuery,
+  zPostAgentByAgentIdConfigFilesBatchResponse,
+  zPostAgentByAgentIdConfigFilesBody,
+  zPostAgentByAgentIdConfigFilesPath,
+  zPostAgentByAgentIdConfigFilesQuery,
+  zPostAgentByAgentIdConfigFilesResponse,
+  zPostAgentByAgentIdConfigSkillsUploadBody,
+  zPostAgentByAgentIdConfigSkillsUploadPath,
+  zPostAgentByAgentIdConfigSkillsUploadQuery,
+  zPostAgentByAgentIdConfigSkillsUploadResponse,
   zPostAgentByAgentIdCopyBody,
   zPostAgentByAgentIdCopyPath,
   zPostAgentByAgentIdCopyResponse,
+  zPostAgentByAgentIdDebugConversationRefreshPath,
+  zPostAgentByAgentIdDebugConversationRefreshResponse,
   zPostAgentByAgentIdFeaturesBody,
   zPostAgentByAgentIdFeaturesPath,
   zPostAgentByAgentIdFeaturesResponse,
   zPostAgentByAgentIdFeedbacksBody,
   zPostAgentByAgentIdFeedbacksPath,
   zPostAgentByAgentIdFeedbacksResponse,
-  zPostAgentByAgentIdFilesBody,
-  zPostAgentByAgentIdFilesPath,
-  zPostAgentByAgentIdFilesResponse,
-  zPostAgentByAgentIdSandboxFilesUploadBody,
-  zPostAgentByAgentIdSandboxFilesUploadPath,
-  zPostAgentByAgentIdSandboxFilesUploadResponse,
-  zPostAgentByAgentIdSkillsBySlugInferToolsPath,
-  zPostAgentByAgentIdSkillsBySlugInferToolsResponse,
-  zPostAgentByAgentIdSkillsUploadBody,
-  zPostAgentByAgentIdSkillsUploadPath,
-  zPostAgentByAgentIdSkillsUploadResponse,
+  zPostAgentByAgentIdPublishBody,
+  zPostAgentByAgentIdPublishPath,
+  zPostAgentByAgentIdPublishResponse,
+  zPostAgentByAgentIdSandboxFilesDownloadBody,
+  zPostAgentByAgentIdSandboxFilesDownloadPath,
+  zPostAgentByAgentIdSandboxFilesDownloadResponse,
+  zPostAgentByAgentIdTextToAudioBody,
+  zPostAgentByAgentIdTextToAudioPath,
+  zPostAgentByAgentIdTextToAudioResponse,
+  zPostAgentByAgentIdTraceBody,
+  zPostAgentByAgentIdTraceConfigBody,
+  zPostAgentByAgentIdTraceConfigPath,
+  zPostAgentByAgentIdTraceConfigResponse,
+  zPostAgentByAgentIdTracePath,
+  zPostAgentByAgentIdTraceResponse,
+  zPostAgentByAgentIdTraceRunsByMessageIdRetryBody,
+  zPostAgentByAgentIdTraceRunsByMessageIdRetryPath,
+  zPostAgentByAgentIdTraceRunsByMessageIdRetryQuery,
+  zPostAgentByAgentIdTraceRunsByMessageIdRetryResponse,
   zPostAgentByAgentIdVersionsByVersionIdRestorePath,
   zPostAgentByAgentIdVersionsByVersionIdRestoreResponse,
   zPostAgentResponse,
   zPutAgentByAgentIdBody,
+  zPutAgentByAgentIdBuildDraftBody,
+  zPutAgentByAgentIdBuildDraftPath,
+  zPutAgentByAgentIdBuildDraftResponse,
   zPutAgentByAgentIdComposerBody,
   zPutAgentByAgentIdComposerPath,
   zPutAgentByAgentIdComposerResponse,
   zPutAgentByAgentIdPath,
   zPutAgentByAgentIdResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -120,7 +245,7 @@ export const get = oc
     path: '/agent/invite-options',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }))
+  .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())
   .output(zGetAgentInviteOptionsResponse)
 
 export const inviteOptions = {
@@ -137,6 +262,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdApiAccessPath }))
   .output(zGetAgentByAgentIdApiAccessResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const apiAccess = {
   get: get2,
@@ -154,6 +280,10 @@ export const post = oc
     z.object({ body: zPostAgentByAgentIdApiEnableBody, params: zPostAgentByAgentIdApiEnablePath }),
   )
   .output(zPostAgentByAgentIdApiEnableResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+  })
 
 export const apiEnable = {
   post,
@@ -197,6 +327,10 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdApiKeysPath }))
   .output(zPostAgentByAgentIdApiKeysResponse)
+  .errors({
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+  })
 
 export const apiKeys = {
   get: get3,
@@ -205,9 +339,184 @@ export const apiKeys = {
 }
 
 /**
+ * Transcribe audio using the current Agent debug configuration
+ */
+export const post3 = oc
+  .route({
+    description: 'Transcribe audio using the current Agent debug configuration',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdAudioToText',
+    path: '/agent/{agent_id}/audio-to-text',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdAudioToTextBody,
+      params: zPostAgentByAgentIdAudioToTextPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdAudioToTextResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
+
+export const audioToText = {
+  post: post3,
+}
+
+/**
+ * Run a build-draft Agent App turn that asks the agent to push config updates
+ */
+export const post4 = oc
+  .route({
+    description: 'Run a build-draft Agent App turn that asks the agent to push config updates',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdBuildChatFinalize',
+    path: '/agent/{agent_id}/build-chat/finalize',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAgentByAgentIdBuildChatFinalizePath }))
+  .output(zPostAgentByAgentIdBuildChatFinalizeResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
+
+export const finalize = {
+  post: post4,
+}
+
+export const buildChat = {
+  finalize,
+}
+
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdBuildDraftApply',
+    path: '/agent/{agent_id}/build-draft/apply',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAgentByAgentIdBuildDraftApplyPath }))
+  .output(zPostAgentByAgentIdBuildDraftApplyResponse)
+  .errors({
+    agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_home_snapshot_create_failed: { status: 502, data: zAgentHomeSnapshotCreateFailedError },
+    agent_home_snapshot_too_large: { status: 413, data: zAgentHomeSnapshotTooLargeError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
+
+export const apply = {
+  post: post5,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdBuildDraftCheckout',
+    path: '/agent/{agent_id}/build-draft/checkout',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdBuildDraftCheckoutBody,
+      params: zPostAgentByAgentIdBuildDraftCheckoutPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdBuildDraftCheckoutResponse)
+  .errors({
+    agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
+
+export const checkout = {
+  post: post6,
+}
+
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAgentByAgentIdBuildDraft',
+    path: '/agent/{agent_id}/build-draft',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAgentByAgentIdBuildDraftPath }))
+  .output(zDeleteAgentByAgentIdBuildDraftResponse)
+  .errors({
+    agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
+
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdBuildDraft',
+    path: '/agent/{agent_id}/build-draft',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdBuildDraftPath }))
+  .output(zGetAgentByAgentIdBuildDraftResponse)
+  .errors({ agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError } })
+
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAgentByAgentIdBuildDraft',
+    path: '/agent/{agent_id}/build-draft',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ body: zPutAgentByAgentIdBuildDraftBody, params: zPutAgentByAgentIdBuildDraftPath }),
+  )
+  .output(zPutAgentByAgentIdBuildDraftResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
+
+export const buildDraft = {
+  delete: delete2,
+  get: get4,
+  put,
+  apply,
+  checkout,
+}
+
+/**
  * Get suggested questions for an Agent App message
  */
-export const get4 = oc
+export const get5 = oc
   .route({
     description: 'Get suggested questions for an Agent App message',
     inputStructure: 'detailed',
@@ -218,9 +527,22 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const suggestedQuestions = {
-  get: get4,
+  get: get5,
 }
 
 export const byMessageId = {
@@ -230,7 +552,7 @@ export const byMessageId = {
 /**
  * Stop a running Agent App chat message generation
  */
-export const post3 = oc
+export const post7 = oc
   .route({
     description: 'Stop a running Agent App chat message generation',
     inputStructure: 'detailed',
@@ -241,9 +563,10 @@ export const post3 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdChatMessagesByTaskIdStopPath }))
   .output(zPostAgentByAgentIdChatMessagesByTaskIdStopResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const stop = {
-  post: post3,
+  post: post7,
 }
 
 export const byTaskId = {
@@ -253,7 +576,7 @@ export const byTaskId = {
 /**
  * Get Agent App chat messages for a conversation with pagination
  */
-export const get5 = oc
+export const get6 = oc
   .route({
     description: 'Get Agent App chat messages for a conversation with pagination',
     inputStructure: 'detailed',
@@ -269,14 +592,18 @@ export const get5 = oc
     }),
   )
   .output(zGetAgentByAgentIdChatMessagesResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const chatMessages = {
-  get: get5,
+  get: get6,
   byMessageId,
   byTaskId,
 }
 
-export const get6 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -286,12 +613,13 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdComposerCandidatesPath }))
   .output(zGetAgentByAgentIdComposerCandidatesResponse)
+  .errors({ agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError } })
 
 export const candidates = {
-  get: get6,
+  get: get7,
 }
 
-export const post4 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -306,12 +634,19 @@ export const post4 = oc
     }),
   )
   .output(zPostAgentByAgentIdComposerValidateResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const validate = {
-  post: post4,
+  post: post8,
 }
 
-export const get7 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -321,8 +656,12 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdComposerPath }))
   .output(zGetAgentByAgentIdComposerResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
-export const put = oc
+export const put2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -332,15 +671,356 @@ export const put = oc
   })
   .input(z.object({ body: zPutAgentByAgentIdComposerBody, params: zPutAgentByAgentIdComposerPath }))
   .output(zPutAgentByAgentIdComposerResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const composer = {
-  get: get7,
-  put,
+  get: get8,
+  put: put2,
   candidates,
   validate,
 }
 
-export const post5 = oc
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdConfigFilesBatch',
+    path: '/agent/{agent_id}/config/files/batch',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdConfigFilesBatchBody,
+      params: zPostAgentByAgentIdConfigFilesBatchPath,
+      query: zPostAgentByAgentIdConfigFilesBatchQuery.optional(),
+    }),
+  )
+  .output(zPostAgentByAgentIdConfigFilesBatchResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const batch = {
+  post: post9,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigFilesByNameDownload',
+    path: '/agent/{agent_id}/config/files/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigFilesByNameDownloadPath,
+      query: zGetAgentByAgentIdConfigFilesByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigFilesByNameDownloadResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const download = {
+  get: get9,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigFilesByNamePreview',
+    path: '/agent/{agent_id}/config/files/{name}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigFilesByNamePreviewPath,
+      query: zGetAgentByAgentIdConfigFilesByNamePreviewQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigFilesByNamePreviewResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const preview = {
+  get: get10,
+}
+
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAgentByAgentIdConfigFilesByName',
+    path: '/agent/{agent_id}/config/files/{name}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zDeleteAgentByAgentIdConfigFilesByNamePath,
+      query: zDeleteAgentByAgentIdConfigFilesByNameQuery.optional(),
+    }),
+  )
+  .output(zDeleteAgentByAgentIdConfigFilesByNameResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const byName = {
+  delete: delete3,
+  download,
+  preview,
+}
+
+export const get11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigFiles',
+    path: '/agent/{agent_id}/config/files',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigFilesPath,
+      query: zGetAgentByAgentIdConfigFilesQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigFilesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdConfigFiles',
+    path: '/agent/{agent_id}/config/files',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdConfigFilesBody,
+      params: zPostAgentByAgentIdConfigFilesPath,
+      query: zPostAgentByAgentIdConfigFilesQuery.optional(),
+    }),
+  )
+  .output(zPostAgentByAgentIdConfigFilesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const files = {
+  get: get11,
+  post: post10,
+  batch,
+  byName,
+}
+
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigManifest',
+    path: '/agent/{agent_id}/config/manifest',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigManifestPath,
+      query: zGetAgentByAgentIdConfigManifestQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigManifestResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const manifest = {
+  get: get12,
+}
+
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdConfigSkillsUpload',
+    path: '/agent/{agent_id}/config/skills/upload',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdConfigSkillsUploadBody,
+      params: zPostAgentByAgentIdConfigSkillsUploadPath,
+      query: zPostAgentByAgentIdConfigSkillsUploadQuery.optional(),
+    }),
+  )
+  .output(zPostAgentByAgentIdConfigSkillsUploadResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const upload = {
+  post: post11,
+}
+
+export const get13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameDownload',
+    path: '/agent/{agent_id}/config/skills/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigSkillsByNameDownloadPath,
+      query: zGetAgentByAgentIdConfigSkillsByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigSkillsByNameDownloadResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const download2 = {
+  get: get13,
+}
+
+export const get14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameFilesContent',
+    path: '/agent/{agent_id}/config/skills/{name}/files/content',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
+  .output(zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const content = {
+  get: get14,
+}
+
+export const get15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameFilesDownload',
+    path: '/agent/{agent_id}/config/skills/{name}/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigSkillsByNameFilesDownloadPath,
+      query: zGetAgentByAgentIdConfigSkillsByNameFilesDownloadQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const download3 = {
+  get: get15,
+}
+
+export const get16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameFilesPreview',
+    path: '/agent/{agent_id}/config/skills/{name}/files/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigSkillsByNameFilesPreviewPath,
+      query: zGetAgentByAgentIdConfigSkillsByNameFilesPreviewQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const preview2 = {
+  get: get16,
+}
+
+export const files2 = {
+  content,
+  download: download3,
+  preview: preview2,
+}
+
+export const get17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameInspect',
+    path: '/agent/{agent_id}/config/skills/{name}/inspect',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigSkillsByNameInspectPath,
+      query: zGetAgentByAgentIdConfigSkillsByNameInspectQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigSkillsByNameInspectResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const inspect = {
+  get: get17,
+}
+
+export const delete4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAgentByAgentIdConfigSkillsByName',
+    path: '/agent/{agent_id}/config/skills/{name}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zDeleteAgentByAgentIdConfigSkillsByNamePath,
+      query: zDeleteAgentByAgentIdConfigSkillsByNameQuery.optional(),
+    }),
+  )
+  .output(zDeleteAgentByAgentIdConfigSkillsByNameResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const byName2 = {
+  delete: delete4,
+  download: download2,
+  files: files2,
+  inspect,
+}
+
+export const get18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkills',
+    path: '/agent/{agent_id}/config/skills',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdConfigSkillsPath,
+      query: zGetAgentByAgentIdConfigSkillsQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdConfigSkillsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const skills = {
+  get: get18,
+  upload,
+  byName: byName2,
+}
+
+export const config = {
+  files,
+  manifest,
+  skills,
+}
+
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -351,139 +1031,45 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostAgentByAgentIdCopyBody, params: zPostAgentByAgentIdCopyPath }))
   .output(zPostAgentByAgentIdCopyResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const copy = {
-  post: post5,
+  post: post12,
 }
 
-/**
- * Time-limited external signed URL for one Agent App drive value
- */
-export const get8 = oc
+export const post13 = oc
   .route({
-    description: 'Time-limited external signed URL for one Agent App drive value',
     inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAgentByAgentIdDriveFilesDownload',
-    path: '/agent/{agent_id}/drive/files/download',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdDebugConversationRefresh',
+    path: '/agent/{agent_id}/debug-conversation/refresh',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      params: zGetAgentByAgentIdDriveFilesDownloadPath,
-      query: zGetAgentByAgentIdDriveFilesDownloadQuery,
-    }),
-  )
-  .output(zGetAgentByAgentIdDriveFilesDownloadResponse)
-
-export const download = {
-  get: get8,
-}
-
-/**
- * Truncated text preview of one Agent App drive value
- */
-export const get9 = oc
-  .route({
-    description: 'Truncated text preview of one Agent App drive value',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAgentByAgentIdDriveFilesPreview',
-    path: '/agent/{agent_id}/drive/files/preview',
-    tags: ['console'],
+  .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
+  .output(zPostAgentByAgentIdDebugConversationRefreshResponse)
+  .errors({
+    agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   })
-  .input(
-    z.object({
-      params: zGetAgentByAgentIdDriveFilesPreviewPath,
-      query: zGetAgentByAgentIdDriveFilesPreviewQuery,
-    }),
-  )
-  .output(zGetAgentByAgentIdDriveFilesPreviewResponse)
 
-export const preview = {
-  get: get9,
+export const refresh = {
+  post: post13,
 }
 
-/**
- * List agent drive entries for an Agent App
- */
-export const get10 = oc
-  .route({
-    description: 'List agent drive entries for an Agent App',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAgentByAgentIdDriveFiles',
-    path: '/agent/{agent_id}/drive/files',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetAgentByAgentIdDriveFilesPath,
-      query: zGetAgentByAgentIdDriveFilesQuery.optional(),
-    }),
-  )
-  .output(zGetAgentByAgentIdDriveFilesResponse)
-
-export const files = {
-  get: get10,
-  download,
-  preview,
-}
-
-/**
- * Inspect one drive-backed skill for slash-menu hover/detail UI
- */
-export const get11 = oc
-  .route({
-    description: 'Inspect one drive-backed skill for slash-menu hover/detail UI',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAgentByAgentIdDriveSkillsBySkillPathInspect',
-    path: '/agent/{agent_id}/drive/skills/{skill_path}/inspect',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetAgentByAgentIdDriveSkillsBySkillPathInspectPath }))
-  .output(zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse)
-
-export const inspect = {
-  get: get11,
-}
-
-export const bySkillPath = {
-  inspect,
-}
-
-/**
- * List drive-backed skills for an Agent App
- */
-export const get12 = oc
-  .route({
-    description: 'List drive-backed skills for an Agent App',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAgentByAgentIdDriveSkills',
-    path: '/agent/{agent_id}/drive/skills',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetAgentByAgentIdDriveSkillsPath }))
-  .output(zGetAgentByAgentIdDriveSkillsResponse)
-
-export const skills = {
-  get: get12,
-  bySkillPath,
-}
-
-export const drive = {
-  files,
-  skills,
+export const debugConversation = {
+  refresh,
 }
 
 /**
  * Update an Agent App's presentation features (opener, follow-up, citations, ...)
  */
-export const post6 = oc
+export const post14 = oc
   .route({
-    description: 'Update an Agent App\'s presentation features (opener, follow-up, citations, ...)',
+    description: "Update an Agent App's presentation features (opener, follow-up, citations, ...)",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdFeatures',
@@ -494,15 +1080,16 @@ export const post6 = oc
     z.object({ body: zPostAgentByAgentIdFeaturesBody, params: zPostAgentByAgentIdFeaturesPath }),
   )
   .output(zPostAgentByAgentIdFeaturesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const features = {
-  post: post6,
+  post: post14,
 }
 
 /**
  * Create or update Agent App message feedback
  */
-export const post7 = oc
+export const post15 = oc
   .route({
     description: 'Create or update Agent App message feedback',
     inputStructure: 'detailed',
@@ -515,50 +1102,17 @@ export const post7 = oc
     z.object({ body: zPostAgentByAgentIdFeedbacksBody, params: zPostAgentByAgentIdFeedbacksPath }),
   )
   .output(zPostAgentByAgentIdFeedbacksResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
-  post: post7,
+  post: post15,
 }
 
-/**
- * Delete one Agent App drive file by key
- */
-export const delete2 = oc
-  .route({
-    description: 'Delete one Agent App drive file by key',
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteAgentByAgentIdFiles',
-    path: '/agent/{agent_id}/files',
-    tags: ['console'],
-  })
-  .input(
-    z.object({ params: zDeleteAgentByAgentIdFilesPath, query: zDeleteAgentByAgentIdFilesQuery }),
-  )
-  .output(zDeleteAgentByAgentIdFilesResponse)
-
-/**
- * Commit an uploaded file into the Agent App drive under files/<name>
- */
-export const post8 = oc
-  .route({
-    description: 'Commit an uploaded file into the Agent App drive under files/<name>',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdFiles',
-    path: '/agent/{agent_id}/files',
-    successStatus: 201,
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAgentByAgentIdFilesBody, params: zPostAgentByAgentIdFilesPath }))
-  .output(zPostAgentByAgentIdFilesResponse)
-
-export const files2 = {
-  delete: delete2,
-  post: post8,
-}
-
-export const get13 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -568,12 +1122,13 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
   .output(zGetAgentByAgentIdLogSourcesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logSources = {
-  get: get13,
+  get: get19,
 }
 
-export const get14 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -588,16 +1143,17 @@ export const get14 = oc
     }),
   )
   .output(zGetAgentByAgentIdLogsByConversationIdMessagesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const messages = {
-  get: get14,
+  get: get20,
 }
 
 export const byConversationId = {
   messages,
 }
 
-export const get15 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -609,16 +1165,17 @@ export const get15 = oc
     z.object({ params: zGetAgentByAgentIdLogsPath, query: zGetAgentByAgentIdLogsQuery.optional() }),
   )
   .output(zGetAgentByAgentIdLogsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logs = {
-  get: get15,
+  get: get21,
   byConversationId,
 }
 
 /**
  * Get Agent App message details by ID
  */
-export const get16 = oc
+export const get22 = oc
   .route({
     description: 'Get Agent App message details by ID',
     inputStructure: 'detailed',
@@ -629,21 +1186,47 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdMessagesByMessageIdPath }))
   .output(zGetAgentByAgentIdMessagesByMessageIdResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byMessageId2 = {
-  get: get16,
+  get: get22,
 }
 
 export const messages2 = {
   byMessageId: byMessageId2,
 }
 
+export const post16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdPublish',
+    path: '/agent/{agent_id}/publish',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostAgentByAgentIdPublishBody, params: zPostAgentByAgentIdPublishPath }))
+  .output(zPostAgentByAgentIdPublishResponse)
+  .errors({
+    agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
+
+export const publish = {
+  post: post16,
+}
+
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
  */
-export const get17 = oc
+export const get23 = oc
   .route({
-    description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
+    description: "List workflow apps that reference this Agent App's bound Agent (read-only)",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdReferencingWorkflows',
@@ -652,15 +1235,47 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdReferencingWorkflowsPath }))
   .output(zGetAgentByAgentIdReferencingWorkflowsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const referencingWorkflows = {
-  get: get17,
+  get: get23,
+}
+
+/**
+ * Create a ToolFile from one Agent App Binding file and return its download URL
+ */
+export const post17 = oc
+  .route({
+    description: 'Create a ToolFile from one Agent App Binding file and return its download URL',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdSandboxFilesDownload',
+    path: '/agent/{agent_id}/sandbox/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdSandboxFilesDownloadBody,
+      params: zPostAgentByAgentIdSandboxFilesDownloadPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdSandboxFilesDownloadResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
+
+export const download4 = {
+  post: post17,
 }
 
 /**
  * Read a text/binary preview file in an Agent App conversation sandbox
  */
-export const get18 = oc
+export const get24 = oc
   .route({
     description: 'Read a text/binary preview file in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -676,39 +1291,21 @@ export const get18 = oc
     }),
   )
   .output(zGetAgentByAgentIdSandboxFilesReadResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
 
 export const read = {
-  get: get18,
-}
-
-/**
- * Upload one Agent App sandbox file as a Dify ToolFile mapping
- */
-export const post9 = oc
-  .route({
-    description: 'Upload one Agent App sandbox file as a Dify ToolFile mapping',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdSandboxFilesUpload',
-    path: '/agent/{agent_id}/sandbox/files/upload',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostAgentByAgentIdSandboxFilesUploadBody,
-      params: zPostAgentByAgentIdSandboxFilesUploadPath,
-    }),
-  )
-  .output(zPostAgentByAgentIdSandboxFilesUploadResponse)
-
-export const upload = {
-  post: post9,
+  get: get24,
 }
 
 /**
  * List a directory in an Agent App conversation sandbox
  */
-export const get19 = oc
+export const get25 = oc
   .route({
     description: 'List a directory in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -724,87 +1321,44 @@ export const get19 = oc
     }),
   )
   .output(zGetAgentByAgentIdSandboxFilesResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
 
 export const files3 = {
-  get: get19,
+  get: get25,
+  download: download4,
   read,
-  upload,
 }
 
+/**
+ * Get basic information for an Agent App conversation sandbox
+ */
+export const get26 = oc
+  .route({
+    description: 'Get basic information for an Agent App conversation sandbox',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdSandbox',
+    path: '/agent/{agent_id}/sandbox',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdSandboxPath, query: zGetAgentByAgentIdSandboxQuery }))
+  .output(zGetAgentByAgentIdSandboxResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
+
 export const sandbox = {
+  get: get26,
   files: files3,
 }
 
-/**
- * Upload + standardize a Skill into an Agent App drive
- */
-export const post10 = oc
-  .route({
-    description: 'Upload + standardize a Skill into an Agent App drive',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdSkillsUpload',
-    path: '/agent/{agent_id}/skills/upload',
-    successStatus: 201,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostAgentByAgentIdSkillsUploadBody,
-      params: zPostAgentByAgentIdSkillsUploadPath,
-    }),
-  )
-  .output(zPostAgentByAgentIdSkillsUploadResponse)
-
-export const upload2 = {
-  post: post10,
-}
-
-/**
- * Infer CLI tool + ENV suggestions from a standardized Agent App skill
- */
-export const post11 = oc
-  .route({
-    description: 'Infer CLI tool + ENV suggestions from a standardized Agent App skill',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdSkillsBySlugInferTools',
-    path: '/agent/{agent_id}/skills/{slug}/infer-tools',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zPostAgentByAgentIdSkillsBySlugInferToolsPath }))
-  .output(zPostAgentByAgentIdSkillsBySlugInferToolsResponse)
-
-export const inferTools = {
-  post: post11,
-}
-
-/**
- * Delete a standardized skill from an Agent App drive
- */
-export const delete3 = oc
-  .route({
-    description: 'Delete a standardized skill from an Agent App drive',
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteAgentByAgentIdSkillsBySlug',
-    path: '/agent/{agent_id}/skills/{slug}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteAgentByAgentIdSkillsBySlugPath }))
-  .output(zDeleteAgentByAgentIdSkillsBySlugResponse)
-
-export const bySlug = {
-  delete: delete3,
-  inferTools,
-}
-
-export const skills2 = {
-  upload: upload2,
-  bySlug,
-}
-
-export const get20 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -819,16 +1373,315 @@ export const get20 = oc
     }),
   )
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const summary = {
-  get: get20,
+  get: get27,
 }
 
 export const statistics = {
   summary,
 }
 
-export const post12 = oc
+/**
+ * Get available TTS voices for an Agent and language
+ */
+export const get28 = oc
+  .route({
+    description: 'Get available TTS voices for an Agent and language',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTextToAudioVoices',
+    path: '/agent/{agent_id}/text-to-audio/voices',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdTextToAudioVoicesPath,
+      query: zGetAgentByAgentIdTextToAudioVoicesQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdTextToAudioVoicesResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
+
+export const voices = {
+  get: get28,
+}
+
+/**
+ * Preview an Agent TTS voice or read an Agent chat message
+ */
+export const post18 = oc
+  .route({
+    description: 'Preview an Agent TTS voice or read an Agent chat message',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdTextToAudio',
+    path: '/agent/{agent_id}/text-to-audio',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdTextToAudioBody,
+      params: zPostAgentByAgentIdTextToAudioPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdTextToAudioResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
+
+export const textToAudio = {
+  post: post18,
+  voices,
+}
+
+export const get29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTrace',
+    path: '/agent/{agent_id}/trace',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdTracePath }))
+  .output(zGetAgentByAgentIdTraceResponse)
+
+export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdTrace',
+    path: '/agent/{agent_id}/trace',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostAgentByAgentIdTraceBody, params: zPostAgentByAgentIdTracePath }))
+  .output(zPostAgentByAgentIdTraceResponse)
+  .errors({
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_conflict: { status: 409, data: zTracingConfigConflictError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const trace = {
+  get: get29,
+  post: post19,
+}
+
+export const get30 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTraceCapabilities',
+    path: '/agent/{agent_id}/trace-capabilities',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdTraceCapabilitiesPath,
+      query: zGetAgentByAgentIdTraceCapabilitiesQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdTraceCapabilitiesResponse)
+  .errors({
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const traceCapabilities = {
+  get: get30,
+}
+
+export const delete5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAgentByAgentIdTraceConfig',
+    path: '/agent/{agent_id}/trace-config',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zDeleteAgentByAgentIdTraceConfigPath,
+      query: zDeleteAgentByAgentIdTraceConfigQuery,
+    }),
+  )
+  .output(zDeleteAgentByAgentIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const get31 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTraceConfig',
+    path: '/agent/{agent_id}/trace-config',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdTraceConfigPath,
+      query: zGetAgentByAgentIdTraceConfigQuery,
+    }),
+  )
+  .output(zGetAgentByAgentIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAgentByAgentIdTraceConfig',
+    path: '/agent/{agent_id}/trace-config',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchAgentByAgentIdTraceConfigBody,
+      params: zPatchAgentByAgentIdTraceConfigPath,
+    }),
+  )
+  .output(zPatchAgentByAgentIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_conflict: { status: 409, data: zTracingConfigConflictError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_config_verification_failed: {
+      status: 400,
+      data: zTracingConfigVerificationFailedError,
+    },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const post20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdTraceConfig',
+    path: '/agent/{agent_id}/trace-config',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdTraceConfigBody,
+      params: zPostAgentByAgentIdTraceConfigPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_already_exists: { status: 409, data: zTraceConfigAlreadyExistsError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_config_verification_failed: {
+      status: 400,
+      data: zTracingConfigVerificationFailedError,
+    },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
+
+export const traceConfig = {
+  delete: delete5,
+  get: get31,
+  patch,
+  post: post20,
+}
+
+export const post21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdTraceRunsByMessageIdRetry',
+    path: '/agent/{agent_id}/trace-runs/{message_id}/retry',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdTraceRunsByMessageIdRetryBody,
+      params: zPostAgentByAgentIdTraceRunsByMessageIdRetryPath,
+      query: zPostAgentByAgentIdTraceRunsByMessageIdRetryQuery.optional(),
+    }),
+  )
+  .output(zPostAgentByAgentIdTraceRunsByMessageIdRetryResponse)
+  .errors({
+    tracing_already_accepted: { status: 409, data: zTracingAlreadyAcceptedError },
+    tracing_duplicate_acknowledgement_required: {
+      status: 409,
+      data: zTracingDuplicateAcknowledgementRequiredError,
+    },
+    tracing_node_not_found: { status: 404, data: zTracingNodeNotFoundError },
+    tracing_retry_not_allowed: { status: 409, data: zTracingRetryNotAllowedError },
+    tracing_run_not_found: { status: 404, data: zTracingRunNotFoundError },
+    tracing_source_not_found: { status: 404, data: zTracingSourceNotFoundError },
+  })
+
+export const retry = {
+  post: post21,
+}
+
+export const get32 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdTraceRunsByMessageId',
+    path: '/agent/{agent_id}/trace-runs/{message_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdTraceRunsByMessageIdPath,
+      query: zGetAgentByAgentIdTraceRunsByMessageIdQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdTraceRunsByMessageIdResponse)
+  .errors({
+    tracing_node_not_found: { status: 404, data: zTracingNodeNotFoundError },
+    tracing_source_not_found: { status: 404, data: zTracingSourceNotFoundError },
+  })
+
+export const byMessageId3 = {
+  get: get32,
+  retry,
+}
+
+export const traceRuns = {
+  byMessageId: byMessageId3,
+}
+
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -838,12 +1691,16 @@ export const post12 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdVersionsByVersionIdRestorePath }))
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const restore = {
-  post: post12,
+  post: post22,
 }
 
-export const get21 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -853,13 +1710,17 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsByVersionIdPath }))
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const byVersionId = {
-  get: get21,
+  get: get33,
   restore,
 }
 
-export const get22 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -869,13 +1730,14 @@ export const get22 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsPath }))
   .output(zGetAgentByAgentIdVersionsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const versions = {
-  get: get22,
+  get: get34,
   byVersionId,
 }
 
-export const delete4 = oc
+export const delete6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -886,8 +1748,9 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
-export const get23 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -897,8 +1760,9 @@ export const get23 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdPath }))
   .output(zGetAgentByAgentIdResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
-export const put2 = oc
+export const put3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -908,32 +1772,44 @@ export const put2 = oc
   })
   .input(z.object({ body: zPutAgentByAgentIdBody, params: zPutAgentByAgentIdPath }))
   .output(zPutAgentByAgentIdResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
 
 export const byAgentId = {
-  delete: delete4,
-  get: get23,
-  put: put2,
+  delete: delete6,
+  get: get35,
+  put: put3,
   apiAccess,
   apiEnable,
   apiKeys,
+  audioToText,
+  buildChat,
+  buildDraft,
   chatMessages,
   composer,
+  config,
   copy,
-  drive,
+  debugConversation,
   features,
   feedbacks,
-  files: files2,
   logSources,
   logs,
   messages: messages2,
+  publish,
   referencingWorkflows,
   sandbox,
-  skills: skills2,
   statistics,
+  textToAudio,
+  trace,
+  traceCapabilities,
+  traceConfig,
+  traceRuns,
   versions,
 }
 
-export const get24 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -941,10 +1817,11 @@ export const get24 = oc
     path: '/agent',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAgentQuery.optional() }))
+  .input(z.object({ query: zGetAgentQuery.optional() }).optional())
   .output(zGetAgentResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
-export const post13 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -955,10 +1832,14 @@ export const post13 = oc
   })
   .input(z.object({ body: zPostAgentBody }))
   .output(zPostAgentResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
 
 export const agent = {
-  get: get24,
-  post: post13,
+  get: get36,
+  post: post23,
   inviteOptions,
   byAgentId,
 }

@@ -1,10 +1,11 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFilePreview } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 import DocumentFileIcon from '../../../common/document-file-icon'
 import Loading from './loading'
@@ -14,16 +15,16 @@ type FilePreviewProps = {
   hidePreview: () => void
 }
 
-const FilePreview = ({
-  file,
-  hidePreview,
-}: FilePreviewProps) => {
-  const { t } = useTranslation()
-  const { data: fileData, isFetching } = useFilePreview(file.id || '')
+const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
+  const { t } = useTranslation(['datasetPipeline'])
+  const { data: fileData, isFetching } = useQuery(
+    consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: file.id ? { params: { file_id: file.id } } : skipToken,
+    }),
+  )
 
   const fileName = useMemo(() => {
-    if (!file)
-      return ''
+    if (!file) return ''
     const arr = file.name.split('.')
     return arr.slice(0, -1).join()
   }, [file])
@@ -32,8 +33,10 @@ const FilePreview = ({
     <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
         <div className="flex grow flex-col gap-y-1">
-          <div className="system-2xs-semibold-uppercase text-text-accent">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
-          <div className="text-tex-primary title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
+          <div className="system-2xs-semibold-uppercase text-text-accent">
+            {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
+          </div>
+          <div className="title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <DocumentFileIcon
               className="size-3.5 shrink-0"
@@ -46,7 +49,7 @@ const FilePreview = ({
             {fileData && (
               <>
                 <span>·</span>
-                <span>{`${formatNumberAbbreviated(fileData.content.length)} ${t('addDocuments.characters', { ns: 'datasetPipeline' })}`}</span>
+                <span>{`${formatNumberAbbreviated(fileData.content.length)} ${t(($) => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>
               </>
             )}
           </div>
@@ -56,7 +59,7 @@ const FilePreview = ({
           className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <RiCloseLine className="size-4.5" />
         </button>
       </div>
       {isFetching && (

@@ -4,10 +4,14 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, NamedTuple
 
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
-from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
-from graphon.nodes.human_input.enums import ValueSourceType
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from core.workflow.nodes.human_input.entities import FormInputConfig, SelectInputConfig
+from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import (
+    DifyHITLEventType,
+    HumanInputRequired,
+    PauseReason,
+)
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
 
@@ -97,7 +101,7 @@ def enrich_human_input_pause_reasons(
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
         updated = dict(reason)
-        if updated.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED:
+        if updated.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
                 disposition = dispositions_by_form_id.get(form_id)
@@ -117,11 +121,8 @@ def resolve_variable_select_input_options(
 ) -> list[FormInputConfig]:
     """Resolve variable-backed select options to runtime values."""
 
-    # This function replace the SelectInputConfig.option_source.value
-    # field with acutial runtime values when option_source.type is VARIABLE.
-    #
-    # This is a dirty hacks. However it does reduces the logic leaked to callers of
-    # the api.
+    # Convert variable-backed options into a self-contained constant source so
+    # downstream callers do not need the runtime variable pool or selector.
     resolved_inputs: list[FormInputConfig] = []
 
     if variable_pool is None:
@@ -144,8 +145,13 @@ def resolve_variable_select_input_options(
         if not isinstance(option_values, ArrayStringSegment):
             raise TypeError(f"expected ArrayStringSegment, got {type(option_values)}")
 
-        updated_option_source = option_source.model_copy(update={"value": option_values.value})
-        # Ensure frontend receives concrete select options instead of unresolved selectors.
+        updated_option_source = option_source.model_copy(
+            update={
+                "type": ValueSourceType.CONSTANT,
+                "selector": (),
+                "value": option_values.value,
+            }
+        )
         resolved_inputs.append(
             form_input.model_copy(
                 update={"option_source": updated_option_source},
@@ -167,7 +173,6 @@ def resolve_human_input_pause_reason_inputs(
         if not isinstance(reason, HumanInputRequired):
             resolved_reasons.append(reason)
             continue
-
         resolved_inputs = resolve_variable_select_input_options(
             reason.inputs,
             variable_pool=variable_pool,

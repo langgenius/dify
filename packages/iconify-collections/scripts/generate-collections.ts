@@ -64,8 +64,12 @@ const flattenCollections = (collections: ImportedCollections, prefix: string) =>
 
     const applyCollectionSize = <T extends IconData | AliasData>(iconData: T): T => ({
       ...iconData,
-      ...(iconData.width === undefined && collection.width !== undefined ? { width: collection.width } : {}),
-      ...(iconData.height === undefined && collection.height !== undefined ? { height: collection.height } : {}),
+      ...(iconData.width === undefined && collection.width !== undefined
+        ? { width: collection.width }
+        : {}),
+      ...(iconData.height === undefined && collection.height !== undefined
+        ? { height: collection.height }
+        : {}),
     })
 
     for (const [iconName, iconData] of Object.entries(collection.icons ?? {}))
@@ -136,17 +140,7 @@ import info from './info.json' with { type: 'json' }
 import metadata from './metadata.json' with { type: 'json' }
 import chars from './chars.json' with { type: 'json' }
 
-export { icons, info, metadata, chars }
-`
-
-const createIndexJs = (): string => `'use strict'
-
-const icons = require('./icons.json')
-const info = require('./info.json')
-const metadata = require('./metadata.json')
-const chars = require('./chars.json')
-
-module.exports = { icons, info, metadata, chars }
+export { chars, icons, info, metadata }
 `
 
 const createIndexTypes = (): string => `export interface IconifyJSON {
@@ -220,7 +214,6 @@ const writeCollectionPackage = async (
   await writeFile(path.resolve(targetDir, 'metadata.json'), '{}\n')
   await writeFile(path.resolve(targetDir, 'chars.json'), '{}\n')
   await writeFile(path.resolve(targetDir, 'index.mjs'), `${createIndexMjs()}\n`)
-  await writeFile(path.resolve(targetDir, 'index.js'), `${createIndexJs()}\n`)
   await writeFile(path.resolve(targetDir, 'index.d.ts'), `${createIndexTypes()}\n`)
 }
 

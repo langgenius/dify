@@ -3,18 +3,15 @@
   "compilerOptions": {
     "moduleResolution": "bundler",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@test/*": [
-        "./test/*"
-      ]
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
     },
     "types": ["node"],
+    "allowImportingTsExtensions": true,
     "noEmit": true, // we already have bundlers to handle this.
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"], // tests must be included for typechecking
+  "include": ["*.ts", "bin/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

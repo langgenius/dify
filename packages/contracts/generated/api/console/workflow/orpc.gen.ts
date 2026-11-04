@@ -2,13 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetWorkflowByWorkflowRunIdEventsPath,
   zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowByWorkflowRunIdPauseDetailsPath,
   zGetWorkflowByWorkflowRunIdPauseDetailsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get workflow execution events stream after resume

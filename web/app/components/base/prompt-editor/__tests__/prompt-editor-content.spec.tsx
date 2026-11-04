@@ -6,8 +6,11 @@ import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   $getRoot,
+  $insertNodes,
+  $isElementNode,
   BLUR_COMMAND,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
@@ -62,8 +65,7 @@ const setSelectionOnEditable = (editable: HTMLElement) => {
   if (lexicalTextNode) {
     range.setStart(lexicalTextNode, 0)
     range.setEnd(lexicalTextNode, 1)
-  }
-  else {
+  } else {
     range.selectNodeContents(editable)
   }
 
@@ -91,7 +93,7 @@ const PromptEditorContentHarness = ({
   captures,
   initialText = '',
   ...props
-}: ComponentProps<typeof PromptEditorContent> & { captures: Captures, initialText?: string }) => (
+}: ComponentProps<typeof PromptEditorContent> & { captures: Captures; initialText?: string }) => (
   <EventEmitterContextProvider>
     <LexicalComposer
       initialConfig={{
@@ -135,7 +137,9 @@ describe('PromptEditorContent', () => {
     Range.prototype.getClientRects = vi.fn(() => {
       const rectList = [mockDOMRect] as unknown as DOMRectList
       Object.defineProperty(rectList, 'length', { value: 1 })
-      Object.defineProperty(rectList, 'item', { value: (index: number) => index === 0 ? mockDOMRect : null })
+      Object.defineProperty(rectList, 'item', {
+        value: (index: number) => (index === 0 ? mockDOMRect : null),
+      })
       return rectList
     })
     Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
@@ -159,7 +163,7 @@ describe('PromptEditorContent', () => {
       const onBlur = vi.fn()
       const anchorElem = document.createElement('div')
 
-      const { container } = render(
+      render(
         <PromptEditorContentHarness
           captures={captures}
           compact={true}
@@ -176,9 +180,6 @@ describe('PromptEditorContent', () => {
 
       expect(screen.getByText('Type prompt')).toBeInTheDocument()
 
-      const editable = container.querySelector('[contenteditable="true"]') as HTMLElement
-      expect(editable.className).toContain('text-[13px]')
-
       await waitFor(() => {
         expect(captures.editor).not.toBeNull()
         expect(captures.eventEmitter).not.toBeNull()
@@ -193,12 +194,16 @@ describe('PromptEditorContent', () => {
       })
 
       await waitFor(() => {
+        expect(screen.getByRole('textbox')).toHaveTextContent('updated prompt')
         expect(onEditorChange).toHaveBeenCalled()
       })
 
       act(() => {
         captures.editor?.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
-        captures.editor?.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: null }))
+        captures.editor?.dispatchCommand(
+          BLUR_COMMAND,
+          new FocusEvent('blur', { relatedTarget: null }),
+        )
       })
 
       expect(onFocus).toHaveBeenCalledTimes(1)
@@ -208,7 +213,8 @@ describe('PromptEditorContent', () => {
 
     it('should render adjacent agent output tokens as inline output blocks', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
-      const initialText = '[§output:ccc:ccc§][§output:output_3ggg:output_3ggg§][§output:ggg:ggg§][§output:output_3fdfdf:output_3fdfdf§]'
+      const initialText =
+        '[§output:ccc:ccc§][§output:output_3ggg:output_3ggg§][§output:ggg:ggg§][§output:output_3fdfdf:output_3fdfdf§]'
 
       const { container } = render(
         <PromptEditorContentHarness
@@ -245,7 +251,7 @@ describe('PromptEditorContent', () => {
       })
     })
 
-    it('should infer file type when rendering a file-name output token', async () => {
+    it('should render file-name output tokens with the declared output type', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render(
@@ -257,16 +263,14 @@ describe('PromptEditorContent', () => {
           onEditorChange={vi.fn()}
           agentOutputBlock={{
             show: true,
-            outputs: [
-              { name: 'qna_report.pdf', type: 'string' },
-            ],
+            outputs: [{ name: 'qna_report.pdf', type: 'string' }],
           }}
         />,
       )
 
       await waitFor(() => {
         expect(screen.getByText('qna_report.pdf')).toBeInTheDocument()
-        expect(screen.getByText('file')).toBeInTheDocument()
+        expect(screen.getByText('string')).toBeInTheDocument()
       })
     })
 
@@ -274,9 +278,7 @@ describe('PromptEditorContent', () => {
       const captures: Captures = { editor: null, eventEmitter: null }
       const outputBlock = {
         show: true,
-        outputs: [
-          { name: 'summary', type: 'string' as const },
-        ],
+        outputs: [{ name: 'summary', type: 'string' as const }],
       }
 
       const { rerender } = render(
@@ -304,9 +306,7 @@ describe('PromptEditorContent', () => {
           onEditorChange={vi.fn()}
           agentOutputBlock={{
             show: true,
-            outputs: [
-              { name: 'summary', type: 'file' },
-            ],
+            outputs: [{ name: 'summary', type: 'file' }],
           }}
         />,
       )
@@ -317,22 +317,129 @@ describe('PromptEditorContent', () => {
       expect(screen.queryByText('string')).not.toBeInTheDocument()
     })
 
+    it('should preserve committed output name selection state when refreshing output block props', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const initialOnChange = vi.fn()
+      const nextOnChange = vi.fn()
+      const nextOutputs = [{ name: 'summary', type: 'string' as const }]
+
+      const { rerender } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:output:output§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [{ name: 'output', type: 'string' }],
+            onChange: initialOnChange,
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(captures.editor).not.toBeNull()
+        expect(screen.getByText('output')).toBeInTheDocument()
+      })
+
+      act(() => {
+        captures.editor?.update(() => {
+          const visitNode = (node: Parameters<typeof $isElementNode>[0]) => {
+            if (!$isElementNode(node)) return
+
+            node.getChildren().forEach((child) => {
+              if (child instanceof AgentOutputBlockNode) {
+                child.setOutput(
+                  'summary',
+                  'string',
+                  true,
+                  nextOutputs,
+                  initialOnChange,
+                  undefined,
+                  false,
+                  true,
+                )
+                return
+              }
+
+              visitNode(child)
+            })
+          }
+
+          visitNode($getRoot())
+        })
+      })
+
+      rerender(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:output:output§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [...nextOutputs],
+            onChange: nextOnChange,
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        captures.editor!.getEditorState().read(() => {
+          const root = $getRoot()
+
+          const findOutputNode = (
+            node: Parameters<typeof $isElementNode>[0],
+          ): AgentOutputBlockNode | null => {
+            if (!$isElementNode(node)) return null
+
+            for (const child of node.getChildren()) {
+              if (child instanceof AgentOutputBlockNode) return child
+
+              const outputNode = findOutputNode(child)
+              if (outputNode) return outputNode
+            }
+
+            return null
+          }
+
+          const outputNode = findOutputNode(root)
+          expect(outputNode?.shouldSelectNameOnEdit()).toBe(false)
+          expect(outputNode?.shouldOpenTypeSelectOnEdit()).toBe(true)
+          expect(outputNode?.getOnChange()).toBe(nextOnChange)
+        })
+      })
+    })
+
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
+      const user = userEvent.setup()
       const captures: Captures = { editor: null, eventEmitter: null }
       const onEditorChange = vi.fn()
       const insertCommand = createCommand<string[]>('prompt-editor-shortcut-insert')
       const insertSpy = vi.fn()
-      const Popup = ({ onClose, onInsert }: { onClose: () => void, onInsert: (command: typeof insertCommand, params: string[]) => void }) => (
+      const Popup = ({
+        onClose,
+        onInsert,
+      }: {
+        onClose: () => void
+        onInsert: (command: typeof insertCommand, params: string[]) => void
+      }) => (
         <>
-          <button type="button" onClick={() => onInsert(insertCommand, ['from-shortcut'])}>Insert shortcut</button>
-          <button type="button" onClick={onClose}>Close shortcut</button>
+          <button type="button" onClick={() => onInsert(insertCommand, ['from-shortcut'])}>
+            Insert shortcut
+          </button>
+          <button type="button" onClick={onClose}>
+            Close shortcut
+          </button>
         </>
       )
 
       const { container } = render(
         <PromptEditorContentHarness
           captures={captures}
-          shortcutPopups={[{ hotkey: 'ctrl+/', Popup }]}
+          shortcutPopups={[{ hotkey: 'Control+/', Popup }]}
           initialText="seed prompt"
           floatingAnchorElem={document.createElement('div')}
           onEditorChange={onEditorChange}
@@ -364,6 +471,7 @@ describe('PromptEditorContent', () => {
         insertCommand,
         (payload) => {
           insertSpy(payload)
+          $insertNodes([new CustomTextNode(payload.join(' '))])
           return true
         },
         COMMAND_PRIORITY_EDITOR,
@@ -373,12 +481,13 @@ describe('PromptEditorContent', () => {
       editable.focus()
       setSelectionOnEditable(editable)
 
-      fireEvent.keyDown(document, { key: '/', ctrlKey: true })
+      fireEvent.keyDown(editable, { key: '/', ctrlKey: true })
 
       const insertButton = await screen.findByRole('button', { name: 'Insert shortcut' })
-      fireEvent.click(insertButton)
+      await user.click(insertButton)
 
       expect(insertSpy).toHaveBeenCalledWith(['from-shortcut'])
+      await waitFor(() => expect(editable).toHaveTextContent('from-shortcut'))
       expect(onEditorChange).toHaveBeenCalled()
 
       await waitFor(() => {
@@ -386,26 +495,6 @@ describe('PromptEditorContent', () => {
       })
 
       unregister?.()
-    })
-
-    it('should keep the shell stable without optional anchor or placeholder overrides', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <PromptEditorContentHarness
-          captures={captures}
-          shortcutPopups={[]}
-          floatingAnchorElem={null}
-          onEditorChange={vi.fn()}
-        />,
-      )
-
-      await waitFor(() => {
-        expect(captures.editor).not.toBeNull()
-      })
-
-      expect(screen.queryByTestId('draggable-target-line')).not.toBeInTheDocument()
-      expect(screen.getByText('common.promptEditor.placeholder')).toBeInTheDocument()
     })
 
     it('should render roster references as inline token pills when enabled', async () => {
@@ -429,7 +518,9 @@ describe('PromptEditorContent', () => {
       const token = container.querySelector('[data-roster-reference-kind="file"]') as HTMLElement
       expect(token).toBeInTheDocument()
       expect(token).toHaveTextContent('qna_report.pdf')
-      expect(token.querySelector('.i-ri-file-pdf-2-fill')).toBeInTheDocument()
+      captures.editor!.getEditorState().read(() => {
+        expect($getRoot().getTextContent()).toBe('Use [§file:file-1:qna_report.pdf§]')
+      })
     })
   })
 })

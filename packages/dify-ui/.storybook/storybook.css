@@ -1,11 +1,10 @@
 @import 'tailwindcss';
+@import '../src/styles/styles.css';
 
 @plugin '../src/plugins/icons.ts';
 
 @source '../src';
 @source '../.storybook';
-
-@import '../src/styles/styles.css';
 
 html {
   color-scheme: light;

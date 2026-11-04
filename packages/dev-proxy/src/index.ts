@@ -5,8 +5,17 @@ export {
   parseDevProxyCliArgs,
   resolveDevProxyServerOptions,
 } from './config'
-export { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal, toLocalCookieName } from './cookies'
-export { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, isAllowedLocalDevOrigin } from './server'
+export {
+  rewriteCookieHeaderForUpstream,
+  rewriteSetCookieHeadersForLocal,
+  toLocalCookieName,
+} from './cookies'
+export {
+  buildUpstreamUrl,
+  createDevProxyApp,
+  isAllowedDevOrigin,
+  isAllowedLocalDevOrigin,
+} from './server'
 export type {
   CookieNameMatcher,
   CookieRewriteOptions,
@@ -18,5 +27,6 @@ export type {
   DevProxyCorsConfig,
   DevProxyRoute,
   DevProxyServerConfig,
+  DevProxySessionImportConfig,
   ResolvedDevProxyServerOptions,
 } from './types'

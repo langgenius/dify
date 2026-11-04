@@ -1,9 +1,11 @@
 import functools
 import logging
+import socket
 import ssl
+import sys
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Union, cast
+from typing import Any, Protocol, cast, runtime_checkable
 
 import redis
 from redis import RedisError
@@ -12,6 +14,7 @@ from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.exceptions import ConnectionError, TimeoutError
 from redis.retry import Retry
 from redis.sentinel import Sentinel
 from typing_extensions import TypedDict
@@ -25,7 +28,7 @@ from extensions.redis_names import (
     serialize_redis_name_args,
 )
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
@@ -36,6 +39,22 @@ _normalize_redis_key_prefix = normalize_redis_key_prefix
 _serialize_redis_name = serialize_redis_name
 _serialize_redis_name_arg = serialize_redis_name_arg
 _serialize_redis_name_args = serialize_redis_name_args
+
+
+@runtime_checkable
+class _ScriptRegistrar(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
+
+_INCR_IF_EXISTS_LUA = """
+-- Exactly 1 key and no arguments.
+-- KEYS[1]: Existing integer counter key, including the deployment prefix.
+-- Returns the incremented integer, or nil (Lua false) if the key is missing.
+-- INCR preserves TTL; checking existence atomically avoids recreating an
+-- expired/deleted counter without an expiry.
+if redis.call('EXISTS', KEYS[1]) == 0 then return false end
+return redis.call('INCR', KEYS[1])
+"""
 
 
 class RedisClientWrapper:
@@ -59,12 +78,12 @@ class RedisClientWrapper:
                            if the client is not initialized.
     """
 
-    _client: Union[redis.Redis, RedisCluster, None]
+    _client: redis.Redis | RedisCluster | None
 
     def __init__(self) -> None:
         self._client = None
 
-    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
+    def initialize(self, client: redis.Redis | RedisCluster) -> None:
         if self._client is None:
             self._client = client
 
@@ -141,6 +160,9 @@ class RedisClientWrapper:
     def ttl(self, name: str | bytes) -> Any:
         return self._require_client().ttl(_serialize_redis_name_arg(name, self._get_prefix()))
 
+    def pttl(self, name: str | bytes) -> Any:
+        return self._require_client().pttl(_serialize_redis_name_arg(name, self._get_prefix()))
+
     def getdel(self, name: str | bytes) -> Any:
         return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
 
@@ -165,8 +187,21 @@ class RedisClientWrapper:
     def hset(self, name: str | bytes, *args: Any, **kwargs: Any) -> Any:
         return self._require_client().hset(_serialize_redis_name_arg(name, self._get_prefix()), *args, **kwargs)
 
+    def incr_if_exists(self, name: str) -> int | None:
+        """Increment an existing integer counter, preserving TTL; return None if absent."""
+        count = self.eval(_INCR_IF_EXISTS_LUA, 1, _serialize_redis_name(name, self._get_prefix()))
+        if count is not None and not isinstance(count, int):
+            raise ValueError("Invalid Redis counter response")
+        return count
+
     def hgetall(self, name: str | bytes) -> Any:
         return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def hkeys(self, name: str | bytes) -> Any:
+        return self._require_client().hkeys(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def hexists(self, name: str | bytes, key: str | bytes) -> Any:
+        return self._require_client().hexists(_serialize_redis_name_arg(name, self._get_prefix()), key)
 
     def hdel(self, name: str | bytes, *keys: str | bytes) -> Any:
         return self._require_client().hdel(_serialize_redis_name_arg(name, self._get_prefix()), *keys)
@@ -196,6 +231,9 @@ class RedisClientWrapper:
             lt=lt,
         )
 
+    def zrem(self, name: str | bytes, *values: str | bytes | int | float) -> Any:
+        return self._require_client().zrem(_serialize_redis_name_arg(name, self._get_prefix()), *values)
+
     def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any:
         return self._require_client().zremrangebyscore(_serialize_redis_name_arg(name, self._get_prefix()), min, max)
 
@@ -205,8 +243,35 @@ class RedisClientWrapper:
     def pubsub(self) -> PubSub:
         return self._require_client().pubsub()
 
+    def eval(self, script: str, numkeys: int, *args: str | int) -> Any:
+        # Lua callers supply physical names, matching the historically delegated API.
+        # Redis script responses are dynamically shaped at this SDK boundary.
+        return self._require_client().execute_command("EVAL", script, numkeys, *args)
+
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
+
+    def register_script(self, script: str) -> Callable[..., Any]:
+        """Register a Lua script whose key arguments use logical Redis names."""
+        client = self._require_client()
+        if not isinstance(client, _ScriptRegistrar):
+            raise RuntimeError("Redis client does not support Lua script registration")
+        registered_script = client.register_script(script)
+
+        def execute(
+            keys: list[str | bytes] | tuple[str | bytes, ...] | None = None,
+            args: list[Any] | tuple[Any, ...] | None = None,
+            client: RedisClientWrapper | redis.Redis | RedisCluster | None = None,
+        ) -> Any:
+            redis_keys = _serialize_redis_name_args(tuple(keys or ()), self._get_prefix())
+            execution_client = client._require_client() if isinstance(client, RedisClientWrapper) else client
+            return registered_script(
+                keys=redis_keys,
+                args=args,
+                client=execution_client or self._require_client(),
+            )
+
+        return execute
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._require_client(), item)
@@ -228,12 +293,16 @@ class RedisHealthParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisClusterHealthParamsDict(TypedDict):
     retry: Retry
     socket_timeout: float | None
     socket_connect_timeout: float | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisBaseParamsDict(TypedDict):
@@ -249,9 +318,11 @@ class RedisBaseParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
-def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
+def _get_ssl_configuration() -> tuple[type[Connection | SSLConnection], dict[str, Any]]:
     """Get SSL configuration for Redis connection."""
     if not dify_config.REDIS_USE_SSL:
         return Connection, {}
@@ -293,16 +364,32 @@ def _get_retry_policy() -> Retry:
             cap=dify_config.REDIS_RETRY_BACKOFF_CAP,
         ),
         retries=dify_config.REDIS_RETRY_RETRIES,
+        supported_errors=(
+            ConnectionError,
+            TimeoutError,
+            BrokenPipeError,
+            OSError,
+        ),
     )
 
 
 def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+    socket_keepalive_options: dict[int, int] = {}
+    if sys.platform == "linux":
+        socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+
     return RedisHealthParamsDict(
         retry=_get_retry_policy(),
         socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
         socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+        socket_keepalive=dify_config.REDIS_KEEPALIVE,
+        socket_keepalive_options=socket_keepalive_options,
     )
 
 
@@ -319,6 +406,8 @@ def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
         "retry": health_params["retry"],
         "socket_timeout": health_params["socket_timeout"],
         "socket_connect_timeout": health_params["socket_connect_timeout"],
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
     return result
 
@@ -338,7 +427,19 @@ def _get_base_redis_params() -> RedisBaseParamsDict:
     )
 
 
-def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _parse_redis_nodes(value: str) -> list[tuple[str, int]]:
+    nodes = []
+    for raw_node in value.split(","):
+        host, separator, port = raw_node.strip().rpartition(":")
+        if not separator or not host or not port:
+            raise ValueError(f"Invalid Redis node: {raw_node}")
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+        nodes.append((host, int(port)))
+    return nodes
+
+
+def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
@@ -346,12 +447,16 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     if not dify_config.REDIS_SENTINEL_SERVICE_NAME:
         raise ValueError("REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True")
 
-    sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
+    sentinel_hosts = _parse_redis_nodes(dify_config.REDIS_SENTINELS)
+
+    health_params = _get_connection_health_params()
 
     sentinel_kwargs = {
         "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
         "username": dify_config.REDIS_SENTINEL_USERNAME,
         "password": dify_config.REDIS_SENTINEL_PASSWORD,
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
@@ -367,15 +472,12 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     return master
 
 
-def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
+def _create_cluster_client() -> redis.Redis | RedisCluster:
     """Create Redis cluster client."""
     if not dify_config.REDIS_CLUSTERS:
         raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
 
-    nodes = [
-        ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
-        for node in dify_config.REDIS_CLUSTERS.split(",")
-    ]
+    nodes = [ClusterNode(host=host, port=port) for host, port in _parse_redis_nodes(dify_config.REDIS_CLUSTERS)]
 
     cluster_kwargs: dict[str, Any] = {
         "startup_nodes": nodes,
@@ -390,7 +492,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _create_standalone_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 
@@ -429,8 +531,13 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
     return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
-def init_app(app: DifyApp):
-    """Initialize Redis client and attach it to the app."""
+def init_app(app: DifyApp) -> None:
+    """Attach the cache client and select the global event-transport client.
+
+    Requires valid settings for the selected cache topology. Explicit PubSub
+    URLs take precedence; otherwise Sentinel is reused without requiring
+    standalone Redis host settings.
+    """
     global redis_client
 
     # Determine Redis mode and create appropriate client
@@ -449,7 +556,8 @@ def init_app(app: DifyApp):
 
     global _pubsub_redis_client
     _pubsub_redis_client = client
-    if dify_config.normalized_pubsub_redis_url:
+    pubsub_redis_url = (dify_config.PUBSUB_REDIS_URL or "").strip()
+    if pubsub_redis_url or not dify_config.REDIS_USE_SENTINEL:
         _pubsub_redis_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )
@@ -457,16 +565,14 @@ def init_app(app: DifyApp):
 
 def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     assert _pubsub_redis_client is not None, "PubSub redis Client should be initialized here."
-    join_timeout_ms = dify_config.PUBSUB_LISTENER_JOIN_TIMEOUT_MS
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
-        return ShardedRedisBroadcastChannel(_pubsub_redis_client, join_timeout_ms=join_timeout_ms)
+        return ShardedRedisBroadcastChannel(_pubsub_redis_client)
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
         return StreamsBroadcastChannel(
             _pubsub_redis_client,
             retention_seconds=dify_config.PUBSUB_STREAMS_RETENTION_SECONDS,
-            join_timeout_ms=join_timeout_ms,
         )
-    return RedisBroadcastChannel(_pubsub_redis_client, join_timeout_ms=join_timeout_ms)
+    return RedisBroadcastChannel(_pubsub_redis_client)
 
 
 def redis_fallback[T](default_return: T | None = None):  # type: ignore

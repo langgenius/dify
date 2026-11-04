@@ -1,27 +1,40 @@
+import asyncio
 import json
 import unittest
 from contextlib import asynccontextmanager
+from decimal import Decimal
 from typing import cast
 from unittest.mock import patch
+from uuid import uuid4
 
 import httpx
-from pydantic_ai.exceptions import ModelHTTPError, UserError
+import pytest
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
     ModelRequest,
     ModelResponse,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextPart,
     ThinkingPart,
+    ToolAvailabilityDeltaPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.instrumented import InstrumentationSettings, InstrumentedModel
 from pydantic_ai.tools import ToolDefinition
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode
 
-from dify_agent.adapters.llm import DifyLLMAdapterModel, DifyPluginDaemonProvider
+from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
+from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 
 from ._test_support import (
     AssistantPromptMessage,
@@ -36,23 +49,42 @@ from ._test_support import (
 
 
 class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
+    _http_clients: list[httpx.AsyncClient] = []
+
+    async def asyncSetUp(self) -> None:
+        self._http_clients: list[httpx.AsyncClient] = []
+
+    async def asyncTearDown(self) -> None:
+        for client in self._http_clients:
+            await client.aclose()
+
     def make_provider(
         self,
         *,
-        user_id: str | None = None,
+        user_id: str = "user-123",
         http_client: httpx.AsyncClient | None = None,
-    ) -> DifyPluginDaemonProvider:
-        return DifyPluginDaemonProvider(
-            tenant_id="tenant-1",
+    ) -> DifyApiLLMProvider:
+        if http_client is None:
+            http_client = httpx.AsyncClient(trust_env=False)
+            self._http_clients.append(http_client)
+        return DifyApiLLMProvider(
             plugin_id="langgenius/openai",
-            plugin_daemon_url="http://plugin-daemon",
-            plugin_daemon_api_key="daemon-secret",
-            user_id=user_id,
+            inner_api_url="http://dify-api",
+            inner_api_key="inner-secret",
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_id=user_id,
+                user_from="account",
+                app_id="app-1",
+                agent_mode="single_step",
+                invoke_from="debugger",
+            ),
+            agent_run_id="run-1",
             http_client=http_client,
         )
 
     @asynccontextmanager
-    async def mock_daemon_stream(self, handler: httpx.MockTransport):
+    async def mock_gateway_stream(self, handler: httpx.MockTransport):
         @asynccontextmanager
         async def mock_stream(
             client: httpx.AsyncClient,
@@ -71,10 +103,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(httpx.AsyncClient, "stream", new=mock_stream):
             yield
 
-    async def test_request_uses_plugin_daemon_dispatch_contract(self) -> None:
+    async def test_request_uses_api_gateway_contract(self) -> None:
         messages = [
             ModelRequest(
                 parts=[
+                    SystemPromptPart("   "),
                     SystemPromptPart("request system"),
                     UserPromptPart("hello"),
                     ToolReturnPart(
@@ -126,17 +159,16 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(request: httpx.Request) -> httpx.Response:
             self.assertEqual(request.method, "POST")
-            self.assertEqual(request.url.path, "/plugin/tenant-1/dispatch/llm/invoke")
-            self.assertEqual(request.headers["X-Api-Key"], "daemon-secret")
-            self.assertEqual(request.headers["X-Plugin-ID"], "langgenius/openai")
+            self.assertEqual(request.url.path, "/inner/api/agent/llm/invoke")
+            self.assertEqual(request.headers["X-Inner-Api-Key"], "inner-secret")
 
             payload = json.loads(request.content.decode("utf-8"))
-            self.assertEqual(payload["user_id"], "user-123")
-            data = payload["data"]
-            self.assertEqual(data["provider"], "openai")
-            self.assertEqual(data["model_type"], "llm")
+            self.assertEqual(payload["caller"]["user_id"], "user-123")
+            self.assertNotIn("tracing", payload["caller"])
+            data = payload["target"]
+            self.assertEqual(data["provider"], "langgenius/openai/openai")
             self.assertEqual(data["model"], "demo-model")
-            self.assertEqual(data["credentials"], {"api_key": "secret"})
+            self.assertNotIn("credentials", data)
             self.assertEqual(
                 data["model_parameters"],
                 {"temperature": 0.2, "max_tokens": 128, "logit_bias": {"1": 2}},
@@ -147,12 +179,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(set(tools_by_name), {"weather", "incident_summary"})
             self.assertEqual(tools_by_name["incident_summary"]["parameters"]["required"], ["title"])
             self.assertEqual(data["prompt_messages"][0]["role"], "system")
-            self.assertEqual(data["prompt_messages"][0]["content"], "request system")
-            self.assertEqual(data["prompt_messages"][1]["content"], "be concise")
-            self.assertEqual(data["prompt_messages"][2]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][0]["content"], "request system\n\nbe concise")
+            self.assertEqual(data["prompt_messages"][1]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][2]["role"], "tool")
             self.assertEqual(data["prompt_messages"][3]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][4]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][5]["role"], "assistant")
+            self.assertEqual(data["prompt_messages"][4]["role"], "assistant")
             return build_stream_response(
                 LLMResultChunk(
                     model="demo-model",
@@ -164,12 +195,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(user_id="user-123"),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
                 model_settings={"temperature": 0.2, "stop_sequences": ["DEFAULT_STOP"]},
             )
 
@@ -180,10 +210,310 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(response.model_name, "demo-model")
-        self.assertEqual(response.provider_name, "DifyPlugin/langgenius/openai")
+        self.assertEqual(response.provider_name, "DifyAPI/langgenius/openai")
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_application_tracing_policy_is_excluded_from_gateway_caller(self) -> None:
+        provider = self.make_provider()
+        provider.execution_context.tracing = ApplicationTracingContext(
+            run_id=uuid4(),
+            invocation_id=uuid4(),
+            trace_id=uuid4().hex,
+            parent_span_id=uuid4().hex[:16],
+            session_id="test-session",
+            capture_content=True,
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content)
+            self.assertNotIn("tracing", payload["caller"])
+            self.assertEqual(payload["caller"]["tenant_id"], "tenant-1")
+            return build_stream_response(*single_text_chunk("hello"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+            await adapter.request([ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters())
+
+    async def test_real_model_span_records_gateway_accounting_on_streaming_and_nonstreaming_requests(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+        usage = make_usage(
+            prompt_tokens=17,
+            completion_tokens=9,
+            total_price=Decimal("0.001234"),
+            currency="CNY",
+            time_to_first_token=0.125,
+        )
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="hello"),
+                        usage=usage,
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content=" world"),
+                    ),
+                ),
+            )
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                messages = [ModelRequest(parts=[UserPromptPart("test")])]
+                await adapter.request(messages, None, ModelRequestParameters())
+                async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                    async for _ in stream:
+                        pass
+            spans = exporter.get_finished_spans()
+            self.assertEqual(len(spans), 2)
+            for span in spans:
+                attributes = span.attributes or {}
+                self.assertEqual(attributes["gen_ai.operation.name"], "chat")
+                self.assertEqual(attributes["dify.llm.total_price"], "0.001234")
+                self.assertEqual(attributes["dify.llm.currency"], "CNY")
+                self.assertEqual(attributes["gen_ai.response.time_to_first_token"], 0.125)
+                self.assertEqual(attributes["dify.llm.time_to_first_token_unit"], "s")
+                self.assertEqual(attributes["dify.llm.time_to_first_token_source"], "gateway_usage")
+                self.assertEqual(attributes["gen_ai.usage.input_tokens"], 17)
+                self.assertEqual(attributes["gen_ai.usage.output_tokens"], 9)
+                self.assertEqual(attributes["gen_ai.usage.total_tokens"], 26)
+                self.assertNotIn("gen_ai.usage.cache_read.input_tokens", attributes)
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_streaming_gateway_failure_marks_the_real_chat_span_as_error(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_error("EndpointSetupFailedError", "sensitive-provider-detail")
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                with self.assertRaises(UserError):
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("test")])], None, ModelRequestParameters()
+                    ) as stream:
+                        async for _ in stream:
+                            pass
+            spans = exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+            self.assertEqual((spans[0].attributes or {}).get("error.type"), "UserError")
+            self.assertNotIn("dify.llm.total_price", spans[0].attributes or {})
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_model_span_measures_first_content_without_inventing_missing_cost(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content=""),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="hello"),
+                    ),
+                ),
+            )
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                await adapter.request([ModelRequest(parts=[UserPromptPart("test")])], None, ModelRequestParameters())
+            attributes = exporter.get_finished_spans()[0].attributes or {}
+            self.assertGreaterEqual(attributes["gen_ai.response.time_to_first_token"], 0)
+            self.assertEqual(attributes["dify.llm.time_to_first_token_source"], "gateway_first_content")
+            self.assertNotIn("dify.llm.total_price", attributes)
+            self.assertNotIn("dify.llm.currency", attributes)
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_request_accumulates_complete_dify_usage_across_model_rounds(self) -> None:
+        usages = [
+            make_usage(
+                prompt_tokens=10,
+                completion_tokens=2,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000050"),
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000060"),
+                total_price=Decimal("0.000110"),
+                latency=0.4,
+                time_to_first_token=0.1,
+                time_to_generate=0.3,
+            ),
+            make_usage(
+                prompt_tokens=20,
+                completion_tokens=3,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000100"),
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000090"),
+                total_price=Decimal("0.000190"),
+                latency=0.8,
+                time_to_first_token=0.2,
+                time_to_generate=0.6,
+            ),
+        ]
+        request_count = 0
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal request_count
+            usage = usages[request_count]
+            request_count += 1
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="done", tool_calls=[]),
+                        usage=usage,
+                    ),
+                )
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            _ = await adapter.request(
+                [ModelRequest(parts=[UserPromptPart("first")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("second")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+
+        usage = adapter.accumulated_usage
+        self.assertEqual(request_count, 2)
+        self.assertTrue(events)
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 30)
+        self.assertEqual(usage.completion_tokens, 5)
+        self.assertEqual(usage.total_tokens, 35)
+        self.assertEqual(usage.prompt_price, Decimal("0.000150"))
+        self.assertEqual(usage.completion_price, Decimal("0.000150"))
+        self.assertEqual(usage.total_price, Decimal("0.000300"))
+        self.assertEqual(usage.currency, "USD")
+        self.assertAlmostEqual(usage.latency, 1.2)
+        self.assertEqual(usage.time_to_first_token, 0.2)
+        self.assertEqual(usage.time_to_generate, 0.6)
+
+    async def test_request_merges_system_messages_before_history(self) -> None:
+        messages = [
+            ModelRequest(parts=[UserPromptPart("previous user")]),
+            ModelResponse(parts=[TextPart(content="previous answer")]),
+            ModelRequest(parts=[SystemPromptPart("current system"), UserPromptPart("current user")]),
+        ]
+        request_parameters = ModelRequestParameters(instruction_parts=[InstructionPart(content="runtime instruction")])
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["system", "user", "assistant", "user"],
+            )
+            self.assertEqual(prompt_messages[0]["content"], "current system\n\nruntime instruction")
+            self.assertEqual(prompt_messages[1]["content"], "previous user")
+            self.assertEqual(prompt_messages[2]["content"], "previous answer")
+            self.assertEqual(prompt_messages[3]["content"], "current user")
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=request_parameters,
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_merges_scattered_system_messages_without_instructions(self) -> None:
+        messages = [
+            ModelRequest(parts=[SystemPromptPart("first system"), UserPromptPart("hello")]),
+            ModelResponse(parts=[TextPart(content="answer")]),
+            ModelRequest(parts=[SystemPromptPart("second system"), UserPromptPart("follow up")]),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["system", "user", "assistant", "user"],
+            )
+            self.assertEqual(prompt_messages[0]["content"], "first system\n\nsecond system")
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
     async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
@@ -211,7 +541,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(request: httpx.Request) -> httpx.Response:
             payload = json.loads(request.content.decode("utf-8"))
-            prompt_messages = payload["data"]["prompt_messages"]
+            prompt_messages = payload["target"]["prompt_messages"]
 
             self.assertEqual([message["role"] for message in prompt_messages], ["system", "user", "assistant", "tool"])
             self.assertEqual(prompt_messages[2]["content"], "")
@@ -223,12 +553,87 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
             return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_uses_unique_fallback_ids_for_same_name_tool_calls(self) -> None:
+        messages = [
+            ModelRequest(parts=[UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="lookup", args={"query": "first"}, tool_call_id=""),
+                    ToolCallPart(tool_name="lookup", args={"query": "second"}, tool_call_id=""),
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+            tool_calls = prompt_messages[1]["tool_calls"]
+
+            self.assertEqual(tool_calls[0]["id"], "tool-call-0-lookup")
+            self.assertEqual(tool_calls[1]["id"], "tool-call-1-lookup")
+
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_collapses_text_only_assistant_history_parts_to_string_content(self) -> None:
+        messages = [
+            ModelRequest(parts=[UserPromptPart("initial request")]),
+            ModelResponse(
+                parts=[
+                    ThinkingPart(content="plan"),
+                    TextPart(content="answer"),
+                ]
+            ),
+            ModelRequest(parts=[UserPromptPart("follow up")]),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual([message["role"] for message in prompt_messages], ["user", "assistant", "user"])
+            self.assertEqual(prompt_messages[1]["content"], "<think>\nplan\n</think>answer")
+
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
             )
 
             response = await adapter.request(
@@ -250,19 +655,18 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(request: httpx.Request) -> httpx.Response:
             payload = json.loads(request.content.decode("utf-8"))
-            prompt_messages = payload["data"]["prompt_messages"]
+            prompt_messages = payload["target"]["prompt_messages"]
 
             self.assertEqual([message["role"] for message in prompt_messages], ["system", "user", "user"])
             self.assertEqual(prompt_messages[2]["content"], "follow up")
 
             return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             response = await adapter.request(
@@ -276,10 +680,10 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
     async def test_provider_does_not_close_external_http_client(self) -> None:
-        http_client = httpx.AsyncClient()
+        http_client = httpx.AsyncClient(trust_env=False)
         provider = self.make_provider(http_client=http_client)
 
-        self.assertEqual(provider.name, "DifyPlugin/langgenius/openai")
+        self.assertEqual(provider.name, "DifyAPI/langgenius/openai")
         self.assertIs(provider.client.http_client, http_client)
         async with provider:
             pass
@@ -291,12 +695,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             response = await adapter.request(
@@ -311,6 +714,61 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
 
+    async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=[TextPromptMessageContent(data="before<think>reasoning")],
+                            tool_calls=[],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content=[TextPromptMessageContent(data=" continues</think>after")],
+                            tool_calls=[],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=2,
+                        message=AssistantPromptMessage(content="", tool_calls=[]),
+                        usage=make_usage(prompt_tokens=6, completion_tokens=4),
+                        finish_reason="stop",
+                    ),
+                ),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+                response = stream.get()
+
+        self.assertTrue(events)
+        self.assertEqual([part.part_kind for part in response.parts], ["text", "thinking", "text"])
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
+        self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning continues")
+        self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
+
     async def test_request_stream_yields_response_parts_and_usage(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_response(
@@ -324,7 +782,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 LLMResultChunk(
                     model="demo-model",
                     delta=LLMResultChunkDelta(
-                        index=1,
+                        index=0,
                         message=AssistantPromptMessage(
                             content="",
                             tool_calls=[
@@ -351,12 +809,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 ),
             )
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             async with adapter.request_stream(
@@ -378,16 +835,80 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.parts[2].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "world")
 
-    async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
+    async def test_request_stream_assigns_fallback_ids_to_tool_calls_without_ids(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
-            return build_stream_response(*single_text_chunk("before<think>reasoning</think>after"))
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id=None,  # pyright: ignore[reportArgumentType]
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="shell_run",
+                                        arguments='{"script":"lookup find"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id=None,  # pyright: ignore[reportArgumentType]
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="shell_run",
+                                        arguments='{"script":"lookup out"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+            )
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+                response = stream.get()
+
+        self.assertTrue(events)
+        self.assertEqual([part.part_kind for part in response.parts], ["tool-call", "tool-call"])
+        self.assertEqual(cast(ToolCallPart, response.parts[0]).tool_call_id, "chunk-0-tool-0")
+        self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_call_id, "chunk-1-tool-0")
+        self.assertEqual(cast(ToolCallPart, response.parts[0]).args, '{"script":"lookup find"}')
+        self.assertEqual(cast(ToolCallPart, response.parts[1]).args, '{"script":"lookup out"}')
+
+    async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(*single_text_chunk("before<think>reasoning</think>after"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
             )
 
             response = await adapter.request(
@@ -410,12 +931,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 json.dumps({"error_type": "InvokeRateLimitError", "message": "too many"}),
             )
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             with self.assertRaises(ModelHTTPError) as context:
@@ -435,12 +955,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_error_response("PluginDaemonUnauthorizedError", "invalid api key", status_code=401)
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             with self.assertRaises(ModelHTTPError) as context:
@@ -451,24 +970,17 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(context.exception.status_code, 401)
-        self.assertEqual(
-            context.exception.body,
-            {
-                "error_type": "PluginDaemonUnauthorizedError",
-                "message": "invalid api key",
-            },
-        )
+        self.assertEqual(context.exception.body, "invalid api key")
 
     async def test_request_maps_endpoint_setup_error_to_user_error(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_error("EndpointSetupFailedError", "missing endpoint config")
 
-        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
                 model_provider="openai",
-                credentials={"api_key": "secret"},
             )
 
             with self.assertRaises(UserError) as context:
@@ -479,3 +991,42 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(str(context.exception), "missing endpoint config")
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        pytest.param(SpeechPart(speaker="user", transcript="hello"), id="speech"),
+        pytest.param(ToolAvailabilityDeltaPart(tools_added=["lookup"]), id="tool-availability-delta"),
+    ],
+)
+def test_request_rejects_unsupported_pydantic_ai_request_parts(
+    part: SpeechPart | ToolAvailabilityDeltaPart,
+) -> None:
+    async def scenario() -> None:
+        async with httpx.AsyncClient(trust_env=False) as http_client:
+            provider = DifyApiLLMProvider(
+                plugin_id="langgenius/openai",
+                inner_api_url="http://dify-api",
+                inner_api_key="inner-secret",
+                execution_context=DifyExecutionContextLayerConfig(
+                    tenant_id="tenant-1",
+                    user_id="user-123",
+                    user_from="account",
+                    app_id="app-1",
+                    agent_mode="single_step",
+                    invoke_from="debugger",
+                ),
+                agent_run_id="run-1",
+                http_client=http_client,
+            )
+            adapter = DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+
+            with pytest.raises(UnexpectedModelBehavior, match=type(part).__name__):
+                _ = await adapter.request(
+                    [ModelRequest(parts=[part])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                )
+
+    asyncio.run(scenario())

@@ -1,445 +1,322 @@
-import type { ReactNode } from 'react'
-import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
-import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
-import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { AgentPromptEditor } from '../orchestrate/prompt-editor'
-import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { AgentPromptEditor, AgentTemplatePromptEditor } from '../orchestrate/prompt-editor'
+import {
+  createAgentPromptEnvironment,
+  duckDuckGoProvider,
+  duckDuckGoTool,
+  mondayProvider,
+} from './agent-prompt-editor-test-env'
 
-const mockPromptEditor = vi.hoisted(() => vi.fn())
-const mockCopy = vi.hoisted(() => vi.fn())
-const mockReset = vi.hoisted(() => vi.fn())
-const mockBuiltInTools = vi.hoisted(() => [
-  {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    author: 'Dify',
-    description: { en_US: 'DuckDuckGo tools' },
-    icon: '/duckduckgo.svg',
-    label: { en_US: 'DuckDuckGo' },
-    type: 'builtin',
-    team_credentials: {},
-    is_team_authorization: true,
-    allow_delete: false,
-    labels: [],
-    meta: {},
-    tools: [
-      {
-        name: 'ddg_search',
-        author: 'Dify',
-        label: { en_US: 'DuckDuckGo Search' },
-        description: { en_US: 'Search the web.' },
-        parameters: [],
-        labels: [],
-        output_schema: {},
-      },
-      {
-        name: 'ddg_translate',
-        author: 'Dify',
-        label: { en_US: 'DuckDuckGo Translate' },
-        description: { en_US: 'Translate search results.' },
-        parameters: [],
-        labels: [],
-        output_schema: {},
-      },
-    ],
-  },
-])
-
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  __esModule: true,
-  default: (props: PromptEditorProps) => {
-    mockPromptEditor(props)
-
-    return (
-      <div>
-        <div role="textbox" aria-label={String(props.placeholder)} />
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/infotip', () => ({
-  Infotip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}))
-
-vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copied: false,
-    copy: mockCopy,
-    reset: mockReset,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
-
-const duckDuckGoSearchAction = {
-  id: 'duckduckgo-search',
-  name: 'DuckDuckGo Search',
-  toolName: 'ddg_search',
-  description: 'Search the web.',
+const renderEditor = (options: Parameters<typeof createAgentPromptEnvironment>[0] = {}) => {
+  const env = createAgentPromptEnvironment(options)
+  return { ...env, ...render(env.wrap(<AgentPromptEditor />)) }
 }
-
-const duckDuckGoProviderTool: AgentTool = {
-  id: 'duckduckgo',
-  name: 'DuckDuckGo',
-  kind: 'provider',
-  iconClassName: 'i-simple-icons-duckduckgo',
-  credentialKey: 'agentDetail.configure.tools.credential.authOne',
-  credentialVariant: 'authorized',
-  actions: [
-    duckDuckGoSearchAction,
-  ],
-}
-
-const promptEditorDraft = {
-  ...defaultAgentSoulConfigFormState,
-  skills: [
-    {
-      id: 'playwright',
-      name: 'Playwright',
-    },
-  ],
-  tools: [duckDuckGoProviderTool],
-} satisfies typeof defaultAgentSoulConfigFormState
-
-const renderAgentPromptEditor = (
-  value: string,
-  draftOverrides: Partial<typeof defaultAgentSoulConfigFormState> = {},
-) => {
-  const store = createStore()
-  store.set(agentComposerDraftAtom, {
-    ...promptEditorDraft,
-    ...draftOverrides,
-    prompt: value,
-  })
-
-  const view = render(
-    <JotaiProvider store={store}>
-      <AgentPromptEditor />
-    </JotaiProvider>,
-  )
-
-  return {
-    store,
-    ...view,
-    rerenderWithValue: (nextValue: string) => {
-      store.set(agentComposerPromptAtom, nextValue)
-      view.rerender(
-        <JotaiProvider store={store}>
-          <AgentPromptEditor />
-        </JotaiProvider>,
-      )
-    },
-  }
+const menuName = /agentDetail\.configure\.prompt\.insert\.label/
+const skillsName = /agentDetail\.configure\.skills\.label/
+const toolsName = /agentDetail\.configure\.tools\.label/
+const openMenu = async (user: ReturnType<typeof userEvent.setup>, prefix = 'Review ') => {
+  const editor = screen.getByRole('textbox')
+  await user.click(editor)
+  await replacePromptEditorText(editor, prefix)
+  await user.keyboard('/')
+  return screen.findByRole('dialog', { name: menuName })
 }
 
 describe('AgentPromptEditor', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('copies the serialized draft and shows feedback while the copy control is hovered', async () => {
+    const user = userEvent.setup()
+    renderEditor({ draft: { prompt: 'Review these tenders' } })
+    const copy = screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/ })
+    await user.hover(copy)
+    await user.click(copy)
+    expect(await screen.findByText(/agentDetail\.configure\.prompt\.copied$/)).toBeVisible()
+    expect(await navigator.clipboard.readText()).toBe('Review these tenders')
+    await user.unhover(copy)
+    await waitFor(() =>
+      expect(screen.queryByText(/agentDetail\.configure\.prompt\.copied$/)).not.toBeInTheDocument(),
+    )
   })
 
-  // Prompt actions should expose the designed copy control and copy the current draft prompt.
-  describe('Prompt Actions', () => {
-    it('should copy the current prompt when the copy button is clicked', () => {
-      renderAgentPromptEditor('Review these tenders')
-
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
-
-      expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+  it('updates the rendered CLI reference when its configured name changes without renaming provider tokens', async () => {
+    const { store } = renderEditor({
+      draft: {
+        prompt:
+          'Run [§cli_tool:cli-1:Old CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
+        tools: [{ id: 'cli-1', kind: 'cli', name: 'Old CLI' }, duckDuckGoTool],
+      },
     })
-
-    it('should update knowledge reference labels when the retrieval title changes', () => {
-      const store = createStore()
-      store.set(agentComposerDraftAtom, {
-        ...defaultAgentSoulConfigFormState,
-        prompt: 'Use [§knowledge:retrieval-1:Old Search§] and [§knowledge:retrieval-2:Keep Search§]',
-        knowledgeRetrievals: [
-          { id: 'retrieval-1', name: 'Old Search' },
-          { id: 'retrieval-2', name: 'Keep Search' },
-        ],
-      })
-
-      store.set(agentComposerKnowledgeRetrievalsAtom, [
-        { id: 'retrieval-1', name: 'Release Search' },
-        { id: 'retrieval-2', name: 'Keep Search' },
-      ])
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Use [§knowledge:retrieval-1:Release Search§] and [§knowledge:retrieval-2:Keep Search§]')
-    })
-
-    it('should update CLI tool reference labels when the tool title changes', () => {
-      const store = createStore()
-      store.set(agentComposerDraftAtom, {
-        ...defaultAgentSoulConfigFormState,
-        prompt: 'Run [§cli_tool:cli-1:Old CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
-        tools: [
-          { id: 'cli-1', kind: 'cli', name: 'Old CLI' },
-          duckDuckGoProviderTool,
-        ],
-      })
-
+    act(() =>
       store.set(agentComposerToolsAtom, [
         { id: 'cli-1', kind: 'cli', name: 'Release CLI' },
         {
-          ...duckDuckGoProviderTool,
-          actions: [
+          ...duckDuckGoTool,
+          actions: [{ ...duckDuckGoTool.actions[0]!, name: 'Renamed Provider Action' }],
+        },
+      ]),
+    )
+    expect(await within(screen.getByRole('textbox')).findByText('Release CLI')).toBeVisible()
+    expect(store.get(agentComposerPromptAtom)).toBe(
+      'Run [§cli_tool:cli-1:Release CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
+    )
+  })
+
+  it.each([
+    ['skill', 'skills%2Fplaywright%2FSKILL.md'],
+    ['file', 'drive%2Fspec.md'],
+    ['knowledge', 'retrieval-1'],
+    ['tool', 'duckduckgo/ddg_search'],
+    ['tool-all', 'duckduckgo/*'],
+  ])(
+    'warns about missing %s references while recognizing configured references',
+    async (kind, configuredId) => {
+      const user = userEvent.setup()
+      renderEditor({
+        draft: {
+          prompt: `[§${kind}:${configuredId}:Configured§] [§${kind}:missing:Missing§]`,
+          files: [
             {
-              ...duckDuckGoSearchAction,
-              name: 'Renamed Provider Action',
+              id: 'folder',
+              name: 'Folder',
+              icon: 'folder',
+              children: [
+                { id: 'file-1', name: 'Spec.md', icon: 'markdown', driveKey: 'drive/spec.md' },
+              ],
             },
           ],
+          knowledgeRetrievals: [{ id: 'retrieval-1', name: 'Release Notes' }],
         },
-      ])
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Run [§cli_tool:cli-1:Release CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]')
-    })
-
-    it('should render selected tool reference icons from configured tools', () => {
-      renderAgentPromptEditor('Run tools')
-
-      const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
-      const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
-      expect(renderIcon).toBeDefined()
-
-      const { container, rerender } = render(
-        <>
-          {renderIcon?.({
-            kind: 'tool',
-            id: 'duckduckgo/ddg_search',
-            label: 'DuckDuckGo Search',
-          })}
-        </>,
+      })
+      const editor = within(screen.getByRole('textbox'))
+      await user.hover(await editor.findByText('Missing'))
+      expect(await screen.findByText(/agentDetail.configure.prompt.referenceMissing/)).toBeVisible()
+      await user.hover(editor.getByText('Configured'))
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/agentDetail.configure.prompt.referenceMissing/),
+        ).not.toBeInTheDocument(),
       )
+    },
+  )
 
-      expect(container.querySelector('.i-simple-icons-duckduckgo')).toBeInTheDocument()
-
-      rerender(
-        <>
-          {renderIcon?.({
-            kind: 'cli_tool',
-            id: 'cli-1',
-            label: 'Lark CLI',
-          })}
-        </>,
-      )
-
-      expect(container.querySelector('.i-ri-terminal-box-line')).toBeInTheDocument()
-    })
+  it('inserts an embedded skill through the real slash picker', async () => {
+    const user = userEvent.setup()
+    const { store } = renderEditor()
+    await openMenu(user)
+    await user.click(screen.getByRole('button', { name: skillsName }))
+    await user.click(screen.getByRole('button', { name: 'Playwright' }))
+    await waitFor(() =>
+      expect(store.get(agentComposerPromptAtom)).toBe('Review [§skill:playwright:Playwright§] '),
+    )
+    expect(within(screen.getByRole('textbox')).getByText('Playwright')).toBeVisible()
+    expect(screen.queryByRole('dialog', { name: menuName })).not.toBeInTheDocument()
   })
 
-  // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
-  describe('Slash Commands', () => {
-    it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Review these tenders')
-
-      expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
-        disableBracePicker: true,
-        disableSlashPicker: true,
-        rosterReferenceBlock: expect.objectContaining({
-          show: true,
-        }),
-      }))
-
-      expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })).toBe(true)
-      rerenderWithValue('Review these tenders/')
-      expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
-      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.files\.label/i })).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
-      await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
-      })
-    })
-
-    it('should insert slash from the focused footer insert action', () => {
-      const { store } = renderAgentPromptEditor('Review these tenders')
-
-      fireEvent.focus(screen.getByRole('textbox'))
-      const insertButton = screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.insert\.label/i })
-      fireEvent.pointerDown(insertButton)
-      fireEvent.click(insertButton)
-      fireEvent.pointerUp(insertButton)
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders/')
-      expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.prompt\.mention\.label/i })).not.toBeInTheDocument()
-    })
-
-    it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
-      const onSelect = vi.fn()
-      const categories = [
-        { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
-        { key: 'files' as const, label: 'Files', icon: 'i-ri-file-line' },
-        { key: 'tools' as const, label: 'Tools', icon: 'i-ri-box-3-line' },
-        { key: 'knowledge' as const, label: 'Knowledge', icon: 'i-ri-book-open-line' },
-      ]
-
-      const { rerender } = render(
-        <AgentPromptSlashMenu
-          view="skills"
-          categories={categories}
-          skills={[]}
-          files={[]}
-          tools={[]}
-          onToolsChange={vi.fn()}
-          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
-          retrievals={[]}
-          onBack={vi.fn()}
-          onOpenCategory={vi.fn()}
-          onSelect={onSelect}
-        />,
-      )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
-
-      rerender(
-        <AgentPromptSlashMenu
-          view="files"
-          categories={categories}
-          skills={[]}
-          files={[]}
-          tools={[]}
-          onToolsChange={vi.fn()}
-          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown' })}
-          retrievals={[]}
-          onBack={vi.fn()}
-          onOpenCategory={vi.fn()}
-          onSelect={onSelect}
-        />,
-      )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:file-1:Guide.md§]')
-
-      rerender(
-        <AgentPromptSlashMenu
-          view="knowledge"
-          categories={categories}
-          skills={[]}
-          files={[]}
-          tools={[]}
-          onToolsChange={vi.fn()}
-          onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
-          retrievals={[]}
-          onBack={vi.fn()}
-          onOpenCategory={vi.fn()}
-          onSelect={onSelect}
-        />,
-      )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
-
-      rerender(
-        <AgentPromptSlashMenu
-          view="tools"
-          categories={categories}
-          skills={[]}
-          files={[]}
-          tools={[]}
-          onToolsChange={vi.fn()}
-          onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
-          retrievals={[]}
-          onBack={vi.fn()}
-          onOpenCategory={vi.fn()}
-          onSelect={onSelect}
-        />,
-      )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§cli_tool:cli-1:Lark CLI§]')
-    })
-
-    it('should append available provider tool references and add missing tools to the configuration', () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
-
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
-      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]')
-      expect(store.get(agentComposerDraftAtom).tools).toEqual([
-        expect.objectContaining({
-          id: 'duckduckgo',
-          actions: [
-            expect.objectContaining({
-              name: 'DuckDuckGo Search',
-              toolName: 'ddg_search',
-            }),
-          ],
-        }),
-      ])
-
-      rerenderWithValue('Research/')
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i }))
-
-      expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/*:DuckDuckGo§]')
-      expect(store.get(agentComposerDraftAtom).tools).toEqual([
-        expect.objectContaining({
-          id: 'duckduckgo',
-          actions: [
-            expect.objectContaining({ toolName: 'ddg_search' }),
-            expect.objectContaining({ toolName: 'ddg_translate' }),
-          ],
-        }),
-      ])
-    })
-
-    it('should close slash menu when slash is deleted or the user clicks outside', async () => {
-      const { rerenderWithValue } = renderAgentPromptEditor('Review/')
-
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
-      expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
-
-      rerenderWithValue('Review')
-      fireEvent.keyUp(screen.getByRole('textbox'), { key: 'Backspace' })
-
-      await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toBeInTheDocument()
-      })
-
-      rerenderWithValue('Review/')
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
-      expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
-
-      fireEvent.pointerDown(document.body)
-
-      await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toBeInTheDocument()
-      })
-    })
-
-    it('should reopen slash menu when the cursor is positioned after slash', async () => {
-      renderAgentPromptEditor('Review/')
-
-      fireEvent.keyUp(screen.getByRole('textbox'), { key: 'ArrowRight' })
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
-      })
-    })
+  it('inserts a workspace library skill using its stable name', async () => {
+    const user = userEvent.setup()
+    const { store } = renderEditor()
+    await openMenu(user)
+    await user.click(screen.getByRole('button', { name: skillsName }))
+    await user.click(screen.getByRole('button', { name: 'Library Skill' }))
+    await waitFor(() =>
+      expect(store.get(agentComposerPromptAtom)).toBe(
+        'Review [§skill:library-skill:Library Skill§] ',
+      ),
+    )
   })
+
+  it('keeps composition keys from selecting or closing the slash picker', async () => {
+    const user = userEvent.setup()
+    const { store } = renderEditor()
+    const menu = await openMenu(user)
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{ArrowRight}')
+    expect(await screen.findByRole('button', { name: 'Library Skill' })).toBeVisible()
+    await user.keyboard('{ArrowDown}')
+    const editor = screen.getByRole('textbox')
+    fireEvent.compositionStart(editor)
+    for (const key of ['ArrowDown', 'Enter', 'Escape'])
+      fireEvent.keyDown(editor, { key, isComposing: true })
+    fireEvent.compositionEnd(editor, { data: '' })
+    expect(menu).toBeVisible()
+    expect(store.get(agentComposerPromptAtom)).toBe('Review /')
+    await user.click(screen.getByRole('button', { name: 'Library Skill' }))
+    await waitFor(() =>
+      expect(store.get(agentComposerPromptAtom)).toBe(
+        'Review [§skill:library-skill:Library Skill§] ',
+      ),
+    )
+  })
+
+  it.each(['Review', 'Use https:', 'path/to'])(
+    'does not treat a slash inside %s as a command',
+    async (prefix) => {
+      const user = userEvent.setup()
+      const { store } = renderEditor()
+      const editor = screen.getByRole('textbox')
+      await user.click(editor)
+      await replacePromptEditorText(editor, prefix)
+      await user.keyboard('/')
+      await waitFor(() => expect(store.get(agentComposerPromptAtom)).toBe(`${prefix}/`))
+      expect(screen.queryByRole('dialog', { name: menuName })).not.toBeInTheDocument()
+      await replacePromptEditorText(editor, `${prefix}/ `)
+      await user.keyboard('/')
+      expect(await screen.findByRole('dialog', { name: menuName })).toBeVisible()
+    },
+  )
+
+  it('opens the footer insert action and dismisses without changing the draft again', async () => {
+    const user = userEvent.setup()
+    const { store } = renderEditor({ draft: { prompt: 'Review' } })
+    await user.click(screen.getByRole('textbox'))
+    await user.click(screen.getByRole('button', { name: menuName }))
+    expect(await screen.findByRole('dialog', { name: menuName })).toBeVisible()
+    expect(store.get(agentComposerPromptAtom)).toBe('Review/')
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: menuName })).not.toBeInTheDocument(),
+    )
+    expect(store.get(agentComposerPromptAtom)).toBe('Review/')
+  })
+
+  it('closes the picker when the user clicks outside', async () => {
+    const user = userEvent.setup()
+    const env = createAgentPromptEnvironment()
+    render(
+      env.wrap(
+        <>
+          <AgentPromptEditor />
+          <button type="button">Outside</button>
+        </>,
+      ),
+    )
+    await openMenu(user)
+    await user.click(screen.getByRole('button', { name: 'Outside' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: menuName })).not.toBeInTheDocument(),
+    )
+  })
+
+  it.each([
+    {
+      provider: duckDuckGoProvider,
+      providerId: 'duckduckgo',
+      name: 'DuckDuckGo',
+      action: 'DuckDuckGo Search',
+      toolName: 'ddg_search',
+      actionCount: 2,
+    },
+    {
+      provider: mondayProvider,
+      providerId: 'monday_mcp',
+      name: 'Monday MCP',
+      action: 'List Boards',
+      toolName: 'list_boards',
+      actionCount: 1,
+    },
+  ])(
+    'adds $name to the configuration when inserting an unconfigured tool',
+    async ({ provider, providerId, name, action, toolName, actionCount }) => {
+      const user = userEvent.setup()
+      const { store } = renderEditor({
+        draft: { tools: [] },
+        mcpTools: provider.type === 'mcp' ? [provider] : [],
+      })
+      await openMenu(user)
+      await user.click(screen.getByRole('button', { name: toolsName }))
+      await user.click(screen.getByRole('button', { name }))
+      await user.click(screen.getByRole('button', { name: action }))
+      await waitFor(() =>
+        expect(store.get(agentComposerPromptAtom)).toBe(
+          `Review [§tool:${providerId}/${toolName}:${action}§] `,
+        ),
+      )
+      expect(store.get(agentComposerDraftAtom).tools).toEqual([
+        expect.objectContaining({
+          id: providerId,
+          actions: [expect.objectContaining({ toolName })],
+        }),
+      ])
+      await openMenu(user)
+      await user.click(screen.getByRole('button', { name: toolsName }))
+      await user.click(
+        screen.getByRole('button', {
+          name: new RegExp(`${name}.*agentDetail.configure.tools.toolTabs`),
+        }),
+      )
+      await waitFor(() =>
+        expect(store.get(agentComposerPromptAtom)).toBe(`Review [§tool:${providerId}/*:${name}§] `),
+      )
+      expect(
+        store
+          .get(agentComposerDraftAtom)
+          .tools.flatMap((tool) => (tool.kind === 'provider' ? tool.actions : [])),
+      ).toHaveLength(actionCount)
+    },
+  )
+
+  it('lists configured providers and actions before unconfigured choices', async () => {
+    const user = userEvent.setup()
+    renderEditor({
+      builtInTools: [
+        createToolProviderFixture({
+          id: 'wikipedia',
+          name: 'Wikipedia',
+          label: { en_US: 'Wikipedia' },
+          tools: [
+            {
+              ...duckDuckGoProvider.tools![0]!,
+              name: 'wikipedia_search',
+              label: { en_US: 'Wikipedia Search' },
+            },
+          ],
+        }),
+        duckDuckGoProvider,
+      ],
+      draft: {
+        tools: [
+          {
+            ...duckDuckGoTool,
+            actions: [
+              {
+                id: 'translate',
+                name: 'DuckDuckGo Translate',
+                toolName: 'ddg_translate',
+                description: 'Translate',
+              },
+            ],
+          },
+        ],
+      },
+    })
+    const menu = within(await openMenu(user))
+    await user.click(menu.getByRole('button', { name: toolsName }))
+    expect(
+      menu
+        .getAllByRole('button', { name: /^(DuckDuckGo|Wikipedia)$/, expanded: false })
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['DuckDuckGo', 'Wikipedia'])
+    await user.click(menu.getByRole('button', { name: 'DuckDuckGo' }))
+    expect(
+      menu
+        .getAllByRole('button', { name: /DuckDuckGo (Search|Translate)/ })
+        .map((button) => button.textContent),
+    ).toEqual(['DuckDuckGo Translate', 'DuckDuckGo Search'])
+  })
+})
+
+it('renders template references as a readonly editor', async () => {
+  const env = createAgentPromptEnvironment({
+    draft: { prompt: 'Use [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]' },
+  })
+  render(env.wrap(<AgentTemplatePromptEditor />))
+  const editor = screen.getByRole('textbox')
+  expect(editor).toHaveAttribute('contenteditable', 'false')
+  expect(await within(editor).findByText('DuckDuckGo Search')).toBeVisible()
+  expect(screen.queryByRole('button', { name: menuName })).not.toBeInTheDocument()
 })

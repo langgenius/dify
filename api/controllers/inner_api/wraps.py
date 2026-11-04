@@ -10,6 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.exception import BaseHTTPException
 from models.model import EndUser
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class InnerApiUnauthorizedError(BaseHTTPException):
@@ -33,10 +34,6 @@ def inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
-
-
-def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    return inner_api_only(view)
 
 
 def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -95,3 +92,27 @@ def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
+
+
+def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Temporary alias for agent-backend inner API callers.
+
+    Agent tool and knowledge calls currently share the same trusted
+    `dify-agent -> Dify API` transport credentials as the plugin inner bridge.
+    Keep the wrapper name agent-specific so the controller surface does not grow
+    more plugin-only semantics while auth settings stay shared.
+    """
+
+    return plugin_inner_api_only(view)
+
+
+def knowledge_fs_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Authenticate the trusted KnowledgeFS process while the product is available."""
+
+    @wraps(view)
+    def enabled_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not get_knowledge_fs_features().enabled:
+            abort(404)
+        return view(*args, **kwargs)
+
+    return plugin_inner_api_only(enabled_view)

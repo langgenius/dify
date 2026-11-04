@@ -12,6 +12,16 @@ export type DatasetListResponse = {
   total: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type DatasetCreatePayload = {
   description?: string
   external_knowledge_api_id?: string | null
@@ -22,14 +32,21 @@ export type DatasetCreatePayload = {
   provider?: string
 }
 
-export type DatasetDetailResponse = {
+export type DatasetDetailWithPartialMembersResponse = {
   app_count: number
   author_name: string | null
   built_in_field_enabled: boolean
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -42,17 +59,19 @@ export type DatasetDetailResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
   maintainer?: string | null
   name: string
-  permission: string
+  partial_member_list?: Array<string> | null
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -60,6 +79,11 @@ export type DatasetDetailResponse = {
   updated_at: number
   updated_by: string | null
   word_count: number
+}
+
+export type DatasetNameDuplicateError = ErrorResponse & {
+  code: 'dataset_name_duplicate'
+  status: 409
 }
 
 export type ApiBaseUrlResponse = {
@@ -70,21 +94,29 @@ export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
 
+export type DatasetApiKeyCreatePayload = {
+  dataset_ids?: Array<string>
+  knowledge_space_ids?: Array<string>
+}
+
 export type ApiKeyItem = {
   created_at?: number | null
+  dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
 }
 
+export type MaxKeysExceededError = ErrorResponse & {
+  code: 'max_keys_exceeded'
+  status: 400
+}
+
 export type SegmentBatchImportStatusResponse = {
   job_id: string
   job_status: string
-}
-
-export type BatchImportPayload = {
-  upload_file_id: string
 }
 
 export type ExternalDatasetCreatePayload = {
@@ -97,43 +129,52 @@ export type ExternalDatasetCreatePayload = {
   name: string
 }
 
-export type DatasetDetail = {
-  app_count?: number
-  author_name?: string
-  built_in_field_enabled?: boolean
-  chunk_structure?: string
-  created_at?: number
-  created_by?: string
-  data_source_type?: string
-  description?: string
-  doc_form?: string
-  doc_metadata?: Array<DatasetDocMetadata>
-  document_count?: number
-  embedding_available?: boolean
-  embedding_model?: string
-  embedding_model_provider?: string
-  enable_api?: boolean
-  external_knowledge_info?: ExternalKnowledgeInfo
-  external_retrieval_model?: ExternalRetrievalModel
-  icon_info?: DatasetIconInfo
-  id?: string
-  indexing_technique?: string
-  is_multimodal?: boolean
-  is_published?: boolean
-  name?: string
-  permission?: string
+export type DatasetDetailResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: IndexTechniqueType | null
+  is_multimodal: boolean
+  is_published: boolean
+  keyword_number?: number | null
+  maintainer?: string | null
+  name: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
-  pipeline_id?: string
-  provider?: string
-  retrieval_model_dict?: DatasetRetrievalModel
-  runtime_mode?: string
-  summary_index_setting?: AnonymousInlineModelB1954337D565
-  tags?: Array<Tag>
-  total_available_documents?: number
-  total_documents?: number
-  updated_at?: number
-  updated_by?: string
-  word_count?: number
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: 'general' | 'rag_pipeline' | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type ExternalKnowledgeApiListResponse = {
@@ -141,7 +182,7 @@ export type ExternalKnowledgeApiListResponse = {
   has_more: boolean
   limit: number
   page: number
-  total: number
+  total: number | null
 }
 
 export type ExternalKnowledgeApiPayload = {
@@ -154,13 +195,11 @@ export type ExternalKnowledgeApiPayload = {
 export type ExternalKnowledgeApiResponse = {
   created_at: string
   created_by: string
-  dataset_bindings?: Array<ExternalKnowledgeDatasetBindingResponse>
+  dataset_bindings: Array<ExternalKnowledgeApiBindingResponse>
   description: string
   id: string
   name: string
-  settings?: {
-    [key: string]: unknown
-  } | null
+  settings: ExternalKnowledgeApiSettingsResponse | null
   tenant_id: string
 }
 
@@ -183,9 +222,27 @@ export type IndexingEstimatePayload = {
 }
 
 export type IndexingEstimateResponse = {
-  preview: Array<IndexingEstimatePreviewItemResponse>
-  qa_preview?: Array<IndexingEstimateQaPreviewItemResponse> | null
+  currency: string
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  tokens: number
+  total_price: number | number
   total_segments: number
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type DatasetAccessDeniedError = ErrorResponse & {
+  code: 'dataset_access_denied'
+  status: 403
+}
+
+export type IndexingEstimateError = ErrorResponse & {
+  code: 'indexing_estimate_error'
+  status: 500
 }
 
 export type KnowledgeConfig = {
@@ -215,6 +272,20 @@ export type DatasetAndDocumentResponse = {
   documents: Array<DocumentResponse>
 }
 
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type KnowledgeFsUpgradeJobListResponse = {
+  data: Array<KnowledgeFsUpgradeJobResponse>
+}
+
 export type DatasetMetadataBuiltInFieldsResponse = {
   fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
@@ -222,9 +293,7 @@ export type DatasetMetadataBuiltInFieldsResponse = {
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
-  notion_info_list: Array<{
-    [key: string]: unknown
-  }>
+  notion_info_list: Array<NotionEstimateWorkspacePayload>
   process_rule: {
     [key: string]: unknown
   }
@@ -236,53 +305,14 @@ export type IndexingEstimate = {
   total_segments: number
 }
 
-export type OpaqueObjectResponse = {
-  [key: string]: unknown
+export type ProcessRuleResponse = {
+  limits: ProcessRuleLimitsResponse
+  mode: ProcessRuleMode
+  rules?: Rule | null
 }
 
 export type RetrievalSettingResponse = {
   retrieval_method: Array<string>
-}
-
-export type DatasetDetailWithPartialMembersResponse = {
-  app_count: number
-  author_name: string | null
-  built_in_field_enabled: boolean
-  chunk_structure: string | null
-  created_at: number
-  created_by: string
-  data_source_type: string | null
-  description: string | null
-  doc_form: string | null
-  doc_metadata: Array<DatasetDocMetadataResponse>
-  document_count: number
-  embedding_available?: boolean | null
-  embedding_model: string | null
-  embedding_model_provider: string | null
-  enable_api: boolean
-  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
-  icon_info?: DatasetIconInfoResponse
-  id: string
-  indexing_technique: string | null
-  is_multimodal: boolean
-  is_published: boolean
-  maintainer?: string | null
-  name: string
-  partial_member_list?: Array<string> | null
-  permission: string
-  permission_keys?: Array<string>
-  pipeline_id: string | null
-  provider: string
-  retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
-  summary_index_setting?: DatasetSummaryIndexSettingResponse
-  tags: Array<DatasetTagResponse>
-  total_available_documents: number
-  total_documents: number
-  updated_at: number
-  updated_by: string | null
-  word_count: number
 }
 
 export type DatasetUpdatePayload = {
@@ -321,6 +351,11 @@ export type AutoDisableLogsResponse = {
   document_ids: Array<string>
 }
 
+export type DocumentAlreadyFinishedError = ErrorResponse & {
+  code: 'document_already_finished'
+  status: 400
+}
+
 export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
 }
@@ -337,14 +372,58 @@ export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
 
 export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
+}
+
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status: 400
+}
+
+export type DocumentDetailResponse = {
+  archived?: boolean | null
+  average_segment_length?: number | null
+  completed_at?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: DocumentSourceDetailResponse | null
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
+  data_source_type?: string | null
+  dataset_process_rule?: DocumentProcessRuleResponse | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_language?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_type?: string | null
+  document_process_rule?: DocumentProcessRuleResponse | null
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string | null
+  name?: string | null
+  need_summary?: boolean | null
+  position?: number | null
+  segment_count?: number | null
+  tokens?: number | null
+  updated_at?: number | null
+}
+
+export type InvalidMetadataError = ErrorResponse & {
+  code: 'invalid_metadata'
+  status: 400
 }
 
 export type UrlResponse = {
@@ -356,14 +435,25 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
+  error_code?: 'vector_space_estimate_exceeded' | null
+  estimated_vector_space_mb?: number | null
   id: string
-  indexing_status: string
+  indexing_status:
+    | 'cleaning'
+    | 'completed'
+    | 'error'
+    | 'indexing'
+    | 'parsing'
+    | 'paused'
+    | 'splitting'
+    | 'waiting'
   parsing_completed_at: number | null
   paused_at: number | null
   processing_started_at: number | null
   splitting_completed_at: number | null
   stopped_at: number | null
   total_segments?: number | null
+  vector_space_limit_mb?: number | null
 }
 
 export type DocumentMetadataUpdatePayload = {
@@ -376,6 +466,23 @@ export type SimpleResultMessageResponse = {
   result: string
 }
 
+export type DocumentPipelineExecutionLogResponse = {
+  datasource_info?: JsonValue | null
+  datasource_node_id?: string | null
+  datasource_type?: string | null
+  input_data?: JsonValue | null
+}
+
+export type DocumentIndexingError = ErrorResponse & {
+  code: 'document_indexing'
+  status: 400
+}
+
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
+}
+
 export type DocumentRenamePayload = {
   name: string
 }
@@ -385,8 +492,10 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: DocumentSourceDetailResponse
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -427,6 +536,14 @@ export type ConsoleSegmentListResponse = {
   total_pages: number
 }
 
+export type BatchImportPayload = {
+  upload_file_id: string
+}
+
+export type ErrorMessageResponse = {
+  error: string
+}
+
 export type SegmentUpdatePayload = {
   answer?: string | null
   attachment_ids?: Array<string> | null
@@ -452,6 +569,11 @@ export type ChildChunkBatchUpdateResponse = {
   data: Array<ChildChunkResponse>
 }
 
+export type ChildChunkIndexingError = ErrorResponse & {
+  code: 'child_chunk_indexing_error'
+  status: 500
+}
+
 export type ChildChunkCreatePayload = {
   content: string
 }
@@ -460,8 +582,19 @@ export type ChildChunkDetailResponse = {
   data: ChildChunkResponse
 }
 
+export type ChildChunkDeleteIndexError = ErrorResponse & {
+  code: 'child_chunk_delete_index_error'
+  status: 500
+}
+
 export type ChildChunkUpdatePayload = {
   content: string
+}
+
+export type DocumentSummaryStatusResponse = {
+  summaries: Array<SummaryEntryResponse>
+  summary_status: SummaryStatusResponse
+  total_segments: number
 }
 
 export type ErrorDocsResponse = {
@@ -479,13 +612,10 @@ export type ExternalHitTestingPayload = {
   query: string
 }
 
-export type ExternalRetrievalTestResponse
-  = | {
-    [key: string]: unknown
-  }
-  | Array<{
-    [key: string]: unknown
-  }>
+export type ExternalHitTestingResponse = {
+  query: ExternalHitTestingQueryResponse
+  records: Array<ExternalHitTestingRecordResponse>
+}
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
@@ -503,6 +633,50 @@ export type HitTestingResponse = {
   records: Array<HitTestingRecord>
 }
 
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type KnowledgeFsUpgradePreparationResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
+  models?: KnowledgeFsUpgradeModelRecommendationsResponse | null
+}
+
+export type KnowledgeFsUpgradeStartPayload = {
+  models?: KnowledgeFsUpgradeModelsPayload | null
+}
+
+export type KnowledgeFsUpgradeJobResponse = {
+  completed_at?: string | null
+  completed_documents: number
+  completed_sources: number
+  id: string
+  last_error_code?: string | null
+  last_error_message?: string | null
+  new_control_space_id?: string | null
+  old_dataset_id: string
+  snapshot_at: string
+  stage: KnowledgeFsUpgradeStage
+  status: KnowledgeFsUpgradeJobStatus
+  total_documents: number
+  total_sources: number
+}
+
+export type KnowledgeFsUpgradeModelsUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_upgrade_models_unavailable'
+  details?: KnowledgeFsUpgradeModelErrorDetailsResponse
+  status: 422
+}
+
+export type KnowledgeFsUpgradeRetryResponse = {
+  id: string
+  status?: 'queued'
+}
+
 export type DatasetMetadataListResponse = {
   built_in_field_enabled: boolean
   doc_metadata: Array<DatasetMetadataListItemResponse>
@@ -516,7 +690,7 @@ export type MetadataArgs = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type MetadataUpdatePayload = {
@@ -555,7 +729,14 @@ export type DatasetListItemResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -568,18 +749,20 @@ export type DatasetListItemResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
+  knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
   maintainer?: string | null
   name: string
   partial_member_list: Array<string>
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -594,7 +777,7 @@ export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -617,13 +800,15 @@ export type DatasetIconInfoResponse = {
   icon_url?: string | null
 }
 
+export type IndexTechniqueType = 'economy' | 'high_quality'
+
 export type DatasetRetrievalModelResponse = {
   reranking_enable: boolean
   reranking_mode?: string | null
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
   weights?: DatasetWeightedScoreResponse | null
 }
@@ -641,68 +826,23 @@ export type DatasetTagResponse = {
   type: string
 }
 
-export type DatasetDocMetadata = {
-  id?: string
-  name?: string
-  type?: string
-}
-
-export type ExternalKnowledgeInfo = {
-  external_knowledge_api_endpoint?: string
-  external_knowledge_api_id?: string
-  external_knowledge_api_name?: string
-  external_knowledge_id?: string
-}
-
-export type ExternalRetrievalModel = {
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  top_k?: number
-}
-
-export type DatasetIconInfo = {
-  icon?: string
-  icon_background?: string
-  icon_type?: string
-  icon_url?: string
-}
-
-export type DatasetRetrievalModel = {
-  reranking_enable?: boolean
-  reranking_mode?: string
-  reranking_model?: DatasetRerankingModel
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  search_method?: string
-  top_k?: number
-  weights?: DatasetWeightedScore
-}
-
-export type AnonymousInlineModelB1954337D565 = {
-  enable?: boolean
-  model_name?: string
-  model_provider_name?: string
-  summary_prompt?: string
-}
-
-export type Tag = {
-  id: string
-  name: string
-  type: string
-}
-
-export type ExternalKnowledgeDatasetBindingResponse = {
+export type ExternalKnowledgeApiBindingResponse = {
   id: string
   name: string
 }
 
-export type IndexingEstimatePreviewItemResponse = {
+export type ExternalKnowledgeApiSettingsResponse = {
+  api_key?: string | null
+  endpoint?: string | null
+}
+
+export type PreviewDetail = {
   child_chunks?: Array<string> | null
   content: string
   summary?: string | null
 }
 
-export type IndexingEstimateQaPreviewItemResponse = {
+export type QaPreviewDetail = {
   answer: string
   question: string
 }
@@ -741,18 +881,26 @@ export type DatasetResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
-export type PreviewDetail = {
-  child_chunks?: Array<string> | null
-  content: string
-  summary?: string | null
+export type NotionEstimateWorkspacePayload = {
+  credential_id: string
+  pages: Array<NotionEstimatePagePayload>
+  workspace_id: string
 }
 
-export type QaPreviewDetail = {
-  answer: string
-  question: string
+export type ProcessRuleLimitsResponse = {
+  indexing_max_segmentation_tokens_length: number
+}
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
+
+export type Rule = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<PreProcessingRule> | null
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
 }
 
 export type DocumentWithSegmentsResponse = {
@@ -761,8 +909,10 @@ export type DocumentWithSegmentsResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: DocumentSourceDetailResponse
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -778,7 +928,7 @@ export type DocumentWithSegmentsResponse = {
   name: string
   need_summary?: boolean | null
   position?: number | null
-  process_rule_dict?: unknown
+  process_rule_dict?: DocumentProcessRuleResponse | null
   summary_index_status?: string | null
   tokens?: number | null
   total_segments?: number | null
@@ -791,11 +941,23 @@ export type DocumentMetadataOperation = {
   partial_update?: boolean
 }
 
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
+}
+
+export type JsonValue = unknown
+
+export type DocumentProcessRuleResponse = {
+  mode: string
+  rules?: DocumentProcessRulesResponse | null
+}
+
 export type DocumentMetadataResponse = {
   id: string
   name: string
-  type: string
-  value?: string | number | number | boolean | null
+  type: 'number' | 'string' | 'time'
+  value: string | number | number | null
 }
 
 export type SegmentResponse = {
@@ -819,7 +981,7 @@ export type SegmentResponse = {
   keywords: Array<string> | null
   position: number
   sign_content: string
-  status: string
+  status: 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
   stopped_at: number | null
   summary: string | null
   tokens: number
@@ -834,7 +996,7 @@ export type ChildChunkResponse = {
   id: string
   position: number
   segment_id: string
-  type: string
+  type: 'automatic' | 'customized'
   updated_at: number
   word_count: number
 }
@@ -842,6 +1004,37 @@ export type ChildChunkResponse = {
 export type ChildChunkUpdateArgs = {
   content: string
   id?: string | null
+}
+
+export type SummaryEntryResponse = {
+  created_at?: number | null
+  error?: string | null
+  segment_id: string
+  segment_position: number
+  status: string
+  summary_preview?: string | null
+  updated_at?: number | null
+}
+
+export type SummaryStatusResponse = {
+  completed?: number
+  error?: number
+  generating?: number
+  not_started?: number
+  timeout?: number
+}
+
+export type ExternalHitTestingQueryResponse = {
+  content: string
+}
+
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
 }
 
 export type HitTestingQuery = {
@@ -857,20 +1050,54 @@ export type HitTestingRecord = {
   tsne_position: unknown | null
 }
 
+export type KnowledgeFsUpgradeBlockReason =
+  | 'already_upgraded'
+  | 'feature_disabled'
+  | 'retry_required'
+  | 'unsupported_dataset_provider'
+  | 'upgrade_in_progress'
+
+export type KnowledgeFsUpgradeModelRecommendationsResponse = {
+  embedding: KnowledgeFsUpgradeModelRecommendationResponse
+  reasoning: KnowledgeFsUpgradeModelRecommendationResponse
+  rerank: KnowledgeFsUpgradeModelRecommendationResponse
+}
+
+export type KnowledgeFsUpgradeModelsPayload = {
+  embedding: KnowledgeFsUpgradeModelChoice
+  reasoning: KnowledgeFsUpgradeModelChoice
+  rerank: KnowledgeFsUpgradeModelChoice
+}
+
+export type KnowledgeFsUpgradeStage =
+  | 'completed'
+  | 'creating_sources'
+  | 'finalizing'
+  | 'migrating_access'
+  | 'submitting_documents'
+  | 'validating'
+  | 'waiting_for_space'
+
+export type KnowledgeFsUpgradeJobStatus = 'failed' | 'queued' | 'running' | 'succeeded'
+
+export type KnowledgeFsUpgradeModelErrorDetailsResponse = {
+  issues: Array<KnowledgeFsUpgradeModelIssueResponse>
+}
+
 export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetQueryDetailResponse = {
   created_at: number
   created_by: string
-  created_by_role: string
+  created_by_role: CreatorUserRole
   id: string
   queries: Array<DatasetQueryContentResponse>
-  source: string
+  source: DatasetQuerySource
   source_app_id: string | null
 }
 
@@ -878,11 +1105,18 @@ export type RelatedAppResponse = {
   description: string
   icon: string | null
   icon_background: string | null
-  icon_type: string | null
+  icon_type: IconType | null
   icon_url?: string | null
   id: string
-  mode: string
+  mode: AppMode
   name: string
+}
+
+export type KnowledgeFsUpgradeDiscoveryResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
 }
 
 export type DatasetRerankingModelResponse = {
@@ -890,37 +1124,23 @@ export type DatasetRerankingModelResponse = {
   reranking_provider_name?: string | null
 }
 
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
+
 export type DatasetWeightedScoreResponse = {
   keyword_setting?: DatasetKeywordSettingResponse
   vector_setting?: DatasetVectorSettingResponse
   weight_type?: string | null
 }
 
-export type DatasetRerankingModel = {
-  reranking_model_name?: string
-  reranking_provider_name?: string
-}
-
-export type DatasetWeightedScore = {
-  keyword_setting?: DatasetKeywordSetting
-  vector_setting?: DatasetVectorSetting
-  weight_type?: string
-}
-
 export type InfoList = {
   data_source_type: 'notion_import' | 'upload_file' | 'website_crawl'
-  file_info_list?: FileInfo | null
+  file_info_list?: KnowledgeFileInfo | null
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo | null
-}
-
-export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
-
-export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph' | null
-  pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation | null
-  subchunk_segmentation?: Segmentation | null
 }
 
 export type MetadataFilteringCondition = {
@@ -933,22 +1153,49 @@ export type RerankingModel = {
   reranking_provider_name?: string | null
 }
 
-export type RetrievalMethod
-  = | 'full_text_search'
-    | 'hybrid_search'
-    | 'keyword_search'
-    | 'semantic_search'
-
 export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null
   vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
+export type NotionEstimatePagePayload = {
+  page_id: string
+  type: NotionPageType
+}
+
+export type PreProcessingRule = {
+  enabled: boolean
+  id: PreProcessingRuleKey
+}
+
+export type Segmentation = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
+}
+
 export type MetadataDetail = {
   id: string
   name: string
   value?: string | number | number | null
+}
+
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
+}
+
+export type DocumentProcessRulesResponse = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<DocumentPreProcessingRuleResponse> | null
+  segmentation?: DocumentSegmentationResponse | null
+  subchunk_segmentation?: DocumentSegmentationResponse | null
 }
 
 export type SegmentAttachmentResponse = {
@@ -1002,11 +1249,63 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type KnowledgeFsUpgradeModelRecommendationResponse = {
+  available: boolean
+  source: 'legacy' | 'workspace_default' | null
+  unavailable_reason?:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
+    | null
+  value: KnowledgeFsUpgradeModelChoice | null
+}
+
+export type KnowledgeFsUpgradeModelChoice = {
+  model: string
+  provider: string
+}
+
+export type KnowledgeFsUpgradeModelIssueResponse = {
+  field: 'embedding' | 'reasoning' | 'rerank'
+  model?: string | null
+  provider?: string | null
+  reason:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
+}
+
+export type CreatorUserRole = 'account' | 'dataset_api_key' | 'end_user'
+
 export type DatasetQueryContentResponse = {
   content: string
-  content_type: string
+  content_type: QueryType
   file_info?: DatasetQueryFileInfoResponse | null
 }
+
+export type DatasetQuerySource = 'app' | 'hit_testing'
+
+export type IconType = 'emoji' | 'image' | 'link'
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type DatasetKeywordSettingResponse = {
   keyword_weight?: number | null
@@ -1018,17 +1317,7 @@ export type DatasetVectorSettingResponse = {
   vector_weight?: number | null
 }
 
-export type DatasetKeywordSetting = {
-  keyword_weight?: number
-}
-
-export type DatasetVectorSetting = {
-  embedding_model_name?: string
-  embedding_provider_name?: string
-  vector_weight?: number
-}
-
-export type FileInfo = {
+export type KnowledgeFileInfo = {
   file_ids: Array<string>
 }
 
@@ -1043,17 +1332,6 @@ export type WebsiteInfo = {
   only_main_content?: boolean
   provider: string
   urls: Array<string>
-}
-
-export type PreProcessingRule = {
-  enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
-}
-
-export type Segmentation = {
-  chunk_overlap?: number
-  max_tokens: number
-  separator?: string
 }
 
 export type Condition = {
@@ -1090,6 +1368,21 @@ export type WeightVectorSetting = {
   vector_weight: number
 }
 
+export type NotionPageType = 'database' | 'page'
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+
+export type DocumentPreProcessingRuleResponse = {
+  enabled: boolean
+  id: string
+}
+
+export type DocumentSegmentationResponse = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
+}
+
 export type HitTestingDocument = {
   data_source_type: string
   doc_metadata: unknown | null
@@ -1097,6 +1390,8 @@ export type HitTestingDocument = {
   id: string
   name: string
 }
+
+export type QueryType = 'image_query' | 'text_query'
 
 export type DatasetQueryFileInfoResponse = {
   extension: string
@@ -1124,6 +1419,7 @@ export type GetDatasetsData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string>
     ids?: Array<string>
     include_all?: boolean
     keyword?: string
@@ -1133,6 +1429,12 @@ export type GetDatasetsData = {
   }
   url: '/datasets'
 }
+
+export type GetDatasetsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsError = GetDatasetsErrors[keyof GetDatasetsErrors]
 
 export type GetDatasetsResponses = {
   200: DatasetListResponse
@@ -1148,11 +1450,15 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: unknown
+  400: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
+
 export type PostDatasetsResponses = {
-  201: DatasetDetailResponse
+  201: DatasetDetailWithPartialMembersResponse
 }
 
 export type PostDatasetsResponse = PostDatasetsResponses[keyof PostDatasetsResponses]
@@ -1164,12 +1470,19 @@ export type GetDatasetsApiBaseInfoData = {
   url: '/datasets/api-base-info'
 }
 
+export type GetDatasetsApiBaseInfoErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsApiBaseInfoError =
+  GetDatasetsApiBaseInfoErrors[keyof GetDatasetsApiBaseInfoErrors]
+
 export type GetDatasetsApiBaseInfoResponses = {
   200: ApiBaseUrlResponse
 }
 
-export type GetDatasetsApiBaseInfoResponse
-  = GetDatasetsApiBaseInfoResponses[keyof GetDatasetsApiBaseInfoResponses]
+export type GetDatasetsApiBaseInfoResponse =
+  GetDatasetsApiBaseInfoResponses[keyof GetDatasetsApiBaseInfoResponses]
 
 export type GetDatasetsApiKeysData = {
   body?: never
@@ -1178,30 +1491,39 @@ export type GetDatasetsApiKeysData = {
   url: '/datasets/api-keys'
 }
 
+export type GetDatasetsApiKeysErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsApiKeysError = GetDatasetsApiKeysErrors[keyof GetDatasetsApiKeysErrors]
+
 export type GetDatasetsApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetDatasetsApiKeysResponse
-  = GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
+export type GetDatasetsApiKeysResponse =
+  GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
-  body?: never
+  body: DatasetApiKeyCreatePayload
   path?: never
   query?: never
   url: '/datasets/api-keys'
 }
 
 export type PostDatasetsApiKeysErrors = {
-  400: unknown
+  400: MaxKeysExceededError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsApiKeysError = PostDatasetsApiKeysErrors[keyof PostDatasetsApiKeysErrors]
 
 export type PostDatasetsApiKeysResponses = {
   200: ApiKeyItem
 }
 
-export type PostDatasetsApiKeysResponse
-  = PostDatasetsApiKeysResponses[keyof PostDatasetsApiKeysResponses]
+export type PostDatasetsApiKeysResponse =
+  PostDatasetsApiKeysResponses[keyof PostDatasetsApiKeysResponses]
 
 export type DeleteDatasetsApiKeysByApiKeyIdData = {
   body?: never
@@ -1212,12 +1534,19 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
   url: '/datasets/api-keys/{api_key_id}'
 }
 
+export type DeleteDatasetsApiKeysByApiKeyIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsApiKeysByApiKeyIdError =
+  DeleteDatasetsApiKeysByApiKeyIdErrors[keyof DeleteDatasetsApiKeysByApiKeyIdErrors]
+
 export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsApiKeysByApiKeyIdResponse
-  = DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
+export type DeleteDatasetsApiKeysByApiKeyIdResponse =
+  DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
 
 export type GetDatasetsBatchImportStatusByJobIdData = {
   body?: never
@@ -1228,28 +1557,19 @@ export type GetDatasetsBatchImportStatusByJobIdData = {
   url: '/datasets/batch_import_status/{job_id}'
 }
 
+export type GetDatasetsBatchImportStatusByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsBatchImportStatusByJobIdError =
+  GetDatasetsBatchImportStatusByJobIdErrors[keyof GetDatasetsBatchImportStatusByJobIdErrors]
+
 export type GetDatasetsBatchImportStatusByJobIdResponses = {
   200: SegmentBatchImportStatusResponse
 }
 
-export type GetDatasetsBatchImportStatusByJobIdResponse
-  = GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
-
-export type PostDatasetsBatchImportStatusByJobIdData = {
-  body: BatchImportPayload
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponse
-  = PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
+export type GetDatasetsBatchImportStatusByJobIdResponse =
+  GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
 
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
@@ -1259,16 +1579,20 @@ export type PostDatasetsExternalData = {
 }
 
 export type PostDatasetsExternalErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsExternalError = PostDatasetsExternalErrors[keyof PostDatasetsExternalErrors]
 
 export type PostDatasetsExternalResponses = {
-  201: DatasetDetail
+  201: DatasetDetailResponse
 }
 
-export type PostDatasetsExternalResponse
-  = PostDatasetsExternalResponses[keyof PostDatasetsExternalResponses]
+export type PostDatasetsExternalResponse =
+  PostDatasetsExternalResponses[keyof PostDatasetsExternalResponses]
 
 export type GetDatasetsExternalKnowledgeApiData = {
   body?: never
@@ -1281,12 +1605,19 @@ export type GetDatasetsExternalKnowledgeApiData = {
   url: '/datasets/external-knowledge-api'
 }
 
+export type GetDatasetsExternalKnowledgeApiErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsExternalKnowledgeApiError =
+  GetDatasetsExternalKnowledgeApiErrors[keyof GetDatasetsExternalKnowledgeApiErrors]
+
 export type GetDatasetsExternalKnowledgeApiResponses = {
   200: ExternalKnowledgeApiListResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiResponse
-  = GetDatasetsExternalKnowledgeApiResponses[keyof GetDatasetsExternalKnowledgeApiResponses]
+export type GetDatasetsExternalKnowledgeApiResponse =
+  GetDatasetsExternalKnowledgeApiResponses[keyof GetDatasetsExternalKnowledgeApiResponses]
 
 export type PostDatasetsExternalKnowledgeApiData = {
   body: ExternalKnowledgeApiPayload
@@ -1295,12 +1626,21 @@ export type PostDatasetsExternalKnowledgeApiData = {
   url: '/datasets/external-knowledge-api'
 }
 
+export type PostDatasetsExternalKnowledgeApiErrors = {
+  403: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsExternalKnowledgeApiError =
+  PostDatasetsExternalKnowledgeApiErrors[keyof PostDatasetsExternalKnowledgeApiErrors]
+
 export type PostDatasetsExternalKnowledgeApiResponses = {
   201: ExternalKnowledgeApiResponse
 }
 
-export type PostDatasetsExternalKnowledgeApiResponse
-  = PostDatasetsExternalKnowledgeApiResponses[keyof PostDatasetsExternalKnowledgeApiResponses]
+export type PostDatasetsExternalKnowledgeApiResponse =
+  PostDatasetsExternalKnowledgeApiResponses[keyof PostDatasetsExternalKnowledgeApiResponses]
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body?: never
@@ -1311,12 +1651,20 @@ export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
 }
 
+export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError =
+  DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
+
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body?: never
@@ -1328,15 +1676,20 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   200: ExternalKnowledgeApiResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body: ExternalKnowledgeApiPayload
@@ -1347,12 +1700,21 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
 }
 
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
+  404: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError =
+  PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
+
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   200: ExternalKnowledgeApiResponse
 }
 
-export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse =
+  PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData = {
   body?: never
@@ -1363,12 +1725,19 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData 
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}/use-check'
 }
 
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckError =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckErrors[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckErrors]
+
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses = {
   200: UsageCountResponse
 }
 
-export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse
-  = GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses]
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponses]
 
 export type PostDatasetsIndexingEstimateData = {
   body: IndexingEstimatePayload
@@ -1377,12 +1746,22 @@ export type PostDatasetsIndexingEstimateData = {
   url: '/datasets/indexing-estimate'
 }
 
+export type PostDatasetsIndexingEstimateErrors = {
+  400: ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsIndexingEstimateError =
+  PostDatasetsIndexingEstimateErrors[keyof PostDatasetsIndexingEstimateErrors]
+
 export type PostDatasetsIndexingEstimateResponses = {
   200: IndexingEstimateResponse
 }
 
-export type PostDatasetsIndexingEstimateResponse
-  = PostDatasetsIndexingEstimateResponses[keyof PostDatasetsIndexingEstimateResponses]
+export type PostDatasetsIndexingEstimateResponse =
+  PostDatasetsIndexingEstimateResponses[keyof PostDatasetsIndexingEstimateResponses]
 
 export type PostDatasetsInitData = {
   body: KnowledgeConfig
@@ -1392,14 +1771,42 @@ export type PostDatasetsInitData = {
 }
 
 export type PostDatasetsInitErrors = {
-  400: unknown
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostDatasetsInitError = PostDatasetsInitErrors[keyof PostDatasetsInitErrors]
+
 export type PostDatasetsInitResponses = {
-  201: DatasetAndDocumentResponse
+  200: DatasetAndDocumentResponse
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
+
+export type GetDatasetsKnowledgeFsUpgradeJobsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/datasets/knowledge-fs-upgrade-jobs'
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsError =
+  GetDatasetsKnowledgeFsUpgradeJobsErrors[keyof GetDatasetsKnowledgeFsUpgradeJobsErrors]
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponses = {
+  200: KnowledgeFsUpgradeJobListResponse
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponse =
+  GetDatasetsKnowledgeFsUpgradeJobsResponses[keyof GetDatasetsKnowledgeFsUpgradeJobsResponses]
 
 export type GetDatasetsMetadataBuiltInData = {
   body?: never
@@ -1408,12 +1815,19 @@ export type GetDatasetsMetadataBuiltInData = {
   url: '/datasets/metadata/built-in'
 }
 
+export type GetDatasetsMetadataBuiltInErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsMetadataBuiltInError =
+  GetDatasetsMetadataBuiltInErrors[keyof GetDatasetsMetadataBuiltInErrors]
+
 export type GetDatasetsMetadataBuiltInResponses = {
   200: DatasetMetadataBuiltInFieldsResponse
 }
 
-export type GetDatasetsMetadataBuiltInResponse
-  = GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
+export type GetDatasetsMetadataBuiltInResponse =
+  GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
 
 export type PostDatasetsNotionIndexingEstimateData = {
   body: NotionEstimatePayload
@@ -1422,12 +1836,21 @@ export type PostDatasetsNotionIndexingEstimateData = {
   url: '/datasets/notion-indexing-estimate'
 }
 
+export type PostDatasetsNotionIndexingEstimateErrors = {
+  400: ProviderNotInitializeError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsNotionIndexingEstimateError =
+  PostDatasetsNotionIndexingEstimateErrors[keyof PostDatasetsNotionIndexingEstimateErrors]
+
 export type PostDatasetsNotionIndexingEstimateResponses = {
   200: IndexingEstimate
 }
 
-export type PostDatasetsNotionIndexingEstimateResponse
-  = PostDatasetsNotionIndexingEstimateResponses[keyof PostDatasetsNotionIndexingEstimateResponses]
+export type PostDatasetsNotionIndexingEstimateResponse =
+  PostDatasetsNotionIndexingEstimateResponses[keyof PostDatasetsNotionIndexingEstimateResponses]
 
 export type GetDatasetsProcessRuleData = {
   body?: never
@@ -1438,12 +1861,19 @@ export type GetDatasetsProcessRuleData = {
   url: '/datasets/process-rule'
 }
 
-export type GetDatasetsProcessRuleResponses = {
-  200: OpaqueObjectResponse
+export type GetDatasetsProcessRuleErrors = {
+  default: ErrorResponse
 }
 
-export type GetDatasetsProcessRuleResponse
-  = GetDatasetsProcessRuleResponses[keyof GetDatasetsProcessRuleResponses]
+export type GetDatasetsProcessRuleError =
+  GetDatasetsProcessRuleErrors[keyof GetDatasetsProcessRuleErrors]
+
+export type GetDatasetsProcessRuleResponses = {
+  200: ProcessRuleResponse
+}
+
+export type GetDatasetsProcessRuleResponse =
+  GetDatasetsProcessRuleResponses[keyof GetDatasetsProcessRuleResponses]
 
 export type GetDatasetsRetrievalSettingData = {
   body?: never
@@ -1452,12 +1882,19 @@ export type GetDatasetsRetrievalSettingData = {
   url: '/datasets/retrieval-setting'
 }
 
+export type GetDatasetsRetrievalSettingErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsRetrievalSettingError =
+  GetDatasetsRetrievalSettingErrors[keyof GetDatasetsRetrievalSettingErrors]
+
 export type GetDatasetsRetrievalSettingResponses = {
   200: RetrievalSettingResponse
 }
 
-export type GetDatasetsRetrievalSettingResponse
-  = GetDatasetsRetrievalSettingResponses[keyof GetDatasetsRetrievalSettingResponses]
+export type GetDatasetsRetrievalSettingResponse =
+  GetDatasetsRetrievalSettingResponses[keyof GetDatasetsRetrievalSettingResponses]
 
 export type GetDatasetsRetrievalSettingByVectorTypeData = {
   body?: never
@@ -1468,12 +1905,19 @@ export type GetDatasetsRetrievalSettingByVectorTypeData = {
   url: '/datasets/retrieval-setting/{vector_type}'
 }
 
+export type GetDatasetsRetrievalSettingByVectorTypeErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsRetrievalSettingByVectorTypeError =
+  GetDatasetsRetrievalSettingByVectorTypeErrors[keyof GetDatasetsRetrievalSettingByVectorTypeErrors]
+
 export type GetDatasetsRetrievalSettingByVectorTypeResponses = {
   200: RetrievalSettingResponse
 }
 
-export type GetDatasetsRetrievalSettingByVectorTypeResponse
-  = GetDatasetsRetrievalSettingByVectorTypeResponses[keyof GetDatasetsRetrievalSettingByVectorTypeResponses]
+export type GetDatasetsRetrievalSettingByVectorTypeResponse =
+  GetDatasetsRetrievalSettingByVectorTypeResponses[keyof GetDatasetsRetrievalSettingByVectorTypeResponses]
 
 export type DeleteDatasetsByDatasetIdData = {
   body?: never
@@ -1484,12 +1928,19 @@ export type DeleteDatasetsByDatasetIdData = {
   url: '/datasets/{dataset_id}'
 }
 
+export type DeleteDatasetsByDatasetIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdError =
+  DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
+
 export type DeleteDatasetsByDatasetIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdResponse
-  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
+export type DeleteDatasetsByDatasetIdResponse =
+  DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
 
 export type GetDatasetsByDatasetIdData = {
   body?: never
@@ -1501,16 +1952,20 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdError =
+  GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type GetDatasetsByDatasetIdResponse
-  = GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
+export type GetDatasetsByDatasetIdResponse =
+  GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
 
 export type PatchDatasetsByDatasetIdData = {
   body: DatasetUpdatePayload
@@ -1522,16 +1977,20 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdError =
+  PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type PatchDatasetsByDatasetIdResponse
-  = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
+export type PatchDatasetsByDatasetIdResponse =
+  PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdApiKeysByStatusData = {
   body?: never
@@ -1543,12 +2002,19 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
   url: '/datasets/{dataset_id}/api-keys/{status}'
 }
 
+export type PostDatasetsByDatasetIdApiKeysByStatusErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdApiKeysByStatusError =
+  PostDatasetsByDatasetIdApiKeysByStatusErrors[keyof PostDatasetsByDatasetIdApiKeysByStatusErrors]
+
 export type PostDatasetsByDatasetIdApiKeysByStatusResponses = {
   200: SimpleResultResponse
 }
 
-export type PostDatasetsByDatasetIdApiKeysByStatusResponse
-  = PostDatasetsByDatasetIdApiKeysByStatusResponses[keyof PostDatasetsByDatasetIdApiKeysByStatusResponses]
+export type PostDatasetsByDatasetIdApiKeysByStatusResponse =
+  PostDatasetsByDatasetIdApiKeysByStatusResponses[keyof PostDatasetsByDatasetIdApiKeysByStatusResponses]
 
 export type GetDatasetsByDatasetIdAutoDisableLogsData = {
   body?: never
@@ -1560,15 +2026,19 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 }
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdAutoDisableLogsError =
+  GetDatasetsByDatasetIdAutoDisableLogsErrors[keyof GetDatasetsByDatasetIdAutoDisableLogsErrors]
 
 export type GetDatasetsByDatasetIdAutoDisableLogsResponses = {
   200: AutoDisableLogsResponse
 }
 
-export type GetDatasetsByDatasetIdAutoDisableLogsResponse
-  = GetDatasetsByDatasetIdAutoDisableLogsResponses[keyof GetDatasetsByDatasetIdAutoDisableLogsResponses]
+export type GetDatasetsByDatasetIdAutoDisableLogsResponse =
+  GetDatasetsByDatasetIdAutoDisableLogsResponses[keyof GetDatasetsByDatasetIdAutoDisableLogsResponses]
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
   body?: never
@@ -1580,12 +2050,22 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
   url: '/datasets/{dataset_id}/batch/{batch}/indexing-estimate'
 }
 
-export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors = {
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse
-  = GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses]
+export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateError =
+  GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors[keyof GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors]
+
+export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses = {
+  200: IndexingEstimateResponse
+}
+
+export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse =
+  GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses]
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
   body?: never
@@ -1597,28 +2077,44 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
   url: '/datasets/{dataset_id}/batch/{batch}/indexing-status'
 }
 
+export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusError =
+  GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors]
+
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
   200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse
-  = GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
+export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse =
+  GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsData = {
   body?: never
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents'
 }
+
+export type DeleteDatasetsByDatasetIdDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsError =
+  DeleteDatasetsByDatasetIdDocumentsErrors[keyof DeleteDatasetsByDatasetIdDocumentsErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsResponses]
+export type DeleteDatasetsByDatasetIdDocumentsResponse =
+  DeleteDatasetsByDatasetIdDocumentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsResponses]
 
 export type GetDatasetsByDatasetIdDocumentsData = {
   body?: never
@@ -1628,20 +2124,27 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   query?: {
     fetch?: string
     keyword?: string
-    limit?: string
-    page?: string
+    limit?: number
+    page?: number
     sort?: string
     status?: string
   }
   url: '/datasets/{dataset_id}/documents'
 }
 
+export type GetDatasetsByDatasetIdDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsError =
+  GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
+
 export type GetDatasetsByDatasetIdDocumentsResponses = {
   200: DocumentWithSegmentsListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsResponse
-  = GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
+export type GetDatasetsByDatasetIdDocumentsResponse =
+  GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsData = {
   body: KnowledgeConfig
@@ -1652,12 +2155,24 @@ export type PostDatasetsByDatasetIdDocumentsData = {
   url: '/datasets/{dataset_id}/documents'
 }
 
+export type PostDatasetsByDatasetIdDocumentsErrors = {
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsError =
+  PostDatasetsByDatasetIdDocumentsErrors[keyof PostDatasetsByDatasetIdDocumentsErrors]
+
 export type PostDatasetsByDatasetIdDocumentsResponses = {
   200: DatasetAndDocumentResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsResponse
-  = PostDatasetsByDatasetIdDocumentsResponses[keyof PostDatasetsByDatasetIdDocumentsResponses]
+export type PostDatasetsByDatasetIdDocumentsResponse =
+  PostDatasetsByDatasetIdDocumentsResponses[keyof PostDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
   body: DocumentBatchDownloadZipPayload
@@ -1668,12 +2183,21 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
   url: '/datasets/{dataset_id}/documents/download-zip'
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: BinaryFileResponse
+export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
-  = PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
+export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
+  PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
+
+export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =
+  PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
   body: GenerateSummaryPayload
@@ -1685,17 +2209,21 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsGenerateSummaryError =
+  PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses = {
   200: SimpleResultResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse
-  = PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses]
+export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse =
+  PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   body: MetadataOperationData
@@ -1706,12 +2234,20 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   url: '/datasets/{dataset_id}/documents/metadata'
 }
 
+export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
+  404: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsMetadataError =
+  PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
+
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   204: void
 }
 
-export type PostDatasetsByDatasetIdDocumentsMetadataResponse
-  = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
+export type PostDatasetsByDatasetIdDocumentsMetadataResponse =
+  PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
   body?: never
@@ -1719,16 +2255,26 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
     action: string
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/status/{action}/batch'
 }
+
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors = {
+  400: InvalidActionError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchError =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses]
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -1740,12 +2286,19 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   url: '/datasets/{dataset_id}/documents/{document_id}'
 }
 
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -1760,15 +2313,20 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  404: unknown
+  400: InvalidMetadataError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
   body?: never
@@ -1780,12 +2338,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/download'
 }
 
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
   200: UrlResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
   body?: never
@@ -1798,16 +2363,22 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
-  400: unknown
-  404: unknown
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+  200: IndexingEstimateResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
   body?: never
@@ -1820,15 +2391,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses = {
   200: DocumentStatusResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
   body: DocumentMetadataUpdatePayload
@@ -1841,16 +2416,20 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
 }
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataError =
+  PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses = {
   200: SimpleResultMessageResponse
 }
 
-export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse
-  = PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses]
+export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse =
+  PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
   body?: never
@@ -1862,12 +2441,20 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/notion/sync'
 }
 
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
+  403: DatasetAccessDeniedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses = {
   200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData = {
   body?: never
@@ -1879,12 +2466,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
   url: '/datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log'
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses = {
-  200: OpaqueObjectResponse
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogErrors = {
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogErrors]
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses = {
+  200: DocumentPipelineExecutionLogResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
   body?: never
@@ -1896,12 +2490,21 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/processing/pause'
 }
 
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors = {
+  400: DocumentIndexingError | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors]
+
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses = {
   204: void
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = {
   body?: never
@@ -1913,12 +2516,21 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
   url: '/datasets/{dataset_id}/documents/{document_id}/processing/resume'
 }
 
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors = {
+  400: DocumentIndexingError | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors]
+
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses = {
   204: void
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData = {
   body?: never
@@ -1932,16 +2544,20 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
-  400: unknown
-  404: unknown
+  400: InvalidActionError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
   body: DocumentRenamePayload
@@ -1953,12 +2569,19 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/rename'
 }
 
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors]
+
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses = {
   200: DocumentResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
   body: SegmentCreatePayload
@@ -1970,12 +2593,20 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/segment'
 }
 
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors = {
+  400: ProviderNotInitializeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors]
+
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses = {
   200: SegmentDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
   body?: never
@@ -1990,12 +2621,20 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}'
 }
 
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors = {
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors]
+
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -2009,12 +2648,19 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
+
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -2033,29 +2679,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   200: ConsoleSegmentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import'
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body: BatchImportPayload
@@ -2067,12 +2703,20 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import'
 }
 
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors = {
+  500: ErrorMessageResponse | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors]
+
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
   200: SegmentBatchImportStatusResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -2085,12 +2729,19 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
 }
 
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
+
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body: SegmentUpdatePayload
@@ -2103,12 +2754,20 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
 }
 
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  400: ProviderNotInitializeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
+
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   200: SegmentDetailResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body?: never
@@ -2125,12 +2784,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
 }
 
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
   200: ChildChunkListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body: ChildChunkBatchUpdatePayload
@@ -2143,12 +2809,20 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
 }
 
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
+  500: ChildChunkIndexingError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
+
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
   200: ChildChunkBatchUpdateResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body: ChildChunkCreatePayload
@@ -2161,15 +2835,24 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
 }
 
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
+  400: ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkIndexingError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
+
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
   200: ChildChunkDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body?: never
     path: {
       child_chunk_id: string
@@ -2181,16 +2864,25 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
+    500: ChildChunkDeleteIndexError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
     204: void
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body: ChildChunkUpdatePayload
     path: {
       child_chunk_id: string
@@ -2202,13 +2894,22 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
+    500: ChildChunkIndexingError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
     200: ChildChunkDetailResponse
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
   body?: never
@@ -2221,15 +2922,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentSummaryStatusResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
   body?: never
@@ -2241,12 +2946,20 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
   url: '/datasets/{dataset_id}/documents/{document_id}/website-sync'
 }
 
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
+  403: ArchivedDocumentImmutableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses = {
   200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponses]
 
 export type GetDatasetsByDatasetIdErrorDocsData = {
   body?: never
@@ -2258,15 +2971,19 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 }
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdErrorDocsError =
+  GetDatasetsByDatasetIdErrorDocsErrors[keyof GetDatasetsByDatasetIdErrorDocsErrors]
 
 export type GetDatasetsByDatasetIdErrorDocsResponses = {
   200: ErrorDocsResponse
 }
 
-export type GetDatasetsByDatasetIdErrorDocsResponse
-  = GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
+export type GetDatasetsByDatasetIdErrorDocsResponse =
+  GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
 
 export type PostDatasetsByDatasetIdExternalHitTestingData = {
   body: ExternalHitTestingPayload
@@ -2278,16 +2995,21 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdExternalHitTestingError =
+  PostDatasetsByDatasetIdExternalHitTestingErrors[keyof PostDatasetsByDatasetIdExternalHitTestingErrors]
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
-  200: ExternalRetrievalTestResponse
+  200: ExternalHitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdExternalHitTestingResponse
-  = PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
+export type PostDatasetsByDatasetIdExternalHitTestingResponse =
+  PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload
@@ -2299,16 +3021,25 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  400: unknown
-  404: unknown
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdHitTestingError =
+  PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdHitTestingResponse
-  = PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
+export type PostDatasetsByDatasetIdHitTestingResponse =
+  PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
 
 export type GetDatasetsByDatasetIdIndexingStatusData = {
   body?: never
@@ -2319,12 +3050,117 @@ export type GetDatasetsByDatasetIdIndexingStatusData = {
   url: '/datasets/{dataset_id}/indexing-status'
 }
 
+export type GetDatasetsByDatasetIdIndexingStatusErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdIndexingStatusError =
+  GetDatasetsByDatasetIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdIndexingStatusErrors]
+
 export type GetDatasetsByDatasetIdIndexingStatusResponses = {
   200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdIndexingStatusResponse
-  = GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
+export type GetDatasetsByDatasetIdIndexingStatusResponse =
+  GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades'
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesError =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
+  200: KnowledgeFsUpgradePreparationResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
+  body: KnowledgeFsUpgradeStartPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades'
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  422: KnowledgeFsUpgradeModelsUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesError =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
+  202: KnowledgeFsUpgradeJobResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}'
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdError =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses = {
+  200: KnowledgeFsUpgradeJobResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}'
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdError =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses = {
+  202: KnowledgeFsUpgradeRetryResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses]
 
 export type GetDatasetsByDatasetIdMetadataData = {
   body?: never
@@ -2335,12 +3171,19 @@ export type GetDatasetsByDatasetIdMetadataData = {
   url: '/datasets/{dataset_id}/metadata'
 }
 
+export type GetDatasetsByDatasetIdMetadataErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdMetadataError =
+  GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
+
 export type GetDatasetsByDatasetIdMetadataResponses = {
   200: DatasetMetadataListResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataResponse
-  = GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
+export type GetDatasetsByDatasetIdMetadataResponse =
+  GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataData = {
   body: MetadataArgs
@@ -2351,12 +3194,19 @@ export type PostDatasetsByDatasetIdMetadataData = {
   url: '/datasets/{dataset_id}/metadata'
 }
 
+export type PostDatasetsByDatasetIdMetadataErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdMetadataError =
+  PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
+
 export type PostDatasetsByDatasetIdMetadataResponses = {
   201: DatasetMetadataResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataResponse
-  = PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
+export type PostDatasetsByDatasetIdMetadataResponse =
+  PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
@@ -2368,12 +3218,19 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   url: '/datasets/{dataset_id}/metadata/built-in/{action}'
 }
 
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionError =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
+
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
   204: void
 }
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
   body?: never
@@ -2385,12 +3242,19 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
   url: '/datasets/{dataset_id}/metadata/{metadata_id}'
 }
 
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
+
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload
@@ -2402,12 +3266,19 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   url: '/datasets/{dataset_id}/metadata/{metadata_id}'
 }
 
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdError =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
+
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   200: DatasetMetadataResponse
 }
 
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type GetDatasetsByDatasetIdNotionSyncData = {
   body?: never
@@ -2418,12 +3289,20 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
   url: '/datasets/{dataset_id}/notion/sync'
 }
 
+export type GetDatasetsByDatasetIdNotionSyncErrors = {
+  403: DatasetAccessDeniedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdNotionSyncError =
+  GetDatasetsByDatasetIdNotionSyncErrors[keyof GetDatasetsByDatasetIdNotionSyncErrors]
+
 export type GetDatasetsByDatasetIdNotionSyncResponses = {
   200: SimpleResultResponse
 }
 
-export type GetDatasetsByDatasetIdNotionSyncResponse
-  = GetDatasetsByDatasetIdNotionSyncResponses[keyof GetDatasetsByDatasetIdNotionSyncResponses]
+export type GetDatasetsByDatasetIdNotionSyncResponse =
+  GetDatasetsByDatasetIdNotionSyncResponses[keyof GetDatasetsByDatasetIdNotionSyncResponses]
 
 export type GetDatasetsByDatasetIdPermissionPartUsersData = {
   body?: never
@@ -2435,32 +3314,46 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 }
 
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdPermissionPartUsersError =
+  GetDatasetsByDatasetIdPermissionPartUsersErrors[keyof GetDatasetsByDatasetIdPermissionPartUsersErrors]
 
 export type GetDatasetsByDatasetIdPermissionPartUsersResponses = {
   200: PartialMemberListResponse
 }
 
-export type GetDatasetsByDatasetIdPermissionPartUsersResponse
-  = GetDatasetsByDatasetIdPermissionPartUsersResponses[keyof GetDatasetsByDatasetIdPermissionPartUsersResponses]
+export type GetDatasetsByDatasetIdPermissionPartUsersResponse =
+  GetDatasetsByDatasetIdPermissionPartUsersResponses[keyof GetDatasetsByDatasetIdPermissionPartUsersResponses]
 
 export type GetDatasetsByDatasetIdQueriesData = {
   body?: never
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/datasets/{dataset_id}/queries'
 }
+
+export type GetDatasetsByDatasetIdQueriesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdQueriesError =
+  GetDatasetsByDatasetIdQueriesErrors[keyof GetDatasetsByDatasetIdQueriesErrors]
 
 export type GetDatasetsByDatasetIdQueriesResponses = {
   200: DatasetQueryListResponse
 }
 
-export type GetDatasetsByDatasetIdQueriesResponse
-  = GetDatasetsByDatasetIdQueriesResponses[keyof GetDatasetsByDatasetIdQueriesResponses]
+export type GetDatasetsByDatasetIdQueriesResponse =
+  GetDatasetsByDatasetIdQueriesResponses[keyof GetDatasetsByDatasetIdQueriesResponses]
 
 export type GetDatasetsByDatasetIdRelatedAppsData = {
   body?: never
@@ -2471,12 +3364,19 @@ export type GetDatasetsByDatasetIdRelatedAppsData = {
   url: '/datasets/{dataset_id}/related-apps'
 }
 
+export type GetDatasetsByDatasetIdRelatedAppsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdRelatedAppsError =
+  GetDatasetsByDatasetIdRelatedAppsErrors[keyof GetDatasetsByDatasetIdRelatedAppsErrors]
+
 export type GetDatasetsByDatasetIdRelatedAppsResponses = {
   200: RelatedAppListResponse
 }
 
-export type GetDatasetsByDatasetIdRelatedAppsResponse
-  = GetDatasetsByDatasetIdRelatedAppsResponses[keyof GetDatasetsByDatasetIdRelatedAppsResponses]
+export type GetDatasetsByDatasetIdRelatedAppsResponse =
+  GetDatasetsByDatasetIdRelatedAppsResponses[keyof GetDatasetsByDatasetIdRelatedAppsResponses]
 
 export type PostDatasetsByDatasetIdRetryData = {
   body: DocumentRetryPayload
@@ -2487,12 +3387,19 @@ export type PostDatasetsByDatasetIdRetryData = {
   url: '/datasets/{dataset_id}/retry'
 }
 
+export type PostDatasetsByDatasetIdRetryErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdRetryError =
+  PostDatasetsByDatasetIdRetryErrors[keyof PostDatasetsByDatasetIdRetryErrors]
+
 export type PostDatasetsByDatasetIdRetryResponses = {
   204: void
 }
 
-export type PostDatasetsByDatasetIdRetryResponse
-  = PostDatasetsByDatasetIdRetryResponses[keyof PostDatasetsByDatasetIdRetryResponses]
+export type PostDatasetsByDatasetIdRetryResponse =
+  PostDatasetsByDatasetIdRetryResponses[keyof PostDatasetsByDatasetIdRetryResponses]
 
 export type GetDatasetsByDatasetIdUseCheckData = {
   body?: never
@@ -2503,12 +3410,19 @@ export type GetDatasetsByDatasetIdUseCheckData = {
   url: '/datasets/{dataset_id}/use-check'
 }
 
+export type GetDatasetsByDatasetIdUseCheckErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdUseCheckError =
+  GetDatasetsByDatasetIdUseCheckErrors[keyof GetDatasetsByDatasetIdUseCheckErrors]
+
 export type GetDatasetsByDatasetIdUseCheckResponses = {
   200: UsageCheckResponse
 }
 
-export type GetDatasetsByDatasetIdUseCheckResponse
-  = GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
+export type GetDatasetsByDatasetIdUseCheckResponse =
+  GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
 
 export type GetDatasetsByResourceIdApiKeysData = {
   body?: never
@@ -2519,12 +3433,19 @@ export type GetDatasetsByResourceIdApiKeysData = {
   url: '/datasets/{resource_id}/api-keys'
 }
 
+export type GetDatasetsByResourceIdApiKeysErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByResourceIdApiKeysError =
+  GetDatasetsByResourceIdApiKeysErrors[keyof GetDatasetsByResourceIdApiKeysErrors]
+
 export type GetDatasetsByResourceIdApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetDatasetsByResourceIdApiKeysResponse
-  = GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
+export type GetDatasetsByResourceIdApiKeysResponse =
+  GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
 
 export type PostDatasetsByResourceIdApiKeysData = {
   body?: never
@@ -2536,15 +3457,19 @@ export type PostDatasetsByResourceIdApiKeysData = {
 }
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: unknown
+  400: MaxKeysExceededError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostDatasetsByResourceIdApiKeysError =
+  PostDatasetsByResourceIdApiKeysErrors[keyof PostDatasetsByResourceIdApiKeysErrors]
 
 export type PostDatasetsByResourceIdApiKeysResponses = {
   201: ApiKeyItem
 }
 
-export type PostDatasetsByResourceIdApiKeysResponse
-  = PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
+export type PostDatasetsByResourceIdApiKeysResponse =
+  PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
   body?: never
@@ -2556,9 +3481,16 @@ export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
   url: '/datasets/{resource_id}/api-keys/{api_key_id}'
 }
 
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdError =
+  DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors]
+
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse
-  = DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse =
+  DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]

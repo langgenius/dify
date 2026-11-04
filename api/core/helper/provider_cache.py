@@ -9,11 +9,11 @@ from extensions.ext_redis import redis_client
 class ProviderCredentialsCache(ABC):
     """Base class for provider credentials cache"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         self.cache_key = self._generate_cache_key(**kwargs)
 
     @abstractmethod
-    def _generate_cache_key(self, **kwargs) -> str:
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         """Generate cache key based on subclass implementation"""
         pass
 
@@ -24,15 +24,15 @@ class ProviderCredentialsCache(ABC):
             try:
                 cached_credentials = cached_credentials.decode("utf-8")
                 return dict(json.loads(cached_credentials))
-            except JSONDecodeError:
+            except (JSONDecodeError, UnicodeDecodeError):
                 return None
         return None
 
-    def set(self, config: dict[str, Any]):
+    def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
         redis_client.setex(self.cache_key, 86400, json.dumps(config))
 
-    def delete(self):
+    def delete(self) -> None:
         """Delete cached provider credentials"""
         redis_client.delete(self.cache_key)
 
@@ -48,7 +48,7 @@ class SingletonProviderCredentialsCache(ProviderCredentialsCache):
         )
 
     @override
-    def _generate_cache_key(self, **kwargs) -> str:
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_type = kwargs["provider_type"]
         identity_name = kwargs["provider_identity"]
@@ -59,11 +59,38 @@ class SingletonProviderCredentialsCache(ProviderCredentialsCache):
 class ToolProviderCredentialsCache(ProviderCredentialsCache):
     """Cache for tool provider credentials"""
 
-    def __init__(self, tenant_id: str, provider: str, credential_id: str):
+    def __init__(self, tenant_id: str, provider: str, credential_id: str, *, fingerprint: str | None = None):
+        """A fingerprint selects one snapshot-checked entry; None retains the legacy cache."""
         super().__init__(tenant_id=tenant_id, provider=provider, credential_id=credential_id)
+        self._legacy_cache_key = self.cache_key
+        self._fingerprint = fingerprint
+        if fingerprint is not None:
+            self.cache_key += ":snapshot"
 
     @override
-    def _generate_cache_key(self, **kwargs) -> str:
+    def get(self) -> dict[str, Any] | None:
+        cached = super().get()
+        if self._fingerprint is None or cached is None:
+            return cached
+        credentials = cached.get("credentials")
+        if cached.get("fingerprint") == self._fingerprint and isinstance(credentials, dict):
+            return credentials
+        return None
+
+    @override
+    def set(self, config: dict[str, Any]) -> None:
+        if self._fingerprint is not None:
+            config = {"fingerprint": self._fingerprint, "credentials": config}
+        super().set(config)
+
+    @override
+    def delete(self) -> None:
+        # Separate commands also work when Redis Cluster puts the entries in different slots.
+        redis_client.delete(self._legacy_cache_key)
+        redis_client.delete(f"{self._legacy_cache_key}:snapshot")
+
+    @override
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         tenant_id = kwargs["tenant_id"]
         provider = kwargs["provider"]
         credential_id = kwargs["credential_id"]
@@ -77,10 +104,10 @@ class NoOpProviderCredentialCache:
         """Get cached provider credentials"""
         return None
 
-    def set(self, config: dict[str, Any]):
+    def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
         pass
 
-    def delete(self):
+    def delete(self) -> None:
         """Delete cached provider credentials"""
         pass

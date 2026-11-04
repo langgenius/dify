@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { BaseError, HttpClientError, isBaseError, newError, unknownError } from './base'
 import { ErrorCode, ExitCode } from './codes'
 
@@ -29,7 +29,7 @@ describe('BaseError', () => {
   it('exit() routes via code map', () => {
     expect(newError(ErrorCode.AuthExpired, 'x').exit()).toBe(ExitCode.Auth)
     expect(newError(ErrorCode.UsageInvalidFlag, 'x').exit()).toBe(ExitCode.Usage)
-    expect(newError(ErrorCode.VersionSkew, 'x').exit()).toBe(ExitCode.VersionCompat)
+    expect(newError(ErrorCode.CatalogUnavailable, 'x').exit()).toBe(ExitCode.Catalog)
   })
 
   it('toString without hint formats "<code>: <message>"', () => {
@@ -38,11 +38,10 @@ describe('BaseError', () => {
   })
 
   it('toString with hint formats "<code>: <message> (hint: <hint>)"', () => {
-    const err = newError(ErrorCode.AuthExpired, 'session expired')
-      .withHint('run \'difyctl auth login\'')
-    expect(err.toString()).toBe(
-      'auth_expired: session expired (hint: run \'difyctl auth login\')',
+    const err = newError(ErrorCode.AuthExpired, 'session expired').withHint(
+      "run 'difyctl auth login'",
     )
+    expect(err.toString()).toBe("auth_expired: session expired (hint: run 'difyctl auth login')")
   })
 
   it('builder methods return new instances; original unchanged', () => {
@@ -112,8 +111,9 @@ describe('error envelope', () => {
   })
 
   it('renderEnvelope returns a single-line JSON string', () => {
-    const err = newError(ErrorCode.AuthExpired, 'session expired')
-      .withHint('run difyctl auth login')
+    const err = newError(ErrorCode.AuthExpired, 'session expired').withHint(
+      'run difyctl auth login',
+    )
     const out = JSON.stringify(err.toEnvelope())
     expect(out).toBe(
       '{"error":{"code":"auth_expired","message":"session expired","hint":"run difyctl auth login"}}',
@@ -130,7 +130,7 @@ describe('error envelope', () => {
   })
 
   it('omits undefined optional fields entirely (no `hint: null`)', () => {
-    const err = newError(ErrorCode.Server5xx, 'upstream broke')
+    const err = newError(ErrorCode.ServerError, 'upstream broke')
     const envelope = err.toEnvelope()
     expect(envelope.error).not.toHaveProperty('hint')
     expect(envelope.error).not.toHaveProperty('http_status')

@@ -33,19 +33,19 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}
   for (let attempt = 1; attempt <= total; attempt++) {
     try {
       return await fn()
-    }
-    catch (err) {
+    } catch (err) {
       lastErr = err
-      if (attempt === total || !shouldRetry(err))
-        break
+      if (attempt === total || !shouldRetry(err)) break
 
       console.warn(`[E2E retry] attempt ${attempt}/${total} failed — retrying in ${delay}ms`)
       await sleep(delay)
     }
   }
-  throw lastErr
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error('Retry failed with a non-Error value.', { cause: lastErr })
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

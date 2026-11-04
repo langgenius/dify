@@ -23,7 +23,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import Source
 from fields.base import ResponseModel
 
 type JsonScalar = str | int | float | bool | None
-type JsonValue = JsonScalar | list[JsonScalar] | dict[str, JsonScalar]
+type CompletionParamValue = JsonScalar | list[JsonScalar] | dict[str, JsonScalar]
 type MetadataValue = str | list[str] | int | float | None
 
 
@@ -47,7 +47,7 @@ class InnerKnowledgeRetrieveModelConfig(BaseModel):
     provider: str = Field(min_length=1)
     name: str = Field(min_length=1)
     mode: str = Field(min_length=1)
-    completion_params: dict[str, JsonValue] = Field(default_factory=dict)
+    completion_params: dict[str, CompletionParamValue] = Field(default_factory=dict)
 
 
 class InnerKnowledgeRetrieveRerankingModelConfig(BaseModel):
@@ -172,14 +172,6 @@ class InnerKnowledgeRetrieveRequest(BaseModel):
 
 class InnerKnowledgeRetrieveUsage(ResponseModel):
     """Serialized LLM usage payload returned by dataset retrieval."""
-
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="forbid",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
 
     prompt_tokens: int
     completion_tokens: int

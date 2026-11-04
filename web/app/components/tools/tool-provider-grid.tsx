@@ -8,6 +8,7 @@ import IntegrationsToolProviderCard from '@/app/components/integrations/tool-pro
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
@@ -50,7 +51,7 @@ const collectionToCardPayload = (collection: Collection): CardPayload => {
     endpoint: {
       settings: [],
     },
-    tags: collection.labels?.map(name => ({ name })) ?? [],
+    tags: collection.labels?.map((name) => ({ name })) ?? [],
     badges: [],
     verification: {
       authorized_category: 'community',
@@ -87,7 +88,8 @@ export function ToolProviderGrid({
   onRefreshData: () => void
   onSelectProvider: (providerId: string) => void
 }) {
-  const showWorkflowEmptyState = activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
+  const showWorkflowEmptyState =
+    activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
   const useCustomToolGrid = activeTab === 'api'
   const useThreeColumnIntegrationsGrid = useIntegrationsCard && activeTab !== 'builtin'
   const skeletonVariant = useIntegrationsCard
@@ -95,69 +97,86 @@ export function ToolProviderGrid({
       ? 'integrations-labeled'
       : 'integrations-default'
     : 'default'
+  const stepByStepTourTarget =
+    activeTab === 'workflow'
+      ? STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid
+      : activeTab === 'api'
+        ? STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid
+        : undefined
 
   return (
     <div
       data-testid="tool-provider-grid"
       className={cn(
         useCustomToolGrid
-          ? 'relative grid shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
+          ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
           : useThreeColumnIntegrationsGrid
-            ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
+            ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
             : useIntegrationsCard
-              ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
-              : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+              ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
+              : 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
         showWorkflowEmptyState && 'grow',
       )}
     >
-      {isLoading
-        ? <ToolCardSkeletonGrid variant={skeletonVariant} />
-        : (
-            <>
-              {activeTab === 'api' && showCreateCard && <CustomCreateCard onRefreshData={onRefreshData} />}
-              {collections.map(collection => (
-                <div
-                  key={collection.id}
-                  className={cn(
-                    useCustomToolGrid && 'min-w-0',
-                    useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
-                  )}
-                  onClick={() => onSelectProvider(collection.id)}
-                >
-                  {useIntegrationsCard
-                    ? (
-                        <IntegrationsToolProviderCard
-                          collection={collection}
-                          current={currentProviderId === collection.id}
-                          showBuiltInBadge={activeTab === 'builtin' && !collection.plugin_id}
-                          variant={activeTab === 'workflow' || activeTab === 'api' ? 'labeled' : 'default'}
-                        />
-                      )
-                    : (
-                        <Card
-                          className={cn(
-                            'cursor-pointer',
-                            currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                          )}
-                          hideCornerMark
-                          payload={collectionToCardPayload(collection)}
-                          footer={(
-                            <CardMoreInfo
-                              tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                            />
-                          )}
-                        />
-                      )}
-                </div>
-              ))}
-              {showWorkflowEmptyState && (
-                <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
-                  <WorkflowToolEmpty type={getToolType(activeTab)} />
-                </div>
-              )}
-            </>
+      {isLoading ? (
+        <ToolCardSkeletonGrid variant={skeletonVariant} />
+      ) : (
+        <>
+          {activeTab === 'api' && showCreateCard && (
+            <CustomCreateCard
+              onRefreshData={onRefreshData}
+              stepByStepTourTarget={stepByStepTourTarget}
+            />
           )}
+          {collections.map((collection, index) => (
+            <button
+              key={collection.id}
+              type="button"
+              aria-current={currentProviderId === collection.id ? 'true' : undefined}
+              data-step-by-step-tour-target={index === 0 ? stepByStepTourTarget : undefined}
+              className={cn(
+                'block w-full appearance-none border-0 bg-transparent p-0 text-start',
+                useCustomToolGrid && 'min-w-0',
+                useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
+              )}
+              onClick={() => onSelectProvider(collection.id)}
+            >
+              {useIntegrationsCard ? (
+                <IntegrationsToolProviderCard
+                  collection={collection}
+                  current={currentProviderId === collection.id}
+                  showBuiltInBadge={activeTab === 'builtin' && !collection.plugin_id}
+                  variant={activeTab === 'workflow' || activeTab === 'api' ? 'labeled' : 'default'}
+                />
+              ) : (
+                <Card
+                  className={cn(
+                    'cursor-pointer',
+                    currentProviderId === collection.id &&
+                      'border-[1.5px] border-components-option-card-option-selected-border',
+                  )}
+                  hideCornerMark
+                  payload={collectionToCardPayload(collection)}
+                  footer={
+                    <CardMoreInfo
+                      tags={collection.labels?.map((label) => getTagLabel(label)) || []}
+                    />
+                  }
+                />
+              )}
+            </button>
+          ))}
+          {showWorkflowEmptyState && (
+            <div
+              className="absolute top-1/2 left-1/2 w-full max-w-265 -translate-x-1/2 -translate-y-1/2 px-6"
+              data-step-by-step-tour-target={stepByStepTourTarget}
+            >
+              <WorkflowToolEmpty type={getToolType(activeTab)} />
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

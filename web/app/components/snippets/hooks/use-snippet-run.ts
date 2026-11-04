@@ -1,24 +1,25 @@
 import type { IOtherOptions } from '@/service/base'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
+import { snippetIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
+import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-export const useSnippetRun = (snippetId: string) => {
+export const useSnippetRun = () => {
+  const resource = useAtomValue(snippetIdentityAtom)
+  const { snippetId } = resource
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -46,15 +47,9 @@ export const useSnippetRun = (snippetId: string) => {
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleBackupDraft = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
+    const { getNodes, edges } = store.getState()
     const { getViewport } = reactflow
-    const {
-      backupDraft,
-      setBackupDraft,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft } = workflowStore.getState()
 
     if (!backupDraft) {
       setBackupDraft({
@@ -68,18 +63,10 @@ export const useSnippetRun = (snippetId: string) => {
   }, [doSyncWorkflowDraft, reactflow, store, workflowStore])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const {
-      backupDraft,
-      setBackupDraft,
-      setEnvironmentVariables,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, setEnvironmentVariables } = workflowStore.getState()
 
     if (backupDraft) {
-      const {
-        nodes,
-        edges,
-        viewport,
-      } = backupDraft
+      const { nodes, edges, viewport } = backupDraft
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
@@ -90,215 +77,229 @@ export const useSnippetRun = (snippetId: string) => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
-  const invalidAllLastRun = useInvalidAllLastRun(FlowType.snippet, snippetId)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateRunHistory = useInvalidateWorkflowRunHistory()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowType: FlowType.snippet,
-    flowId: snippetId,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
-  const handleRun = useCallback(async (
-    params: SnippetDraftRunPayload,
-    callback?: IOtherOptions,
-  ) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach((node) => {
-        node.data.selected = false
-        node.data._runningStatus = undefined
+  const handleRun = useCallback(
+    async (params: SnippetDraftRunPayload, callback?: IOtherOptions) => {
+      const { getNodes, setNodes } = store.getState()
+      const newNodes = produce(getNodes(), (draft) => {
+        draft.forEach((node) => {
+          node.data.selected = false
+          node.data._runningStatus = undefined
+        })
       })
-    })
-    setNodes(newNodes)
-    await doSyncWorkflowDraft()
+      setNodes(newNodes)
+      await doSyncWorkflowDraft()
 
-    const {
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onAgentLog,
-      onError,
-      ...restCallback
-    } = callback || {}
-    const runHistoryUrl = `/snippets/${snippetId}/workflow-runs`
-    workflowStore.setState({ historyWorkflowData: undefined })
-    const workflowContainer = document.getElementById('workflow-container')
+      const {
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onError,
+        ...restCallback
+      } = callback || {}
+      const runHistoryUrl = `/snippets/${snippetId}/workflow-runs`
+      workflowStore.setState({ historyWorkflowData: undefined })
+      const workflowContainer = document.getElementById('workflow-container')
 
-    const {
-      clientWidth,
-      clientHeight,
-    } = workflowContainer!
+      const { clientWidth, clientHeight } = workflowContainer!
 
-    const url = `/snippets/${snippetId}/workflows/draft/run`
+      const url = `/snippets/${snippetId}/workflows/draft/run`
 
-    const {
-      setWorkflowRunningData,
-    } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        inputs_truncated: false,
-        process_data_truncated: false,
-        outputs_truncated: false,
-        status: WorkflowRunningStatus.Running,
-      },
-      tracing: [],
-      resultText: '',
-    })
-
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = null
-
-    ssePost(
-      url,
-      {
-        body: params,
-      },
-      {
-        getAbortController: (controller: AbortController) => {
-          abortControllerRef.current = controller
+      const { setWorkflowRunningData } = workflowStore.getState()
+      setWorkflowRunningData({
+        result: {
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
+          status: WorkflowRunningStatus.Running,
         },
-        onWorkflowStarted: (params) => {
-          handleWorkflowStarted(params)
-          invalidateRunHistory(runHistoryUrl)
+        tracing: [],
+        resultText: '',
+      })
 
-          onWorkflowStarted?.(params)
-        },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
-          invalidateRunHistory(runHistoryUrl)
-          fetchInspectVars({})
-          invalidAllLastRun()
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
 
-          onWorkflowFinished?.(params)
+      ssePost(
+        url,
+        {
+          body: params,
         },
-        onError: (params) => {
-          handleWorkflowFailed()
-          invalidateRunHistory(runHistoryUrl)
+        {
+          getAbortController: (controller: AbortController) => {
+            abortControllerRef.current = controller
+          },
+          onWorkflowStarted: (params) => {
+            handleWorkflowStarted(params)
+            invalidateRunHistory(runHistoryUrl)
 
-          onError?.(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
+            onWorkflowStarted?.(params)
+          },
+          onWorkflowFinished: (params) => {
+            handleWorkflowFinished(params)
+            invalidateRunHistory(runHistoryUrl)
+            fetchInspectVars({})
+            invalidAllLastRun()
+
+            onWorkflowFinished?.(params)
+          },
+          onError: (params) => {
+            handleWorkflowFailed()
+            invalidateRunHistory(runHistoryUrl)
+
+            onError?.(params)
+          },
+          onNodeStarted: (params) => {
+            handleWorkflowNodeStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          onNodeStarted?.(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
+            onNodeStarted?.(params)
+          },
+          onNodeFinished: (params) => {
+            handleWorkflowNodeFinished(params)
 
-          onNodeFinished?.(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
+            onNodeFinished?.(params)
+          },
+          onIterationStart: (params) => {
+            handleWorkflowNodeIterationStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          onIterationStart?.(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
+            onIterationStart?.(params)
+          },
+          onIterationNext: (params) => {
+            handleWorkflowNodeIterationNext(params)
 
-          onIterationNext?.(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
+            onIterationNext?.(params)
+          },
+          onIterationFinish: (params) => {
+            handleWorkflowNodeIterationFinished(params)
 
-          onIterationFinish?.(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
+            onIterationFinish?.(params)
+          },
+          onLoopStart: (params) => {
+            handleWorkflowNodeLoopStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          onLoopStart?.(params)
+            onLoopStart?.(params)
+          },
+          onLoopNext: (params) => {
+            handleWorkflowNodeLoopNext(params)
+
+            onLoopNext?.(params)
+          },
+          onLoopFinish: (params) => {
+            handleWorkflowNodeLoopFinished(params)
+
+            onLoopFinish?.(params)
+          },
+          onNodeRetry: (params) => {
+            handleWorkflowNodeRetry(params)
+
+            onNodeRetry?.(params)
+          },
+          onAgentLog: (params) => {
+            handleWorkflowAgentLog(params)
+
+            onAgentLog?.(params)
+          },
+          onTextChunk: (params) => {
+            handleWorkflowTextChunk(params)
+          },
+          onTextReplace: (params) => {
+            handleWorkflowTextReplace(params)
+          },
+          ...restCallback,
         },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
+      )
+    },
+    [
+      doSyncWorkflowDraft,
+      fetchInspectVars,
+      handleWorkflowAgentLog,
+      handleWorkflowFailed,
+      handleWorkflowFinished,
+      handleWorkflowNodeFinished,
+      handleWorkflowNodeIterationFinished,
+      handleWorkflowNodeIterationNext,
+      handleWorkflowNodeIterationStarted,
+      handleWorkflowNodeLoopFinished,
+      handleWorkflowNodeLoopNext,
+      handleWorkflowNodeLoopStarted,
+      handleWorkflowNodeRetry,
+      handleWorkflowNodeStarted,
+      handleWorkflowStarted,
+      handleWorkflowTextChunk,
+      handleWorkflowTextReplace,
+      invalidAllLastRun,
+      invalidateRunHistory,
+      snippetId,
+      store,
+      workflowStore,
+    ],
+  )
 
-          onLoopNext?.(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
 
-          onLoopFinish?.(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
+  const handleStopRun = useCallback(
+    (taskId: string) => {
+      const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
-          onNodeRetry?.(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
+      if (taskId) stopRun({ params: { snippet_id: snippetId, task_id: taskId } })
 
-          onAgentLog?.(params)
-        },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
-        },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        ...restCallback,
-      },
-    )
-  }, [doSyncWorkflowDraft, fetchInspectVars, handleWorkflowAgentLog, handleWorkflowFailed, handleWorkflowFinished, handleWorkflowNodeFinished, handleWorkflowNodeIterationFinished, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationStarted, handleWorkflowNodeLoopFinished, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopStarted, handleWorkflowNodeRetry, handleWorkflowNodeStarted, handleWorkflowStarted, handleWorkflowTextChunk, handleWorkflowTextReplace, invalidAllLastRun, invalidateRunHistory, snippetId, store, workflowStore])
+      if (abortControllerRef.current) abortControllerRef.current.abort()
 
-  const handleStopRun = useCallback((taskId: string) => {
-    const {
-      workflowRunningData,
-      setWorkflowRunningData,
-    } = workflowStore.getState()
+      abortControllerRef.current = null
 
-    if (taskId)
-      stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
+      if (workflowRunningData) {
+        setWorkflowRunningData(
+          produce(workflowRunningData, (draft) => {
+            draft.result.status = WorkflowRunningStatus.Stopped
+          }),
+        )
+      }
+    },
+    [snippetId, stopRun, workflowStore],
+  )
 
-    if (abortControllerRef.current)
-      abortControllerRef.current.abort()
-
-    abortControllerRef.current = null
-
-    if (workflowRunningData) {
-      setWorkflowRunningData(produce(workflowRunningData, (draft) => {
-        draft.result.status = WorkflowRunningStatus.Stopped
+  const handleRestoreFromPublishedWorkflow = useCallback(
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
+      const nodes = publishedWorkflow.graph.nodes.map((node) => ({
+        ...node,
+        selected: false,
+        data: { ...node.data, selected: false },
       }))
-    }
-  }, [snippetId, workflowStore])
+      const edges = publishedWorkflow.graph.edges
+      const viewport = publishedWorkflow.graph.viewport!
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
 
-  const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
-    const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))
-    const edges = publishedWorkflow.graph.edges
-    const viewport = publishedWorkflow.graph.viewport!
-    handleUpdateWorkflowCanvas({
-      nodes,
-      edges,
-      viewport,
-    })
-
-    workflowStore.getState().setEnvironmentVariables([])
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+      workflowStore.getState().setEnvironmentVariables([])
+    },
+    [handleUpdateWorkflowCanvas, workflowStore],
+  )
 
   return {
     handleBackupDraft,

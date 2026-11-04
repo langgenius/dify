@@ -1,10 +1,10 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { VarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
-  getWorkflowOutputParameters,
   hasReservedWorkflowOutputConflict,
   isWorkflowToolNameValid,
   RESERVED_WORKFLOW_OUTPUTS,
@@ -19,19 +19,27 @@ describe('workflow-tool helpers', () => {
   })
 
   it('builds translated reserved workflow outputs', () => {
-    const t = ((key: string, options?: { ns?: string }) => `${options?.ns}:${key}`) as TFunction
+    const t = withSelectorKey(
+      (key: string, options?: { ns?: string }) => `${options?.ns}:${key}`,
+    ) as TFunction<['workflow']>
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[0],
+        name: 'text',
+        type: VarType.string,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.text',
       },
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[1],
+        name: 'files',
+        type: VarType.arrayFile,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.files.title',
       },
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[2],
+        name: 'json',
+        type: VarType.arrayObject,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.json',
       },
     ])
@@ -42,45 +50,29 @@ describe('workflow-tool helpers', () => {
     expect(hasReservedWorkflowOutputConflict(RESERVED_WORKFLOW_OUTPUTS, 'custom')).toBe(false)
   })
 
-  it('derives workflow output parameters from schema through helper wrapper', () => {
-    expect(getWorkflowOutputParameters([], {
-      type: 'object',
-      properties: {
-        text: {
-          type: VarType.string,
-          description: 'Result text',
-        },
-      },
-    })).toEqual([
-      {
-        name: 'text',
-        description: 'Result text',
-        type: VarType.string,
-      },
-    ])
-  })
-
   it('builds workflow tool request payload', () => {
-    expect(buildWorkflowToolRequestPayload({
-      name: 'workflow_tool',
-      description: 'Workflow tool',
-      emoji: {
-        content: '🧠',
-        background: '#ffffff',
-      },
-      label: 'Workflow Tool',
-      labels: ['agent', 'workflow'],
-      parameters: [
-        {
-          name: 'question',
-          type: VarType.string,
-          required: true,
-          form: 'llm',
-          description: 'Question to ask',
+    expect(
+      buildWorkflowToolRequestPayload({
+        name: 'workflow_tool',
+        description: 'Workflow tool',
+        emoji: {
+          content: '🧠',
+          background: '#ffffff',
         },
-      ],
-      privacyPolicy: 'https://example.com/privacy',
-    })).toEqual({
+        label: 'Workflow Tool',
+        labels: ['agent', 'workflow'],
+        parameters: [
+          {
+            name: 'question',
+            type: VarType.string,
+            required: true,
+            form: 'llm',
+            description: 'Question to ask',
+          },
+        ],
+        privacyPolicy: 'https://example.com/privacy',
+      }),
+    ).toEqual({
       name: 'workflow_tool',
       description: 'Workflow tool',
       icon: {
