@@ -139,12 +139,22 @@ def _options(root: Mapping[str, Any], node: Mapping[str, Any]) -> tuple[str, ...
     return tuple(dict.fromkeys(str(value) for value in values if value is not None))
 
 
-def _object(root: Mapping[str, Any], node: Mapping[str, Any]) -> Mapping[str, Any] | None:
-    """`node` resolved to the first object schema that names its properties, through refs and branches."""
+def _objects(root: Mapping[str, Any], node: Mapping[str, Any]) -> Iterator[Mapping[str, Any]]:
+    """Every object schema with properties that `node` can be, through refs and branches."""
     node = _resolved(root, node)
     if isinstance(node.get("properties"), Mapping):
-        return node
-    return next((found for branch in _branches(node) if (found := _object(root, branch)) is not None), None)
+        yield node
+        return
+    for branch in _branches(node):
+        yield from _objects(root, branch)
+
+
+def _object(root: Mapping[str, Any], node: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """The one object schema `node` can be; None when it can be several, whose fields no single row list covers."""
+    objects = list(_objects(root, node))
+    if len(objects) != 1:
+        return None
+    return objects[0]
 
 
 def _row(root: Mapping[str, Any], found: Mapping[str, Any] | None, loc: Loc, *, required: bool) -> FieldHint:

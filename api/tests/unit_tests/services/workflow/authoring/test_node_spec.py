@@ -103,6 +103,36 @@ def test_a_list_hint_carries_its_item_fields_required_ones_first() -> None:
     )
 
 
+class _Bud(BaseModel):
+    kind: Literal["bud"] = "bud"
+
+
+class _Grove(BaseModel):
+    maybe_leaves: list[_Leaf] | None = None
+    leaves_or_gaps: list[_Leaf | None] = Field(default_factory=list)
+    shapes: list[_Leaf | _Bud] = Field(default_factory=list)
+    shapes_or_gaps: list[_Leaf | _Bud | None] = Field(default_factory=list)
+
+
+@pytest.mark.parametrize("field", ["maybe_leaves", "leaves_or_gaps"])
+def test_a_list_whose_items_are_one_object_or_null_carries_its_item_fields(field: str) -> None:
+    hint = field_hint(_Grove, (field,), required=False)
+
+    assert [item.loc for item in hint.items] == [("name",), ("shade",)]
+
+
+@pytest.mark.parametrize("field", ["shapes", "shapes_or_gaps"])
+def test_a_list_whose_items_take_several_shapes_has_no_items(field: str) -> None:
+    assert field_hint(_Grove, (field,), required=False).items == ()
+
+
+def test_human_input_inputs_take_several_shapes_and_have_no_items() -> None:
+    node = read_node({"id": "ask", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}, CTX)
+    assert node is not None
+
+    assert node.hint(("inputs",), required=False).items == ()
+
+
 def test_an_item_field_carries_no_items_of_its_own() -> None:
     node = read_node({"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}, CTX)
     assert node is not None
