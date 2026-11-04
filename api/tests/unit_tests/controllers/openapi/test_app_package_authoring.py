@@ -449,7 +449,7 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     assert [(issue.code, issue.loc, issue.refuses_import) for issue in first.issues] == [
         (AuthoringIssueCode.FIELD_EMPTY, ["nodes", "end", "data", "outputs"], False)
     ]
-    assert _node_data(_app_graph(package), "end")["outputs"] == []
+    assert "outputs" not in _node_data(_app_graph(package), "end")
 
     end_outputs = [{"variable": "current_time", "value_type": "string", "value_selector": ["now", "text"]}]
     edited = yaml.safe_load(package[_APP])

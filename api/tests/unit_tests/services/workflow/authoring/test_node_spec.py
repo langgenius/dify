@@ -240,18 +240,6 @@ def test_a_node_data_invalid_hint_carries_the_canvas_example() -> None:
     assert hint.required is True
 
 
-def test_a_hint_leaves_out_the_example_of_what_fill_withholds() -> None:
-    completion = {"type": BuiltinNodeTypes.LLM, "model": {"mode": "completion", "name": "m", "provider": "p"}}
-    chat = {"type": BuiltinNodeTypes.LLM, "model": {"mode": "chat", "name": "m", "provider": "p"}}
-    completion_node = read_node({"id": "llm", "data": completion}, CTX)
-    chat_node = read_node({"id": "llm", "data": chat}, CTX)
-    assert completion_node is not None
-    assert chat_node is not None
-
-    assert completion_node.hint(("prompt_template",), required=True).example is None
-    assert chat_node.hint(("prompt_template",), required=True).example == [{"role": "system"}]
-
-
 def test_a_hint_under_a_list_item_takes_the_example_of_the_first_item() -> None:
     node = read_node({"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}, CTX)
     assert node is not None

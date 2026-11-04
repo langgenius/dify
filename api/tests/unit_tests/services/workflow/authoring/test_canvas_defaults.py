@@ -6,21 +6,21 @@ from pathlib import Path
 import pytest
 from typing_extensions import TypedDict
 
+from core.plugin.impl.tool import PluginToolManager
 from graphon.enums import BuiltinNodeTypes
 from models import AppMode
 from services.workflow.authoring import FillContext, canvas_defaults
 from services.workflow.authoring.canvas_defaults import (
     WILDCARD,
     CanvasNode,
-    canvas_example,
     canvas_node,
     canvas_value,
     with_canvas_defaults,
 )
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
-from services.workflow.node_defaults import editor_defaults, editor_empties, rewrite_old_shapes
-from tests.unit_tests.services.workflow.authoring.conftest import V2_ONLY_KEYS, written_canvas
+from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
+from tests.unit_tests.services.workflow.authoring.conftest import V2_ONLY_KEYS
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
@@ -94,14 +94,8 @@ def test_a_type_without_a_canvas_node_has_none() -> None:
 
 
 @pytest.mark.parametrize("node", list(CanvasNode))
-def test_a_bare_seed_fills_to_the_canvas_node_but_what_it_withholds(node: CanvasNode) -> None:
-    bare = {"type": node.value}
-    edition = node.edition()
-    assert edition is not None
-
-    filled = with_canvas_defaults(bare)
-
-    assert filled == {"type": node.value, **written_canvas(edition, bare)}
+def test_a_bare_seed_fills_to_the_canvas_node(node: CanvasNode) -> None:
+    assert with_canvas_defaults({"type": node.value}) == {"type": node.value, **node.data}
 
 
 def test_a_human_input_node_gets_the_defaults_of_its_version() -> None:
@@ -128,7 +122,7 @@ def test_a_human_input_node_of_an_unknown_version_is_left_alone(version: object)
     assert with_canvas_defaults(data) == data
 
 
-def test_a_filled_human_input_node_has_the_keys_of_its_version_only() -> None:
+def test_a_v2_human_input_node_gets_no_v1_key() -> None:
     filled = _filled_data(
         [
             {"id": "v1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}},
@@ -140,8 +134,8 @@ def test_a_filled_human_input_node_has_the_keys_of_its_version_only() -> None:
     assert V2_ONLY_KEYS.isdisjoint(filled["v1"])
     assert V2_ONLY_KEYS.isdisjoint(filled["v1-written"])
     assert "timeout_unit" in filled["v1"]
-    assert "debug_mode" in filled["v2"]
     assert "delivery_methods" not in filled["v2"]
+    assert GENERATED["human-input-v2"].keys() <= filled["v2"].keys()
 
 
 def test_the_version_is_ignored_for_a_type_with_one_edition() -> None:
@@ -232,20 +226,6 @@ def test_a_wrong_type_value_is_kept(model: object) -> None:
     filled = with_canvas_defaults({"type": BuiltinNodeTypes.LLM, "model": model})
 
     assert filled["model"] == model
-
-
-def test_an_llm_for_a_completion_model_gets_no_chat_prompt() -> None:
-    written = {"type": BuiltinNodeTypes.LLM, "model": {"mode": "completion", "name": "m"}}
-
-    filled = with_canvas_defaults(written)
-
-    assert "prompt_template" not in filled
-    assert filled["model"] == {
-        "mode": "completion",
-        "name": "m",
-        "completion_params": {"temperature": 0.7},
-    }
-    assert filled["vision"] == CanvasNode.LLM.data["vision"]
 
 
 @pytest.mark.parametrize("model", [{"mode": "chat"}, {"name": "m"}, "gpt", None])
@@ -371,7 +351,7 @@ def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
     assert rewrite_old_shapes({"type": BuiltinNodeTypes.CODE}) == {"type": BuiltinNodeTypes.CODE}
     assert rewrite_old_shapes({"type": None}) == {"type": None}
     assert editor_defaults({"type": BuiltinNodeTypes.IF_ELSE}) == {"type": BuiltinNodeTypes.IF_ELSE, "cases": []}
-    assert editor_defaults(legacy) == editor_empties(rewritten)
+    assert editor_defaults(legacy) == rewritten
 
 
 def test_a_bare_if_else_fills_to_the_canvas_case() -> None:
@@ -399,8 +379,63 @@ def test_a_container_gets_no_start_node_id_but_keeps_a_written_one(node: CanvasN
     written = {"type": node.value, "start_node_id": "inner-start"}
 
     assert "start_node_id" not in with_canvas_defaults(bare)
-    assert canvas_example(bare, ("start_node_id",)) is None
     assert with_canvas_defaults(written)["start_node_id"] == "inner-start"
+
+
+def _bare_nodes() -> list[dict[str, object]]:
+    return [
+        {"type": node.value, **({"version": version} if node is CanvasNode.HUMAN_INPUT else {})}
+        for node in CanvasNode
+        for version in (node.editions if node is CanvasNode.HUMAN_INPUT else [None])
+    ]
+
+
+def _empty_paths(value: object) -> list[tuple[str, ...]]:
+    return [path for path, item in _walk(value)[1:] if item in ("", [], {})]
+
+
+@pytest.mark.parametrize("data", _bare_nodes(), ids=lambda data: f"{data['type']}-{data.get('version')}")
+def test_fill_writes_no_empty_value(data: dict[str, object]) -> None:
+    filled = _filled_data(
+        [
+            {"id": "box", "data": {"type": BuiltinNodeTypes.ITERATION}},
+            {"id": "top", "data": dict(data)},
+            {"id": "child", "parentId": "box", "data": dict(data)},
+        ]
+    )
+
+    assert _empty_paths(filled["top"]) == []
+    assert _empty_paths(filled["child"]) == []
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"type": BuiltinNodeTypes.TOOL, "title": "t"},
+        {"type": BuiltinNodeTypes.AGENT, "title": "a"},
+        {"type": "mystery", "title": "m"},
+        {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "3", "title": "h"},
+    ],
+    ids=["tool", "agent", "unknown", "human-input-3"],
+)
+def test_fill_leaves_types_and_versions_it_does_not_know_as_written(
+    data: dict[str, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
+
+    assert _filled_data([{"id": "n", "data": copy.deepcopy(data)}]) == {"n": data}
+
+
+def test_a_second_fill_changes_no_byte() -> None:
+    nodes: list[_Node] = [{"id": str(index), "data": data} for index, data in enumerate(_bare_nodes())]
+    graph = _Graph(nodes=nodes, edges=[])
+    document = {"app": {"mode": AppMode.WORKFLOW.value, "name": "App"}, "workflow": {"graph": graph}}
+
+    fill_graph_document(document, CTX)
+    once = copy.deepcopy(document)
+    fill_graph_document(document, CTX)
+
+    assert document == once
 
 
 def test_a_container_start_child_is_never_touched() -> None:
