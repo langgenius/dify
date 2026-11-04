@@ -7,8 +7,8 @@ import {
   renderWorkflowFlowHook as renderFlowHook,
   renderWorkflowHook as renderHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { createWorkflowAppStore } from '../store/workflow'
 import { createWorkflowSlice } from '../store/workflow/workflow-slice'
+import { createWorkflowAppStore } from './workflow-store'
 
 export function createTestWorkflowStore(initialState?: Partial<WorkflowAppState>) {
   const store = createWorkflowAppStore()
