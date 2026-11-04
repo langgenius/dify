@@ -52,7 +52,7 @@ from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
-from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
 from graphon.file.runtime import use_workflow_file_runtime
@@ -293,42 +293,7 @@ class WorkflowEntry:
             ),
         )
 
-        try:
-            # variable selector to variable mapping
-            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=node_config
-            )
-        except NotImplementedError:
-            variable_mapping = {}
-        if is_dify_agent_node_data(node_config_data):
-            # Agent Soul lives in its owned snapshot, outside graph node data.
-            # Single-step execution must also load references used only by its
-            # retrieval filters, which are absent from the task prompt.
-            bundle = WorkflowAgentBindingResolver().resolve(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                workflow_id=workflow.id,
-                node_id=node_id,
-            )
-            agent_soul = AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict)
-            variable_mapping = {
-                **variable_mapping,
-                **{
-                    f"{node_id}.metadata_filter.{'.'.join(selector)}": selector
-                    for knowledge_set in agent_soul.knowledge.sets
-                    if knowledge_set.metadata_filtering.mode == "manual"
-                    and knowledge_set.metadata_filtering.conditions is not None
-                    for condition in knowledge_set.metadata_filtering.conditions.conditions
-                    if condition.comparison_operator not in ("empty", "not empty")
-                    for selector in template_value_selectors(condition.value)
-                },
-            }
-        variable_mapping = inject_default_system_variable_mappings(
-            node_id=node_id,
-            node_type=node_type,
-            node_data=node_config_data,
-            variable_mapping=variable_mapping,
-        )
+        variable_mapping = cls.node_variable_mapping(node_cls=node_cls, workflow=workflow, node_config=node_config)
 
         # Loading missing variable from draft var here, and set it into
         # variable_pool.
@@ -374,6 +339,49 @@ class WorkflowEntry:
             )
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
         return node, generator
+
+    @staticmethod
+    def node_variable_mapping(
+        *, node_cls: type[Node], workflow: Workflow, node_config: NodeConfigDict
+    ) -> Mapping[str, Sequence[str]]:
+        """The selectors a single-step run of the node reads from its user inputs, keyed the way it reads them."""
+        node_id = node_config["id"]
+        node_data = node_config["data"]
+        try:
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                graph_config=workflow.graph_dict, config=node_config
+            )
+        except NotImplementedError:
+            variable_mapping = {}
+        if is_dify_agent_node_data(node_data):
+            # Agent Soul lives in its owned snapshot, outside graph node data.
+            # Single-step execution must also load references used only by its
+            # retrieval filters, which are absent from the task prompt.
+            bundle = WorkflowAgentBindingResolver().resolve(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_id=workflow.id,
+                node_id=node_id,
+            )
+            agent_soul = AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict)
+            variable_mapping = {
+                **variable_mapping,
+                **{
+                    f"{node_id}.metadata_filter.{'.'.join(selector)}": selector
+                    for knowledge_set in agent_soul.knowledge.sets
+                    if knowledge_set.metadata_filtering.mode == "manual"
+                    and knowledge_set.metadata_filtering.conditions is not None
+                    for condition in knowledge_set.metadata_filtering.conditions.conditions
+                    if condition.comparison_operator not in ("empty", "not empty")
+                    for selector in template_value_selectors(condition.value)
+                },
+            }
+        return inject_default_system_variable_mappings(
+            node_id=node_id,
+            node_type=node_data.type,
+            node_data=node_data,
+            variable_mapping=variable_mapping,
+        )
 
     @staticmethod
     def _create_single_node_graph(

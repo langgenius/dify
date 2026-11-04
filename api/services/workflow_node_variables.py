@@ -34,7 +34,8 @@ def get_human_input_form_variable_mapping(node_id: str, node_data: HumanInputNod
     return {f"{node_id}.#{'.'.join(selector)}#": selector for selector in selectors}
 
 
-def _input_mappings(config: NodeConfigDict) -> Mapping[str, Sequence[str]]:
+def editor_input_mappings(config: NodeConfigDict) -> Mapping[str, Sequence[str]]:
+    """The inputs a node reads that its own variable mapping leaves out, keyed the way a single-step run reads them."""
     node_id = config["id"]
     data = config["data"]
     selectors: list[Sequence[str]] = []
@@ -114,7 +115,7 @@ def load_additional_node_variables(
     optional_keys: set[str] = set()
     for config in configs:
         prefix = f"{config['id']}." if config["id"] != node_config["id"] else ""
-        for key, selector in _input_mappings(config).items():
+        for key, selector in editor_input_mappings(config).items():
             key = prefix + key
             if key in variable_mapping or (selector and selector[0] in internal_ids):
                 continue

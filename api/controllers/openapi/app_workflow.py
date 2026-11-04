@@ -3,7 +3,7 @@ publishing and versions, and draft environment variables."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from http import HTTPStatus
 from typing import Any, Final
 
@@ -50,6 +50,8 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import EDITOR_ROLES, Requirement, account_app_guards
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import environment_variable_value_type
+from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_application_services import application_services
 from factories import variable_factory
 from fields.workflow_run_fields import (
@@ -60,6 +62,7 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
+from graphon.entities.graph_config import NodeConfigDict
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.datetime_utils import naive_utc_now
@@ -70,9 +73,13 @@ from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
+from services.workflow_node_variables import editor_input_mappings
 from services.workflow_run_service import WorkflowRunListArgs
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
+
+# Marks a variable reference in a node test's input keys, `#node.var#`.
+_REFERENCE_MARK: Final = "#"
 
 _RUN_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, roles=None, modes=GRAPH_MODES
@@ -389,6 +396,41 @@ def _node_run_guards(mode: AppMode) -> tuple[Requirement, ...]:
     return account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=(mode,))
 
 
+def _bare_reference(key: str) -> str:
+    """`key` without the hashes that mark a variable reference, `#node.var#`."""
+    if not key.startswith(_REFERENCE_MARK):
+        return key
+    if not key.endswith(_REFERENCE_MARK):
+        return key
+    return key.removeprefix(_REFERENCE_MARK).removesuffix(_REFERENCE_MARK)
+
+
+def _input_mapping(draft: Workflow, node: NodeConfigDict) -> Mapping[str, Sequence[str]]:
+    """Every selector a single-step run of the node reads from its user inputs, keyed the way it reads them."""
+    data = node["data"]
+    node_cls = resolve_workflow_node_class(node_type=data.type, node_version=data.version, node_data=data)
+    return {
+        **editor_input_mappings(node),
+        **WorkflowEntry.node_variable_mapping(node_cls=node_cls, workflow=draft, node_config=node),
+    }
+
+
+def node_run_inputs(inputs: Mapping[str, Any], mapping: Mapping[str, Sequence[str]]) -> dict[str, Any]:
+    """`inputs` with each value keyed by a reference, `#node.var#` or `node.var`, also under the mapping key the run
+    reads it from. Each node type keys its mapping its own way: a code node by its own variable, a tool by the
+    reference. A key that names nothing is passed on as it is, so the run still names the variable it misses.
+    """
+    mapping_keys: dict[str, list[str]] = {}
+    for key, selector in mapping.items():
+        for form in dict.fromkeys((key, ".".join(selector))):
+            mapping_keys.setdefault(form, []).append(key)
+    normalized = dict(inputs)
+    for given, value in inputs.items():
+        for key in mapping_keys.get(_bare_reference(given), ()):
+            normalized.setdefault(key, value)
+    return normalized
+
+
 def run_draft_node(
     ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str, files: UploadParts | None = None
 ) -> WorkflowRunNodeExecutionResponse:
@@ -410,7 +452,7 @@ def run_draft_node(
             app_model=ctx.app,
             draft_workflow=draft,
             node_id=node_id,
-            user_inputs=user_inputs,
+            user_inputs=node_run_inputs(user_inputs, _input_mapping(draft, node)),
             account=ctx.account,
             query=query,
         )
