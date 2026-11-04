@@ -2086,7 +2086,7 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_mode | query | The mode of the app the nodes go into | Yes | string, <br>**Available values:** "advanced-chat", "workflow" |
-| keyword | query | Words to match in the label, ignoring case | No | string |
+| keyword | query | Text to find in the label, tool or provider name, node type, or agent name, ignoring case | No | string |
 | kind | query | Only options of this kind | No | string, <br>**Available values:** "agent", "block", "note", "tool" |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -3783,7 +3783,7 @@ Where a node option comes from; a kind other than block seeds the nodes whose da
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_mode | string, <br>**Available values:** "advanced-chat", "workflow" | The mode of the app the nodes go into<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
-| keyword | string | Words to match in the label, ignoring case | No |
+| keyword | string | Text to find in the label, tool or provider name, node type, or agent name, ignoring case | No |
 | kind | [NodeOptionKind](#nodeoptionkind) | Only options of this kind | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
