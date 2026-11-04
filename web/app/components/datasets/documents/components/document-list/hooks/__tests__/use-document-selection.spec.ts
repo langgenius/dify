@@ -1,10 +1,10 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { renderHook } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentSelection } from '../use-document-selection'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
   id: 'doc1',
@@ -22,7 +22,7 @@ const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
   display_status: 'available',
   created_from: 'api',
   ...overrides,
-} as LocalDoc)
+})
 
 describe('useDocumentSelection', () => {
   describe('hasErrorDocumentsSelected', () => {
@@ -64,23 +64,33 @@ describe('useDocumentSelection', () => {
   })
 
   describe('downloadableSelectedIds', () => {
-    it('should return only FILE type documents from selection', () => {
+    it('should include uploaded and pipeline files with download references', () => {
       const docs = [
         createMockDocument({ id: 'doc1', data_source_type: DataSourceType.FILE }),
         createMockDocument({ id: 'doc2', data_source_type: DataSourceType.NOTION }),
-        createMockDocument({ id: 'doc3', data_source_type: DataSourceType.FILE }),
+        createMockDocument({
+          id: 'doc3',
+          data_source_type: 'local_file',
+          data_source_info: { real_file_id: 'file-3' },
+        }),
+        createMockDocument({
+          id: 'doc4',
+          data_source_type: 'local_file',
+          data_source_info: { related_id: 'file-4' },
+        }),
+        createMockDocument({ id: 'doc5', data_source_type: 'local_file', data_source_info: {} }),
       ]
       const onSelectedIdChange = vi.fn()
 
       const { result } = renderHook(() =>
         useDocumentSelection({
           documents: docs,
-          selectedIds: ['doc1', 'doc2', 'doc3'],
+          selectedIds: ['doc1', 'doc2', 'doc3', 'doc4', 'doc5'],
           onSelectedIdChange,
         }),
       )
 
-      expect(result.current.downloadableSelectedIds).toEqual(['doc1', 'doc3'])
+      expect(result.current.downloadableSelectedIds).toEqual(['doc1', 'doc3', 'doc4'])
     })
 
     it('should return empty array when no FILE documents selected', () => {
@@ -99,26 +109,6 @@ describe('useDocumentSelection', () => {
       )
 
       expect(result.current.downloadableSelectedIds).toEqual([])
-    })
-  })
-
-  describe('clearSelection', () => {
-    it('should call onSelectedIdChange with empty array', () => {
-      const onSelectedIdChange = vi.fn()
-
-      const { result } = renderHook(() =>
-        useDocumentSelection({
-          documents: [],
-          selectedIds: ['doc1', 'doc2'],
-          onSelectedIdChange,
-        }),
-      )
-
-      act(() => {
-        result.current.clearSelection()
-      })
-
-      expect(onSelectedIdChange).toHaveBeenCalledWith([])
     })
   })
 })

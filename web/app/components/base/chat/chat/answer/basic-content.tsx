@@ -3,17 +3,13 @@ import type { ChatItem } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
+import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
 
 type BasicContentProps = {
   item: ChatItem
 }
-const BasicContent: FC<BasicContentProps> = ({
-  item,
-}) => {
-  const {
-    annotation,
-    content,
-  } = item
+const BasicContent: FC<BasicContentProps> = ({ item }) => {
+  const { annotation, content } = item
 
   if (annotation?.logAnnotation) {
     return (
@@ -30,12 +26,14 @@ const BasicContent: FC<BasicContentProps> = ({
   if (typeof content === 'string' && /^\\\\\S.*/.test(content) && !/^`.*`$/.test(content)) {
     displayContent = `\`${content}\``
   }
+  // Workflow AgentV2 answers use the ordinary chat renderer. Resolve only
+  // server-issued receipts here as well as in Agent App's activity renderer.
+  if (typeof displayContent === 'string')
+    displayContent = resolveKnowledgeCitationLinks(displayContent, item.citation)
 
   return (
     <Markdown
-      className={cn(
-        item.isError && 'text-[#F04438]!',
-      )}
+      className={cn(item.isError && 'text-[#F04438]!')}
       content={displayContent}
       data-testid="basic-content-markdown"
     />

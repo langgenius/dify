@@ -12,8 +12,6 @@ export type BuildInfo = {
   commit: string
   buildDate: string
   channel: BuildChannel
-  minDify: string
-  maxDify: string
 }
 
 export type Env = Record<string, string | undefined>
@@ -27,8 +25,7 @@ const GIT_PROBE_OPTS: ExecSyncOptions = {
 export const defaultGitProbe: GitProbe = (cmd) => {
   try {
     return execSync(cmd, GIT_PROBE_OPTS).toString().trim() || null
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -36,7 +33,6 @@ export const defaultGitProbe: GitProbe = (cmd) => {
 type PackageManifest = {
   difyctl?: {
     channel?: string
-    compat?: { minDify?: string, maxDify?: string }
   }
 }
 
@@ -48,8 +44,7 @@ const defaultPackageReader: PackageReader = () => {
   try {
     const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json')
     return JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageManifest
-  }
-  catch {
+  } catch {
     return {}
   }
 }
@@ -69,24 +64,14 @@ export function resolveBuildInfo(opts: ResolveOptions = {}): BuildInfo {
 
   const channel = env.DIFYCTL_CHANNEL ?? pkg.difyctl?.channel ?? 'dev'
   if (!(BUILD_CHANNELS as readonly string[]).includes(channel)) {
-    throw new Error(
-      `invalid DIFYCTL_CHANNEL: ${channel} (expected ${BUILD_CHANNELS.join(' | ')})`,
-    )
+    throw new Error(`invalid DIFYCTL_CHANNEL: ${channel} (expected ${BUILD_CHANNELS.join(' | ')})`)
   }
 
-  const version
-    = env.DIFYCTL_VERSION
-      ?? git('git describe --tags --dirty --always')
-      ?? '0.0.0-dev'
+  const version = env.DIFYCTL_VERSION ?? git('git describe --tags --dirty --always') ?? '0.0.0-dev'
 
-  const commit
-    = env.DIFYCTL_COMMIT
-      ?? git('git rev-parse HEAD')
-      ?? 'none'
+  const commit = env.DIFYCTL_COMMIT ?? git('git rev-parse HEAD') ?? 'none'
 
   const buildDate = env.DIFYCTL_BUILD_DATE ?? now().toISOString()
-  const minDify = env.DIFYCTL_MIN_DIFY ?? pkg.difyctl?.compat?.minDify ?? '0.0.0'
-  const maxDify = env.DIFYCTL_MAX_DIFY ?? pkg.difyctl?.compat?.maxDify ?? '0.0.0'
 
-  return { version, commit, buildDate, channel: channel as BuildChannel, minDify, maxDify }
+  return { version, commit, buildDate, channel: channel as BuildChannel }
 }

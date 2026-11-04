@@ -1,13 +1,75 @@
 import json
+from collections.abc import Iterator
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from libs.datetime_utils import naive_utc_now
+from models.enums import ConversationFromSource, MessageStatus
+from models.model import AppMode, Conversation, Message
+
+
+def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
+    return Conversation(
+        id=conversation_id,
+        app_id="app",
+        mode=AppMode.AGENT_CHAT,
+        name="Agent Conversation",
+        _inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1") -> Message:
+    message = Message(
+        id=message_id,
+        app_id="app",
+        conversation_id=conversation_id,
+        _inputs={},
+        query="query",
+        message={},
+        answer="",
+        status=MessageStatus.NORMAL,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    message.created_at = naive_utc_now()
+    return message
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_Recorder(),
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 class DummyRunner(CotAgentRunner):
@@ -26,7 +88,7 @@ class DummyRunner(CotAgentRunner):
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture):
+def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner]:
     # Prevent BaseAgentRunner __init__ from hitting database
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.organize_agent_history",
@@ -38,10 +100,11 @@ def runner(mocker: MockerFixture):
     application_generate_entity.model_conf.stop = []
     application_generate_entity.model_conf.provider = "openai"
     application_generate_entity.model_conf.parameters = {}
-    application_generate_entity.trace_manager = None
+    application_generate_entity.trace_scope = None
     application_generate_entity.invoke_from = "test"
 
     app_config = MagicMock()
+    app_config.app_id = "app"
     app_config.agent = MagicMock()
     app_config.agent.max_iteration = 1
     app_config.prompt_template.simple_prompt_template = "Hello {{name}}"
@@ -55,12 +118,12 @@ def runner(mocker: MockerFixture):
     model_config.model = "test-model"
 
     queue_manager = MagicMock()
-    message = MagicMock()
+    message = _make_message()
 
     runner = DummyRunner(
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
-        conversation=MagicMock(),
+        conversation=_make_conversation(),
         app_config=app_config,
         model_config=model_config,
         config=MagicMock(),
@@ -80,8 +143,12 @@ def runner(mocker: MockerFixture):
     runner.agent_callback = None
     runner.memory = None
     runner.history_prompt_messages = []
+    runner.session = Session(sqlite_engine)
 
-    return runner
+    try:
+        yield runner
+    finally:
+        runner.session.close()
 
 
 class TestFillInputs:
@@ -163,7 +230,7 @@ class TestFormatAssistantMessage:
 class TestHandleInvokeAction:
     def test_handle_invoke_action_tool_not_present(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="missing", action_input={})
-        response, meta = runner._handle_invoke_action(action, {}, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, {}, [], trace_scope=None)
         assert "there is not a tool named" in response
 
     def test_tool_with_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
@@ -176,7 +243,7 @@ class TestHandleInvokeAction:
             return_value=("result", [], MagicMock(to_dict=lambda: {})),
         )
 
-        response, meta = runner._handle_invoke_action(action, tool_instances, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [], trace_scope=None)
         assert response == "result"
 
 
@@ -192,7 +259,7 @@ class TestOrganizeHistoricPromptMessages:
 
 class TestRun:
     def test_run_handles_empty_parser_output(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         mocker.patch(
@@ -200,11 +267,13 @@ class TestRun:
             return_value=[],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert isinstance(results, list)
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert all("session" not in call.kwargs for call in runner.save_agent_thought.call_args_list)
 
     def test_run_with_action_and_tool_invocation(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
@@ -222,11 +291,11 @@ class TestRun:
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {"tool": MagicMock()}))
+            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
 
     def test_run_respects_max_iteration_boundary(self, runner: DummyRunner, mocker: MockerFixture):
         runner.app_config.agent.max_iteration = 1
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
@@ -244,10 +313,10 @@ class TestRun:
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {"tool": MagicMock()}))
+            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
 
     def test_run_basic_flow(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         mocker.patch(
@@ -255,12 +324,12 @@ class TestRun:
             return_value=[],
         )
 
-        results = list(runner.run(message, "query", {"name": "John"}))
+        results = list(runner.run(runner.session, message, "query", {"name": "John"}))
         assert results
 
     def test_run_max_iteration_error(self, runner: DummyRunner, mocker: MockerFixture):
         runner.app_config.agent.max_iteration = 0
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
@@ -271,10 +340,10 @@ class TestRun:
         )
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {}))
+            list(runner.run(runner.session, message, "query", {}))
 
     def test_run_increase_usage_aggregation(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
         runner.app_config.agent.max_iteration = 2
 
@@ -320,7 +389,7 @@ class TestRun:
         fake_prompt_tool.name = "tool"
         runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         final_usage = results[-1].delta.usage
         assert final_usage is not None
         assert final_usage.prompt_tokens == 2
@@ -331,19 +400,44 @@ class TestRun:
         assert final_usage.total_price == 4
 
     def test_run_when_no_action_branch(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
-        message.id = "msg-id"
+        events: list[str] = []
+        session = runner.session
+        conversation = _make_conversation()
+        message = _make_message(conversation_id=conversation.id)
+        session.add_all([conversation, message])
+        session.commit()
 
+        def record_commit(_session: Session) -> None:
+            events.append("commit")
+
+        def record_detach(_session: Session, instance: object) -> None:
+            if instance is message:
+                events.append("close")
+
+        event.listen(session, "after_commit", record_commit)
+        event.listen(session, "persistent_to_detached", record_detach)
+
+        def provider_chunks():
+            events.append("first-chunk")
+            yield "chunk"
+
+        runner.model_instance.invoke_llm.return_value = provider_chunks()
         mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
-            return_value=[],
+            side_effect=lambda chunks, _usage: list(chunks),
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(session, message, "query", {}))
+        assert events == ["commit", "close", "first-chunk"]
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
+            "app_id": "app",
+            "app_type": CreditUsageAppType.AGENT,
+            "created_by": CreditUsageCreatedBy.APP.value,
+        }
         assert results[-1].delta.message.content == ""
 
     def test_run_usage_missing_key_branch(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         mocker.patch(
@@ -353,11 +447,13 @@ class TestRun:
 
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
 
-        list(runner.run(message, "query", {}))
+        list(runner.run(runner.session, message, "query", {}))
 
     def test_run_prompt_tool_update_branch(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
+        trace_scope = _trace_scope()
+        runner.application_generate_entity.trace_scope = trace_scope
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
@@ -368,7 +464,7 @@ class TestRun:
             side_effect=[[action], []],
         )
 
-        mocker.patch(
+        agent_invoke = mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
             return_value=("ok", [], MagicMock(to_dict=lambda: {})),
         )
@@ -383,9 +479,10 @@ class TestRun:
         runner.update_prompt_message_tool = MagicMock()
         runner.agent_callback = None
 
-        list(runner.run(message, "query", {}))
+        list(runner.run(runner.session, message, "query", {}))
 
         runner.update_prompt_message_tool.assert_called_once()
+        assert agent_invoke.call_args.kwargs["trace_scope"] is trace_scope
 
     def test_historic_with_assistant_and_tool_calls(self, runner: DummyRunner):
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ToolPromptMessage
@@ -435,7 +532,9 @@ class TestHandleInvokeActionExtended:
         )
 
         message_file_ids = []
-        response, meta = runner._handle_invoke_action(action, tool_instances, message_file_ids)
+        response, meta = runner._handle_invoke_action(
+            runner.session, action, tool_instances, message_file_ids, trace_scope=None
+        )
 
         assert response == "ok"
         assert message_file_ids == ["file1"]
@@ -497,7 +596,7 @@ class TestOrganizeHistoricPromptMessagesExtended:
 
 class TestRunAdditionalBranches:
     def test_run_with_no_action_final_answer_empty(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         mocker.patch(
@@ -505,11 +604,11 @@ class TestRunAdditionalBranches:
             return_value=["thinking"],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert any(hasattr(r, "delta") for r in results)
 
     def test_run_with_final_answer_action_string(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="Final Answer", action_input="done")
@@ -519,11 +618,11 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == "done"
 
     def test_run_with_final_answer_action_dict(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="Final Answer", action_input={"a": 1})
@@ -533,11 +632,11 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert json.loads(results[-1].delta.message.content) == {"a": 1}
 
     def test_run_with_string_final_answer(self, runner: DummyRunner, mocker: MockerFixture):
-        message = MagicMock()
+        message = _make_message()
         message.id = "msg-id"
 
         # Remove invalid branch: Pydantic enforces str|dict for action_input
@@ -548,5 +647,5 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == "12345"

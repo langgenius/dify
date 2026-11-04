@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, override
 
 import pytz  # type: ignore[import-untyped]
+from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -13,12 +14,13 @@ class TimezoneConversionTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Convert time to equivalent time zone
         """
@@ -51,4 +53,4 @@ class TimezoneConversionTool(BuiltinTool):
             converted_datetime = datetime_with_tz.astimezone(output_timezone)
             return converted_datetime.strftime(time_format)
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

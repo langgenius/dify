@@ -16,15 +16,17 @@ describe('document-extractor/use-single-run-form-params', () => {
   it('exposes a single files form and updates run input values', () => {
     const setRunInputData = vi.fn()
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'doc-node',
-      payload: createData(),
-      runInputData: { files: ['old-file'] },
-      runInputDataRef: { current: {} },
-      getInputVars: () => [],
-      setRunInputData,
-      toVarInputs: () => [],
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'doc-node',
+        payload: createData(),
+        runInputData: { files: ['old-file'], other: 'preserve' },
+        runInputDataRef: { current: {} },
+        getInputVars: () => [],
+        setRunInputData,
+        toVarInputs: () => [],
+      }),
+    )
 
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]!.inputs).toEqual([
@@ -36,7 +38,7 @@ describe('document-extractor/use-single-run-form-params', () => {
 
     result.current.forms[0]!.onChange({ files: ['new-file'] })
 
-    expect(setRunInputData).toHaveBeenCalledWith({ files: ['new-file'] })
+    expect(setRunInputData).toHaveBeenCalledWith({ files: ['new-file'], other: 'preserve' })
     expect(result.current.getDependentVars()).toEqual([['start', 'files']])
     expect(result.current.getDependentVar('files')).toEqual(['start', 'files'])
   })

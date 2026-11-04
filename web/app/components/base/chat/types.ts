@@ -1,15 +1,11 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type {
-  ModelConfig,
-} from '@/types/app'
+import type { AgentConfig } from '@/models/debug'
+import type { ModelConfig } from '@/types/app'
 import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
 
-export type {
-  Inputs,
-
-} from '@/models/debug'
+export type { Inputs } from '@/models/debug'
 
 export { TransferMethod } from '@/types/app'
 
@@ -17,13 +13,14 @@ export type EnableType = {
   enabled: boolean
 }
 
-export type ChatConfig = Omit<ModelConfig, 'model'> & {
+export type ChatConfig = Omit<ModelConfig, 'model' | 'system_parameters' | 'agent_mode'> & {
+  agent_mode: Pick<AgentConfig, 'enabled' | 'tools'> & { strategy?: AgentConfig['strategy'] }
   supportAnnotation?: boolean
   appId?: string
   questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
-  system_parameters: {
+  system_parameters?: {
     audio_file_size_limit: number
     file_size_limit: number
     image_file_size_limit: number
@@ -38,6 +35,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
 export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
+  error?: string
   expand?: boolean // for UI
   resultText?: string
   files?: FileEntity[]
@@ -58,10 +56,18 @@ export type ChatItemInTree = {
 
 export type OnSend = {
   (message: string, files?: FileEntity[]): void
-  (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
+  (
+    message: string,
+    files: FileEntity[] | undefined,
+    isRegenerate: boolean,
+    lastAnswer?: ChatItem | null,
+  ): void
 }
 
-export type OnRegenerate = (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void
+export type OnRegenerate = (
+  chatItem: ChatItem,
+  editedQuestion?: { message: string; files?: FileEntity[] },
+) => void
 
 export type Callback = {
   onSuccess: () => void
@@ -71,3 +77,5 @@ export type Feedback = {
   rating: 'like' | 'dislike' | null
   content?: string | null
 }
+
+export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void>

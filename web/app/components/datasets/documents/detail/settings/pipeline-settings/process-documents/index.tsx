@@ -1,5 +1,8 @@
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import {
+  useConfigurations,
+  useInitialData,
+} from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import Form from '../../../../create-from-pipeline/process-documents/form'
 import Actions from './actions'
 import { useInputVariables } from './hooks'

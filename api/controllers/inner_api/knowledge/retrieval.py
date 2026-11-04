@@ -9,8 +9,10 @@ app/dataset validation remains in the service layer.
 
 from flask_restx import Resource
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
@@ -69,7 +71,8 @@ class InnerKnowledgeRetrieveApi(Resource):
             500: "Unexpected knowledge retrieval failure",
         }
     )
-    def post(self) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session) -> dict[str, object]:
         """Validate the payload, run retrieval, and return workflow-style sources."""
         try:
             payload = InnerKnowledgeRetrieveRequest.model_validate(inner_api_ns.payload or {})
@@ -81,7 +84,7 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
-            response = InnerKnowledgeRetrievalService().retrieve(payload)
+            response = InnerKnowledgeRetrievalService().retrieve(payload, session=session)
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

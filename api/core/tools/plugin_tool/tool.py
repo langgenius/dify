@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
@@ -27,13 +29,14 @@ class PluginTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
-        manager = PluginToolManager()
+    ) -> Generator[ToolInvokeMessage]:
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
 
         tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
 
@@ -76,7 +79,7 @@ class PluginTool(Tool):
         if self.runtime_parameters is not None:
             return self.runtime_parameters
 
-        manager = PluginToolManager()
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
         self.runtime_parameters = manager.get_runtime_parameters(
             tenant_id=self.tenant_id,
             user_id="",

@@ -3,7 +3,7 @@ import { TransferMethod } from '@/types/app'
 
 type OptionItem = {
   value: string
-  i18nKey: I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+  i18nKey: I18nKeysByPrefix<'workflowLogic', 'nodes.ifElse.optionName.'>
 }
 
 export const FILE_TYPE_OPTIONS = [
@@ -18,5 +18,14 @@ export const TRANSFER_METHOD = [
   { value: TransferMethod.remote_url, i18nKey: 'url' },
 ] as const satisfies readonly OptionItem[]
 
-export const SUB_VARIABLES = ['type', 'size', 'name', 'url', 'extension', 'mime_type', 'transfer_method', 'related_id']
-export const OUTPUT_FILE_SUB_VARIABLES = SUB_VARIABLES.filter(key => key !== 'transfer_method')
+export const SUB_VARIABLES = [
+  'type',
+  'size',
+  'name',
+  'url',
+  'extension',
+  'mime_type',
+  'transfer_method',
+  'related_id',
+]
+export const OUTPUT_FILE_SUB_VARIABLES = SUB_VARIABLES.filter((key) => key !== 'transfer_method')

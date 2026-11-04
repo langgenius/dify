@@ -1,18 +1,23 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
+import { getDocLanguage } from '@/i18n/language'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'
@@ -28,21 +33,18 @@ type RoleModalProps = {
   open: boolean
   role?: Role
   onClose: () => void
-  onSubmit?: (data: submitRoleData) => void
+  onSubmit?: (data: submitRoleData) => void | Promise<void>
 }
 
-const RoleModal = ({
-  mode,
-  open,
-  role,
-  onClose,
-  onSubmit,
-}: RoleModalProps) => {
-  const { t } = useTranslation()
+const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
+  const { t } = useTranslation(['common', 'permission'])
+  const locale = useLocale()
+  const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(role?.name ?? '')
   const [desc, setDesc] = useState(role?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(role?.permission_keys ?? [])
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const readonly = mode === 'view'
 
   const onRoleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,57 +55,56 @@ const RoleModal = ({
     setDesc(value)
   }, [])
 
-  const handleSubmit = () => {
-    onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
-    onClose()
+  const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
+      onClose()
+    } catch {
+      // The mutation reports the error; keep the draft available for retry.
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen)
-          onClose()
+        if (!nextOpen) onClose()
       }}
     >
-      <DialogContent
-        className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
-        backdropProps={{ forceRender: true }}
-      >
-        <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogCloseButton />
-          <div className="pr-8">
-            <DialogTitle className="system-xl-semibold text-text-primary">
-              {t(`role.modal.${mode}.title`, { ns: 'permission' })}
-            </DialogTitle>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {t(`role.modal.${mode}.description`, { ns: 'permission' })}
-            </DialogDescription>
-          </div>
-        </div>
-        <div className="border-t border-divider-subtle" />
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
+      <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-5">
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
-              {t('role.modal.nameLabel', { ns: 'permission' })}
+              {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
             </label>
             <Input
               id="role-name"
               value={name}
               onChange={onRoleNameChange}
-              placeholder={t('role.modal.namePlaceholder', { ns: 'permission' })}
+              placeholder={t(($) => $['role.modal.namePlaceholder'], { ns: 'permission' })}
               disabled={readonly}
             />
           </div>
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
-              {t('role.modal.descriptionLabel', { ns: 'permission' })}
+              {t(($) => $['role.modal.descriptionLabel'], { ns: 'permission' })}
             </label>
             <Textarea
               id="role-description"
               value={desc}
               onValueChange={onRoleDescChange}
-              placeholder={t('role.modal.descriptionPlaceholder', { ns: 'permission' })}
+              placeholder={t(($) => $['role.modal.descriptionPlaceholder'], { ns: 'permission' })}
               disabled={readonly}
               className="min-h-24 resize-none"
             />
@@ -113,32 +114,32 @@ const RoleModal = ({
             onChange={setPermissionKeys}
             readonly={readonly}
           />
-        </div>
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+        </DialogBody>
+        <DialogFooter>
           <a
-            href="https://docs.dify.ai/"
+            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+            className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
           >
-            <span>{t('permissionSet.learnMore', { ns: 'permission' })}</span>
+            <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
             <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
           </a>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              {readonly ? t('operation.close', { ns: 'common' }) : t('operation.cancel', { ns: 'common' })}
+          <Button variant="secondary" onClick={onClose}>
+            {readonly
+              ? t(($) => $['operation.close'], { ns: 'common' })
+              : t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          {!readonly && (
+            <Button
+              variant="primary"
+              disabled={!name.trim() || isSubmitting}
+              onClick={handleSubmit}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </Button>
-            {!readonly && (
-              <Button
-                variant="primary"
-                disabled={!name.trim()}
-                onClick={handleSubmit}
-              >
-                {t('operation.confirm', { ns: 'common' })}
-              </Button>
-            )}
-          </div>
-        </div>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -1,0 +1,7 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": ["*.ts"]
+}

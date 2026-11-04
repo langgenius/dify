@@ -4,4 +4,4 @@ export const TabType = {
   relations: 'relations',
 } as const
 
-export type TabType = typeof TabType[keyof typeof TabType]
+export type TabType = (typeof TabType)[keyof typeof TabType]

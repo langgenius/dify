@@ -6,17 +6,19 @@
 #   cd /app/api && .venv/bin/uvicorn dify_agent.server.app:app --host 0.0.0.0 --port 5050
 #
 # Unlike the dify-api image (which only installs the base `dify-agent`
-# dependency), this image installs the `[server]` extra, so jwcrypto,
-# shell-session-manager, fastapi, uvicorn, etc. are present and the server can
+# dependency), this image installs the `[server]` extra, so jwcrypto, fastapi,
+# uvicorn, etc. are present and the server can
 # actually start. dify-api is intentionally left lean.
 
 # base image
-FROM python:3.12-slim-bookworm AS base
+# trixie (glibc 2.41): the `openshell` wheel bundles a Rust CLI binary and
+# only ships manylinux_2_39 wheels, which bookworm's glibc 2.36 cannot load.
+FROM python:3.13-slim-trixie AS base
 
 WORKDIR /app/api
 
 # Install uv
-ENV UV_VERSION=0.8.9
+ENV UV_VERSION=0.13.4
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 

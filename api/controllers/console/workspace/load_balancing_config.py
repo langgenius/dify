@@ -6,10 +6,12 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -48,13 +50,14 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, provider: str):
+    @model_validate(LoadBalancingCredentialPayload)
+    def post(
+        self, req_data: LoadBalancingCredentialPayload, current_tenant_id: str, current_user: Account, provider: str
+    ):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_tenant_id
-
-        payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing credentials
         model_load_balancing_service = ModelLoadBalancingService()
@@ -66,9 +69,10 @@ class LoadBalancingCredentialsValidateApi(Resource):
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=payload.model,
-                model_type=payload.model_type,
-                credentials=payload.credentials,
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
+                session=db.session(),
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -97,13 +101,19 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, provider: str, config_id: str):
+    @model_validate(LoadBalancingCredentialPayload)
+    def post(
+        self,
+        req_data: LoadBalancingCredentialPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        provider: str,
+        config_id: str,
+    ):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_tenant_id
-
-        payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing config credentials
         model_load_balancing_service = ModelLoadBalancingService()
@@ -115,9 +125,10 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=payload.model,
-                model_type=payload.model_type,
-                credentials=payload.credentials,
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
+                session=db.session(),
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:

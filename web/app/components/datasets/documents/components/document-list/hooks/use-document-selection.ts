@@ -1,8 +1,8 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useCallback, useMemo } from 'react'
-import { DataSourceType } from '@/models/datasets'
+import { isDownloadableFileDocument } from '../../../document-source'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 type UseDocumentSelectionOptions = {
   documents: LocalDoc[]
@@ -16,14 +16,18 @@ export const useDocumentSelection = ({
   onSelectedIdChange,
 }: UseDocumentSelectionOptions) => {
   const hasErrorDocumentsSelected = useMemo(() => {
-    return documents.some(doc => selectedIds.includes(doc.id) && doc.display_status === 'error')
+    return documents.some((doc) => selectedIds.includes(doc.id) && doc.display_status === 'error')
   }, [documents, selectedIds])
 
   const downloadableSelectedIds = useMemo(() => {
     const selectedSet = new Set(selectedIds)
     return documents
-      .filter(doc => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
-      .map(doc => doc.id)
+      .filter(
+        (doc) =>
+          selectedSet.has(doc.id) &&
+          isDownloadableFileDocument(doc.data_source_type, doc.data_source_info),
+      )
+      .map((doc) => doc.id)
   }, [documents, selectedIds])
 
   const clearSelection = useCallback(() => {

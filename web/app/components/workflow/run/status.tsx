@@ -2,11 +2,15 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { useWorkflowPausedDetails } from '@/service/use-log'
+import { resolveConsoleHumanInputFormURL } from '@/features/human-input/console/links'
+import { consoleQuery } from '@/service/console'
+import { basePath } from '@/utils/var'
 
 type ResultProps = {
   status: string
@@ -29,133 +33,154 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput', 'share'])
   const docLink = useDocLink()
-  const { data: pausedDetails } = useWorkflowPausedDetails({
-    workflowRunId: workflowRunId || '',
-    enabled: status === 'paused',
-  })
+  const { data: pausedDetails } = useQuery(
+    consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
+      input:
+        status === 'paused' && workflowRunId
+          ? { params: { workflow_run_id: workflowRunId } }
+          : skipToken,
+    }),
+  )
 
   const pausedReasons = useMemo(() => {
     const reasons: string[] = []
-    if (!pausedDetails)
-      return reasons
+    if (!pausedDetails) return reasons
     const hasHumanInputNode = pausedDetails.paused_nodes.some(
-      node => node.pause_type.type === 'human_input',
+      (node) => node.pause_type.type === 'human_input',
     )
     if (hasHumanInputNode) {
-      reasons.push(t('nodes.humanInput.log.reasonContent', { ns: 'workflow' }))
+      reasons.push(t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflowHumanInput' }))
     }
     return reasons
   }, [pausedDetails, t])
 
   const pausedInputURLs = useMemo(() => {
     const inputURLs: string[] = []
-    if (!pausedDetails)
-      return inputURLs
+    if (!pausedDetails) return inputURLs
     const { paused_nodes } = pausedDetails
-    const hasHumanInputNode = paused_nodes.some(
-      node => node.pause_type.type === 'human_input',
-    )
+    const hasHumanInputNode = paused_nodes.some((node) => node.pause_type.type === 'human_input')
     if (hasHumanInputNode) {
       paused_nodes.forEach((node) => {
-        if (node.pause_type.type === 'human_input') {
-          inputURLs.push(node.pause_type.backstage_input_url)
+        if (node.pause_type.type === 'human_input' && node.pause_type.backstage_input_url) {
+          if (!ENABLE_HITL_IM && node.pause_type.form_version === '2') return
+          inputURLs.push(
+            node.pause_type.form_version === '2'
+              ? resolveConsoleHumanInputFormURL(node.pause_type.backstage_input_url, basePath)
+              : node.pause_type.backstage_input_url,
+          )
         }
       })
     }
     return inputURLs
   }, [pausedDetails])
 
-  const partialSucceededTip = exceptionCounts
-    ? (
-        <Trans
-          i18nKey="nodes.common.errorHandle.partialSucceeded.tip"
-          ns="workflow"
-          values={{ num: exceptionCounts }}
-          components={{
-            tracingLink: onOpenTracingTab
-              ? (
-                  <a
-                    href="#tracing"
-                    className="cursor-pointer text-text-accent hover:underline"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      onOpenTracingTab()
-                    }}
-                  />
-                )
-              : <span />,
-          }}
-        />
-      )
-    : null
+  const hasUnavailableV2Form =
+    !ENABLE_HITL_IM &&
+    pausedDetails?.paused_nodes.some(
+      (node) => node.pause_type.type === 'human_input' && node.pause_type.form_version === '2',
+    )
+
+  const partialSucceededTip = exceptionCounts ? (
+    <Trans
+      i18nKey={($) => $['nodes.common.errorHandle.partialSucceeded.tip']}
+      ns="workflow"
+      values={{ num: exceptionCounts }}
+      components={{
+        tracingLink: onOpenTracingTab ? (
+          <a
+            href="#tracing"
+            className="cursor-pointer text-text-accent hover:underline"
+            onClick={(e) => {
+              e.preventDefault()
+              onOpenTracingTab()
+            }}
+          />
+        ) : (
+          <span />
+        ),
+      }}
+    />
+  ) : null
 
   return (
     <StatusContainer status={status}>
       <div className="flex">
-        <div className={cn(
-          'max-w-[120px] flex-[33%]',
-          status === 'partial-succeeded' && 'min-w-[140px]',
-        )}
-        >
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
+        <div className={cn('max-w-30 flex-[33%]', status === 'partial-succeeded' && 'min-w-35')}>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['resultPanel.status'], { ns: 'runLog' })}
+          </div>
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
+              status === 'scheduled' && 'text-text-secondary',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
-              (status === 'stopped' || status === 'paused') && 'text-util-colors-warning-warning-600',
+              (status === 'stopped' || status === 'paused') &&
+                'text-util-colors-warning-warning-600',
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
+            {status === 'scheduled' && (
+              <>
+                <StatusDot status="disabled" />
+                <span>{t(($) => $['status.scheduled'], { ns: 'appLog' })}</span>
+              </>
+            )}
             {status === 'running' && (
               <>
                 <StatusDot status="normal" />
-                <span>{isListening ? 'Listening' : 'Running'}</span>
+                <span>
+                  {isListening
+                    ? t(($) => $['common.listening'], { ns: 'workflow' })
+                    : t(($) => $['status.running'], { ns: 'appLog' })}
+                </span>
               </>
             )}
             {status === 'succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>SUCCESS</span>
+                <span>{t(($) => $['status.succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'partial-succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>PARTIAL SUCCESS</span>
+                <span>{t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'exception' && (
               <>
                 <StatusDot status="warning" />
-                <span>EXCEPTION</span>
+                <span>{t(($) => $['tracing.status.exception'], { ns: 'workflow' })}</span>
               </>
             )}
             {status === 'failed' && (
               <>
                 <StatusDot status="error" />
-                <span>FAIL</span>
+                <span>{t(($) => $['status.failed'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'stopped' && (
               <>
                 <StatusDot status="warning" />
-                <span>STOP</span>
+                <span>{t(($) => $['status.stopped'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'paused' && (
               <>
                 <StatusDot status="warning" />
-                <span>PENDING</span>
+                <span>{t(($) => $['status.paused'], { ns: 'appLog' })}</span>
               </>
             )}
           </div>
         </div>
-        <div className="max-w-[152px] flex-[33%]">
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
+        <div className="max-w-38 flex-[33%]">
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['resultPanel.time'], { ns: 'runLog' })}
+          </div>
           <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-16 animate-pulse rounded-xs bg-text-quaternary" />
@@ -166,14 +191,14 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="flex-[33%]">
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['resultPanel.tokens'], { ns: 'runLog' })}
+          </div>
           <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
             )}
-            {status !== 'running' && status !== 'paused' && (
-              <span>{`${tokens || 0} Tokens`}</span>
-            )}
+            {status !== 'running' && status !== 'paused' && <span>{`${tokens || 0} Tokens`}</span>}
           </div>
         </div>
       </div>
@@ -181,66 +206,67 @@ const StatusPanel: FC<ResultProps> = ({
         <>
           <div className="my-2 h-[0.5px] bg-divider-subtle" />
           <div className="system-xs-regular whitespace-pre-wrap text-text-destructive">{error}</div>
-          {
-            !!exceptionCounts && (
-              <>
-                <div className="my-2 h-[0.5px] bg-divider-subtle" />
-                <div className="system-xs-regular text-text-destructive">
-                  {partialSucceededTip}
-                </div>
-              </>
-            )
-          }
+          {!!exceptionCounts && (
+            <>
+              <div className="my-2 h-[0.5px] bg-divider-subtle" />
+              <div className="system-xs-regular text-text-destructive">{partialSucceededTip}</div>
+            </>
+          )}
         </>
       )}
-      {
-        status === 'partial-succeeded' && !!exceptionCounts && (
-          <>
-            <div className="my-2 h-[0.5px] bg-divider-deep" />
-            <div className="system-xs-medium text-text-warning">
-              {partialSucceededTip}
-            </div>
-          </>
-        )
-      }
-      {
-        status === 'exception' && (
-          <>
-            <div className="my-2 h-[0.5px] bg-divider-deep" />
-            <div className="system-xs-medium text-text-warning">
-              {error}
-              <a
-                href={docLink('/use-dify/debug/error-type')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-accent"
-              >
-                {t('common.learnMore', { ns: 'workflow' })}
-              </a>
-            </div>
-          </>
-        )
-      }
+      {status === 'partial-succeeded' && !!exceptionCounts && (
+        <>
+          <div className="my-2 h-[0.5px] bg-divider-deep" />
+          <div className="system-xs-medium text-text-warning">{partialSucceededTip}</div>
+        </>
+      )}
+      {status === 'exception' && (
+        <>
+          <div className="my-2 h-[0.5px] bg-divider-deep" />
+          <div className="system-xs-medium text-text-warning">
+            {error}
+            <a
+              href={docLink('/use-dify/debug/error-type')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-text-accent"
+            >
+              {t(($) => $['common.learnMore'], { ns: 'workflow' })}
+            </a>
+          </div>
+        </>
+      )}
       {status === 'paused' && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
           <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
-              {
-                pausedReasons.length > 0
-                  ? pausedReasons.map(reason => (
-                      <div className="truncate system-xs-medium text-text-secondary" key={reason}>{reason}</div>
-                    ))
-                  : (
-                      <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
-                    )
-              }
+              <div className="system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['nodes.humanInput.log.reason'], { ns: 'workflowHumanInput' })}
+              </div>
+              {pausedReasons.length > 0 ? (
+                pausedReasons.map((reason) => (
+                  <div className="truncate system-xs-medium text-text-secondary" key={reason}>
+                    {reason}
+                  </div>
+                ))
+              ) : (
+                <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
+              )}
             </div>
+            {hasUnavailableV2Form && (
+              <p className="system-xs-regular text-text-tertiary">
+                {t(($) => $['humanInputV2.unavailable'], { ns: 'share' })}
+              </p>
+            )}
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.backstageInputURL', { ns: 'workflow' })}</div>
-                {pausedInputURLs.map(url => (
+                <div className="system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['nodes.humanInput.log.backstageInputURL'], {
+                    ns: 'workflowHumanInput',
+                  })}
+                </div>
+                {pausedInputURLs.map((url) => (
                   <a
                     key={url}
                     href={url}

@@ -2,9 +2,11 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_manager import ModelManager
@@ -15,7 +17,6 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
@@ -28,7 +29,16 @@ logger = logging.getLogger(__name__)
 
 class AbstractVectorFactory(ABC):
     @abstractmethod
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
+        """Initialize the backend using the caller's session for metadata reads.
+
+        ``None`` is used by callers that initialize a resolved vector backend
+        outside their database transaction; backend-specific legacy reads may
+        still use their own session in that case. A supplied session belongs to
+        the caller and must not be committed, rolled back, or closed here.
+        """
         raise NotImplementedError
 
     @staticmethod
@@ -83,6 +93,12 @@ class _LazyEmbeddings(Embeddings):
 
     @override
     def embed_query(self, text: str) -> list[float]:
+        provider = self._dataset.embedding_model_provider
+        model_name = self._dataset.embedding_model
+        if provider and model_name:
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            if cached_embedding is not None:
+                return cached_embedding
         return self._ensure().embed_query(text)
 
     @override
@@ -99,7 +115,14 @@ class _LazyEmbeddings(Embeddings):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None):
+    def __init__(
+        self,
+        dataset: Dataset,
+        attributes: list | None = None,
+        *,
+        session: Session | None,
+        vector_type: str | None = None,
+    ):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -120,32 +143,45 @@ class Vector:
             ]
         self._dataset = dataset
         # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
-        # never transitively trigger billing API calls during ``Vector(dataset)``
+        # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
         # construction. The real embedding model is materialized only when an
         # ``embed_*`` method is actually invoked (i.e. create / search paths).
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
-        self._vector_processor = self._init_vector()
+        self._session = session
+        if vector_type is not None:
+            self._vector_processor = self.get_vector_factory(vector_type)().init_vector(
+                dataset, self._attributes, self._embeddings, session=session
+            )
+        else:
+            if session is None:
+                raise ValueError("A resolved vector type is required without a database session")
+            self._vector_processor = self._init_vector(session=session)
 
-    def _init_vector(self) -> BaseVector:
+    @staticmethod
+    def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
         vector_type = dify_config.VECTOR_STORE
 
-        if self._dataset.index_struct_dict:
-            vector_type = self._dataset.index_struct_dict["type"]
+        if dataset.index_struct_dict:
+            vector_type = dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
                 stmt = select(Whitelist).where(
-                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
+                    Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = db.session.scalars(stmt).one_or_none()
+                whitelist = session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
+        return vector_type
+
+    def _init_vector(self, *, session: Session) -> BaseVector:
+        vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings, session=session)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
@@ -168,7 +204,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
-            total_batches = len(texts) + batch_size - 1
+            total_batches = (len(texts) + batch_size - 1) // batch_size
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
@@ -180,12 +216,14 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
-    def create_multimodal(self, file_documents: list | None = None, **kwargs):
+    def create_multimodal(
+        self, file_documents: list | None = None, *, upload_files: Mapping[str, UploadFile] | None = None, **kwargs
+    ):
         if file_documents:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
             batch_size = 1000
-            total_batches = len(file_documents) + batch_size - 1
+            total_batches = (len(file_documents) + batch_size - 1) // batch_size
             for i in range(0, len(file_documents), batch_size):
                 batch = file_documents[i : i + batch_size]
                 batch_start = time.time()
@@ -193,9 +231,16 @@ class Vector:
 
                 # Batch query all upload files to avoid N+1 queries
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
-                stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = db.session.scalars(stmt).all()
-                upload_file_map = {str(f.id): f for f in upload_files}
+                upload_file_map: Mapping[str, UploadFile]
+                if upload_files is None:
+                    if self._session is None:
+                        raise ValueError("Upload files must be loaded before indexing without a database session")
+                    stmt = select(UploadFile).where(
+                        UploadFile.id.in_(attachment_ids), UploadFile.tenant_id == self._dataset.tenant_id
+                    )
+                    upload_file_map = {str(f.id): f for f in self._session.scalars(stmt).all()}
+                else:
+                    upload_file_map = upload_files
 
                 file_base64_list = []
                 real_batch = []
@@ -252,7 +297,9 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
+        if self._session is None:
+            raise ValueError("File search requires a database session")
+        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
 
         if not upload_file:
             return []

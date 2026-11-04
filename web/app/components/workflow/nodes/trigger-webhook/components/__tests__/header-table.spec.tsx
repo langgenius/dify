@@ -1,37 +1,44 @@
 import type { WebhookHeader } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import HeaderTable from '../header-table'
 
 describe('trigger-webhook/header-table', () => {
   it('updates header names and required flags through the real generic table', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const headers: WebhookHeader[] = [{
-      name: 'x-request-id',
-      required: false,
-    }]
+    const headers: WebhookHeader[] = [
+      {
+        name: 'x-request-id',
+        required: false,
+      },
+    ]
 
-    render(
-      <HeaderTable
-        headers={headers}
-        onChange={onChange}
-      />,
+    function Editor() {
+      const [value, setValue] = useState(headers)
+      return (
+        <HeaderTable
+          headers={value}
+          onChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
+        />
+      )
+    }
+    render(<Editor />)
+    const input = screen.getByDisplayValue('x-request-id')
+    await user.clear(input)
+    await user.type(input, 'Auth Token')
+    expect(onChange).toHaveBeenLastCalledWith([{ name: 'Auth_Token', required: false }])
+
+    await user.click(
+      screen.getAllByRole('checkbox', {
+        name: 'workflowIntegrations.nodes.triggerWebhook.required',
+      })[0]!,
     )
-
-    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'Auth Token' } })
-    expect(onChange).toHaveBeenLastCalledWith([{
-      name: 'Auth_Token',
-      required: false,
-    }])
-
-    onChange.mockClear()
-    await user.click(screen.getAllByRole('checkbox')[0]!)
-
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'x-request-id',
-      required: true,
-    }])
+    expect(onChange).toHaveBeenLastCalledWith([{ name: 'Auth_Token', required: true }])
   })
 
   it('renders readonly rows without the trailing editable row', () => {
