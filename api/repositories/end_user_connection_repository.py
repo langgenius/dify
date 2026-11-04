@@ -35,7 +35,12 @@ from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.types import StringUUID
 from models.workflow import Workflow
-from services.consumer_service import ConsumerConnectionGroup, ConsumerConnectionKey, ConsumerIdentity
+from services.consumer_service import (
+    ConsumerConnectionGroup,
+    ConsumerConnectionKey,
+    ConsumerConnectionProviderGroup,
+    ConsumerIdentity,
+)
 from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
@@ -68,7 +73,11 @@ from services.end_user_connections.revision import (
 )
 from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
-from services.workflow.tool_credentials import get_tool_authorization_requirements
+from services.workflow.tool_credentials import (
+    get_tool_authorization_requirements,
+    get_tool_connection_requirements,
+    requires_end_user_connections,
+)
 
 
 class EndUserConnectionRepository:
@@ -90,32 +99,73 @@ class EndUserConnectionRepository:
             self._require_management_context(session, context, lock=False)
             return context
 
+    def account_connection_providers(
+        self, identity: ConsumerIdentity, *, after: str | None, limit: int
+    ) -> tuple[ConsumerConnectionProviderGroup, ...]:
+        """Count owned display groups per Provider before pagination, without loading secrets.
+
+        Account scope spans tenants but never includes Guest Connections. Empty
+        account labels retain one group per member, as in account_connection_groups.
+        Metadata scopes come only from this Account's Connections on the page.
+        """
+        label = sa.func.coalesce(sa.func.nullif(EndUserConnection.account_label, ""), "")
+        connection_id = sa.case((label == "", sa.cast(EndUserConnection.id, sa.String(36))), else_="")
+        owned = (
+            EndUserConnection.account_id == identity.account_id,
+            EndUserConnection.end_user_id.is_(None),
+        )
+        grouped = sa.select(EndUserConnection.provider).where(*owned)
+        if after is not None:
+            grouped = grouped.where(EndUserConnection.provider > after)
+        groups = grouped.group_by(
+            EndUserConnection.provider, EndUserConnection.credential_type, label, connection_id
+        ).subquery()
+        stmt = (
+            sa.select(groups.c.provider, sa.func.count())
+            .group_by(groups.c.provider)
+            .order_by(groups.c.provider)
+            .limit(limit)
+        )
+        with self._sessions() as session:
+            rows = session.execute(stmt).all()
+            scopes: dict[str, list[str]] = {}
+            if rows:
+                tenants = session.execute(
+                    sa.select(EndUserConnection.provider, EndUserConnection.tenant_id)
+                    .where(*owned, EndUserConnection.provider.in_([provider for provider, _count in rows]))
+                    .distinct()
+                    .order_by(EndUserConnection.provider, EndUserConnection.tenant_id)
+                )
+                for provider, tenant_id in tenants:
+                    scopes.setdefault(provider, []).append(tenant_id)
+            return tuple(
+                ConsumerConnectionProviderGroup(provider, count, tuple(scopes.get(provider, ())))
+                for provider, count in rows
+            )
+
     def account_connection_groups(
-        self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
+        self, identity: ConsumerIdentity, *, provider: str | None, after: UUID | None, limit: int
     ) -> tuple[ConsumerConnectionGroup, ...]:
-        """Page complete Account-owned groups before loading their App associations."""
+        """Page complete Account-owned groups by their stable representative ID.
+
+        The cursor is the smallest Connection ID in the last returned group. It
+        cannot disclose the internal account-label grouping key.
+        """
         label = sa.func.coalesce(sa.func.nullif(EndUserConnection.account_label, ""), "").label("account_label")
         id_text = sa.cast(EndUserConnection.id, sa.String(36))
         connection_id = sa.case((label == "", id_text), else_="").label("connection_id")
         columns = (EndUserConnection.provider, EndUserConnection.credential_type, label, connection_id)
         # PostgreSQL UUIDs need text conversion for MIN and the empty-label discriminator.
-        grouped = sa.select(*columns, sa.func.min(id_text).label("representative_id")).where(
+        representative_id = sa.func.min(id_text)
+        grouped = sa.select(*columns, representative_id.label("representative_id")).where(
             EndUserConnection.account_id == identity.account_id,
             EndUserConnection.end_user_id.is_(None),
         )
         if provider is not None:
             grouped = grouped.where(EndUserConnection.provider == provider)
         if after is not None:
-            grouped = grouped.where(
-                sa.tuple_(*columns)
-                > (
-                    after.provider,
-                    after.connection_type,
-                    after.account_label or "",
-                    str(after.connection_id) if after.connection_id else "",
-                )
-            )
-        groups = grouped.group_by(*columns).order_by(*columns).limit(limit).subquery()
+            grouped = grouped.having(representative_id > str(after))
+        groups = grouped.group_by(*columns).order_by(representative_id).limit(limit).subquery()
         stmt = (
             sa.select(
                 groups.c.provider,
@@ -126,7 +176,7 @@ class EndUserConnectionRepository:
                 EndUserConnection.name,
             )
             .join(EndUserConnection, EndUserConnection.id == sa.cast(groups.c.representative_id, StringUUID()))
-            .order_by(groups.c.provider, groups.c.credential_type, groups.c.account_label, groups.c.connection_id)
+            .order_by(groups.c.representative_id)
         )
         with self._sessions() as session:
             return tuple(
@@ -163,6 +213,78 @@ class EndUserConnectionRepository:
                 connection_type=type_,
                 account_label=account_label or None,
                 connection_id=None if account_label else UUID(connection_id),
+            )
+
+    def apps_missing_required_connections(self, identity: ConsumerIdentity, app_ids: Sequence[str]) -> frozenset[str]:
+        """Resolve required node IDs from current publications and saved Account choices.
+
+        The Account owns personal Connections independently of a WebApp session.
+        Any linked browser EndUser for this App contributes its saved choices.
+        Incomplete or malformed EndUser authentication settings remain action
+        items instead of making App discovery fail.
+        """
+        unique_app_ids = tuple(dict.fromkeys(app_ids))
+        if not unique_app_ids:
+            return frozenset()
+        with self._sessions() as session:
+            workflow_rows = session.execute(
+                sa.select(App.id, Workflow)
+                .join(
+                    Workflow,
+                    sa.and_(
+                        Workflow.id == App.workflow_id,
+                        Workflow.tenant_id == App.tenant_id,
+                        Workflow.app_id == App.id,
+                    ),
+                )
+                .where(App.id.in_(unique_app_ids), Workflow.version != Workflow.VERSION_DRAFT)
+            ).all()
+            required: dict[str, frozenset[str]] = {}
+            malformed: set[str] = set()
+            for app_id, workflow in workflow_rows:
+                try:
+                    graph = workflow.graph_dict
+                    if not requires_end_user_connections(graph):
+                        continue
+                    required[app_id] = frozenset(item.node_id for item in get_tool_connection_requirements(graph))
+                except (KeyError, TypeError, ValueError):
+                    malformed.add(app_id)
+            configured: dict[str, set[str]] = {}
+            if required:
+                rows = session.execute(
+                    sa.select(AppConnection.app_id, AppConnection.node_id)
+                    .join(
+                        EndUser,
+                        sa.and_(
+                            EndUser.id == AppConnection.end_user_id,
+                            EndUser.tenant_id == AppConnection.tenant_id,
+                            EndUser.app_id == AppConnection.app_id,
+                        ),
+                    )
+                    .join(
+                        EndUserConnection,
+                        sa.and_(
+                            EndUserConnection.id == AppConnection.connection_id,
+                            EndUserConnection.tenant_id == AppConnection.tenant_id,
+                            EndUserConnection.provider == AppConnection.provider,
+                        ),
+                    )
+                    .where(
+                        AppConnection.app_id.in_(tuple(required)),
+                        EndUser.account_id == identity.account_id,
+                        EndUser.type == EndUserType.BROWSER,
+                        EndUserConnection.account_id == identity.account_id,
+                    )
+                )
+                for app_id, node_id in rows:
+                    configured.setdefault(app_id, set()).add(node_id)
+            return frozenset(
+                malformed
+                | {
+                    app_id
+                    for app_id, required_nodes in required.items()
+                    if not required_nodes or not required_nodes.issubset(configured.get(app_id, set()))
+                }
             )
 
     def account_group_connections(

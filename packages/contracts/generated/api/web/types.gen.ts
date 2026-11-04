@@ -309,6 +309,7 @@ export type ConnectionRevisionChangedError = ErrorResponse & {
 
 export type ConsumerAppResponse = {
   app_code: string
+  connection_status?: 'not_configured' | null
   description: string
   icon: string | null
   icon_background: string | null
@@ -322,6 +323,25 @@ export type ConsumerAppResponse = {
 
 export type ConsumerAppsResponse = {
   data: Array<ConsumerAppResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type ConsumerConnectionProviderResponse = {
+  connections_count: number
+  description: {
+    [key: string]: string
+  }
+  icon: string | null
+  icon_dark: string | null
+  label: {
+    [key: string]: string
+  }
+  provider: string
+}
+
+export type ConsumerConnectionProvidersResponse = {
+  data: Array<ConsumerConnectionProviderResponse>
   has_more: boolean
   next_cursor: string | null
 }
@@ -1341,6 +1361,8 @@ export type VerificationTokenResponse = {
 export type WebAccountProfileResponse = {
   avatar: string | null
   readonly avatar_url: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 
@@ -1866,6 +1888,8 @@ export type HumanInputFormSubmitResponseWritable = {
 
 export type WebAccountProfileResponseWritable = {
   avatar: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 
@@ -3200,6 +3224,28 @@ export type GetMeAppsResponses = {
 
 export type GetMeAppsResponse = GetMeAppsResponses[keyof GetMeAppsResponses]
 
+export type DeleteMeAppsByAppIdData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/me/apps/{app_id}'
+}
+
+export type DeleteMeAppsByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteMeAppsByAppIdError = DeleteMeAppsByAppIdErrors[keyof DeleteMeAppsByAppIdErrors]
+
+export type DeleteMeAppsByAppIdResponses = {
+  204: void
+}
+
+export type DeleteMeAppsByAppIdResponse =
+  DeleteMeAppsByAppIdResponses[keyof DeleteMeAppsByAppIdResponses]
+
 export type DeleteMeAppsByAppIdFavoriteData = {
   body?: never
   path: {
@@ -3252,7 +3298,6 @@ export type GetMeConnectionsData = {
   query?: {
     cursor?: string
     limit?: number
-    provider?: string
   }
   url: '/me/connections'
 }
@@ -3264,10 +3309,36 @@ export type GetMeConnectionsErrors = {
 export type GetMeConnectionsError = GetMeConnectionsErrors[keyof GetMeConnectionsErrors]
 
 export type GetMeConnectionsResponses = {
-  200: ConsumerConnectionsResponse
+  200: ConsumerConnectionProvidersResponse
 }
 
 export type GetMeConnectionsResponse = GetMeConnectionsResponses[keyof GetMeConnectionsResponses]
+
+export type GetMeConnectionsProvidersByProviderConnectionsData = {
+  body?: never
+  path: {
+    provider: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/me/connections/providers/{provider}/connections'
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsError =
+  GetMeConnectionsProvidersByProviderConnectionsErrors[keyof GetMeConnectionsProvidersByProviderConnectionsErrors]
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponses = {
+  200: ConsumerConnectionsResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponse =
+  GetMeConnectionsProvidersByProviderConnectionsResponses[keyof GetMeConnectionsProvidersByProviderConnectionsResponses]
 
 export type DeleteMeConnectionsByConnectionKeyData = {
   body?: never

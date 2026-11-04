@@ -15,12 +15,13 @@ from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
-from models import AppStar
+from models import AccountWebApp, AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
+    _delete_account_webapps,
     _delete_app_stars,
     _delete_app_workflow_archive_logs,
     _delete_archived_workflow_run_files,
@@ -91,6 +92,7 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
         "_delete_app_api_tokens",
         "_delete_installed_apps",
         "_delete_app_stars",
+        "_delete_account_webapps",
         "_delete_recommended_apps",
         "_delete_app_annotation_data",
         "_delete_app_dataset_joins",
@@ -582,6 +584,32 @@ class TestDeleteAppStars:
         sqlite_session.expunge_all()
 
         assert sqlite_session.get(AppStar, app_star.id) is None
+
+
+@patch("tasks.remove_app_and_related_data_task._delete_records")
+def test_personal_webapp_cleanup_keeps_other_tenants_and_apps(
+    mock_delete_records: MagicMock, sqlite_session: Session
+) -> None:
+    tenant_id, app_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    states = [
+        AccountWebApp(tenant_id=tenant_id, app_id=app_id, account_id=account_id),
+        AccountWebApp(tenant_id=tenant_id, app_id=app_id, account_id=str(uuid4())),
+        AccountWebApp(tenant_id=str(uuid4()), app_id=app_id, account_id=account_id),
+        AccountWebApp(tenant_id=tenant_id, app_id=str(uuid4()), account_id=account_id),
+    ]
+    sqlite_session.add_all(states)
+    sqlite_session.commit()
+    _delete_account_webapps(tenant_id, app_id)
+    _, params, delete_state, _ = mock_delete_records.call_args[0]
+    assert params == {"tenant_id": tenant_id, "app_id": app_id}
+    for state in states:
+        delete_state(sqlite_session, state.id)
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
+    assert sqlite_session.get(AccountWebApp, states[0].id) is None
+    assert sqlite_session.get(AccountWebApp, states[1].id) is None
+    assert sqlite_session.get(AccountWebApp, states[2].id) is not None
+    assert sqlite_session.get(AccountWebApp, states[3].id) is not None
 
 
 class TestDeleteArchivedWorkflowRunFiles:

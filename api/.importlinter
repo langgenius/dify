@@ -250,6 +250,18 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:console-workspace-controller-boundary]
+name = Console workspace operations reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.workspace
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:network-access-group-service-boundary]
 name = Network access group application service is framework and persistence neutral
 type = forbidden

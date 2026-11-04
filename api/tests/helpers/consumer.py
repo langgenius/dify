@@ -15,6 +15,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from services.consumer_adapters import PluginConsumerConnectionProviders
 from services.consumer_service import ConsumerIdentity, ConsumerService
 from services.end_user_connections.contracts import ConnectionSummary
 from services.web_identity_service import WebIdentityService
@@ -60,6 +61,16 @@ class ConsumerHarness:
     service: ConsumerService
     identity: ConsumerIdentity
 
+    def record_usage(self, used_at: datetime) -> None:
+        base = self.oauth.base
+        self.service.record_usage(
+            self.identity,
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            end_user_id=base.context.end_user_id,
+            used_at=used_at,
+        )
+
     def token(self, *, source: str | None = "webapp_account_login", subject: str = "Web API Account Login") -> str:
         return PassportService().issue(
             {
@@ -90,6 +101,7 @@ def make_consumer_harness(sessions: sessionmaker[Session], monkeypatch: pytest.M
         ConsumerService(
             apps=apps,
             connections=oauth.base.repository,
+            providers=PluginConsumerConnectionProviders(providers=oauth.providers),
             access=access,
             shared_apps=lambda: (oauth.base.context.app_id,),
             management=oauth.base.service,

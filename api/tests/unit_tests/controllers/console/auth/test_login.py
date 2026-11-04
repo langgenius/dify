@@ -599,7 +599,9 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
         login, "application_services", lambda: SimpleNamespace(accounts=SimpleNamespace(authentication=authentication))
     )
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
-    assert identity.load_user(account.id) is None
+    loaded = identity.load_user(account.id)
+    assert loaded is not None
+    assert loaded.current_tenant_id is None
     initial = sessions.issue(account.id)
     tokens = authentication.refresh(initial.refresh_token, mode=LoginMode.END_USER)
     client = app.test_client()

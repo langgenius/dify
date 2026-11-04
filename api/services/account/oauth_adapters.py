@@ -245,8 +245,9 @@ class AccountActivationOAuthInvitationGateway(OAuthInvitationGateway):
 
 
 class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
-    def __init__(self, *, accounts: AccountService) -> None:
+    def __init__(self, *, accounts: AccountService, defer_workspace_creation: bool = False) -> None:
         self._accounts = accounts
+        self._defer_workspace_creation = defer_workspace_creation
 
     def register(self, registration: OAuthAccountRegistration) -> str:
         try:
@@ -258,8 +259,12 @@ class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
                 timezone=registration.timezone,
                 ip_address=registration.ip_address,
                 check_normalized_email=True,
-                status="uninitialized" if registration.mode == LoginMode.END_USER else "active",
-                initialized=registration.mode == LoginMode.CONSOLE,
+                status=(
+                    "uninitialized"
+                    if registration.mode == LoginMode.END_USER or self._defer_workspace_creation
+                    else "active"
+                ),
+                initialized=registration.mode == LoginMode.CONSOLE and not self._defer_workspace_creation,
             )
         except AccountEmailDomainSuspendedError:
             raise

@@ -30,6 +30,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
 from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, AccountStatus, Tenant
+from models.account_webapp import AccountWebApp
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -40,10 +41,10 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import AppStatus, EndUserType
 from models.model import App, AppMode, AppModelConfig, AppStar, EndUser, IconType, Site
 from models.skill import AgentSkillBinding
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -84,7 +85,7 @@ from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
 
-type ConsumerAppRow = tuple[App, str, str | None, datetime | None, datetime | None]
+type ConsumerAppRow = tuple[App, str, datetime | None, datetime | None, datetime | None]
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
@@ -130,51 +131,24 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         self._session_factory = session_factory
 
     @staticmethod
-    def _consumer_query(identity: ConsumerIdentity, *, recent_only: bool) -> sa.Select[ConsumerAppRow]:
-        # Resolve recent use through the owner index without aggregating Run history.
-        last_run = (
-            select(WorkflowRun.created_at)
-            .where(
-                WorkflowRun.tenant_id == EndUser.tenant_id,
-                WorkflowRun.app_id == EndUser.app_id,
-                WorkflowRun.created_by_role == CreatorUserRole.END_USER,
-                WorkflowRun.created_by == EndUser.id,
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.APP_RUN,
-            )
-            .order_by(WorkflowRun.created_at.desc())
-            .limit(1)
-            .correlate(EndUser)
-            .scalar_subquery()
-        )
-        usage = (
-            select(EndUser.tenant_id, EndUser.app_id, last_run.label("last_used_at"))
-            .where(EndUser.account_id == identity.account_id, EndUser.type == EndUserType.BROWSER)
-            .subquery()
-        )
+    def _consumer_query(identity: ConsumerIdentity, *, require_relation: bool) -> sa.Select[ConsumerAppRow]:
         stmt = (
             select(
                 App,
                 sa.NotNullable(Site.code),
-                sa.Nullable(AppStar.id),
-                usage.c.last_used_at,
-                sa.Nullable(AppStar.created_at),
+                sa.Nullable(AccountWebApp.favorited_at),
+                sa.Nullable(AccountWebApp.last_used_at),
+                sa.Nullable(AccountWebApp.removed_at),
             )
             .join(Site, Site.app_id == App.id)
-            .outerjoin(
-                AppStar,
-                sa.and_(
-                    AppStar.tenant_id == App.tenant_id,
-                    AppStar.app_id == App.id,
-                    AppStar.account_id == identity.account_id,
-                ),
-            )
             .join(
-                usage,
+                AccountWebApp,
                 sa.and_(
-                    usage.c.tenant_id == App.tenant_id,
-                    usage.c.app_id == App.id,
+                    AccountWebApp.tenant_id == App.tenant_id,
+                    AccountWebApp.app_id == App.id,
+                    AccountWebApp.account_id == identity.account_id,
                 ),
-                isouter=not recent_only,
+                isouter=not require_relation,
             )
             .where(
                 App.status == AppStatus.NORMAL,
@@ -190,8 +164,8 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
     @staticmethod
     def _consumer_app(identity: ConsumerIdentity, row: Row[ConsumerAppRow], view: str) -> ConsumerApp:
-        app, code, star_id, last_used, starred_at = row
-        timestamp = last_used if view == "recent" else starred_at if view == "favorites" else None
+        app, code, favorited_at, last_used, removed_at = row
+        timestamp = last_used if view == "recent" else favorited_at if view == "favorites" else None
         continuation = base64.urlsafe_b64encode(
             json.dumps(
                 [
@@ -211,7 +185,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             icon=app.icon,
             icon_background=app.icon_background,
             app_code=code,
-            is_favorite=star_id is not None,
+            is_favorite=favorited_at is not None and removed_at is None,
             last_used_at=last_used,
             continuation=continuation,
         )
@@ -225,14 +199,14 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         limit: int,
         shared_ids: Sequence[str] | None,
     ) -> tuple[ConsumerApp, ...]:
-        stmt = self._consumer_query(identity, recent_only=query.view == "recent")
+        stmt = self._consumer_query(identity, require_relation=query.view != "shared")
         timestamp = None
         if query.view == "recent":
             timestamp = stmt.selected_columns.last_used_at
-            stmt = stmt.where(timestamp.is_not(None))
+            stmt = stmt.where(timestamp.is_not(None), AccountWebApp.removed_at.is_(None))
         elif query.view == "favorites":
-            stmt = stmt.where(AppStar.id.is_not(None))
-            timestamp = AppStar.created_at
+            stmt = stmt.where(AccountWebApp.favorited_at.is_not(None), AccountWebApp.removed_at.is_(None))
+            timestamp = AccountWebApp.favorited_at
         else:
             stmt = stmt.where(App.id.in_(shared_ids or ()))
         if query.name:
@@ -263,63 +237,128 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             return tuple(
                 self._consumer_app(identity, row, "shared")
                 for row in session.execute(
-                    self._consumer_query(identity, recent_only=False).where(App.id.in_(app_ids)).order_by(App.id)
+                    self._consumer_query(identity, require_relation=False).where(App.id.in_(app_ids)).order_by(App.id)
                 )
             )
 
-    def favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
-        with self._session_factory.begin() as session:
-            account = session.scalar(
-                select(Account.id)
-                .where(
+    @staticmethod
+    def _active_consumer_account(session: Session, identity: ConsumerIdentity) -> bool:
+        return (
+            session.scalar(
+                select(Account.id).where(
                     Account.id == identity.account_id,
                     Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
                 )
-                .with_for_update()
             )
-            if account is None:
+            is not None
+        )
+
+    @staticmethod
+    def _locked_webapp_state(
+        session: Session, identity: ConsumerIdentity, *, tenant_id: str, app_id: str
+    ) -> AccountWebApp:
+        scope = (
+            AccountWebApp.account_id == identity.account_id,
+            AccountWebApp.tenant_id == tenant_id,
+            AccountWebApp.app_id == app_id,
+        )
+        # Avoid locking a missing row: concurrent MySQL inserts would share a gap lock.
+        if session.scalar(select(AccountWebApp.id).where(*scope)) is None:
+            try:
+                with session.begin_nested():
+                    session.add(AccountWebApp(account_id=identity.account_id, tenant_id=tenant_id, app_id=app_id))
+                    session.flush()
+            except IntegrityError:
+                # A concurrent first use or favorite may have created the relation.
+                state = session.scalar(select(AccountWebApp).where(*scope).with_for_update())
+                if state is None:
+                    raise
+                return state
+        state = session.scalar(select(AccountWebApp).where(*scope).with_for_update())
+        if state is None:
+            raise ConsumerAppNotFoundError()
+        return state
+
+    def favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
+        with self._session_factory.begin() as session:
+            if not self._active_consumer_account(session, identity):
                 raise ConsumerAppNotFoundError()
             if not enabled:
-                star = session.scalar(
-                    select(AppStar)
+                session.execute(
+                    sa.update(AccountWebApp)
                     .where(
-                        AppStar.account_id == identity.account_id,
-                        AppStar.app_id == app_id,
+                        AccountWebApp.account_id == identity.account_id,
+                        AccountWebApp.app_id == app_id,
+                        AccountWebApp.tenant_id == select(App.tenant_id).where(App.id == app_id).scalar_subquery(),
                     )
-                    .limit(1)
+                    .values(favorited_at=None)
                 )
-                if star is not None:
-                    session.execute(
-                        delete(AppStar).where(
-                            AppStar.id == star.id,
-                            AppStar.account_id == identity.account_id,
-                            AppStar.tenant_id == star.tenant_id,
-                            AppStar.app_id == app_id,
-                        )
-                    )
                 return
-            row = session.execute(self._consumer_query(identity, recent_only=False).where(App.id == app_id)).first()
+            row = session.execute(
+                self._consumer_query(identity, require_relation=False).where(App.id == app_id)
+            ).first()
             if row is None:
                 raise ConsumerAppNotFoundError()
-            app, _, star_id, _, _ = row
-            if star_id is None:
-                try:
-                    with session.begin_nested():
-                        session.add(AppStar(tenant_id=app.tenant_id, account_id=identity.account_id, app_id=app.id))
-                        session.flush()
-                except IntegrityError:
-                    # Console writers share the unique key without taking the consumer lock.
-                    if (
-                        session.scalar(
-                            select(AppStar.id).where(
-                                AppStar.tenant_id == app.tenant_id,
-                                AppStar.account_id == identity.account_id,
-                                AppStar.app_id == app_id,
-                            )
-                        )
-                        is None
-                    ):
-                        raise
+            app = row[0]
+            state = self._locked_webapp_state(session, identity, tenant_id=app.tenant_id, app_id=app.id)
+            if state.favorited_at is None:
+                state.favorited_at = naive_utc_now()
+            state.removed_at = None
+
+    def record_consumer_usage(
+        self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, end_user_id: str, used_at: datetime
+    ) -> None:
+        with self._session_factory.begin() as session:
+            if not self._active_consumer_account(session, identity):
+                return
+            exists = session.scalar(
+                select(EndUser.id)
+                .join(App, sa.and_(App.id == EndUser.app_id, App.tenant_id == EndUser.tenant_id))
+                .where(
+                    EndUser.id == end_user_id,
+                    EndUser.account_id == identity.account_id,
+                    EndUser.tenant_id == tenant_id,
+                    EndUser.app_id == app_id,
+                    EndUser.type == EndUserType.BROWSER,
+                    App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                )
+            )
+            if exists is None:
+                return
+            state = self._locked_webapp_state(session, identity, tenant_id=tenant_id, app_id=app_id)
+            if state.last_used_at is None or state.last_used_at < used_at:
+                state.last_used_at = used_at
+            # A request accepted before removal must not resurrect a hidden entry.
+            if state.removed_at is not None and used_at > state.removed_at:
+                state.removed_at = None
+
+    def remove(self, identity: ConsumerIdentity, app_id: str) -> None:
+        removed_at = naive_utc_now()
+        with self._session_factory.begin() as session:
+            if not self._active_consumer_account(session, identity):
+                raise ConsumerAppNotFoundError()
+            tenant_id = session.scalar(
+                select(AccountWebApp.tenant_id)
+                .join(App, sa.and_(App.id == AccountWebApp.app_id, App.tenant_id == AccountWebApp.tenant_id))
+                .where(AccountWebApp.account_id == identity.account_id, AccountWebApp.app_id == app_id)
+            )
+            if tenant_id is None:
+                tenant_id = session.scalar(
+                    select(EndUser.tenant_id)
+                    .join(App, sa.and_(App.id == EndUser.app_id, App.tenant_id == EndUser.tenant_id))
+                    .where(
+                        EndUser.account_id == identity.account_id,
+                        EndUser.app_id == app_id,
+                        EndUser.type == EndUserType.BROWSER,
+                        App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                    )
+                )
+            if tenant_id is None:
+                return
+            # Preserve removal even when the first accepted usage write is still in flight.
+            state = self._locked_webapp_state(session, identity, tenant_id=tenant_id, app_id=app_id)
+            state.removed_at = removed_at
+            state.favorited_at = None
 
     def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         with self._session_factory() as session:

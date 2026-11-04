@@ -18,6 +18,30 @@ export type ErrorResponse = {
   status: number
 }
 
+export type WorkspaceActivationPayload = {
+  name: string
+}
+
+export type WorkspaceActivationResponse = {
+  first_workspace_created_at: number | null
+  workspace_id: string
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status: 400
+}
+
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
+  status: 400
+}
+
 export type AgentProviderResponse = {
   declaration: AgentProviderEntityWithPlugin
   meta: Meta
@@ -413,11 +437,6 @@ export type MemberInviteErrorResponse = {
 
 export type InvalidRoleError = ErrorResponse & {
   code: 'invalid_role'
-  status: 400
-}
-
-export type LimitExceededError = ErrorResponse & {
-  code: 'limit_exceeded'
   status: 400
 }
 
@@ -4270,6 +4289,28 @@ export type GetWorkspacesResponses = {
 }
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
+
+export type PostWorkspacesActivateData = {
+  body: WorkspaceActivationPayload
+  path?: never
+  query?: never
+  url: '/workspaces/activate'
+}
+
+export type PostWorkspacesActivateErrors = {
+  400: AccountNotFoundError | LimitExceededError | NotAllowedCreateWorkspaceError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesActivateError =
+  PostWorkspacesActivateErrors[keyof PostWorkspacesActivateErrors]
+
+export type PostWorkspacesActivateResponses = {
+  200: WorkspaceActivationResponse
+}
+
+export type PostWorkspacesActivateResponse =
+  PostWorkspacesActivateResponses[keyof PostWorkspacesActivateResponses]
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   body?: never

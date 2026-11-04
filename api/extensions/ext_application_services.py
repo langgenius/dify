@@ -920,6 +920,7 @@ def build_application_services(
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
+            require_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
         ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,

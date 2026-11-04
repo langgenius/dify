@@ -274,6 +274,7 @@ export const zConnectionRevisionChangeDetails = z.object({
  */
 export const zConsumerAppResponse = z.object({
   app_code: z.string(),
+  connection_status: z.literal('not_configured').nullish(),
   description: z.string(),
   icon: z.string().nullable(),
   icon_background: z.string().nullable(),
@@ -290,6 +291,27 @@ export const zConsumerAppResponse = z.object({
  */
 export const zConsumerAppsResponse = z.object({
   data: z.array(zConsumerAppResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConsumerConnectionProviderResponse
+ */
+export const zConsumerConnectionProviderResponse = z.object({
+  connections_count: z.int().gte(1),
+  description: z.record(z.string(), z.string()),
+  icon: z.string().nullable(),
+  icon_dark: z.string().nullable(),
+  label: z.record(z.string(), z.string()),
+  provider: z.string(),
+})
+
+/**
+ * ConsumerConnectionProvidersResponse
+ */
+export const zConsumerConnectionProvidersResponse = z.object({
+  data: z.array(zConsumerConnectionProviderResponse),
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
 })
@@ -2220,6 +2242,8 @@ export const zVerificationTokenResponse = z.object({
 export const zWebAccountProfileResponse = z.object({
   avatar: z.string().nullable(),
   avatar_url: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   name: z.string(),
 })
 
@@ -2864,6 +2888,8 @@ export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unkn
  */
 export const zWebAccountProfileResponseWritable = z.object({
   avatar: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   name: z.string(),
 })
 
@@ -3332,6 +3358,15 @@ export const zGetMeAppsQuery = z.object({
  */
 export const zGetMeAppsResponse = zConsumerAppsResponse
 
+export const zDeleteMeAppsByAppIdPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App removed from personal lists
+ */
+export const zDeleteMeAppsByAppIdResponse = z.void()
+
 export const zDeleteMeAppsByAppIdFavoritePath = z.object({
   app_id: z.uuid(),
 })
@@ -3351,15 +3386,28 @@ export const zPutMeAppsByAppIdFavoritePath = z.object({
 export const zPutMeAppsByAppIdFavoriteResponse = z.void()
 
 export const zGetMeConnectionsQuery = z.object({
-  cursor: z.string().min(1).max(1024).optional(),
+  cursor: z.string().min(1).max(255).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Account Connection Providers
+ */
+export const zGetMeConnectionsResponse = zConsumerConnectionProvidersResponse
+
+export const zGetMeConnectionsProvidersByProviderConnectionsPath = z.object({
+  provider: z.string(),
+})
+
+export const zGetMeConnectionsProvidersByProviderConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
  * Account Connections
  */
-export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
+export const zGetMeConnectionsProvidersByProviderConnectionsResponse = zConsumerConnectionsResponse
 
 export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
   connection_key: z.uuid(),

@@ -211,3 +211,16 @@ class WorkspaceCreation:
     trial_credits: int
     plugin_upgrade_time: int
     plugin_upgrade_settings: Mapping[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceActivation:
+    """Account-level Builder origin, independent of current workspace membership.
+
+    A missing workspace ID means there is no usable membership. A missing creation
+    time means no first creation or legacy baseline is recorded. Joining an
+    existing workspace does not change this origin.
+    """
+
+    workspace_id: str | None
+    first_workspace_created_at: datetime | None

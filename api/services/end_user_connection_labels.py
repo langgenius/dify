@@ -4,12 +4,13 @@ from libs.helper import email
 
 
 def mask_account_label(label: str | None) -> str | None:
-    """Mask an explicitly selected account identity before persistence.
+    """Mask an explicitly selected account identity for external display.
 
     None or an empty string means the provider supplied no account identity.
     Only a valid bare email retains its domain; other identities are masked in
     full. Callers select an allowlisted metadata field, never credentials or an
-    arbitrary metadata payload. This policy does not apply to editable names.
+    arbitrary metadata payload. This policy does not apply to editable names
+    or change the identity stored in the Connection.
     """
     if not label:
         return None

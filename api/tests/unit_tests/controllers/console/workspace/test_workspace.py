@@ -4,6 +4,7 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -25,6 +26,7 @@ from controllers.console.workspace import workspace as controller
 from controllers.console.workspace.error import AccountNotInitializedError, CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import WorkspacePermissionApi
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_redis import RedisClientWrapper
 from libs import login as login_adapter
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
@@ -42,6 +44,7 @@ from services.workspace.contracts import (
 )
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
+from tests.helpers.unit.account_domain import AccountDomain
 
 """Workspace admission composes existing checks before controller execution."""
 
@@ -150,6 +153,115 @@ class TestWorkspaceAdmissionCases:
 
 CONTEXT = RequestContext("request-1", "trace-1", "account-1", "workspace-1")
 NOW = datetime(2026, 1, 1)
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected_status"),
+    [
+        ("success", 200),
+        ("missing_csrf", 401),
+        ("anonymous", 401),
+        ("banned", 401),
+        ("creation_disabled", 400),
+        ("workspace_limit", 400),
+        ("invalid_name", 422),
+    ],
+)
+def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
+    account_domain: AccountDomain,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    redis_transport: tuple[RedisClientWrapper, Mock],
+    scenario: str,
+    expected_status: int,
+) -> None:
+    from controllers.console import bp as console_bp
+    from controllers.console.workspace import account as account_controller
+    from dify_app import DifyApp
+    from extensions import ext_login
+    from services.account.adapters import AccountIdentityGateway
+    from services.account.login_adapters import RedisAccountSessionGateway
+    from services.account_profile_service import AccountProfileService
+    from services.workspace.contracts import WorkspaceCreation
+    from services.workspace.provisioning_service import WorkspaceProvisioningEffects
+
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        SECRET_KEY="workspace-activation-test-key-with-32-bytes",
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://console.example.com",
+        COOKIE_DOMAIN="",
+        LOGIN_DISABLED=False,
+    )
+    account = account_domain.accounts.create_account(
+        "consumer@example.com", "Consumer", "en-US", status="banned" if scenario == "banned" else "uninitialized"
+    )
+    account_domain.policy.is_workspace_creation_allowed.return_value = scenario != "creation_disabled"
+    account_domain.policy.has_workspace_capacity.return_value = scenario != "workspace_limit"
+    effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
+    effects.prepare.return_value = WorkspaceCreation("workspace", "My workspace", "key", 123, 0, {})
+    monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
+    services = SimpleNamespace(
+        workspaces=SimpleNamespace(provisioning=account_domain.provisioning),
+        accounts=SimpleNamespace(profile=AccountProfileService(accounts=account_domain.repository)),
+    )
+    monkeypatch.setattr(controller, "application_services", lambda: services)
+    monkeypatch.setattr(account_controller, "application_services", lambda: services)
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    redis, _ = redis_transport
+    identity = AccountIdentityGateway(accounts=account_domain.repository, redis=redis)
+    app = DifyApp("workspace-activation")
+    app.register_blueprint(console_bp)
+    ext_login.init_app(app)
+    ext_login.bind_account_loader(app, identity.load_user)
+    monkeypatch.setattr(ext_login.session_factory, "create_session", account_domain.repository._session_factory)
+    tokens = RedisAccountSessionGateway(redis=redis).issue(account.id)
+    client = app.test_client()
+    if scenario != "anonymous":
+        client.set_cookie("__Host-access_token", tokens.access_token, domain="console.example.com", secure=True)
+    client.set_cookie("__Host-csrf_token", tokens.csrf_token, domain="console.example.com", secure=True)
+    headers: dict[str, str] = {} if scenario == "missing_csrf" else {"X-CSRF-Token": tokens.csrf_token}
+    if scenario == "success":
+        profile = client.get("/console/api/account/profile", base_url="https://console.example.com", headers=headers)
+        assert profile.status_code == 200
+        profile_data = profile.get_json()
+        assert isinstance(profile_data, dict)
+        assert profile_data["first_workspace_created_at"] is None
+        assert profile_data["has_owned_tenant"] is False
+        assert profile_data["has_tenant"] is False
+    response = client.post(
+        "/console/api/workspaces/activate",
+        base_url="https://console.example.com",
+        json={"name": "  " if scenario == "invalid_name" else "My workspace"},
+        headers=headers,
+    )
+    assert response.status_code == expected_status
+    if scenario == "success":
+        activation_data = response.get_json()
+        assert isinstance(activation_data, dict)
+        assert activation_data["workspace_id"] == "workspace"
+        assert activation_data["first_workspace_created_at"] is not None
+        repeated = client.post(
+            "/console/api/workspaces/activate",
+            base_url="https://console.example.com",
+            json={"name": "Ignored retry"},
+            headers=headers,
+        )
+        assert repeated.get_json() == activation_data
+        effects.created.assert_called_once()
+        profile = client.get("/console/api/account/profile", base_url="https://console.example.com", headers=headers)
+        profile_data = profile.get_json()
+        assert isinstance(profile_data, dict)
+        assert profile_data["first_workspace_created_at"] == activation_data["first_workspace_created_at"]
+        assert profile_data["has_owned_tenant"] is True
+        assert profile_data["has_tenant"] is True
+    else:
+        effects.prepare.assert_not_called()
+    persisted = account_domain.repository.get(account.id)
+    assert persisted is not None
+    assert persisted.initialized_at is None
+    if scenario != "success":
+        assert persisted.first_workspace_created_at is None
 
 
 @dataclass

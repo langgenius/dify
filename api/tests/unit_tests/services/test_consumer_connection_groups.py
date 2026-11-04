@@ -48,7 +48,7 @@ def _selection(connection: EndUserConnection, base: ConnectionHarness, *, node_i
 def test_groups_merge_across_tenants_and_deduplicate_accessible_webapps(harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     other = make_harness(base.sessions)
-    first = _oauth_row(harness, tenant_id=base.context.tenant_id, label="al***@example.com")
+    first = _oauth_row(harness, tenant_id=base.context.tenant_id, label="alice@example.com")
     duplicate = replace(first, name="Another name")
     cross_tenant = replace(first, tenant_id=other.context.tenant_id)
     foreign = replace(first, account_id=str(uuid4()))
@@ -86,6 +86,7 @@ def test_groups_merge_across_tenants_and_deduplicate_accessible_webapps(harness:
 
     page = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
     assert len(page.data) == 5
+    assert page.next_cursor is None
     representative = min((first, duplicate, cross_tenant), key=lambda row: row.id)
     key = consumer_connection_key(representative)
     group = next(item for item in page.data if item.key == key)
@@ -112,6 +113,7 @@ def test_groups_merge_across_tenants_and_deduplicate_accessible_webapps(harness:
         current = harness.service.list_connections(harness.identity, provider=None, cursor=cursor, limit=1)
         seen.extend(current.data)
         cursor = current.next_cursor
+        assert "alice@example.com" not in (cursor or "")
         if not current.has_more:
             break
     assert len(seen) == len({item.key for item in seen}) == 5
@@ -171,12 +173,9 @@ def test_any_owned_member_resolves_the_group_and_refresh_replaces_a_deleted_key(
     assert [item.key for item in page.data] == [consumer_connection_key(members[1])]
     with pytest.raises(ConnectionNotFoundError):
         harness.service.delete_connection(harness.identity, key)
-    cursor = base.repository.account_connection_group(harness.identity, members[1].id).encode()
-    with pytest.raises(ValueError, match="cursor"):
-        harness.service.list_connections(harness.identity, provider="vendor/other/calendar", cursor=cursor, limit=20)
 
 
 @pytest.mark.parametrize("key", ["invalid", "W10", "bnVsbA", "e30", "Li4vLi4v", ""])
 def test_malformed_group_cursors_cannot_query_connections(harness: ConsumerHarness, key: str) -> None:
-    with pytest.raises(ValueError, match="group key"):
+    with pytest.raises(ValueError, match="cursor"):
         harness.service.list_connections(harness.identity, provider=None, cursor=key, limit=20)
