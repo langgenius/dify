@@ -1233,6 +1233,20 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.sets).toEqual([])
   })
 
+  it('lists advanced settings in the picker order regardless of selection order', async () => {
+    const user = userEvent.setup()
+    setup()
+    const dialog = await open(user)
+    await user.click(within(dialog).getByRole('option', { name: optionName('Engineering') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+    await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+    expect(
+      within(dialog)
+        .getAllByRole('textbox', { name: /knowledgeFs.alias/ })
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Product manual', 'Engineering'])
+  })
+
   it('keeps knowledge descriptions accessible without a separate help action', async () => {
     const user = userEvent.setup()
     setup([], { spaces: [space()] })
@@ -1568,7 +1582,7 @@ describe('KnowledgeFS composer interaction', () => {
 
   it('does not mutate a read-only composer', () => {
     setup([binding], { readOnly: true })
-    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.remove/ }),
     ).not.toBeInTheDocument()

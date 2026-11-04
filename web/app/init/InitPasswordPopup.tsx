@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -55,15 +56,14 @@ const InitPasswordPopup = () => {
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
               {pageTitle}
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full appearance-none rounded-md border border-divider-regular px-3 py-2 shadow-sm placeholder:text-text-quaternary focus:border-indigo-500 focus:ring-indigo-500 focus:outline-hidden sm:text-sm"
-              />
-            </div>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="off"
+              className="mt-1"
+              value={password}
+              onValueChange={setPassword}
+            />
           </div>
           <div className="flex flex-row flex-wrap justify-stretch p-0">
             <Button variant="primary" onClick={handleValidation} className="min-w-28 basis-full">
