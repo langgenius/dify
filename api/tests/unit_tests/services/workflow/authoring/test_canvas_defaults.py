@@ -349,6 +349,18 @@ def test_an_edition_holds_no_empty_value_in_a_required_field(param: tuple[Canvas
 
 
 @pytest.mark.parametrize("param", EDITIONS, ids=_edition_id)
+def test_an_edition_leaves_out_only_empty_values_in_required_fields(param: tuple[CanvasNode, CanvasEdition]) -> None:
+    node, edition = param
+    model = _data_model(node, edition)
+    table = GENERATED[edition.entry]
+    kept = set(_empty_locs(dict(edition.data)))
+
+    left_out = [loc for loc in _empty_locs(table) if loc not in kept]
+
+    assert [loc for loc in left_out if loc not in _missing_locs(model, _without_loc(table, loc))] == []
+
+
+@pytest.mark.parametrize("param", EDITIONS, ids=_edition_id)
 def test_an_edition_leaves_out_only_empty_values_of_the_table(param: tuple[CanvasNode, CanvasEdition]) -> None:
     _node, edition = param
     table = GENERATED[edition.entry]

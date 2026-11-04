@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from types import UnionType
+from types import NoneType, UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -68,6 +68,21 @@ def sub_models(annotation: object) -> SubModels:
     arms = get_args(annotation) if get_origin(annotation) in (Union, UnionType) else (annotation,)
     is_sequence = get_origin(annotation) in (list, Sequence)
     return SubModels(value=_single_model(arms), item=_single_model(get_args(annotation)) if is_sequence else None)
+
+
+def _without_none(annotation: object) -> object:
+    """The other arm of an optional annotation (`X | None`); any other annotation as it is."""
+    if get_origin(annotation) not in (Union, UnionType):
+        return annotation
+    arms = [arm for arm in get_args(annotation) if arm is not NoneType]
+    if len(arms) != 1:
+        return annotation
+    return arms[0]
+
+
+def sub_models_through_optional(annotation: object) -> SubModels:
+    """`sub_models`, reading `X | None` as X, so the items of an optional list are reached too; import does not."""
+    return sub_models(_without_none(annotation))
 
 
 def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:

@@ -12,8 +12,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from functools import cached_property
 from importlib import resources
-from types import NoneType, UnionType
-from typing import Final, Self, Union, get_args, get_origin
+from typing import Final, Self
 
 from pydantic import BaseModel, TypeAdapter
 from pydantic.fields import FieldInfo
@@ -22,7 +21,7 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_N
 from core.workflow.node_factory import LATEST_VERSION
 from graphon.enums import BuiltinNodeTypes
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
-from services.workflow.node_defaults import SubModels, data_model_of, rewrite_sub_objects, sub_models
+from services.workflow.node_defaults import data_model_of, rewrite_sub_objects, sub_models_through_optional
 
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
@@ -41,32 +40,18 @@ def _is_required_empty(field: FieldInfo | None, value: object) -> bool:
     return isinstance(value, str | list | dict) and not value
 
 
-def _without_none(annotation: object) -> object:
-    """The other arm of an optional annotation (`X | None`); any other annotation as it is."""
-    if get_origin(annotation) not in (Union, UnionType):
-        return annotation
-    arms = [arm for arm in get_args(annotation) if arm is not NoneType]
-    if len(arms) != 1:
-        return annotation
-    return arms[0]
-
-
-def _sub_models_through_optional(annotation: object) -> SubModels:
-    return sub_models(_without_none(annotation))
-
-
 def _without_required_empties(model: type[BaseModel], data: Mapping[str, object]) -> dict[str, object]:
     """`data` less each empty value in a field `model` requires, at any depth its sub-models reach.
 
     The walk reaches the items of an optional list too. A sub-object is pruned first, so one left empty goes too when
     its own field is required.
     """
-    pruned = rewrite_sub_objects(model, data, _without_required_empties, resolve=_sub_models_through_optional)
+    pruned = rewrite_sub_objects(model, data, _without_required_empties, resolve=sub_models_through_optional)
     fields = model.model_fields
     return {key: value for key, value in pruned.items() if not _is_required_empty(fields.get(key), value)}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class CanvasEdition:
     """What the canvas gives a node of one version of a block type, from the web entry `entry`.
 
@@ -99,7 +84,8 @@ class CanvasNode(StrEnum):
     def __new__(cls, value: str, *editions: CanvasEdition) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
-        member.editions = {edition.version: edition for edition in editions or (CanvasEdition(value, None, value),)}
+        every_version = CanvasEdition(node_type=value, version=None, entry=value)
+        member.editions = {edition.version: edition for edition in editions or (every_version,)}
         return member
 
     @property
@@ -123,9 +109,9 @@ class CanvasNode(StrEnum):
     HTTP_REQUEST = (BuiltinNodeTypes.HTTP_REQUEST,)
     HUMAN_INPUT = (
         BuiltinNodeTypes.HUMAN_INPUT,
-        CanvasEdition(BuiltinNodeTypes.HUMAN_INPUT, "1", BuiltinNodeTypes.HUMAN_INPUT),
+        CanvasEdition(node_type=BuiltinNodeTypes.HUMAN_INPUT, version="1", entry=BuiltinNodeTypes.HUMAN_INPUT),
         # the table keeps the v2 defaults under their own entry
-        CanvasEdition(BuiltinNodeTypes.HUMAN_INPUT, "2", _HUMAN_INPUT_V2_ENTRY),
+        CanvasEdition(node_type=BuiltinNodeTypes.HUMAN_INPUT, version="2", entry=_HUMAN_INPUT_V2_ENTRY),
     )
     IF_ELSE = (BuiltinNodeTypes.IF_ELSE,)
     ITERATION = (BuiltinNodeTypes.ITERATION,)
