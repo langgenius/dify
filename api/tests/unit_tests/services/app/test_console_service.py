@@ -7,8 +7,9 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from functools import partial
 from io import BytesIO
-from typing import BinaryIO, Literal, cast, override
+from typing import IO, BinaryIO, Literal, cast, override
 from uuid import UUID, uuid4
 from zipfile import ZipFile
 
@@ -64,6 +65,7 @@ from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
+    AppEvent,
     AppExportOptions,
     AppListParams,
     AppPage,
@@ -80,11 +82,13 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DslImportWarning,
     Import,
     ImportStatus,
     PackagedWorkflowTool,
 )
 from services.entities.feature_entities import FeatureModel, LimitationModel
+from services.errors.app import DraftChangedError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.model_provider.service import ModelProviderService
@@ -201,15 +205,17 @@ class Transfers:
         del source
         pytest.fail("Unexpected import content detection")
 
-    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None:
-        del source
+    def read_app_package(
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
+    ) -> AppImportPackage | None:
+        del source, accept_roster_references, refuse_roster_references
         pytest.fail("Unexpected package read")
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]:
         del context, import_id
         pytest.fail("Unexpected import confirmation")
 
-    def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage:
+    def import_agent_package(self, context: RequestContext, source: IO[bytes]) -> ImportedAppPackage:
         del context, source
         pytest.fail("Unexpected Agent package import")
 
@@ -408,6 +414,343 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
         service.copy(CONTEXT, "app", CopyAppParams())
 
 
+_ROOT_DSL = "app:\n  name: Root\n"
+_PREPARED_SUFFIX = "prepared: true\n"
+_PREPARED_ROOT_DSL = _ROOT_DSL + _PREPARED_SUFFIX
+_WORKFLOW_TOOL_DSL = "app:\n  name: Summarize\n"
+_PACKAGED_TOOL = PackagedWorkflowTool(
+    id="w_000001",
+    path="w_000001.ifpkg",
+    size=0,
+    sha256="0" * 64,
+    provider_id="9b0c3d8e-1f2a-4b5c-8d6e-7f8091a2b3c4",
+    name="summarize",
+    label="Summarize",
+    icon={"background": "#FFEAD5", "content": "🤖"},
+    description="",
+    parameters=[],
+    labels=[],
+    privacy_policy="",
+)
+
+
+@dataclass
+class FakeAppPackage:
+    """An App package that logs the import steps it sees into ``calls``, shared with the import's other fakes."""
+
+    dsl: str
+    workflow_tools: list[PackagedWorkflowTool] = field(default_factory=list)
+    calls: list[tuple[object, ...]] = field(default_factory=list)
+
+    @property
+    def has_resources(self) -> bool:
+        return False
+
+    def require_workspace_skills(self, *, tenant_id: str) -> None:
+        self.calls.append(("skills", tenant_id))
+
+    def materialize_icons(self, *, data: dict[str, object], tenant_id: str, account_id: str) -> None:
+        del data, tenant_id, account_id
+        pytest.fail("Unexpected icon materialization")
+
+    def materialize_agents(
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool
+    ) -> tuple[dict[str, object], list[DslImportWarning]]:
+        del tenant_id, account_id, link_workspace_skills
+        pytest.fail("Unexpected Agent materialization")
+
+    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> AppImportPackage:
+        del tool
+        return FakeAppPackage(dsl=_WORKFLOW_TOOL_DSL)
+
+    def close(self) -> None:
+        pass
+
+
+@dataclass
+class ImportAccess(Access):
+    @override
+    def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
+        del context
+        self.calls.append(("require_import", kind))
+
+
+@dataclass
+class DenyingAccess(ImportAccess):
+    @override
+    def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
+        super().require_import(context, kind)
+        raise NoPermissionError("denied")
+
+
+@dataclass
+class RefusingAccess(ImportAccess):
+    """Admits the first ``refuse_at - 1`` import checks and refuses the next; admits created Apps' access."""
+
+    refuse_at: int = 1
+
+    @override
+    def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
+        super().require_import(context, kind)
+        if sum(call[0] == "require_import" for call in self.calls) == self.refuse_at:
+            raise NoPermissionError("denied")
+
+    @override
+    def imported_permissions(self, context: RequestContext, app_id: str) -> list[str]:
+        del context, app_id
+        return []
+
+    @override
+    def initialize_import_access(self, app_id: str) -> None:
+        del app_id
+
+
+@dataclass
+class PackageTransfers(Transfers):
+    package: FakeAppPackage | None = None
+    app_created: bool = False
+
+    @override
+    def read_app_package(
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
+    ) -> AppImportPackage | None:
+        del source
+        self.calls.append(("read", accept_roster_references, refuse_roster_references))
+        return self.package
+
+    @override
+    def plan_workflow_tools(
+        self, context: RequestContext, tools: Sequence[PackagedWorkflowTool], *, creates_root_app: bool
+    ) -> dict[str, WorkflowToolTarget]:
+        del context, creates_root_app
+        self.calls.append(("plan",))
+        return {
+            tool.provider_id: WorkflowToolTarget(provider_id=tool.provider_id, name=tool.name, create=True)
+            for tool in tools
+        }
+
+    @override
+    def create_workflow_tool(
+        self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
+    ) -> None:
+        del context, tool, target
+        self.calls.append(("create_tool", app_id))
+
+    @override
+    def import_dsl(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
+    ) -> Import:
+        del context, package
+        self.calls.append(("import", params.yaml_content, preserve_agent_bindings))
+        return Import(id="import", status=ImportStatus.COMPLETED, app_id="app", app_created=self.app_created)
+
+
+def _package_import(
+    package: FakeAppPackage | None,
+    access: Callable[..., ImportAccess] = ImportAccess,
+    *,
+    app_created: bool = False,
+) -> tuple[ConsoleAppService, list[tuple[object, ...]]]:
+    """A console service importing ``package`` (None: a Roster Agent package), and the log of its steps."""
+    calls: list[tuple[object, ...]] = package.calls if package is not None else []
+    service = ConsoleAppService(
+        apps=ConsoleAppRepository(session_factory=sessionmaker()),
+        access=access(calls=calls),
+        transfers=PackageTransfers(package=package, calls=calls, app_created=app_created),
+        creators=Creators(),
+        tracing=Tracing(),
+        lifecycle=PackageLifecycle(calls=calls),
+    )
+    return service, calls
+
+
+def _logging_prepare(calls: list[tuple[object, ...]]) -> Callable[[str], str]:
+    def prepare(dsl: str) -> str:
+        calls.append(("prepare",))
+        return dsl + _PREPARED_SUFFIX
+
+    return prepare
+
+
+def _refuse(dsl: str) -> str:
+    del dsl
+    raise DraftChangedError
+
+
+# Each Workflow Tool import and the root import check the import rights again, as the console always has.
+_TOOL_IMPORT_STEPS = [
+    ("plan",),
+    ("require_import", "dsl"),
+    ("import", _WORKFLOW_TOOL_DSL, False),
+    ("create_tool", "app"),
+    ("require_import", "dsl"),
+]
+
+
+@pytest.mark.parametrize(
+    ("preserve_agent_bindings", "refuse_roster_references", "workflow_tools", "expected"),
+    [
+        pytest.param(
+            False,
+            False,
+            [],
+            [("read", False, False), ("require_import", "dsl"), ("import", _ROOT_DSL, False)],
+            id="no-flags",
+        ),
+        pytest.param(
+            False,
+            False,
+            [_PACKAGED_TOOL],
+            [("read", False, False), ("require_import", "dsl"), *_TOOL_IMPORT_STEPS, ("import", _ROOT_DSL, False)],
+            id="workflow-tools",
+        ),
+        pytest.param(
+            True,
+            False,
+            [_PACKAGED_TOOL],
+            [
+                ("read", True, False),
+                ("require_import", "dsl"),
+                ("skills", CONTEXT.active_workspace_id),
+                *_TOOL_IMPORT_STEPS,
+                ("import", _ROOT_DSL, True),
+            ],
+            id="keep-links-root-only",
+        ),
+        pytest.param(
+            False,
+            True,
+            [],
+            [("read", False, True), ("require_import", "dsl"), ("import", _ROOT_DSL, False)],
+            id="copy-refusing-roster-links",
+        ),
+    ],
+)
+def test_package_import_passes_its_flags_and_checks_rights_as_the_console_does(
+    preserve_agent_bindings: bool,
+    refuse_roster_references: bool,
+    workflow_tools: list[PackagedWorkflowTool],
+    expected: list[tuple[object, ...]],
+) -> None:
+    """The console passes no flag; the openapi import keeps links or refuses roster links."""
+    service, calls = _package_import(FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=workflow_tools))
+    service.import_app(
+        CONTEXT,
+        AppImportParams(mode="yaml-content"),
+        source=BytesIO(b"package"),
+        preserve_agent_bindings=preserve_agent_bindings,
+        refuse_roster_references=refuse_roster_references,
+    )
+    assert calls == expected
+
+
+def test_console_package_import_reads_the_package_as_before() -> None:
+    service, calls = _package_import(FakeAppPackage(dsl=_ROOT_DSL))
+    service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
+    assert calls == [("read", False, False), ("require_import", "dsl"), ("import", _ROOT_DSL, False)]
+
+
+@pytest.mark.parametrize(
+    ("package", "expected"),
+    [
+        pytest.param(FakeAppPackage(dsl=_ROOT_DSL), [("read", True, False), ("require_import", "dsl")], id="app"),
+        pytest.param(
+            FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL]),
+            [("read", True, False), ("require_import", "dsl")],
+            id="app-with-workflow-tools",
+        ),
+        pytest.param(None, [("read", True, False), ("require_import", "agent")], id="roster-agent"),
+    ],
+)
+def test_package_import_is_denied_by_its_content_before_any_other_check(
+    package: FakeAppPackage | None, expected: list[tuple[object, ...]]
+) -> None:
+    service, calls = _package_import(package, DenyingAccess)
+    with pytest.raises(NoPermissionError, match="denied"):
+        service.import_app(
+            CONTEXT,
+            AppImportParams(mode="yaml-content"),
+            source=BytesIO(b"package"),
+            preserve_agent_bindings=True,
+            prepare_dsl=_refuse,
+        )
+    assert calls == expected
+
+
+_PARTIAL_TOOL_IMPORT = [
+    ("read", False, False),
+    ("require_import", "dsl"),
+    ("plan",),
+    ("require_import", "dsl"),
+]
+
+
+@pytest.mark.parametrize(
+    ("refuse_at", "expected"),
+    [
+        pytest.param(2, _PARTIAL_TOOL_IMPORT, id="before-the-tool"),
+        pytest.param(
+            3,
+            [
+                *_PARTIAL_TOOL_IMPORT,
+                ("import", _WORKFLOW_TOOL_DSL, False),
+                ("create_tool", "app"),
+                ("require_import", "dsl"),
+                ("delete", "app"),
+            ],
+            id="before-the-root",
+        ),
+    ],
+)
+def test_a_refused_recheck_discards_the_apps_the_package_created(
+    refuse_at: int, expected: list[tuple[object, ...]]
+) -> None:
+    service, calls = _package_import(
+        FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL]),
+        partial(RefusingAccess, refuse_at=refuse_at),
+        app_created=True,
+    )
+    with pytest.raises(NoPermissionError, match="denied"):
+        service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
+    assert calls == expected
+
+
+@pytest.mark.parametrize(
+    ("workflow_tools", "expected"),
+    [
+        ([], [("prepare",), ("import", _PREPARED_ROOT_DSL, False)]),
+        ([_PACKAGED_TOOL], [("prepare",), *_TOOL_IMPORT_STEPS, ("import", _PREPARED_ROOT_DSL, False)]),
+    ],
+)
+def test_prepare_dsl_rewrites_the_root_yaml_only(
+    workflow_tools: list[PackagedWorkflowTool], expected: list[tuple[object, ...]]
+) -> None:
+    service, calls = _package_import(FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=workflow_tools))
+    service.import_app(
+        CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"), prepare_dsl=_logging_prepare(calls)
+    )
+    assert calls == [("read", False, False), ("require_import", "dsl"), *expected]
+
+
+@pytest.mark.parametrize("workflow_tools", [[], [_PACKAGED_TOOL]])
+def test_prepare_dsl_refusal_happens_before_any_import_work(workflow_tools: list[PackagedWorkflowTool]) -> None:
+    service, calls = _package_import(FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=workflow_tools))
+    with pytest.raises(DraftChangedError):
+        service.import_app(
+            CONTEXT,
+            AppImportParams(mode="yaml-content"),
+            source=BytesIO(b"package"),
+            preserve_agent_bindings=True,
+            prepare_dsl=_refuse,
+        )
+    assert calls == [("read", True, False), ("require_import", "dsl"), ("skills", CONTEXT.active_workspace_id)]
+
+
 def test_export_routes_yaml_ordinary_package_and_agent_package(ports: Ports) -> None:
     service, apps, _, transfers, _ = ports
     options = AppExportOptions(format="yaml", include_secret=True, workflow_id="workflow")
@@ -544,6 +887,26 @@ class Lifecycle:
         del mask_credentials
         assert context is CONTEXT
         return app
+
+
+@dataclass
+class PackageLifecycle(Lifecycle):
+    """Logs the Apps a failed package import discards into the import's shared log."""
+
+    calls: list[tuple[object, ...]] = field(default_factory=list)
+
+    @override
+    def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
+        assert context is CONTEXT
+        self.calls.append(("delete", app_id))
+        return AppDeletion(
+            app=AppEvent(id=app_id, tenant_id=CONTEXT.active_workspace_id, mode="workflow"),
+            workflow_agent_ids=set(),
+            workspace_ids=[],
+            binding_ids=[],
+            home_snapshot_ids=[],
+            backing_agent_id=None,
+        )
 
 
 @pytest.mark.parametrize(

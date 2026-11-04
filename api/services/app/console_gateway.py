@@ -6,7 +6,7 @@ import copy
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import Any, BinaryIO, Final, Literal, override
+from typing import IO, Any, BinaryIO, Final, Literal, override
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -286,8 +286,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return try_read_yaml(source)
 
     @override
-    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None:
-        return self._packages.read_package(source)
+    def read_app_package(
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
+    ) -> AppImportPackage | None:
+        return self._packages.read_package(
+            source,
+            accept_roster_references=accept_roster_references,
+            refuse_roster_references=refuse_roster_references,
+        )
 
     def _import_actor(self, context: RequestContext) -> Account:
         with self._session_factory() as session:
@@ -371,7 +377,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return result
 
     @override
-    def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage:
+    def import_agent_package(self, context: RequestContext, source: IO[bytes]) -> ImportedAppPackage:
         account = self._import_actor(context)
         result = self._agent_importer.import_package(
             source=source,

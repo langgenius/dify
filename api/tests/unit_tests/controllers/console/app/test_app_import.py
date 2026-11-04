@@ -320,9 +320,15 @@ class Imports:
     warnings: list[DslImportWarning] = field(default_factory=list)
 
     def dsl(
-        self, context: RequestContext, params: AppImportParams, *, package: AppImportPackage | None = None
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import:
         assert context == self.context
+        assert not preserve_agent_bindings
         self.dsl_calls.append(params)
         if package is not None:
             assert isinstance(package, PreparedAppPackage)

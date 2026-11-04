@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 import zlib
 from collections.abc import Hashable, Sequence
-from typing import Any, BinaryIO, cast, override
+from typing import IO, Any, BinaryIO, cast, override
 
 import yaml
 from pydantic import ValidationError
@@ -44,7 +44,7 @@ class RosterAgentPackageReader:
     def __init__(self) -> None:
         self._skill_packages = SkillPackageService()
 
-    def read(self, source: BinaryIO) -> PreparedRosterAgentPackage:
+    def read(self, source: IO[bytes]) -> PreparedRosterAgentPackage:
         """Validate the container and record unusable Skill payloads for import warnings."""
         # Ownership is transferred to PreparedRosterAgentPackage.
         spool = cast(
@@ -263,7 +263,7 @@ class RosterAgentPackageReader:
         return info_by_path
 
     @staticmethod
-    def _copy_bounded(source: BinaryIO, target: BinaryIO) -> None:
+    def _copy_bounded(source: IO[bytes], target: BinaryIO) -> None:
         size = 0
         while True:
             chunk = source.read(_COPY_CHUNK_SIZE)
