@@ -1,6 +1,8 @@
 import json
+import os
+import time
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, create_autospec
@@ -18,12 +20,14 @@ from libs import rate_limit as rate_limit_module
 from libs.helper import (
     OptionalTimestampField,
     RateLimiter,
+    TimestampField,
     TokenManager,
     alphanumeric,
     email,
     escape_like_pattern,
     extract_remote_ip,
     extract_tenant_id,
+    to_timestamp,
 )
 from models.account import Account
 from models.model import EndUser
@@ -181,6 +185,10 @@ class TestExtractTenantId:
             extract_tenant_id(dict_user)  # pyrefly: ignore[bad-argument-type]
 
 
+NAIVE_UTC = datetime(2026, 10, 16, 8, 0, 0)
+NAIVE_UTC_EPOCH = 1792137600
+
+
 class TestOptionalTimestampField:
     def test_format_returns_none_for_none(self) -> None:
         field = OptionalTimestampField()
@@ -189,9 +197,35 @@ class TestOptionalTimestampField:
 
     def test_format_returns_unix_timestamp_for_datetime(self) -> None:
         field = OptionalTimestampField()
-        value = datetime(2024, 1, 2, 3, 4, 5)
 
-        assert field.format(value) == int(value.timestamp())
+        assert field.format(datetime(2024, 1, 2, 3, 4, 5)) == 1704164645
+
+
+class TestTimestampFieldsUseUtc:
+    """Persisted datetimes are naive UTC, so serialization must not follow the host timezone."""
+
+    @staticmethod
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="POSIX-only: cannot force the host timezone")
+    def test_timestamp_helpers_read_naive_values_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+        # Restore TZ by hand instead of calling monkeypatch.undo(): the autouse session
+        # factory fixture shares this monkeypatch instance, so undo() would unbind it.
+        previous_tz = os.environ.get("TZ")
+        monkeypatch.setenv("TZ", "Asia/Shanghai")
+        time.tzset()
+        try:
+            assert TimestampField().format(NAIVE_UTC) == NAIVE_UTC_EPOCH
+            assert OptionalTimestampField().format(NAIVE_UTC) == NAIVE_UTC_EPOCH
+            assert to_timestamp(NAIVE_UTC) == NAIVE_UTC_EPOCH
+            # Aware values keep their own offset instead of being reinterpreted.
+            assert to_timestamp(datetime(2026, 10, 16, 16, 0, 0, tzinfo=UTC)) == NAIVE_UTC_EPOCH
+            assert to_timestamp(None) is None
+            assert to_timestamp(NAIVE_UTC_EPOCH) == NAIVE_UTC_EPOCH
+        finally:
+            if previous_tz is None:
+                monkeypatch.delenv("TZ", raising=False)
+            else:
+                monkeypatch.setenv("TZ", previous_tz)
+            time.tzset()
 
 
 class TestEscapeLikePattern:
