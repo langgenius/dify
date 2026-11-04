@@ -815,7 +815,6 @@ export const zFieldHintItemRow = z.object({
 export const zFieldHintRow = z.object({
   default: z.unknown().optional(),
   description: z.string().nullable(),
-  example: z.unknown().optional(),
   items: z.array(zFieldHintItemRow).optional(),
   loc: z.array(z.union([z.string(), z.int()])),
   options: z.array(z.string()),
@@ -1685,7 +1684,6 @@ export const zNodeTypeFieldRow = z.object({
   items: z.array(zNodeTypeFieldItemRow).optional(),
   loc: z.array(z.union([z.string(), z.int()])),
   options: z.array(z.string()).optional(),
-  purpose: z.boolean(),
   required: z.boolean(),
   type: z.string().nullable(),
 })
