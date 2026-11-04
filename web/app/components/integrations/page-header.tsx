@@ -22,28 +22,35 @@ export function IntegrationPageHeader({
   const showToolbar = toolbar !== undefined && toolbar !== null
 
   return (
-    <div className={cn('flex shrink-0', align === 'start' ? 'items-start' : 'min-h-14 items-center justify-between')}>
-      <div className={cn(
-        'flex min-w-0 flex-1',
-        showToolbar ? 'flex-col gap-3' : 'justify-between',
-        align === 'start' ? 'items-start pt-3 pb-2' : 'items-center py-2',
-        frameClassName,
+    <div
+      className={cn(
+        'flex shrink-0',
+        align === 'start' ? 'items-start' : 'min-h-14 items-center justify-between',
       )}
+    >
+      <div
+        className={cn(
+          'flex min-w-0 flex-1',
+          showToolbar ? 'flex-col gap-3' : 'justify-between',
+          align === 'start' ? 'items-start pt-3 pb-2' : 'items-center py-2',
+          frameClassName,
+        )}
       >
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="title-2xl-semi-bold text-text-primary">
-            {title}
-          </div>
+        <div className="flex w-full min-w-0 flex-col gap-0.5">
+          <h1 className="title-2xl-semi-bold text-text-primary">{title}</h1>
           {showDescription && (
-            <div className={cn(descriptionClassName ?? 'system-sm-regular', 'text-text-tertiary')}>
+            <div
+              className={cn(
+                descriptionClassName ?? 'system-sm-regular',
+                'max-w-full min-w-0 text-text-tertiary',
+              )}
+            >
               {description}
             </div>
           )}
         </div>
         {showToolbar && (
-          <div className="flex w-full items-center justify-between">
-            {toolbar}
-          </div>
+          <div className="flex w-full min-w-0 items-center justify-between">{toolbar}</div>
         )}
       </div>
     </div>

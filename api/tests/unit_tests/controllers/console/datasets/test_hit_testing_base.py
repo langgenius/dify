@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -23,8 +23,8 @@ from core.errors.error import (
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
-from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
+from services.knowledge.dataset_service import DatasetService
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ class TestGetAndValidateDataset:
                 "check_dataset_permission",
             ),
         ):
-            result = DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+            result = DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
         assert result == dataset
 
@@ -105,7 +105,7 @@ class TestGetAndValidateDataset:
             return_value=None,
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+                DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
     def test_permission_denied(self, dataset, account):
         with (
@@ -117,11 +117,11 @@ class TestGetAndValidateDataset:
             patch.object(
                 DatasetService,
                 "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
+                side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+                DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
 
 class TestHitTestingArgsCheck:
@@ -148,7 +148,7 @@ class TestParseArgs:
     def test_parse_args_invalid(self):
         payload = {"query": "x" * 300}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
             DatasetsHitTestingBase.parse_args(payload)
 
     def test_parse_args_ignores_unknown_fields_for_compatibility(self):
@@ -291,5 +291,6 @@ class TestPerformHitTesting:
             "retrieve",
             side_effect=Exception("boom"),
         ):
-            with pytest.raises(InternalServerError, match="boom"):
+            with pytest.raises(InternalServerError) as exc_info:
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
+            assert "boom" not in str(exc_info.value)

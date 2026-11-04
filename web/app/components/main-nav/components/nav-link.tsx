@@ -3,15 +3,10 @@
 import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import Link from '@/next/link'
 
-const NavIcon = ({
-  icon,
-  className,
-}: {
-  icon: string
-  className?: string
-}) => (
+const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
   <span aria-hidden className={cn(icon, 'h-5 w-5 shrink-0', className)} />
 )
 
@@ -21,16 +16,14 @@ type MainNavLinkProps = {
   children?: ReactNode
 }
 
-const MainNavLink = ({
-  item,
-  pathname,
-  children,
-}: MainNavLinkProps) => {
+const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
   const activated = item.active(pathname)
+  const appsHref = useStudioListHref('/apps')
 
   return (
     <Link
-      href={item.href}
+      href={item.href === '/apps' ? appsHref : item.href}
+      scroll={false}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(
@@ -41,7 +34,9 @@ const MainNavLink = ({
     >
       <NavIcon icon={item.icon} className="group-aria-[current=page]:hidden" />
       <NavIcon icon={item.activeIcon} className="hidden group-aria-[current=page]:block" />
-      <span className="min-w-0 truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]">{item.label}</span>
+      <span className="min-w-0 truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]">
+        {item.label}
+      </span>
       {children}
     </Link>
   )

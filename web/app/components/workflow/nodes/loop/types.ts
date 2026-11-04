@@ -1,4 +1,4 @@
-import type { VarType as NumberVarType } from '../tool/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   BlockEnum,
   CommonNodeType,
@@ -9,34 +9,38 @@ import type {
   VarType,
 } from '@/app/components/workflow/types'
 
-export enum LogicalOperator {
-  and = 'and',
-  or = 'or',
-}
+export const LogicalOperator = {
+  and: 'and',
+  or: 'or',
+} as const
 
-export enum ComparisonOperator {
-  contains = 'contains',
-  notContains = 'not contains',
-  startWith = 'start with',
-  endWith = 'end with',
-  is = 'is',
-  isNot = 'is not',
-  empty = 'empty',
-  notEmpty = 'not empty',
-  equal = '=',
-  notEqual = '≠',
-  largerThan = '>',
-  lessThan = '<',
-  largerThanOrEqual = '≥',
-  lessThanOrEqual = '≤',
-  isNull = 'is null',
-  isNotNull = 'is not null',
-  in = 'in',
-  notIn = 'not in',
-  allOf = 'all of',
-  exists = 'exists',
-  notExists = 'not exists',
-}
+export type LogicalOperator = (typeof LogicalOperator)[keyof typeof LogicalOperator]
+
+export const ComparisonOperator = {
+  contains: 'contains',
+  notContains: 'not contains',
+  startWith: 'start with',
+  endWith: 'end with',
+  is: 'is',
+  isNot: 'is not',
+  empty: 'empty',
+  notEmpty: 'not empty',
+  equal: '=',
+  notEqual: '≠',
+  largerThan: '>',
+  lessThan: '<',
+  largerThanOrEqual: '≥',
+  lessThanOrEqual: '≤',
+  isNull: 'is null',
+  isNotNull: 'is not null',
+  in: 'in',
+  notIn: 'not in',
+  allOf: 'all of',
+  exists: 'exists',
+  notExists: 'not exists',
+} as const
+
+export type ComparisonOperator = (typeof ComparisonOperator)[keyof typeof ComparisonOperator]
 
 export type Condition = {
   id: string
@@ -45,7 +49,7 @@ export type Condition = {
   key?: string // sub variable key
   comparison_operator?: ComparisonOperator
   value: string | string[] | boolean
-  numberVarType?: NumberVarType
+  numberVarType?: VarKindType
   sub_variable_condition?: CaseItem
 }
 
@@ -62,7 +66,11 @@ export type HandleToggleConditionLogicalOperator = () => void
 
 export type HandleAddSubVariableCondition = (conditionId: string, key?: string) => void
 export type handleRemoveSubVariableCondition = (conditionId: string, subConditionId: string) => void
-export type HandleUpdateSubVariableCondition = (conditionId: string, subConditionId: string, newSubCondition: Condition) => void
+export type HandleUpdateSubVariableCondition = (
+  conditionId: string,
+  subConditionId: string,
+  newSubCondition: Condition,
+) => void
 export type HandleToggleSubVariableConditionLogicalOperator = (conditionId: string) => void
 
 export type LoopVariable = {

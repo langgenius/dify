@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 
 from sqlalchemy import Select, func, select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -23,9 +23,9 @@ class PaginatedResult[T]:
 
     @property
     def pages(self) -> int:
-        if self.per_page == 0:
+        if self.total == 0 or self.per_page == 0:
             return 0
-        return max(1, math.ceil(self.total / self.per_page))
+        return math.ceil(self.total / self.per_page)
 
     @property
     def has_next(self) -> bool:
@@ -35,13 +35,27 @@ class PaginatedResult[T]:
         return iter(self.items)
 
 
+def clamp_pagination(page: int, per_page: int, max_per_page: int | None = None) -> tuple[int, int]:
+    """Return the ``(page, per_page)`` a paginated query will actually use.
+
+    Callers that report ``has_more`` next to a page of rows have to derive it
+    from the same numbers the query ran with. Computing it from the requested
+    values instead lets a request for ``limit=0`` be served one row while the
+    response claims a page size of zero, which makes ``page * limit < total``
+    true for every page and gives the client a pager that never ends.
+    """
+    if max_per_page is not None:
+        per_page = min(per_page, max_per_page)
+    return max(1, page), max(1, per_page)
+
+
 def paginate_query(
     stmt: Select,
     *,
+    session: Session,
     page: int = 1,
     per_page: int = 20,
     max_per_page: int | None = None,
-    session: Session | scoped_session | None = None,
 ) -> PaginatedResult:
     """Execute *stmt* as a paginated query using plain SQLAlchemy.
 
@@ -56,18 +70,9 @@ def paginate_query(
     max_per_page:
         Hard ceiling for *per_page*; ``None`` means no cap.
     session:
-        The session to use.  Falls back to ``db.session`` when omitted.
+        SQLAlchemy session used to execute the count and page queries.
     """
-    if session is None:
-        from extensions.ext_database import db
-
-        session = db.session
-
-    if max_per_page is not None:
-        per_page = min(per_page, max_per_page)
-
-    page = max(1, page)
-    per_page = max(1, per_page)
+    page, per_page = clamp_pagination(page, per_page, max_per_page)
 
     # total count — wrap in a scalar subquery so arbitrary selects work
     count_stmt = select(func.count()).select_from(stmt.subquery())

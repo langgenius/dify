@@ -3,19 +3,36 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.hit_testing_fields import HitTestingResponse
+from libs.external_api import error_responses
 from libs.helper import dump_response
 
 register_schema_models(service_api_ns, HitTestingPayload)
 register_response_schema_models(service_api_ns, HitTestingResponse)
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/hit-testing", "/datasets/<uuid:dataset_id>/retrieve")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/hit-testing",
+    doc={"post": {"deprecated": True}},
+)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/retrieve")
 class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Retrieve Chunks from a Knowledge Base / Test Retrieval",
         description=(
@@ -61,7 +78,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
         Tests retrieval performance for the specified dataset.
         """
         dataset_id_str = str(dataset_id)
-        dataset = self.get_and_validate_dataset(dataset_id_str)
+        dataset = self.get_and_validate_dataset(session, dataset_id_str)
         args = self.parse_args(service_api_ns.payload)
         self.hit_testing_args_check(args)
 

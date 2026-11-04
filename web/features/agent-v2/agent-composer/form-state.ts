@@ -1,4 +1,10 @@
-import type { AgentKnowledgeDatasetConfig, AgentSoulAppFeaturesConfig, AgentSoulModelConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeDatasetConfig,
+  AgentSoulAppFeaturesConfig,
+  AgentSoulModelConfig,
+  ToolProviderType,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -9,7 +15,6 @@ import type {
   SingleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
@@ -32,6 +37,7 @@ export type AgentSkill = {
   fileId?: string
   hash?: string
   id: string
+  isMissing?: boolean
   mimeType?: string
   name: string
   size?: number
@@ -43,6 +49,7 @@ export type AgentFileNode = {
   hash?: string
   id: string
   icon: FileTreeIconType
+  isMissing?: boolean
   fileId?: string
   configName?: string
   children?: AgentFileNode[]
@@ -54,13 +61,16 @@ export type AgentFileNode = {
 
 export type AgentKnowledgeRetrievalItem = {
   id: string
+  /** Present for KnowledgeFS bindings; absent for Classic Knowledge Base bindings. */
+  controlSpaceId?: string
+  isMissing?: boolean
   name?: string
   description?: string
   nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
   queryMode?: 'agent' | 'custom'
   customQuery?: string
   datasetRefs?: AgentKnowledgeDatasetConfig[]
-  selectedDatasets?: DataSet[]
+  selectedDatasets?: DatasetDetailWithPartialMembersResponse[]
   retrievalMode?: RETRIEVE_TYPE
   multipleRetrievalConfig?: MultipleRetrievalConfig
   singleRetrievalConfig?: SingleRetrievalConfig
@@ -86,10 +96,12 @@ type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   displayName?: string
+  pluginId?: string
+  pluginUniqueIdentifier?: string
   iconClassName: string
   icon?: ToolDefaultValue['provider_icon']
   iconDark?: ToolDefaultValue['provider_icon_dark']
-  providerType?: string
+  providerType: ToolProviderType
   allowDelete?: boolean
   credentialId?: string
   credentialKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>

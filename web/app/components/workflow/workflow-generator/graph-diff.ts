@@ -1,4 +1,8 @@
-import type { GeneratedGraph } from './types'
+import type { WorkflowGraphNode } from '@dify/contracts/api/console/workflow-generate/types.gen'
+
+type DiffGraph = {
+  nodes: ReadonlyArray<Pick<WorkflowGraphNode, 'id' | 'data'>>
+}
 
 export type GraphDiff = {
   /** Node ids present in the new graph but not the base. */
@@ -18,9 +22,9 @@ export type GraphDiff = {
  * ``data``; edges and layout (which the generator always rewrites) are ignored
  * so cosmetic re-layouts don't read as changes.
  */
-export const diffGraphs = (base: GeneratedGraph, next: GeneratedGraph): GraphDiff => {
-  const baseById = new Map(base.nodes.map(node => [node.id, node]))
-  const nextById = new Map(next.nodes.map(node => [node.id, node]))
+export const diffGraphs = (base: DiffGraph, next: DiffGraph): GraphDiff => {
+  const baseById = new Map(base.nodes.map((node) => [node.id, node]))
+  const nextById = new Map(next.nodes.map((node) => [node.id, node]))
 
   const added: string[] = []
   const changed: string[] = []
@@ -30,10 +34,9 @@ export const diffGraphs = (base: GeneratedGraph, next: GeneratedGraph): GraphDif
       added.push(id)
       continue
     }
-    if (JSON.stringify(prev.data) !== JSON.stringify(node.data))
-      changed.push(id)
+    if (JSON.stringify(prev.data) !== JSON.stringify(node.data)) changed.push(id)
   }
 
-  const removed = [...baseById.keys()].filter(id => !nextById.has(id))
+  const removed = [...baseById.keys()].filter((id) => !nextById.has(id))
   return { added, removed, changed }
 }

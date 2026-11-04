@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('../../../../readme-panel/entrance', () => ({
   ReadmeEntrance: () => <div data-testid="readme-entrance" />,
@@ -12,7 +14,7 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 }))
 
 vi.mock('../tool-trigger', () => ({
-  default: ({ value, provider }: { open?: boolean, value?: unknown, provider?: unknown }) => (
+  ToolTrigger: ({ value, provider }: { open?: boolean; value?: unknown; provider?: unknown }) => (
     <div data-testid="tool-trigger" data-has-value={!!value} data-has-provider={!!provider} />
   ),
 }))
@@ -32,25 +34,12 @@ const defaultProps = {
 }
 
 describe('ToolBaseForm', () => {
-  let ToolBaseForm: (typeof import('../tool-base-form'))['default']
+  let ToolBaseForm: (typeof import('../tool-base-form'))['ToolBaseForm']
 
   beforeEach(async () => {
     vi.clearAllMocks()
     const mod = await import('../tool-base-form')
-    ToolBaseForm = mod.default
-  })
-
-  it('should render tool trigger within tool picker', () => {
-    render(<ToolBaseForm {...defaultProps} />)
-
-    expect(screen.getByTestId('tool-trigger')).toBeInTheDocument()
-    expect(screen.getByTestId('tool-picker')).toBeInTheDocument()
-  })
-
-  it('should render description textarea', () => {
-    render(<ToolBaseForm {...defaultProps} />)
-
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    ToolBaseForm = mod.ToolBaseForm
   })
 
   it('should disable textarea when no provider_name in value', () => {
@@ -59,19 +48,23 @@ describe('ToolBaseForm', () => {
     expect(screen.getByRole('textbox')).toBeDisabled()
   })
 
-  it('should enable textarea when value has provider_name', () => {
-    const value = { provider_name: 'test-provider', tool_name: 'test', extra: { description: 'Hello' } } as never
+  it('should call onDescriptionChange when textarea content changes', async () => {
+    const user = userEvent.setup()
+    const value = {
+      provider_name: 'test-provider',
+      tool_name: 'test',
+      tool_label: 'Test',
+      extra: { description: 'Hello' },
+    } satisfies ToolValue
     render(<ToolBaseForm {...defaultProps} value={value} />)
 
-    expect(screen.getByRole('textbox')).not.toBeDisabled()
-  })
-
-  it('should call onDescriptionChange when textarea content changes', () => {
-    const value = { provider_name: 'test-provider', tool_name: 'test', extra: { description: 'Hello' } } as never
-    render(<ToolBaseForm {...defaultProps} value={value} />)
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })
-    expect(mockOnDescriptionChange).toHaveBeenCalledWith('Updated', expect.any(Object))
+    const description = screen.getByRole('textbox', {
+      name: 'plugin.detailPanel.toolSelector.descriptionLabel',
+    })
+    expect(description).toBeEnabled()
+    expect(description).toHaveValue('Hello')
+    await user.type(description, '!')
+    expect(mockOnDescriptionChange).toHaveBeenCalledWith('Hello!', expect.any(Object))
   })
 
   it('should show ReadmeEntrance when provider has plugin_unique_identifier', () => {

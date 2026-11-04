@@ -1,31 +1,10 @@
 import type { ListFilterNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import { screen } from '@testing-library/react'
+import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { isSystemVar } from '../../_base/components/variable/utils'
 import Node from '../node'
 import { OrderBy } from '../types'
-
-vi.mock('reactflow', () => ({
-  useNodes: vi.fn(),
-}))
-
-vi.mock('../../_base/components/variable/utils', () => ({
-  isSystemVar: vi.fn(),
-}))
-
-vi.mock('../../_base/components/variable/variable-label', () => ({
-  VariableLabelInNode: (props: {
-    variables: string[]
-    nodeType?: BlockEnum
-    nodeTitle?: string
-  }) => (
-    <div>{`${props.nodeTitle || 'missing'}:${props.nodeType || 'missing'}:${props.variables.join('.')}`}</div>
-  ),
-}))
-
-const mockUseNodes = vi.mocked(useNodes)
-const mockIsSystemVar = vi.mocked(isSystemVar)
 
 const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNodeType => ({
   title: 'List Operator',
@@ -36,11 +15,13 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   item_var_type: VarType.string,
   filter_by: {
     enabled: true,
-    conditions: [{
-      key: 'name',
-      comparison_operator: 'contains' as never,
-      value: '',
-    }],
+    conditions: [
+      {
+        key: 'name',
+        comparison_operator: 'contains',
+        value: '',
+      },
+    ],
   },
   extract_by: {
     enabled: false,
@@ -58,65 +39,25 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   ...overrides,
 })
 
-describe('list-operator/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsSystemVar.mockReturnValue(false)
-    mockUseNodes.mockReturnValue([
-      {
-        id: 'answer-node',
-        data: {
-          title: 'Answer',
-          type: BlockEnum.Answer,
-        },
-      },
-      {
-        id: 'start-node',
-        data: {
-          title: 'Start',
-          type: BlockEnum.Start,
-        },
-      },
-    ] as never)
+const renderNode = (data: ListFilterNodeType) =>
+  renderWorkflowFlowComponent(<Node id="list-node" data={data} />, {
+    nodes: [
+      createNode({ id: 'answer-node', data: { title: 'Answer', type: BlockEnum.Answer } }),
+      createStartNode({ id: 'start-node' }),
+    ],
+    edges: [],
   })
 
-  it('renders the referenced node variable label', () => {
-    render(
-      <Node
-        id="list-node"
-        data={createData()}
-      />,
-    )
+it.each([
+  [['answer-node', 'items'], 'Answer', 'items'],
+  [['sys', 'files'], 'Start', 'files'],
+])('resolves %j to its source label', async (variable, source, name) => {
+  renderNode(createData({ variable }))
+  expect(await screen.findByText(source)).toBeInTheDocument()
+  expect(screen.getByText(name)).toBeInTheDocument()
+})
 
-    expect(screen.getByText('workflow.nodes.listFilter.inputVar')).toBeInTheDocument()
-    expect(screen.getByText('Answer:answer:answer-node.items')).toBeInTheDocument()
-  })
-
-  it('resolves system variables through the start node', () => {
-    mockIsSystemVar.mockReturnValue(true)
-
-    render(
-      <Node
-        id="list-node"
-        data={createData({
-          variable: ['sys', 'files'],
-        })}
-      />,
-    )
-
-    expect(screen.getByText('Start:start:sys.files')).toBeInTheDocument()
-  })
-
-  it('returns null when no input variable is configured', () => {
-    const { container } = render(
-      <Node
-        id="list-node"
-        data={createData({
-          variable: [],
-        })}
-      />,
-    )
-
-    expect(container).toBeEmptyDOMElement()
-  })
+it('omits the input row when no variable is configured', () => {
+  renderNode(createData({ variable: [] }))
+  expect(screen.queryByText('workflow.nodes.listFilter.inputVar')).not.toBeInTheDocument()
 })

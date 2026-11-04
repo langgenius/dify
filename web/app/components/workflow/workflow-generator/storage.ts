@@ -9,11 +9,8 @@ export const EMPTY_WORKFLOW_GENERATOR_MODEL: Model = {
   completion_params: {} as CompletionParams,
 }
 
-const [
-  useWorkflowGeneratorModel,
-  _useWorkflowGeneratorModelValue,
-  _useSetWorkflowGeneratorModel,
-] = createLocalStorageState<Model>('workflow-gen-model', EMPTY_WORKFLOW_GENERATOR_MODEL)
+const [useWorkflowGeneratorModel, _useWorkflowGeneratorModelValue, _useSetWorkflowGeneratorModel] =
+  createLocalStorageState<Model>('workflow-gen-model', EMPTY_WORKFLOW_GENERATOR_MODEL)
 
 // Last instruction the user generated from, persisted across opens so reopening
 // the generator resumes where they left off instead of a blank box (the palette's
@@ -24,7 +21,4 @@ const [
   _useSetWorkflowGeneratorLastInstruction,
 ] = createLocalStorageState<string>('workflow-gen-last-instruction', '')
 
-export {
-  useWorkflowGeneratorLastInstruction,
-  useWorkflowGeneratorModel,
-}
+export { useWorkflowGeneratorLastInstruction, useWorkflowGeneratorModel }

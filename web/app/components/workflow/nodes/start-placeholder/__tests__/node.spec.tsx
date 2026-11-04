@@ -9,8 +9,10 @@ describe('StartPlaceholderNode', () => {
         id="start-placeholder"
         data={{
           type: BlockEnum.StartPlaceholder,
+          title: 'Start',
+          desc: '',
           selected: true,
-        } as never}
+        }}
       />,
     )
 
@@ -21,11 +23,15 @@ describe('StartPlaceholderNode', () => {
         id="start-placeholder"
         data={{
           type: BlockEnum.StartPlaceholder,
+          title: 'Start',
+          desc: '',
           selected: false,
-        } as never}
+        }}
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.startPlaceholder.nodeCollapsedDescription')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.startPlaceholder.nodeCollapsedDescription'),
+    ).toBeInTheDocument()
   })
 })

@@ -1,36 +1,25 @@
+import type { ReactElement } from 'react'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render as renderComponent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { WorkflowContext } from '../context'
+import { EditorResourceScope } from '../editor-resource/provider'
+import { createWorkflowStore } from '../store'
 import { MentionInput } from './mention-input'
 
+const render = (ui: ReactElement, cachedUsers?: UserProfile[]) => {
+  const store = createWorkflowStore({})
+  if (cachedUsers) store.getState().setMentionableUsersCache('app-1', cachedUsers)
+  return renderComponent(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <WorkflowContext value={store}>{ui}</WorkflowContext>
+    </EditorResourceScope>,
+  )
+}
 const mockFetchMentionableUsers = vi.hoisted(() => vi.fn())
-const mockSetMentionableUsersLoading = vi.hoisted(() => vi.fn())
-const mockSetMentionableUsersCache = vi.hoisted(() => vi.fn())
 
-const mentionStoreState = vi.hoisted(() => ({
-  mentionableUsersCache: {} as Record<string, UserProfile[]>,
-  mentionableUsersLoading: {} as Record<string, boolean>,
-  setMentionableUsersLoading: (appId: string, loading: boolean) => {
-    mockSetMentionableUsersLoading(appId, loading)
-    mentionStoreState.mentionableUsersLoading[appId] = loading
-  },
-  setMentionableUsersCache: (appId: string, users: UserProfile[]) => {
-    mockSetMentionableUsersCache(appId, users)
-    mentionStoreState.mentionableUsersCache[appId] = users
-  },
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {
@@ -44,17 +33,6 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
-}))
-
-vi.mock('../store', () => ({
-  useStore: (selector: (state: typeof mentionStoreState) => unknown) => selector(mentionStoreState),
-  useWorkflowStore: () => ({
-    getState: () => mentionStoreState,
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="mention-avatar">{name}</div>,
 }))
 
 const mentionUsers: UserProfile[] = [
@@ -78,69 +56,45 @@ function ControlledMentionInput({
   onSubmit: (content: string, mentionedUserIds: string[]) => void
 }) {
   const [value, setValue] = useState('')
-  return (
-    <MentionInput
-      value={value}
-      onChange={setValue}
-      onSubmit={onSubmit}
-    />
-  )
+  return <MentionInput value={value} onChange={setValue} onSubmit={onSubmit} />
 }
 
 describe('MentionInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mentionStoreState.mentionableUsersCache = {}
-    mentionStoreState.mentionableUsersLoading = {}
     mockFetchMentionableUsers.mockResolvedValue({ users: mentionUsers })
   })
 
-  it('loads mentionable users when cache is empty', async () => {
-    render(
-      <MentionInput
-        value=""
-        onChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
-        params: { app_id: 'app-1' },
-      })
-    })
-
-    expect(mockSetMentionableUsersLoading).toHaveBeenCalledWith('app-1', true)
-    expect(mockSetMentionableUsersCache).toHaveBeenCalledWith('app-1', mentionUsers)
-    expect(mockSetMentionableUsersLoading).toHaveBeenCalledWith('app-1', false)
-  })
-
-  it('selects a mention and submits with mentioned user ids', async () => {
-    mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
+  it('loads users, selects a mention and submits its user id through the real store', async () => {
+    const user = userEvent.setup()
     const onSubmit = vi.fn()
 
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
-    const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
-    textarea.focus()
-    textarea.setSelectionRange(4, 4)
-    fireEvent.change(textarea, { target: { value: '@Ali' } })
+    const textarea = screen.getByPlaceholderText(
+      'workflowComments.comments.placeholder.add',
+    ) as HTMLTextAreaElement
+    await user.type(textarea, '@Ali')
 
     await waitFor(() => {
       expect(screen.getByText('alice@example.com')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('alice@example.com'))
-    fireEvent.change(textarea, { target: { value: '@Alice hi' } })
-    fireEvent.keyDown(textarea, { key: 'Enter' })
+    expect(mockFetchMentionableUsers).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1' },
+    })
+    await user.click(screen.getByText('alice@example.com'))
+    await waitFor(() => expect(textarea).toHaveFocus())
+    await user.type(textarea, 'hi')
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith('@Alice hi', ['user-2'])
     })
   })
 
-  it('supports editing mode cancel and save actions', async () => {
-    mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
+  it('uses cached users and trims the saved reply in editing mode', async () => {
+    const user = userEvent.setup()
     const onSubmit = vi.fn()
     const onCancel = vi.fn()
 
@@ -152,12 +106,14 @@ describe('MentionInput', () => {
         onCancel={onCancel}
         isEditing
       />,
+      mentionUsers,
     )
+    expect(mockFetchMentionableUsers).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText('common.operation.cancel'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith('updated reply', [])
     })
@@ -166,18 +122,14 @@ describe('MentionInput', () => {
   it('focuses the textarea at the end when autoFocus is enabled', () => {
     vi.useFakeTimers()
     try {
-      mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
-
       const { unmount } = render(
-        <MentionInput
-          value="draft"
-          onChange={vi.fn()}
-          onSubmit={vi.fn()}
-          autoFocus
-        />,
+        <MentionInput value="draft" onChange={vi.fn()} onSubmit={vi.fn()} autoFocus />,
+        mentionUsers,
       )
 
-      const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+      const textarea = screen.getByPlaceholderText(
+        'workflowComments.comments.placeholder.add',
+      ) as HTMLTextAreaElement
 
       act(() => {
         vi.runOnlyPendingTimers()
@@ -188,8 +140,7 @@ describe('MentionInput', () => {
       expect(textarea.selectionEnd).toBe(5)
 
       unmount()
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

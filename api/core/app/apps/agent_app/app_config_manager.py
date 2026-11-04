@@ -24,7 +24,7 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
 
 class AgentAppConfig(EasyUIBasedAppConfig):
@@ -43,11 +43,16 @@ class AgentAppConfigManager(BaseAppConfigManager):
         *,
         app_model: App,
         agent_soul: AgentSoulConfig,
+        annotation_reply: AnnotationReplyConfig | None,
         app_model_config: AppModelConfig | None = None,
         conversation: Conversation | None = None,
     ) -> AgentAppConfig:
         """Build the Agent App config from the Agent Soul (+ optional feature flags)."""
-        config_dict = cls._synthesize_config_dict(agent_soul, app_model_config)
+        config_dict = cls._synthesize_config_dict(
+            agent_soul,
+            app_model_config,
+            annotation_reply=annotation_reply,
+        )
         # The synthesized dict is shaped like an app_model_config; the EasyUI
         # sub-managers type their param as AppModelConfigDict (a TypedDict).
         typed_config = cast(AppModelConfigDict, config_dict)
@@ -77,6 +82,8 @@ class AgentAppConfigManager(BaseAppConfigManager):
     def _synthesize_config_dict(
         agent_soul: AgentSoulConfig,
         app_model_config: AppModelConfig | None,
+        *,
+        annotation_reply: AnnotationReplyConfig | None,
     ) -> dict[str, Any]:
         """Shape a Soul + feature flags into an ``app_model_config``-style dict.
 
@@ -84,7 +91,11 @@ class AgentAppConfigManager(BaseAppConfigManager):
         ``app_model_config`` when one exists; model + prompt always come from
         the Agent Soul (the single source of truth for those).
         """
-        base = merge_agent_app_features(agent_soul=agent_soul, app_model_config=app_model_config)
+        base = merge_agent_app_features(
+            agent_soul=agent_soul,
+            app_model_config=app_model_config,
+            annotation_reply=annotation_reply,
+        )
 
         model = agent_soul.model
         if model is not None:

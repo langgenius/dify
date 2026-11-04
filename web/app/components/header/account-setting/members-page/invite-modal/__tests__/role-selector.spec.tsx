@@ -1,12 +1,22 @@
 import type { Role, RoleListResponse } from '@/models/access-control'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
-import { vi } from 'vitest'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import RoleSelector from '../role-selector'
+import { vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { RoleSelector } from '../role-selector'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const getRoles = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': getRoles,
+    }),
+  }
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: overrides.id ?? overrides.name ?? 'role-id',
@@ -21,205 +31,155 @@ const createRole = (overrides: Partial<Role>): Role => ({
   ...overrides,
 })
 
-const rolePages: RoleListResponse[] = [
-  {
-    data: [
-      createRole({ id: 'admin', name: 'Admin', description: 'Can manage workspace settings' }),
-      createRole({ id: 'editor', name: 'Editor', description: 'Can build and edit apps' }),
-      createRole({ id: 'normal', name: 'Normal', description: 'Can use apps' }),
-    ],
-    pagination: {
-      total_count: 3,
-      per_page: 20,
-      current_page: 1,
-      total_pages: 1,
-    },
-  },
+const roles = [
+  createRole({ id: 'admin', name: 'Admin', description: 'Can manage workspace settings' }),
+  createRole({ id: 'editor', name: 'Editor', description: 'Can build and edit apps' }),
+  createRole({ id: 'normal', name: 'Normal', description: 'Can use apps' }),
 ]
 
-const mockUseWorkspaceRoleList = ({
-  pages = rolePages,
-  isLoading = false,
-  hasNextPage = false,
-  isFetchingNextPage = false,
-  fetchNextPage = vi.fn(),
-}: {
-  pages?: RoleListResponse[]
-  isLoading?: boolean
-  hasNextPage?: boolean
-  isFetchingNextPage?: boolean
-  fetchNextPage?: () => void
-} = {}) => {
-  vi.mocked(useWorkspaceRoleList).mockReturnValue({
-    data: { pages, pageParams: [1] },
-    isLoading,
-    error: null,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } as unknown as ReturnType<typeof useWorkspaceRoleList>)
-}
+const createPage = (data: Role[]): RoleListResponse => ({
+  data,
+  pagination: {
+    total_count: data.length,
+    per_page: 20,
+    current_page: 1,
+    total_pages: data.length > 0 ? 1 : 0,
+  },
+})
 
-type WrapperProps = {
-  initialRole?: string
-}
-
-const RoleSelectorWrapper = ({ initialRole = 'normal' }: WrapperProps) => {
-  const [role, setRole] = useState(initialRole)
-  return <RoleSelector value={role} onChange={setRole} />
-}
-
-const getTrigger = () => screen.getByRole('button', { name: /members\.(invitedAsRole|selectRole)/i })
-const getRoleMenu = () => screen.getByRole('menu')
-const getRoleOption = (role: string) => within(getRoleMenu()).getByRole('menuitemradio', { name: new RegExp(role, 'i') })
+const getTrigger = () => screen.getByRole('combobox', { name: /members\.role/i })
+const getListbox = () => screen.getByRole('listbox')
 
 describe('RoleSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseWorkspaceRoleList()
+    getRoles.mockReset().mockResolvedValue(createPage(roles))
   })
 
-  it('should show current role name in trigger text', () => {
-    render(<RoleSelectorWrapper initialRole="admin" />)
-
-    expect(screen.getByText(/members\.invitedAsRole:\{"role":"Admin"\}/i)).toBeInTheDocument()
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('should ask users to select a role when no role is selected', () => {
-    render(<RoleSelectorWrapper initialRole="" />)
+  it('requires an explicit selection and exposes select semantics', () => {
+    render(<RoleSelector />)
 
-    expect(screen.getByText(/members\.selectRole/i)).toBeInTheDocument()
-    expect(screen.queryByText(/members\.invitedAsRole:\{"role":""\}/i)).not.toBeInTheDocument()
+    expect(getTrigger().textContent).toMatch(/members\.selectRole/i)
+    expect(document.querySelector('input[name="role"]')).toBeRequired()
   })
 
-  it('should toggle dropdown when trigger is clicked', async () => {
+  it('uses the selected Role object as its typed value', async () => {
     const user = userEvent.setup()
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
 
     await user.click(getTrigger())
-    expect(getRoleOption('Normal')).toBeInTheDocument()
+    const admin = await within(getListbox()).findByRole('option', { name: /Admin/i })
+    expect(admin).toHaveTextContent('Can manage workspace settings')
+    await user.click(admin)
 
-    await user.click(getTrigger())
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    })
+    expect(getTrigger()).toHaveTextContent('Admin')
+    expect(document.querySelector('input[name="role"]')).toHaveValue('admin')
   })
 
-  it('should show checkmark state for selected role', async () => {
+  it('falls back to localized descriptions for legacy built-in roles', async () => {
     const user = userEvent.setup()
-    render(<RoleSelectorWrapper initialRole="editor" />)
+    getRoles.mockResolvedValue(
+      createPage([
+        createRole({ id: 'admin', name: 'admin', description: '' }),
+        createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
+      ]),
+    )
+    render(<RoleSelector />)
 
     await user.click(getTrigger())
 
-    expect(getRoleOption('Editor')).toHaveAttribute('aria-checked', 'true')
+    expect(
+      within(getListbox()).getByText(/workspaceMembers\.members\.adminTip/i),
+    ).toBeInTheDocument()
+    expect(
+      within(getListbox()).getByText(/workspaceMembers\.members\.datasetOperatorTip/i),
+    ).toBeInTheDocument()
   })
 
-  it('should show legacy descriptions for built-in roles without descriptions', async () => {
+  it('replaces the loading state with the empty state after the first page arrives', async () => {
     const user = userEvent.setup()
+    const request = createDeferred<RoleListResponse>()
+    getRoles.mockReturnValue(request.promise)
+    render(<RoleSelector />)
+    await user.click(getTrigger())
+    expect(within(getListbox()).getByText(/common\.loading/i)).toBeInTheDocument()
+    await act(async () => request.resolve(createPage([])))
+    expect(await within(getListbox()).findByText(/dynamicSelect\.noData/i)).toBeInTheDocument()
+  })
 
-    mockUseWorkspaceRoleList({
-      pages: [{
-        data: [
-          createRole({ id: 'admin', name: 'admin', description: '' }),
-          createRole({ id: 'editor', name: 'editor', description: '' }),
-          createRole({ id: 'normal', name: 'normal', description: '' }),
-          createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
-        ],
-        pagination: {
-          total_count: 4,
-          per_page: 20,
-          current_page: 1,
-          total_pages: 1,
+  it('shows an error instead of treating a failed first page as empty', async () => {
+    const user = userEvent.setup()
+    getRoles.mockRejectedValue(new Error('Failed to load roles'))
+    render(<RoleSelector />)
+    await user.click(getTrigger())
+    expect(await within(getListbox()).findByText(/dynamicSelect\.error/i)).toBeInTheDocument()
+    expect(within(getListbox()).queryByText(/dynamicSelect\.noData/i)).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])(
+    'preserves loaded roles after requesting the next page (failure: %s)',
+    async (fails) => {
+      const user = userEvent.setup()
+      const callbacks: IntersectionObserverCallback[] = []
+      vi.stubGlobal(
+        'IntersectionObserver',
+        class {
+          readonly root: Element | Document | null = null
+          readonly rootMargin = ''
+          readonly scrollMargin = ''
+          readonly thresholds: ReadonlyArray<number> = []
+
+          constructor(callback: IntersectionObserverCallback) {
+            callbacks.push(callback)
+          }
+
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+          takeRecords(): IntersectionObserverEntry[] {
+            return []
+          }
         },
-      }],
-    })
+      )
 
-    render(<RoleSelectorWrapper initialRole="" />)
+      const nextRole = createRole({ id: 'next-role', name: 'Additional role' })
+      getRoles.mockResolvedValueOnce({
+        ...createPage(roles),
+        pagination: { total_count: 4, per_page: 3, current_page: 1, total_pages: 2 },
+      })
+      if (fails) getRoles.mockRejectedValueOnce(new Error('Failed to load another role page'))
+      else
+        getRoles.mockResolvedValueOnce({
+          ...createPage([nextRole]),
+          pagination: { total_count: 4, per_page: 3, current_page: 2, total_pages: 2 },
+        })
+      render(<RoleSelector />)
 
-    await user.click(getTrigger())
+      await user.click(getTrigger())
+      await within(getListbox()).findByRole('option', { name: /Admin/i })
+      await waitFor(() => expect(callbacks.length).toBeGreaterThan(0))
 
-    const roleMenu = getRoleMenu()
+      await act(async () => {
+        callbacks.at(-1)!(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+      })
 
-    expect(within(roleMenu).getByText(/common\.members\.adminTip/i)).toBeInTheDocument()
-    expect(within(roleMenu).getByText(/common\.members\.editorTip/i)).toBeInTheDocument()
-    expect(within(roleMenu).getByText(/common\.members\.normalTip/i)).toBeInTheDocument()
-    expect(within(roleMenu).getByText(/common\.members\.datasetOperatorTip/i)).toBeInTheDocument()
-    expect(within(roleMenu).queryByText(/permission\.role\.noDescription/i)).not.toBeInTheDocument()
-  })
-
-  it('should update selected role name after user chooses a role', async () => {
-    const user = userEvent.setup()
-
-    render(<RoleSelectorWrapper initialRole="Normal" />)
-
-    await user.click(getTrigger())
-    await user.click(getRoleOption('Admin'))
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    })
-
-    expect(screen.getByText(/members\.invitedAsRole:\{"role":"Admin"\}/i)).toBeInTheDocument()
-  })
-
-  it('should load more roles when scrolling reaches the list anchor', async () => {
-    const user = userEvent.setup()
-    const fetchNextPage = vi.fn()
-    const callbacks: IntersectionObserverCallback[] = []
-    const originalIntersectionObserver = globalThis.IntersectionObserver
-
-    globalThis.IntersectionObserver = class {
-      readonly root: Element | Document | null = null
-      readonly rootMargin: string = ''
-      readonly scrollMargin: string = ''
-      readonly thresholds: ReadonlyArray<number> = []
-
-      constructor(callback: IntersectionObserverCallback) {
-        callbacks.push(callback)
-      }
-
-      observe() { /* noop */ }
-      unobserve() { /* noop */ }
-      disconnect() { /* noop */ }
-      takeRecords(): IntersectionObserverEntry[] { return [] }
-    }
-
-    mockUseWorkspaceRoleList({ hasNextPage: true, fetchNextPage })
-
-    render(<RoleSelectorWrapper />)
-
-    await user.click(getTrigger())
-    await waitFor(() => {
-      expect(callbacks).toHaveLength(1)
-    })
-
-    await act(async () => {
-      callbacks[0]!([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
-    })
-
-    expect(fetchNextPage).toHaveBeenCalledTimes(1)
-
-    globalThis.IntersectionObserver = originalIntersectionObserver
-  })
-
-  it('should render an empty state when there are no roles', async () => {
-    const user = userEvent.setup()
-    mockUseWorkspaceRoleList({
-      pages: [{
-        data: [],
-        pagination: {
-          total_count: 0,
-          per_page: 20,
-          current_page: 1,
-          total_pages: 0,
-        },
-      }],
-    })
-
-    render(<RoleSelectorWrapper initialRole="" />)
-
-    await user.click(getTrigger())
-
-    expect(within(getRoleMenu()).getByText(/dynamicSelect\.noData/i)).toBeInTheDocument()
-  })
+      await waitFor(() => expect(getRoles).toHaveBeenCalledTimes(2))
+      expect(getRoles).toHaveBeenLastCalledWith({
+        query: expect.objectContaining({ page: 2, limit: 20 }),
+      })
+      if (!fails)
+        expect(
+          await within(getListbox()).findByRole('option', { name: /Additional role/i }),
+        ).toBeInTheDocument()
+      expect(within(getListbox()).getByRole('option', { name: /Admin/i })).toBeInTheDocument()
+      expect(within(getListbox()).queryByText(/dynamicSelect\.error/i)).not.toBeInTheDocument()
+    },
+  )
 })

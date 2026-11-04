@@ -18,6 +18,7 @@ import yaml
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
@@ -238,7 +239,7 @@ class MigrationImportService:
             raise MigrationDataError(f"Operator account not found: {target.operator_id}")
         if tenant is None:
             raise MigrationDataError(f"Target tenant not found: {target.tenant_id}")
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=session)
 
         for workflow_data in package.workflows:
             app_id = self._optional_string(workflow_data.get("id"))
@@ -322,13 +323,16 @@ class MigrationImportService:
         options: ImportOptions,
         session: Session,
     ) -> str:
-        import_service = AppDslService(cast(Session, session))
+        import_service = AppDslService(session)
         if existing_app is not None:
+            existing_app_id = existing_app.id
+            if dify_config.RBAC_ENABLED:
+                session.commit()
             import_result = import_service.import_app(
                 account=account,
                 import_mode="yaml-content",
                 yaml_content=dsl_content,
-                app_id=existing_app.id,
+                app_id=existing_app_id,
             )
         else:
             import_app_id = app_id if self._should_preserve_source_app_id(options) else None
@@ -429,7 +433,7 @@ class MigrationImportService:
         api_token = ApiToken()
         api_token.app_id = app_id
         api_token.tenant_id = tenant_id
-        api_token.token = ApiToken.generate_api_key("app", 24)
+        api_token.token = ApiToken.generate_api_key("app", 24, session=session)
         api_token.type = ApiTokenType.APP
         session.add(api_token)
         session.commit()
@@ -756,7 +760,7 @@ class MigrationImportService:
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
-            service = MCPToolManageService(session=cast(Session, session))
+            service = MCPToolManageService(session=session)
             configuration = MCPConfiguration.model_validate(mcp_data.get("configuration") or {})
             authentication = (
                 MCPAuthentication.model_validate(mcp_data["authentication"]) if mcp_data.get("authentication") else None

@@ -1,98 +1,60 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import { render, screen } from '@testing-library/react'
-import { useAtomValue } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useAtom, useAtomValue } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 import { AgentComposerProvider } from '../provider'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
-  hasAgentComposerUnpublishedChangesAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '../store'
 
-function StoreSnapshot() {
-  const draft = useAtomValue(agentComposerDraftAtom)
-  const originalDraft = useAtomValue(agentComposerOriginalDraftAtom)
-  const publishedDraft = useAtomValue(agentComposerPublishedDraftAtom)
-  const originalConfig = useAtomValue(agentComposerOriginalConfigAtom)
+function DraftEditor() {
+  const [draft, setDraft] = useAtom(agentComposerDraftAtom)
+  const savedDraft = useAtomValue(agentComposerSavedDraftAtom)
   const isDirty = useAtomValue(isAgentComposerDirtyAtom)
-  const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
-
   return (
-    <dl>
-      <dt>draft</dt>
-      <dd data-testid="draft-prompt">{draft.prompt}</dd>
-      <dt>original draft</dt>
-      <dd data-testid="original-draft-prompt">{originalDraft?.prompt}</dd>
-      <dt>published draft</dt>
-      <dd data-testid="published-draft-prompt">{publishedDraft?.prompt}</dd>
-      <dt>original config</dt>
-      <dd data-testid="original-config-prompt">{originalConfig?.prompt?.system_prompt}</dd>
-      <dt>dirty</dt>
-      <dd data-testid="dirty">{String(isDirty)}</dd>
-      <dt>unpublished</dt>
-      <dd data-testid="unpublished">{String(hasUnpublishedChanges)}</dd>
-    </dl>
+    <>
+      <textarea
+        aria-label="Prompt"
+        value={draft.prompt}
+        onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
+      />
+      <output aria-label="Saved prompt">{savedDraft?.prompt}</output>
+      <output aria-label="Unsaved changes">{String(isDirty)}</output>
+    </>
   )
 }
 
-describe('AgentComposerProvider', () => {
-  it('initializes draft baselines when creating the scoped store', () => {
-    const initialDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Be precise.',
-    }
-    const initialOriginalConfig = {
-      prompt: {
-        system_prompt: 'Be precise.',
-      },
-    } satisfies AgentSoulConfig
-
-    render(
-      <AgentComposerProvider
-        initialDraft={initialDraft}
-        initialOriginalConfig={initialOriginalConfig}
-      >
-        <StoreSnapshot />
-      </AgentComposerProvider>,
-    )
-
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('original-draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('published-draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('original-config-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('dirty')).toHaveTextContent('false')
-    expect(screen.getByTestId('unpublished')).toHaveTextContent('false')
-  })
-
-  it('creates a new scoped store when the composer session key changes', () => {
-    const firstDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Agent one draft',
-    }
-    const secondDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Agent two draft',
-    }
-    const { rerender } = render(
-      <AgentComposerProvider key="agent-1:draft" initialDraft={firstDraft}>
-        <StoreSnapshot />
-      </AgentComposerProvider>,
-    )
-
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Agent one draft')
-
-    rerender(
-      <AgentComposerProvider key="agent-2:draft" initialDraft={secondDraft}>
-        <StoreSnapshot />
-      </AgentComposerProvider>,
-    )
-
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Agent two draft')
-    expect(screen.getByTestId('original-draft-prompt')).toHaveTextContent('Agent two draft')
-    expect(screen.getByTestId('published-draft-prompt')).toHaveTextContent('Agent two draft')
-  })
+it('keeps edits and dirty state isolated between composers while preserving each saved baseline', async () => {
+  const user = userEvent.setup()
+  render(
+    <>
+      <section aria-label="First agent">
+        <AgentComposerProvider
+          initialDraft={{ ...defaultAgentSoulConfigFormState, prompt: 'Agent one' }}
+        >
+          <DraftEditor />
+        </AgentComposerProvider>
+      </section>
+      <section aria-label="Second agent">
+        <AgentComposerProvider
+          initialDraft={{ ...defaultAgentSoulConfigFormState, prompt: 'Agent two' }}
+        >
+          <DraftEditor />
+        </AgentComposerProvider>
+      </section>
+    </>,
+  )
+  const first = within(screen.getByRole('region', { name: 'First agent' }))
+  const second = within(screen.getByRole('region', { name: 'Second agent' }))
+  expect(first.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Agent one')
+  expect(first.getByLabelText('Unsaved changes')).toHaveTextContent('false')
+  await user.type(first.getByRole('textbox', { name: 'Prompt' }), ' revised')
+  expect(first.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Agent one revised')
+  expect(first.getByLabelText('Saved prompt')).toHaveTextContent('Agent one')
+  expect(first.getByLabelText('Unsaved changes')).toHaveTextContent('true')
+  expect(second.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Agent two')
+  expect(second.getByLabelText('Saved prompt')).toHaveTextContent('Agent two')
+  expect(second.getByLabelText('Unsaved changes')).toHaveTextContent('false')
 })

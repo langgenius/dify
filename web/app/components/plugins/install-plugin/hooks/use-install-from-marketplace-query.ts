@@ -2,13 +2,27 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { useEffect, useState } from 'react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { parseMarketplacePluginId } from '@/app/components/plugins/plugin-routes'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { usePluginInstallation } from '@/hooks/use-query-params'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import {
+  fetchBundleInfoFromMarketPlace,
+  fetchManifestFromMarketPlace,
+  fetchPluginInfoFromMarketPlace,
+} from '@/service/plugins'
 
 type MarketplaceInstall = {
   manifest: PluginDeclaration | PluginManifestInMarket
+  packageId: string
   uniqueIdentifier: string
+}
+
+async function resolveMarketplaceUniqueIdentifier(packageId: string) {
+  const pluginId = parseMarketplacePluginId(packageId)
+  if (!pluginId) return packageId
+
+  const { data } = await fetchPluginInfoFromMarketPlace(pluginId)
+  return data.plugin.latest_package_identifier
 }
 
 export type UseInstallFromMarketplaceQueryOptions = {
@@ -28,11 +42,9 @@ export const useInstallFromMarketplaceQuery = ({
   const [isShowInstallFromMarketplace, setIsShowInstallFromMarketplace] = useState(false)
 
   useEffect(() => {
-    if (!packageId && !bundleInfo)
-      return
+    if (!packageId && !bundleInfo) return
 
-    if (isPermissionLoading)
-      return
+    if (isPermissionLoading) return
 
     if (!canInstallPlugin) {
       setInstallState(null)
@@ -44,28 +56,26 @@ export const useInstallFromMarketplaceQuery = ({
     const loadMarketplaceInstall = async () => {
       if (packageId) {
         try {
-          const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-          if (ignore)
-            return
+          const uniqueIdentifier = await resolveMarketplaceUniqueIdentifier(packageId)
+          const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(uniqueIdentifier))
+          if (ignore) return
 
           const { plugin, version } = data
           const redirected = onPackageCategoryResolved?.(plugin.category, packageId)
-          if (redirected)
-            return
+          if (redirected) return
 
           setMarketplaceInstall({
-            uniqueIdentifier: packageId,
+            packageId,
+            uniqueIdentifier,
             manifest: {
               ...plugin,
               version: version.version,
-              icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+              icon: getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`),
             },
           })
           setIsShowInstallFromMarketplace(true)
-        }
-        catch (error) {
-          if (!ignore)
-            console.error('Failed to load marketplace plugin manifest:', error)
+        } catch (error) {
+          if (!ignore) console.error('Failed to load marketplace plugin manifest:', error)
         }
         return
       }
@@ -73,15 +83,12 @@ export const useInstallFromMarketplaceQuery = ({
       if (bundleInfo) {
         try {
           const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
-          if (ignore)
-            return
+          if (ignore) return
 
           setDependencies(data.version.dependencies)
           setIsShowInstallFromMarketplace(true)
-        }
-        catch (error) {
-          if (!ignore)
-            console.error('Failed to load bundle info:', error)
+        } catch (error) {
+          if (!ignore) console.error('Failed to load bundle info:', error)
         }
       }
     }
@@ -91,7 +98,14 @@ export const useInstallFromMarketplaceQuery = ({
     return () => {
       ignore = true
     }
-  }, [bundleInfo, canInstallPlugin, isPermissionLoading, onPackageCategoryResolved, packageId, setInstallState])
+  }, [
+    bundleInfo,
+    canInstallPlugin,
+    isPermissionLoading,
+    onPackageCategoryResolved,
+    packageId,
+    setInstallState,
+  ])
 
   const hideInstallFromMarketplace = () => {
     setMarketplaceInstall(null)
@@ -105,6 +119,6 @@ export const useInstallFromMarketplaceQuery = ({
     dependencies,
     hideInstallFromMarketplace,
     isShowInstallFromMarketplace,
-    marketplaceInstall: marketplaceInstall?.uniqueIdentifier === packageId ? marketplaceInstall : null,
+    marketplaceInstall: marketplaceInstall?.packageId === packageId ? marketplaceInstall : null,
   }
 }

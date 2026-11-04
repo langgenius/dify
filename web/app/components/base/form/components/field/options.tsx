@@ -11,24 +11,13 @@ type OptionsFieldProps = {
   className?: string
 }
 
-const OptionsField = ({
-  label,
-  className,
-  labelOptions,
-}: OptionsFieldProps) => {
+const OptionsField = ({ label, className, labelOptions }: OptionsFieldProps) => {
   const field = useFieldContext<Options>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
-      <ConfigSelect
-        options={field.state.value}
-        onChange={value => field.handleChange(value)}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
+      <ConfigSelect options={field.state.value} onChange={(value) => field.handleChange(value)} />
     </div>
   )
 }

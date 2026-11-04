@@ -1,28 +1,35 @@
 'use client'
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentBuildDraftChangedKey, AgentBuildDraftChangeItem, AgentBuildDraftChangeSummary } from './components/orchestrate/build-draft-changes-context'
+import type {
+  AgentBuildDraftChangedKey,
+  AgentBuildDraftChangeItem,
+  AgentBuildDraftChangeSummary,
+} from './components/orchestrate/build-draft-changes-context'
 import type { AgentConfigureSoulSource } from './state'
-import type { AgentFileNode, AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type {
+  AgentFileNode,
+  AgentSoulConfigFormState,
+} from '@/features/agent-v2/agent-composer/form-state'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
-import { consoleQuery } from '@/service/client'
+import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
+import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 
-const getAgentSoulConfigFromRefetchResult = (result: unknown) => {
-  return (result as { data?: { agent_soul?: AgentSoulConfig } } | undefined)?.data?.agent_soul
-}
-const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => (
-  file.children?.length ? [file, ...flattenFileNodes(file.children)] : [file]
-))
+const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] =>
+  files.flatMap((file) =>
+    file.children?.length ? [file, ...flattenFileNodes(file.children)] : [file],
+  )
 
 function getItemDiff<TItem>({
   currentItems,
@@ -37,8 +44,8 @@ function getItemDiff<TItem>({
   getKey: (item: TItem) => string
   getName: (item: TItem) => string
 }): AgentBuildDraftChangeItem[] {
-  const currentByKey = new Map(currentItems.map(item => [getKey(item), item]))
-  const nextByKey = new Map(nextItems.map(item => [getKey(item), item]))
+  const currentByKey = new Map(currentItems.map((item) => [getKey(item), item]))
+  const nextByKey = new Map(nextItems.map((item) => [getKey(item), item]))
   const changes: AgentBuildDraftChangeItem[] = []
 
   for (const item of nextItems) {
@@ -66,8 +73,7 @@ function getItemDiff<TItem>({
 
   for (const item of currentItems) {
     const key = getKey(item)
-    if (nextByKey.has(key))
-      continue
+    if (nextByKey.has(key)) continue
 
     changes.push({
       id: key,
@@ -103,22 +109,22 @@ function getAgentBuildDraftChangeSummary({
     ...getItemDiff({
       currentItems: flattenFileNodes(normalDraft.files),
       nextItems: flattenFileNodes(buildDraft.files),
-      getIcon: file => file.icon,
-      getKey: file => file.configName ?? file.id ?? file.name,
-      getName: file => file.name,
+      getIcon: (file) => file.icon,
+      getKey: (file) => file.configName ?? file.id ?? file.name,
+      getName: (file) => file.name,
     }),
   ]
   const skillChanges = getItemDiff({
     currentItems: normalDraft.skills,
     nextItems: buildDraft.skills,
-    getKey: skill => skill.id || skill.name,
-    getName: skill => skill.name,
+    getKey: (skill) => skill.id || skill.name,
+    getName: (skill) => skill.name,
   })
   const envVariableChanges = getItemDiff({
     currentItems: normalDraft.envVariables,
     nextItems: buildDraft.envVariables,
-    getKey: variable => variable.id || variable.key,
-    getName: variable => variable.key,
+    getKey: (variable) => variable.id || variable.key,
+    getName: (variable) => variable.key,
   })
 
   return {
@@ -134,6 +140,7 @@ export function useAgentConfigureBuildDraftData({
   agentId,
   activeVersionId,
   composerAgentSoulConfig,
+  isBuildMode,
   isViewingVersion,
   normalAgentSoulConfig,
   setSoulSourceOverride,
@@ -142,69 +149,61 @@ export function useAgentConfigureBuildDraftData({
   agentId: string
   activeVersionId: string | null | undefined
   composerAgentSoulConfig?: AgentSoulConfig
+  isBuildMode: boolean
   isViewingVersion: boolean
   normalAgentSoulConfig?: AgentSoulConfig
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
-  const shouldSilenceBuildDraftCheckRef = useRef(true)
-  const buildDraftQueryInput = {
-    params: {
-      agent_id: agentId,
-    },
-  }
+  const { t } = useTranslation(['common'])
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
-      params: buildDraftQueryInput.params,
-    },
-    context: {},
-  })
-  const silentBuildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-    input: {
-      params: buildDraftQueryInput.params,
+      params: { agent_id: agentId },
     },
     context: {
       silent: true,
     },
-    queryKey: buildDraftQueryOptions.queryKey,
   })
-  const buildDraftQuery = useQuery({
-    ...buildDraftQueryOptions,
-    enabled: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version',
-    queryFn: async (context) => {
-      try {
-        const queryOptions = shouldSilenceBuildDraftCheckRef.current
-          ? silentBuildDraftQueryOptions
-          : buildDraftQueryOptions
-
-        shouldSilenceBuildDraftCheckRef.current = false
-        return await queryOptions.queryFn(context)
-      }
-      catch (error) {
-        if (isNotFoundResponse(error))
-          setSoulSourceOverride('draft')
-        throw error
-      }
-    },
-    retry: false,
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false,
-  })
+  const buildDraftQuery = useQuery(
+    queryOptions({
+      ...buildDraftQueryOptions,
+      enabled:
+        isBuildMode &&
+        !isViewingVersion &&
+        soulSourceOverride !== 'draft' &&
+        soulSourceOverride !== 'view-version',
+      queryFn: async (context) => {
+        try {
+          return await buildDraftQueryOptions.queryFn(context)
+        } catch (error) {
+          if (isNotFoundError(error)) setSoulSourceOverride('draft')
+          else toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
+          throw error
+        }
+      },
+      retry: false,
+      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
   const {
     data: buildDraftData,
     dataUpdatedAt: buildDraftDataUpdatedAt,
     error: buildDraftError,
-    isError: isBuildDraftError,
     isPending: isBuildDraftPending,
     refetch: refetchBuildDraft,
   } = buildDraftQuery
-  const buildDraftNotFound = isNotFoundResponse(buildDraftError)
-  const soulSource: AgentConfigureSoulSource = isViewingVersion
+  const buildDraftNotFound = isNotFoundError(buildDraftError)
+  const resolvedSoulSource: AgentConfigureSoulSource = isViewingVersion
     ? 'view-version'
-    : soulSourceOverride ?? (!buildDraftNotFound && !!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft')
+    : (soulSourceOverride ?? (!buildDraftNotFound && !!buildDraftData ? 'build-draft' : 'draft'))
+  const hasActiveBuildDraft = resolvedSoulSource === 'build-draft'
+  const soulSource = !isBuildMode && hasActiveBuildDraft ? 'draft' : resolvedSoulSource
   const isBuildDraftActive = soulSource === 'build-draft'
-  const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
-  const visibleAgentSoulConfig = isBuildDraftActive ? buildDraftAgentSoulConfig : normalAgentSoulConfig
+  const buildDraftAgentSoulConfig = buildDraftData?.agent_soul
+  const visibleAgentSoulConfig = isBuildDraftActive
+    ? buildDraftAgentSoulConfig
+    : normalAgentSoulConfig
   const buildDraftChangeSummary = useMemo<AgentBuildDraftChangeSummary>(() => {
     if (!buildDraftAgentSoulConfig || !composerAgentSoulConfig) {
       return {
@@ -218,8 +217,9 @@ export function useAgentConfigureBuildDraftData({
 
     const normalDraft = agentSoulConfigToFormState(composerAgentSoulConfig)
     const buildDraft = agentSoulConfigToFormState(buildDraftAgentSoulConfig)
-    const changedKeys = (Object.keys(buildDraft) as Array<keyof typeof buildDraft>)
-      .filter(key => !isEqual(buildDraft[key], normalDraft[key]))
+    const changedKeys = (Object.keys(buildDraft) as Array<keyof typeof buildDraft>).filter(
+      (key) => !isEqual(buildDraft[key], normalDraft[key]),
+    )
 
     return getAgentBuildDraftChangeSummary({
       buildDraft,
@@ -230,13 +230,23 @@ export function useAgentConfigureBuildDraftData({
   }, [buildDraftAgentSoulConfig, composerAgentSoulConfig])
 
   return {
-    activeVersionId: isBuildDraftActive ? `build-draft:${buildDraftDataUpdatedAt}` : activeVersionId,
+    activeVersionId: isBuildDraftActive
+      ? `build-draft:${buildDraftDataUpdatedAt}`
+      : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
+    buildDraftAgentSoulConfig,
+    id: buildDraftData?.draft.id,
     changedKeys: buildDraftChangeSummary.changedKeys,
     changeSummary: buildDraftChangeSummary,
     changesCount: buildDraftChangeSummary.changesCount,
+    hasActiveBuildDraft,
     isActive: isBuildDraftActive,
-    isPending: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version' && isBuildDraftPending,
+    isPending:
+      isBuildMode &&
+      !isViewingVersion &&
+      soulSourceOverride !== 'draft' &&
+      soulSourceOverride !== 'view-version' &&
+      isBuildDraftPending,
     refetch: refetchBuildDraft,
     setSoulSourceOverride,
     soulSource,
@@ -261,17 +271,17 @@ export function useAgentConfigureBuildDraftActions({
   isActive: boolean
   normalAgentSoulConfig?: AgentSoulConfig
   rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
-  refetchBuildDraft: () => Promise<unknown>
-  refetchComposer: () => Promise<unknown>
+  refetchBuildDraft: () => Promise<{ data?: { agent_soul?: AgentSoulConfig } }>
+  refetchComposer: () => Promise<{ data?: { agent_soul?: AgentSoulConfig } }>
   resetBuildChatSession: () => Promise<void>
   saveDraft: () => Promise<void>
   onComposerRebased?: () => void
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const buildDraftRefreshGenerationRef = useRef(0)
+  const forceCheckoutBeforeNextBuildRunRef = useRef(false)
+  const [isApplyingBuildDraftWorkflow, setIsApplyingBuildDraftWorkflow] = useState(false)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -279,77 +289,99 @@ export function useAgentConfigureBuildDraftActions({
       },
     },
   })
-  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
-  const finalizeBuildChatMutation = useMutation(consoleQuery.agent.byAgentId.buildChat.finalize.post.mutationOptions())
-  const applyBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions())
-  const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
-  const { mutateAsync: finalizeBuildChatRequest, isPending: isFinalizingBuildChat } = finalizeBuildChatMutation
-  const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraft } = applyBuildDraftMutation
-  const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } = discardBuildDraftMutation
-  const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
-    agentId,
-    buildDraftAgentSoulConfig,
-    isBuildDraftActive: isActive,
-    rebaseComposerDraft,
-    saveDraft,
-    setSoulSourceOverride,
+  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+    input: { params: { agent_id: agentId } },
   })
+  const finalizeBuildChatMutation = useMutation(
+    consoleQuery.agent.byAgentId.buildChat.finalize.post.mutationOptions(),
+  )
+  const applyBuildDraftMutation = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions(),
+  )
+  const discardBuildDraftMutation = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const { mutateAsync: finalizeBuildChatRequest } = finalizeBuildChatMutation
+  const { mutateAsync: applyBuildDraftRequest } = applyBuildDraftMutation
+  const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } =
+    discardBuildDraftMutation
+  const { forceCheckoutBuildDraft, prepareBuildDraftBeforeRun } =
+    usePrepareAgentBuildDraftBeforeRun({
+      agentId,
+      buildDraftAgentSoulConfig,
+      isBuildDraftActive: isActive,
+      rebaseComposerDraft,
+      saveDraft,
+      setSoulSourceOverride,
+    })
 
-  const cancelBuildDraftRefresh = useCallback(() => {
-    buildDraftRefreshGenerationRef.current += 1
-    if (!buildDraftRefreshTimerRef.current)
-      return
-
-    clearTimeout(buildDraftRefreshTimerRef.current)
-    buildDraftRefreshTimerRef.current = null
-  }, [])
+  const { cancelBuildDraftRefresh, refreshBuildDraftAfterBuildChat } = useAgentBuildDraftRefresh({
+    refetchBuildDraft,
+    rebaseComposerDraft,
+  })
 
   const prepareBuildDraftRun = useCallback(async () => {
     cancelBuildDraftRefresh()
-    return prepareBuildDraftBeforeRun()
-  }, [cancelBuildDraftRefresh, prepareBuildDraftBeforeRun])
+    if (!forceCheckoutBeforeNextBuildRunRef.current) return prepareBuildDraftBeforeRun()
 
-  const refreshBuildDraftAfterBuildChat = useCallback((onRefreshed?: () => void) => {
+    await saveDraft()
+    const buildDraft = await forceCheckoutBuildDraft()
+    forceCheckoutBeforeNextBuildRunRef.current = false
+    return buildDraft
+  }, [cancelBuildDraftRefresh, forceCheckoutBuildDraft, prepareBuildDraftBeforeRun, saveDraft])
+
+  const startFreshBuildSession = useCallback(async () => {
     cancelBuildDraftRefresh()
-    const refreshGeneration = buildDraftRefreshGenerationRef.current
-
-    buildDraftRefreshTimerRef.current = setTimeout(async () => {
-      buildDraftRefreshTimerRef.current = null
-      try {
-        const result = await refetchBuildDraft()
-        if (refreshGeneration !== buildDraftRefreshGenerationRef.current)
-          return
-
-        const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
-        if (agentSoulConfig)
-          rebaseComposerDraft(agentSoulConfig)
-      }
-      catch {}
-      finally {
-        if (refreshGeneration === buildDraftRefreshGenerationRef.current)
-          onRefreshed?.()
-      }
-    }, 1000)
-  }, [cancelBuildDraftRefresh, rebaseComposerDraft, refetchBuildDraft])
-
-  const exitBuildDraftMode = useCallback(async (shouldRefetchComposer: boolean) => {
-    cancelBuildDraftRefresh()
-    await resetBuildChatSession().catch(() => undefined)
     setSoulSourceOverride('draft')
-    queryClient.removeQueries({
-      queryKey: buildDraftQueryOptions.queryKey,
-    })
-    if (shouldRefetchComposer) {
-      const result = await refetchComposer()
-      rebaseComposerDraft(getAgentSoulConfigFromRefetchResult(result) ?? normalAgentSoulConfig)
-      onComposerRebased?.()
+    try {
+      await resetBuildChatSession()
+      forceCheckoutBeforeNextBuildRunRef.current = true
+      return true
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+      return false
     }
-    else {
-      rebaseComposerDraft(normalAgentSoulConfig)
-    }
-  }, [buildDraftQueryOptions.queryKey, cancelBuildDraftRefresh, normalAgentSoulConfig, onComposerRebased, queryClient, rebaseComposerDraft, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
+  }, [cancelBuildDraftRefresh, resetBuildChatSession, setSoulSourceOverride, tCommon])
+
+  const exitBuildDraftMode = useCallback(
+    async (shouldRefetchComposer: boolean) => {
+      cancelBuildDraftRefresh()
+      const didResetBuildChatSession = await resetBuildChatSession().then(
+        () => true,
+        (error: unknown) => {
+          toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+          return false
+        },
+      )
+      let nextAgentSoulConfig = normalAgentSoulConfig
+      if (shouldRefetchComposer) {
+        const result = await refetchComposer()
+        nextAgentSoulConfig = result.data?.agent_soul ?? normalAgentSoulConfig
+      }
+      setSoulSourceOverride('draft')
+      queryClient.removeQueries({
+        queryKey: buildDraftQueryOptions.queryKey,
+      })
+      rebaseComposerDraft(nextAgentSoulConfig)
+      if (shouldRefetchComposer) onComposerRebased?.()
+      return didResetBuildChatSession
+    },
+    [
+      buildDraftQueryOptions.queryKey,
+      cancelBuildDraftRefresh,
+      normalAgentSoulConfig,
+      onComposerRebased,
+      queryClient,
+      rebaseComposerDraft,
+      refetchComposer,
+      resetBuildChatSession,
+      setSoulSourceOverride,
+      tCommon,
+    ],
+  )
 
   const applyBuildDraft = async () => {
+    setIsApplyingBuildDraftWorkflow(true)
     try {
       await finalizeBuildChatRequest({
         params: {
@@ -367,11 +399,11 @@ export function useAgentConfigureBuildDraftActions({
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.agent.get.key(),
       })
-      await exitBuildDraftMode(true)
-      toast.success(tCommon('api.actionSuccess'))
-    }
-    catch {
-      toast.error(tCommon('api.actionFailed'))
+      if (await exitBuildDraftMode(true)) toast.success(tCommon(($) => $['api.actionSuccess']))
+    } catch {
+      // Each failed request already surfaces its backend error through the console client.
+    } finally {
+      setIsApplyingBuildDraftWorkflow(false)
     }
   }
 
@@ -382,27 +414,22 @@ export function useAgentConfigureBuildDraftActions({
           agent_id: agentId,
         },
       })
-      await exitBuildDraftMode(false)
-      toast.success(tCommon('api.actionSuccess'))
-    }
-    catch {
-      toast.error(tCommon('api.actionFailed'))
+      if (await exitBuildDraftMode(false)) toast.success(tCommon(($) => $['api.actionSuccess']))
+      return true
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+      return false
     }
   }
-
-  useEffect(() => {
-    return () => {
-      cancelBuildDraftRefresh()
-    }
-  }, [cancelBuildDraftRefresh])
 
   return {
     applyBuildDraft,
     cancelBuildDraftRefresh,
     discardBuildDraft,
-    isApplyingBuildDraft: isFinalizingBuildChat || isApplyingBuildDraft,
+    isApplyingBuildDraft: isApplyingBuildDraftWorkflow,
     isDiscardingBuildDraft,
     prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,
+    startFreshBuildSession,
   }
 }

@@ -1,11 +1,13 @@
 'use client'
 
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
-import type {
-  EditorState,
-} from 'lexical'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
+import type { EditorState } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
+import type {
+  ShortcutPopupDisplayMode,
+  ShortcutPopupInsertHandler,
+} from './plugins/shortcuts-popup-plugin'
 import type {
   AgentOutputBlockType,
   ContextBlockType,
@@ -25,49 +27,24 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import {
-  $getRoot,
-  TextNode,
-} from 'lexical'
+import { $getRoot, TextNode } from 'lexical'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  UPDATE_DATASETS_EVENT_EMITTER,
-  UPDATE_HISTORY_EVENT_EMITTER,
-} from './constants'
+import { UPDATE_DATASETS_EVENT_EMITTER, UPDATE_HISTORY_EVENT_EMITTER } from './constants'
 import { AgentOutputBlockNode } from './plugins/agent-output-block/node'
-import {
-  ContextBlockNode,
-} from './plugins/context-block'
-import {
-  CurrentBlockNode,
-} from './plugins/current-block'
+import { ContextBlockNode } from './plugins/context-block'
+import { CurrentBlockNode } from './plugins/current-block'
 import { CustomTextNode } from './plugins/custom-text/node'
-import {
-  ErrorMessageBlockNode,
-} from './plugins/error-message-block'
-
-import {
-  HistoryBlockNode,
-} from './plugins/history-block'
-import {
-  HITLInputNode,
-} from './plugins/hitl-input-block'
-import {
-  LastRunBlockNode,
-} from './plugins/last-run-block'
-import {
-  QueryBlockNode,
-} from './plugins/query-block'
-import {
-  RequestURLBlockNode,
-} from './plugins/request-url-block'
+import { ErrorMessageBlockNode } from './plugins/error-message-block'
+import { HistoryBlockNode } from './plugins/history-block'
+import { HITLInputNode } from './plugins/hitl-input-block'
+import { LastRunBlockNode } from './plugins/last-run-block'
+import { QueryBlockNode } from './plugins/query-block'
+import { RequestURLBlockNode } from './plugins/request-url-block'
 import { RosterReferenceBlockNode } from './plugins/roster-reference-block/node'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
-import {
-  WorkflowVariableBlockNode,
-} from './plugins/workflow-variable-block'
+import { WorkflowVariableBlockNode } from './plugins/workflow-variable-block'
 import PromptEditorContent from './prompt-editor-content'
 import { textToEditorState } from './utils'
 
@@ -75,25 +52,27 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
-    if (value === undefined)
-      return
+    if (value === undefined) return
 
     const incomingValue = value ?? ''
     const shouldUpdate = editor.getEditorState().read(() => {
-      const currentText = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      const currentText = $getRoot()
+        .getChildren()
+        .map((node) => node.getTextContent())
+        .join('\n')
       return currentText !== incomingValue
     })
 
-    if (!shouldUpdate)
-      return
+    if (!shouldUpdate) return
 
     const editorState = editor.parseEditorState(textToEditorState(incomingValue))
     editor.setEditorState(editorState)
     editor.update(() => {
-      $getRoot().getAllTextNodes().forEach((node) => {
-        if (node instanceof CustomTextNode)
-          node.markDirty()
-      })
+      $getRoot()
+        .getAllTextNodes()
+        .forEach((node) => {
+          if (node instanceof CustomTextNode) node.markDirty()
+        })
     })
   }, [editor, value])
 
@@ -110,9 +89,17 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
   return null
 }
 
-type PromptEditorAriaProps = Pick<React.AriaAttributes, 'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'>
+type PromptEditorAriaProps = Pick<
+  React.AriaAttributes,
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
+>
 
-export type PromptEditorProps = PromptEditorAriaProps & {
+type PromptEditorProps = PromptEditorAriaProps & {
   instanceId?: string
   children?: React.ReactNode
   compact?: boolean
@@ -143,9 +130,9 @@ export type PromptEditorProps = PromptEditorAriaProps & {
   disableSlashPicker?: boolean
   disableBracePicker?: boolean
   shortcutPopups?: Array<{
-    hotkey: Hotkey
+    hotkey: HotkeyChord
     displayMode?: ShortcutPopupDisplayMode
-    Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
+    Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
   }>
 }
 
@@ -154,6 +141,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   instanceId,
   children,
   compact,
@@ -220,10 +209,12 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   const handleEditorChange = (editorState: EditorState) => {
     const text = editorState.read(() => {
-      return $getRoot().getChildren().map(p => p.getTextContent()).join('\n')
+      return $getRoot()
+        .getChildren()
+        .map((p) => p.getTextContent())
+        .join('\n')
     })
-    if (onChange)
-      onChange(text)
+    if (onChange) onChange(text)
   }
 
   useEffect(() => {
@@ -243,8 +234,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   const onRef = useCallback((nextFloatingAnchorElem: HTMLDivElement | null) => {
     setFloatingAnchorElem((currentFloatingAnchorElem) => {
-      if (currentFloatingAnchorElem === nextFloatingAnchorElem)
-        return currentFloatingAnchorElem
+      if (currentFloatingAnchorElem === nextFloatingAnchorElem) return currentFloatingAnchorElem
 
       return nextFloatingAnchorElem
     })
@@ -258,6 +248,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
           aria-haspopup={ariaHasPopup}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           compact={compact}
           className={className}
           placeholder={placeholder}

@@ -1,7 +1,13 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import {
+  SegmentedControl,
+  SegmentedControlDivider,
+  SegmentedControlItem,
+} from '@langgenius/dify-ui/segmented-control'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
@@ -28,13 +34,7 @@ function AgentModeTipSection({
   )
 }
 
-function ModeInfoTip({
-  children,
-  ariaLabel,
-}: {
-  children: ReactNode
-  ariaLabel: string
-}) {
+function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: string }) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
   }
@@ -47,14 +47,16 @@ function ModeInfoTip({
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}
-        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0"
       >
-        <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary hover:text-text-secondary" />
+        <span
+          aria-hidden
+          className="i-ri-question-line size-4 text-text-tertiary hover:text-text-secondary"
+        />
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom"
         sideOffset={2}
-        popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
+        className="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
       >
         {children}
       </PopoverContent>
@@ -64,10 +66,12 @@ function ModeInfoTip({
 
 function PreviewModeItem({
   previewEnabled,
+  label,
   disabledTip,
   children,
 }: {
   previewEnabled: boolean
+  label: string
   disabledTip: string
   children: ReactNode
 }) {
@@ -81,23 +85,21 @@ function PreviewModeItem({
     </SegmentedControlItem>
   )
 
-  if (previewEnabled)
-    return item
+  if (previewEnabled) return item
 
   return (
     <Popover>
       <PopoverTrigger
         openOnHover
         nativeButton={false}
-        aria-label={disabledTip}
+        aria-label={`${label}. ${disabledTip}`}
         render={<span className="inline-flex" />}
       >
         {item}
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom"
         sideOffset={6}
-        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+        className="max-w-65 rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
       >
         {disabledTip}
       </PopoverContent>
@@ -108,66 +110,78 @@ function PreviewModeItem({
 export function AgentPreviewHeader({
   mode,
   previewEnabled,
-  isChatFeaturesOpen,
+  chatFeatures,
+  buildEnabled = true,
   onModeChange,
-  onToggleChatFeatures,
   onOpenWorkingDirectory,
   onRefresh,
   refreshDisabled,
   showWorkingDirectoryAction = false,
-  showChatFeaturesAction = true,
-  trailingAction,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
-  isChatFeaturesOpen: boolean
+  chatFeatures?: { open: boolean; onToggle: () => void }
+  buildEnabled?: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
-  onToggleChatFeatures: () => void
   onOpenWorkingDirectory: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
   showWorkingDirectoryAction?: boolean
-  showChatFeaturesAction?: boolean
-  trailingAction?: ReactNode
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
-  const buildLabel = t('agentDetail.configure.rightPanel.build')
-  const buildTipBody = t('agentDetail.configure.rightPanel.buildTipBody')
-  const previewLabel = t('agentDetail.configure.rightPanel.preview')
-  const previewTipBody = t('agentDetail.configure.rightPanel.previewTipBody')
-  const previewDisabledTip = t('agentDetail.configure.rightPanel.previewDisabledTip')
-  const learnMoreLabel = t('agentDetail.configure.rightPanel.learnMore')
+  const buildLabel = t(($) => $['agentDetail.configure.rightPanel.build'])
+  const buildTipBody = t(($) => $['agentDetail.configure.rightPanel.buildTipBody'])
+  const previewLabel = t(($) => $['agentDetail.configure.rightPanel.preview'])
+  const previewTipBody = t(($) => $['agentDetail.configure.rightPanel.previewTipBody'])
+  const previewDisabledTip = t(($) => $['agentDetail.configure.rightPanel.previewDisabledTip'])
+  const learnMoreLabel = t(($) => $['agentDetail.configure.rightPanel.learnMore'])
+  const restartLabel = t(($) => $['agentDetail.configure.preview.restart'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
+  const restartButton = (
+    <IconButton
+      aria-label={restartLabel}
+      disabled={refreshDisabled}
+      onClick={mode === 'preview' ? onRefresh : undefined}
+    >
+      <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
+    </IconButton>
+  )
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 pr-(--agent-preview-header-end,1rem) max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2 max-sm:pr-(--agent-preview-header-end,0.5rem)">
+      <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
-          value={[mode]}
-          onValueChange={(value) => {
-            const nextMode = value[0]
-            if (nextMode && (nextMode !== 'preview' || previewEnabled))
-              onModeChange(nextMode)
-          }}
-          aria-label={t('agentDetail.configure.rightPanel.modeLabel')}
+          value={mode}
+          onValueChange={(value) => onModeChange(value)}
+          aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
-          <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
+          <SegmentedControlItem<AgentConfigureRightPanelMode>
+            value="build"
+            disabled={!buildEnabled}
+            className="uppercase"
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
-            {t('agentDetail.configure.rightPanel.build')}
+            {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
-          <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
+          <PreviewModeItem
+            previewEnabled={previewEnabled}
+            label={previewLabel}
+            disabledTip={previewDisabledTip}
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
-            {t('agentDetail.configure.rightPanel.preview')}
+            {t(($) => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
         </SegmentedControl>
         <ModeInfoTip ariaLabel={modeTip}>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-3">
-              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-build" title={buildLabel}>
+              <AgentModeTipSection
+                iconClassName="i-custom-vender-agent-v2-configure-build"
+                title={buildLabel}
+              >
                 <>
-                  {buildTipBody}
-                  {' '}
+                  {buildTipBody}{' '}
                   <a
                     href={docLink('/use-dify/build/new-agent/build#build-by-chatting')}
                     target="_blank"
@@ -178,59 +192,64 @@ export function AgentPreviewHeader({
                   </a>
                 </>
               </AgentModeTipSection>
-              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-preview" title={previewLabel}>
+              <AgentModeTipSection
+                iconClassName="i-custom-vender-agent-v2-configure-preview"
+                title={previewLabel}
+              >
                 {previewTipBody}
               </AgentModeTipSection>
             </div>
           </div>
         </ModeInfoTip>
       </div>
-      <div className="flex shrink-0 items-center">
-        <div className="flex items-center gap-2">
-          <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
-            <button
-              type="button"
-              disabled={refreshDisabled}
-              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={t('agentDetail.configure.preview.restart')}
-            >
-              <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
-            </button>
-          </AgentConfigureClearSessionConfirmDialog>
+      <div className="flex shrink-0 items-center max-sm:w-full max-sm:flex-wrap max-sm:justify-end">
+        <div className="flex items-center gap-2 max-sm:flex-wrap">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex">
+                  {mode === 'preview' ? (
+                    restartButton
+                  ) : (
+                    <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
+                      {restartButton}
+                    </AgentConfigureClearSessionConfirmDialog>
+                  )}
+                </span>
+              }
+            />
+            <TooltipContent>{restartLabel}</TooltipContent>
+          </Tooltip>
           {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t('agentDetail.configure.workingDirectory.open')}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.workingDirectory.fileSystem')}</span>
+              <span className="px-0.5 system-sm-medium">
+                {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
+              </span>
             </button>
           )}
         </div>
-        {showChatFeaturesAction && (
+        {chatFeatures && (
           <>
-            <SegmentedControlDivider className="mx-3" />
+            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             <button
               type="button"
-              aria-pressed={isChatFeaturesOpen}
-              onClick={onToggleChatFeatures}
+              aria-expanded={chatFeatures.open}
+              onClick={chatFeatures.onToggle}
               className={cn(
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+                chatFeatures.open && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t('agentDetail.configure.preview.chatFeatures')}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
+              <span className="px-0.5 system-sm-medium">
+                {t(($) => $['agentDetail.configure.preview.chatFeatures'])}
+              </span>
             </button>
-          </>
-        )}
-        {trailingAction != null && (
-          <>
-            <SegmentedControlDivider className="mx-3" />
-            {trailingAction}
           </>
         )}
       </div>

@@ -3,16 +3,14 @@ import type { VarType } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { RiArrowDownSLine } from '@remixicon/react'
-import {
-  useMemo,
-} from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
@@ -34,60 +32,53 @@ const ConditionOperator = ({
   value,
   onSelect,
 }: ConditionOperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {
       return {
-        label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`, { ns: 'workflow' }) : o,
+        label: isComparisonOperatorNeedTranslate(o)
+          ? t(($) => $[`${i18nPrefix}.comparisonOperator.${o}`], { ns: 'workflowLogic' })
+          : o,
         value: o,
       }
     })
   }, [t, varType, file])
-  const selectedOption = options.find(o => Array.isArray(value) ? o.value === value[0] : o.value === value)
+  const selectedOption = options.find((o) =>
+    Array.isArray(value) ? o.value === value[0] : o.value === value,
+  )
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={(
+    <Menu>
+      <MenuTrigger
+        render={
           <Button
             className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
             size="small"
             variant="ghost"
             disabled={disabled}
           />
-        )}
-      >
-        {
-          selectedOption
-            ? selectedOption.label
-            : t(`${i18nPrefix}.select`, { ns: 'workflow' })
         }
-        <RiArrowDownSLine className="ml-1 size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
-        <DropdownMenuRadioGroup
-          value={selectedOption?.value}
-          onValueChange={onSelect}
-        >
-          {
-            options.map(option => (
-              <DropdownMenuRadioItem
-                key={option.value}
-                value={option.value}
-                closeOnClick
-                className="h-7 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary"
-              >
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))
-          }
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {selectedOption
+          ? selectedOption.label
+          : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflowLogic' })}
+        <RiArrowDownSLine className="size-3.5" />
+      </MenuTrigger>
+      <MenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur">
+        <MenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
+          {options.map((option) => (
+            <MenuRadioItem
+              key={option.value}
+              value={option.value}
+              closeOnClick
+              className="h-7 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary"
+            >
+              {option.label}
+            </MenuRadioItem>
+          ))}
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

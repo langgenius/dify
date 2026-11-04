@@ -42,7 +42,7 @@ const createInputs = (): ListFilterNodeType => ({
     enabled: false,
     size: 20,
   },
-} as unknown as ListFilterNodeType)
+})
 
 describe('list operator use-config helpers', () => {
   it('maps item var types, labels and filter support', () => {
@@ -53,26 +53,34 @@ describe('list operator use-config helpers', () => {
     expect(getItemVarTypeShowName(VarType.number, true)).toBe('Number')
     expect(supportsSubVariable(VarType.arrayFile)).toBe(true)
     expect(supportsSubVariable(VarType.arrayString)).toBe(false)
-    expect(canFilterVariable({ type: VarType.arrayFile } as never)).toBe(true)
-    expect(canFilterVariable({ type: VarType.string } as never)).toBe(false)
+    expect(canFilterVariable({ variable: 'files', type: VarType.arrayFile })).toBe(true)
+    expect(canFilterVariable({ variable: 'text', type: VarType.string })).toBe(false)
   })
 
   it('builds default conditions and updates selected variable metadata', () => {
-    expect(buildFilterCondition({
-      itemVarType: VarType.boolean,
-      isFileArray: false,
-    })).toEqual(expect.objectContaining({
-      key: '',
-      value: false,
-    }))
+    expect(
+      buildFilterCondition({
+        itemVarType: VarType.boolean,
+        isFileArray: false,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        key: '',
+        value: false,
+      }),
+    )
 
-    expect(buildFilterCondition({
-      itemVarType: VarType.string,
-      isFileArray: true,
-    })).toEqual(expect.objectContaining({
-      key: 'name',
-      value: '',
-    }))
+    expect(
+      buildFilterCondition({
+        itemVarType: VarType.string,
+        isFileArray: true,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        key: 'name',
+        value: '',
+      }),
+    )
 
     const nextInputs = updateListFilterVariable({
       inputs: {
@@ -89,19 +97,33 @@ describe('list operator use-config helpers', () => {
   })
 
   it('updates filter, extract, limit and order by sections', () => {
-    const condition = { key: 'size', comparison_operator: '>', value: '10' }
+    const condition: ListFilterNodeType['filter_by']['conditions'][number] = {
+      key: 'size',
+      comparison_operator: '>',
+      value: '10',
+    }
     expect(updateFilterEnabled(createInputs(), true).filter_by.enabled).toBe(true)
-    expect(updateFilterCondition(createInputs(), condition as ListFilterNodeType['filter_by']['conditions'][number]).filter_by.conditions[0]).toEqual(condition)
-    expect(updateLimit(createInputs(), { enabled: true, size: 10 }).limit).toEqual({ enabled: true, size: 10 })
-    expect(updateExtractEnabled(createInputs(), true).extract_by).toEqual({ enabled: true, serial: '1' })
+    expect(updateFilterCondition(createInputs(), condition).filter_by.conditions[0]).toEqual(
+      condition,
+    )
+    expect(updateLimit(createInputs(), { enabled: true, size: 10 }).limit).toEqual({
+      enabled: true,
+      size: 10,
+    })
+    expect(updateExtractEnabled(createInputs(), true).extract_by).toEqual({
+      enabled: true,
+      serial: '1',
+    })
     expect(updateExtractSerial(createInputs(), '2').extract_by.serial).toBe('2')
 
     const orderEnabled = updateOrderByEnabled(createInputs(), true, true)
-    expect(orderEnabled.order_by).toEqual(expect.objectContaining({
-      enabled: true,
-      key: 'name',
-      value: OrderBy.ASC,
-    }))
+    expect(orderEnabled.order_by).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        key: 'name',
+        value: OrderBy.ASC,
+      }),
+    )
     expect(updateOrderByKey(createInputs(), 'created_at').order_by.key).toBe('created_at')
     expect(updateOrderByType(createInputs(), OrderBy.DESC).order_by.value).toBe(OrderBy.DESC)
   })

@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zAccessServiceCreateApiKeyBody,
   zAccessServiceCreateApiKeyPath,
@@ -105,7 +104,7 @@ import {
   zWebAppAuthSearchForWhilteListCandidatesResponse,
   zWebAppAuthUpdateWebAppWhitelistSubjectsBody,
   zWebAppAuthUpdateWebAppWhitelistSubjectsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const listAppInstanceSummaries = oc
   .route({
@@ -115,7 +114,9 @@ export const listAppInstanceSummaries = oc
     path: '/enterprise/app-deploy/appInstanceSummaries',
     tags: ['AppInstanceService'],
   })
-  .input(z.object({ query: zAppInstanceServiceListAppInstanceSummariesQuery.optional() }))
+  .input(
+    z.object({ query: zAppInstanceServiceListAppInstanceSummariesQuery.optional() }).optional(),
+  )
   .output(zAppInstanceServiceListAppInstanceSummariesResponse)
 
 export const listAppInstances = oc
@@ -126,7 +127,7 @@ export const listAppInstances = oc
     path: '/enterprise/app-deploy/appInstances',
     tags: ['AppInstanceService'],
   })
-  .input(z.object({ query: zAppInstanceServiceListAppInstancesQuery.optional() }))
+  .input(z.object({ query: zAppInstanceServiceListAppInstancesQuery.optional() }).optional())
   .output(zAppInstanceServiceListAppInstancesResponse)
 
 export const createAppInstance = oc
@@ -594,7 +595,7 @@ export const listEnvironments = oc
     path: '/enterprise/app-deploy/environments',
     tags: ['EnvironmentService'],
   })
-  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }))
+  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }).optional())
   .output(zEnvironmentServiceListEnvironmentsResponse)
 
 export const environmentService = {
@@ -645,7 +646,7 @@ export const getWebAppAccessMode = oc
     path: '/enterprise/webapp/app/access-mode',
     tags: ['WebAppAuth'],
   })
-  .input(z.object({ query: zWebAppAuthGetWebAppAccessModeQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetWebAppAccessModeQuery.optional() }).optional())
   .output(zWebAppAuthGetWebAppAccessModeResponse)
 
 export const updateWebAppWhitelistSubjects = oc
@@ -667,7 +668,7 @@ export const searchForWhilteListCandidates = oc
     path: '/enterprise/webapp/app/subject/search',
     tags: ['WebAppAuth'],
   })
-  .input(z.object({ query: zWebAppAuthSearchForWhilteListCandidatesQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthSearchForWhilteListCandidatesQuery.optional() }).optional())
   .output(zWebAppAuthSearchForWhilteListCandidatesResponse)
 
 export const getWebAppWhitelistSubjects = oc
@@ -678,7 +679,7 @@ export const getWebAppWhitelistSubjects = oc
     path: '/enterprise/webapp/app/subjects',
     tags: ['WebAppAuth'],
   })
-  .input(z.object({ query: zWebAppAuthGetWebAppWhitelistSubjectsQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetWebAppWhitelistSubjectsQuery.optional() }).optional())
   .output(zWebAppAuthGetWebAppWhitelistSubjectsResponse)
 
 export const getGroupSubjects = oc
@@ -689,7 +690,7 @@ export const getGroupSubjects = oc
     path: '/enterprise/webapp/group/subjects',
     tags: ['WebAppAuth'],
   })
-  .input(z.object({ query: zWebAppAuthGetGroupSubjectsQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetGroupSubjectsQuery.optional() }).optional())
   .output(zWebAppAuthGetGroupSubjectsResponse)
 
 export const isUserAllowedToAccessWebApp = oc
@@ -700,7 +701,7 @@ export const isUserAllowedToAccessWebApp = oc
     path: '/enterprise/webapp/permission',
     tags: ['WebAppAuth'],
   })
-  .input(z.object({ query: zWebAppAuthIsUserAllowedToAccessWebAppQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthIsUserAllowedToAccessWebAppQuery.optional() }).optional())
   .output(zWebAppAuthIsUserAllowedToAccessWebAppResponse)
 
 export const webAppAuth = {

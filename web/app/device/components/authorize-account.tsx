@@ -1,11 +1,12 @@
 'use client'
 
 import type { FC } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { deviceApproveAccount, deviceDenyAccount } from '@/service/device-flow'
+import { getAvatarInitial } from '@/utils/avatar'
 import { approveErrorCopy } from '../utils/error-copy'
 
 type Props = {
@@ -35,7 +36,7 @@ const AuthorizeAccount: FC<Props> = ({
   onDenied,
   onError,
 }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow', 'common'])
   const [busy, setBusy] = useState(false)
 
   const approve = async () => {
@@ -43,11 +44,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceApproveAccount(userCode)
       onApproved()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e, t))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -57,11 +56,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceDenyAccount(userCode)
       onDenied()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e, t))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -69,51 +66,35 @@ const AuthorizeAccount: FC<Props> = ({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t('authorize.title')}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">
+          {t(($) => $['authorize.title'])}
+        </h2>
         <p className="mt-2 text-sm text-text-secondary">
-          {t('authorize.accountSubtitle')}
+          {t(($) => $['authorize.accountSubtitle'])}
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
-        <Avatar
-          size="md"
-          avatar={accountAvatarUrl ?? null}
-          name={accountName || accountEmail || ''}
-        />
+        <Avatar size="md" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(accountName || accountEmail || '')}</AvatarFallback>
+          <AvatarImage src={accountAvatarUrl || undefined} alt="" />
+        </Avatar>
         <div>
-          {accountName && (
-            <p className="text-sm font-semibold text-text-primary">{accountName}</p>
-          )}
-          {accountEmail && (
-            <p className="text-xs text-text-secondary">{accountEmail}</p>
-          )}
+          {accountName && <p className="text-sm font-semibold text-text-primary">{accountName}</p>}
+          {accountEmail && <p className="text-xs text-text-secondary">{accountEmail}</p>}
         </div>
       </div>
       {defaultWorkspace && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          {t('authorize.workspace')}
-          {' '}
+          {t(($) => $['authorize.workspace'])}{' '}
           <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
         </div>
       )}
       <div className="flex gap-3">
-        <Button
-          variant="primary"
-          size="large"
-          className="flex-1"
-          onClick={approve}
-          disabled={busy}
-        >
-          {t('authorize.approve')}
+        <Button variant="primary" size="large" className="flex-1" onClick={approve} disabled={busy}>
+          {t(($) => $['authorize.approve'])}
         </Button>
-        <Button
-          variant="secondary"
-          size="large"
-          className="flex-1"
-          onClick={deny}
-          disabled={busy}
-        >
-          {t('operation.cancel', { ns: 'common' })}
+        <Button variant="secondary" size="large" className="flex-1" onClick={deny} disabled={busy}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
       </div>
     </div>

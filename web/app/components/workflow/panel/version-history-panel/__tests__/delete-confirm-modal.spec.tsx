@@ -1,9 +1,11 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DeleteConfirmModal from '../delete-confirm-modal'
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-1',
   graph: {
     nodes: [],
@@ -33,7 +35,7 @@ const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHist
 })
 
 describe('DeleteConfirmModal', () => {
-  it('renders the version name and triggers delete and close actions', async () => {
+  it('deletes the named version after confirmation', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     const onDelete = vi.fn()
@@ -49,10 +51,29 @@ describe('DeleteConfirmModal', () => {
 
     expect(screen.getByText('common.operation.delete Release 1')).toBeInTheDocument()
 
-    await user.click(screen.getByText('common.operation.cancel'))
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    expect(onClose).toHaveBeenCalled()
     expect(onDelete).toHaveBeenCalledWith('version-1', expect.anything())
+  })
+
+  it('cancels deleting a legacy version identified by its default name', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onDelete = vi.fn()
+    render(
+      <DeleteConfirmModal
+        isOpen
+        versionInfo={createVersionInfo({ marked_name: '', version_number: null })}
+        onClose={onClose}
+        onDelete={onDelete}
+      />,
+    )
+
+    expect(
+      screen.getByText('common.operation.delete workflowHistory.versionHistory.defaultName'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onClose).toHaveBeenCalled()
+    expect(onDelete).not.toHaveBeenCalled()
   })
 })

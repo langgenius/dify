@@ -45,18 +45,19 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: [
-        '/console/api',
-      ],
+      paths: ['/console/api', '/socket.io'],
       target: DEV_PROXY_TARGET,
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: [
-        '/api',
-      ],
+      paths: ['/api'],
       target: DEV_PROXY_PUBLIC_TARGET,
       cookieRewrite: difyCookieRewrite,
     },
   ],
+  sessionImport: {
+    refreshPath: '/console/api/refresh-token',
+    cookieName: 'refresh_token',
+    redirectTo: 'http://localhost:3000',
+  },
 } satisfies DevProxyConfig

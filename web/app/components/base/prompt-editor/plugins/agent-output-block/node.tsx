@@ -179,7 +179,16 @@ export function $createAgentOutputBlockNode(
   selectNameOnEdit = isEditing,
   openTypeSelectOnEdit = false,
 ): AgentOutputBlockNode {
-  return new AgentOutputBlockNode(name, outputType, isEditing, selectNameOnEdit, openTypeSelectOnEdit, outputs, onChange, onEdit)
+  return new AgentOutputBlockNode(
+    name,
+    outputType,
+    isEditing,
+    selectNameOnEdit,
+    openTypeSelectOnEdit,
+    outputs,
+    onChange,
+    onEdit,
+  )
 }
 
 export function $isAgentOutputBlockNode(

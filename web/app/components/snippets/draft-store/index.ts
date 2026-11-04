@@ -1,24 +1,24 @@
 'use client'
 
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { create } from 'zustand'
 
 type SnippetDraftState = {
   snippetId?: string
-  inputFields: SnippetInputField[]
-  hydrateDraft: (payload: { snippetId: string, inputFields: SnippetInputField[] }) => void
-  setInputFields: (inputFields: SnippetInputField[]) => void
+  inputFields: InputVar[]
+  hydrateDraft: (payload: { snippetId: string; inputFields: InputVar[] }) => void
+  setInputFields: (inputFields: InputVar[]) => void
   reset: () => void
 }
 
 const initialState = {
   snippetId: undefined,
-  inputFields: [] as SnippetInputField[],
+  inputFields: [] as InputVar[],
 }
 
-export const useSnippetDraftStore = create<SnippetDraftState>(set => ({
+export const useSnippetDraftStore = create<SnippetDraftState>((set) => ({
   ...initialState,
   hydrateDraft: ({ snippetId, inputFields }) => set({ snippetId, inputFields }),
-  setInputFields: inputFields => set({ inputFields }),
+  setInputFields: (inputFields) => set({ inputFields }),
   reset: () => set(initialState),
 }))

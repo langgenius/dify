@@ -1,128 +1,183 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [
+          { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
+          { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
+          { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
+          { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
+          { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
+        ],
+      }),
+    }),
+  }
+})
 
 const mockOnChange = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'member-2' } }).wrapper,
+  })
 
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
-        { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
-        { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
-      ],
-    },
-  }),
-}))
+const StatefulCreatorsFilter = ({ initialValue }: { initialValue: string[] }) => {
+  const [value, setValue] = useState(initialValue)
+  return <CreatorsFilter value={value} onChange={setValue} />
+}
 
 describe('CreatorsFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should sort the current user first and filter out pending members', () => {
+  it('should sort the current user first and filter out pending members', async () => {
+    const user = userEvent.setup()
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
 
-    const options = screen.getAllByRole('button').filter(button =>
-      ['Alice', 'Bob', 'Zoe'].some(name => button.textContent?.includes(name)),
-    )
+    await screen.findByRole('option', { name: /Alice/ })
+    const options = screen.getAllByRole('option')
 
-    expect(options.map(option => option.textContent)).toEqual([
+    expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
       expect.stringContaining('Bob'),
+      expect.stringContaining('Charlie'),
+      expect.stringContaining('Robin'),
       expect.stringContaining('Zoe'),
     ])
     expect(screen.getByText('app.studio.filters.you')).toBeInTheDocument()
     expect(screen.queryByText('Pending User')).not.toBeInTheDocument()
   })
 
-  it('should search creators, clear keywords, and select a creator', () => {
+  it('should search creators, clear the query, and select a creator', async () => {
+    const user = userEvent.setup()
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
-    fireEvent.change(screen.getByPlaceholderText('app.studio.filters.searchCreators'), {
-      target: { value: 'zo' },
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    const searchInput = screen.getByRole('combobox', {
+      name: 'app.studio.filters.searchCreators',
+    })
+    await user.type(searchInput, 'zo')
+
+    const zoeOption = await screen.findByRole('option', { name: /Zoe/ })
+    expect(zoeOption).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Bob/ })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', zoeOption.id)
     })
 
-    expect(screen.getByRole('button', { name: /Zoe/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Bob/ })).not.toBeInTheDocument()
+    await user.clear(searchInput)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
 
-    expect(screen.getByPlaceholderText('app.studio.filters.searchCreators')).toHaveValue('')
-
-    fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+    await user.click(screen.getByRole('option', { name: /Bob/ }))
 
     expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
   })
 
-  it('should remove selected creators from the trigger reset and menu reset controls', () => {
-    const { rerender } = render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+  it('should return focus to the trigger after clearing creators from the filter chip', async () => {
+    const user = userEvent.setup()
+    render(<StatefulCreatorsFilter initialValue={['member-2', 'member-3']} />)
 
-    const trigger = screen.getByRole('button', { name: /app\.studio\.filters\.creators/i })
-    fireEvent.click(within(trigger).getByRole('button', { name: 'app.studio.filters.reset' }))
+    const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+    const triggerReset = screen.getByRole('button', { name: 'app.studio.filters.reset' })
 
-    expect(mockOnChange).toHaveBeenCalledWith([])
+    expect(trigger).not.toContainElement(triggerReset)
 
-    rerender(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+    await user.click(triggerReset)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
-    fireEvent.click(screen.getAllByRole('button', { name: 'app.studio.filters.reset' }).at(-1)!)
-
-    expect(mockOnChange).toHaveBeenCalledWith([])
+    expect(trigger).toHaveFocus()
+    expect(
+      screen.queryByRole('button', { name: 'app.studio.filters.reset' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should remove a selected creator when toggled from the menu', () => {
-    render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+  it('should preserve unavailable creator ids when removing an available creator', async () => {
+    const user = userEvent.setup()
+    render(
+      <CreatorsFilter value={['missing-member', 'member-2', 'member-3']} onChange={mockOnChange} />,
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Alice/ }))
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    const aliceOption = await screen.findByRole('option', { name: /Alice/ })
+    expect(aliceOption).toHaveAttribute('aria-selected', 'true')
 
-    expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
+    await user.click(aliceOption)
+
+    expect(mockOnChange).toHaveBeenCalledWith(['missing-member', 'member-3'])
+  })
+
+  it.each([
+    { value: ['member-2'], visibleInitials: ['A'], remainingCount: 0 },
+    {
+      value: ['member-2', 'member-3', 'member-1'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 0,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 1,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5', 'member-6'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 2,
+    },
+  ])(
+    'shows only the $remainingCount undisplayed creators in the overflow count',
+    async ({ value, visibleInitials, remainingCount }) => {
+      render(<CreatorsFilter value={value} onChange={mockOnChange} />)
+
+      const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+      for (const initial of visibleInitials) {
+        expect(await within(trigger).findByText(initial, { exact: true })).toBeInTheDocument()
+      }
+      expect(
+        within(trigger).getByText(`common.dynamicSelect.selected:{"count":${value.length}}`),
+      ).toBeInTheDocument()
+      expect(within(trigger).queryByText('C', { exact: true })).not.toBeInTheDocument()
+      expect(within(trigger).queryByText('R', { exact: true })).not.toBeInTheDocument()
+      if (remainingCount > 0) {
+        expect(within(trigger).getByText(`+${remainingCount}`)).toBeInTheDocument()
+      } else {
+        expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+      }
+    },
+  )
+
+  it('should expose the creator picker as a named combobox with keyboard-owned options', async () => {
+    const user = userEvent.setup()
+    render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
+
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+
+    const popup = screen.getByRole('dialog', { name: 'app.studio.filters.creators' })
+    const searchInput = within(popup).getByRole('combobox', {
+      name: 'app.studio.filters.searchCreators',
+    })
+    expect(await within(popup).findByRole('option', { name: /Alice/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+
+    await waitFor(() => expect(searchInput).toHaveFocus())
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(mockOnChange).toHaveBeenCalledWith(['member-2'])
   })
 })

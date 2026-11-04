@@ -8,8 +8,23 @@ export type DataSourceIntegrateListResponse = {
   data: Array<DataSourceIntegrateResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SimpleResultResponse = {
   result: string
+}
+
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status: 400
 }
 
 export type DataSourceIntegrateResponse = {
@@ -35,7 +50,7 @@ export type DataSourceIntegratePageResponse = {
   page_id: string
   page_name: string
   parent_id: string
-  type: string
+  type: NotionPageType
 }
 
 export type DataSourceIntegrateIconResponse = {
@@ -44,6 +59,8 @@ export type DataSourceIntegrateIconResponse = {
   url?: string | null
 }
 
+export type NotionPageType = 'database' | 'page'
+
 export type GetDataSourceIntegratesData = {
   body?: never
   path?: never
@@ -51,43 +68,19 @@ export type GetDataSourceIntegratesData = {
   url: '/data-source/integrates'
 }
 
+export type GetDataSourceIntegratesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDataSourceIntegratesError =
+  GetDataSourceIntegratesErrors[keyof GetDataSourceIntegratesErrors]
+
 export type GetDataSourceIntegratesResponses = {
   200: DataSourceIntegrateListResponse
 }
 
-export type GetDataSourceIntegratesResponse
-  = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
-
-export type PatchDataSourceIntegratesData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/data-source/integrates'
-}
-
-export type PatchDataSourceIntegratesResponses = {
-  200: SimpleResultResponse
-}
-
-export type PatchDataSourceIntegratesResponse
-  = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
-
-export type GetDataSourceIntegratesByBindingIdByActionData = {
-  body?: never
-  path: {
-    action: string
-    binding_id: string
-  }
-  query?: never
-  url: '/data-source/integrates/{binding_id}/{action}'
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponses = {
-  200: DataSourceIntegrateListResponse
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponse
-  = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
+export type GetDataSourceIntegratesResponse =
+  GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
 
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
@@ -99,9 +92,17 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
   url: '/data-source/integrates/{binding_id}/{action}'
 }
 
+export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
+  400: InvalidActionError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDataSourceIntegratesByBindingIdByActionError =
+  PatchDataSourceIntegratesByBindingIdByActionErrors[keyof PatchDataSourceIntegratesByBindingIdByActionErrors]
+
 export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDataSourceIntegratesByBindingIdByActionResponse
-  = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]
+export type PatchDataSourceIntegratesByBindingIdByActionResponse =
+  PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]

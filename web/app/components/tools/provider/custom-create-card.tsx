@@ -1,7 +1,6 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -12,19 +11,17 @@ import CreateEntryCard from './create-entry-card'
 
 type Props = Readonly<{
   onRefreshData: () => void
+  stepByStepTourTarget?: string
 }>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
-  const { t } = useTranslation()
   const canManageTools = useCanManageTools()
-  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+  const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools)
-      return
+    if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }
@@ -32,37 +29,35 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   return {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   }
 }
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
-  const addSwaggerAPIAsToolLabel = t('addSwaggerAPIAsTool', { ns: 'tools' })
+  const { t } = useTranslation(['tools'])
+  const addSwaggerAPIAsToolLabel = t(($) => $.addSwaggerAPIAsTool, { ns: 'tools' })
   const {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   } = useCustomToolCreateAction({ onRefreshData })
 
-  if (!canManageTools)
-    return null
+  if (!canManageTools) return null
 
   return (
     <>
       <Button
         variant="secondary"
-        className="gap-0.5 px-3!"
+        className="px-3!"
         onClick={() => setIsShowEditCustomCollectionModal(true)}
         title={addSwaggerAPIAsToolLabel}
-        aria-label={addSwaggerAPIAsToolLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addSwaggerAPIAsToolLabel}
       </Button>
-      {isShowEditCollectionToolModal && (
+      {isShowEditCustomCollectionModal && (
         <EditCustomToolModal
           payload={null}
           onHide={() => setIsShowEditCustomCollectionModal(false)}
@@ -73,13 +68,13 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
   )
 }
 
-const Contribute = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
+const Contribute = ({ onRefreshData, stepByStepTourTarget }: Props) => {
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   } = useCustomToolCreateAction({ onRefreshData })
 
@@ -88,13 +83,14 @@ const Contribute = ({ onRefreshData }: Props) => {
       {canManageTools && (
         <CreateEntryCard
           className="min-w-0"
-          title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
-          linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
+          title={t(($) => $.createSwaggerAPIAsTool, { ns: 'tools' })}
+          linkText={t(($) => $.swaggerAPIAsToolTip, { ns: 'tools' })}
           linkUrl={docLink('/use-dify/workspace/tools#swagger-api')}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
+          stepByStepTourTarget={stepByStepTourTarget}
         />
       )}
-      {isShowEditCollectionToolModal && (
+      {isShowEditCustomCollectionModal && (
         <EditCustomToolModal
           payload={null}
           onHide={() => setIsShowEditCustomCollectionModal(false)}

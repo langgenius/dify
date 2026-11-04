@@ -1,12 +1,15 @@
-import type { DeclaredOutputConfig, DeclaredOutputType } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DeclaredOutputConfig,
+  DeclaredOutputType,
+} from '@dify/contracts/api/console/apps/types.gen'
 
-export type AgentOutputTypeOptionValue
-  = DeclaredOutputType
-    | 'array[boolean]'
-    | 'array[file]'
-    | 'array[number]'
-    | 'array[object]'
-    | 'array[string]'
+export type AgentOutputTypeOptionValue =
+  | DeclaredOutputType
+  | 'array[boolean]'
+  | 'array[file]'
+  | 'array[number]'
+  | 'array[object]'
+  | 'array[string]'
 
 export type AgentOutputTypeOption = {
   label: string
@@ -25,8 +28,7 @@ export function getAgentOutputToken(name: string) {
 
 export function parseAgentOutputToken(text: string) {
   const match = AGENT_OUTPUT_TOKEN_REGEX.exec(text) ?? LEGACY_AGENT_OUTPUT_TOKEN_REGEX.exec(text)
-  if (!match)
-    return null
+  if (!match) return null
 
   return {
     name: match[1]!,
@@ -40,19 +42,16 @@ export function extractAgentOutputNames(text: string) {
   const bracketedRegex = new RegExp(AGENT_OUTPUT_TOKEN_REGEX.source, 'g')
   const legacyRegex = new RegExp(LEGACY_AGENT_OUTPUT_TOKEN_REGEX.source, 'g')
 
-  for (const match of text.matchAll(bracketedRegex))
-    names.add(match[1]!)
+  for (const match of text.matchAll(bracketedRegex)) names.add(match[1]!)
 
-  for (const match of text.matchAll(legacyRegex))
-    names.add(match[1]!)
+  for (const match of text.matchAll(legacyRegex)) names.add(match[1]!)
 
   return names
 }
 
 export function replaceAgentOutputName(text: string, oldName: string, nextName: string) {
   const replaceTokenName = (match: string, name: string, _mirrorName: string) => {
-    if (name !== oldName)
-      return match
+    if (name !== oldName) return match
 
     return match.startsWith('[')
       ? getAgentOutputToken(nextName)
@@ -78,17 +77,24 @@ export const AGENT_OUTPUT_TYPE_OPTIONS: AgentOutputTypeOption[] = [
 ]
 
 export function getAgentOutputTypeOption(value: AgentOutputTypeOptionValue) {
-  return AGENT_OUTPUT_TYPE_OPTIONS.find(option => option.value === value) || AGENT_OUTPUT_TYPE_OPTIONS[0]!
+  return (
+    AGENT_OUTPUT_TYPE_OPTIONS.find((option) => option.value === value) ||
+    AGENT_OUTPUT_TYPE_OPTIONS[0]!
+  )
 }
 
-export function getAgentOutputTypeOptionValue(output: DeclaredOutputConfig): AgentOutputTypeOptionValue {
-  if (output.type !== 'array')
-    return output.type
+export function getAgentOutputTypeOptionValue(
+  output: DeclaredOutputConfig,
+): AgentOutputTypeOptionValue {
+  if (output.type !== 'array') return output.type
 
   return `array[${output.array_item?.type || 'object'}]` as AgentOutputTypeOptionValue
 }
 
-export function createAgentOutputConfig(name: string, type: AgentOutputTypeOptionValue): DeclaredOutputConfig {
+export function createAgentOutputConfig(
+  name: string,
+  type: AgentOutputTypeOptionValue,
+): DeclaredOutputConfig {
   const option = getAgentOutputTypeOption(type)
   const output: DeclaredOutputConfig = {
     name: name.trim(),
@@ -113,14 +119,12 @@ export function createAgentOutputConfig(name: string, type: AgentOutputTypeOptio
 }
 
 export function getUniqueAgentOutputName(outputs: DeclaredOutputConfig[]) {
-  const outputNames = new Set(outputs.map(output => output.name))
+  const outputNames = new Set(outputs.map((output) => output.name))
   const baseName = 'output'
-  if (!outputNames.has(baseName))
-    return baseName
+  if (!outputNames.has(baseName)) return baseName
 
   let index = 1
-  while (outputNames.has(`${baseName}_${index}`))
-    index += 1
+  while (outputNames.has(`${baseName}_${index}`)) index += 1
 
   return `${baseName}_${index}`
 }

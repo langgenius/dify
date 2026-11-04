@@ -1,9 +1,9 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 const SCRIPT = fileURLToPath(new URL('./install-cli.sh', import.meta.url))
 
@@ -26,7 +26,7 @@ function assetVersion(name: string, target: string): string {
 // offline. Routes by URL; release bodies come from env (TAG_<tag-with-._->_>),
 // the latest release from LATEST_JSON, the listing from LIST_JSON. A missing
 // fixture returns 22 to mimic `curl -f` on a 4xx.
-/* eslint-disable no-template-curly-in-string -- shell parameter expansions, not JS template literals */
+/* oxlint-disable no-template-curly-in-string -- shell parameter expansions, not JS template literals */
 const FETCH_STUB = [
   'fetch_json() {',
   '  case "$1" in',
@@ -42,13 +42,22 @@ const FETCH_STUB = [
   '  esac',
   '}',
 ].join('\n')
-/* eslint-enable no-template-curly-in-string */
+/* oxlint-enable no-template-curly-in-string */
 
-function runLib(program: string, env: Record<string, string> = {}): { code: number, stdout: string, stderr: string } {
+function runLib(
+  program: string,
+  env: Record<string, string> = {},
+): { code: number; stdout: string; stderr: string } {
   const full = `. "${SCRIPT}"\n${FETCH_STUB}\n${program}`
   const r = spawnSync('sh', ['-c', full], {
     encoding: 'utf8',
-    env: { ...process.env, DIFYCTL_INSTALL_LIB: '1', DIFY_VERSION: '', DIFYCTL_VERSION: '', ...env },
+    env: {
+      ...process.env,
+      DIFYCTL_INSTALL_LIB: '1',
+      DIFY_VERSION: '',
+      DIFYCTL_VERSION: '',
+      ...env,
+    },
   })
   return { code: r.status ?? 1, stdout: (r.stdout ?? '').trim(), stderr: r.stderr ?? '' }
 }
@@ -56,11 +65,21 @@ function runLib(program: string, env: Record<string, string> = {}): { code: numb
 // Like runLib but with a caller-supplied fetch_json stub, so we can drive the
 // real rate_limit_hint / maybe_ratelimit_exit / fetch_hit_ratelimit (which the
 // script defines) by writing a classified reason to FETCH_ERR_FILE.
-function runLibStub(stub: string, program: string, env: Record<string, string> = {}): { code: number, stderr: string } {
+function runLibStub(
+  stub: string,
+  program: string,
+  env: Record<string, string> = {},
+): { code: number; stderr: string } {
   const full = `. "${SCRIPT}"\n${stub}\n${program}`
   const r = spawnSync('sh', ['-c', full], {
     encoding: 'utf8',
-    env: { ...process.env, DIFYCTL_INSTALL_LIB: '1', DIFY_VERSION: '', DIFYCTL_VERSION: '', ...env },
+    env: {
+      ...process.env,
+      DIFYCTL_INSTALL_LIB: '1',
+      DIFY_VERSION: '',
+      DIFYCTL_VERSION: '',
+      ...env,
+    },
   })
   return { code: r.status ?? 1, stderr: r.stderr ?? '' }
 }
@@ -71,9 +90,17 @@ function failStub(reason: string): string {
   return `fetch_json() { printf '%s' '${reason}' > "$FETCH_ERR_FILE"; return 1; }`
 }
 
-const REL_1142 = JSON.stringify({ tag_name: '1.14.2', assets: [{ name: 'difyctl-v0.2.0-linux-x64' }, { name: 'difyctl-v0.2.0-checksums.txt' }] })
-const REL_1150 = JSON.stringify({ tag_name: '1.15.0', assets: [{ name: 'difyctl-v0.3.0-linux-x64' }] })
-const LIST_NEWEST_FIRST = JSON.stringify({ releases: [{ tag_name: '1.15.0' }, { tag_name: '1.14.2' }] })
+const REL_1142 = JSON.stringify({
+  tag_name: '1.14.2',
+  assets: [{ name: 'difyctl-v0.2.0-linux-x64' }, { name: 'difyctl-v0.2.0-checksums.txt' }],
+})
+const REL_1150 = JSON.stringify({
+  tag_name: '1.15.0',
+  assets: [{ name: 'difyctl-v0.3.0-linux-x64' }],
+})
+const LIST_NEWEST_FIRST = JSON.stringify({
+  releases: [{ tag_name: '1.15.0' }, { tag_name: '1.14.2' }],
+})
 
 const RELEASE = JSON.stringify({
   tag_name: '1.14.2',
@@ -138,7 +165,10 @@ describe('install-cli asset_version', () => {
 
 describe('install-cli resolve_release', () => {
   it('DIFY_VERSION pins the release directly', () => {
-    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', { DIFY_VERSION: '1.14.2', TAG_1_14_2: REL_1142 })
+    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', {
+      DIFY_VERSION: '1.14.2',
+      TAG_1_14_2: REL_1142,
+    })
     expect(r.code).toBe(0)
     expect(r.stdout).toBe('1.14.2')
   })
@@ -150,7 +180,9 @@ describe('install-cli resolve_release', () => {
   })
 
   it('blank resolves to the latest stable release', () => {
-    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', { LATEST_JSON: REL_1150 })
+    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', {
+      LATEST_JSON: REL_1150,
+    })
     expect(r.code).toBe(0)
     expect(r.stdout).toBe('1.15.0')
   })
@@ -225,14 +257,18 @@ describe('install-cli rate limit', () => {
   })
 
   it('DIFY_VERSION: rate limit wins over the misleading "not found" message', () => {
-    const r = runLibStub(failStub(`ratelimit:${futureReset}`), 'resolve_release linux-x64', { DIFY_VERSION: '1.15.0' })
+    const r = runLibStub(failStub(`ratelimit:${futureReset}`), 'resolve_release linux-x64', {
+      DIFY_VERSION: '1.15.0',
+    })
     expect(r.code).not.toBe(0)
     expect(r.stderr).toContain('rate limit exceeded')
     expect(r.stderr).not.toContain('not found')
   })
 
   it('DIFYCTL_VERSION: rate limit surfaces from the nested subshell, not "not found"', () => {
-    const r = runLibStub(failStub(`ratelimit:${futureReset}`), 'resolve_release linux-x64', { DIFYCTL_VERSION: '0.2.0' })
+    const r = runLibStub(failStub(`ratelimit:${futureReset}`), 'resolve_release linux-x64', {
+      DIFYCTL_VERSION: '0.2.0',
+    })
     expect(r.code).not.toBe(0)
     expect(r.stderr).toContain('rate limit exceeded')
     expect(r.stderr).not.toContain('not found')
@@ -288,32 +324,50 @@ esac
 
 // Drive the real fetch_json with FAKE_CURL first on PATH. Returns "OK|<body>" or
 // "FAIL|<FETCH_ERR_FILE contents>", plus any -H lines the fake curl received.
-function runRealFetch(mode: string, env: Record<string, string> = {}): { result: string, headers: string } {
+function runRealFetch(
+  mode: string,
+  env: Record<string, string> = {},
+): { result: string; headers: string } {
   const dir = mkdtempSync(join(tmpdir(), 'difyctl-fakecurl-'))
   const hdrLog = join(dir, 'hdrlog')
   writeFileSync(join(dir, 'curl'), FAKE_CURL)
   chmodSync(join(dir, 'curl'), 0o755)
-  const program = 'if body=$(fetch_json "https://api.github.com/repos/x/releases/latest"); then printf \'OK|%s\' "$body"; else printf \'FAIL|%s\' "$(cat "$FETCH_ERR_FILE" 2>/dev/null)"; fi'
+  const program =
+    'if body=$(fetch_json "https://api.github.com/repos/x/releases/latest"); then printf \'OK|%s\' "$body"; else printf \'FAIL|%s\' "$(cat "$FETCH_ERR_FILE" 2>/dev/null)"; fi'
   const r = spawnSync('sh', ['-c', `. "${SCRIPT}"\n${program}`], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH ?? ''}`, DIFYCTL_INSTALL_LIB: '1', DIFY_VERSION: '', DIFYCTL_VERSION: '', FAKE_MODE: mode, FAKE_HDR_LOG: hdrLog, ...env },
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH ?? ''}`,
+      DIFYCTL_INSTALL_LIB: '1',
+      DIFY_VERSION: '',
+      DIFYCTL_VERSION: '',
+      FAKE_MODE: mode,
+      FAKE_HDR_LOG: hdrLog,
+      ...env,
+    },
   })
   let headers = ''
   try {
     headers = readFileSync(hdrLog, 'utf8')
+  } catch {
+    /* no headers logged */
   }
-  catch { /* no headers logged */ }
   rmSync(dir, { recursive: true, force: true })
   return { result: (r.stdout ?? '').trim(), headers }
 }
 
 describe('install-cli fetch_json (real, fake curl on PATH)', () => {
   it('returns the response body on 200', () => {
-    expect(runRealFetch('ok', { FAKE_BODY: '{"tag_name":"1.15.0"}' }).result).toBe('OK|{"tag_name":"1.15.0"}')
+    expect(runRealFetch('ok', { FAKE_BODY: '{"tag_name":"1.15.0"}' }).result).toBe(
+      'OK|{"tag_name":"1.15.0"}',
+    )
   })
 
   it('classifies a 403 with x-ratelimit-remaining:0 as a rate limit and captures the reset', () => {
-    expect(runRealFetch('ratelimit', { FAKE_RESET: '1893456000' }).result).toBe('FAIL|ratelimit:1893456000')
+    expect(runRealFetch('ratelimit', { FAKE_RESET: '1893456000' }).result).toBe(
+      'FAIL|ratelimit:1893456000',
+    )
   })
 
   it('classifies a 403 with tokens left as a plain http error, not a rate limit', () => {
@@ -329,14 +383,119 @@ describe('install-cli fetch_json (real, fake curl on PATH)', () => {
   })
 
   it('sends an Authorization bearer header when GITHUB_TOKEN is set', () => {
-    expect(runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: 'ghp_secret' }).headers).toContain('Authorization: Bearer ghp_secret')
+    expect(runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: 'ghp_secret' }).headers).toContain(
+      'Authorization: Bearer ghp_secret',
+    )
   })
 
   it('falls back to GH_TOKEN when GITHUB_TOKEN is unset', () => {
-    expect(runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: '', GH_TOKEN: 'gho_fallback' }).headers).toContain('Authorization: Bearer gho_fallback')
+    expect(
+      runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: '', GH_TOKEN: 'gho_fallback' }).headers,
+    ).toContain('Authorization: Bearer gho_fallback')
   })
 
   it('sends no Authorization header when neither token is set', () => {
-    expect(runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: '', GH_TOKEN: '' }).headers).not.toContain('Authorization')
+    expect(
+      runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: '', GH_TOKEN: '' }).headers,
+    ).not.toContain('Authorization')
+  })
+})
+
+describe('install-cli.sh install location', () => {
+  const where = (env: Record<string, string>) =>
+    runLib('bin_dir_for', { DIFYCTL_PREFIX: '', DIFYCTL_INSTALL_DIR: '', HOME: '/home/u', ...env })
+      .stdout
+
+  it('defaults to ~/.local/bin', () => {
+    expect(where({})).toBe('/home/u/.local/bin')
+  })
+
+  it('puts the binary under <DIFYCTL_PREFIX>/bin', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe('/opt/dify/bin')
+  })
+
+  it('takes DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/usr/local/bin' })).toBe(
+      '/usr/local/bin',
+    )
+  })
+})
+
+describe('install-cli.sh install_binary', () => {
+  it('replaces the binary through a rename, leaving no staged file behind', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+    try {
+      const src = join(dir, 'new')
+      const dest = join(dir, 'bin-difyctl')
+      writeFileSync(src, 'new build')
+      writeFileSync(dest, 'old build')
+      const r = runLib(`install_binary "${src}" "${dest}"`)
+      expect(r.code).toBe(0)
+      expect(readFileSync(dest, 'utf8')).toBe('new build')
+      expect(execFileSync('ls', ['-A', dir], { encoding: 'utf8' }).trim().split('\n')).toEqual([
+        'bin-difyctl',
+        'new',
+      ])
+      // Windows filesystems have no executable bit to check.
+      if (process.platform !== 'win32') {
+        expect(
+          execFileSync('sh', ['-c', `test -x "${dest}" && echo yes`], { encoding: 'utf8' }),
+        ).toBe('yes\n')
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // A shared install must stay readable by other users, whatever the installer's umask.
+  it.skipIf(process.platform === 'win32')(
+    'installs a 0600 source as mode 0755 under umask 077',
+    () => {
+      const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+      try {
+        const src = join(dir, 'new')
+        const dest = join(dir, 'bin-difyctl')
+        writeFileSync(src, 'new build', { mode: 0o600 })
+        const r = runLib(`umask 077; install_binary "${src}" "${dest}"`)
+        expect(r.code).toBe(0)
+        expect(statSync(dest).mode & 0o777).toBe(0o755)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it('dies without touching the old binary when the folder is not writable', () => {
+    const r = runLib('install_binary /nonexistent/src /nonexistent-dir/difyctl')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/cannot write \/nonexistent-dir\/difyctl/)
+  })
+})
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+describe.skipIf(process.platform === 'win32')('install-cli.sh print_skill_hint', () => {
+  const fakeBins = [
+    'd="$(mktemp -d)"',
+    'printf \'#!/bin/sh\\n[ "$*" = "install skills --help" ]\\n\' > "$d/v2"',
+    'printf \'#!/bin/sh\\necho "unknown command: $*" >&2\\nexit 1\\n\' > "$d/v1"',
+    'chmod 0755 "$d/v2" "$d/v1"',
+  ]
+
+  it('prints the hint for a binary that has install skills', () => {
+    const r = runLib([...fakeBins, 'print_skill_hint "$d/v2"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toMatch(/difyctl install skills <skills root>/)
+  })
+
+  it('prints nothing for a binary without install skills', () => {
+    const r = runLib([...fakeBins, 'print_skill_hint "$d/v1"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    const r = runLib('print_skill_hint /nonexistent/difyctl')
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
   })
 })

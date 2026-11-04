@@ -2,20 +2,32 @@
 
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
+import { consoleQuery } from '@/service/console'
 import { emptyWorkspacePermissionKeys } from './app-context-normalizers'
-import { currentWorkspaceIdAtom } from './workspace-state'
 
-const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
-  const workspaceId = get(currentWorkspaceIdAtom)
-
-  return workspacePermissionKeysQueryOptions(workspaceId)
+const workspacePermissionKeysQueryAtom = atomWithQuery(() => {
+  return consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions()
 })
 
 export const workspacePermissionKeysAtom = atom((get) => {
-  return get(workspacePermissionKeysQueryAtom).data?.workspace?.permission_keys ?? emptyWorkspacePermissionKeys
+  return (
+    get(workspacePermissionKeysQueryAtom).data?.workspace?.permission_keys ??
+    emptyWorkspacePermissionKeys
+  )
+})
+
+export const datasetDefaultPermissionKeysAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).data?.dataset?.default_permission_keys ?? []
+})
+
+export const agentDefaultPermissionKeysAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).data?.agent?.default_permission_keys ?? []
 })
 
 export const workspacePermissionKeysLoadingAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).isPending
+})
+
+export const workspacePermissionKeysErrorAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).error
 })

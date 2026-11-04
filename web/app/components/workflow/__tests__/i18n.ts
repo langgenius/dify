@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 export function resolveDocLink(path: string, baseUrl = 'https://docs.example.com') {
   return `${baseUrl}${path}`

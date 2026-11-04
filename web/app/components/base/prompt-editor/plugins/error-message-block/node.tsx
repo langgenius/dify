@@ -2,8 +2,6 @@ import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import ErrorMessageBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode
-
 export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
   static override getType(): string {
     return 'error-message-block'
@@ -32,11 +30,7 @@ export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   override decorate(): React.JSX.Element {
-    return (
-      <ErrorMessageBlockComponent
-        nodeKey={this.getKey()}
-      />
-    )
+    return <ErrorMessageBlockComponent nodeKey={this.getKey()} />
   }
 
   static override importJSON(): ErrorMessageBlockNode {
@@ -45,7 +39,7 @@ export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  override exportJSON(): SerializedLexicalNode {
     return {
       type: 'error-message-block',
       version: 1,

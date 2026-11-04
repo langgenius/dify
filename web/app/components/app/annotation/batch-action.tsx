@@ -1,18 +1,21 @@
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 const i18nPrefix = 'batchAction'
 
@@ -29,21 +32,20 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDelete,
   onSelectedIdsChange,
 }) => {
-  const { t } = useTranslation()
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
-  const [isDeleting, {
-    setTrue: setIsDeleting,
-    setFalse: setIsNotDeleting,
-  }] = useBoolean(false)
+  const { t } = useTranslation(['appAnnotation', 'common'])
+  const deleteConfirmActionsRef = React.useRef<AlertDialogActions>(null)
+  const [isDeleting, { setTrue: setIsDeleting, setFalse: setIsNotDeleting }] = useBoolean(false)
 
   const handleBatchDelete = async () => {
     setIsDeleting()
-    await onBatchDelete()
-    hideDeleteConfirm()
-    setIsNotDeleting()
+    try {
+      await onBatchDelete()
+      deleteConfirmActionsRef.current?.close()
+    } catch {
+      // The owner reports the failure; the dialog stays open so the user can retry.
+    } finally {
+      setIsNotDeleting()
+    }
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
@@ -52,47 +54,43 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
-          <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'appAnnotation' })}</span>
-        </div>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button
-          variant="ghost"
-          tone="destructive"
-          className="gap-x-0.5 px-3"
-          onClick={showDeleteConfirm}
-        >
-          <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          <span className="px-0.5">
-            {t('operation.delete', { ns: 'common' })}
+          <span className="system-sm-semibold text-text-accent">
+            {t(($) => $[`${i18nPrefix}.selected`], { ns: 'appAnnotation' })}
           </span>
-        </Button>
-
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button
-          variant="ghost"
-          className="px-3"
-          onClick={() => onSelectedIdsChange([])}
+        </div>
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
+        <AlertDialog
+          actionsRef={deleteConfirmActionsRef}
+          onOpenChange={(open, details) => {
+            if (!open && isDeleting && details.reason !== 'imperative-action') details.cancel()
+          }}
         >
-          <span className="px-0.5">{t('operation.cancel', { ns: 'common' })}</span>
+          <AlertDialogTrigger render={<Button variant="ghost" tone="destructive" />}>
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t(($) => $['list.delete.title'], { ns: 'appAnnotation' })}
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton disabled={isDeleting}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton loading={isDeleting} onClick={handleBatchDelete}>
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
+        <Button variant="ghost" onClick={() => onSelectedIdsChange([])}>
+          <span>{t(($) => $['operation.cancel'], { ns: 'common' })}</span>
         </Button>
       </div>
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('list.delete.title', { ns: 'appAnnotation' })}
-            </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
-              {t('operation.delete', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

@@ -2,7 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zDatasetNameDuplicateError,
+  zDraftWorkflowNotExistError,
+  zDraftWorkflowNotSyncError,
+  zPipelineNotFoundError,
+  zRateLimitError,
+} from './zod.gen.ts'
 import {
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse,
@@ -132,7 +138,7 @@ import {
   zPostRagPipelinesTransformDatasetsByDatasetIdResponse,
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const delete_ = oc
   .route({
@@ -199,6 +205,7 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostRagPipelineDatasetBody }))
   .output(zPostRagPipelineDatasetResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const dataset = {
   post: post2,
@@ -247,7 +254,7 @@ export const get2 = oc
     path: '/rag/pipeline/templates',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
+  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }).optional())
   .output(zGetRagPipelineTemplatesResponse)
 
 export const templates2 = {
@@ -305,6 +312,7 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath }))
   .output(zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const checkDependencies = {
   get: get4,
@@ -339,7 +347,7 @@ export const get5 = oc
     path: '/rag/pipelines/recommended-plugins',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
+  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }).optional())
   .output(zGetRagPipelinesRecommendedPluginsResponse)
 
 export const recommendedPlugins = {
@@ -385,6 +393,7 @@ export const post7 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish = {
   post: post7,
@@ -409,6 +418,7 @@ export const get6 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdExportsResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const exports_ = {
   get: get6,
@@ -428,6 +438,7 @@ export const post8 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const stop = {
   post: post8,
@@ -455,6 +466,7 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const nodeExecutions = {
   get: get7,
@@ -474,6 +486,7 @@ export const get8 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byRunId = {
   get: get8,
@@ -499,6 +512,7 @@ export const get9 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const workflowRuns = {
   get: get9,
@@ -526,6 +540,7 @@ export const get10 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byBlockType = {
   get: get10,
@@ -545,6 +560,7 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const defaultWorkflowBlockConfigs = {
   get: get11,
@@ -570,6 +586,7 @@ export const post9 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run = {
   post: post9,
@@ -602,6 +619,7 @@ export const post10 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const variablesInspect = {
   post: post10,
@@ -626,6 +644,10 @@ export const get12 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const environmentVariables = {
   get: get12,
@@ -650,6 +672,7 @@ export const post11 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run2 = {
   post: post11,
@@ -686,6 +709,7 @@ export const post12 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run3 = {
   post: post12,
@@ -713,6 +737,7 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const lastRun = {
   get: get13,
@@ -737,6 +762,7 @@ export const post13 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run4 = {
   post: post13,
@@ -755,6 +781,7 @@ export const delete2 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get14 = oc
   .route({
@@ -766,6 +793,7 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const variables = {
   delete: delete2,
@@ -801,6 +829,7 @@ export const get15 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters = {
   get: get15,
@@ -829,6 +858,7 @@ export const get16 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters2 = {
   get: get16,
@@ -857,6 +887,10 @@ export const post14 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
+  .errors({
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const run5 = {
   post: post14,
@@ -872,6 +906,7 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const systemVariables = {
   get: get17,
@@ -889,6 +924,7 @@ export const put = oc
     z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath }),
   )
   .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const reset = {
   put,
@@ -907,6 +943,7 @@ export const delete3 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get18 = oc
   .route({
@@ -918,6 +955,7 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const patch2 = oc
   .route({
@@ -934,6 +972,7 @@ export const patch2 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byVariableId = {
   delete: delete3,
@@ -953,6 +992,7 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Get draft workflow
@@ -973,6 +1013,10 @@ export const get19 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+  .errors({
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const variables2 = {
   delete: delete4,
@@ -989,11 +1033,15 @@ export const get20 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraft',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft',
-    summary: 'Get draft rag pipeline\'s workflow',
+    summary: "Get draft rag pipeline's workflow",
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftResponse)
+  .errors({
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 /**
  * Sync draft workflow
@@ -1014,6 +1062,10 @@ export const post15 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
+  .errors({
+    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const draft = {
   get: get20,
@@ -1044,6 +1096,7 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Publish workflow
@@ -1059,6 +1112,7 @@ export const post16 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish2 = {
   get: get21,
@@ -1084,6 +1138,7 @@ export const post17 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const preview = {
   post: post17,
@@ -1108,6 +1163,7 @@ export const post18 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run6 = {
   post: post18,
@@ -1145,6 +1201,7 @@ export const get22 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters3 = {
   get: get22,
@@ -1173,6 +1230,7 @@ export const get23 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters4 = {
   get: get23,
@@ -1201,6 +1259,10 @@ export const post19 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
+  .errors({
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const run7 = {
   post: post19,
@@ -1223,6 +1285,7 @@ export const post20 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const restore = {
   post: post20,
@@ -1243,6 +1306,7 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Update workflow attributes
@@ -1263,6 +1327,7 @@ export const patch3 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byWorkflowId = {
   delete: delete5,
@@ -1289,6 +1354,7 @@ export const get24 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const workflows = {
   get: get24,

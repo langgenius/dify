@@ -1,12 +1,12 @@
-import type { PluginsFromMarketplaceResponse } from '@dify/contracts/marketplace'
 import type { Plugin } from '../../plugins/types'
 import type { ActionItem, PluginSearchResult } from './types'
-import { renderI18nObject } from '@/i18n-config'
-import { postMarketplace } from '@/service/base'
+import { renderI18nObject } from '@/i18n/metadata'
 import Icon from '../../plugins/card/base/card-icon'
-import { getFormattedPlugin } from '../../plugins/marketplace/utils'
 
-const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {
+export const parsePluginSearchResults = (
+  plugins: Plugin[],
+  locale: string,
+): PluginSearchResult[] => {
   return plugins.map((plugin) => {
     return {
       id: plugin.name,
@@ -24,28 +24,5 @@ export const pluginAction: ActionItem = {
   shortcut: '@plugin',
   title: 'Search Plugins',
   description: 'Search and navigate to your plugins',
-  search: async (_, searchTerm = '', locale) => {
-    try {
-      const response = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/advanced', {
-        body: {
-          page: 1,
-          page_size: 10,
-          query: searchTerm,
-          type: 'plugin',
-        },
-      })
-
-      if (!response?.data?.plugins) {
-        console.warn('Plugin search: Unexpected response structure', response)
-        return []
-      }
-
-      const list = response.data.plugins.map(plugin => getFormattedPlugin(plugin))
-      return parser(list, locale!)
-    }
-    catch (error) {
-      console.warn('Plugin search failed:', error)
-      return []
-    }
-  },
+  source: 'remote',
 }

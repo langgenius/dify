@@ -1,5 +1,11 @@
 import type { DotenvOptions, LoadConfigOptions, WatchConfigOptions } from 'c12'
-import type { DevProxyCliOptions, DevProxyConfig, DevProxyConfigLoadOptions, DevProxyServerConfig, ResolvedDevProxyServerOptions } from './types'
+import type {
+  DevProxyCliOptions,
+  DevProxyConfig,
+  DevProxyConfigLoadOptions,
+  DevProxyServerConfig,
+  ResolvedDevProxyServerOptions,
+} from './types'
 import path from 'node:path'
 import { loadConfig, watchConfig } from 'c12'
 
@@ -20,8 +26,7 @@ type OptionName = keyof typeof OPTION_NAME_TO_KEY
 const isOptionName = (value: string): value is OptionName => value in OPTION_NAME_TO_KEY
 
 const requireOptionValue = (name: string, value?: string) => {
-  if (!value || value.startsWith('-'))
-    throw new Error(`Missing value for ${name}.`)
+  if (!value || value.startsWith('-')) throw new Error(`Missing value for ${name}.`)
 
   return value
 }
@@ -32,8 +37,7 @@ export const parseDevProxyCliArgs = (argv: readonly string[]): DevProxyCliOption
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!
 
-    if (arg === '--')
-      continue
+    if (arg === '--') continue
 
     if (arg === '--help' || arg === '-h') {
       options.help = true
@@ -53,17 +57,14 @@ export const parseDevProxyCliArgs = (argv: readonly string[]): DevProxyCliOption
     const [rawName, inlineValue] = arg.split('=', 2)
     const name = rawName ?? ''
 
-    if (!name.startsWith('-'))
-      continue
+    if (!name.startsWith('-')) continue
 
-    if (!isOptionName(name))
-      throw new Error(`Unsupported dev proxy option "${name}".`)
+    if (!isOptionName(name)) throw new Error(`Unsupported dev proxy option "${name}".`)
 
     const key = OPTION_NAME_TO_KEY[name]
     options[key] = inlineValue ?? requireOptionValue(name, argv[index + 1])
 
-    if (inlineValue === undefined)
-      index += 1
+    if (inlineValue === undefined) index += 1
   }
 
   return options
@@ -93,8 +94,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
 export function assertDevProxyConfig(config: unknown): asserts config is DevProxyConfig {
-  if (!isRecord(config))
-    throw new Error('Dev proxy config must export an object.')
+  if (!isRecord(config)) throw new Error('Dev proxy config must export an object.')
 
   if (!Array.isArray(config.routes))
     throw new Error('Dev proxy config must include a routes array.')
@@ -104,8 +104,7 @@ const resolveDotenvOptions = (
   envFile: DevProxyConfigLoadOptions['envFile'],
   cwd: string,
 ): DotenvOptions | false => {
-  if (!envFile)
-    return false
+  if (!envFile) return false
 
   const resolvedEnvFilePath = path.resolve(cwd, envFile)
   return {

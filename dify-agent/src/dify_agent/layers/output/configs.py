@@ -8,17 +8,12 @@ imports do not pull in server execution code.
 
 from __future__ import annotations
 
-from typing import ClassVar, Final
+from typing import ClassVar
 
-from pydantic import ConfigDict, JsonValue, field_validator
-
-from agenton.layers import LayerConfig
+from pydantic import BaseModel, ConfigDict, JsonValue, field_validator
 
 
-DIFY_OUTPUT_LAYER_TYPE_ID: Final[str] = "dify.output"
-
-
-class DifyOutputLayerConfig(LayerConfig):
+class DifyOutputLayerConfig(BaseModel):
     """Public config for the conventionally named structured output layer.
 
     The runtime only reads the layer named by
@@ -48,4 +43,4 @@ class DifyOutputLayerConfig(LayerConfig):
         return value
 
 
-__all__ = ["DIFY_OUTPUT_LAYER_TYPE_ID", "DifyOutputLayerConfig"]
+__all__ = ["DifyOutputLayerConfig"]

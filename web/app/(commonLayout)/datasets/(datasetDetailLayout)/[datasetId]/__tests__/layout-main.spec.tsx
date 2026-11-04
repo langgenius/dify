@@ -1,308 +1,224 @@
 import { screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { usePathname, useRouter } from '@/next/navigation'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState,
+} from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { DatasetACLPermission } from '@/utils/permission'
+import CreateDocumentsPage from '../documents/create/page'
 import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
 let mockIsRbacEnabled = true
-
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
-
-vi.mock('@/next/navigation', () => ({
+const mockNavigation = vi.hoisted(() => ({
   usePathname: vi.fn(),
   useRouter: vi.fn(),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: vi.fn(),
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+
+let dataset: ReturnType<typeof createDatasetFixture> | undefined
+const { loadDataset } = vi.hoisted(() => ({ loadDataset: vi.fn() }))
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'text-embedding' } },
+    }),
+    { data: null },
+  )
+  if (dataset)
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: 'dataset-1' } },
+      }),
+      dataset,
+    )
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(), {
+    result: [],
+  })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
+  })
+}
+
+vi.mock('@/next/navigation', () => mockNavigation)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.get': loadDataset,
+    }),
+  }
+})
+
+vi.mock('@/app/components/datasets/create/step-one', () => ({
+  default: () => <div>Create knowledge content</div>,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }), () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }), () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }), () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }), () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }), () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: undefined,
-  }),
+vi.mock('@/app/components/datasets/create/step-two', () => ({
+  default: () => null,
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
+vi.mock('@/app/components/datasets/create/step-three', () => ({
+  default: () => null,
 }))
 
-const mockUseRouter = vi.mocked(useRouter)
-const mockUsePathname = vi.mocked(usePathname)
-const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
+vi.mock('@/app/components/datasets/create/top-bar', () => ({
+  TopBar: () => null,
+}))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({}))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
+const mockUseRouter = mockNavigation.useRouter
+const mockUsePathname = mockNavigation.usePathname
 
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadDataset.mockReset()
+    dataset = undefined
+    document.title = ''
     mockIsRbacEnabled = true
     mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
     mockUseRouter.mockReturnValue({
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      push: vi.fn(),
       replace: mockReplace,
-      prefetch: vi.fn(),
+    })
+  })
+
+  describe('Document title', () => {
+    it.each([
+      ['/datasets/dataset-1/documents', 'common.datasetMenus.documents'],
+      ['/datasets/dataset-1/documents/create', 'datasetPipeline.addDocuments.title'],
+      ['/datasets/dataset-1/documents/create-from-pipeline', 'datasetPipeline.addDocuments.title'],
+      ['/datasets/dataset-1/pipeline', 'common.datasetMenus.pipeline'],
+      ['/datasets/dataset-1/hitTesting', 'common.datasetMenus.hitTesting'],
+      ['/datasets/dataset-1/settings', 'common.datasetMenus.settings'],
+      ['/datasets/dataset-1/access-config', 'navigation.settings.resourceAccess'],
+      ['/datasets/dataset-1/api', 'common.appMenus.apiAccess'],
+    ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
+      mockUsePathname.mockReturnValue(pathname)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
+      })
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Knowledge page content</div>
+        </DatasetDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(document.title).toBe(`${pageTitle} · Dataset 1 - Dify`)
+      })
+    })
+
+    it.each([
+      '/datasets/dataset-1/documents/document-1',
+      '/datasets/dataset-1/documents/document-1/settings',
+    ])('delegates the document title for %s to the document page', (pathname) => {
+      mockUsePathname.mockReturnValue(pathname)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
+      })
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Document page content</div>
+        </DatasetDetailLayout>,
+      )
+
+      expect(document.title).toBe('')
+    })
+
+    it('keeps the dataset title when the document creation route is composed', async () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
+      })
+      const page = await CreateDocumentsPage({
+        params: Promise.resolve({ datasetId: 'dataset-1' }),
+      })
+
+      render(<DatasetDetailLayout datasetId="dataset-1">{page}</DatasetDetailLayout>)
+
+      expect(screen.getByText('Create knowledge content')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.title).toBe('datasetPipeline.addDocuments.title · Dataset 1 - Dify')
+      })
     })
   })
 
   describe('Access Errors', () => {
-    it.each([403, 404])('should redirect to datasets page when dataset detail returns %s', async (status) => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: undefined,
-        error: new Response(null, { status }),
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+    it.each([403, 404])(
+      'should redirect to datasets page when dataset detail returns %s',
+      async (status) => {
+        // Arrange
+        loadDataset.mockRejectedValue(createHttpError(new Response(null, { status })))
 
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
+        // Act
+        render(
+          <DatasetDetailLayout datasetId="dataset-1">
+            <div>Pipeline content</div>
+          </DatasetDetailLayout>,
+        )
 
-      // Assert
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
-      })
-      expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
-    })
-
-    it('should redirect when the dataset detail error exposes status without being a Response', async () => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: undefined,
-        error: { status: 403 },
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
-      })
-      expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
-    })
+        // Assert
+        await waitFor(() => {
+          expect(mockReplace).toHaveBeenCalledWith('/datasets')
+        })
+        expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
+      },
+    )
   })
 
   describe('Rendering', () => {
-    it('should render children when dataset detail is available', () => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: true,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      expect(screen.getByText('Pipeline content')).toBeInTheDocument()
-      expect(mockReplace).not.toHaveBeenCalled()
-    })
-
-    it('should apply the dataset surface outside pipeline pages', () => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: true,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Documents content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      expect(screen.getByText('Documents content').parentElement).toHaveClass('rounded-lg')
-    })
-
-    it('should keep pipeline pages unframed', () => {
-      // Arrange
-      mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: false,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      expect(screen.getByText('Pipeline content').parentElement).not.toHaveClass('rounded-lg')
-    })
-
-    it('should preserve the column flex context for full-height pipeline content', () => {
-      // Arrange
-      mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: false,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      const contentSurface = screen.getByText('Pipeline content').parentElement
-      const datasetDetailContent = contentSurface?.parentElement
-      const datasetDetailRoot = datasetDetailContent?.parentElement
-
-      expect(datasetDetailRoot).toHaveClass('flex-col')
-    })
-
-    it('should keep create-from-pipeline pages unframed', () => {
-      // Arrange
-      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create-from-pipeline')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: false,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Create from pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      expect(screen.getByText('Create from pipeline content').parentElement).not.toHaveClass('rounded-lg')
-    })
-
     it('should render document creation route content without owning the main skip target', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: true,
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'rag_pipeline',
+        is_published: true,
+      })
 
       // Act
       render(
@@ -321,18 +237,14 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from hit testing when retrieval recall permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/hitTesting')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'external',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'external',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [],
+      })
 
       // Act
       render(
@@ -351,18 +263,14 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from access config when access config permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [],
+      })
 
       // Act
       render(
@@ -381,18 +289,14 @@ describe('DatasetDetailLayout', () => {
     it('should render access config when access config permission is granted', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.AccessConfig],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
 
       // Act
       render(
@@ -410,18 +314,14 @@ describe('DatasetDetailLayout', () => {
       // Arrange
       mockIsRbacEnabled = false
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.AccessConfig],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
 
       // Act
       render(

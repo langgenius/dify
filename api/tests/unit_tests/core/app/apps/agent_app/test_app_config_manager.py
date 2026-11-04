@@ -3,10 +3,11 @@ app_model_config-shaped dict bridge that lets an Agent App ride the chat pipelin
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+import json
 
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from models.agent_config_entities import AgentSoulConfig
+from models.model import App, AppMode, AppModelConfig
 
 
 def _soul() -> AgentSoulConfig:
@@ -27,8 +28,15 @@ def _soul() -> AgentSoulConfig:
     )
 
 
+def _app_model_config(**values: object) -> AppModelConfig:
+    config = AppModelConfig(app_id="app-1")
+    for key, value in values.items():
+        setattr(config, key, json.dumps(value) if isinstance(value, (dict, list)) else value)
+    return config
+
+
 def test_model_and_prompt_come_from_soul():
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["model"] == {
         "provider": "langgenius/openai/openai",
         "name": "gpt-4o-mini",
@@ -44,15 +52,17 @@ def test_model_and_prompt_come_from_soul():
 
 def test_feature_flags_come_from_app_model_config_when_present():
     # Q3: opener/follow-up/etc. live on app_model_config; model/prompt stay from Soul.
-    fake_amc = SimpleNamespace(
-        to_dict=lambda: {
-            "opening_statement": "Hi, I'm Iris.",
-            "suggested_questions_after_answer": {"enabled": True},
-            "model": {"provider": "should-be-overridden", "name": "old"},
-            "pre_prompt": "old prompt",
-        }
+    app_model_config = _app_model_config(
+        opening_statement="Hi, I'm Iris.",
+        suggested_questions_after_answer={"enabled": True},
+        model={"provider": "should-be-overridden", "name": "old"},
+        pre_prompt="old prompt",
     )
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), fake_amc)  # type: ignore[arg-type]
+    d = AgentAppConfigManager._synthesize_config_dict(
+        _soul(),
+        app_model_config,
+        annotation_reply={"enabled": False},  # type: ignore[arg-type]
+    )
     # feature flags preserved
     assert d["opening_statement"] == "Hi, I'm Iris."
     assert d["suggested_questions_after_answer"] == {"enabled": True}
@@ -62,7 +72,7 @@ def test_feature_flags_come_from_app_model_config_when_present():
 
 
 def test_missing_soul_model_leaves_no_model_key():
-    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None, annotation_reply=None)
     assert "model" not in d
     assert d["pre_prompt"] == ""
     assert d["file_upload"] == {
@@ -76,16 +86,18 @@ def test_missing_soul_model_leaves_no_model_key():
 
 
 def test_soul_file_upload_overrides_legacy_app_model_config():
-    fake_amc = SimpleNamespace(
-        to_dict=lambda: {
-            "file_upload": {
-                "enabled": False,
-                "image": {"enabled": False},
-            },
-        }
+    app_model_config = _app_model_config(
+        file_upload={
+            "enabled": False,
+            "image": {"enabled": False},
+        },
     )
 
-    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), fake_amc)  # type: ignore[arg-type]
+    d = AgentAppConfigManager._synthesize_config_dict(
+        AgentSoulConfig(),
+        app_model_config,
+        annotation_reply={"enabled": False},  # type: ignore[arg-type]
+    )
 
     assert d["file_upload"] == {
         "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
@@ -100,21 +112,23 @@ def test_soul_file_upload_overrides_legacy_app_model_config():
 def test_prompt_type_defaults_to_simple():
     # PromptTemplateConfigManager.convert requires prompt_type; an Agent App with
     # no legacy app_model_config must still get the "simple" slot synthesized.
-    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None)
+    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["prompt_type"] == "simple"
 
 
 def test_get_app_config_has_null_model_config_id_without_legacy_row():
     # An Agent App has no app_model_config row; the conversation's
     # app_model_config_id (a UUID column) must be NULL, not "".
-    app_model = SimpleNamespace(
+    app_model = App(
         tenant_id="11111111-1111-1111-1111-111111111111",
         id="22222222-2222-2222-2222-222222222222",
-        mode="agent",
+        name="Agent App",
+        mode=AppMode.AGENT_CHAT,
     )
     app_config = AgentAppConfigManager.get_app_config(
-        app_model=app_model,  # type: ignore[arg-type]
+        app_model=app_model,
         agent_soul=_soul(),
+        annotation_reply=None,
         app_model_config=None,
         conversation=None,
     )

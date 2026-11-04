@@ -2,6 +2,7 @@ import json
 from typing import Any, override
 
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from volcengine.viking_db import (  # type: ignore
     Data,
     DistanceType,
@@ -144,10 +145,10 @@ class VikingDBVector(BaseVector):
     @override
     def text_exists(self, id: str) -> bool:
         docs = self._client.get_collection(self._collection_name).fetch_data(id)
+        if docs is None or isinstance(docs, list):
+            return False
         not_exists_str = "data does not exist"
-        if docs is not None and not_exists_str not in docs.fields.get("message", ""):
-            return True
-        return False
+        return not_exists_str not in docs.fields.get("message", "")
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -166,12 +167,12 @@ class VikingDBVector(BaseVector):
         if not results:
             return []
 
-        ids = []
+        ids: list[str] = []
         for result in results:
             metadata = result.fields.get(vdb_Field.METADATA_KEY)
             if metadata is not None:
                 metadata = parse_metadata_json(metadata)
-                if metadata.get(key) == value:
+                if metadata.get(key) == value and result.id is not None:
                     ids.append(result.id)
         return ids
 
@@ -220,7 +221,9 @@ class VikingDBVector(BaseVector):
 
 class VikingDBVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> VikingDBVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> VikingDBVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

@@ -89,8 +89,8 @@ export const DeveloperApiUrlStatus = {
   DEVELOPER_API_URL_STATUS_NOT_CONFIGURED: 'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED',
 } as const
 
-export type DeveloperApiUrlStatus
-  = (typeof DeveloperApiUrlStatus)[keyof typeof DeveloperApiUrlStatus]
+export type DeveloperApiUrlStatus =
+  (typeof DeveloperApiUrlStatus)[keyof typeof DeveloperApiUrlStatus]
 
 export const EnvVarValueSource = {
   ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
@@ -132,16 +132,16 @@ export const RuntimeInstanceStatus = {
   RUNTIME_INSTANCE_STATUS_UNDEPLOYING: 'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
 } as const
 
-export type RuntimeInstanceStatus
-  = (typeof RuntimeInstanceStatus)[keyof typeof RuntimeInstanceStatus]
+export type RuntimeInstanceStatus =
+  (typeof RuntimeInstanceStatus)[keyof typeof RuntimeInstanceStatus]
 
 export const AppRunnerLaunchProfileMode = {
   APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED',
   APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG: 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG',
 } as const
 
-export type AppRunnerLaunchProfileMode
-  = (typeof AppRunnerLaunchProfileMode)[keyof typeof AppRunnerLaunchProfileMode]
+export type AppRunnerLaunchProfileMode =
+  (typeof AppRunnerLaunchProfileMode)[keyof typeof AppRunnerLaunchProfileMode]
 
 export const OperatorType = {
   OPERATOR_TYPE_UNSPECIFIED: 'OPERATOR_TYPE_UNSPECIFIED',
@@ -170,8 +170,8 @@ export const ReleaseEnvironmentActionKind = {
   RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED: 'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED',
 } as const
 
-export type ReleaseEnvironmentActionKind
-  = (typeof ReleaseEnvironmentActionKind)[keyof typeof ReleaseEnvironmentActionKind]
+export type ReleaseEnvironmentActionKind =
+  (typeof ReleaseEnvironmentActionKind)[keyof typeof ReleaseEnvironmentActionKind]
 
 export const AckStatus = {
   ACK_STATUS_UNSPECIFIED: 'ACK_STATUS_UNSPECIFIED',
@@ -246,8 +246,8 @@ export const PasswordStrengthLevel = {
   PASSWORD_STRENGTH_LEVEL_STRONG: 'PASSWORD_STRENGTH_LEVEL_STRONG',
 } as const
 
-export type PasswordStrengthLevel
-  = (typeof PasswordStrengthLevel)[keyof typeof PasswordStrengthLevel]
+export type PasswordStrengthLevel =
+  (typeof PasswordStrengthLevel)[keyof typeof PasswordStrengthLevel]
 
 export const PluginInstallationScope = {
   PLUGIN_INSTALLATION_SCOPE_ALL: 'PLUGIN_INSTALLATION_SCOPE_ALL',
@@ -257,8 +257,8 @@ export const PluginInstallationScope = {
   PLUGIN_INSTALLATION_SCOPE_NONE: 'PLUGIN_INSTALLATION_SCOPE_NONE',
 } as const
 
-export type PluginInstallationScope
-  = (typeof PluginInstallationScope)[keyof typeof PluginInstallationScope]
+export type PluginInstallationScope =
+  (typeof PluginInstallationScope)[keyof typeof PluginInstallationScope]
 
 export const LimitStatus = {
   LIMIT_STATUS_UNSPECIFIED: 'LIMIT_STATUS_UNSPECIFIED',
@@ -2151,8 +2151,8 @@ export type AppInstanceServiceListAppInstanceSummariesResponses = {
   200: ListAppInstanceSummariesResponse
 }
 
-export type AppInstanceServiceListAppInstanceSummariesResponse
-  = AppInstanceServiceListAppInstanceSummariesResponses[keyof AppInstanceServiceListAppInstanceSummariesResponses]
+export type AppInstanceServiceListAppInstanceSummariesResponse =
+  AppInstanceServiceListAppInstanceSummariesResponses[keyof AppInstanceServiceListAppInstanceSummariesResponses]
 
 export type AppInstanceServiceListAppInstancesData = {
   body?: never
@@ -2170,8 +2170,8 @@ export type AppInstanceServiceListAppInstancesResponses = {
   200: ListAppInstancesResponse
 }
 
-export type AppInstanceServiceListAppInstancesResponse
-  = AppInstanceServiceListAppInstancesResponses[keyof AppInstanceServiceListAppInstancesResponses]
+export type AppInstanceServiceListAppInstancesResponse =
+  AppInstanceServiceListAppInstancesResponses[keyof AppInstanceServiceListAppInstancesResponses]
 
 export type AppInstanceServiceCreateAppInstanceData = {
   body: CreateAppInstanceRequest
@@ -2184,8 +2184,8 @@ export type AppInstanceServiceCreateAppInstanceResponses = {
   200: CreateAppInstanceResponse
 }
 
-export type AppInstanceServiceCreateAppInstanceResponse
-  = AppInstanceServiceCreateAppInstanceResponses[keyof AppInstanceServiceCreateAppInstanceResponses]
+export type AppInstanceServiceCreateAppInstanceResponse =
+  AppInstanceServiceCreateAppInstanceResponses[keyof AppInstanceServiceCreateAppInstanceResponses]
 
 export type AppInstanceServiceDeleteAppInstanceData = {
   body?: never
@@ -2200,8 +2200,8 @@ export type AppInstanceServiceDeleteAppInstanceResponses = {
   200: DeleteAppInstanceResponse
 }
 
-export type AppInstanceServiceDeleteAppInstanceResponse
-  = AppInstanceServiceDeleteAppInstanceResponses[keyof AppInstanceServiceDeleteAppInstanceResponses]
+export type AppInstanceServiceDeleteAppInstanceResponse =
+  AppInstanceServiceDeleteAppInstanceResponses[keyof AppInstanceServiceDeleteAppInstanceResponses]
 
 export type AppInstanceServiceGetAppInstanceData = {
   body?: never
@@ -2216,8 +2216,8 @@ export type AppInstanceServiceGetAppInstanceResponses = {
   200: GetAppInstanceResponse
 }
 
-export type AppInstanceServiceGetAppInstanceResponse
-  = AppInstanceServiceGetAppInstanceResponses[keyof AppInstanceServiceGetAppInstanceResponses]
+export type AppInstanceServiceGetAppInstanceResponse =
+  AppInstanceServiceGetAppInstanceResponses[keyof AppInstanceServiceGetAppInstanceResponses]
 
 export type AppInstanceServiceUpdateAppInstanceData = {
   body: UpdateAppInstanceRequest
@@ -2232,8 +2232,8 @@ export type AppInstanceServiceUpdateAppInstanceResponses = {
   200: UpdateAppInstanceResponse
 }
 
-export type AppInstanceServiceUpdateAppInstanceResponse
-  = AppInstanceServiceUpdateAppInstanceResponses[keyof AppInstanceServiceUpdateAppInstanceResponses]
+export type AppInstanceServiceUpdateAppInstanceResponse =
+  AppInstanceServiceUpdateAppInstanceResponses[keyof AppInstanceServiceUpdateAppInstanceResponses]
 
 export type AccessServiceGetAccessChannelsData = {
   body?: never
@@ -2248,8 +2248,8 @@ export type AccessServiceGetAccessChannelsResponses = {
   200: GetAccessChannelsResponse
 }
 
-export type AccessServiceGetAccessChannelsResponse
-  = AccessServiceGetAccessChannelsResponses[keyof AccessServiceGetAccessChannelsResponses]
+export type AccessServiceGetAccessChannelsResponse =
+  AccessServiceGetAccessChannelsResponses[keyof AccessServiceGetAccessChannelsResponses]
 
 export type AccessServiceUpdateAccessChannelsData = {
   body: UpdateAccessChannelsRequest
@@ -2264,8 +2264,8 @@ export type AccessServiceUpdateAccessChannelsResponses = {
   200: UpdateAccessChannelsResponse
 }
 
-export type AccessServiceUpdateAccessChannelsResponse
-  = AccessServiceUpdateAccessChannelsResponses[keyof AccessServiceUpdateAccessChannelsResponses]
+export type AccessServiceUpdateAccessChannelsResponse =
+  AccessServiceUpdateAccessChannelsResponses[keyof AccessServiceUpdateAccessChannelsResponses]
 
 export type AccessServiceGetAccessSettingsData = {
   body?: never
@@ -2280,8 +2280,8 @@ export type AccessServiceGetAccessSettingsResponses = {
   200: GetAccessSettingsResponse
 }
 
-export type AccessServiceGetAccessSettingsResponse
-  = AccessServiceGetAccessSettingsResponses[keyof AccessServiceGetAccessSettingsResponses]
+export type AccessServiceGetAccessSettingsResponse =
+  AccessServiceGetAccessSettingsResponses[keyof AccessServiceGetAccessSettingsResponses]
 
 export type DeploymentServiceListDeploymentsData = {
   body?: never
@@ -2300,8 +2300,8 @@ export type DeploymentServiceListDeploymentsResponses = {
   200: ListDeploymentsResponse
 }
 
-export type DeploymentServiceListDeploymentsResponse
-  = DeploymentServiceListDeploymentsResponses[keyof DeploymentServiceListDeploymentsResponses]
+export type DeploymentServiceListDeploymentsResponse =
+  DeploymentServiceListDeploymentsResponses[keyof DeploymentServiceListDeploymentsResponses]
 
 export type AccessServiceGetDeveloperApiSettingsData = {
   body?: never
@@ -2316,8 +2316,8 @@ export type AccessServiceGetDeveloperApiSettingsResponses = {
   200: GetDeveloperApiSettingsResponse
 }
 
-export type AccessServiceGetDeveloperApiSettingsResponse
-  = AccessServiceGetDeveloperApiSettingsResponses[keyof AccessServiceGetDeveloperApiSettingsResponses]
+export type AccessServiceGetDeveloperApiSettingsResponse =
+  AccessServiceGetDeveloperApiSettingsResponses[keyof AccessServiceGetDeveloperApiSettingsResponses]
 
 export type DeploymentServiceListEnvironmentDeploymentsData = {
   body?: never
@@ -2332,8 +2332,8 @@ export type DeploymentServiceListEnvironmentDeploymentsResponses = {
   200: ListEnvironmentDeploymentsResponse
 }
 
-export type DeploymentServiceListEnvironmentDeploymentsResponse
-  = DeploymentServiceListEnvironmentDeploymentsResponses[keyof DeploymentServiceListEnvironmentDeploymentsResponses]
+export type DeploymentServiceListEnvironmentDeploymentsResponse =
+  DeploymentServiceListEnvironmentDeploymentsResponses[keyof DeploymentServiceListEnvironmentDeploymentsResponses]
 
 export type AccessServiceGetAccessPolicyData = {
   body?: never
@@ -2349,8 +2349,8 @@ export type AccessServiceGetAccessPolicyResponses = {
   200: GetAccessPolicyResponse
 }
 
-export type AccessServiceGetAccessPolicyResponse
-  = AccessServiceGetAccessPolicyResponses[keyof AccessServiceGetAccessPolicyResponses]
+export type AccessServiceGetAccessPolicyResponse =
+  AccessServiceGetAccessPolicyResponses[keyof AccessServiceGetAccessPolicyResponses]
 
 export type AccessServiceUpdateAccessPolicyData = {
   body: UpdateAccessPolicyRequest
@@ -2366,8 +2366,8 @@ export type AccessServiceUpdateAccessPolicyResponses = {
   200: UpdateAccessPolicyResponse
 }
 
-export type AccessServiceUpdateAccessPolicyResponse
-  = AccessServiceUpdateAccessPolicyResponses[keyof AccessServiceUpdateAccessPolicyResponses]
+export type AccessServiceUpdateAccessPolicyResponse =
+  AccessServiceUpdateAccessPolicyResponses[keyof AccessServiceUpdateAccessPolicyResponses]
 
 export type AccessServiceListApiKeysData = {
   body?: never
@@ -2383,8 +2383,8 @@ export type AccessServiceListApiKeysResponses = {
   200: ListApiKeysResponse
 }
 
-export type AccessServiceListApiKeysResponse
-  = AccessServiceListApiKeysResponses[keyof AccessServiceListApiKeysResponses]
+export type AccessServiceListApiKeysResponse =
+  AccessServiceListApiKeysResponses[keyof AccessServiceListApiKeysResponses]
 
 export type AccessServiceCreateApiKeyData = {
   body: CreateApiKeyRequest
@@ -2400,8 +2400,8 @@ export type AccessServiceCreateApiKeyResponses = {
   200: CreateApiKeyResponse
 }
 
-export type AccessServiceCreateApiKeyResponse
-  = AccessServiceCreateApiKeyResponses[keyof AccessServiceCreateApiKeyResponses]
+export type AccessServiceCreateApiKeyResponse =
+  AccessServiceCreateApiKeyResponses[keyof AccessServiceCreateApiKeyResponses]
 
 export type AccessServiceDeleteApiKeyData = {
   body?: never
@@ -2418,8 +2418,8 @@ export type AccessServiceDeleteApiKeyResponses = {
   200: DeleteApiKeyResponse
 }
 
-export type AccessServiceDeleteApiKeyResponse
-  = AccessServiceDeleteApiKeyResponses[keyof AccessServiceDeleteApiKeyResponses]
+export type AccessServiceDeleteApiKeyResponse =
+  AccessServiceDeleteApiKeyResponses[keyof AccessServiceDeleteApiKeyResponses]
 
 export type DeploymentServiceListRollbackTargetsData = {
   body?: never
@@ -2438,8 +2438,8 @@ export type DeploymentServiceListRollbackTargetsResponses = {
   200: ListRollbackTargetsResponse
 }
 
-export type DeploymentServiceListRollbackTargetsResponse
-  = DeploymentServiceListRollbackTargetsResponses[keyof DeploymentServiceListRollbackTargetsResponses]
+export type DeploymentServiceListRollbackTargetsResponse =
+  DeploymentServiceListRollbackTargetsResponses[keyof DeploymentServiceListRollbackTargetsResponses]
 
 export type DeploymentServiceCancelDeploymentData = {
   body: CancelDeploymentRequest
@@ -2455,8 +2455,8 @@ export type DeploymentServiceCancelDeploymentResponses = {
   200: CancelDeploymentResponse
 }
 
-export type DeploymentServiceCancelDeploymentResponse
-  = DeploymentServiceCancelDeploymentResponses[keyof DeploymentServiceCancelDeploymentResponses]
+export type DeploymentServiceCancelDeploymentResponse =
+  DeploymentServiceCancelDeploymentResponses[keyof DeploymentServiceCancelDeploymentResponses]
 
 export type DeploymentServicePromoteData = {
   body: PromoteRequest
@@ -2472,8 +2472,8 @@ export type DeploymentServicePromoteResponses = {
   200: PromoteResponse
 }
 
-export type DeploymentServicePromoteResponse
-  = DeploymentServicePromoteResponses[keyof DeploymentServicePromoteResponses]
+export type DeploymentServicePromoteResponse =
+  DeploymentServicePromoteResponses[keyof DeploymentServicePromoteResponses]
 
 export type DeploymentServiceRollbackData = {
   body: RollbackRequest
@@ -2489,8 +2489,8 @@ export type DeploymentServiceRollbackResponses = {
   200: RollbackResponse
 }
 
-export type DeploymentServiceRollbackResponse
-  = DeploymentServiceRollbackResponses[keyof DeploymentServiceRollbackResponses]
+export type DeploymentServiceRollbackResponse =
+  DeploymentServiceRollbackResponses[keyof DeploymentServiceRollbackResponses]
 
 export type DeploymentServiceUndeployData = {
   body: UndeployRequest
@@ -2506,8 +2506,8 @@ export type DeploymentServiceUndeployResponses = {
   200: UndeployResponse
 }
 
-export type DeploymentServiceUndeployResponse
-  = DeploymentServiceUndeployResponses[keyof DeploymentServiceUndeployResponses]
+export type DeploymentServiceUndeployResponse =
+  DeploymentServiceUndeployResponses[keyof DeploymentServiceUndeployResponses]
 
 export type ReleaseServiceListReleaseSummariesData = {
   body?: never
@@ -2528,8 +2528,8 @@ export type ReleaseServiceListReleaseSummariesResponses = {
   200: ListReleaseSummariesResponse
 }
 
-export type ReleaseServiceListReleaseSummariesResponse
-  = ReleaseServiceListReleaseSummariesResponses[keyof ReleaseServiceListReleaseSummariesResponses]
+export type ReleaseServiceListReleaseSummariesResponse =
+  ReleaseServiceListReleaseSummariesResponses[keyof ReleaseServiceListReleaseSummariesResponses]
 
 export type ReleaseServiceListReleasesData = {
   body?: never
@@ -2550,8 +2550,8 @@ export type ReleaseServiceListReleasesResponses = {
   200: ListReleasesResponse
 }
 
-export type ReleaseServiceListReleasesResponse
-  = ReleaseServiceListReleasesResponses[keyof ReleaseServiceListReleasesResponses]
+export type ReleaseServiceListReleasesResponse =
+  ReleaseServiceListReleasesResponses[keyof ReleaseServiceListReleasesResponses]
 
 export type ReleaseServiceComputeReleaseDeploymentViewData = {
   body?: never
@@ -2569,8 +2569,8 @@ export type ReleaseServiceComputeReleaseDeploymentViewResponses = {
   200: ComputeReleaseDeploymentViewResponse
 }
 
-export type ReleaseServiceComputeReleaseDeploymentViewResponse
-  = ReleaseServiceComputeReleaseDeploymentViewResponses[keyof ReleaseServiceComputeReleaseDeploymentViewResponses]
+export type ReleaseServiceComputeReleaseDeploymentViewResponse =
+  ReleaseServiceComputeReleaseDeploymentViewResponses[keyof ReleaseServiceComputeReleaseDeploymentViewResponses]
 
 export type AppInstanceServiceGetAppInstanceOverviewData = {
   body?: never
@@ -2585,8 +2585,8 @@ export type AppInstanceServiceGetAppInstanceOverviewResponses = {
   200: GetAppInstanceOverviewResponse
 }
 
-export type AppInstanceServiceGetAppInstanceOverviewResponse
-  = AppInstanceServiceGetAppInstanceOverviewResponses[keyof AppInstanceServiceGetAppInstanceOverviewResponses]
+export type AppInstanceServiceGetAppInstanceOverviewResponse =
+  AppInstanceServiceGetAppInstanceOverviewResponses[keyof AppInstanceServiceGetAppInstanceOverviewResponses]
 
 export type DeploymentServiceDeployData = {
   body: DeployRequest
@@ -2599,8 +2599,8 @@ export type DeploymentServiceDeployResponses = {
   200: DeployResponse
 }
 
-export type DeploymentServiceDeployResponse
-  = DeploymentServiceDeployResponses[keyof DeploymentServiceDeployResponses]
+export type DeploymentServiceDeployResponse =
+  DeploymentServiceDeployResponses[keyof DeploymentServiceDeployResponses]
 
 export type EnvironmentServiceListEnvironmentsData = {
   body?: never
@@ -2618,8 +2618,8 @@ export type EnvironmentServiceListEnvironmentsResponses = {
   200: ListEnvironmentsResponse
 }
 
-export type EnvironmentServiceListEnvironmentsResponse
-  = EnvironmentServiceListEnvironmentsResponses[keyof EnvironmentServiceListEnvironmentsResponses]
+export type EnvironmentServiceListEnvironmentsResponse =
+  EnvironmentServiceListEnvironmentsResponses[keyof EnvironmentServiceListEnvironmentsResponses]
 
 export type ReleaseServiceCreateReleaseData = {
   body: CreateReleaseRequest
@@ -2632,8 +2632,8 @@ export type ReleaseServiceCreateReleaseResponses = {
   200: CreateReleaseResponse
 }
 
-export type ReleaseServiceCreateReleaseResponse
-  = ReleaseServiceCreateReleaseResponses[keyof ReleaseServiceCreateReleaseResponses]
+export type ReleaseServiceCreateReleaseResponse =
+  ReleaseServiceCreateReleaseResponses[keyof ReleaseServiceCreateReleaseResponses]
 
 export type ReleaseServiceDeleteReleaseData = {
   body?: never
@@ -2648,8 +2648,8 @@ export type ReleaseServiceDeleteReleaseResponses = {
   200: DeleteReleaseResponse
 }
 
-export type ReleaseServiceDeleteReleaseResponse
-  = ReleaseServiceDeleteReleaseResponses[keyof ReleaseServiceDeleteReleaseResponses]
+export type ReleaseServiceDeleteReleaseResponse =
+  ReleaseServiceDeleteReleaseResponses[keyof ReleaseServiceDeleteReleaseResponses]
 
 export type ReleaseServiceGetReleaseData = {
   body?: never
@@ -2664,8 +2664,8 @@ export type ReleaseServiceGetReleaseResponses = {
   200: GetReleaseResponse
 }
 
-export type ReleaseServiceGetReleaseResponse
-  = ReleaseServiceGetReleaseResponses[keyof ReleaseServiceGetReleaseResponses]
+export type ReleaseServiceGetReleaseResponse =
+  ReleaseServiceGetReleaseResponses[keyof ReleaseServiceGetReleaseResponses]
 
 export type ReleaseServiceUpdateReleaseData = {
   body: UpdateReleaseRequest
@@ -2680,8 +2680,8 @@ export type ReleaseServiceUpdateReleaseResponses = {
   200: UpdateReleaseResponse
 }
 
-export type ReleaseServiceUpdateReleaseResponse
-  = ReleaseServiceUpdateReleaseResponses[keyof ReleaseServiceUpdateReleaseResponses]
+export type ReleaseServiceUpdateReleaseResponse =
+  ReleaseServiceUpdateReleaseResponses[keyof ReleaseServiceUpdateReleaseResponses]
 
 export type ReleaseServiceExportReleaseDslData = {
   body?: never
@@ -2696,8 +2696,8 @@ export type ReleaseServiceExportReleaseDslResponses = {
   200: ExportReleaseDslResponse
 }
 
-export type ReleaseServiceExportReleaseDslResponse
-  = ReleaseServiceExportReleaseDslResponses[keyof ReleaseServiceExportReleaseDslResponses]
+export type ReleaseServiceExportReleaseDslResponse =
+  ReleaseServiceExportReleaseDslResponses[keyof ReleaseServiceExportReleaseDslResponses]
 
 export type ReleaseServiceListReleaseCredentialCandidatesData = {
   body?: never
@@ -2712,8 +2712,8 @@ export type ReleaseServiceListReleaseCredentialCandidatesResponses = {
   200: ListReleaseCredentialCandidatesResponse
 }
 
-export type ReleaseServiceListReleaseCredentialCandidatesResponse
-  = ReleaseServiceListReleaseCredentialCandidatesResponses[keyof ReleaseServiceListReleaseCredentialCandidatesResponses]
+export type ReleaseServiceListReleaseCredentialCandidatesResponse =
+  ReleaseServiceListReleaseCredentialCandidatesResponses[keyof ReleaseServiceListReleaseCredentialCandidatesResponses]
 
 export type ReleaseServiceComputeDeploymentOptionsData = {
   body: ComputeDeploymentOptionsRequest
@@ -2726,8 +2726,8 @@ export type ReleaseServiceComputeDeploymentOptionsResponses = {
   200: ComputeDeploymentOptionsResponse
 }
 
-export type ReleaseServiceComputeDeploymentOptionsResponse
-  = ReleaseServiceComputeDeploymentOptionsResponses[keyof ReleaseServiceComputeDeploymentOptionsResponses]
+export type ReleaseServiceComputeDeploymentOptionsResponse =
+  ReleaseServiceComputeDeploymentOptionsResponses[keyof ReleaseServiceComputeDeploymentOptionsResponses]
 
 export type ReleaseServicePrecheckReleaseData = {
   body: PrecheckReleaseRequest
@@ -2740,8 +2740,8 @@ export type ReleaseServicePrecheckReleaseResponses = {
   200: PrecheckReleaseResponse
 }
 
-export type ReleaseServicePrecheckReleaseResponse
-  = ReleaseServicePrecheckReleaseResponses[keyof ReleaseServicePrecheckReleaseResponses]
+export type ReleaseServicePrecheckReleaseResponse =
+  ReleaseServicePrecheckReleaseResponses[keyof ReleaseServicePrecheckReleaseResponses]
 
 export type ConsoleSsoOAuth2LoginData = {
   body?: never
@@ -2754,8 +2754,8 @@ export type ConsoleSsoOAuth2LoginResponses = {
   200: OAuth2LoginReply
 }
 
-export type ConsoleSsoOAuth2LoginResponse
-  = ConsoleSsoOAuth2LoginResponses[keyof ConsoleSsoOAuth2LoginResponses]
+export type ConsoleSsoOAuth2LoginResponse =
+  ConsoleSsoOAuth2LoginResponses[keyof ConsoleSsoOAuth2LoginResponses]
 
 export type ConsoleSsoOidcLoginData = {
   body?: never
@@ -2768,8 +2768,8 @@ export type ConsoleSsoOidcLoginResponses = {
   200: OidcReply
 }
 
-export type ConsoleSsoOidcLoginResponse
-  = ConsoleSsoOidcLoginResponses[keyof ConsoleSsoOidcLoginResponses]
+export type ConsoleSsoOidcLoginResponse =
+  ConsoleSsoOidcLoginResponses[keyof ConsoleSsoOidcLoginResponses]
 
 export type ConsoleSsoSamlLoginData = {
   body?: never
@@ -2782,8 +2782,8 @@ export type ConsoleSsoSamlLoginResponses = {
   200: SamlLoginReply
 }
 
-export type ConsoleSsoSamlLoginResponse
-  = ConsoleSsoSamlLoginResponses[keyof ConsoleSsoSamlLoginResponses]
+export type ConsoleSsoSamlLoginResponse =
+  ConsoleSsoSamlLoginResponses[keyof ConsoleSsoSamlLoginResponses]
 
 export type WebAppAuthGetWebAppAccessModeData = {
   body?: never
@@ -2798,8 +2798,8 @@ export type WebAppAuthGetWebAppAccessModeResponses = {
   200: GetWebAppAccessModeRes
 }
 
-export type WebAppAuthGetWebAppAccessModeResponse
-  = WebAppAuthGetWebAppAccessModeResponses[keyof WebAppAuthGetWebAppAccessModeResponses]
+export type WebAppAuthGetWebAppAccessModeResponse =
+  WebAppAuthGetWebAppAccessModeResponses[keyof WebAppAuthGetWebAppAccessModeResponses]
 
 export type WebAppAuthUpdateWebAppWhitelistSubjectsData = {
   body: UpdateWebAppWhitelistSubjectsReq
@@ -2812,8 +2812,8 @@ export type WebAppAuthUpdateWebAppWhitelistSubjectsResponses = {
   200: UpdateWebAppWhitelistSubjectsRes
 }
 
-export type WebAppAuthUpdateWebAppWhitelistSubjectsResponse
-  = WebAppAuthUpdateWebAppWhitelistSubjectsResponses[keyof WebAppAuthUpdateWebAppWhitelistSubjectsResponses]
+export type WebAppAuthUpdateWebAppWhitelistSubjectsResponse =
+  WebAppAuthUpdateWebAppWhitelistSubjectsResponses[keyof WebAppAuthUpdateWebAppWhitelistSubjectsResponses]
 
 export type WebAppAuthSearchForWhilteListCandidatesData = {
   body?: never
@@ -2831,8 +2831,8 @@ export type WebAppAuthSearchForWhilteListCandidatesResponses = {
   200: SearchForWhilteListCandidatesRes
 }
 
-export type WebAppAuthSearchForWhilteListCandidatesResponse
-  = WebAppAuthSearchForWhilteListCandidatesResponses[keyof WebAppAuthSearchForWhilteListCandidatesResponses]
+export type WebAppAuthSearchForWhilteListCandidatesResponse =
+  WebAppAuthSearchForWhilteListCandidatesResponses[keyof WebAppAuthSearchForWhilteListCandidatesResponses]
 
 export type WebAppAuthGetWebAppWhitelistSubjectsData = {
   body?: never
@@ -2847,8 +2847,8 @@ export type WebAppAuthGetWebAppWhitelistSubjectsResponses = {
   200: GetWebAppWhitelistSubjectsRes
 }
 
-export type WebAppAuthGetWebAppWhitelistSubjectsResponse
-  = WebAppAuthGetWebAppWhitelistSubjectsResponses[keyof WebAppAuthGetWebAppWhitelistSubjectsResponses]
+export type WebAppAuthGetWebAppWhitelistSubjectsResponse =
+  WebAppAuthGetWebAppWhitelistSubjectsResponses[keyof WebAppAuthGetWebAppWhitelistSubjectsResponses]
 
 export type WebAppAuthGetGroupSubjectsData = {
   body?: never
@@ -2863,8 +2863,8 @@ export type WebAppAuthGetGroupSubjectsResponses = {
   200: GetGroupSubjectsRes
 }
 
-export type WebAppAuthGetGroupSubjectsResponse
-  = WebAppAuthGetGroupSubjectsResponses[keyof WebAppAuthGetGroupSubjectsResponses]
+export type WebAppAuthGetGroupSubjectsResponse =
+  WebAppAuthGetGroupSubjectsResponses[keyof WebAppAuthGetGroupSubjectsResponses]
 
 export type WebAppAuthIsUserAllowedToAccessWebAppData = {
   body?: never
@@ -2879,5 +2879,5 @@ export type WebAppAuthIsUserAllowedToAccessWebAppResponses = {
   200: IsUserAllowedToAccessWebAppRes
 }
 
-export type WebAppAuthIsUserAllowedToAccessWebAppResponse
-  = WebAppAuthIsUserAllowedToAccessWebAppResponses[keyof WebAppAuthIsUserAllowedToAccessWebAppResponses]
+export type WebAppAuthIsUserAllowedToAccessWebAppResponse =
+  WebAppAuthIsUserAllowedToAccessWebAppResponses[keyof WebAppAuthIsUserAllowedToAccessWebAppResponses]

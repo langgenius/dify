@@ -6,7 +6,7 @@ from celery import shared_task
 from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
@@ -64,27 +64,31 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                     index_node_ids.extend(attachment_ids)
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
+            index_processor.clean(
+                dataset, index_node_ids, with_keywords=True, delete_child_chunks=False, session=session
+            )
+            session.commit()
 
             # Disable summary indexes for these segments
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             segment_ids_list = [segment.id for segment in segments]
             try:
                 # Get disabled_by from first segment (they should all have the same disabled_by)
                 disabled_by = segments[0].disabled_by if segments else None
-                SummaryIndexService.disable_summaries_for_segments(
+                SummaryIndexAdapter.disable_summaries_for_segments(
                     dataset=dataset,
                     segment_ids=segment_ids_list,
                     disabled_by=disabled_by,
                 )
-            except Exception as e:
-                logger.warning("Failed to disable summaries for segments: %s", str(e))
+            except Exception:
+                logger.warning("Failed to disable summaries for segments", exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
         except Exception:
             # update segment error msg
+            session.rollback()
             session.execute(
                 update(DocumentSegment)
                 .where(

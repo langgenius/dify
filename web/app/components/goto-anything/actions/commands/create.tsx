@@ -1,12 +1,5 @@
-import type { SlashCommandHandler } from './types'
+import type { SlashCommand } from './types'
 import type { WorkflowGeneratorMode } from '@/app/components/workflow/workflow-generator/types'
-import { RiChat3Line, RiNodeTree, RiSparkling2Line } from '@remixicon/react'
-import * as React from 'react'
-import { getI18n } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
-import { AppModeEnum } from '@/types/app'
-import { registerCommands, unregisterCommands } from './command-bus'
 
 type CreateOption = {
   id: string
@@ -18,7 +11,7 @@ type CreateOption = {
   mode: WorkflowGeneratorMode
   /** When set, the modal opens in auto-mode and the planner picks the app type. */
   auto?: boolean
-  icon: React.ComponentType<{ className?: string }>
+  iconClassName: string
 }
 
 // `as const` keeps titleKey/descKey as literal types so the typed `i18n.t`
@@ -30,7 +23,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createAutoDesc',
     mode: 'advanced-chat',
     auto: true,
-    icon: RiSparkling2Line,
+    iconClassName: 'i-ri-sparkling-2-line',
   },
   {
     id: 'workflow',
@@ -38,7 +31,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createWorkflowDesc',
     mode: 'workflow',
     auto: false,
-    icon: RiNodeTree,
+    iconClassName: 'i-ri-node-tree',
   },
   {
     id: 'chatflow',
@@ -46,7 +39,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createChatflowDesc',
     mode: 'advanced-chat',
     auto: false,
-    icon: RiChat3Line,
+    iconClassName: 'i-ri-chat-3-line',
   },
 ] as const satisfies readonly CreateOption[]
 
@@ -68,22 +61,37 @@ const OPTIONS = [
  * through so the modal offers "Apply to current draft". Auto-mode always creates
  * a new app since the planner may pick a different type than the open Studio.
  */
-export const createCommand: SlashCommandHandler = {
+export const createCommand: SlashCommand = {
   name: 'create',
   aliases: ['new', 'generate'],
-  // Fallback only — the palette localises the root row via the slashKeyMap in
-  // command-selector.tsx (gotoAnything.actions.createCategoryDesc).
-  description: 'Create an AI-generated workflow or chatflow',
+  description: 'Create an app with AI',
   mode: 'submenu',
+  execute(args, context) {
+    const option = OPTIONS.find(
+      (option) => option.mode === args.mode && option.auto === !!args.auto,
+    )
+    if (!option) return
+    const initialInstruction = typeof args.instruction === 'string' ? args.instruction : ''
+    const app = context.currentApp
+    if (!option.auto && app?.mode === option.mode) {
+      context.openGenerator({
+        mode: option.mode,
+        currentAppId: app.id,
+        currentAppMode: app.mode,
+        initialInstruction,
+      })
+      return
+    }
+    context.openGenerator({ mode: option.mode, autoMode: option.auto, initialInstruction })
+  },
 
-  async search(args: string, locale?: string) {
-    const i18n = getI18n()
+  search(args: string, context) {
     const tr = (key: (typeof OPTIONS)[number]['titleKey' | 'descKey']) =>
-      i18n.t(key, { ns: 'app', lng: locale })
+      context.t(($) => $[key], { ns: 'app', lng: context.locale })
 
-    const renderIcon = (Icon: CreateOption['icon']) => (
+    const renderIcon = (iconClassName: string) => (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <Icon className="size-4 text-text-tertiary" />
+        <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
       </div>
     )
 
@@ -94,8 +102,8 @@ export const createCommand: SlashCommandHandler = {
       // back to the option's static description otherwise.
       description: instruction || tr(opt.descKey),
       type: 'command' as const,
-      icon: renderIcon(opt.icon),
-      data: { command: 'create.open', args: { mode: opt.mode, auto: !!opt.auto, instruction } },
+      icon: renderIcon(opt.iconClassName),
+      data: { command: 'create', args: { mode: opt.mode, auto: !!opt.auto, instruction } },
     })
 
     const trimmed = args.trim()
@@ -105,59 +113,19 @@ export const createCommand: SlashCommandHandler = {
     // submenu-filter behaviour, no instruction captured.
     if (tokens.length <= 1) {
       const query = trimmed.toLowerCase()
-      return OPTIONS
-        .filter(opt => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query))
-        .map(opt => toResult(opt, ''))
+      return OPTIONS.filter(
+        (opt) => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query),
+      ).map((opt) => toResult(opt, ''))
     }
 
     // Multi-token: inline capture. If the first word names a mode, use it and
     // treat the rest as the instruction; otherwise keep every option with the
     // full text as the instruction so the user just picks the type.
     const first = tokens[0]!.toLowerCase()
-    const matched = OPTIONS.find(opt => opt.id === first || tr(opt.titleKey).toLowerCase() === first)
-    if (matched)
-      return [toResult(matched, tokens.slice(1).join(' '))]
-    return OPTIONS.map(opt => toResult(opt, trimmed))
-  },
-
-  register() {
-    registerCommands({
-      'create.open': async (args) => {
-        const mode: WorkflowGeneratorMode = (args?.mode ?? 'workflow') as WorkflowGeneratorMode
-        const autoMode = !!args?.auto
-        const initialInstruction = typeof args?.instruction === 'string' ? args.instruction : ''
-
-        // If a graph-based Studio app is open and its mode matches the picked
-        // mode, thread it through so the modal can offer "Apply to current
-        // draft". A mode mismatch (or no app open) falls back to new-app only,
-        // mirroring the precondition the modal uses for canApplyToCurrent.
-        // Auto-mode always creates a new app — the planner may resolve a type
-        // different from the open Studio, so applying to the current draft is
-        // unsafe.
-        const appDetail = useAppStore.getState().appDetail
-        const currentAppMode: WorkflowGeneratorMode | null
-          = appDetail?.mode === AppModeEnum.WORKFLOW
-            ? 'workflow'
-            : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-              ? 'advanced-chat'
-              : null
-
-        if (!autoMode && appDetail && currentAppMode === mode) {
-          useWorkflowGeneratorStore.getState().openGenerator({
-            mode,
-            currentAppId: appDetail.id,
-            currentAppMode,
-            initialInstruction,
-          })
-          return
-        }
-
-        useWorkflowGeneratorStore.getState().openGenerator({ mode, autoMode, initialInstruction })
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['create.open'])
+    const matched = OPTIONS.find(
+      (opt) => opt.id === first || tr(opt.titleKey).toLowerCase() === first,
+    )
+    if (matched) return [toResult(matched, tokens.slice(1).join(' '))]
+    return OPTIONS.map((opt) => toResult(opt, trimmed))
   },
 }

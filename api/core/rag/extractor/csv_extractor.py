@@ -31,7 +31,8 @@ class CSVExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
         self.source_column = source_column
-        self.csv_args = csv_args or {}
+        # Preserve source text for indexing unless the caller requests type or NA conversion.
+        self.csv_args: dict[str, Any] = {"dtype": str, "keep_default_na": False, **(csv_args or {})}
 
     @override
     def extract(self) -> list[Document]:
@@ -68,7 +69,7 @@ class CSVExtractor(BaseExtractor):
             # create document objects
 
             for i, row in df.iterrows():
-                content = ";".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
+                content = ";".join(f"{str(col).strip()}: {str(row[col]).strip()}" for col in df.columns)
                 source = row[self.source_column] if self.source_column else ""
                 metadata = {"source": source, "row": i}
                 doc = Document(page_content=content, metadata=metadata)

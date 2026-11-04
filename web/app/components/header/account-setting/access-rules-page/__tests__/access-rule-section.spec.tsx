@@ -1,51 +1,14 @@
-import type { ReactNode } from 'react'
-import type { AccessPolicyWithBindings } from '@/models/access-control'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import type { AccessRule } from '../types'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccessRuleSection from '../access-rule-section'
 
-const mocks = vi.hoisted(() => ({
-  workspacePermissionKeys: [] as string[],
-}))
+let workspacePermissionKeys: string[] = []
+const render = (ui: ReactElement) => renderWithConsoleQuery(ui, { workspacePermissionKeys })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-const rule: AccessPolicyWithBindings = {
+const rule: AccessRule = {
   policy: {
     id: 'app-rule-1',
     tenant_id: 'tenant-1',
@@ -56,22 +19,28 @@ const rule: AccessPolicyWithBindings = {
     permission_keys: ['app.edit'],
     is_builtin: true,
     category: 'global_system_default',
-    created_at: '2026-01-01',
-    updated_at: '2026-01-01',
+    created_at: 1767225600,
+    updated_at: 1767225600,
   },
-  roles: [{
-    role_id: 'role-1',
-    role_name: 'Admin',
-    binding_id: 'role-binding-1',
-    is_locked: true,
-    role_tag: '',
-  }],
-  accounts: [{
-    account_id: 'account-1',
-    account_name: 'Levi',
-    binding_id: 'account-binding-1',
-    is_locked: false,
-  }],
+  roles: [
+    {
+      role_id: 'role-1',
+      role_name: 'Admin',
+      binding_id: 'role-binding-1',
+      is_locked: true,
+      role_tag: '',
+    },
+  ],
+  accounts: [
+    {
+      account_id: 'account-1',
+      account_name: 'Levi',
+      avatar: '',
+      email: 'levi@example.com',
+      binding_id: 'account-binding-1',
+      is_locked: false,
+    },
+  ],
 }
 
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
@@ -85,30 +54,18 @@ class MockIntersectionObserver {
   disconnect = vi.fn()
 }
 
-const renderWithQueryClient = (children: ReactNode) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>,
-  )
-}
-
 describe('AccessRuleSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.workspacePermissionKeys = []
+    workspacePermissionKeys = []
     intersectionObserverCallback = null
-    globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it('should render a collapsed group and expand it when the header is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <AccessRuleSection
         title="App Access Rules"
@@ -120,7 +77,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { expanded: false }))
+    await user.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
@@ -143,13 +100,15 @@ describe('AccessRuleSection', () => {
     render(
       <AccessRuleSection
         title="App Access Rules"
-        rules={[{
-          ...rule,
-          policy: {
-            ...rule.policy,
-            description: '',
+        rules={[
+          {
+            ...rule,
+            policy: {
+              ...rule.policy,
+              description: '',
+            },
           },
-        }]}
+        ]}
         totalCount={1}
         isLoadingRules={false}
         defaultExpanded
@@ -207,10 +166,11 @@ describe('AccessRuleSection', () => {
   })
 
   it('should expose create action when workspace role management is allowed', async () => {
-    mocks.workspacePermissionKeys = ['workspace.role.manage']
+    const user = userEvent.setup()
+    workspacePermissionKeys = ['workspace.role.manage']
     const onCreate = vi.fn()
 
-    renderWithQueryClient(
+    render(
       <AccessRuleSection
         title="App Access Rules"
         rules={[rule]}
@@ -220,25 +180,35 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }))
+    await user.click(
+      screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
+    )
 
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep row actions when workspace role management is allowed', () => {
-    mocks.workspacePermissionKeys = ['workspace.role.manage']
+  it('opens the built-in rule through its authorized row action', async () => {
+    const user = userEvent.setup()
+    const onViewRule = vi.fn()
+    workspacePermissionKeys = ['workspace.role.manage']
 
-    renderWithQueryClient(
+    render(
       <AccessRuleSection
         title="App Access Rules"
         rules={[rule]}
         totalCount={1}
         isLoadingRules={false}
+        onViewRule={onViewRule}
         defaultExpanded
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'common.operation.moreActions' })).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
+
+    await user.click(trigger)
+
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
+    expect(onViewRule).toHaveBeenCalledExactlyOnceWith(rule)
   })
 
   it('should hide create action when workspace role management is missing', () => {
@@ -251,6 +221,8 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: /permission\.accessRule\.newPermissionSet/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
+    ).not.toBeInTheDocument()
   })
 })

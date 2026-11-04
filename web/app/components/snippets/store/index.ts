@@ -1,13 +1,14 @@
 'use client'
 
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
 import { create } from 'zustand'
 
 type SnippetNavigationState = {
   snippet?: SnippetDetail
   snippetId?: string
   readonly: boolean
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: InputVar[]) => void
 }
 
 type SnippetDetailUIState = {
@@ -22,8 +23,8 @@ const initialState = {
   onFieldsChange: undefined,
 }
 
-export const useSnippetDetailStore = create<SnippetDetailUIState>(set => ({
+export const useSnippetDetailStore = create<SnippetDetailUIState>((set) => ({
   ...initialState,
-  setNavigationState: state => set(state),
+  setNavigationState: (state) => set(state),
   reset: () => set(initialState),
 }))

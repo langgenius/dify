@@ -11,7 +11,7 @@ export function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
 
   return (
     <button
@@ -25,8 +25,13 @@ export function CurrentDraftItem({
     >
       <VersionTimelineDot isActive={isActive} isFirst isLast={isLast} />
       <div className="min-w-0 flex-1 py-1">
-        <p className={cn('truncate system-sm-semibold', isActive ? 'text-text-accent' : 'text-text-secondary')}>
-          {tWorkflow('versionHistory.currentDraft')}
+        <p
+          className={cn(
+            'truncate system-sm-semibold',
+            isActive ? 'text-text-accent' : 'text-text-secondary',
+          )}
+        >
+          {tWorkflow(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })}
         </p>
       </div>
     </button>
