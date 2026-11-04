@@ -501,7 +501,7 @@ function AgentKnowledgeRetrievalForm({
                 </span>
                 <span
                   aria-hidden
-                  className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                  className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
                 />
               </CollapsibleTrigger>
               <CollapsiblePanel>
