@@ -4182,14 +4182,10 @@ def test_skill_timestamps_are_serialized_from_utc_not_host_time(
 
         with session_factory.create_session() as session, session.begin():
             session.execute(
-                update(Skill)
-                .where(Skill.id == skill_id)
-                .values(created_at=_RECORDED_AT, updated_at=_RECORDED_AT)
+                update(Skill).where(Skill.id == skill_id).values(created_at=_RECORDED_AT, updated_at=_RECORDED_AT)
             )
             session.execute(
-                update(SkillVersion)
-                .where(SkillVersion.id == version["id"])
-                .values(created_at=_RECORDED_AT)
+                update(SkillVersion).where(SkillVersion.id == version["id"]).values(created_at=_RECORDED_AT)
             )
 
         detail = service.get_skill(tenant_id=TENANT, skill_id=skill_id)
