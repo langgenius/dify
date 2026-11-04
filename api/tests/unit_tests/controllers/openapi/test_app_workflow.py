@@ -1,9 +1,9 @@
 import json
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from io import BytesIO
-from typing import Protocol, cast
+from typing import Final, Protocol, cast
 
 import pytest
 from flask import Flask
@@ -48,7 +48,11 @@ from controllers.openapi.app_workflow import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from core.helper import encrypter
+from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_application_services import ApplicationServices
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.runtime import VariablePool
 from graphon.variables import SecretVariable, StringVariable, VariableBase
 from libs.oauth_bearer import AuthContext
 from models.account import Account, Tenant
@@ -389,8 +393,144 @@ def test_node_run_payload_accepts_files_and_forbids_attachments(payload_cls: typ
         payload_cls.model_validate({"attachments": []})
 
 
+_UPSTREAM: Final = ["search", "text"]
+
+
+def _code_node(node_id: str) -> dict[str, object]:
+    return {
+        "id": node_id,
+        "data": {
+            "type": "code",
+            "title": "Shorten",
+            "code_language": "python3",
+            "code": "def main(results):\n    return {'short': results}",
+            "variables": [{"variable": "results", "value_selector": _UPSTREAM}],
+            "outputs": {"short": {"type": "string"}},
+        },
+    }
+
+
+_TEMPLATE_NODE: Final[Mapping[str, object]] = {
+    "id": "digest",
+    "data": {
+        "type": "template-transform",
+        "title": "Digest",
+        "template": "{{ headlines }}",
+        "variables": [{"variable": "headlines", "value_selector": _UPSTREAM}],
+    },
+}
+_TOOL_NODE: Final[Mapping[str, object]] = {
+    "id": "now",
+    "data": {
+        "type": "tool",
+        "title": "Now",
+        "provider_id": "time",
+        "provider_type": "builtin",
+        "provider_name": "time",
+        "tool_name": "current_time",
+        "tool_label": "Current Time",
+        "tool_configurations": {},
+        "tool_parameters": {"query": {"type": "mixed", "value": "news at {{#search.text#}}"}},
+    },
+}
+
+
 def _code_node_graph(node_id: str) -> str:
-    return json.dumps({"nodes": [{"id": node_id, "data": {"type": "code"}}], "edges": []})
+    return _graph(_code_node(node_id))
+
+
+def _graph(node: Mapping[str, object]) -> str:
+    return json.dumps({"nodes": [node], "edges": []})
+
+
+def _run_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+    session: Session,
+    session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    inputs: dict[str, object],
+) -> Mapping[str, object]:
+    """The user inputs the node test hands the single-step run."""
+    service = _workflow_service(monkeypatch, session_factory)
+    ctx = _app_context(session)
+    _add_draft(session, graph=_graph(node))
+    handed: list[Mapping[str, object]] = []
+
+    def run_draft_workflow_node(*, user_inputs: Mapping[str, object], **_kwargs: object) -> None:
+        handed.append(user_inputs)
+
+    monkeypatch.setattr(service, "run_draft_workflow_node", run_draft_workflow_node)
+    monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
+
+    run_draft_node(ctx, str(node["id"]), inputs=inputs, query="")
+
+    [user_inputs] = handed
+    return user_inputs
+
+
+def _read_by_the_run(node: Mapping[str, object], user_inputs: Mapping[str, object]) -> VariablePool:
+    """The pool the single-step run fills from `user_inputs`, through the node's own variable mapping."""
+    config = NodeConfigDictAdapter.validate_python(node)
+    node_cls = resolve_workflow_node_class(node_type=config["data"].type, node_version=config["data"].version)
+    mapping = node_cls.extract_variable_selector_to_variable_mapping(
+        graph_config=json.loads(_graph(node)), config=config
+    )
+    pool = VariablePool()
+    WorkflowEntry.mapping_user_inputs_to_variable_pool(
+        variable_mapping=mapping, user_inputs=user_inputs, variable_pool=pool, tenant_id=WORKSPACE_ID
+    )
+    return pool
+
+
+@pytest.mark.parametrize("node", [_code_node("shorten"), _TEMPLATE_NODE, _TOOL_NODE], ids=["code", "template", "tool"])
+@pytest.mark.parametrize("key", ["#search.text#", "search.text"])
+def test_a_node_test_takes_an_upstream_reference_with_or_without_hashes(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    key: str,
+) -> None:
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, {key: "AI news"})
+
+    variable = _read_by_the_run(node, user_inputs).get(_UPSTREAM)
+    assert variable is not None
+    assert variable.value == "AI news"
+
+
+@pytest.mark.parametrize(
+    ("node", "inputs"),
+    [
+        pytest.param(_code_node("shorten"), {"results": "AI news"}, id="code-variable"),
+        pytest.param(_code_node("shorten"), {"shorten.results": "AI news"}, id="code-node-variable"),
+        pytest.param(_TOOL_NODE, {"#search.text#": "AI news"}, id="tool-reference"),
+    ],
+)
+def test_a_node_test_hands_the_keys_the_run_already_reads_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    inputs: dict[str, object],
+) -> None:
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, inputs)
+
+    assert {key: user_inputs[key] for key in inputs} == inputs
+    variable = _read_by_the_run(node, user_inputs).get(_UPSTREAM)
+    assert variable is not None
+    assert variable.value == "AI news"
+
+
+def test_a_node_test_with_an_unknown_key_still_names_the_missing_variable(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    node = _code_node("shorten")
+
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, {"#other.text#": "x"})
+
+    assert user_inputs == {"#other.text#": "x"}
+    with pytest.raises(ValueError, match=r"^Variable key shorten\.results not found in user inputs\.$"):
+        _read_by_the_run(node, user_inputs)
 
 
 def _upload_part() -> FileStorage:

@@ -50,7 +50,7 @@ from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
-from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
 from graphon.file.runtime import use_workflow_file_runtime
@@ -283,18 +283,8 @@ class WorkflowEntry:
             ),
         )
 
-        try:
-            # variable selector to variable mapping
-            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=node_config
-            )
-        except NotImplementedError:
-            variable_mapping = {}
-        variable_mapping = inject_default_system_variable_mappings(
-            node_id=node_id,
-            node_type=node_type,
-            node_data=node_config_data,
-            variable_mapping=variable_mapping,
+        variable_mapping = cls.node_variable_mapping(
+            node_cls=node_cls, graph_config=workflow.graph_dict, node_config=node_config
         )
 
         # Loading missing variable from draft var here, and set it into
@@ -341,6 +331,25 @@ class WorkflowEntry:
             )
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
         return node, generator
+
+    @staticmethod
+    def node_variable_mapping(
+        *, node_cls: type[Node], graph_config: Mapping[str, Any], node_config: NodeConfigDict
+    ) -> Mapping[str, Sequence[str]]:
+        """The selectors a single-step run of the node reads from its user inputs, keyed the way it reads them."""
+        node_data = node_config["data"]
+        try:
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                graph_config=graph_config, config=node_config
+            )
+        except NotImplementedError:
+            variable_mapping = {}
+        return inject_default_system_variable_mappings(
+            node_id=node_config["id"],
+            node_type=node_data.type,
+            node_data=node_data,
+            variable_mapping=variable_mapping,
+        )
 
     @staticmethod
     def _create_single_node_graph(
