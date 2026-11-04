@@ -2078,7 +2078,10 @@ export const zRunListQuery = z.object({
   last_id: z.uuid().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).nullish(),
-  triggered_from: z.enum(['app-run', 'debugging']).optional().default('debugging'),
+  triggered_from: z
+    .enum(['app-run', 'debugging', 'plugin', 'schedule', 'webhook'])
+    .optional()
+    .default('debugging'),
 })
 
 /**
@@ -3280,7 +3283,10 @@ export const zGetAppsByAppIdRunsQuery = z.object({
   last_id: z.uuid().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).optional(),
-  triggered_from: z.enum(['app-run', 'debugging']).optional().default('debugging'),
+  triggered_from: z
+    .enum(['app-run', 'debugging', 'plugin', 'schedule', 'webhook'])
+    .optional()
+    .default('debugging'),
 })
 
 /**

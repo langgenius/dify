@@ -664,7 +664,7 @@ Upload a file to use as an input variable when running the app
 | last_id | query | Cursor: id of the last run on the previous page | No | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | status | query |  | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
-| triggered_from | query | debugging: draft test runs, as in the console; app-run: real use | No | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging |
+| triggered_from | query | debugging: draft test runs, as in the console; app-run: real use; schedule, webhook, plugin: runs started by that kind of trigger | No | string, <br>**Available values:** "app-run", "debugging", "plugin", "schedule", "webhook", <br>**Default:** debugging |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -4121,7 +4121,7 @@ Strict (extra='forbid').
 | last_id | string | Cursor: id of the last run on the previous page | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |  | No |
-| triggered_from | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging | debugging: draft test runs, as in the console; app-run: real use<br>*Enum:* `"app-run"`, `"debugging"` | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging", "plugin", "schedule", "webhook", <br>**Default:** debugging | debugging: draft test runs, as in the console; app-run: real use; schedule, webhook, plugin: runs started by that kind of trigger<br>*Enum:* `"app-run"`, `"debugging"`, `"plugin"`, `"schedule"`, `"webhook"` | No |
 
 #### RunListResponse
 
