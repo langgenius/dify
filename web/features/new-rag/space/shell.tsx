@@ -1,0 +1,462 @@
+'use client'
+
+import type { CSSProperties, ReactNode } from 'react'
+import type { KnowledgeFsApiAccessStatus } from './api-access-dialog'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
+import { Suspense, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
+import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
+import {
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+  newKnowledgeListPath,
+  newKnowledgeOverviewPath,
+  newKnowledgeQualityPath,
+  newKnowledgeRetrievalTestPath,
+  newKnowledgeSettingsPath,
+} from '../routes'
+import { KnowledgeFsApiAccessDialog } from './api-access-dialog'
+import { KnowledgeSpaceProvider } from './provider'
+
+const knowledgeSpacePageTitle = (
+  pathname: string,
+  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
+  tCommon: ReturnType<typeof useTranslation<'common'>>['t'],
+) => {
+  const [, root, view, , section, detail] = pathname.split('/')
+  if (root !== 'datasets' || view !== 'new') return t(($) => $.knowledge, { ns: 'dataset' })
+
+  if (!section) return t(($) => $.overviewTitle)
+  if (section === 'sources' && detail === 'new') return t(($) => $.addSource)
+  if (section === 'sources') return t(($) => $.sources)
+  if (section === 'documents') return t(($) => $.documents)
+  if (section === 'retrieval') return t(($) => $['retrievalTest.title'])
+  if (section === 'quality') return t(($) => $.quality)
+  if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
+
+  return t(($) => $.knowledge, { ns: 'dataset' })
+}
+
+const isDocumentDetailPath = (pathname: string) =>
+  /^\/datasets\/new\/[^/]+\/documents\/[^/]+\/?$/.test(pathname)
+
+function KnowledgeSpacePageTitle({ title }: { title: string }) {
+  useDocumentTitle(title)
+
+  return null
+}
+
+export function KnowledgeSpaceShell({
+  children,
+  knowledgeSpaceId,
+}: {
+  children: ReactNode
+  knowledgeSpaceId: string
+}) {
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t: tDataset } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
+  const { t: tApp } = useTranslation(['app'])
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  // Keep the dialog mounted after first use so closing transitions and its API-key handoff survive.
+  const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState<boolean>()
+  const pathname = usePathname()
+  const knowledgeSpaceQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+      context: { silent: true },
+    }),
+    refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
+    retry: (failureCount, error) => {
+      const status = getHttpErrorStatus(error)
+      if (status === 403 || status === 404) return false
+
+      return failureCount < 3
+    },
+  })
+  const canManageAccess = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
+    'knowledge_space_access_config',
+  )
+  const externalAccessQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+    }),
+    enabled: canManageAccess && knowledgeSpaceQuery.data?.state === 'active',
+  })
+  const apiAccessStatus: KnowledgeFsApiAccessStatus = !canManageAccess
+    ? 'unavailable'
+    : externalAccessQuery.isPending
+      ? 'loading'
+      : externalAccessQuery.isError || !externalAccessQuery.data
+        ? 'unavailable'
+        : externalAccessQuery.data.service_api_enabled === true
+          ? 'active'
+          : 'inactive'
+  const knowledgeSpaceName =
+    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge, { ns: 'dataset' })
+  const pageTitle = knowledgeSpacePageTitle(pathname, t, tCommon)
+  const documentTitle = `${pageTitle} · ${knowledgeSpaceName}`
+  const documentTitleOwnedByChild =
+    isDocumentDetailPath(pathname) &&
+    !knowledgeSpaceQuery.isPending &&
+    !knowledgeSpaceQuery.error &&
+    !!knowledgeSpaceQuery.data
+  const pageTitleElement = !documentTitleOwnedByChild ? (
+    <KnowledgeSpacePageTitle title={documentTitle} />
+  ) : null
+
+  if (knowledgeSpaceQuery.isPending || knowledgeSpaceQuery.data?.state === 'provisioning')
+    return (
+      <>
+        {pageTitleElement}
+        <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+          <LoadingPlaceholder />
+        </div>
+      </>
+    )
+
+  if (knowledgeSpaceQuery.error || !knowledgeSpaceQuery.data) {
+    const status = getHttpErrorStatus(knowledgeSpaceQuery.error)
+    const notFound = status === 403 || status === 404
+    return (
+      <>
+        {pageTitleElement}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-6 text-center">
+          <span aria-hidden className="i-ri-book-open-line size-8 text-text-tertiary" />
+          <h1 className="mt-4 title-2xl-semi-bold text-text-primary">
+            {t(($) => (notFound ? $.notFoundTitle : $.detailErrorTitle))}
+          </h1>
+          <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
+            {t(($) => (notFound ? $.notFoundDescription : $.detailErrorDescription))}
+          </p>
+          <div className="mt-5 flex gap-2">
+            <Link href={newKnowledgeListPath} className={buttonVariants()}>
+              {t(($) => $.backToList)}
+            </Link>
+            {!notFound && (
+              <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            )}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const sourcesPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const overviewPath = newKnowledgeOverviewPath(knowledgeSpaceId)
+  const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
+  const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
+  const qualityPath = newKnowledgeQualityPath(knowledgeSpaceId)
+  const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
+  const overviewActive = pathname === overviewPath
+  const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
+  const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
+  const retrievalTestActive =
+    pathname === retrievalTestPath || pathname.startsWith(`${retrievalTestPath}/`)
+  const qualityActive = pathname === qualityPath || pathname.startsWith(`${qualityPath}/`)
+  const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
+  const navItemLayoutClassName =
+    'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium'
+  const navItemClassName = cn(
+    navItemLayoutClassName,
+    'outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+  )
+  const navIcon = (className: string) => (
+    <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+      <span className={cn('size-4.5', className)} />
+    </span>
+  )
+
+  return (
+    <div
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body py-1"
+      style={
+        {
+          '--new-rag-sidebar-width': sidebarExpanded ? '248px' : '64px',
+        } as CSSProperties
+      }
+    >
+      {pageTitleElement}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden pl-1 sm:flex-row">
+        <aside
+          className={cn(
+            'flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs transition-[width] motion-reduce:transition-none',
+            sidebarExpanded ? 'sm:w-60' : 'sm:w-14',
+          )}
+        >
+          <div
+            className={cn(
+              'flex min-w-0 items-center',
+              sidebarExpanded ? 'py-2 pr-2 pl-1' : 'w-full justify-center px-3 pt-2 pb-1',
+            )}
+          >
+            {sidebarExpanded && (
+              <>
+                <Breadcrumb
+                  aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
+                  className="flex-1"
+                >
+                  <BreadcrumbList className="gap-px">
+                    <BreadcrumbItem className="shrink-0">
+                      <BreadcrumbLink
+                        render={<Link href="/" />}
+                        aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
+                        className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                      >
+                        <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                        <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="system-md-regular" />
+                    <BreadcrumbItem className="shrink-0">
+                      <BreadcrumbLink
+                        render={<Link href={newKnowledgeListPath} />}
+                        className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+                      >
+                        {t(($) => $.knowledge, { ns: 'dataset' })}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DialogTrigger
+                        handle={gotoAnythingDialogHandle}
+                        render={
+                          <IconButton
+                            size="lg"
+                            aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                            className="shrink-0"
+                          >
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-main-nav-quick-search size-4"
+                            />
+                          </IconButton>
+                        }
+                      />
+                    }
+                  />
+                  <TooltipContent side="bottom" className="flex items-center gap-1">
+                    <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
+                    <KbdGroup>
+                      {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                        <Kbd key={key}>{key}</Kbd>
+                      ))}
+                    </KbdGroup>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            <DetailSidebarToggleButton
+              expand={sidebarExpanded}
+              onToggle={() => setSidebarExpanded((expanded) => !expanded)}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                />
+              }
+            />
+          </div>
+          <div className="flex min-w-0 items-center px-1 py-2">
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 items-center rounded-xl p-2',
+                sidebarExpanded ? 'gap-2' : 'justify-center',
+              )}
+            >
+              <KnowledgeSpaceIcon
+                background={knowledgeSpaceQuery.data.technical_summary?.icon_background}
+                icon={knowledgeSpaceQuery.data.technical_summary?.icon}
+                size="medium"
+              />
+              {sidebarExpanded && (
+                <div className="flex min-w-0 flex-1">
+                  <h1 className="truncate system-md-semibold text-text-secondary">
+                    {knowledgeSpaceName}
+                  </h1>
+                </div>
+              )}
+            </div>
+          </div>
+          <nav
+            className="grid grid-cols-3 gap-0.5 px-2 py-1 sm:flex sm:flex-1 sm:flex-col"
+            aria-label={knowledgeSpaceName}
+          >
+            <Link
+              href={overviewPath}
+              aria-label={t(($) => $.overviewTitle)}
+              aria-current={overviewActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                overviewActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(overviewActive ? 'i-ri-layout-grid-fill' : 'i-ri-layout-grid-line')}
+              {sidebarExpanded && t(($) => $.overviewTitle)}
+            </Link>
+            <Link
+              href={sourcesPath}
+              aria-label={t(($) => $.sourceColumn)}
+              aria-current={sourcesActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                sourcesActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(sourcesActive ? 'i-ri-book-open-fill' : 'i-ri-book-open-line')}
+              {sidebarExpanded && t(($) => $.sourceColumn)}
+            </Link>
+            <Link
+              href={documentsPath}
+              aria-label={t(($) => $.documentColumn)}
+              aria-current={documentsActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                documentsActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(documentsActive ? 'i-ri-file-text-fill' : 'i-ri-file-text-line')}
+              {sidebarExpanded && t(($) => $.documentColumn)}
+            </Link>
+            <Link
+              href={retrievalTestPath}
+              aria-label={t(($) => $['retrievalTest.title'], { ns: 'knowledgeSpace' })}
+              aria-current={retrievalTestActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                retrievalTestActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(retrievalTestActive ? 'i-ri-search-eye-fill' : 'i-ri-search-eye-line')}
+              {sidebarExpanded && t(($) => $['retrievalTest.title'], { ns: 'knowledgeSpace' })}
+            </Link>
+            <Link
+              href={qualityPath}
+              aria-label={t(($) => $.quality)}
+              aria-current={qualityActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                qualityActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(qualityActive ? 'i-ri-shield-check-fill' : 'i-ri-shield-check-line')}
+              {sidebarExpanded && t(($) => $.quality)}
+            </Link>
+            <Link
+              href={settingsPath}
+              aria-label={tCommon(($) => $['datasetMenus.settings'])}
+              aria-current={settingsActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                settingsActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(settingsActive ? 'i-ri-equalizer-2-fill' : 'i-ri-equalizer-2-line')}
+              {sidebarExpanded && tCommon(($) => $['datasetMenus.settings'])}
+            </Link>
+          </nav>
+          <div className={cn('shrink-0 py-2', sidebarExpanded ? 'px-3' : 'px-2')}>
+            <Button
+              aria-label={t(($) => $.apiAgentAccess)}
+              variant="ghost"
+              className={cn(
+                navItemLayoutClassName,
+                'w-full border-[0.5px] border-components-panel-border text-text-secondary',
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+              )}
+              onClick={() => setApiAccessDialogOpen(true)}
+            >
+              {navIcon('i-custom-vender-knowledge-api-aggregate')}
+              {sidebarExpanded && (
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {t(($) => $.apiAgentAccess)}
+                </span>
+              )}
+              <span className="sr-only">
+                {apiAccessStatus === 'active'
+                  ? t(($) => $.apiAccessActive)
+                  : apiAccessStatus === 'inactive'
+                    ? t(($) => $.apiAccessInactive)
+                    : tDataset(($) => $.unavailable)}
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  'size-2 shrink-0 rounded-full',
+                  apiAccessStatus === 'active'
+                    ? 'bg-util-colors-green-green-500'
+                    : 'bg-text-quaternary',
+                  apiAccessStatus === 'loading' && 'animate-pulse motion-reduce:animate-none',
+                )}
+              />
+            </Button>
+          </div>
+        </aside>
+        <section className="@container/knowledge-content mx-1 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg bg-components-panel-bg shadow-xs">
+          <KnowledgeSpaceProvider
+            space={knowledgeSpaceQuery.data}
+            refetch={async () => (await knowledgeSpaceQuery.refetch()).data}
+          >
+            {children}
+          </KnowledgeSpaceProvider>
+        </section>
+      </div>
+      {apiAccessDialogOpen !== undefined && (
+        <Suspense fallback={null}>
+          <KnowledgeFsApiAccessDialog
+            status={apiAccessStatus}
+            knowledgeSpaceId={knowledgeSpaceId}
+            open={apiAccessDialogOpen}
+            onOpenChange={setApiAccessDialogOpen}
+          />
+        </Suspense>
+      )}
+    </div>
+  )
+}

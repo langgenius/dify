@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
-import { useMount } from 'ahooks'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { capitalize } from 'es-toolkit/string'
 import { useAtomValue } from 'jotai'
@@ -18,7 +18,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   conversationID: string
@@ -31,33 +31,19 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
   const appID = useAtomValue(editorAppIdAtom)
   const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0]!)
-  const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
-  const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<
-    Record<string, number>
-  >({})
-
-  const getChatVarLatestValues = useCallback(async () => {
-    if (conversationID && varList.length > 0) {
-      const res = await fetchCurrentValueOfConversationVariable({
-        url: `/apps/${appID}/conversation-variables`,
-        params: { conversation_id: conversationID },
-      })
-      if (res.data.length > 0) {
-        const valueMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.value
-          return acc
-        }, {})
-        setLatestValueMap(valueMap)
-        const timestampMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.updated_at
-          return acc
-        }, {})
-        setLatestValueTimestampMap(timestampMap)
-      }
-    }
-  }, [appID, conversationID, varList.length])
-
-  const currentValue = latestValueMap[currentVar.id] ?? currentVar.value
+  const { data: latestValues } = useQuery(
+    consoleQuery.apps.byAppId.conversationVariables.get.queryOptions({
+      input:
+        appID && conversationID
+          ? { params: { app_id: appID }, query: { conversation_id: conversationID } }
+          : skipToken,
+      enabled: varList.length > 0,
+      staleTime: 0,
+    }),
+  )
+  const latestVariable = latestValues?.data.find((variable) => variable.id === currentVar.id)
+  const currentValue = latestVariable?.value ?? currentVar.value
+  const updatedAt = latestVariable?.updated_at
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(copyResetTimer.current), [])
   const [isCopied, setIsCopied] = React.useState(false)
@@ -69,10 +55,6 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
       setIsCopied(false)
     }, 2000)
   }, [currentValue])
-
-  useMount(() => {
-    getChatVarLatestValues()
-  })
 
   return (
     <Dialog open>
@@ -153,13 +135,10 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                       'linear-gradient(to right, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255) 100%)',
                   }}
                 ></div>
-                {!!latestValueTimestampMap[currentVar.id] && (
+                {!!updatedAt && (
                   <div className="shrink-0 system-xs-regular text-text-tertiary">
                     {t(($) => $['chatVariable.updatedAt'], { ns: 'workflow' })}
-                    {formatTime(
-                      latestValueTimestampMap[currentVar.id]!,
-                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                    )}
+                    {formatTime(updatedAt!, t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                   </div>
                 )}
               </div>

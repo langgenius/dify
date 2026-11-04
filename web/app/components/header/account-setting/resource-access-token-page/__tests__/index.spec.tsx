@@ -147,7 +147,12 @@ describe('ResourceAccessTokenPage', () => {
         'accountSettings.resourceAccessToken.appCount:{"count":1} · accountSettings.resourceAccessToken.knowledgeCount:{"count":1}',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('cell', { name: 'track-one' })).toBeInTheDocument()
+    expect(screen.queryByRole('cell', { name: 'track-one' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('columnheader', {
+        name: 'accountSettings.resourceAccessToken.trackingId',
+      }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('sk-12345...abcd')).toBeInTheDocument()
     expect(
       screen.getByText('accountSettings.resourceAccessToken.accessibleResources'),

@@ -40,6 +40,7 @@ class CreditUsageAppType(StrEnum):
     COMPLETION = "completion"
     CHANNEL = "channel"
     RAG_PIPELINE = "rag_pipeline"
+    NEW_RAG = "new_rag"
     UNKNOWN = "unknown"
 
 

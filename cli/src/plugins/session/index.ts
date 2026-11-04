@@ -6,7 +6,7 @@ import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
 import { ENV, env } from '@/plugins/env'
 import { io } from '@/plugins/io'
-import { localFile } from '@/store/local-file'
+import { localFile, REMOVE } from '@/store/local-file'
 import { STORAGE_MODES } from '@/store/store'
 
 export const LOGIN_FILE_NAME = 'login.yml'
@@ -90,13 +90,9 @@ export const session = definePlugin({
         }
       : null
 
-    // Read once: a broken file warns on its first read only.
-    let saved: Login | null | undefined
     async function readLogin(): Promise<Login | null> {
-      if (saved !== undefined) return saved
       const doc = await file.read()
-      saved = doc === null ? null : docToLogin(doc)
-      return saved
+      return doc === null ? null : docToLogin(doc)
     }
 
     const current = async (): Promise<Login | null> => envLogin ?? readLogin()
@@ -116,13 +112,11 @@ export const session = definePlugin({
             message: 'cannot save a login while DIFY_SERVER/DIFY_TOKEN are set',
           })
         }
-        await file.write(loginToDoc(login))
-        saved = login
+        await file.update(() => loginToDoc(login))
       },
       clear: async () => {
         if (fromEnv) return
-        await file.remove()
-        saved = null
+        await file.update(() => REMOVE)
       },
       workspaceId: async () => {
         if (envWorkspaceId !== undefined) return envWorkspaceId

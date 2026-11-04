@@ -44,7 +44,7 @@ const Item = ({
   }
 
   return (
-    <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1 pl-3 shadow-xs">
+    <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 ps-3 pe-1 shadow-xs">
       {renaming && (
         <div className="flex w-full items-center space-x-1">
           <Input
@@ -95,15 +95,15 @@ const Item = ({
       )}
       {!renaming && (
         <>
-          <div className="ml-auto flex shrink-0 items-center">
-            <div className="mr-1 flex h-3 w-3 items-center justify-center">
+          <div className="ms-auto flex shrink-0 items-center">
+            <div className="me-1 flex h-3 w-3 items-center justify-center">
               <StatusDot status="success" />
             </div>
             <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
               {t(($) => $['dataSource.notion.connected'], { ns: 'common' })}
             </div>
           </div>
-          <div className="mr-1 ml-2 h-3 w-px bg-divider-regular"></div>
+          <div className="ms-2 me-1 h-3 w-px bg-divider-regular"></div>
           <Operator
             triggerRef={operatorTriggerRef}
             credentialItem={credentialItem}

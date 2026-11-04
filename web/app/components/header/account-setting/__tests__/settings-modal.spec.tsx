@@ -36,6 +36,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.networkAccessGroups.get': async () => ({
+        tenant_id: 'workspace-1',
+        entitled: true,
+        groups: [],
+      }),
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'features.vectorSpace.get': async () => ({ size: 0, limit: 50, usage_unknown: false }),
       'billing.invoices.get': async () => ({ url: 'https://billing.example.com' }),
@@ -112,9 +117,21 @@ function renderSettings(
   return { ...rendered, onUrlUpdate }
 }
 
-const findSettings = () => screen.findByRole('dialog', { name: 'navigation.settings.settings' })
+const findSettings = async () => {
+  // The settings surface is lazy; finish loading it before starting the DOM query timeout.
+  await act(async () => vi.dynamicImportSettled())
+  return screen.findByRole('dialog', { name: 'navigation.settings.settings' })
+}
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
+
+it('exposes the Members content title as a heading', async () => {
+  renderSettings()
+  const dialog = await findSettings()
+  expect(
+    within(dialog).getByRole('heading', { name: 'navigation.settings.members', level: 3 }),
+  ).toBeVisible()
+})
 
 beforeEach(() => {
   featureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
@@ -127,6 +144,9 @@ it('opens preferences from the URL control, switches real pages, and closes with
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
   const dialog = await findSettings()
   expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(
+    'navigation.settings.preferences',
+  )
   expect(onUrlUpdate.mock.lastCall?.[0]).toMatchObject({
     options: { history: 'replace', shallow: true },
   })
@@ -167,6 +187,13 @@ it('opens preferences from the URL control, switches real pages, and closes with
   for (const { name, tab, content } of destinations) {
     await user.click(within(dialog).getByRole('button', { name }))
     expect(await within(dialog).findByText(content)).toBeInTheDocument()
+    if (tab === TAB.BILLING) {
+      expect(within(dialog).getByRole('heading', { name, level: 3 })).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('heading', { name: 'billing.plans.sandbox.name', level: 4 }),
+      ).toBeInTheDocument()
+    }
+    expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(name)
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(tab),
     )
@@ -258,6 +285,21 @@ it('allows regular members to read billing without management permissions', asyn
   ).not.toBeInTheDocument()
 })
 
+it('exposes the customization page and preview through heading navigation', async () => {
+  renderSettings(TAB.CUSTOM)
+  const dialog = await findSettings()
+  expect(within(dialog).getByRole('heading', { level: 2 })).toHaveAccessibleName(
+    'navigation.settings.settings',
+  )
+  expect(within(dialog).getByRole('heading', { level: 3 })).toHaveAccessibleName('custom.custom')
+  expect(
+    await within(dialog).findByRole('heading', {
+      level: 4,
+      name: 'appOverview.overview.appInfo.preview',
+    }),
+  ).toBeInTheDocument()
+})
+
 it.each([
   {
     reason: 'dataset operators',
@@ -319,3 +361,42 @@ it('ignores an invalid settings destination', () => {
   renderSettings('unknown')
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
+
+it.each(['owner', 'admin', 'editor'] as const)(
+  'opens IP Policies with the controls allowed for %s',
+  async (role) => {
+    renderSettings(TAB.IP_POLICIES, { currentWorkspace: { role } })
+    const dialog = await findSettings()
+    expect(
+      await within(dialog).findByRole('heading', { name: 'common.settings.ipPolicyEmptyTitle' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'common.settings.ipPolicies' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('heading', { name: 'common.settings.ipPolicies' }),
+    ).toBeInTheDocument()
+    if (role === 'editor') {
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
+      ).not.toBeInTheDocument()
+    } else {
+      expect(
+        within(dialog).getByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
+      ).toBeInTheDocument()
+    }
+  },
+)
+
+it.each(['normal', 'dataset_operator'] as const)(
+  'hides IP Policies and rejects its direct destination for %s',
+  async (role) => {
+    renderSettings(TAB.IP_POLICIES, { currentWorkspace: { role } })
+    const dialog = await findSettings()
+    expect(await expectMembers()).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.settings.ipPolicies' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('common.settings.ipPolicyEmptyTitle')).not.toBeInTheDocument()
+  },
+)

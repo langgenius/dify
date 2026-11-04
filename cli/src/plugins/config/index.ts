@@ -100,19 +100,16 @@ export const config = definePlugin({
     const path = join((await ctx.get(env)).configDir, CONFIG_FILE_NAME)
     const file = localFile(path, CONFIG_SCHEMA, (await ctx.get(io)).notice)
 
-    let cached: ConfigDoc | undefined
-
     async function doc(): Promise<ConfigDoc> {
-      if (cached === undefined) cached = (await file.read()) ?? CONFIG_SCHEMA.parse({})
-      return cached
+      return (await file.read()) ?? CONFIG_SCHEMA.parse({})
     }
 
     async function persist(mutate: (target: Record<string, unknown>) => void): Promise<void> {
-      const current = structuredClone(await doc()) as Record<string, unknown>
-      mutate(current)
-      const validated = validateDoc(current, path)
-      await file.write(validated)
-      cached = validated
+      await file.update((current) => {
+        const target: Record<string, unknown> = current ?? CONFIG_SCHEMA.parse({})
+        mutate(target)
+        return validateDoc(target, path)
+      })
     }
 
     return {

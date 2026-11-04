@@ -62,7 +62,10 @@ def persist_app(session: Session, *, tenant_id: str, **values: object) -> str:
         "enable_site": False,
     }
     attributes.update(values)
-    session.add(App(**attributes))
+    app = App()
+    for key, value in attributes.items():
+        setattr(app, key, value)
+    session.add(app)
     session.commit()
     return app_id
 
@@ -81,12 +84,13 @@ def test_list_and_uuid_search_apply_same_visibility(
     tenant = Tenant(name="Workspace")
     tenant.id = tenant_id
     sqlite_session.add(tenant)
-    app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer=context.account_id)
+    app_id = persist_app(
+        sqlite_session, tenant_id=tenant_id, maintainer="other" if visibility == "denied" else context.account_id
+    )
     persist_app(sqlite_session, tenant_id=tenant_id, enable_api=False)
     persist_app(sqlite_session, tenant_id=str(uuid4()))
     access.access_filter = AppAccessFilter(
         None if visibility == "unrestricted" else {app_id} if visibility == "whitelisted" else set(),
-        visibility == "own",
     )
     query = AppDiscoveryQuery(3 if uuid_search else 1, 20, None, app_id.upper() if uuid_search else None)
     result = service.list_apps(context, query)
@@ -132,7 +136,7 @@ def test_resource_bindings_replace_account_visibility(
     tenant_id = str(uuid4())
     app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
     persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
-    access.access_filter = AppAccessFilter(set(), can_manage_own_apps=True)
+    access.access_filter = AppAccessFilter(set())
     context = RequestContext(
         "req", None, "token-id", tenant_id, resource_app_ids=frozenset({app_id}) if bound else frozenset()
     )
@@ -189,7 +193,7 @@ def test_description_materializes_only_owned_config_and_closes_session(
             type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             created_by="account-id",
-            features="{}",
+            _features="{}",
             graph=json.dumps(
                 {
                     "nodes": [

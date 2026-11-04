@@ -601,6 +601,7 @@ class TriggerOAuthAuthorizeApi(Resource):
                 provider=provider_name,
                 extra_data={
                     "subscription_builder_id": subscription_builder.id,
+                    "plugin_unique_identifier": oauth_client_params.plugin_unique_identifier,
                 },
             )
 
@@ -614,7 +615,8 @@ class TriggerOAuthAuthorizeApi(Resource):
                 plugin_id=plugin_id,
                 provider=provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=oauth_client_params,
+                system_credentials=dict(oauth_client_params.credentials),
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             )
 
             response = make_response(
@@ -672,6 +674,16 @@ class TriggerOAuthCallbackApi(Resource):
         if oauth_client_params is None:
             raise Forbidden("No OAuth client configuration found for this trigger provider")
 
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         # Get OAuth credentials from callback
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
@@ -682,7 +694,8 @@ class TriggerOAuthCallbackApi(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
 

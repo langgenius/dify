@@ -15,6 +15,7 @@ const appApiKeys = {
       created_at: 1,
       last_used_at: 1,
       dataset_ids: [],
+      knowledge_space_ids: [],
     },
     {
       id: 'key-2',
@@ -23,6 +24,7 @@ const appApiKeys = {
       created_at: 2,
       last_used_at: 2,
       dataset_ids: [],
+      knowledge_space_ids: [],
     },
   ],
 }

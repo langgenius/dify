@@ -7,17 +7,22 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import Annotation from '../index'
 
 const api = vi.hoisted(() => ({
+  features: vi.fn<typeof consoleClient.features.get>(),
   list: vi.fn<typeof consoleClient.apps.byAppId.annotations.get>(),
   add: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
   remove: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.delete>(),
@@ -36,8 +41,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => api.features(),
       'apps.byAppId.annotations.count.get': () => ({ count: 0 }),
+      'apps.byAppId.annotations.post': (input) => api.add(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.edit(input),
       'apps.byAppId.annotations.delete': (input) => api.batchRemove(input),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -107,7 +115,7 @@ function setup(quota = { size: 0, limit: 10 }) {
   renderWithConsoleQuery(
     <NuqsTestingAdapter>
       <Annotation appDetail={createAppDetailFixture({ id: 'app-id', mode: 'chat' })} />
-      <AppToastHost />
+      <AppToaster />
     </NuqsTestingAdapter>,
     {
       queryClient,
@@ -115,6 +123,7 @@ function setup(quota = { size: 0, limit: 10 }) {
       features: { annotation_quota_limit: quota },
     },
   )
+  api.features.mockResolvedValue(seedFeatures(queryClient, { annotation_quota_limit: quota }))
   return userEvent.setup()
 }
 
@@ -188,6 +197,7 @@ it('creates an annotation from the empty page and displays the saved record', as
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'New question' })).toBeVisible()
   expect(screen.getByRole('cell', { name: 'New answer' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.add).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id' },
     body: { question: 'New question', answer: 'New answer' },
@@ -226,6 +236,7 @@ it('keeps a failed batch deletion open for retry and clears the selection after 
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
   expect(screen.queryByText('appAnnotation.batchAction.selected')).not.toBeInTheDocument()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.batchRemove).toHaveBeenCalledTimes(2)
   expect(api.batchRemove).toHaveBeenLastCalledWith({
     params: { app_id: 'app-id' },
@@ -233,7 +244,7 @@ it('keeps a failed batch deletion open for retry and clears the selection after 
   })
 })
 
-it('saves edits from the detail drawer and shows them when reopened', async () => {
+it('saves edits from the detail dialog and shows them when reopened', async () => {
   annotations = [item]
   const user = setup()
   await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
@@ -241,6 +252,9 @@ it('saves edits from the detail drawer and shows them when reopened', async () =
     name: 'appAnnotation.viewModal.annotatedResponse',
   })
   await user.click(within(dialog).getAllByRole('button', { name: 'common.operation.edit' })[0]!)
+  await user.clear(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.editModal.yourQuery' }),
+  )
   await user.type(
     within(dialog).getByRole('textbox', { name: 'appAnnotation.editModal.yourQuery' }),
     'Edited question',
@@ -255,6 +269,7 @@ it('saves edits from the detail drawer and shows them when reopened', async () =
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'Edited question' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
   expect(
     within(
@@ -263,7 +278,7 @@ it('saves edits from the detail drawer and shows them when reopened', async () =
   ).toBeVisible()
 })
 
-it('removes an annotation through its detail drawer and closes it', async () => {
+it('removes an annotation through its detail dialog and closes it', async () => {
   annotations = [item]
   const user = setup()
   await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
@@ -279,6 +294,7 @@ it('removes an annotation through its detail drawer and closes it', async () => 
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.remove).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id', annotation_id: item.id },
   })
@@ -357,4 +373,38 @@ it('enables replies with the selected model and saves the score to the returned 
     params: { app_id: 'app-id', annotation_setting_id: 'enabled-config-id' },
     body: { score_threshold: 0.51 },
   })
+})
+
+it('keeps the editor and drafts mounted through repeated refreshes of empty filtered results', async () => {
+  annotations = [item]
+  api.edit.mockImplementation(async ({ body }) => {
+    annotations = []
+    return { ...item, question: body.question, answer: body.answer }
+  })
+  const user = setup()
+  await user.click(await screen.findByRole('button', { name: 'Question 1' }))
+  const dialog = screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' })
+  const querySection = within(dialog).getByRole('region', {
+    name: 'appAnnotation.editModal.queryName',
+  })
+  const answerSection = within(dialog).getByRole('region', {
+    name: 'appAnnotation.editModal.answerName',
+  })
+  await user.click(within(querySection).getByRole('button', { name: 'common.operation.edit' }))
+  await user.clear(within(querySection).getByRole('textbox'))
+  await user.type(within(querySection).getByRole('textbox'), 'No longer matches the filter')
+  await user.click(within(querySection).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(within(querySection).queryByRole('textbox')).not.toBeInTheDocument())
+  await user.click(within(querySection).getByRole('button', { name: 'common.operation.edit' }))
+  await user.type(within(querySection).getByRole('textbox'), ' unsaved question draft')
+  await user.click(within(answerSection).getByRole('button', { name: 'common.operation.edit' }))
+  await user.clear(within(answerSection).getByRole('textbox'))
+  await user.type(within(answerSection).getByRole('textbox'), 'Second saved field')
+  await user.click(within(answerSection).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(within(answerSection).queryByRole('textbox')).not.toBeInTheDocument())
+  expect(dialog).toBeVisible()
+  expect(within(querySection).getByRole('textbox')).toHaveValue(
+    'No longer matches the filter unsaved question draft',
+  )
+  expect(api.edit).toHaveBeenCalledTimes(2)
 })

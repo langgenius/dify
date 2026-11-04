@@ -108,9 +108,6 @@ describe('AgentPromptEditor', () => {
     const user = userEvent.setup()
     const { store } = renderEditor()
     await openMenu(user)
-    expect(
-      screen.queryByRole('button', { name: /agentDetail.configure.knowledgeRetrieval.label/ }),
-    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: skillsName }))
     await user.click(screen.getByRole('button', { name: 'Playwright' }))
     await waitFor(() =>

@@ -123,7 +123,10 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     if mismatched_key is not None and mismatched_key != "tenant_id":
         binding_key[mismatched_key] = mismatched_values[mismatched_key]
     binding = WorkflowAgentNodeBinding(
-        **binding_key,
+        tenant_id=binding_key["tenant_id"],
+        app_id=binding_key["app_id"],
+        workflow_id=binding_key["workflow_id"],
+        workflow_version=binding_key["workflow_version"],
         node_id="agent-node",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id=agent.id,

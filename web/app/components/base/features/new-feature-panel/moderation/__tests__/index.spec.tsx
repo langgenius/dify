@@ -1,17 +1,14 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { FeaturesContext } from '../../../context'
-import { createFeaturesStore } from '../../../store'
+import { consoleQuery } from '@/service/console'
+import { renderWithConfigurationModals } from '@/test/configuration-modals'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import Moderation from '../index'
 
-const { mockCodeBasedExtensionData, mockSetShowModerationSettingModal } = vi.hoisted(() => ({
+const { mockCodeBasedExtensionData } = vi.hoisted(() => ({
   mockCodeBasedExtensionData: [] as Array<{ name: string; label: Record<string, string> }>,
-  mockSetShowModerationSettingModal: vi.fn(),
-}))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowModerationSettingModal: mockSetShowModerationSettingModal }),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -29,37 +26,38 @@ const configured: NonNullable<Features['moderation']> = {
   config: {
     keywords: 'blocked',
     inputs_config: { enabled: true, preset_response: 'Input blocked' },
-    outputs_config: { enabled: false, preset_response: '' },
+    outputs_config: { enabled: false },
   },
 }
 const renderModeration = (
   moderation: Features['moderation'] = { enabled: false },
   options: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
 ) => {
-  const store = createFeaturesStore()
-  store.getState().setFeatures({ ...store.getState().features, moderation })
-  const view = render(
-    <FeaturesContext.Provider value={store}>
-      <Moderation {...options} />
-    </FeaturesContext.Provider>,
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.get.queryKey({ input: {} }),
+    { data: [] },
+  )
+  const { featuresStore: store, ...view } = renderWithConfigurationModals(
+    <Moderation {...options} />,
+    { queryClient, initialFeatures: { moderation } },
   )
   return { ...view, store }
 }
-const openSettings = async () => {
-  const user = userEvent.setup({ skipHover: true })
+const openSettings = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.hover(screen.getByText('appDebug.feature.moderation.title'))
   await user.click(screen.getByRole('button', { name: 'common.operation.settings' }))
+  return screen.findByRole('dialog')
 }
-const getModal = () =>
-  mockSetShowModerationSettingModal.mock.calls.at(-1)![0] as {
-    payload: Features['moderation']
-    onSaveCallback: (value: Features['moderation']) => void
-    onCancelCallback: () => void
-  }
+const closeModal = async (user: ReturnType<typeof userEvent.setup>, action: 'save' | 'cancel') => {
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: `common.operation.${action}` }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+}
 
 describe('Moderation', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockCodeBasedExtensionData.length = 0
   })
 
@@ -69,14 +67,23 @@ describe('Moderation', () => {
     const { store } = renderModeration(undefined, { onChange })
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
-    expect(getModal().payload).toMatchObject({
-      enabled: true,
-      type: 'keywords',
-      config: { inputs_config: { enabled: true } },
-    })
+    const dialog = await screen.findByRole('dialog')
     expect(toggle).not.toBeChecked()
+    expect(store.getState().features.moderation).toEqual({ enabled: false })
     expect(onChange).not.toHaveBeenCalled()
-    act(() => getModal().onSaveCallback(configured))
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: 'appDebug.feature.moderation.modal.provider.keywords',
+      }),
+      'blocked',
+    )
+    await user.click(
+      within(dialog).getByRole('textbox', {
+        name: 'appDebug.feature.moderation.modal.content.preset',
+      }),
+    )
+    await user.paste('Input blocked')
+    await closeModal(user, 'save')
     expect(toggle).toBeChecked()
     expect(store.getState().features.moderation).toEqual(configured)
     expect(onChange).toHaveBeenCalledExactlyOnceWith(store.getState().features)
@@ -87,7 +94,7 @@ describe('Moderation', () => {
     const onChange = vi.fn()
     const { store } = renderModeration(undefined, { onChange })
     await user.click(screen.getByRole('switch'))
-    act(() => getModal().onCancelCallback())
+    await closeModal(user, 'cancel')
     expect(screen.getByRole('switch')).not.toBeChecked()
     expect(store.getState().features.moderation).toEqual({ enabled: false })
     expect(onChange).toHaveBeenCalledExactlyOnceWith()
@@ -100,7 +107,7 @@ describe('Moderation', () => {
     await user.click(screen.getByRole('switch'))
     expect(screen.getByRole('switch')).toBeChecked()
     expect(store.getState().features.moderation).toEqual(configured)
-    expect(mockSetShowModerationSettingModal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onChange).toHaveBeenCalledExactlyOnceWith(store.getState().features)
   })
 
@@ -119,15 +126,28 @@ describe('Moderation', () => {
     async (existing) => {
       const user = userEvent.setup({ skipHover: true })
       const { store } = renderModeration(existing ? configured : undefined)
-      if (existing) await openSettings()
+      if (existing) await openSettings(user)
       else await user.click(screen.getByRole('switch'))
       act(() =>
         store
           .getState()
           .setFeatures({ ...store.getState().features, suggested: { enabled: true } }),
       )
-      const updated = { ...configured, type: 'openai_moderation' }
-      act(() => getModal().onSaveCallback(updated))
+      const dialog = await screen.findByRole('dialog')
+      const keywords = within(dialog).getByRole('textbox', {
+        name: 'appDebug.feature.moderation.modal.provider.keywords',
+      })
+      await user.clear(keywords)
+      await user.type(keywords, 'updated')
+      const response = within(dialog).getByRole('textbox', {
+        name: 'appDebug.feature.moderation.modal.content.preset',
+      })
+      if (!existing) {
+        await user.click(response)
+        await user.paste('Input blocked')
+      }
+      await closeModal(user, 'save')
+      const updated = { ...configured, config: { ...configured.config, keywords: 'updated' } }
       expect(store.getState().features).toMatchObject({
         moderation: updated,
         suggested: { enabled: true },
@@ -137,11 +157,16 @@ describe('Moderation', () => {
   )
 
   it('leaves an existing configuration intact when cancelling settings', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
     const { store } = renderModeration(configured, { onChange })
-    await openSettings()
-    expect(getModal().payload).toEqual(configured)
-    act(() => getModal().onCancelCallback())
+    const dialog = await openSettings(user)
+    const keywords = within(dialog).getByRole('textbox', {
+      name: 'appDebug.feature.moderation.modal.provider.keywords',
+    })
+    expect(keywords).toHaveValue('blocked')
+    await user.type(keywords, ' unsaved')
+    await closeModal(user, 'cancel')
     expect(store.getState().features.moderation).toEqual(configured)
     expect(onChange).toHaveBeenCalledExactlyOnceWith()
   })
@@ -158,7 +183,7 @@ describe('Moderation', () => {
     expect(settings).toBeDisabled()
     await user.click(settings)
     expect(store.getState().features.moderation).toEqual(configured)
-    expect(mockSetShowModerationSettingModal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 

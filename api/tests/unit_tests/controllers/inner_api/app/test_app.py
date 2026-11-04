@@ -104,46 +104,70 @@ def _app(tenant_id: str, name: str, *, mode: AppMode = AppMode.WORKFLOW, created
         mode=mode,
         enable_site=False,
         enable_api=False,
-        created_at=created_at,
-        updated_at=created_at,
-        **kwargs,
     )
+    for name, value in kwargs.items():
+        setattr(app, name, value)
+    app.created_at = created_at
+    app.updated_at = created_at
     app.id = str(uuid4())
     return app
 
 
-def _agent(tenant_id: str, *, scope: AgentScope, status: AgentStatus = AgentStatus.ACTIVE, **kwargs: object) -> Agent:
+def _agent(
+    tenant_id: str,
+    *,
+    scope: AgentScope,
+    status: AgentStatus = AgentStatus.ACTIVE,
+    app_id: str | None = None,
+    backing_app_id: str | None = None,
+) -> Agent:
+    """Create a test Agent. None leaves the corresponding App association unset."""
     return Agent(
         tenant_id=tenant_id,
         name=f"agent-{uuid4()}",
         scope=scope,
         source=AgentSource.AGENT_APP if scope == AgentScope.ROSTER else AgentSource.WORKFLOW,
         status=status,
-        **kwargs,
+        app_id=app_id,
+        backing_app_id=backing_app_id,
     )
 
 
 def _workflow(app: App, *, version: str, created_by: str, entry_node_type: str = "start", **kwargs: object) -> Workflow:
-    return Workflow(
+    workflow = Workflow(
         tenant_id=app.tenant_id,
         app_id=app.id,
         type=WorkflowType.WORKFLOW,
         version=version,
         graph=json.dumps({"nodes": [{"id": "entry", "data": {"type": entry_node_type}}], "edges": []}),
-        features="{}",
-        environment_variables=[],
-        conversation_variables=[],
+        _features="{}",
+        _environment_variables=[],
+        _conversation_variables=[],
         created_by=created_by,
-        **kwargs,
     )
+    for name, value in kwargs.items():
+        setattr(workflow, name, value)
+    return workflow
 
 
-def _snapshot(agent: Agent, version: int, created_at: datetime, **kwargs: object) -> AgentConfigSnapshot:
-    snapshot = AgentConfigSnapshot(
-        tenant_id=agent.tenant_id, agent_id=agent.id, version=version, config_snapshot={}, **kwargs
+def _snapshot(
+    agent: Agent,
+    version: int,
+    created_at: datetime,
+    *,
+    version_note: str | None = None,
+    created_by: str | None = None,
+) -> AgentConfigSnapshot:
+    """Create a test snapshot. None leaves the version note or creator unspecified."""
+    return AgentConfigSnapshot(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version=version,
+        config_snapshot={},
+        created_at=created_at,
+        version_note=version_note,
+        created_by=created_by,
     )
-    snapshot.created_at = created_at
-    return snapshot
 
 
 def _revision(
@@ -376,28 +400,35 @@ def _detail(app: Flask, app_id: str) -> EnterpriseAppDetailResponse:
     return EnterpriseAppDetailResponse.model_validate(_detail_raw(app, app_id))
 
 
-def _run(app: App, status: WorkflowExecutionStatus, created_at: datetime, **kwargs: object) -> WorkflowRun:
-    return WorkflowRun(
+def _run(
+    app: App,
+    status: WorkflowExecutionStatus,
+    created_at: datetime,
+    *,
+    triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.APP_RUN,
+) -> WorkflowRun:
+    run = WorkflowRun(
         tenant_id=app.tenant_id,
         app_id=app.id,
         workflow_id=app.workflow_id or str(uuid4()),
         type=WorkflowType.WORKFLOW,
-        triggered_from=kwargs.pop("triggered_from", WorkflowRunTriggeredFrom.APP_RUN),
+        triggered_from=triggered_from,
         version="v",
         graph="{}",
         inputs="{}",
         status=status,
         created_by_role=CreatorUserRole.END_USER,
         created_by=str(uuid4()),
-        created_at=created_at,
     )
+    run.created_at = created_at
+    return run
 
 
 def _message(app_id: str, status: MessageStatus, created_at: datetime, invoke_from: InvokeFrom) -> Message:
     message = Message(
         app_id=app_id,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="q",
         message={},
         message_unit_price=Decimal(0),

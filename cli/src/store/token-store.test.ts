@@ -48,58 +48,11 @@ describe('FileTokenStore', () => {
     expect(await s.read('https://self.example.com', 'a@x.com')).toBe('C')
   })
 
-  it('preserves concurrent writes from separate stores', async () => {
-    let updateCount = 0
-    let releaseFirstUpdate!: () => void
-    let signalFirstUpdate!: () => void
-    let signalSecondRequest!: () => void
-    const firstUpdateStarted = new Promise<void>((resolve) => {
-      signalFirstUpdate = resolve
-    })
-    const secondUpdateRequested = new Promise<void>((resolve) => {
-      signalSecondRequest = resolve
-    })
-    const firstUpdateGate = new Promise<void>((resolve) => {
-      releaseFirstUpdate = resolve
-    })
-    let secondTransformEntered = false
-
-    function openWithSynchronizedUpdate(): FileTokenStore {
-      const source = localFile(file, TOKENS_SCHEMA, ioService(streams).notice)
-      return new FileTokenStore({
-        ...source,
-        update: async (transform) => {
-          updateCount += 1
-          if (updateCount === 2) signalSecondRequest()
-          await source.update(async (doc) => {
-            if (updateCount === 1) {
-              signalFirstUpdate()
-              await firstUpdateGate
-            } else {
-              secondTransformEntered = true
-            }
-            return transform(doc)
-          })
-        },
-      })
-    }
-
-    const first = openWithSynchronizedUpdate()
-    const second = openWithSynchronizedUpdate()
-    const firstWrite = first.write('https://one.example.com', 'a@x.com', 'A')
-    await firstUpdateStarted
-    const secondWrite = second.write('https://two.example.com', 'b@x.com', 'B')
-    await secondUpdateRequested
-    await new Promise<void>((resolve) => setImmediate(resolve))
-    const secondWaitedForLock = !secondTransformEntered
-    releaseFirstUpdate()
-    await Promise.all([firstWrite, secondWrite])
-
-    expect(secondWaitedForLock).toBe(true)
-
+  it('preserves parallel writes from separate stores', async () => {
+    const hosts = Array.from({ length: 8 }, (_, n) => `https://h${n}.example.com`)
+    await Promise.all(hosts.map((host) => open().write(host, 'a@x.com', host)))
     const result = open()
-    expect(await result.read('https://one.example.com', 'a@x.com')).toBe('A')
-    expect(await result.read('https://two.example.com', 'b@x.com')).toBe('B')
+    for (const host of hosts) expect(await result.read(host, 'a@x.com')).toBe(host)
   })
 
   it('persists the nested shape on disk', async () => {

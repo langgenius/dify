@@ -8,11 +8,21 @@ import { FeaturesProvider } from '@/app/components/base/features/context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ChatInputArea from '../index'
 
-const render = (ui: React.ReactNode) => rtlRender(ui, { wrapper: FeaturesProvider })
+const render = (ui: React.ReactNode) => {
+  const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper()
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <ConsoleWrapper>
+        <FeaturesProvider>{children}</FeaturesProvider>
+      </ConsoleWrapper>
+    ),
+  })
+}
 
 // ---------------------------------------------------------------------------
 // External dependency mocks
@@ -173,7 +183,7 @@ describe('ChatInputArea', () => {
       expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('TestBot'))
     })
 
-    it('keeps a visible label for the input after typing', async () => {
+    it('keeps the accessible name for the input after typing', async () => {
       const user = userEvent.setup()
       render(
         <ChatInputArea
@@ -187,7 +197,7 @@ describe('ChatInputArea', () => {
       await user.type(input, 'A research assistant')
 
       expect(input).toHaveValue('A research assistant')
-      expect(screen.getByText('Describe your agent')).toBeVisible()
+      expect(input).toHaveAccessibleName('Describe your agent')
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {

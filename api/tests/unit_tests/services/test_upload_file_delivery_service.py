@@ -16,7 +16,7 @@ from services.upload_file_delivery_service import (
     UploadFileDeliveryRecord,
     UploadFileDeliveryService,
 )
-from tests.unit_tests.model_factories import make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_tenant, make_upload_file
 
 
 def _record(*, extension: str = "png") -> UploadFileDeliveryRecord:

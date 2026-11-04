@@ -1,0 +1,191 @@
+{
+  "envelope_id": "sanitized-envelope-id",
+  "payload": {
+    "actions": [
+      {
+        "action_id": "批准✅",
+        "action_ts": "1700000001.000002",
+        "block_id": "__dify.actions",
+        "style": "primary",
+        "text": {
+          "emoji": true,
+          "text": "Approve",
+          "type": "plain_text"
+        },
+        "type": "button",
+        "value": "{\"action_id\":\"批准✅\",\"correlation_token\":\"关联令牌-🌍\",\"version\":1}"
+      }
+    ],
+    "api_app_id": "A012SANITIZED",
+    "channel": {
+      "id": "D012SANITIZED",
+      "name": "sanitized-user"
+    },
+    "container": {
+      "channel_id": "D012SANITIZED",
+      "is_ephemeral": false,
+      "message_ts": "1700000000.000001",
+      "type": "message"
+    },
+    "enterprise": null,
+    "is_enterprise_install": false,
+    "message": {
+      "app_id": "A012SANITIZED",
+      "blocks": [
+        {
+          "block_id": "slack-generated-block-id",
+          "text": {
+            "emoji": true,
+            "text": "Slack callback capture [SANITIZED]",
+            "type": "plain_text"
+          },
+          "type": "header"
+        },
+        {
+          "block_id": "slack-generated-block-id",
+          "elements": [
+            {
+              "elements": [
+                {
+                  "text": "Review the response.",
+                  "type": "text"
+                }
+              ],
+              "type": "rich_text_section"
+            }
+          ],
+          "type": "rich_text"
+        },
+        {
+          "block_id": "__dify.input.0",
+          "dispatch_action": false,
+          "element": {
+            "action_id": "说明📝",
+            "dispatch_action_config": {
+              "trigger_actions_on": [
+                "on_enter_pressed"
+              ]
+            },
+            "initial_value": "初始值",
+            "multiline": true,
+            "type": "plain_text_input"
+          },
+          "label": {
+            "emoji": true,
+            "text": "说明📝",
+            "type": "plain_text"
+          },
+          "optional": false,
+          "type": "input"
+        },
+        {
+          "block_id": "__dify.input.1",
+          "dispatch_action": false,
+          "element": {
+            "action_id": "选择🌐",
+            "initial_option": {
+              "text": {
+                "emoji": true,
+                "text": "选项 α",
+                "type": "plain_text"
+              },
+              "value": "选项 α"
+            },
+            "options": [
+              {
+                "text": {
+                  "emoji": true,
+                  "text": "选项 α",
+                  "type": "plain_text"
+                },
+                "value": "选项 α"
+              },
+              {
+                "text": {
+                  "emoji": true,
+                  "text": "选项 β",
+                  "type": "plain_text"
+                },
+                "value": "选项 β"
+              }
+            ],
+            "placeholder": {
+              "emoji": true,
+              "text": "Select an option",
+              "type": "plain_text"
+            },
+            "type": "static_select"
+          },
+          "label": {
+            "emoji": true,
+            "text": "选择🌐",
+            "type": "plain_text"
+          },
+          "optional": false,
+          "type": "input"
+        },
+        {
+          "block_id": "__dify.actions",
+          "elements": [
+            {
+              "action_id": "批准✅",
+              "style": "primary",
+              "text": {
+                "emoji": true,
+                "text": "Approve",
+                "type": "plain_text"
+              },
+              "type": "button",
+              "value": "{\"action_id\":\"批准✅\",\"correlation_token\":\"关联令牌-🌍\",\"version\":1}"
+            }
+          ],
+          "type": "actions"
+        }
+      ],
+      "bot_id": "B012SANITIZED",
+      "team": "T012SANITIZED",
+      "text": "Slack callback capture [SANITIZED] Review the response. Approve button, with interactive elements",
+      "ts": "1700000000.000001",
+      "type": "message",
+      "user": "U012SANITIZED"
+    },
+    "response_url": "https://hooks.slack.com/actions/SANITIZED",
+    "state": {
+      "values": {
+        "__dify.input.0": {
+          "说明📝": {
+            "type": "plain_text_input",
+            "value": "你好，世界 🌍"
+          }
+        },
+        "__dify.input.1": {
+          "选择🌐": {
+            "selected_option": {
+              "text": {
+                "emoji": true,
+                "text": "选项 β",
+                "type": "plain_text"
+              },
+              "value": "选项 β"
+            },
+            "type": "static_select"
+          }
+        }
+      }
+    },
+    "team": {
+      "domain": "sanitized-workspace",
+      "id": "T012SANITIZED"
+    },
+    "token": "sanitized-verification-token",
+    "trigger_id": "sanitized-trigger-id",
+    "type": "block_actions",
+    "user": {
+      "id": "U012SANITIZED",
+      "name": "sanitized-user",
+      "team_id": "T012SANITIZED",
+      "username": "sanitized-user"
+    }
+  },
+  "type": "interactive"
+}

@@ -1,4 +1,5 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Banner } from '@/features/home/banner/banner'
@@ -39,14 +40,16 @@ const banners: BannerResponse[] = [
   },
 ]
 
-async function renderBanner() {
+async function renderBanner(direction: 'ltr' | 'rtl' = 'ltr') {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'account-123' } })
   return render(
     <Wrapper>
       <button type="button">Before carousel</button>
-      <div style={{ width: 300 }}>
-        <Banner banners={banners} />
-      </div>
+      <DirectionProvider direction={direction}>
+        <div dir={direction} style={{ width: 300 }}>
+          <Banner banners={banners} />
+        </div>
+      </DirectionProvider>
       <button type="button">After carousel</button>
     </Wrapper>,
   )
@@ -62,6 +65,27 @@ describe('Home banner browser interactions', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['ltr', 'rtl'] as const)(
+    'keeps the selected banner inside the viewport in %s',
+    async (direction) => {
+      // Embla's real transforms must agree with CSS direction; ARIA visibility alone misses offscreen slides.
+      const screen = await renderBanner(direction)
+      const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
+      const secondPicker = screen.getByRole('button', { name: '02 Second banner' })
+      await secondPicker.click()
+      await expect.element(secondPicker).toHaveAttribute('aria-current', 'true')
+      const slide = screen.getByRole('group', { name: 'Second banner' })
+      await expect.element(slide).toBeVisible()
+      await expect
+        .poll(() => {
+          const viewport = carousel.element().getBoundingClientRect()
+          const selected = slide.element().getBoundingClientRect()
+          return selected.left >= viewport.left - 1 && selected.right <= viewport.right + 1
+        })
+        .toBe(true)
+    },
+  )
 
   it('puts the rotation control first in the native tab order and keeps focus-triggered pauses', async () => {
     // Chromium owns native tab order, layout geometry, and focus transitions; happy-dom cannot prove these contracts.

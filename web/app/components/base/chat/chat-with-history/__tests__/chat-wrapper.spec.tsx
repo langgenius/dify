@@ -290,7 +290,7 @@ it.each(['button', 'chat instance'] as const)(
     })
     if (action === 'button')
       await user.click(screen.getByRole('button', { name: /appDebug.operation.stopResponding/i }))
-    else act(() => context.currentChatInstanceRef.current.handleStop())
+    else await act(async () => context.currentChatInstanceRef.current.handleStop())
     expect(stopChatMessageResponding).toHaveBeenCalledExactlyOnceWith(
       '',
       'task-123',
@@ -345,6 +345,13 @@ it.each([
     value: uploadedFile('1', 'uploaded-1'),
     required: true,
     disabled: false,
+  },
+  {
+    name: 'empty required file list',
+    type: InputVarType.multiFiles,
+    value: [],
+    required: true,
+    disabled: true,
   },
   {
     name: 'mixed uploads',
@@ -664,10 +671,14 @@ it.each([false, true])(
     const submit = isInstalledApp ? submitInstalledForm : submitHumanInputForm
     const otherSubmit = isInstalledApp ? submitHumanInputForm : submitInstalledForm
     await waitFor(() =>
-      expect(submit).toHaveBeenCalledExactlyOnceWith('token-1', {
-        inputs: { review: 'Approved' },
-        action: 'approve',
-      }),
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        {
+          inputs: { review: 'Approved' },
+          action: 'approve',
+        },
+        undefined,
+      ),
     )
     expect(otherSubmit).not.toHaveBeenCalled()
   },

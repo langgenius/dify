@@ -22,6 +22,7 @@ const pendingForm: HumanInputFormData = {
   expiration_time: null,
 }
 const filledForm: HumanInputFilledFormData = {
+  form_id: 'form-1',
   node_id: 'review',
   node_title: 'Completed review',
   rendered_content: 'Approved response',
@@ -78,6 +79,27 @@ describe('Answer Component', () => {
 
       expect(screen.getByText('streamed answer')).toHaveTextContent('streamed answer')
     })
+
+    it.each([true, false])(
+      'should pass the configured show thoughts setting (%s) to custom agent content',
+      (enabled) => {
+        render(
+          <Answer
+            {...defaultProps}
+            item={{
+              id: 'msg-with-parts',
+              content: '',
+              isAnswer: true,
+              agent_response_parts: [{ type: 'message', content: 'streamed answer' }],
+            }}
+            config={{ show_thoughts: { enabled } } as ComponentProps<typeof Answer>['config']}
+            renderAgentContent={({ showThoughts }) => <p>{`thoughts ${showThoughts}`}</p>}
+          />,
+        )
+
+        expect(screen.getByText(`thoughts ${enabled}`)).toBeInTheDocument()
+      },
+    )
 
     it('should render annotation edit title', async () => {
       render(

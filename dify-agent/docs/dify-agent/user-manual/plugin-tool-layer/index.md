@@ -7,3 +7,9 @@ runtime values and model-facing schema, plus `execution_context` and optional
 observation mapping preserve the API-prepared contract. Sandbox paths use the
 referenced live shell session to upload files; file mappings resolve signed URLs
 through the borrowed Dify API client. Config and credentials are never snapshotted.
+
+Each prepared tool includes `plugin_unique_identifier` (version and checksum)
+alongside `plugin_id`. The daemon receives it as `X-Plugin-Unique-Identifier`
+and executes that exact plugin package, even if the installed version changes
+during the run. Tool clients are shared only within the same complete identifier.
+Older configurations can omit the identifier and retain plugin-ID dispatch.

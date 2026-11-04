@@ -2,6 +2,99 @@ import type { OutputVar } from './types'
 import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
+const splitTopLevelParams = (rawParams: string, language: CodeLanguage) => {
+  const params: string[] = []
+  let start = 0
+  let nesting = 0
+  let quote: string | undefined
+  let escaped = false
+
+  for (let i = 0; i < rawParams.length; i++) {
+    const char = rawParams[i]!
+
+    if (quote) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (rawParams.startsWith(quote, i)) {
+        i += quote.length - 1
+        quote = undefined
+      }
+      continue
+    }
+
+    if (char === '"' || char === "'" || (language === CodeLanguage.javascript && char === '`')) {
+      quote =
+        language === CodeLanguage.python3 && rawParams.startsWith(char.repeat(3), i)
+          ? char.repeat(3)
+          : char
+      i += quote.length - 1
+      continue
+    }
+
+    if (char === '(' || char === '[' || char === '{') {
+      nesting++
+    } else if (char === ')' || char === ']' || char === '}') {
+      nesting = Math.max(0, nesting - 1)
+    } else if (char === ',' && nesting === 0) {
+      params.push(rawParams.slice(start, i))
+      start = i + 1
+    }
+  }
+
+  params.push(rawParams.slice(start))
+  return params
+}
+
+const getMainParams = (
+  code: string,
+  language: Exclude<CodeLanguage, typeof CodeLanguage.json>,
+  codeForSearch = code,
+) => {
+  const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
+    [CodeLanguage.python3]: /def\s+main\s*\(/,
+    [CodeLanguage.javascript]: /function\s+main\s*\(/,
+  }
+  const match = patterns[language].exec(codeForSearch)
+  if (!match) return undefined
+
+  const start = match.index + match[0].length
+  let nesting = 1
+  let quote: string | undefined
+  let escaped = false
+
+  for (let i = start; i < code.length; i++) {
+    const char = code[i]!
+
+    if (quote) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (code.startsWith(quote, i)) {
+        i += quote.length - 1
+        quote = undefined
+      }
+      continue
+    }
+
+    if (char === '"' || char === "'" || (language === CodeLanguage.javascript && char === '`')) {
+      quote =
+        language === CodeLanguage.python3 && code.startsWith(char.repeat(3), i)
+          ? char.repeat(3)
+          : char
+      i += quote.length - 1
+    } else if (char === '(') {
+      nesting++
+    } else if (char === ')' && --nesting === 0) {
+      return code.slice(start, i)
+    }
+  }
+
+  return undefined
+}
+
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json) return []
 
@@ -19,22 +112,20 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
     (match: string, comment: string | undefined) =>
       comment ? comment.replace(/[^\r\n]/g, ' ') : match,
   )
+  const codeForSignatureSearch = codeWithoutComments.replace(commentPatterns[language], (match) =>
+    match.replace(/[^\r\n]/g, ' '),
+  )
 
-  const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
-    [CodeLanguage.python3]: /def\s+main\s*\(([\s\S]*?)\)/,
-    [CodeLanguage.javascript]: /function\s+main\s*\(([\s\S]*?)\)/,
-  }
-  const match = patterns[language].exec(codeWithoutComments)
   const params: string[] = []
 
-  if (match?.[1]) {
+  const functionParams = getMainParams(codeWithoutComments, language, codeForSignatureSearch)
+  if (functionParams) {
     // The JavaScript `main` is invoked as `main(inputs_obj)`, so its parameters are
     // usually written as a single destructuring pattern: `function main({ arg1, arg2 })`.
-    const rawParams = match[1].trim().replace(/^\{([\s\S]*)\}$/, '$1')
+    const rawParams = functionParams.trim().replace(/^\{([\s\S]*)\}$/, '$1')
 
     params.push(
-      ...rawParams
-        .split(',')
+      ...splitTopLevelParams(rawParams, language)
         .map((p) => p.trim())
         .filter(Boolean)
         .map((p) => p.split(':')[0]!.trim()),

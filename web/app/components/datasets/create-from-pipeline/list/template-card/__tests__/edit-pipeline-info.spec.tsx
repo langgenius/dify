@@ -6,6 +6,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
@@ -143,7 +144,9 @@ describe('EditPipelineInfo', () => {
 
       await waitFor(() => {
         expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+          queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+            input: { query: { type: 'customized' } },
+          }),
         })
       })
     })

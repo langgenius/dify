@@ -1,7 +1,7 @@
 'use client'
 
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
@@ -91,7 +91,12 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
 type PromptEditorAriaProps = Pick<
   React.AriaAttributes,
-  'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
 >
 
 type PromptEditorProps = PromptEditorAriaProps & {
@@ -125,7 +130,7 @@ type PromptEditorProps = PromptEditorAriaProps & {
   disableSlashPicker?: boolean
   disableBracePicker?: boolean
   shortcutPopups?: Array<{
-    hotkey: Hotkey
+    hotkey: HotkeyChord
     displayMode?: ShortcutPopupDisplayMode
     Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
   }>
@@ -136,6 +141,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   instanceId,
   children,
   compact,
@@ -241,6 +248,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
           aria-haspopup={ariaHasPopup}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           compact={compact}
           className={className}
           placeholder={placeholder}

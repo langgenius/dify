@@ -182,14 +182,13 @@ describe('step-by-step tour state', () => {
     store.set(startStepByStepTourTaskAtom, {
       taskId: 'studio',
       guideGroup: 'studioWithApps',
-      guideIndexes: [0, 2],
     })
 
     expect(store.get(completedStepByStepTourTaskIdsAtom)).toEqual(['home'])
     expect(store.get(activeStepByStepTourTaskIdAtom)).toBe('studio')
     expect(store.get(activeStepByStepTourGuideIndexAtom)).toBe(0)
     expect(store.get(activeStepByStepTourGuideGroupAtom)).toBe('studioWithApps')
-    expect(store.get(activeStepByStepTourGuideIndexesAtom)).toEqual([0, 2])
+    expect(store.get(activeStepByStepTourGuideIndexesAtom)).toBeUndefined()
     expect(
       queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
         ?.completed_task_ids,

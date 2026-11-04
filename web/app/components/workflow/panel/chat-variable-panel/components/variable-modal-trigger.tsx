@@ -39,8 +39,8 @@ const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave
         }
       />
       <PopoverContent
-        placement="left-start"
-        sideOffset={8}
+        side="left"
+        align="start"
         alignOffset={showTip ? -278 : -48}
         className="border-none bg-transparent shadow-none"
       >

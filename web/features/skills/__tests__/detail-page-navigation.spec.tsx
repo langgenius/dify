@@ -84,12 +84,10 @@ describe('SkillDetailPage navigation', () => {
     const { default: SkillDetailPageRoute } = await import('../detail-page')
     const user = userEvent.setup()
     const version = createSkillVersion({ id: 'original-version', version_name: 'Original version' })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: [version] }),
     }))
-    mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-version-detail', options],
+    mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         ...version,
         files: createSkillDetail().files,

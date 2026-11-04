@@ -47,7 +47,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
     <ContextMenuContent
       finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
       className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
-      sideOffset={4}
       onKeyDown={(event) =>
         handleWorkflowMenuKeyDown(event, [
           ['workflow.copy', hasEditGroup ? model.handleCopy : undefined],
@@ -79,7 +78,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
               </ContextMenuItem>
               <PopoverPortal>
                 <PopoverBackdrop />
-                <PopoverPositioner placement="right-start" positionMethod="fixed">
+                <PopoverPositioner side="right" align="start" positionMethod="fixed">
                   <ChangeBlockPopup
                     nodeId={model.id}
                     nodeData={model.data}

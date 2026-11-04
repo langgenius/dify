@@ -107,13 +107,19 @@ describe('Carousel', () => {
         </Carousel>,
       )
 
-      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ loop: true, axis: 'x' }, [plugin])
+      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
+        { loop: true, axis: 'x', direction: 'ltr' },
+        [plugin],
+      )
     })
 
     it('configures the vertical Embla axis', () => {
       renderCarouselWithControls('vertical')
 
-      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ axis: 'y' }, undefined)
+      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
+        { axis: 'y', direction: 'ltr' },
+        undefined,
+      )
     })
   })
 
@@ -213,7 +219,7 @@ describe('Carousel', () => {
         return null
       }
 
-      expect(() => render(<InvalidConsumer />)).toThrowError(
+      expect(() => render(<InvalidConsumer />)).toThrow(
         'useCarousel must be used within a <Carousel />',
       )
     })

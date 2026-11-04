@@ -1,5 +1,5 @@
 import { registerMp3Encoder } from '@mediabunny/mp3-encoder'
-import { AudioBufferSource, BufferTarget, Mp3OutputFormat, Output } from 'mediabunny'
+import { AudioBufferSource, BufferTarget, Mp3OutputFormat, Output, Quality } from 'mediabunny'
 
 const AUDIO_BITRATE = 128_000
 const AUDIO_SAMPLE_RATE = 16_000
@@ -13,7 +13,7 @@ export function createMp3Encoder() {
     target,
   })
   const audioSource = new AudioBufferSource({
-    bitrate: AUDIO_BITRATE,
+    quality: new Quality({ bitrate: AUDIO_BITRATE }),
     codec: 'mp3',
     transform: {
       numberOfChannels: 1,

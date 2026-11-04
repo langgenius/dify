@@ -1,9 +1,18 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
-import { screen, waitFor } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { consoleQuery } from '@/service/console'
+import { useInstalledPluginList } from '@/service/use-plugins'
+import { createCatalogModelFixture, createModelCatalogFixture } from '@/test/console/model-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createPluginEntity } from '@/test/fixtures/plugin'
+import { PluginPageContext } from '../../plugin-page/context'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
 
@@ -13,23 +22,7 @@ const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme() }),
 }))
-
-const mockSelectedItem = vi.fn((): { type: 'plugin'; id: string } | undefined => undefined)
-const mockSetSelectedItem = vi.fn()
-vi.mock('../../plugin-page/context', () => ({
-  usePluginPageContext: (selector: (v: Record<string, unknown>) => unknown) => {
-    const context = {
-      selectedItem: mockSelectedItem(),
-      setSelectedItem: mockSetSelectedItem,
-    }
-    return selector(context)
-  },
-}))
-
-const mockRefreshPluginList = vi.fn()
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
-  default: () => ({ refreshPluginList: mockRefreshPluginList }),
-}))
+const PluginPageContextProvider = PluginPageContext.Provider
 
 const mockLangGeniusVersionInfo = vi.fn(() => ({
   current_env: '',
@@ -47,22 +40,65 @@ const createLangGeniusVersionInfo = (currentVersion: string) => ({
   version: '',
 })
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
+function PluginPageBoundary({ children }: { children: ReactNode }) {
+  const [selectedItem, setSelectedItem] = useState<
+    { type: 'plugin'; id: string } | { type: 'builtinTool'; id: string }
+  >()
+  return (
+    <PluginPageContextProvider
+      value={{
+        containerRef: { current: null },
+        selectedItem,
+        setSelectedItem,
+        filters: { categories: [], tags: [], searchQuery: '' },
+        setFilters: () => {},
+        activeTab: 'plugins',
+        setActiveTab: () => {},
+        options: [],
+      }}
+    >
+      <output aria-label="selected plugin">
+        {selectedItem ? `${selectedItem.type}:${selectedItem.id}` : 'none'}
+      </output>
+      {children}
+    </PluginPageContextProvider>
+  )
+}
+
+const render = (ui: ReactElement) => {
+  const wrap = (element: ReactElement) => (
+    <PluginPageBoundary>
+      <ModalContextProvider>{element}</ModalContextProvider>
+    </PluginPageBoundary>
+  )
+  const rendered = renderWithConsoleQuery(wrap(ui), {
     accountProfileMeta: {
       currentVersion: mockLangGeniusVersionInfo().current_version,
     },
     systemFeatures: { enable_marketplace: mockEnableMarketplace() },
   })
+  return { ...rendered, rerender: (element: ReactElement) => rendered.rerender(wrap(element)) }
+}
 
-const requests = vi.hoisted(() => ({ uninstall: vi.fn() }))
+const requests = vi.hoisted(() => ({
+  categoryList: vi.fn(),
+  models: vi.fn(),
+  uninstall: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.byCategory.list.get': requests.categoryList,
+      'workspaces.current.models.modelTypes.byModelType.get': requests.models,
+    }),
+  }
+})
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   uninstallPlugin: requests.uninstall,
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowUpdatePluginModal: vi.fn() }),
 }))
 
 const createPluginDeclaration = (
@@ -120,11 +156,44 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
+let installedPlugins: ReturnType<typeof createPluginEntity>[] = []
+let modelCatalog: ReturnType<typeof createModelCatalogFixture>[] = []
+
+function InstalledPluginList({ category }: { category: PluginCategoryEnum }) {
+  const { data } = useInstalledPluginList({ category, staleTime: 0 })
+  const plugins = data?.plugins ?? []
+
+  return (
+    <output aria-label="installed plugin ids">
+      {plugins.map((plugin) => plugin.plugin_id).join(',') || 'none'}
+    </output>
+  )
+}
+
+function ModelCatalog() {
+  const { data = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) =>
+        response.data.flatMap((provider) => provider.models.map((model) => model.model)),
+    }),
+  )
+
+  return <output aria-label="model ids">{data.join(',') || 'none'}</output>
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  installedPlugins = []
+  modelCatalog = []
+  requests.categoryList.mockImplementation(async () => ({
+    plugins: installedPlugins,
+    builtin_tools: [],
+    has_more: false,
+  }))
+  requests.models.mockImplementation(async () => ({ data: modelCatalog }))
   requests.uninstall.mockResolvedValue({ success: true })
   mockTheme.mockReturnValue('light')
-  mockSelectedItem.mockReturnValue(undefined)
   mockEnableMarketplace.mockReturnValue(true)
   mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
 })
@@ -222,41 +291,110 @@ describe('Installed plugin card', () => {
 
   it('selects the plugin from the card and keeps its actions separate', async () => {
     const user = userEvent.setup()
-    render(<PluginItem plugin={createPluginDetail()} />)
-    const card = screen.getByRole('button', { name: 'Test Plugin' })
+    render(
+      <>
+        <section aria-label="Other plugin card">
+          <PluginItem
+            plugin={createPluginDetail({
+              id: 'plugin-2',
+              plugin_id: 'plugin-2',
+              declaration: createPluginDeclaration({
+                name: 'other-plugin',
+                label: { en_US: 'Other Plugin' } as PluginDeclaration['label'],
+              }),
+            })}
+          />
+        </section>
+        <section aria-label="Test plugin card">
+          <PluginItem plugin={createPluginDetail()} />
+        </section>
+      </>,
+    )
+    const otherPlugin = within(screen.getByRole('region', { name: 'Other plugin card' }))
+    const testPlugin = within(screen.getByRole('region', { name: 'Test plugin card' }))
+    const otherCard = otherPlugin.getByRole('button', { name: 'Other Plugin' })
     await user.tab()
-    expect(card).toHaveFocus()
+    expect(otherCard).toHaveFocus()
     await user.keyboard('{Enter}')
-    expect(mockSetSelectedItem).toHaveBeenCalledExactlyOnceWith({ type: 'plugin', id: 'plugin-1' })
-    mockSetSelectedItem.mockClear()
-    const action = screen.getByRole('button', { name: 'plugin.action.delete' })
+    expect(screen.getByRole('status', { name: 'selected plugin' })).toHaveTextContent(
+      'plugin:plugin-2',
+    )
+    const card = testPlugin.getByRole('button', { name: 'Test Plugin' })
+    const action = testPlugin.getByRole('button', { name: 'plugin.action.delete' })
     expect(card).not.toContainElement(action)
-    expect(card).not.toContainElement(screen.getByRole('link', { name: /marketplace/ }))
+    expect(card).not.toContainElement(testPlugin.getByRole('link', { name: /marketplace/ }))
     await user.click(action)
     expect(screen.getByRole('alertdialog', { name: 'plugin.action.delete' })).toHaveTextContent(
       'test-plugin',
     )
-    expect(mockSetSelectedItem).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.getByRole('status', { name: 'selected plugin' })).toHaveTextContent(
+      'plugin:plugin-2',
+    )
   })
 
-  it('refreshes the current plugin category after a real uninstall succeeds', async () => {
+  it('refreshes the visible plugin category after a real uninstall succeeds', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<PluginItem plugin={createPluginDetail()} />)
+    const installedModelPlugin = createPluginEntity({
+      id: 'new-installation',
+      installation_id: 'new-installation',
+      plugin_id: 'plugin-1',
+    })
+    installedModelPlugin.declaration.author = 'test-author'
+    installedModelPlugin.declaration.name = 'test-plugin'
+    installedModelPlugin.declaration.category = PluginCategoryEnum.model
+    installedModelPlugin.declaration.label = { en_US: 'Test Plugin' }
+    installedModelPlugin.declaration.description = { en_US: 'Test plugin description' }
+    installedPlugins = [installedModelPlugin]
+    modelCatalog = [
+      createModelCatalogFixture({
+        models: [createCatalogModelFixture({ model: 'catalog-model' })],
+      }),
+    ]
+    requests.uninstall.mockImplementation(async () => {
+      installedPlugins = []
+      modelCatalog = []
+      return { success: true }
+    })
+
+    const renderCard = (plugin: PluginDetail) => (
+      <>
+        <PluginItem plugin={plugin} />
+        <InstalledPluginList category={PluginCategoryEnum.model} />
+        <ModelCatalog />
+      </>
+    )
+
+    const { rerender } = render(renderCard(createPluginDetail()))
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'installed plugin ids' })).toHaveTextContent(
+        'plugin-1',
+      ),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'model ids' })).toHaveTextContent('catalog-model'),
+    )
     rerender(
-      <PluginItem
-        plugin={createPluginDetail({
+      renderCard(
+        createPluginDetail({
           installation_id: 'new-installation',
           declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
-        })}
-      />,
+        }),
+      ),
     )
+
     await user.click(screen.getByRole('button', { name: 'plugin.action.delete' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
-    expect(mockRefreshPluginList).toHaveBeenCalledExactlyOnceWith({
-      category: PluginCategoryEnum.model,
-    })
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'installed plugin ids' })).toHaveTextContent(
+        'none',
+      ),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'model ids' })).toHaveTextContent('none'),
+    )
   })
 
   it.each([

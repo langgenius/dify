@@ -122,6 +122,12 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const onFormChange = (value: Record<string, unknown>) => {
     const res: ResourceVarInputs = { ...inputs.agent_parameters }
     Object.entries(value).forEach(([key, val]) => {
+      const parameter = currentStrategy?.parameters?.find((param) => param.name === key)
+      const isEmptySelector = val === null || val === '' || (Array.isArray(val) && val.length === 0)
+      if (parameter?.type === FormTypeEnum.any && !parameter.required && isEmptySelector) {
+        delete res[key]
+        return
+      }
       res[key] = {
         type: getParamVarType(key),
         value: val,

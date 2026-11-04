@@ -8,13 +8,14 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useSuspenseQueries } from '@tanstack/react-query'
+import { useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { AccessControlEntry } from '@/features/network-access/app-binding'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInAccessPoints } from './built-in-access-points'
@@ -39,6 +40,7 @@ type AccessPointProps = {
 }
 
 type AccessPointContentProps = AccessPointProps & {
+  canViewLayout: boolean
   canDeploy: boolean
   canManageAccessPoint: boolean
   canReleaseAndVersion: boolean
@@ -47,12 +49,16 @@ type AccessPointContentProps = AccessPointProps & {
 
 function AccessPointContent({
   appId,
+  canViewLayout,
   canDeploy,
   canManageAccessPoint,
   canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
   const { t } = useTranslation(['common', 'deployments', 'workflow'])
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -73,10 +79,24 @@ function AccessPointContent({
     >
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
-          <div className="flex h-6 items-center">
+          <div className="flex min-h-8 items-center justify-between gap-3">
             <h1 id="access-point-title" className="title-xl-semi-bold text-text-primary">
               {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
             </h1>
+            {appInfo && (
+              <AccessControlEntry
+                appId={appId}
+                appMode={appInfo.mode}
+                isPublished={Boolean(
+                  appInfo &&
+                  (appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat'
+                    ? appInfo.workflow?.id
+                    : appInfo.model_config),
+                )}
+                appIcon={appInfo}
+                canEditBinding={canManageAccessPoint}
+              />
+            )}
           </div>
           <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['studio.accessPoint.description'], { ns: 'deployments' })}
@@ -127,6 +147,7 @@ function AccessPointContent({
             {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
               <BuiltInAccessPoints
                 appId={appId}
+                canViewLayout={canViewLayout}
                 canDeploy={canDeploy}
                 canManageAccessPoint={canManageAccessPoint}
                 canReleaseAndVersion={canReleaseAndVersion}
@@ -171,6 +192,7 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
       <AccessPointContent
         appId={appId}
+        canViewLayout={capabilities.canViewLayout}
         canDeploy={capabilities.canDeploy}
         canManageAccessPoint={capabilities.canManageAccessPoint}
         canReleaseAndVersion={capabilities.canReleaseAndVersion}

@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -155,7 +155,7 @@ async function setup({
     renderWithConsoleQuery(
       <NuqsTestingAdapter hasMemory searchParams={api.params}>
         <Apps />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </NuqsTestingAdapter>,
       {
         queryClient,
@@ -208,7 +208,10 @@ it('imports fresh canonical detail through the real list and form, then checks d
   )
   await submit(user)
   await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
-  expect(api.detail).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'canonical-template' } })
+  expect(api.detail).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'canonical-template' } },
+    { context: { silent: true } },
+  )
   expect(api.import).toHaveBeenCalledWith({
     body: expect.objectContaining({
       yaml_content: 'fresh-dsl',
@@ -220,6 +223,32 @@ it('imports fresh canonical detail through the real list and form, then checks d
   expect(await screen.findByText('app.newApp.appCreated')).toBeInTheDocument()
 })
 
+it('keeps a reopened creation form pending until the previous import finishes its dependency check', async () => {
+  let resolveDependencies: (value: Awaited<ReturnType<typeof api.dependencies>>) => void = () => {}
+  api.dependencies.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveDependencies = resolve
+      }),
+  )
+  const { user } = await setup()
+  await openCreate(user)
+  await submit(user)
+  await waitFor(() => expect(api.dependencies).toHaveBeenCalledOnce())
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),
+    ).not.toBeInTheDocument(),
+  )
+  const reopened = await openCreate(user)
+  const create = within(reopened).getByRole('button', { name: /^common.operation.create/ })
+  expect(create).toHaveAttribute('aria-disabled', 'true')
+  await user.click(create)
+  expect(api.import).toHaveBeenCalledOnce()
+  await act(async () => resolveDependencies({ leaked_dependencies: [] }))
+  await waitFor(() => expect(create).not.toHaveAttribute('aria-disabled', 'true'))
+})
+
 it('tracks creation through the real preview and closes it after submission', async () => {
   const { user } = await setup({ cloud: true })
   await openCreate(user, true)
@@ -229,16 +258,16 @@ it('tracks creation through the real preview and closes it after submission', as
   expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration')
 })
 
-it('shows a detail error once without importing, navigating, or reopening the submitted form', async () => {
+it('shows a detail error once without importing or navigating, and preserves the submitted form', async () => {
   api.detail.mockRejectedValue(new Error('Unavailable'))
   const { user } = await setup()
   await openCreate(user)
   await submit(user)
-  expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+  expect(await screen.findAllByText('Unavailable')).toHaveLength(1)
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),
-    ).not.toBeInTheDocument(),
+    ).toBeInTheDocument(),
   )
   expect(api.detail).toHaveBeenCalledOnce()
   expect(api.import).not.toHaveBeenCalled()

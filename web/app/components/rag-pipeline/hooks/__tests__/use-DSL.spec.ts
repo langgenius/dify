@@ -43,6 +43,7 @@ vi.mock('../use-nodes-sync-draft', () => ({
 }))
 
 const mockExportPipelineConfig = vi.fn()
+const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
   consoleClient: {
@@ -50,15 +51,13 @@ vi.mock('@/service/console', async (importOriginal) => ({
       pipelines: {
         byPipelineId: {
           exports: { get: (...args: unknown[]) => mockExportPipelineConfig(...args) },
+          workflows: {
+            draft: { get: (...args: unknown[]) => mockFetchWorkflowDraft(...args) },
+          },
         },
       },
     },
   },
-}))
-
-const mockFetchWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 const mockDownloadBlob = vi.fn()
@@ -162,7 +161,8 @@ describe('useDSLByCanEdit', () => {
 
       await waitFor(() => {
         expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          '/rag/pipelines/test-pipeline-id/workflows/draft',
+          { params: { pipeline_id: 'test-pipeline-id' } },
+          { context: { silent: true } },
         )
         expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       })

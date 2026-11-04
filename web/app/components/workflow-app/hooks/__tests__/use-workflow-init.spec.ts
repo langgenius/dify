@@ -63,9 +63,14 @@ vi.mock('../use-workflow-template', () => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: async (url: string) => {
-    if (url === '/files/upload') return workflowConfigState.data ?? createFileUploadConfigFixture()
-    throw new Error(`Unexpected GET ${url}`)
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/apps/app-1/workflows/draft'))
+      return Response.json(await mockSyncWorkflowDraft(await request.json()))
+    if (new URL(url).pathname.endsWith('/files/upload'))
+      return Response.json(workflowConfigState.data ?? createFileUploadConfigFixture())
+    if (new URL(url).pathname.endsWith('/workflows/default-workflow-block-configs'))
+      return Response.json(await mockFetchNodesDefaultConfigs())
+    throw new Error(`Unexpected request ${url}`)
   },
 }))
 
@@ -84,8 +89,6 @@ const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-  syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
-  fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
 const notExistError = () =>
@@ -174,16 +177,15 @@ describe('useWorkflowInit', () => {
     })
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: expect.objectContaining({
-          graph: {
-            nodes: [],
-            edges: [],
-          },
-          force: true,
-        }),
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+        force: true,
       }),
     )
     expect(store.getState().syncWorkflowDraftHash).toBe('new-workflow-hash')
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
   })
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
@@ -204,13 +206,11 @@ describe('useWorkflowInit', () => {
     await waitFor(() =>
       expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
         expect.objectContaining({
-          params: expect.objectContaining({
-            graph: {
-              nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
-              edges: [],
-            },
-            force: true,
-          }),
+          graph: {
+            nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+            edges: [],
+          },
+          force: true,
         }),
       ),
     )
@@ -250,6 +250,7 @@ describe('useWorkflowInit', () => {
       conversationVariables: [],
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: '',
+      syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
   })
@@ -271,6 +272,7 @@ describe('useWorkflowInit', () => {
 
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(store.getState().syncWorkflowDraftHash).toBe('empty-draft-hash')
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
   })
 
   it('should preserve existing draft nodes when restoring the local start placeholder', async () => {
@@ -284,7 +286,7 @@ describe('useWorkflowInit', () => {
       },
     })
 
-    const { result } = renderHook(() => useWorkflowInit())
+    const { result, store } = renderHook(() => useWorkflowInit())
 
     await waitFor(() => {
       expect(result.current.data?.graph.nodes).toEqual([
@@ -294,6 +296,7 @@ describe('useWorkflowInit', () => {
     })
 
     expect(result.current.data?.graph.edges).toEqual([existingEdge])
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 

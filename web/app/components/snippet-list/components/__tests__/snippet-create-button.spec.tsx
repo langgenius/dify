@@ -149,13 +149,16 @@ describe('SnippetCreateButton', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
-      expect(mockImportMutateAsync).toHaveBeenCalledWith({
-        body: {
-          mode: 'yaml-url',
-          yaml_content: undefined,
-          yaml_url: 'https://example.com/snippet.yml',
+      expect(mockImportMutateAsync).toHaveBeenCalledWith(
+        {
+          body: {
+            mode: 'yaml-url',
+            yaml_content: undefined,
+            yaml_url: 'https://example.com/snippet.yml',
+          },
         },
-      })
+        { context: { silent: true } },
+      )
     })
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })

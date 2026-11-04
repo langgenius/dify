@@ -51,6 +51,12 @@ jobs:
           python-version: '3.13'
           cache-dependency-glob: dify-agent/uv.lock
 
+      - name: Validate Compose defaults and Rust rollout overlay
+        working-directory: .
+        run: |
+          python3 -m unittest discover \
+            -s docker/tests -p 'test_compose_environment.py' -v
+
       - name: Install agent rollout test dependencies
         working-directory: dify-agent
         run: uv sync --extra server --dev

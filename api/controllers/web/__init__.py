@@ -3,6 +3,7 @@ from types import ModuleType
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.console.error import NotInitValidateError, NotSetupError
 from controllers.web.error import (
@@ -14,6 +15,7 @@ from controllers.web.error import (
 from libs.external_api import ExternalApi
 
 bp = Blueprint("web", __name__, url_prefix="/api")
+register_app_access_error_metadata(bp, surface="web")
 
 api = ExternalApi(
     bp,
@@ -54,6 +56,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         forgot_password,
         human_input_file_upload,
         human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
         login,
         message,
         passport,
@@ -74,6 +79,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         forgot_password,
         human_input_file_upload,
         human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
         login,
         message,
         passport,
@@ -95,6 +103,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     forgot_password,
     human_input_file_upload,
     human_input_form,
+    human_input_form_access_request,
+    human_input_v2,
+    human_input_v2_file_upload,
     login,
     message,
     passport,
@@ -119,6 +130,9 @@ __all__ = [
     "forgot_password",
     "human_input_file_upload",
     "human_input_form",
+    "human_input_form_access_request",
+    "human_input_v2",
+    "human_input_v2_file_upload",
     "login",
     "message",
     "passport",

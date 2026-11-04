@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react'
-import type { ResizeParamsWithDirection } from 'reactflow'
-import ReactFlow from 'reactflow'
+import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
+import ReactFlow, { useNodes } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
-import { WorkflowContext } from '@/app/components/workflow/context'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
 import NoteNode from '@/app/components/workflow/note-node'
 import { NoteTheme } from '@/app/components/workflow/note-node/types'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import 'reactflow/dist/style.css'
 
-vi.mock('../../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
+const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
+beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  expect(unexpectedFetch).not.toHaveBeenCalled()
+})
 
 // Editing and persistence are independent of the Note's rendered resize affordance.
 vi.mock('../../../../note-node/note-editor', () => ({
@@ -21,58 +23,28 @@ vi.mock('../../../../note-node/note-editor', () => ({
   NoteEditorToolbar: () => null,
 }))
 
-vi.mock('../../../../note-node/hooks', () => ({
-  useNote: () => ({
-    handleThemeChange: vi.fn(),
-    handleEditorChange: vi.fn(),
-    handleShowAuthorChange: vi.fn(),
-  }),
-}))
-
-vi.mock('../../../../hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: vi.fn() }),
-}))
-
-vi.mock('../../../../hooks/use-nodes-interactions', async () => {
-  const { useStoreApi } = await import('reactflow')
-  return {
-    useNodesInteractions: () => {
-      const store = useStoreApi()
-      return {
-        handleNodeResize: (id: string, { width, height }: ResizeParamsWithDirection) => {
-          const { getNodes, setNodes } = store.getState()
-          setNodes(
-            getNodes().map((node) =>
-              node.id === id
-                ? {
-                    ...node,
-                    width,
-                    height,
-                    data: { ...node.data, width, height },
-                  }
-                : node,
-            ),
-          )
-        },
-      }
-    },
-  }
-})
-
 const noteNodeTypes = { note: NoteNode }
+
+function SavedNoteSize() {
+  const note = useNodes<NoteNodeType>().find((node) => node.id === 'note')
+  return (
+    <output aria-label="Saved note size">
+      {note?.data.width} × {note?.data.height}
+    </output>
+  )
+}
 
 it('hides an unselected Note resize handle from pointer targeting until hover or keyboard focus, then resizes by dragging', async () => {
   // Browser-owned: transparent descendants still participate in CSS hit testing,
   // native Tab focus must reveal the real Note's resize affordance, and D3 drag needs real pointer events.
   await page.viewport(1000, 800)
-  const store = createWorkflowStore({})
   const screen = await render(
-    <WorkflowContext value={store}>
+    <>
       <button type="button">Before canvas</button>
       <div role="group" aria-label="Canvas" style={{ width: 800, height: 600 }}>
         <ReactFlow
           defaultNodes={[
-            {
+            createNode({
               id: 'note',
               type: 'note',
               ariaLabel: 'Note',
@@ -89,12 +61,13 @@ it('hides an unselected Note resize handle from pointer targeting until hover or
                 width: 300,
                 height: 200,
               },
-            },
+            }),
           ]}
           nodeTypes={noteNodeTypes}
         />
       </div>
-    </WorkflowContext>,
+      <SavedNoteSize />
+    </>,
   )
   const node = screen.getByRole('button', { name: 'Note', exact: true })
   const control = screen.getByRole('button', { name: 'common.resize.node' })
@@ -122,4 +95,8 @@ it('hides an unselected Note resize handle from pointer targeting until hover or
   })
   await expect.poll(() => node.element().getBoundingClientRect().width).toBeGreaterThan(300)
   expect(node.element().getBoundingClientRect().height).toBeGreaterThan(200)
+  const size = node.element().getBoundingClientRect()
+  await expect
+    .element(screen.getByRole('status', { name: 'Saved note size' }))
+    .toHaveTextContent(`${size.width} × ${size.height}`)
 })

@@ -16,6 +16,7 @@ import {
   $getRoot,
   $getSelection,
   $isNodeSelection,
+  $isTextNode,
   $setSelection,
   COMMAND_PRIORITY_LOW,
   createEditor,
@@ -305,7 +306,9 @@ describe('prompt-editor/hooks', () => {
     act(() =>
       editor.update(
         () => {
-          $getNodeByKey<TextNode>(entityKey)!.setTextContent('plain')
+          const node = $getNodeByKey(entityKey)
+          if (!$isTextNode(node)) throw new Error('Expected a text node')
+          node.setTextContent('plain')
         },
         { discrete: true },
       ),

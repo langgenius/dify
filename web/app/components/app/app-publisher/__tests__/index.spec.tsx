@@ -45,7 +45,10 @@ const api = vi.hoisted(() => ({
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.create.post
     >(),
   access: vi.fn<typeof import('@/service/share').getUserCanAccess>(),
-  patch: vi.fn<typeof import('@/service/base').patch>(),
+  patch:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.byWorkflowId.patch
+    >(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -54,6 +57,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.byWorkflowId.patch': api.patch,
       'apps.byAppId.workflows.publish.get': api.published,
       'enterprise.appDeploy.deploymentService.listAppEnvironments': api.environments,
       'enterprise.appDeploy.deploymentService.listEnvironmentDeployments': api.deployments,
@@ -79,10 +83,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   getUserCanAccess: api.access,
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  patch: api.patch,
 }))
 
 beforeEach(() => {
@@ -241,7 +241,8 @@ it('edits a published workflow version and shows the saved title and notes when 
   api.published.mockResolvedValue(saved)
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
-    expect(api.patch).toHaveBeenCalledWith('/apps/app-1/workflows/workflow-1', {
+    expect(api.patch).toHaveBeenCalledWith({
+      params: { app_id: 'app-1', workflow_id: 'workflow-1' },
       body: { marked_name: 'Release 6', marked_comment: 'Updated notes' },
     }),
   )
@@ -392,9 +393,12 @@ it.each(['publish', 'create'] as const)(
         screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),
       ).not.toBeInTheDocument(),
     )
-    expect(api.createTool).toHaveBeenCalledWith({
-      body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
-    })
+    expect(api.createTool).toHaveBeenCalledWith(
+      {
+        body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
+      },
+      { context: { silent: true } },
+    )
     expect(success).toHaveBeenCalledOnce()
   },
 )
@@ -443,7 +447,10 @@ it('opens the marketplace redirect after a successful submission', async () => {
       '_blank',
     ),
   )
-  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
+  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'app-1' } },
+    { context: { silent: true } },
+  )
 })
 
 it('shows a marketplace error and lets the user retry', async () => {
@@ -453,9 +460,7 @@ it('shows a marketplace error and lets the user retry', async () => {
   renderPublisher({ systemFeatures: { enable_creators_platform: true } })
   await user.click(trigger())
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
-  await waitFor(() =>
-    expect(error).toHaveBeenCalledWith('workflow.common.publishToMarketplaceFailed'),
-  )
+  await waitFor(() => expect(error).toHaveBeenCalledWith('network error'))
   expect(window.open).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
   await waitFor(() => expect(window.open).toHaveBeenCalledOnce())

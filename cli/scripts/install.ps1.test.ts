@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 const SCRIPT = fileURLToPath(new URL('./install.ps1', import.meta.url))
 
@@ -19,6 +19,8 @@ function hasPwsh(): boolean {
 }
 
 const PWSH = hasPwsh()
+// Each test starts pwsh; cold starts on a busy CI runner can exceed the default 5 seconds.
+if (PWSH) vi.setConfig({ testTimeout: 15_000 })
 
 const STUB = [
   'function Invoke-RestMethod {',
@@ -289,11 +291,13 @@ describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
 
   it('Resolve-Release surfaces the rate-limit hint and exits, not "not found"', () => {
     const stub = `function Invoke-RestMethod { throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('rate limited', $script:rlResp) }`
-    const setup = `$script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
+    // The stub bypasses Invoke-RestMethod's module autoload, which provides HttpResponseException.
+    const setup = `Import-Module Microsoft.PowerShell.Utility
+      $script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-remaining','0') | Out-Null
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-reset','${futureReset}') | Out-Null`
     const r = runPwsh(`${setup}\n${stub}\nResolve-Release`, { DIFY_VERSION: '1.15.0' })
-    expect(r.code).not.toBe(0)
+    expect(r.code).toBe(1)
     expect(r.stderr).toContain('rate limit exceeded')
     expect(r.stderr).not.toContain('not found')
   })

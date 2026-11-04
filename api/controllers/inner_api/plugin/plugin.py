@@ -1,3 +1,5 @@
+import re
+
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
@@ -16,10 +18,12 @@ from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
     RequestInvokeApp,
+    RequestInvokeDatasource,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
     RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
+    RequestInvokeMultimodalEmbedding,
     RequestInvokeParameterExtractorNode,
     RequestInvokeQuestionClassifierNode,
     RequestInvokeRerank,
@@ -28,6 +32,7 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
+    RequestListModels,
     RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
@@ -35,12 +40,60 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
 from services.workflow_run_agg import WorkflowRunAgg
+
+
+def _model_invocation_error_response(error: Exception) -> dict[str, object]:
+    """Return a backwards-compatible envelope with safe retry classification."""
+
+    message = str(error)
+    normalized = message.lower()
+    if (
+        isinstance(error, InvokeRateLimitError)
+        or "resource_exhausted" in normalized
+        or "rate limit" in normalized
+        or re.search(r"\b429\b", normalized)
+    ):
+        error_code = "rate_limited"
+        retryable = True
+        status = 429
+    elif "timed out" in normalized or "timeout" in normalized:
+        error_code = "timeout"
+        retryable = True
+        status = 504
+    elif (
+        isinstance(error, InvokeConnectionError | InvokeServerUnavailableError)
+        or "connection error" in normalized
+        or "temporarily unavailable" in normalized
+    ):
+        error_code = "unavailable"
+        retryable = True
+        status = 503
+    else:
+        error_code = "invocation_failed"
+        retryable = False
+        status = None
+
+    response: dict[str, object] = {
+        "data": None,
+        "error": message,
+        "error_code": error_code,
+        "retryable": retryable,
+    }
+    if status is not None:
+        response["status"] = status
+    return response
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -118,6 +171,36 @@ class PluginInvokeTextEmbeddingApi(Resource):
                 )
             )
         except Exception as e:
+            return _model_invocation_error_response(e)
+
+
+@inner_api_ns.route("/invoke/multimodal-embedding")
+class PluginInvokeMultimodalEmbeddingApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestInvokeMultimodalEmbedding)
+    @inner_api_ns.doc("plugin_invoke_multimodal_embedding")
+    @inner_api_ns.doc(description="Invoke multimodal embedding models through Dify model management")
+    @inner_api_ns.doc(
+        responses={
+            200: "Multimodal embedding successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeMultimodalEmbedding):
+        try:
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_multimodal_embedding(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
+                )
+            )
+        except Exception as e:
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
@@ -145,6 +228,70 @@ class PluginInvokeRerankApi(Resource):
             )
         except Exception as e:
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
+
+
+@inner_api_ns.route("/invoke/model-catalog")
+class PluginModelCatalogApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestListModels)
+    @inner_api_ns.doc("plugin_model_catalog")
+    @inner_api_ns.doc(description="List tenant-active models managed by Dify")
+    @inner_api_ns.doc(
+        responses={
+            200: "Model catalog lookup successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestListModels):
+        try:
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.list_models(
+                        tenant_id=tenant_model.id,
+                        user_id=user_model.id,
+                        payload=payload,
+                    )
+                )
+            )
+        except Exception as e:
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
+
+
+@inner_api_ns.route("/invoke/datasource")
+class PluginInvokeDatasourceApi(Resource):
+    """Invoke an installed datasource with credentials resolved inside Dify."""
+
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestInvokeDatasource)
+    @inner_api_ns.doc("plugin_invoke_datasource")
+    @inner_api_ns.doc(description="Invoke datasource plugins through Dify credential management")
+    @inner_api_ns.doc(
+        responses={
+            200: "Datasource invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Datasource provider, datasource, or credential not found",
+        }
+    )
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestInvokeDatasource,
+    ):
+        response = PluginDatasourceBackwardsInvocation.invoke(
+            user_id=user_model.id,
+            tenant=tenant_model,
+            payload=payload,
+        )
+        return length_prefixed_response(
+            0xF,
+            PluginDatasourceBackwardsInvocation.convert_to_event_stream(response),
+        )
 
 
 @inner_api_ns.route("/invoke/tts")

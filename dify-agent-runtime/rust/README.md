@@ -35,6 +35,14 @@ SQLite, tmux, Home, Workspace, and Snapshot state.
 
 ## Safe canary rollout
 
+The base stack remains Go-only. The commented Rust settings are documented in
+`docker/envs/core-services/dify-agent.defaults`. With the overlay, put rollout
+overrides and the shared `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in `docker/.env`
+(or the shell), not the optional service env file: Compose interpolates the
+endpoint, percentage, timeout, and Rust token for both services. If the Rust
+token is unset or empty, it inherits the shared Local token. The overlay defaults
+to 100% only when explicitly enabled; begin with a small percentage.
+
 Start the normal stack plus the opt-in Rust service:
 
 ```bash

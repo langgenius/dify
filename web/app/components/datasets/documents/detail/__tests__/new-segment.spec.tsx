@@ -3,7 +3,7 @@ import type ImageUploader from '@/app/components/datasets/common/image-uploader/
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { IndexingType } from '../../../create/step-two'
@@ -177,7 +177,7 @@ it('opens the newly created chunk through the success notification action', asyn
   mockFullScreen = true
   render(
     <>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <NewSegmentModal {...props} />
     </>,
   )

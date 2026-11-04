@@ -59,9 +59,13 @@ vi.mock('@/service/workflow-generator', () => ({
   generateWorkflowStream: (...args: unknown[]) => mockGenerateWorkflowStream(...args),
 }))
 
-vi.mock('@/service/workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'GET' && new URL(url).pathname.endsWith('/workflows/draft'))
+      return Response.json(await mockFetchWorkflowDraft(new URL(url).pathname))
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
+  },
 }))
 
 describe('WorkflowGeneratorModal', () => {
@@ -226,6 +230,7 @@ describe('WorkflowGeneratorModal', () => {
             type: 'custom',
             position: { x: 0, y: 0 },
             data: { type: 'start', title: 'Start' },
+            width: 240,
           },
         ],
         edges: [],
@@ -258,6 +263,9 @@ describe('WorkflowGeneratorModal', () => {
       await user.click(generateButton)
 
       await waitFor(() => {
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+          '/console/api/apps/app-1/workflows/draft',
+        )
         expect(mockGenerateWorkflowStream).toHaveBeenCalledWith(
           expect.objectContaining({ current_graph: currentGraph }),
           expect.any(Object),

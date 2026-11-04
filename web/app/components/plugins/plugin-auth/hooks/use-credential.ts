@@ -34,9 +34,7 @@ export const useGetPluginCredentialInfoHook = (
 }
 
 export const useDeletePluginCredentialHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useDeletePluginCredential(apiMap.deleteCredential)
+  return useDeletePluginCredential(pluginPayload)
 }
 
 export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload) => {
@@ -52,58 +50,40 @@ export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload)
 }
 
 export const useSetPluginDefaultCredentialHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useSetPluginDefaultCredential(apiMap.setDefaultCredential)
+  return useSetPluginDefaultCredential(pluginPayload)
 }
 
 export const useGetPluginCredentialSchemaHook = (
   pluginPayload: PluginPayload,
   credentialType: CredentialTypeEnum,
 ) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useGetPluginCredentialSchema(apiMap.getCredentialSchema(credentialType))
+  return useGetPluginCredentialSchema(pluginPayload, credentialType)
 }
 
 export const useAddPluginCredentialHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useAddPluginCredential(apiMap.addCredential)
+  return useAddPluginCredential(pluginPayload)
 }
 
 export const useUpdatePluginCredentialHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useUpdatePluginCredential(apiMap.updateCredential)
+  return useUpdatePluginCredential(pluginPayload)
 }
 
 export const useGetPluginOAuthUrlHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useGetPluginOAuthUrl(apiMap.getOauthUrl)
+  return useGetPluginOAuthUrl(pluginPayload)
 }
 
 export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload, enabled = true) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useGetPluginOAuthClientSchema(enabled ? apiMap.getOauthClientSchema : '')
+  return useGetPluginOAuthClientSchema(pluginPayload, enabled)
 }
 
 export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useInvalidPluginOAuthClientSchema(apiMap.getOauthClientSchema)
+  return useInvalidPluginOAuthClientSchema(pluginPayload)
 }
 
 export const useSetPluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useSetPluginOAuthCustomClient(apiMap.setCustomOauthClient)
+  return useSetPluginOAuthCustomClient(pluginPayload)
 }
 
 export const useDeletePluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-
-  return useDeletePluginOAuthCustomClient(apiMap.deleteCustomOAuthClient)
+  return useDeletePluginOAuthCustomClient(pluginPayload)
 }

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { env } from '@/plugins/env'
 import { io } from '@/plugins/io'
-import { localFile } from '@/store/local-file'
+import { localFile, REMOVE } from '@/store/local-file'
 
 export const PENDING_FILE_NAME = 'login-pending.yml'
 
@@ -33,8 +33,9 @@ export async function pendingLoginStore(ctx: CommandContext): Promise<PendingLog
   )
   return {
     read: file.read,
-    save: file.write,
-    clear: file.remove,
-    clearIf: (deviceCode) => file.removeIf((pending) => pending.device_code === deviceCode),
+    save: (pending) => file.update(() => pending),
+    clear: () => file.update(() => REMOVE),
+    clearIf: (deviceCode) =>
+      file.update((pending) => (pending?.device_code === deviceCode ? REMOVE : undefined)),
   }
 }
