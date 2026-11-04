@@ -66,6 +66,7 @@ def test_agent_judge_json_schema_is_strict_at_every_object_level(schema_model: t
 
     def assert_strict(value: object) -> None:
         if isinstance(value, dict):
+            assert "multipleOf" not in value
             if value.get("type") == "object":
                 assert value.get("additionalProperties") is False
                 properties = value.get("properties", {})
@@ -89,14 +90,14 @@ def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
             reason="The task is mostly complete.",
             criteria=TaskCompletionCriteria(
                 goal_satisfaction=_criterion(0.75),
-                correctness_and_evidence_consistency=_criterion(0.5),
+                correctness_and_evidence_consistency=_criterion(0.6),
                 completeness=_criterion(1.0),
             ),
             success_criteria_assessments=[
                 SuccessCriterionAssessment(
                     criterion_id="success-criterion-1",
                     applicable=True,
-                    score=0.75,
+                    score=0.7,
                     reason="The criterion is mostly satisfied.",
                     evidence_step_ids=["final-output"],
                 )
@@ -133,14 +134,15 @@ def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
     )[0]
 
     assert result.error is None
-    assert result.metrics[0].value == 0.7125
+    assert result.metrics[0].value == 0.725
+    assert result.metrics[0].details["criteria"]["goal_satisfaction"]["score"] == 0.7
     assert result.metrics[0].details["reported_score"] == 0.99
     assert result.metrics[0].details["prompt_version"] == "agent.task_completion.v2"
     assert fake_model.payload is not None
     assert fake_model.payload["success_criteria"] == [
         {"criterion_id": "success-criterion-1", "requirement": "Use the real shipment status."}
     ]
-    assert result.metrics[0].details["success_criteria_assessments"][0]["score"] == 0.75
+    assert result.metrics[0].details["success_criteria_assessments"][0]["score"] == 0.7
     assert "TARGET METRIC: task_completion" in fake_model.system_prompt
 
 
