@@ -15,14 +15,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isEmpty(value: unknown): boolean {
+  if (value === '') return true
+  if (Array.isArray(value)) return value.length === 0
+  return isRecord(value) && Object.keys(value).length === 0
+}
+
+function byKey([a]: readonly [string, unknown], [b]: readonly [string, unknown]) {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 function cleaned(value: unknown): unknown {
-  if (Array.isArray(value)) return value.filter((item) => item != null).map(cleaned)
+  if (Array.isArray(value))
+    return value
+      .filter((item) => item != null)
+      .map(cleaned)
+      .filter((item) => !isEmpty(item))
   if (!isRecord(value)) return value
   return Object.fromEntries(
     Object.entries(value)
       .filter(([key, item]) => !key.startsWith(EDITOR_ONLY_PREFIX) && item != null)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, item]) => [key, cleaned(item)]),
+      .sort(byKey)
+      .map(([key, item]) => [key, cleaned(item)] as const)
+      .filter(([, item]) => !isEmpty(item)),
   )
 }
 
@@ -34,8 +49,10 @@ export function canvasDefault(defaultValue: Record<string, unknown>) {
 }
 
 export function renderNodeDefaults(defaults: NodeDefaults) {
-  const entries = Object.entries(defaults).map(([type, value]) => [type, canvasDefault(value)])
-  return `${JSON.stringify(cleaned(Object.fromEntries(entries)), null, 2)}\n`
+  const entries = Object.entries(defaults)
+    .map(([type, value]) => [type, canvasDefault(value)] as const)
+    .sort(byKey)
+  return `${JSON.stringify(Object.fromEntries(entries), null, 2)}\n`
 }
 
 export async function syncNodeDefaults({
