@@ -1,3 +1,5 @@
+import time
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -10,6 +12,20 @@ from core.entities.mcp_provider import (
 )
 from core.mcp.types import OAuthTokens
 from models.tools import MCPToolProvider
+
+
+@pytest.fixture
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Run the test with a host timezone that is not UTC, where the platform supports it."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        yield
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 def _build_mcp_provider_entity() -> MCPProviderEntity:
@@ -447,3 +463,18 @@ def test_decrypt_headers_and_credentials_delegate_to_decrypt_dict() -> None:
     assert mock.call_count == 2
     assert headers == {"h": "v"}
     assert credentials == {"c": "v"}
+
+
+@pytest.mark.usefixtures("non_utc_host_timezone")
+def test_to_api_response_reads_the_updated_at_as_utc() -> None:
+    """Persisted datetimes are naive UTC, so the host timezone must not shift them."""
+    # Arrange
+    recorded_at = datetime(2024, 5, 1)
+    entity = _build_mcp_provider_entity().model_copy(update={"updated_at": recorded_at, "icon": {"en_US": "icon.png"}})
+
+    with patch.object(MCPProviderEntity, "masked_server_url", return_value="https://api.example.com/******"):
+        # Act
+        response = entity.to_api_response(include_sensitive=False)
+
+    # Assert
+    assert response["updated_at"] == int(recorded_at.replace(tzinfo=UTC).timestamp())
