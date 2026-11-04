@@ -873,6 +873,11 @@ def _omitted_when_empty(description: str) -> Any:
     return Field(default_factory=list, exclude_if=operator.not_, description=description)
 
 
+_ITEMS_DESCRIPTION: Final = (
+    "For a list of objects, each field of one item, located relative to the item; left out for any other field"
+)
+
+
 class FieldHintItemRow(BaseModel):
     loc: list[str | int] = Field(description="Where the field sits in the node's data")
     type: str | None
@@ -897,9 +902,7 @@ class FieldHintRow(FieldHintItemRow):
     example: Any = _omitted_when_none(
         "The value the web canvas gives a new node at this field; left out when the canvas has none"
     )
-    items: list[FieldHintItemRow] = _omitted_when_empty(
-        "For a list of objects, each field of one item, located relative to the item; left out for any other field"
-    )
+    items: list[FieldHintItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
 
     @override
     @classmethod
@@ -1168,11 +1171,10 @@ def _first_line(text: str | None) -> str | None:
     return next((line.strip() for line in text.splitlines() if line.strip()), None)
 
 
-class NodeTypeFieldRow(BaseModel):
+class NodeTypeFieldItemRow(BaseModel):
     loc: list[str | int] = Field(description="Where the field sits in the node's data")
     type: str | None
     required: bool
-    purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
     options: list[str] = _omitted_when_empty("The values the field accepts")
     description: str | None = _omitted_when_none(
         "The first line of the field's description; include_schema=true has the whole text"
@@ -1182,15 +1184,27 @@ class NodeTypeFieldRow(BaseModel):
     )
 
     @classmethod
-    def describing(cls, hint: FieldHint, *, purpose: bool) -> Self:
+    def of(cls, hint: FieldHint) -> Self:
         return cls(
             loc=list(hint.loc),
             type=hint.type,
             required=hint.required,
-            purpose=purpose,
             options=list(hint.options),
             description=_first_line(hint.description),
             default=None if hint.default is NO_DEFAULT else hint.default,
+        )
+
+
+class NodeTypeFieldRow(NodeTypeFieldItemRow):
+    purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
+    items: list[NodeTypeFieldItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
+
+    @classmethod
+    def describing(cls, hint: FieldHint, *, purpose: bool) -> Self:
+        return cls(
+            **dict(NodeTypeFieldItemRow.of(hint)),
+            purpose=purpose,
+            items=[NodeTypeFieldItemRow.of(item) for item in hint.items],
         )
 
 
