@@ -55,6 +55,50 @@ parameters = {
 
 class TestApiToolRequestAssemblyCases:
     @staticmethod
+    @pytest.mark.parametrize("schema", [{"type": "number"}, {"anyOf": [{"type": "number"}, {"type": "null"}]}])
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (1e-7, 1e-7),
+            (-1e-7, -1e-7),
+            ("1e-7", 1e-7),
+            ("2E3", 2000.0),
+            (12, 12),
+            ("12", 12),
+            ("1.25", 1.25),
+            (9007199254740993, 9007199254740993),
+            ("9007199254740993", 9007199254740993),
+        ],
+    )
+    def test_number_body_preserves_value(
+        monkeypatch: pytest.MonkeyPatch, schema: dict[str, Any], value: int | float | str, expected: int | float
+    ) -> None:
+        tool = _build_tool(
+            openapi={
+                "parameters": [],
+                "requestBody": {"content": {"application/json": {"schema": {"properties": {"amount": schema}}}}},
+            }
+        )
+        sent_bodies: list[dict[str, Any]] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            sent_bodies.append(json.loads(request.content))
+            return httpx.Response(200)
+
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request("https://api.example.com/items", "POST", {}, {"amount": value})
+
+        assert sent_bodies == [{"amount": expected}]
+        assert isinstance(sent_bodies[0]["amount"], (int, float))
+
+    @staticmethod
+    @pytest.mark.parametrize("schema", [{"type": "number"}, {"anyOf": [{"type": "number"}]}])
+    def test_invalid_number_body_keeps_existing_fallback(schema: dict[str, Any]) -> None:
+        tool = _build_tool()
+        assert tool._convert_body_property_type(schema, "not-a-number") == "not-a-number"
+
+    @staticmethod
     @pytest.mark.usefixtures("setup_http_mock")
     def test_api_tool() -> None:
         tool = ApiTool(
