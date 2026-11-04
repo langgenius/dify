@@ -1,125 +1,146 @@
 'use client'
 
+import type { ExternalAgentConnectionDetails } from './external-agent-details-form'
+import type {
+  ExternalConnectionSettings,
+  ExternalConnectionVerificationState,
+  VerifyExternalConnection,
+} from './external-connection-verification'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogBody,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { Input } from '@langgenius/dify-ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@langgenius/dify-ui/select'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { externalConnectionPreview } from '../external-roster-preview'
+import { ExternalAgentDetailsForm } from './external-agent-details-form'
+import { ExternalConnectionForm } from './external-connection-form'
 
-function ConnectionForm() {
-  const { t } = useTranslation(['agentRoster', 'common'])
-  const [authentication, setAuthentication] = useState<'none' | 'bearer'>('none')
-  const options = [
-    { value: 'none', label: t(($) => $['external.connection.none']) },
-    { value: 'bearer', label: t(($) => $['external.connection.bearerToken']) },
-  ]
-
-  return (
-    <form className="contents" onSubmit={(event) => event.preventDefault()}>
-      <DialogBody className="flex flex-col gap-4">
-        <ol className="flex items-center gap-2 system-xs-regular">
-          <li aria-current="step" className="flex items-center gap-1.5 text-text-primary">
-            <span className="flex size-4 items-center justify-center rounded-full border border-state-accent-hover-alt bg-util-colors-blue-brand-blue-brand-100 system-2xs-medium text-text-accent">
-              1
-            </span>
-            {t(($) => $['external.connection.step'])}
-          </li>
-          <li aria-hidden className="h-px w-5 bg-divider-subtle" />
-          <li className="flex items-center gap-1.5 text-text-tertiary">
-            <span className="flex size-4 items-center justify-center rounded-full border border-divider-regular system-2xs-medium text-text-quaternary">
-              2
-            </span>
-            {t(($) => $['external.connection.details'])}
-          </li>
-        </ol>
-        <Field name="endpoint" className="flex flex-col gap-1.5">
-          <FieldLabel>{t(($) => $['external.connection.endpoint'])}</FieldLabel>
-          <Input placeholder="https://" type="url" autoComplete="url" />
-        </Field>
-        <div className="h-px bg-divider-subtle" />
-        <Select<'none' | 'bearer'>
-          items={options}
-          value={authentication}
-          onValueChange={(value) => {
-            if (value) setAuthentication(value)
-          }}
-        >
-          <div className="flex flex-col gap-1">
-            <SelectLabel>{t(($) => $['external.connection.authentication'])}</SelectLabel>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-          </div>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <SelectItemText>{option.label}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {authentication === 'bearer' && (
-          <Field name="token" className="flex flex-col gap-1.5">
-            <FieldLabel>{t(($) => $['external.connection.token'])}</FieldLabel>
-            <Input
-              type="password"
-              autoComplete="off"
-              placeholder={t(($) => $['external.connection.tokenPlaceholder'])}
-            />
-          </Field>
-        )}
-      </DialogBody>
-      <DialogFooter>
-        <DialogClose render={<Button variant="secondary" />}>
-          {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </DialogClose>
-        {/* Verification remains unavailable until the connection contract is implemented. */}
-        <Button type="submit" variant="primary" disabled>
-          {t(($) => $['external.connection.verify'])}
-        </Button>
-      </DialogFooter>
-    </form>
-  )
+type ConnectionSession = {
+  step: 'connection' | 'details'
+  settings: ExternalConnectionSettings
+  verification: ExternalConnectionVerificationState
+  details: ExternalAgentConnectionDetails
 }
 
-export function ConnectExternalAgent() {
+function createConnectionSession(): ConnectionSession {
+  return {
+    step: 'connection',
+    settings: { endpoint: '', authentication: 'none', token: '' },
+    verification: { status: 'unverified' },
+    details: {
+      name: externalConnectionPreview.name,
+      role: '',
+      description: externalConnectionPreview.description,
+    },
+  }
+}
+
+// Local design preview only. The API contract is not connected yet.
+const verifyConnectionPreview: VerifyExternalConnection = () =>
+  Promise.resolve({ status: 'verified', agent: externalConnectionPreview })
+
+type ConnectExternalAgentProps = {
+  onConnect: (details: ExternalAgentConnectionDetails) => void
+  verifyConnection?: VerifyExternalConnection
+}
+
+export function ConnectExternalAgent({
+  onConnect,
+  verifyConnection = verifyConnectionPreview,
+}: ConnectExternalAgentProps) {
   const { t } = useTranslation(['agentRoster', 'common'])
+  const [open, setOpen] = useState(false)
+  const [session, setSession] = useState(createConnectionSession)
+  const endpointRef = useRef<HTMLInputElement>(null)
+  const pending = session.verification.status === 'verifying'
+
+  async function verify(settings: ExternalConnectionSettings) {
+    if (pending) return
+    setSession((current) => ({ ...current, settings, verification: { status: 'verifying' } }))
+    try {
+      const result = await verifyConnection(settings)
+      setSession((current) =>
+        result.status === 'verified'
+          ? {
+              ...current,
+              verification: result,
+              step: 'details',
+              details: { name: result.agent.name, role: '', description: result.agent.description },
+            }
+          : { ...current, verification: result },
+      )
+    } catch {
+      setSession((current) => ({
+        ...current,
+        verification: { status: 'failed', reason: 'unknown' },
+      }))
+    }
+  }
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next, eventDetails) => {
+        if (pending) {
+          eventDetails.cancel()
+          return
+        }
+        setOpen(next)
+      }}
+      onOpenChangeComplete={(next) => {
+        if (!next) setSession(createConnectionSession())
+      }}
+    >
       <DialogTrigger render={<Button variant="primary" />}>
         <span aria-hidden className="i-ri-add-line size-4" />
         {t(($) => $['external.connect'])}
       </DialogTrigger>
-      <DialogContent className="w-150">
+      <DialogContent className="w-150" initialFocus={endpointRef}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['external.connect'])}</DialogTitle>
           <DialogDescription>{t(($) => $['external.connection.description'])}</DialogDescription>
-          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton
+            disabled={pending}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          />
         </DialogHeader>
-        <ConnectionForm />
+        {session.step === 'details' && session.verification.status === 'verified' ? (
+          <ExternalAgentDetailsForm
+            agent={session.verification.agent}
+            initialDetails={session.details}
+            onBack={(details) =>
+              setSession((current) => ({ ...current, details, step: 'connection' }))
+            }
+            onSave={(details) => {
+              onConnect(details)
+              setOpen(false)
+            }}
+          />
+        ) : (
+          <ExternalConnectionForm
+            endpointRef={endpointRef}
+            initialSettings={session.settings}
+            verification={session.verification}
+            onVerify={(settings) => {
+              void verify(settings)
+            }}
+            onContinue={() => setSession((current) => ({ ...current, step: 'details' }))}
+            onInvalidate={() =>
+              setSession((current) =>
+                current.verification.status === 'unverified'
+                  ? current
+                  : { ...current, verification: { status: 'unverified' } },
+              )
+            }
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

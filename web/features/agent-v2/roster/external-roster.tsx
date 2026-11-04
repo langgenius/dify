@@ -154,7 +154,30 @@ export function ExternalRoster({ initialAgents }: ExternalRosterProps) {
               ))}
             </SelectContent>
           </Select>
-          {canManage && <ConnectExternalAgent />}
+          {canManage && (
+            <ConnectExternalAgent
+              onConnect={(details) => {
+                const now = Date.now()
+                setAgents((current) => [
+                  {
+                    ...details,
+                    key: crypto.randomUUID(),
+                    enabled: true,
+                    connectedByMe: true,
+                    createdAt: now,
+                    updatedAt: now,
+                    apps: [],
+                  },
+                  ...current,
+                ])
+                void setFilters({
+                  external_keyword: '',
+                  external_status: 'all',
+                  external_sort_by: 'last_modified',
+                })
+              }}
+            />
+          )}
         </div>
       </div>
       <div className="min-h-0 flex-1 max-md:min-h-64">

@@ -1,5 +1,22 @@
 import type { ExternalAgentListItem } from './components/external-agent-list'
 
+export type ExternalConnectionPreview = Pick<
+  ExternalAgentListItem,
+  'name' | 'description' | 'icon'
+> & {
+  protocol: string
+  skills: readonly string[]
+}
+
+// Agent Card example for the local connection flow, until verification is available.
+export const externalConnectionPreview: ExternalConnectionPreview = {
+  name: 'Contract Review Agent',
+  description:
+    'Reviews contract clauses against your company’s policies, identifies risks, and suggests safer wording.',
+  protocol: 'A2A 1.0',
+  skills: ['Contract review', 'Clause rewrite'],
+}
+
 // Temporary design data for the UI phase. This is not an API response or persisted workspace data.
 export function createExternalRosterPreview(now = Date.now()): ExternalAgentListItem[] {
   const apps = [
