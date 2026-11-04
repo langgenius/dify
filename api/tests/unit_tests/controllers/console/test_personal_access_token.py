@@ -903,7 +903,10 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     # Existing account read visibility still controls discovery independently of run rights.
     listing = client.get("/openapi/v1/apps", query_string={"workspace_id": workspace.id}, headers=headers)
     assert [item["id"] for item in listing.get_json()["data"]] == [app.id]
-    assert client.post(f"/openapi/v1/apps/{app.id}/files", headers=headers).status_code == 403
+    # Upload preserves the existing no-RBAC contract and reaches file payload validation.
+    domain.transport.requests.clear()
+    assert client.post(f"/openapi/v1/apps/{app.id}/files", headers=headers).status_code == 422
+    assert domain.transport.requests == []
     # Losing invocation permission does not revoke a visible configuration selection.
     assert (
         client.get("/console/api/account/personal-access-token-resources").get_json()["data"][0]["resource_id"]
