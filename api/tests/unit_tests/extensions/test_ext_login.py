@@ -127,3 +127,32 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(
 
     assert result is account
     assert account.current_tenant is tenant
+
+
+@pytest.mark.parametrize("route", ["personal", "inherited", "workspace", "function", "missing"])
+def test_console_account_loader_respects_handler_admission_metadata(route: str) -> None:
+    from flask.views import MethodView
+
+    class PersonalView(MethodView):
+        def get(self) -> str:
+            return "ok"
+
+        get.__dict__[ext_login.ACCOUNT_ONLY_ADMISSION_ATTR] = True
+
+        def post(self) -> str:
+            return "ok"
+
+    class InheritedView(PersonalView):
+        pass
+
+    app = Flask(__name__)
+    app.add_url_rule("/personal", view_func=PersonalView.as_view("personal"))
+    app.add_url_rule("/inherited", view_func=InheritedView.as_view("inherited"))
+    app.add_url_rule("/function", view_func=lambda: "ok")
+    loader = mock.Mock(return_value=None)
+    ext_login.bind_account_only_loader(app, loader)
+    path = "/personal" if route == "workspace" else f"/{route}"
+    method = "POST" if route == "workspace" else "GET"
+    with app.test_request_context(path, method=method):
+        expected = loader if route in {"personal", "inherited"} else ext_login.load_account
+        assert ext_login._console_account_loader() is expected
