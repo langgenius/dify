@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from importlib import resources
 from typing import Final, Self
@@ -25,6 +25,9 @@ type Loc = tuple[str | int, ...]
 WILDCARD: Final = "*"
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
+_JINJA2_EDITION: Final = "jinja2"
+_TEXT_KEY: Final = "text"
+_JINJA2_TEXT_KEY: Final = "jinja2_text"
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
@@ -44,17 +47,48 @@ def _completion_model_has_no_chat_prompt(written: Mapping[str, object]) -> froze
     return frozenset()
 
 
+def _is_empty(value: object) -> bool:
+    """Missing, None, blank text, or a list or dict with nothing in it; a reference such as `{{#x.y#}}` is text."""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (Mapping, Sequence)):
+        return len(value) == 0
+    return False
+
+
+def _message_has_text(message: object) -> bool:
+    if not isinstance(message, Mapping):
+        return False
+    text_key = _JINJA2_TEXT_KEY if message.get("edition_type") == _JINJA2_EDITION else _TEXT_KEY
+    return not _is_empty(message.get(text_key))
+
+
+def _llm_prompt_is_empty(written: Mapping[str, object]) -> bool:
+    """A chat prompt is a list of messages and a completion prompt is one message; either is empty when no message has
+    text. A node with memory is not asked for a prompt.
+    """
+    if written.get("memory") is not None:
+        return False
+    prompt = written.get("prompt_template")
+    messages = prompt if isinstance(prompt, list) else [prompt]
+    return not any(_message_has_text(message) for message in messages)
+
+
 @dataclass(frozen=True)
 class CanvasEdition:
     """What the canvas gives a node of one version of a block type, from the web entry `entry`.
 
     `withheld` names the canvas keys not to write for the node as written, because the canvas value would not suit it.
+    `emptiness` holds the purpose locs whose emptiness is not the generic rule's, each with its own test on the node.
     """
 
     version: str | None
     entry: str
     purpose: tuple[Loc, ...]
     withheld: Callable[[Mapping[str, object]], frozenset[str]] = _nothing_withheld
+    emptiness: Mapping[Loc, Callable[[Mapping[str, object]], bool]] = field(default_factory=dict)
 
     @property
     def data(self) -> Mapping[str, object]:
@@ -168,13 +202,15 @@ class CanvasNode(StrEnum):
     LIST_OPERATOR = (BuiltinNodeTypes.LIST_OPERATOR, ("variable",))
     LLM = (
         BuiltinNodeTypes.LLM,
-        # llm/default.ts:92-99 (provider), 101-117 (a prompt is empty when every message's text is ""); a prompt for a
-        # completion model is not the canvas's chat list (:103-111)
+        # llm/default.ts:92-99 (provider; an empty name means no model is chosen yet), 101-117 (a prompt is empty when
+        # every message's text is "", and is not checked with memory); a prompt for a completion model is not the
+        # canvas's chat list (:103-111)
         CanvasEdition(
             None,
             BuiltinNodeTypes.LLM,
-            (("model", "provider"), ("prompt_template",)),
+            (("model", "provider"), ("model", "name"), ("prompt_template",)),
             withheld=_completion_model_has_no_chat_prompt,
+            emptiness={("prompt_template",): _llm_prompt_is_empty},
         ),
     )
     # loop/default.ts:36, 51, 57
@@ -186,21 +222,23 @@ class CanvasNode(StrEnum):
     )
     # loop-end/default.ts:15 checks nothing
     LOOP_END = (BuiltinNodeTypes.LOOP_END,)
-    # parameter-extractor/default.ts:35, 41, 47, 58, 71, 84
+    # parameter-extractor/default.ts:35, 41 (provider; an empty name means no model is chosen yet), 47, 58, 71, 84
     PARAMETER_EXTRACTOR = (
         BuiltinNodeTypes.PARAMETER_EXTRACTOR,
         ("query",),
         ("model", "provider"),
+        ("model", "name"),
         ("parameters",),
         ("parameters", WILDCARD, "name"),
         ("parameters", WILDCARD, "type"),
         ("parameters", WILDCARD, "description"),
     )
-    # question-classifier/default.ts:57, 64, 70, 76
+    # question-classifier/default.ts:57, 64 (provider; an empty name means no model is chosen yet), 70, 76
     QUESTION_CLASSIFIER = (
         BuiltinNodeTypes.QUESTION_CLASSIFIER,
         ("query_variable_selector",),
         ("model", "provider"),
+        ("model", "name"),
         ("classes",),
         ("classes", WILDCARD, "name"),
     )
@@ -236,6 +274,17 @@ def _merged(written: Mapping[str, object], canvas: Mapping[str, object]) -> Mapp
     return {**copy.deepcopy(dict(canvas)), **written}
 
 
+def _edition_of(data: Mapping[str, object]) -> CanvasEdition | None:
+    """The edition of the canvas node `data` is, by its type and version; None for a type or version without one."""
+    node_type = data.get(_TYPE_KEY)
+    if not isinstance(node_type, str):
+        return None
+    node = canvas_node(node_type)
+    if node is None:
+        return None
+    return node.edition(data.get(_VERSION_KEY))
+
+
 def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     """`data` plus what the canvas gives a node of its type; what `data` holds always wins.
 
@@ -245,13 +294,7 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     not know, is returned as it is.
     """
     filled = dict(data)
-    node_type = data.get(_TYPE_KEY)
-    if not isinstance(node_type, str):
-        return filled
-    node = canvas_node(node_type)
-    if node is None:
-        return filled
-    edition = node.edition(data.get(_VERSION_KEY))
+    edition = _edition_of(data)
     if edition is None:
         return filled
     withheld = edition.withheld(data)
@@ -277,7 +320,7 @@ def _step(value: object, key: str | int) -> object | None:
     return None
 
 
-def canvas_value(node_type: str, loc: Loc, *, version: str | None = None) -> object | None:
+def canvas_value(node_type: str, loc: Loc, *, version: object = None) -> object | None:
     """A copy of the canvas value at `loc` for a block type; None where the canvas has none. `*` is the first item."""
     node = canvas_node(node_type)
     if node is None:
@@ -291,3 +334,37 @@ def canvas_value(node_type: str, loc: Loc, *, version: str | None = None) -> obj
         if value is None:
             return None
     return copy.deepcopy(value)
+
+
+def _empty_locs(value: object, loc: Loc, path: Loc) -> list[Loc]:
+    """The places under `value` that `loc` names and that are empty. A list that is missing or has no items has no
+    item to name, so a `*` over it names nothing; the loc of the list itself says it must not be empty.
+    """
+    if not loc:
+        return [path] if _is_empty(value) else []
+    head, *rest = loc
+    if head == WILDCARD:
+        items = value if isinstance(value, list) else []
+        return [found for index, item in enumerate(items) for found in _empty_locs(item, tuple(rest), (*path, index))]
+    child = value.get(head) if isinstance(value, Mapping) else None
+    return _empty_locs(child, tuple(rest), (*path, head))
+
+
+def _empty_at(edition: CanvasEdition, data: Mapping[str, object], loc: Loc) -> list[Loc]:
+    test = edition.emptiness.get(loc)
+    if test is None:
+        return _empty_locs(data, loc, ())
+    return [loc] if test(data) else []
+
+
+def empty_purpose_locs(data: Mapping[str, object]) -> tuple[Loc, ...]:
+    """The purpose fields of a node's data that are still empty, each as its path with `*` resolved to the real index.
+
+    Empty is missing, None, blank text, `[]` or `{}`; a loc in the edition's `emptiness` has its own test. A type the
+    canvas does not know, and a version it does not know, have no purpose fields.
+    """
+    edition = _edition_of(data)
+    if edition is None:
+        return ()
+    found = (empty for loc in edition.purpose for empty in _empty_at(edition, data, loc))
+    return tuple(dict.fromkeys(found))

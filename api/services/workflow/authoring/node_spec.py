@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic import BaseModel
 
 from core.workflow.node_factory import node_data_model
 from graphon.nodes.base.node import Node
+from services.workflow.authoring.canvas_defaults import WILDCARD, canvas_value
 from services.workflow.authoring.plugins import (
     NO_DEFAULT,
     DeclarationStatus,
@@ -42,6 +43,7 @@ class FieldHint:
     description: str | None
     required: bool
     default: object
+    example: object | None = None
 
 
 @dataclass(frozen=True)
@@ -175,6 +177,15 @@ class NodeTarget:
     def model(self) -> type[BaseModel]:
         return node_data_model(self.node_class)
 
+    def example(self, loc: Loc) -> object | None:
+        """What the canvas gives a new node at `loc`; a list item takes the example of the canvas's first item."""
+        canvas_loc = tuple(WILDCARD if isinstance(key, int) else key for key in loc)
+        return canvas_value(str(self.data["type"]), canvas_loc, version=self.data.get("version"))
+
+    def hint(self, loc: Sequence[str | int], *, required: bool) -> FieldHint:
+        """What the agent needs to write the field at `loc` of this node's data, with the canvas's example."""
+        return replace(field_hint(self.model, loc, required=required), example=self.example(tuple(loc)))
+
 
 def read_node(raw_node: Mapping[str, Any], ctx: FillContext) -> NodeTarget | None:
     """The node with its plugins looked up once; None for a node it cannot read or of an unknown type, such as a
@@ -207,13 +218,24 @@ def _declared_parameters(node: NodeTarget) -> tuple[DeclaredParameter, ...]:
     )
 
 
+def _required_first(hint: FieldHint) -> tuple[bool, Loc]:
+    return (not hint.required, hint.loc)
+
+
 def node_spec(node: NodeTarget) -> NodeSpec:
-    """What the node still needs: its data schema, its found plugins' parameters, and each top-level field it lacks."""
+    """What the node still needs: its data schema, its found plugins' parameters, and each top-level field it lacks,
+    the required ones first and each group by loc.
+    """
     schema = node_data_schema(node.node_class)
     open_fields = tuple(
-        _field_hint(schema, (key,), required=field.is_required())
-        for name, field in node.model.model_fields.items()
-        if (key := field.alias or name) not in node.data
+        sorted(
+            (
+                replace(_field_hint(schema, (key,), required=field.is_required()), example=node.example((key,)))
+                for name, field in node.model.model_fields.items()
+                if (key := field.alias or name) not in node.data
+            ),
+            key=_required_first,
+        )
     )
     return NodeSpec(
         node_id=node.id,
