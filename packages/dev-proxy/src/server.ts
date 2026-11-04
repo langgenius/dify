@@ -220,8 +220,13 @@ const proxyRequest = async (
   }
 
   if (context.req.method !== 'GET' && context.req.method !== 'HEAD') {
-    requestInit.body = context.req.raw.body
-    requestInit.duplex = 'half'
+    const buffer = await context.req.arrayBuffer()
+    if (buffer.byteLength > 0) {
+      requestInit.body = buffer
+    } else {
+      requestHeaders.delete('content-length')
+      requestHeaders.delete('content-type')
+    }
   }
 
   const upstreamResponse = await fetchImpl(targetUrl, requestInit)
