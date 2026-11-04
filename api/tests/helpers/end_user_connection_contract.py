@@ -18,7 +18,6 @@ from models.end_user_connection import (
     OAuthClientSource,
     SessionConnection,
 )
-from services.end_user_connection_labels import mask_account_label
 
 
 def new_connection() -> EndUserConnection:
@@ -150,31 +149,30 @@ class ConnectionPersistenceTests:
             savepoint.rollback()
 
     @pytest.mark.parametrize("label", ["alice@example.com", "alice", None])
-    def test_masked_account_label_is_stored_separately_from_name(
+    def test_original_account_label_is_stored_separately_from_name(
         self, connection_session: Session, label: str | None
     ) -> None:
         connection = replace(
             new_connection(),
             credential_type=ConnectionCredentialType.OAUTH2,
             oauth_client_source=OAuthClientSource.WORKSPACE,
-            account_label=mask_account_label(label),
+            account_label=label,
         )
         name = connection.name
         connection_session.add(connection)
         connection_session.flush()
         connection_session.expire(connection)
-        expected = "al***@example.com" if label == "alice@example.com" else "al***" if label else None
-        assert connection.account_label == expected
+        assert connection.account_label == label
         assert connection.name == name
         assert (
             connection_session.scalar(
                 sa.text("SELECT account_label FROM end_user_connections WHERE id = :id"), {"id": connection.id}
             )
-            == expected
+            == label
         )
 
         # A successful reauthorization without account metadata must clear the old label.
-        connection.account_label = mask_account_label(None)
+        connection.account_label = None
         connection_session.flush()
         connection_session.expire(connection)
         assert connection.account_label is None

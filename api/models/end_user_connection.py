@@ -162,7 +162,7 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     oauth_client_id: Mapped[str | None] = mapped_column(LongText, nullable=True)
     # None means unknown expiration, or not applicable for API keys.
     expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
-    # Already masked OAuth account identity, independent of the editable name.
+    # Original OAuth account identity, independent of the editable name; masked in API responses.
     # None means unavailable identity metadata or an API-key connection.
     account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     oauth_plugin_unique_identifier: Mapped[str | None] = mapped_column(sa.String(512), nullable=True, default=None)

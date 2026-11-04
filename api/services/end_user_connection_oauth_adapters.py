@@ -36,7 +36,6 @@ from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
-from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
@@ -267,6 +266,11 @@ class PluginConnectionOAuthGateway:
 
     @staticmethod
     def _grant(result: PluginOAuthCredentialsResponse) -> ConnectionOAuthGrant:
+        """Preserve an allowlisted identity verbatim; never derive it from credentials.
+
+        Missing or empty identity metadata yields no label. Masking belongs to
+        response serialization, not grant extraction or persistence.
+        """
         expires_at = (
             datetime.fromtimestamp(result.expires_at, UTC).replace(tzinfo=None) if result.expires_at >= 0 else None
         )
@@ -283,7 +287,7 @@ class PluginConnectionOAuthGateway:
         return ConnectionOAuthGrant(
             credentials=result.credentials,
             expires_at=expires_at,
-            account_label=mask_account_label(label),
+            account_label=label,
         )
 
     def refresh(
