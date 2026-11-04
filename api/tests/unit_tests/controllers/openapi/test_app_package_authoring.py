@@ -175,7 +175,6 @@ def test_fill_reads_a_file_part_as_the_package(app: Flask) -> None:
 @pytest.mark.parametrize(
     "members",
     [
-        pytest.param({_APP: b"app: ["}, id="unreadable-yaml"),
         pytest.param({_APP: _chain_dsl(_start(), name=["not", "a", "name"])}, id="name-not-text"),
         pytest.param({"README.md": b"no app here"}, id="no-app-yaml"),
     ],
@@ -185,6 +184,18 @@ def test_fill_names_a_package_without_a_readable_app_name_app_ifpkg(app: Flask, 
 
     assert response.status_code == 200
     assert "filename=app.ifpkg" in response.headers["Content-Disposition"]
+
+
+def test_fill_and_check_refuse_an_app_yaml_with_aliases_and_name_the_cause(app: Flask) -> None:
+    shared = {"type": "text"}
+    aliased = yaml.safe_dump({"app": {"mode": "workflow", "name": "x"}, "a": shared, "b": shared}).encode()
+
+    with pytest.raises(AppPackageInvalid, match="anchors or aliases") as from_fill:
+        _fill(app, _folder({_APP: aliased}))
+    with pytest.raises(AppPackageInvalid) as from_check:
+        _check(app, _folder({_APP: aliased}))
+
+    assert str(from_check.value.description) == str(from_fill.value.description)
 
 
 def test_check_reports_a_missing_field_with_a_hint_and_a_spec_for_that_node(app: Flask) -> None:

@@ -356,13 +356,17 @@ class RosterAgentPackageReader:
             ) from exc
 
 
+class PackageYamlAliasError(ValueError):
+    pass
+
+
 class PackageYamlLoader(yaml.SafeLoader):
     """Reject ambiguous mappings and aliases in untrusted package documents."""
 
     @override
     def compose_node(self, parent: yaml.Node | None, index: Any) -> yaml.Node | None:
         if self.check_event(yaml.AliasEvent):
-            raise ValueError("YAML aliases are not supported")
+            raise PackageYamlAliasError("YAML aliases are not supported")
         return super().compose_node(parent, index)
 
     @override
@@ -378,4 +382,4 @@ class PackageYamlLoader(yaml.SafeLoader):
         return result
 
 
-__all__ = ["PackageYamlLoader", "RosterAgentPackageReader"]
+__all__ = ["PackageYamlAliasError", "PackageYamlLoader", "RosterAgentPackageReader"]

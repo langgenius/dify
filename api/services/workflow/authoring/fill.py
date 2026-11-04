@@ -22,9 +22,9 @@ from services.workflow.authoring.package_io import (
     APP_PATH,
     MANIFEST_PATH,
     bytes_entry,
-    load_member_yaml,
     merge_manifest,
     new_manifest,
+    read_app_document,
     read_member,
     write_package,
 )
@@ -49,8 +49,7 @@ class FilledRoot:
     """The root app as the filled archive holds it, and as the caller sent it."""
 
     app: bytes
-    # None when `app` is not a YAML mapping.
-    document: dict[str, Any] | None
+    document: dict[str, Any]
     submitted: SubmittedRoot
 
 
@@ -65,8 +64,6 @@ class FilledPackage:
         """The root app's name; None when the document has none that is text."""
         if self.root is None:
             return None
-        if self.root.document is None:
-            return None
         app = self.root.document.get("app")
         if not isinstance(app, dict):
             return None
@@ -77,7 +74,7 @@ class FilledPackage:
 @dataclass(frozen=True)
 class _App:
     content: bytes
-    document: dict[str, Any] | None
+    document: dict[str, Any]
 
 
 def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits) -> bytes:
@@ -88,7 +85,8 @@ def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: A
     and built when there is none. A manifest fill cannot merge keeps `app.yaml` and the manifest as written.
     Raises the archive writer's errors for an unsafe path or a package over `limits`,
     `RosterAgentPackageTooLargeError` for an `app.yaml` or manifest over the reader's size limits, and
-    `PackageUnreadableError` for a member that cannot be read.
+    `PackageUnreadableError` for a member that cannot be read, and for an `app.yaml` the package import refuses
+    (not a YAML mapping, or with aliases, duplicate keys or keys that are not text), naming the cause.
     """
     return filled_package(entries, ctx, limits=limits).archive
 
@@ -113,8 +111,7 @@ def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits:
 
 
 def _read_app(content: bytes) -> _App:
-    document = load_member_yaml(content)
-    return _App(content, document if isinstance(document, dict) else None)
+    return _App(content, read_app_document(content))
 
 
 def _filled(app: _App, manifest: bytes | None, ctx: FillContext) -> tuple[_App, bytes]:
@@ -128,9 +125,7 @@ def _filled(app: _App, manifest: bytes | None, ctx: FillContext) -> tuple[_App, 
 
 
 def _filled_app(app: _App, ctx: FillContext) -> _App:
-    """The filled `app.yaml`; `app` itself when fill changes nothing or cannot read it."""
-    if app.document is None:
-        return app
+    """The filled `app.yaml`; `app` itself when fill changes nothing."""
     document = copy.deepcopy(app.document)
     fill_graph_document(document, ctx)
     if document == app.document:

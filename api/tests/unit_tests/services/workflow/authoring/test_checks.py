@@ -29,7 +29,7 @@ from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph
-from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
+from tests.unit_tests.services.workflow.authoring.test_fill_package import _shared_value_app_yaml, _skeleton_dsl
 
 pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
 
@@ -404,6 +404,29 @@ def test_a_node_with_only_a_warning_gets_a_spec(dsl: DslCheckRequest) -> None:
 def test_an_unreadable_app_yaml_is_refused(content: str, dsl: DslCheckRequest) -> None:
     with pytest.raises(PackageUnreadableError):
         _check_text(content, dsl)
+
+
+@pytest.mark.parametrize(
+    ("content", "cause"),
+    [
+        pytest.param(_shared_value_app_yaml().decode(), "anchors or aliases", id="alias"),
+        pytest.param("{not yaml", "not valid YAML", id="syntax"),
+        pytest.param("- a list\n", "YAML mapping", id="not-a-mapping"),
+        pytest.param("app: 1\napp: 2\n", "duplicate YAML key: app", id="duplicate-key"),
+    ],
+)
+def test_check_and_fill_refuse_the_same_app_yaml_with_the_same_message(
+    content: str, cause: str, dsl: DslCheckRequest
+) -> None:
+    members = _with_manifest(content)
+    entries = read_package_entries(io.BytesIO(_package(members)))
+
+    with pytest.raises(PackageUnreadableError, match=cause) as from_fill:
+        fill_package(entries, CTX, limits=LIMITS)
+    with pytest.raises(PackageUnreadableError) as from_check:
+        check_package(entries, CTX, limits=LIMITS, dsl=dsl)
+
+    assert str(from_check.value) == str(from_fill.value)
 
 
 def test_a_package_without_app_yaml_is_refused(dsl: DslCheckRequest) -> None:

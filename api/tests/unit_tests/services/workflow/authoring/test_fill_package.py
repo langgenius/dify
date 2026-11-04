@@ -445,12 +445,31 @@ def test_a_chat_document_is_not_filled() -> None:
     assert document == before
 
 
-def test_an_app_yaml_that_cannot_be_parsed_is_kept() -> None:
-    entries = entries_from_folder({APP: io.BytesIO(b"app: [unclosed"), "notes.txt": io.BytesIO(b"n")})
+def _shared_value_app_yaml() -> bytes:
+    shared = {"type": "text"}
+    return yaml.safe_dump({"app": {"mode": "workflow", "name": "Shared"}, "a": shared, "b": shared}).encode()
 
-    filled = _members(fill_package(entries, CTX, limits=LIMITS))
 
-    assert (filled[APP], filled["notes.txt"]) == (b"app: [unclosed", b"n")
+def test_the_shared_value_app_yaml_is_written_with_an_alias() -> None:
+    assert b"*id001" in _shared_value_app_yaml()
+
+
+@pytest.mark.parametrize(
+    ("content", "cause"),
+    [
+        pytest.param(_shared_value_app_yaml(), "anchors or aliases", id="alias"),
+        pytest.param(b"app: [unclosed", "not valid YAML", id="syntax"),
+        pytest.param(b"- a list\n", "YAML mapping", id="not-a-mapping"),
+        pytest.param(b"app: 1\napp: 2\n", "duplicate YAML key: app", id="duplicate-key"),
+        pytest.param(b"1: a\n", "keys must be strings", id="non-string-key"),
+        pytest.param("app: {name: \u00e9}".encode("latin-1"), "not valid YAML", id="not-utf-8"),
+    ],
+)
+def test_an_app_yaml_the_package_reader_refuses_is_refused_with_its_cause(content: bytes, cause: str) -> None:
+    entries = entries_from_folder({APP: io.BytesIO(content), "notes.txt": io.BytesIO(b"n")})
+
+    with pytest.raises(PackageUnreadableError, match=cause):
+        fill_package(entries, CTX, limits=LIMITS)
 
 
 def test_reading_keeps_sub_folder_paths_and_skips_directories() -> None:
@@ -538,11 +557,10 @@ def test_limits_bound_the_written_package() -> None:
         ({"app": {"name": ["not", "text"]}}, None),
         ({"app": "not a mapping"}, None),
         ({}, None),
-        (None, None),
     ],
 )
 def test_a_filled_package_reads_its_app_name_only_when_it_is_text(
-    document: dict[str, object] | None, name: str | None
+    document: dict[str, object], name: str | None
 ) -> None:
     root = FilledRoot(app=b"", document=document, submitted=SubmittedRoot(app=b"", manifest=None))
 
