@@ -59,6 +59,16 @@ class ConsumerHarness:
     service: ConsumerService
     identity: ConsumerIdentity
 
+    def record_usage(self, used_at: datetime) -> None:
+        base = self.oauth.base
+        self.service.record_usage(
+            self.identity,
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            end_user_id=base.context.end_user_id,
+            used_at=used_at,
+        )
+
     def token(self, *, source: str | None = "webapp_account_login", subject: str = "Web API Account Login") -> str:
         return PassportService().issue(
             {

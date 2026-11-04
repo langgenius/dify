@@ -2893,6 +2893,15 @@ export const zGetMeAppsQuery = z.object({
  */
 export const zGetMeAppsResponse = zConsumerAppsResponse
 
+export const zDeleteMeAppsByAppIdPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App removed from personal lists
+ */
+export const zDeleteMeAppsByAppIdResponse = z.void()
+
 export const zDeleteMeAppsByAppIdFavoritePath = z.object({
   app_id: z.uuid(),
 })

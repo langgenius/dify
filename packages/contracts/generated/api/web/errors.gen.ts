@@ -796,7 +796,7 @@ export const post20Errors = {
 
 export const get13Errors = { connection_not_found: { status: 404, data: zConnectionNotFoundError } }
 
-export const delete4Errors = {
+export const delete5Errors = {
   connection_conflict: { status: 409, data: zConnectionConflictError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
 }
@@ -867,7 +867,7 @@ export const get21Errors = {
   remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
 }
 
-export const delete5Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
+export const delete6Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
 export const get22Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 

@@ -23,6 +23,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
+from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution
@@ -120,7 +121,8 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
-        return cls._run_with_guardrails(
+        used_at = naive_utc_now()
+        result = cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
             action=lambda rate_limit, request_id: cls._dispatch_generate(
@@ -135,6 +137,27 @@ class AppGenerateService:
                 request_id=request_id,
             ),
         )
+        if (
+            invoke_from == InvokeFrom.WEB_APP
+            and isinstance(user, EndUser)
+            and user.account_id is not None
+            and app_model.mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+        ):
+            from extensions.ext_application_services import application_services
+            from services.consumer_service import ConsumerIdentity
+
+            try:
+                application_services().consumer.record_usage(
+                    ConsumerIdentity(user.account_id),
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    end_user_id=user.id,
+                    used_at=used_at,
+                )
+            except Exception:
+                # A preference write must not fail an already accepted execution.
+                logger.warning("Failed to record personal WebApp usage for App %s", app_model.id)
+        return result
 
     @classmethod
     def _run_with_guardrails(

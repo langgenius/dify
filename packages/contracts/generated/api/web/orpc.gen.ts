@@ -72,6 +72,8 @@ import {
   zDeleteConversationsByCIdResponse,
   zDeleteMeAppsByAppIdFavoritePath,
   zDeleteMeAppsByAppIdFavoriteResponse,
+  zDeleteMeAppsByAppIdPath,
+  zDeleteMeAppsByAppIdResponse,
   zDeleteMeConnectionsByConnectionKeyPath,
   zDeleteMeConnectionsByConnectionKeyResponse,
   zDeleteSavedMessagesByMessageIdPath,
@@ -1292,17 +1294,35 @@ export const favorite = {
   put: put2,
 }
 
+/**
+ * Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+ */
+export const delete4 = oc
+  .route({
+    description:
+      'Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteMeAppsByAppId',
+    path: '/me/apps/{app_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteMeAppsByAppIdPath }))
+  .output(zDeleteMeAppsByAppIdResponse)
+
 export const byAppId = {
+  delete: delete4,
   favorite,
 }
 
 /**
- * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
+ * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
  */
 export const get12 = oc
   .route({
     description:
-      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.',
+      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeApps',
@@ -1346,7 +1366,7 @@ export const apps2 = {
 /**
  * Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
  */
-export const delete4 = oc
+export const delete5 = oc
   .route({
     description:
       'Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.',
@@ -1365,7 +1385,7 @@ export const delete4 = oc
   })
 
 export const byConnectionKey = {
-  delete: delete4,
+  delete: delete5,
   apps: apps2,
 }
 
@@ -1757,7 +1777,7 @@ export const remoteFiles = {
 /**
  * Remove a message from saved messages.
  */
-export const delete5 = oc
+export const delete6 = oc
   .route({
     description: 'Remove a message from saved messages.',
     inputStructure: 'detailed',
@@ -1772,7 +1792,7 @@ export const delete5 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
-  delete: delete5,
+  delete: delete6,
 }
 
 /**

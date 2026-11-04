@@ -41,6 +41,7 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
     assert client.put(path).status_code == 204
     with base.sessions.begin() as session:
         session.add(new_consumer_run(base, created_at=datetime(2026, 10, 30)))
+    harness.record_usage(datetime(2026, 10, 30))
     for view in ("recent", "favorites", "shared"):
         response = client.get(f"/api/me/apps?view={view}&limit=1")
         assert response.status_code == 200
@@ -51,6 +52,23 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
         assert "continuation" not in data["data"][0]
     assert client.delete(path).status_code == 204
     assert client.get("/api/me/apps?view=favorites").get_json()["data"] == []
+
+
+def test_remove_app_hides_personal_lists_but_preserves_data_and_shared_discovery(
+    client: FlaskClient, harness: ConsumerHarness
+) -> None:
+    base = harness.oauth.base
+    harness.record_usage(datetime(2026, 11, 4))
+    assert client.put(f"/api/me/apps/{base.context.app_id}/favorite").status_code == 204
+    path = f"/api/me/apps/{base.context.app_id}"
+    assert client.delete(path).status_code == 204
+    assert client.delete(path).status_code == 204
+    assert client.get("/api/me/apps?view=recent").get_json()["data"] == []
+    assert client.get("/api/me/apps?view=favorites").get_json()["data"] == []
+    assert client.get("/api/me/apps?view=shared").get_json()["data"][0]["id"] == base.context.app_id
+    assert client.delete(f"/api/me/apps/{uuid4()}").status_code == 204
+    client.environ_base.pop("HTTP_ORIGIN")
+    assert client.delete(path).status_code == 403
 
 
 def test_connections_support_only_query_and_disconnect(client: FlaskClient, harness: ConsumerHarness) -> None:

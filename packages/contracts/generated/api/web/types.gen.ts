@@ -2738,6 +2738,28 @@ export type GetMeAppsResponses = {
 
 export type GetMeAppsResponse = GetMeAppsResponses[keyof GetMeAppsResponses]
 
+export type DeleteMeAppsByAppIdData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/me/apps/{app_id}'
+}
+
+export type DeleteMeAppsByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteMeAppsByAppIdError = DeleteMeAppsByAppIdErrors[keyof DeleteMeAppsByAppIdErrors]
+
+export type DeleteMeAppsByAppIdResponses = {
+  204: void
+}
+
+export type DeleteMeAppsByAppIdResponse =
+  DeleteMeAppsByAppIdResponses[keyof DeleteMeAppsByAppIdResponses]
+
 export type DeleteMeAppsByAppIdFavoriteData = {
   body?: never
   path: {
