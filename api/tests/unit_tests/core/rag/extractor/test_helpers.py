@@ -8,6 +8,10 @@ import pytest
 from core.rag.extractor import helpers
 from core.rag.extractor.helpers import detect_file_encodings
 
+SIMPLIFIED_TEXT = "检索增强生成会把知识库里的文档切成片段，向量化以后存进数据库，提问时再按相似度取回最相关的几段。\n"
+TRADITIONAL_TEXT = "檢索增強生成會把知識庫裡的文件切成片段，向量化以後存進資料庫，提問時再按相似度取回最相關的幾段。\n"
+EMOJI_TEXT = "检索增强生成会把知识库里的文档切成片段😀向量化以后存进数据库，提问时再按相似度取回最相关的几段🙂\n"
+
 
 class TestHelpers:
     @pytest.mark.parametrize(("sample_size", "file_size"), [(None, 1_200_000), (4096, 140_000), (4096, 12)])
@@ -96,3 +100,44 @@ class TestHelpers:
 
         with pytest.raises(RuntimeError, match="Could not detect encoding"):
             detect_file_encodings(str(file_path))
+
+    @pytest.mark.parametrize(
+        ("encoding", "text", "padding", "partial_bytes"),
+        [
+            ("gbk", SIMPLIFIED_TEXT, 1, 1),
+            ("big5", TRADITIONAL_TEXT, 1, 1),
+            ("utf-8", SIMPLIFIED_TEXT, 1, 2),
+            ("utf-8", EMOJI_TEXT, 67, 3),
+        ],
+        ids=["gbk", "big5", "utf-8", "utf-8-4-byte-character"],
+    )
+    def test_detect_file_encodings_when_sample_ends_inside_a_character(
+        self, tmp_path: Path, encoding: str, text: str, padding: int, partial_bytes: int
+    ):
+        sample_size = 4096
+        data = b"\n" * padding + (text * 200).encode(encoding)
+        # The sample stops `partial_bytes` into a multi-byte character.
+        with pytest.raises(UnicodeDecodeError):
+            data[:sample_size].decode(encoding)
+        data[: sample_size - partial_bytes].decode(encoding)
+        file_path = tmp_path / "sample.txt"
+        file_path.write_bytes(data)
+
+        encodings = detect_file_encodings(str(file_path), sample_size=sample_size)
+
+        assert data.decode(encodings[0].encoding) == data.decode(encoding)
+
+    def test_detect_file_encodings_does_not_trim_a_whole_file(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        file_path = tmp_path / "sample.txt"
+        file_path.write_bytes(b"sample")
+        samples = []
+
+        def from_bytes(sample: bytes):
+            samples.append(sample)
+            return SimpleNamespace(best=lambda: None)
+
+        monkeypatch.setattr(helpers.charset_normalizer, "from_bytes", from_bytes)
+
+        with pytest.raises(RuntimeError, match="Could not detect encoding"):
+            detect_file_encodings(str(file_path))
+        assert samples == [b"sample"]
