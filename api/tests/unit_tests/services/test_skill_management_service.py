@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import time
 import zipfile
 from collections.abc import Callable, Generator, Mapping
@@ -4156,6 +4157,9 @@ def test_skill_timestamps_are_serialized_from_utc_not_host_time(
     if not hasattr(time, "tzset"):
         pytest.skip("tzset is only available on POSIX platforms")
 
+    # Restore TZ explicitly instead of calling monkeypatch.undo(): the autouse session factory fixture
+    # shares this monkeypatch instance, so undo() would unbind the global session factory.
+    previous_tz = os.environ.get("TZ")
     monkeypatch.setenv("TZ", "Asia/Shanghai")
     time.tzset()
     try:
@@ -4200,5 +4204,8 @@ def test_skill_timestamps_are_serialized_from_utc_not_host_time(
         assert binding["updated_at"] == _RECORDED_AT_EPOCH
         assert binding["latest_published_at"] == _RECORDED_AT_EPOCH
     finally:
-        monkeypatch.undo()
+        if previous_tz is None:
+            monkeypatch.delenv("TZ", raising=False)
+        else:
+            monkeypatch.setenv("TZ", previous_tz)
         time.tzset()
