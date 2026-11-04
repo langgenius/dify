@@ -92,7 +92,7 @@ def _jina_provider() -> ToolProviderApiEntity:
         author="langgenius",
         name="jina_search",
         label=I18nObject(en_US="Search the web"),
-        description=I18nObject(en_US="Searches the web"),
+        description=I18nObject(en_US="Searches the public web"),
     )
     return ToolProviderApiEntity(
         id="langgenius/jina/jina",
@@ -325,8 +325,18 @@ def test_keyword_filters_labels_case_insensitively() -> None:
 
 
 @pytest.mark.usefixtures("jina_tools")
-@pytest.mark.parametrize("keyword", ["jina", "JINA_SEARCH", "search the", "langgenius/jina"])
-def test_keyword_finds_a_tool_by_its_provider_or_tool_name_or_label(keyword: str) -> None:
+@pytest.mark.parametrize(
+    "keyword",
+    [
+        pytest.param("jina", id="provider name"),
+        pytest.param("JINA_SEARCH", id="tool name"),
+        pytest.param("search the", id="label"),
+        pytest.param("PUBLIC", id="description only"),
+        pytest.param("langgenius/jina", id="provider id"),
+        pytest.param("web reader", id="provider label only"),
+    ],
+)
+def test_keyword_finds_a_tool_by_its_name_label_description_or_provider(keyword: str) -> None:
     rows = _options(kind=NodeOptionKind.TOOL, keyword=keyword, roster=_NoRoster())
 
     assert [r.label for r in rows] == ["Search the web"]

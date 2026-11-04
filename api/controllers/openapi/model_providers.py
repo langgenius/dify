@@ -31,7 +31,6 @@ from controllers.openapi._models import (
     ProviderCredentialCreatePayload,
     ProviderCredentialUpdatePayload,
 )
-from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
@@ -41,6 +40,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from graphon.model_runtime.entities.provider_entities import CredentialFormSchema
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.i18n_text import localized
+from libs.text_search import matches
 from services.entities.model_provider_entities import CustomConfigurationStatus, ProviderResponse
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider.service import ModelProviderService

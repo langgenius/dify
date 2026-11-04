@@ -15,9 +15,10 @@ from graphon.graph.validation import _RootNodeValidator
 from graphon.nodes.base.node import Node
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.i18n_text import localized
+from libs.text_search import matches
 from models import AppMode
 from models.agent import WorkflowAgentBindingType
-from services.tools.tool_sources import TOOL_NODE_VERSION, ToolNodeIdentity, ToolSource
+from services.tools.tool_sources import TOOL_NODE_VERSION, ToolNodeIdentity, ToolSource, tool_names
 from services.workflow.authoring.canvas_defaults import with_canvas_defaults
 from services.workflow.authoring.canvas_notes import COVERS_KEY, NOTE_DATA_TYPE, TEXT_KEY, NoteField, NoteTheme
 from services.workflow.authoring.plugins import references_for
@@ -57,8 +58,9 @@ class NodeOption:
     label: str
     description: str | None
     seed: Mapping[str, Any]
-    # What the option is called besides its label; a keyword finds the option by any of them.
-    names: Sequence[str]
+    # What the option is called besides its label; a keyword finds the option by any of them, its label or its
+    # description.
+    names: Sequence[str | None]
 
 
 @dataclass(frozen=True)
@@ -119,7 +121,7 @@ def _tools(request: _Request) -> Iterable[NodeOption]:
                     label=identity.tool_label,
                     description=localized(tool.description, request.language),
                     seed={"type": node_type, **identity_fields, "tool_node_version": TOOL_NODE_VERSION},
-                    names=(identity.provider_name, identity.provider_id, identity.tool_name),
+                    names=tool_names(provider, tool, request.language),
                 )
 
 
@@ -211,10 +213,7 @@ class NodeOptionKind(StrEnum):
 
 
 def _matches(option: NodeOption, keyword: str | None) -> bool:
-    if keyword is None:
-        return True
-    needle = keyword.casefold()
-    return any(needle in text.casefold() for text in (option.label, *option.names))
+    return matches(keyword, option.label, option.description, *option.names)
 
 
 def list_node_options(
@@ -229,8 +228,8 @@ def list_node_options(
 ) -> list[NodeOption]:
     """Every option an app of `mode` can add, of `kind` or of every kind when None, sorted by kind then label.
 
-    Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label or any
-    of whose names contains it, ignoring case. Types `mode` refuses are never offered.
+    Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label,
+    description or any of whose names contains it, ignoring case. Types `mode` refuses are never offered.
     Agents are read from `roster` page by page until none are left, limited to the ids `accessible_agent_ids` returns
     when it returns any; it is called only when agents are listed.
     Reads only; a failing tool source or roster raises its own error.

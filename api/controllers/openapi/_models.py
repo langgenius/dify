@@ -1231,7 +1231,10 @@ class NodeOptionQuery(PageQuery):
     kind: NodeOptionKind | None = Field(None, description="Only options of this kind")
     keyword: str | None = Field(
         None,
-        description="Text to find in the label, tool or provider name, node type, or agent name, ignoring case",
+        description=(
+            "Text to find in the label or description, the tool name, the provider id, name or label, the node type, "
+            "or the agent name, ignoring case"
+        ),
     )
 
     @field_validator("app_mode")
@@ -1578,7 +1581,7 @@ class ToolListQuery(PageQuery):
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(
-        "", description="Words to match in the tool name, label or description, or the provider id or label"
+        "", description="Text to find in the tool name, label or description, or the provider id, name or label"
     )
     provider_type: ToolSource | None = Field(None, description="Only tools of this provider type")
     provider: str | None = Field(None, description="Only this provider's tools")
