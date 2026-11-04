@@ -25,7 +25,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -55,6 +54,7 @@ from models.model import (
 from repositories.app.generation_repository import AppGenerationRepository
 from services.agent.chat.base_runner import BaseAgentRunner
 from services.app.generation.ports import AgentHistoryMessage
+from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.tools.dataset.tool import DatasetRetrieverTool
 from tests.helpers.unit.core.model_fixtures import make_model_config
