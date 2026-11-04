@@ -340,11 +340,37 @@ def test_workflow_metadata_filter_rejects_missing_variable_before_starting_agent
         WorkflowAgentRuntimeRequestBuilder().build(replace(context, variable_pool=VariablePool()))
 
 
+@pytest.mark.parametrize("operator", ["empty", "not empty"])
+def test_value_free_metadata_filters_ignore_retained_variable_template(operator):
+    context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    saved_conditions = soul["knowledge"]["sets"][0]["metadata_filtering"]["conditions"]["conditions"]
+    # The editor changes the operator without clearing the previously selected variable.
+    saved_conditions[0]["comparison_operator"] = operator
+    context.snapshot.config_snapshot = soul
+    pool = VariablePool()
+    pool.add(["start", "guide_item_id"], 456)
+    pool.add(["sys", "query"], "Describe this exhibit")
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(replace(context, variable_pool=pool))
+
+    conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
+        "conditions"
+    ]
+    assert conditions[0]["comparison_operator"] == operator
+    assert conditions[1] == {"name": "guide_item_id", "comparison_operator": "=", "value": 456}
+    assert saved_conditions[0]["value"] == "{{#start.guide_program_id#}}"
+
+
+@pytest.mark.parametrize("operator", ["=", "empty", "not empty"])
 def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, operator: str
 ):
     apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent-backend.invalid")
     context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    soul["knowledge"]["sets"][0]["metadata_filtering"]["conditions"]["conditions"][0]["comparison_operator"] = operator
+    context.snapshot.config_snapshot = soul
     context.binding.workflow_version = "draft"
     context.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
     context.agent.scope = AgentScope.WORKFLOW_ONLY
@@ -368,11 +394,15 @@ def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
         ),
     )
     source_pool = VariablePool()
-    source_pool.add(["start", "guide_program_id"], "00123")
+    if operator == "=":
+        source_pool.add(["start", "guide_program_id"], "00123")
     source_pool.add(["start", "guide_item_id"], 456)
+
+    requested_selectors: list[list[str]] = []
 
     class DraftVariableLoader:
         def load_variables(self, selectors):
+            requested_selectors.extend(list(selector) for selector in selectors)
             return [value for selector in selectors if (value := source_pool.get(selector)) is not None]
 
     pool = VariablePool()
@@ -385,11 +415,16 @@ def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
         variable_loader=DraftVariableLoader(),
         execution_driver=None,
     )
+    if operator != "=":
+        assert ["start", "guide_program_id"] not in requested_selectors
     result = WorkflowAgentRuntimeRequestBuilder().build(replace(context, variable_pool=pool))
     conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
         "conditions"
     ]
-    assert [condition["value"] for condition in conditions] == ["00123", 456]
+    assert conditions[0]["comparison_operator"] == operator
+    assert conditions[1]["value"] == 456
+    if operator == "=":
+        assert conditions[0]["value"] == "00123"
 
 
 def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypatch):

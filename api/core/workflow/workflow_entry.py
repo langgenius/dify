@@ -236,8 +236,9 @@ class WorkflowEntry:
 
         Preconditions: The workflow owns the requested node and its Agent binding.
         Postconditions: Preload node references, including manual Agent knowledge
-        filters, into the supplied pool before constructing the node. Legacy
-        Agent nodes do not resolve an Agent Soul binding.
+        filters, into the supplied pool before constructing the node. Value-free
+        filter operators do not introduce variable dependencies. Legacy Agent
+        nodes do not resolve an Agent Soul binding.
         :param workflow: Workflow instance
         :param node_id: node id
         :param user_id: user id
@@ -318,6 +319,7 @@ class WorkflowEntry:
                     if knowledge_set.metadata_filtering.mode == "manual"
                     and knowledge_set.metadata_filtering.conditions is not None
                     for condition in knowledge_set.metadata_filtering.conditions.conditions
+                    if condition.comparison_operator not in ("empty", "not empty")
                     for selector in template_value_selectors(condition.value)
                 },
             }

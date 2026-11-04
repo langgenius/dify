@@ -857,8 +857,9 @@ def _knowledge_metadata_filtering_config(
     """Map validated metadata settings to the runtime DTO.
 
     Preconditions: A supplied pool belongs to the current workflow run.
-    Postconditions: Resolve only manual filters with a pool, preserving saved
-    settings and stripping editor-only fields. Missing references raise
+    Postconditions: Resolve only value-taking manual filters with a pool,
+    preserving saved settings and stripping editor-only fields. Value-free
+    operators ignore retained templates. Missing required references raise
     ``WorkflowAgentRuntimeRequestBuildError`` without changing the settings.
     """
     conditions = metadata_filtering.conditions
@@ -868,6 +869,8 @@ def _knowledge_metadata_filtering_config(
                 update={
                     "conditions": [
                         condition.model_copy(update={"value": resolve_template_value(condition.value, variable_pool)})
+                        if condition.comparison_operator not in ("empty", "not empty")
+                        else condition
                         for condition in conditions.conditions
                     ]
                 }
