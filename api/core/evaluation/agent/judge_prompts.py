@@ -186,8 +186,9 @@ TOOL_ARGUMENT_CORRECTNESS_PROMPT = """TARGET METRIC: tool_argument_correctness
 
 DEFINITION
 
-Evaluate whether model-controlled arguments supplied to each called tool are structurally and semantically
+Evaluate whether model-controlled arguments supplied to the called tool are structurally and semantically
 correct for the task and the information available before the call.
+EVALUATION_DATA contains exactly one tool call. Assess only that call.
 
 EVALUATION BOUNDARIES
 
@@ -196,7 +197,7 @@ values, and consistency with the task and prior observations.
 
 Do not evaluate whether the tool should have been selected, whether another tool would have been better,
 trajectory efficiency, tool-execution success, final-answer correctness, or hidden/system-injected
-parameters. Assess each call independently using only information available before that call.
+parameters. Assess this call using only information available before it.
 
 PER-CALL RUBRIC
 
@@ -216,8 +217,8 @@ SPECIAL RULES
 - Accept alternative representations permitted by the schema that preserve the intended meaning.
 - Do not penalize parameters injected by the system and omitted from the model-visible schema.
 - Tool execution failure does not by itself prove that arguments were incorrect.
-- Return exactly one call_assessment for every tool call in EVALUATION_DATA.
-- The overall metric score is the arithmetic mean of all per-call weighted scores.
+- Return one assessment for the supplied tool call. The application attaches its call ID and tool reference.
+- The application averages the weighted scores from all assessed tool calls to produce the metric score.
 """
 
 AGENT_JUDGE_PROMPTS: dict[str, tuple[str, str]] = {
@@ -228,7 +229,7 @@ AGENT_JUDGE_PROMPTS: dict[str, tuple[str, str]] = {
         TOOL_SELECTION_CORRECTNESS_PROMPT,
     ),
     EvaluationMetricName.TOOL_ARGUMENT_CORRECTNESS.value: (
-        "agent.tool_argument_correctness.v1",
+        "agent.tool_argument_correctness.v2",
         TOOL_ARGUMENT_CORRECTNESS_PROMPT,
     ),
 }

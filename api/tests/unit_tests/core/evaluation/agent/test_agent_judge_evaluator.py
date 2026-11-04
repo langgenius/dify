@@ -9,7 +9,6 @@ from core.evaluation.agent.agent_judge_evaluator import (
     TaskCompletionJudgeOutput,
     ToolArgumentCriteria,
     ToolArgumentJudgeOutput,
-    ToolCallArgumentAssessment,
     ToolSelectionCriteria,
     ToolSelectionJudgeOutput,
     TrajectoryQualityJudgeOutput,
@@ -285,22 +284,14 @@ def test_tool_argument_correctness_scores_each_assessable_call(
     fake_model = _FakeJudgeModel(
         ToolArgumentJudgeOutput(
             score=1,
-            reason="One argument is partially correct.",
-            call_assessments=[
-                ToolCallArgumentAssessment(
-                    tool_call_id="call-1",
-                    tool_ref="time/convert",
-                    score=1,
-                    reason="The timezone is ambiguous.",
-                    criteria=ToolArgumentCriteria(
-                        schema_conformance=_criterion(1),
-                        required_parameter_coverage=_criterion(1),
-                        semantic_value_correctness=_criterion(0.5),
-                        context_consistency=_criterion(0.75),
-                    ),
-                    failed_parameter_paths=["$.destination_timezone"],
-                )
-            ],
+            reason="The timezone is ambiguous.",
+            criteria=ToolArgumentCriteria(
+                schema_conformance=_criterion(1),
+                required_parameter_coverage=_criterion(1),
+                semantic_value_correctness=_criterion(0.5),
+                context_consistency=_criterion(0.75),
+            ),
+            failed_parameter_paths=["$.destination_timezone"],
         )
     )
     monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
@@ -361,8 +352,66 @@ def test_tool_argument_correctness_scores_each_assessable_call(
     assert metric.value == 0.7375
     assert metric.details["call_assessments"][0]["reported_score"] == 1
     assert metric.details["call_assessments"][0]["score"] == 0.7375
+    assert metric.details["call_assessments"][0]["tool_call_id"] == "call-1"
+    assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v2"
     assert fake_model.payload is not None
     assert fake_model.payload["tool_calls"][0]["tool_description"] == ""
+    assert "call_assessments" not in _strict_judge_json_schema(ToolArgumentJudgeOutput)["properties"]
+
+
+def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypatch: pytest.MonkeyPatch) -> None:
+    class PerCallJudgeModel:
+        model_identifier = "provider/model"
+
+        def __init__(self) -> None:
+            self.call_ids: list[str] = []
+
+        def generate(self, *, system_prompt, payload, schema):
+            assert schema is ToolArgumentJudgeOutput
+            assert "exactly one tool call" in system_prompt
+            assert len(payload["tool_calls"]) == 1
+            call_id = payload["tool_calls"][0]["tool_call_id"]
+            self.call_ids.append(call_id)
+            score = 0.6 if call_id == "call-1" else 1.0
+            return ToolArgumentJudgeOutput(
+                score=score,
+                reason=f"Assessment for {call_id}.",
+                criteria=ToolArgumentCriteria(
+                    schema_conformance=_criterion(score),
+                    required_parameter_coverage=_criterion(score),
+                    semantic_value_correctness=_criterion(score),
+                    context_consistency=_criterion(score),
+                ),
+            )
+
+    fake_model = PerCallJudgeModel()
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Convert both times."},
+        output="Converted both times.",
+        tool_calls=[
+            AgentToolCall(name="convert", call_id="call-1", tool_ref="time/convert", arguments={"time": "09:00"}),
+            AgentToolCall(name="convert", call_id="call-2", tool_ref="time/convert", arguments={"time": "10:00"}),
+        ],
+        available_tools=[
+            AgentToolDefinition(
+                tool_ref="time/convert",
+                name="convert",
+                input_schema={"type": "object", "properties": {"time": {"type": "string"}}},
+            )
+        ],
+    )
+
+    result = AgentLLMJudgeEvaluator().evaluate([item], ["tool_argument_correctness"], "provider", "model", "tenant")[0]
+
+    assert result.error is None
+    assert fake_model.call_ids == ["call-1", "call-2"]
+    assert result.metrics[0].value == 0.8
+    assert [assessment["tool_call_id"] for assessment in result.metrics[0].details["call_assessments"]] == [
+        "call-1",
+        "call-2",
+    ]
 
 
 def test_tool_argument_correctness_is_not_applicable_without_calls(monkeypatch: pytest.MonkeyPatch) -> None:

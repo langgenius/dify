@@ -142,7 +142,10 @@ class ToolCallArgumentAssessment(BaseModel):
 
 
 class ToolArgumentJudgeOutput(_JudgeOutputBase):
-    call_assessments: list[ToolCallArgumentAssessment] = Field(min_length=1)
+    """The judge's assessment of one tool call's arguments."""
+
+    criteria: ToolArgumentCriteria
+    failed_parameter_paths: list[str] = Field(default_factory=list, max_length=50)
 
 
 class _NotApplicableError(Exception):
@@ -264,7 +267,6 @@ class AgentLLMJudgeEvaluator:
     ) -> EvaluationMetric:
         prompt_version, system_prompt = get_agent_judge_prompt(metric_name)
         payload_warnings: list[str] = []
-        assessable_call_ids: list[str] = []
         schema: type[_JudgeOutputBase]
 
         if metric_name == EvaluationMetricName.TASK_COMPLETION.value:
@@ -306,14 +308,23 @@ class AgentLLMJudgeEvaluator:
                 if (
                     isinstance(call, Mapping)
                     and call.get("tool_call_id")
+                    and call.get("tool_ref")
                     and "model_visible_input_schema" in call
                     and "arguments" in call
                 )
             ]
             sanitized_payload["tool_calls"] = complete_calls
-            assessable_call_ids = [str(call["tool_call_id"]) for call in complete_calls]
-            if not assessable_call_ids:
+            if not complete_calls:
                 raise _NotApplicableError("No tool call fit within the safe evaluation payload limits.")
+            return self._evaluate_tool_argument_calls(
+                metric_name=metric_name,
+                judge_model=judge_model,
+                system_prompt=system_prompt,
+                prompt_version=prompt_version,
+                sanitized_payload=sanitized_payload,
+                payload_warnings=payload_warnings,
+                sanitization_warnings=sanitization_warnings,
+            )
         judge_output = judge_model.generate(
             system_prompt=system_prompt,
             payload=sanitized_payload,
@@ -321,84 +332,110 @@ class AgentLLMJudgeEvaluator:
         )
 
         details: dict[str, Any]
-        if isinstance(judge_output, ToolArgumentJudgeOutput):
-            sanitized_calls = cast(list[Mapping[str, Any]], sanitized_payload["tool_calls"])
-            expected_tool_refs = {
-                str(call["tool_call_id"]): str(call["tool_ref"])
-                for call in sanitized_calls
-                if call.get("tool_call_id") and call.get("tool_ref")
-            }
-            expected_call_ids = set(expected_tool_refs)
-            returned_call_ids = [assessment.tool_call_id for assessment in judge_output.call_assessments]
-            if len(returned_call_ids) != len(set(returned_call_ids)) or set(returned_call_ids) != expected_call_ids:
-                raise ValueError("The judge did not return exactly one assessment for every assessable tool call.")
-            if any(
-                assessment.tool_ref != expected_tool_refs[assessment.tool_call_id]
-                for assessment in judge_output.call_assessments
-            ):
-                raise ValueError("The judge returned a mismatched tool reference for an assessed call.")
-            recomputed_call_scores: dict[str, float] = {}
-            serialized_assessments: list[dict[str, Any]] = []
-            for assessment in judge_output.call_assessments:
-                score = _weighted_score(assessment.criteria, weights)
-                recomputed_call_scores[assessment.tool_call_id] = score
-                serialized = assessment.model_dump(mode="json")
-                serialized["reported_score"] = serialized.pop("score")
-                serialized["score"] = score
-                serialized_assessments.append(serialized)
-            score = round(sum(recomputed_call_scores.values()) / len(recomputed_call_scores), 4)
-            details = {
-                "status": "evaluated",
-                "reason": judge_output.reason,
-                "call_assessments": serialized_assessments,
-                "evidence_step_ids": judge_output.evidence_step_ids,
-                "warnings": _dedupe_strings([*payload_warnings, *sanitization_warnings, *judge_output.warnings]),
-                "reported_score": judge_output.score,
-                "prompt_version": prompt_version,
-                "evaluator_model": judge_model.model_identifier,
-            }
-        else:
-            if not isinstance(
-                judge_output,
-                TaskCompletionJudgeOutput | TrajectoryQualityJudgeOutput | ToolSelectionJudgeOutput,
-            ):
-                raise TypeError(f"Unexpected Agent judge output: {type(judge_output).__name__}")
-            effective_criteria = judge_output.criteria
-            effective_task_criteria: TaskCompletionCriteria | None = None
-            serialized_success_criteria: list[dict[str, Any]] | None = None
-            if isinstance(judge_output, TaskCompletionJudgeOutput):
-                ordered_assessments = _validated_success_criteria_assessments(
-                    sanitized_payload,
-                    judge_output.success_criteria_assessments,
-                )
-                effective_task_criteria = _apply_success_criteria_to_task_completion(
-                    judge_output.criteria,
-                    ordered_assessments,
-                )
-                effective_criteria = effective_task_criteria
-                serialized_success_criteria = [assessment.model_dump(mode="json") for assessment in ordered_assessments]
+        if not isinstance(
+            judge_output,
+            TaskCompletionJudgeOutput | TrajectoryQualityJudgeOutput | ToolSelectionJudgeOutput,
+        ):
+            raise TypeError(f"Unexpected Agent judge output: {type(judge_output).__name__}")
+        effective_criteria = judge_output.criteria
+        effective_task_criteria: TaskCompletionCriteria | None = None
+        serialized_success_criteria: list[dict[str, Any]] | None = None
+        if isinstance(judge_output, TaskCompletionJudgeOutput):
+            ordered_assessments = _validated_success_criteria_assessments(
+                sanitized_payload,
+                judge_output.success_criteria_assessments,
+            )
+            effective_task_criteria = _apply_success_criteria_to_task_completion(
+                judge_output.criteria,
+                ordered_assessments,
+            )
+            effective_criteria = effective_task_criteria
+            serialized_success_criteria = [assessment.model_dump(mode="json") for assessment in ordered_assessments]
 
-            score = _weighted_score(effective_criteria, weights)
-            serialized_criteria = effective_criteria.model_dump(mode="json")
-            if isinstance(judge_output, TaskCompletionJudgeOutput) and effective_task_criteria is not None:
-                reported_goal_score = judge_output.criteria.goal_satisfaction.score
-                effective_goal_score = effective_task_criteria.goal_satisfaction.score
-                if effective_goal_score != reported_goal_score:
-                    serialized_criteria["goal_satisfaction"]["reported_score"] = reported_goal_score
-            details = {
+        score = _weighted_score(effective_criteria, weights)
+        serialized_criteria = effective_criteria.model_dump(mode="json")
+        if isinstance(judge_output, TaskCompletionJudgeOutput) and effective_task_criteria is not None:
+            reported_goal_score = judge_output.criteria.goal_satisfaction.score
+            effective_goal_score = effective_task_criteria.goal_satisfaction.score
+            if effective_goal_score != reported_goal_score:
+                serialized_criteria["goal_satisfaction"]["reported_score"] = reported_goal_score
+        details = {
+            "status": "evaluated",
+            "reason": judge_output.reason,
+            "criteria": serialized_criteria,
+            "failed_criteria": judge_output.failed_criteria,
+            "evidence_step_ids": judge_output.evidence_step_ids,
+            "warnings": _dedupe_strings([*payload_warnings, *sanitization_warnings, *judge_output.warnings]),
+            "reported_score": judge_output.score,
+            "prompt_version": prompt_version,
+            "evaluator_model": judge_model.model_identifier,
+        }
+        if serialized_success_criteria is not None:
+            details["success_criteria_assessments"] = serialized_success_criteria
+        return EvaluationMetric(name=metric_name, value=score, details=details)
+
+    @staticmethod
+    def _evaluate_tool_argument_calls(
+        *,
+        metric_name: str,
+        judge_model: _DifyAgentJudgeModel,
+        system_prompt: str,
+        prompt_version: str,
+        sanitized_payload: Mapping[str, Any],
+        payload_warnings: Sequence[str],
+        sanitization_warnings: Sequence[str],
+    ) -> EvaluationMetric:
+        """Judge each assessable call separately and bind trusted call identities locally."""
+        sanitized_calls = cast(list[Mapping[str, Any]], sanitized_payload["tool_calls"])
+        scores: list[float] = []
+        reported_scores: list[float] = []
+        serialized_assessments: list[dict[str, Any]] = []
+        warnings = [*payload_warnings, *sanitization_warnings]
+        evidence_step_ids: list[str] = []
+        for call in sanitized_calls:
+            judge_output = judge_model.generate(
+                system_prompt=system_prompt,
+                payload={**sanitized_payload, "tool_calls": [call]},
+                schema=ToolArgumentJudgeOutput,
+            )
+            assessment = ToolCallArgumentAssessment(
+                tool_call_id=str(call["tool_call_id"]),
+                tool_ref=str(call["tool_ref"]),
+                score=judge_output.score,
+                reason=judge_output.reason,
+                criteria=judge_output.criteria,
+                failed_parameter_paths=judge_output.failed_parameter_paths,
+                evidence_step_ids=judge_output.evidence_step_ids,
+            )
+            score = _weighted_score(assessment.criteria, _TOOL_ARGUMENT_WEIGHTS)
+            serialized = assessment.model_dump(mode="json")
+            serialized["reported_score"] = serialized.pop("score")
+            serialized["score"] = score
+            serialized_assessments.append(serialized)
+            scores.append(score)
+            reported_scores.append(judge_output.score)
+            warnings.extend(judge_output.warnings)
+            evidence_step_ids.extend(judge_output.evidence_step_ids)
+
+        metric_score = round(sum(scores) / len(scores), 4)
+        return EvaluationMetric(
+            name=metric_name,
+            value=metric_score,
+            details={
                 "status": "evaluated",
-                "reason": judge_output.reason,
-                "criteria": serialized_criteria,
-                "failed_criteria": judge_output.failed_criteria,
-                "evidence_step_ids": judge_output.evidence_step_ids,
-                "warnings": _dedupe_strings([*payload_warnings, *sanitization_warnings, *judge_output.warnings]),
-                "reported_score": judge_output.score,
+                "reason": (
+                    serialized_assessments[0]["reason"]
+                    if len(serialized_assessments) == 1
+                    else f"Evaluated {len(serialized_assessments)} tool calls; see call_assessments for details."
+                ),
+                "call_assessments": serialized_assessments,
+                "evidence_step_ids": _dedupe_strings(evidence_step_ids),
+                "warnings": _dedupe_strings(warnings),
+                "reported_score": round(sum(reported_scores) / len(reported_scores), 4),
                 "prompt_version": prompt_version,
                 "evaluator_model": judge_model.model_identifier,
-            }
-            if serialized_success_criteria is not None:
-                details["success_criteria_assessments"] = serialized_success_criteria
-        return EvaluationMetric(name=metric_name, value=score, details=details)
+            },
+        )
 
 
 def _validated_success_criteria_assessments(
