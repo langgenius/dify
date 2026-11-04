@@ -27,6 +27,15 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentWorkspaceBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
@@ -64,6 +73,10 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
             Workflow.__table__,
             AppModelConfig.__table__,
             AppAnnotationSetting.__table__,
+            AgentConfigDraft.__table__,
+            AgentConfigSnapshot.__table__,
+            AgentDebugConversation.__table__,
+            AgentWorkspaceBinding.__table__,
         ],
     )
     statements: list[tuple[str, object]] = []
@@ -570,6 +583,73 @@ class TestGetHistoryPromptText:
 
 
 class TestPreparedHistory:
+    @pytest.mark.parametrize("enabled", [True, False])
+    @pytest.mark.parametrize("debug", [True, False])
+    def test_agent_attachments_use_conversation_soul(self, database: Database, enabled: bool, debug: bool) -> None:
+        """Persisted Agent settings govern both attachment roles, independently of legacy settings."""
+        conversation = _persist_conversation(database, AppMode.AGENT)
+        _enable_file_uploads(database, conversation, enabled=not enabled)
+        app = database.session.get(App, conversation.app_id)
+        assert app is not None
+        agent_id, account_id = str(uuid4()), str(uuid4())
+        snapshot = AgentConfigSnapshot(
+            tenant_id=app.tenant_id,
+            agent_id=agent_id,
+            version=1,
+            config_snapshot=AgentSoulConfig.model_validate(
+                {"app_features": {"file_upload": {"enabled": not enabled if debug else enabled}}}
+            ),
+        )
+        binding = AgentWorkspaceBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workspace_id=str(uuid4()),
+            backend_binding_ref="memory-test",
+            agent_id=agent_id,
+            agent_config_version_id=snapshot.id,
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+        conversation.agent_workspace_binding_id = binding.id
+        database.session.add_all([snapshot, binding])
+        if debug:
+            conversation.from_source = ConversationFromSource.CONSOLE
+            conversation.from_account_id = account_id
+            database.session.add_all(
+                [
+                    AgentConfigDraft(
+                        tenant_id=app.tenant_id,
+                        agent_id=agent_id,
+                        account_id=account_id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                        config_snapshot=AgentSoulConfig.model_validate(
+                            {"app_features": {"file_upload": {"enabled": enabled}}}
+                        ),
+                    ),
+                    AgentDebugConversation(
+                        tenant_id=app.tenant_id,
+                        app_id=app.id,
+                        agent_id=agent_id,
+                        account_id=account_id,
+                        conversation_id=conversation.id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    ),
+                ]
+            )
+        database.session.commit()
+        message = _persist_message(database, conversation.id)
+        user_file = _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        assistant_file = _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.ASSISTANT)
+        expected_ids = [(user_file.id,), (assistant_file.id,)] if enabled else [(), ()]
+
+        history = TokenBufferMemory.load_history(
+            conversation=conversation, app_record=app, session=database.session, message_limit=3
+        )
+        database.session.close()
+
+        assert [prompt.text for prompt in history.prompts] == ["user query", "hello"]
+        assert [tuple(file.id for file in prompt.files) for prompt in history.prompts] == expected_ids
+        assert all(prompt.image_detail == ImagePromptMessageContent.DETAIL.HIGH for prompt in history.prompts)
+
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     @pytest.mark.parametrize("detail", ["low", "high"])
     def test_load_detaches_history_before_attachment_and_token_io(
