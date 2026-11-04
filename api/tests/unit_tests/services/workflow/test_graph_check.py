@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from models import AppMode
 from services.workflow.graph_check import (
+    CANVAS_NOTE_TYPE,
     EMPTY_SELECTOR_MESSAGE,
     IssueCode,
     IssueSeverity,
@@ -112,6 +113,28 @@ def test_unknown_type_and_invalid_data_are_located() -> None:
     assert issues["w"].code is IssueCode.UNKNOWN_NODE_TYPE
     assert issues["l"].code is IssueCode.NODE_DATA_INVALID
     assert issues["l"].loc[:3] == ("nodes", "l", "data")
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param({"text": "Explains the start", "theme": "blue"}, id="no data type"),
+        pytest.param({"type": "", "text": "Explains the start", "theme": "blue"}, id="empty data type"),
+    ],
+)
+def test_a_node_with_no_type_is_told_that_a_note_needs_the_note_type(data: dict[str, object]) -> None:
+    [issue] = check_graph({"nodes": [START, _node("n", data)], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert (issue.code, issue.node_id, issue.loc) == (IssueCode.UNKNOWN_NODE_TYPE, "n", data_loc("n", "type"))
+    assert "data.type" in issue.message
+    assert f"type: {CANVAS_NOTE_TYPE}" in issue.message
+
+
+def test_a_named_unknown_type_is_named() -> None:
+    weird = _node("w", {"type": "future-node", "title": "W"})
+    [issue] = check_graph({"nodes": [START, weird], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert issue.message == "Unknown node type 'future-node'"
 
 
 def test_edges_must_point_at_nodes() -> None:
