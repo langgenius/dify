@@ -664,6 +664,7 @@ export type EventStreamResponse = string
 export type FieldHintRow = {
   default?: unknown
   description: string | null
+  example?: unknown
   loc: Array<string | number>
   options: Array<string>
   required: boolean
@@ -1198,15 +1199,32 @@ export type NodeSpecRow = {
   version: string
 }
 
+export type NodeTypeDescribeQuery = {
+  include_schema?: boolean
+}
+
 export type NodeTypeDetailResponse = {
-  default_config: {
+  fields: Array<NodeTypeFieldRow>
+  handles: Array<string>
+  schema?: {
     [key: string]: unknown
-  }
-  schema: {
+  } | null
+  seed: {
     [key: string]: unknown
   }
   type: string
   version: string
+}
+
+export type NodeTypeFieldRow = {
+  default?: unknown
+  description: string | null
+  example?: unknown
+  loc: Array<string | number>
+  options: Array<string>
+  purpose: boolean
+  required: boolean
+  type: string | null
 }
 
 export type NodeTypeListResponse = {
@@ -3679,11 +3697,14 @@ export type GetNodeTypesByNodeTypeData = {
   path: {
     node_type: string
   }
-  query?: never
+  query?: {
+    include_schema?: boolean
+  }
   url: '/node-types/{node_type}'
 }
 
 export type GetNodeTypesByNodeTypeErrors = {
+  422: ErrorBody
   default: ErrorBody
 }
 

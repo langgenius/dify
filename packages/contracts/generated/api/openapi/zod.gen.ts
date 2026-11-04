@@ -803,6 +803,7 @@ export const zEventStreamResponse = z.string()
 export const zFieldHintRow = z.object({
   default: z.unknown().optional(),
   description: z.string().nullable(),
+  example: z.unknown().optional(),
   loc: z.array(z.union([z.string(), z.int()])),
   options: z.array(z.string()),
   required: z.boolean(),
@@ -1642,11 +1643,36 @@ export const zNodeSpecRow = z.object({
 })
 
 /**
+ * NodeTypeDescribeQuery
+ *
+ * Query parameters for GET /node-types/<node_type>.
+ */
+export const zNodeTypeDescribeQuery = z.object({
+  include_schema: z.boolean().optional().default(false),
+})
+
+/**
+ * NodeTypeFieldRow
+ */
+export const zNodeTypeFieldRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullable(),
+  example: z.unknown().optional(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()),
+  purpose: z.boolean(),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
  * NodeTypeDetailResponse
  */
 export const zNodeTypeDetailResponse = z.object({
-  default_config: z.record(z.string(), z.unknown()),
-  schema: z.record(z.string(), z.unknown()),
+  fields: z.array(zNodeTypeFieldRow),
+  handles: z.array(z.string()),
+  schema: z.record(z.string(), z.unknown()).nullish(),
+  seed: z.record(z.string(), z.unknown()),
   type: z.string(),
   version: z.string(),
 })
@@ -3566,6 +3592,10 @@ export const zGetNodeTypesResponse = zNodeTypeListResponse
 
 export const zGetNodeTypesByNodeTypePath = z.object({
   node_type: z.string(),
+})
+
+export const zGetNodeTypesByNodeTypeQuery = z.object({
+  include_schema: z.boolean().optional().default(false),
 })
 
 /**

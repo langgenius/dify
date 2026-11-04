@@ -82,6 +82,7 @@ import {
   zGetCatalogResponse,
   zGetHealthResponse,
   zGetNodeTypesByNodeTypePath,
+  zGetNodeTypesByNodeTypeQuery,
   zGetNodeTypesByNodeTypeResponse,
   zGetNodeTypesResponse,
   zGetOauthDeviceLookupQuery,
@@ -1576,7 +1577,12 @@ export const get35 = oc
     path: '/node-types/{node_type}',
     tags: ['openapi'],
   })
-  .input(z.object({ params: zGetNodeTypesByNodeTypePath }))
+  .input(
+    z.object({
+      params: zGetNodeTypesByNodeTypePath,
+      query: zGetNodeTypesByNodeTypeQuery.optional(),
+    }),
+  )
   .output(zGetNodeTypesByNodeTypeResponse)
 
 export const byNodeType = {
