@@ -9,21 +9,21 @@ export const MediaType = {
 
 type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
-const useBreakpoints = (): MediaTypeValue => {
-  const [width, setWidth] = React.useState(globalThis.innerWidth)
-  const media = (() => {
-    if (width <= 640) return MediaType.mobile
-    if (width <= 768) return MediaType.tablet
-    return MediaType.pc
-  })()
-
-  React.useEffect(() => {
-    const handleWindowResize = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', handleWindowResize)
-    return () => window.removeEventListener('resize', handleWindowResize)
-  }, [])
-
-  return media
+const subscribe = (onStoreChange: () => void) => {
+  window.addEventListener('resize', onStoreChange)
+  return () => window.removeEventListener('resize', onStoreChange)
 }
+
+const getSnapshot = (): MediaTypeValue => {
+  if (window.innerWidth <= 640) return MediaType.mobile
+  if (window.innerWidth <= 768) return MediaType.tablet
+  return MediaType.pc
+}
+
+// Match the server's desktop fallback during hydration before reading the viewport.
+const getServerSnapshot = (): MediaTypeValue => MediaType.pc
+
+const useBreakpoints = (): MediaTypeValue =>
+  React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
 export default useBreakpoints

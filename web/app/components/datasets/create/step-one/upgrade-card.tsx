@@ -1,21 +1,31 @@
 'use client'
+
 import type { FC } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { IS_CLOUD_EDITION } from '@/config'
-import { useModalContext } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const UpgradeCard: FC = () => {
-  const { t } = useTranslation()
-  const { setShowPricingModal } = useModalContext()
+  const { t } = useTranslation(['billing'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = useCallback(() => {
-    setShowPricingModal()
-  }, [setShowPricingModal])
+    setPricing('open')
+  }, [setPricing])
 
-  if (!IS_CLOUD_EDITION) return null
+  if (deploymentEdition !== 'CLOUD') return null
 
   return (
     <div className="flex items-center justify-between rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-3 pr-3.5 pl-4 shadow-xs backdrop-blur-[5px]">

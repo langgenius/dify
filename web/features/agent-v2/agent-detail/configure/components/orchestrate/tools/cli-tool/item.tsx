@@ -21,7 +21,7 @@ export function AgentCliToolItem({
   onEdit: () => void
   tool: AgentCliTool
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <ConfigureSectionConfigurableItem

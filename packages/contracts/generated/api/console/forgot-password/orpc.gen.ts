@@ -3,13 +3,23 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotFoundError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
+} from './zod.gen.ts'
+import {
   zPostForgotPasswordBody,
   zPostForgotPasswordResetsBody,
   zPostForgotPasswordResetsResponse,
   zPostForgotPasswordResponse,
   zPostForgotPasswordValidityBody,
   zPostForgotPasswordValidityResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Reset password with verification token
@@ -25,6 +35,11 @@ export const post = oc
   })
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
+  })
 
 export const resets = {
   post,
@@ -44,6 +59,12 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity = {
   post: post2,
@@ -63,6 +84,10 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
+  .errors({
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
+  })
 
 export const forgotPassword = {
   post: post3,

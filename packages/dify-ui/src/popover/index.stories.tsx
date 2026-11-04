@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { PopoverContentProps } from '.'
 import * as React from 'react'
 import {
+  createPopoverHandle,
   Popover,
   PopoverClose,
   PopoverContent,
@@ -23,7 +24,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound popover built on Base UI Popover. Use it for contextual affordances, overflow menus, filters, and forms that anchor to a trigger. Control placement via the `placement` prop on `PopoverContent` and compose arbitrary children inside the popup.\n\nPass `openOnHover` on `PopoverTrigger` when the popup should also reveal on hover (see the **Infotip** story). Unlike `Tooltip` and `PreviewCard`, hover on `Popover` still falls back to tap/focus, so touch and screen-reader users can reach the content.',
+          'Compound popover built on Base UI Popover. Use it for contextual affordances, overflow menus, filters, and forms that anchor to a trigger.\n\nPass `openOnHover` on `PopoverTrigger` when the popup should also reveal on hover (see the **Infotip** story). Unlike `Tooltip` and `PreviewCard`, hover on `Popover` still falls back to tap/focus, so touch and screen-reader users can reach the content.',
       },
     },
   },
@@ -91,18 +92,68 @@ export const WithActions: Story = {
   ),
 }
 
+type ResourcePopoverPayload = {
+  label: string
+  description: string
+}
+
+const resourcePopoverPayloads = [
+  {
+    label: 'Knowledge base',
+    description: 'Searches indexed documents before the model generates an answer.',
+  },
+  {
+    label: 'HTTP request',
+    description: 'Calls an external endpoint with values from the current workflow.',
+  },
+] as const satisfies readonly ResourcePopoverPayload[]
+
+function DetachedTriggersDemo() {
+  const [popoverHandle] = React.useState(() => createPopoverHandle<ResourcePopoverPayload>())
+
+  return (
+    <div className="flex gap-2">
+      {resourcePopoverPayloads.map((payload) => (
+        <PopoverTrigger
+          key={payload.label}
+          handle={popoverHandle}
+          payload={payload}
+          render={<button type="button" className={triggerButtonClassName} />}
+        >
+          {payload.label}
+        </PopoverTrigger>
+      ))}
+
+      <Popover handle={popoverHandle}>
+        {({ payload }) => (
+          <PopoverContent>
+            <div className="flex w-72 flex-col gap-1 p-4">
+              <PopoverTitle className="text-sm font-semibold text-text-primary">
+                {payload?.label ?? 'Resource'}
+              </PopoverTitle>
+              <PopoverDescription className="text-xs text-text-secondary">
+                {payload?.description ?? 'Choose a resource to learn more.'}
+              </PopoverDescription>
+            </div>
+          </PopoverContent>
+        )}
+      </Popover>
+    </div>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  render: () => <DetachedTriggersDemo />,
+}
+
 export const Infotip: Story = {
   parameters: {
     docs: {
       description: {
         story: [
-          'The **infotip** pattern from [Base UI](https://base-ui.com/react/components/tooltip#infotips): an info glyph (`?`, `(i)`) whose sole purpose is to reveal explanatory text. Use `Popover` with `openOnHover` on the trigger — never `Tooltip`.',
+          'An **infotip** uses an info icon to reveal explanatory text. Following the [Base UI infotip guidelines](https://base-ui.com/react/components/tooltip#infotips), use `Popover` with `openOnHover` on the trigger so touch and screen reader users can access the content.',
           '',
-          "Why not `Tooltip`? Tooltips are disabled on touch devices and not announced to screen readers; descriptive help text hidden in them is unreachable for those users. Why not `PreviewCard`? PreviewCard's a11y contract requires the trigger to already own a primary click destination, but an info glyph has no other purpose.",
-          '',
-          "Base UI rule of thumb: *\"If the trigger's purpose is to open the popup itself, it's a popover. If the trigger's purpose is unrelated to opening the popup, it's a tooltip.\"*",
-          '',
-          'Hover, tap, or focus the `?` icon to open. In the Dify app, reach for `@/app/components/base/infotip` (`<Infotip aria-label={...}>{helpText}</Infotip>`) which wraps this pattern with consistent delays (300/200), typography, and `aria-label` plumbing.',
+          'This example uses a named button trigger with a 300 ms hover delay and a 200 ms close delay.',
         ].join('\n'),
       },
     },
@@ -119,7 +170,7 @@ export const Infotip: Story = {
           render={
             <button
               type="button"
-              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <span
                 aria-hidden
@@ -129,8 +180,9 @@ export const Infotip: Story = {
           }
         />
         <PopoverContent
-          placement="top"
-          popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+          side="top"
+          align="center"
+          className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
         >
           Set which resource to use first when running models. The Trial quota will be used after
           the paid quota is exhausted.
@@ -140,37 +192,43 @@ export const Infotip: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
-  'top-start',
-  'top',
-  'top-end',
-  'right-start',
-  'right',
-  'right-end',
-  'bottom-start',
-  'bottom',
-  'bottom-end',
-  'left-start',
-  'left',
-  'left-end',
-]
+const POSITIONS = [
+  { side: 'top', align: 'start' },
+  { side: 'top', align: 'center' },
+  { side: 'top', align: 'end' },
+  { side: 'right', align: 'start' },
+  { side: 'right', align: 'center' },
+  { side: 'right', align: 'end' },
+  { side: 'bottom', align: 'start' },
+  { side: 'bottom', align: 'center' },
+  { side: 'bottom', align: 'end' },
+  { side: 'left', align: 'start' },
+  { side: 'left', align: 'center' },
+  { side: 'left', align: 'end' },
+  { side: 'inline-start', align: 'start' },
+  { side: 'inline-start', align: 'center' },
+  { side: 'inline-start', align: 'end' },
+  { side: 'inline-end', align: 'start' },
+  { side: 'inline-end', align: 'center' },
+  { side: 'inline-end', align: 'end' },
+] satisfies Array<Pick<PopoverContentProps, 'side' | 'align'>>
 
-const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('bottom')
+function PlacementsDemo() {
+  const [position, setPosition] = React.useState(POSITIONS[7]!)
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map((value) => (
+        {POSITIONS.map((value) => (
           <button
-            key={value}
+            key={`${value.side}-${value.align}`}
             type="button"
-            onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
-              placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
+            onClick={() => setPosition(value)}
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
+              position === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
-            {value}
+            {value.side} / {value.align}
           </button>
         ))}
       </div>
@@ -178,11 +236,10 @@ const PlacementsDemo = () => {
         <PopoverTrigger render={<button type="button" className={triggerButtonClassName} />}>
           Anchored trigger
         </PopoverTrigger>
-        <PopoverContent placement={placement}>
+        <PopoverContent side={position.side} align={position.align}>
           <div className="flex w-56 flex-col gap-1 p-3">
             <PopoverTitle className="text-sm font-semibold text-text-primary">
-              placement="
-              {placement}"
+              {`side="${position.side}" align="${position.align}"`}
             </PopoverTitle>
             <PopoverDescription className="text-xs text-text-secondary">
               Popover positions itself relative to the trigger using the selected placement.
@@ -201,7 +258,7 @@ export const Placements: Story = {
   render: () => <PlacementsDemo />,
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [open, setOpen] = React.useState(false)
 
   return (

@@ -2,34 +2,19 @@ import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createTool, createToolProvider } from '../../__tests__/factories'
 import ToolActionItem from '../action-item'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
 const mockTrackEvent = vi.mocked(trackEvent)
 
 describe('ToolActionItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
   it('should select tools with default params and track the selection', async () => {
@@ -45,7 +30,10 @@ describe('ToolActionItem', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Search Tool' }))
+    const toolButton = screen.getByRole('button', { name: 'Search Tool' })
+    expect(toolButton).toHaveAccessibleDescription('Search Tool description')
+
+    await user.click(toolButton)
 
     expect(onSelect).toHaveBeenCalledWith(
       BlockEnum.Tool,

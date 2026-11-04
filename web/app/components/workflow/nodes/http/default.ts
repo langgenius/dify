@@ -1,13 +1,13 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { BodyPayload, HttpNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AuthorizationType, BodyType, Method } from './types'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Utilities,
+  classification: BlockClassification.Utilities,
   sort: 1,
   type: BlockEnum.HttpRequest,
 })
@@ -39,7 +39,7 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       retry_interval: 100,
     },
   },
-  checkValid(payload: HttpNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: HttpNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     if (!errorMessages && !payload.url)

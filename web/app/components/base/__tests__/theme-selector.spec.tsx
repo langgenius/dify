@@ -1,100 +1,29 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ThemeSelector from '../theme-selector'
 
-// Mock next-themes with controllable state
-let mockTheme = 'system'
-const mockSetTheme = vi.fn()
+const setTheme = vi.fn()
+
 vi.mock('next-themes', () => ({
-  useTheme: () => ({
-    theme: mockTheme,
-    setTheme: mockSetTheme,
-  }),
+  useTheme: () => ({ theme: 'system', setTheme }),
 }))
 
 describe('ThemeSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTheme = 'system'
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ThemeSelector />)
-      expect(container).toBeInTheDocument()
-    })
+  it.each([
+    ['common.theme.light', 'light'],
+    ['common.theme.dark', 'dark'],
+    ['common.theme.auto', 'system'],
+  ])('selects %s', async (name, theme) => {
+    const user = userEvent.setup()
+    render(<ThemeSelector />)
 
-    it('should render the trigger button', () => {
-      render(<ThemeSelector />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'common.theme.theme' }))
+    await user.click(await screen.findByRole('menuitemradio', { name }))
 
-    it('should not show dropdown content when closed', () => {
-      render(<ThemeSelector />)
-      expect(screen.queryByText(/common\.theme\.light/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should show all theme options when dropdown is opened', () => {
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      expect(screen.getByText(/light/i)).toBeInTheDocument()
-      expect(screen.getByText(/dark/i)).toBeInTheDocument()
-      expect(screen.getByText(/auto/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call setTheme with light when light option is clicked', () => {
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText(/light/i))
-      expect(mockSetTheme).toHaveBeenCalledWith('light')
-    })
-
-    it('should call setTheme with dark when dark option is clicked', () => {
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText(/dark/i))
-      expect(mockSetTheme).toHaveBeenCalledWith('dark')
-    })
-
-    it('should call setTheme with system when system option is clicked', () => {
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText(/auto/i))
-      expect(mockSetTheme).toHaveBeenCalledWith('system')
-    })
-  })
-
-  describe('Theme-specific rendering', () => {
-    it('should show checkmark for the currently active light theme', () => {
-      mockTheme = 'light'
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      expect(screen.getByTestId('light-icon')).toBeInTheDocument()
-    })
-
-    it('should show checkmark for the currently active dark theme', () => {
-      mockTheme = 'dark'
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      expect(screen.getByTestId('dark-icon')).toBeInTheDocument()
-    })
-
-    it('should show checkmark for the currently active system theme', () => {
-      mockTheme = 'system'
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      expect(screen.getByTestId('system-icon')).toBeInTheDocument()
-    })
-
-    it('should not show checkmark on non-active themes', () => {
-      mockTheme = 'light'
-      render(<ThemeSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      expect(screen.queryByTestId('dark-icon')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('system-icon')).not.toBeInTheDocument()
-    })
+    expect(setTheme).toHaveBeenCalledWith(theme)
   })
 })

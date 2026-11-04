@@ -1,16 +1,17 @@
 'use client'
 
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 
 const THEMES = ['light', 'dark', 'system'] as const
 export type Theme = (typeof THEMES)[number]
@@ -20,65 +21,63 @@ const isTheme = (value: string): value is Theme => {
 }
 
 export default function ThemeSelector() {
-  const { t } = useTranslation()
+  const direction = useDirection()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
-
-  const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme)
-  }
-
-  const handleThemeValueChange = (value: string) => {
-    if (isTheme(value)) handleThemeChange(value)
-  }
+  const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 
   const getCurrentIcon = () => {
     switch (theme) {
       case 'light':
-        return <span className="i-ri-sun-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-sun-line size-4 text-text-tertiary" />
       case 'dark':
-        return <span className="i-ri-moon-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-moon-line size-4 text-text-tertiary" />
       default:
-        return <span className="i-ri-computer-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-computer-line size-4 text-text-tertiary" />
     }
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['theme.theme'], { ns: 'common' })}
-            className="h-8 w-8 p-[6px] data-popup-open:bg-state-base-hover"
-          />
+            size="lg"
+            className="data-popup-open:bg-state-base-hover"
+          >
+            {getCurrentIcon()}
+          </IconButton>
         }
-      >
-        {getCurrentIcon()}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={6} popupClassName="w-[144px]">
-        <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={handleThemeValueChange}>
-          <DropdownMenuRadioItem value="light" closeOnClick>
+      />
+      <MenuContent dir={direction} sideOffset={6} className="w-36">
+        <MenuRadioGroup<Theme>
+          value={currentTheme}
+          onValueChange={(nextTheme) => setTheme(nextTheme)}
+        >
+          <MenuRadioItem<Theme> value="light" closeOnClick>
             <span className="i-ri-sun-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.light'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="light-icon" />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark" closeOnClick>
+            <MenuRadioItemIndicator data-testid="light-icon" />
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="dark" closeOnClick>
             <span className="i-ri-moon-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.dark'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="dark-icon" />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system" closeOnClick>
+            <MenuRadioItemIndicator data-testid="dark-icon" />
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="system" closeOnClick>
             <span className="i-ri-computer-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.auto'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="system-icon" />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuRadioItemIndicator data-testid="system-icon" />
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }

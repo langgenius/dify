@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
 // ==================== Mock Setup ====================
@@ -10,6 +11,13 @@ import { AuthCategory, CredentialTypeEnum } from '../types'
 const mockGetPluginCredentialInfo = vi.fn()
 const mockIsPluginCredentialInfoLoading = vi.fn()
 const mockGetPluginOAuthClientSchema = vi.fn()
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialInfo: (url: string) => ({
@@ -32,25 +40,17 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
-}))
-
-const mockIsCurrentWorkspaceManager = vi.fn()
-
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -58,7 +58,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
+  const testQueryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -82,10 +82,17 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 
 // ==================== Tests ====================
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('AuthorizedInNode Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockIsPluginCredentialInfoLoading.mockReturnValue(false)
     mockGetPluginCredentialInfo.mockReturnValue({
       credentials: [createCredential({ is_default: true })],
@@ -97,15 +104,6 @@ describe('AuthorizedInNode Component', () => {
       is_oauth_custom_client_enabled: false,
       is_system_oauth_params_exists: false,
     })
-  })
-
-  it('should render with workspace default when no credentialId', async () => {
-    const AuthorizedInNode = (await import('../authorized-in-node')).default
-    const pluginPayload = createPluginPayload()
-    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
-      wrapper: createWrapper(),
-    })
-    expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
   it('should expose the workspace default credential id when requested', async () => {
@@ -121,6 +119,7 @@ describe('AuthorizedInNode Component', () => {
       { wrapper: createWrapper() },
     )
 
+    expect(screen.getByText('plugin.auth.workspaceDefault')).toBeInTheDocument()
     await waitFor(() => {
       expect(onDefaultCredentialChange).toHaveBeenCalledWith('test-credential-id')
     })
@@ -228,24 +227,21 @@ describe('AuthorizedInNode Component', () => {
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 
-  it('should call onAuthorizationItemClick when clicking', async () => {
+  it('should show unavailable when workspace default credential is missing', async () => {
     const AuthorizedInNode = (await import('../authorized-in-node')).default
-    const onAuthorizationItemClick = vi.fn()
+    mockGetPluginCredentialInfo.mockReturnValue({
+      credentials: [],
+      supported_credential_types: [CredentialTypeEnum.API_KEY],
+      allow_custom_token: true,
+    })
     const pluginPayload = createPluginPayload()
-    render(
-      <AuthorizedInNode
-        pluginPayload={pluginPayload}
-        onAuthorizationItemClick={onAuthorizationItemClick}
-      />,
-      { wrapper: createWrapper() },
-    )
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
 
-  it('should be memoized', async () => {
-    const AuthorizedInNodeModule = await import('../authorized-in-node')
-    expect(typeof AuthorizedInNodeModule.default).toBe('object')
+    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
+
+    const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.workspaceDefault')
+    expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 })

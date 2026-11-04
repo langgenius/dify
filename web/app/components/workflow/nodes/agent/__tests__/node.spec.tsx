@@ -1,250 +1,139 @@
-import type { ReactNode } from 'react'
+import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../types'
-import type useConfig from '../use-config'
-import type { StrategyParamItem } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import {
+  zAgentProviderResponse,
+  zAgentStrategyParameter,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType } from '../../tool/types'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import Node from '../node'
+import { createProvider, createStrategy } from './strategy-fixture'
 
-const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockModelBar = vi.hoisted(() => vi.fn())
-const mockToolIcon = vi.hoisted(() => vi.fn())
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
+// Plugin installation metadata is external; strategy resolution and node configuration stay real.
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
+  useCheckInstalled: () => ({ data: { plugins: [] } }),
 }))
 
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: string | { en_US?: string }) =>
-    typeof value === 'string' ? value : value.en_US || '',
-}))
-
-vi.mock('../components/model-bar', () => ({
-  ModelBar: (props: { provider?: string; model?: string; param: string }) => {
-    mockModelBar(props)
-    return (
-      <div>
-        {props.provider
-          ? `${props.param}:${props.provider}/${props.model}`
-          : `${props.param}:empty-model`}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../components/tool-icon', () => ({
-  ToolIcon: (props: { providerName: string }) => {
-    mockToolIcon(props)
-    return <div>{`tool:${props.providerName}`}</div>
-  },
-}))
-
-vi.mock('../../_base/components/group', () => ({
-  Group: ({ label, children }: { label: ReactNode; children: ReactNode }) => (
-    <div>
-      <div>{label}</div>
-      {children}
-    </div>
-  ),
-  GroupLabel: ({ className, children }: { className?: string; children: ReactNode }) => (
-    <div className={className}>{children}</div>
-  ),
-}))
-
-vi.mock('../../_base/components/setting-item', () => ({
-  SettingItem: ({
-    label,
-    status,
-    tooltip,
-    children,
-  }: {
-    label: ReactNode
-    status?: string
-    tooltip?: string
-    children?: ReactNode
-  }) => (
-    <div>
-      {`${label}:${status || 'normal'}:${tooltip || ''}`}
-      {children}
-    </div>
-  ),
-}))
-
-const createStrategyParam = (overrides: Partial<StrategyParamItem> = {}): StrategyParamItem => ({
-  name: 'requiredModel',
-  type: FormTypeEnum.modelSelector,
-  required: true,
-  label: { en_US: 'Required Model' } as StrategyParamItem['label'],
-  help: { en_US: 'Required model help' } as StrategyParamItem['help'],
-  placeholder: { en_US: 'Required model placeholder' } as StrategyParamItem['placeholder'],
-  scope: 'global',
-  default: null,
-  options: [],
-  template: { enabled: false },
-  auto_generate: { type: 'none' },
-  ...overrides,
-})
+const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
+  zAgentStrategyParameter.parse({
+    name: 'requiredModel',
+    type: FormTypeEnum.modelSelector,
+    required: true,
+    label: { en_US: 'Required Model' },
+    help: { en_US: 'Required model help' },
+    placeholder: { en_US: 'Required model placeholder' },
+    scope: 'global',
+    default: null,
+    options: [],
+    template: { enabled: false },
+    auto_generate: null,
+    ...overrides,
+  })
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
   output_schema: {},
+  tool_node_version: '2',
   agent_strategy_provider_name: 'provider/agent',
   agent_strategy_name: 'react',
   agent_strategy_label: 'React Agent',
   plugin_unique_identifier: 'provider/agent:1.0.0',
   agent_parameters: {
     optionalModel: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider: 'openai', model: 'gpt-4o' },
     },
     toolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: { provider_name: 'author/tool-a' },
     },
     multiToolParam: {
-      type: VarType.constant,
+      type: VarKindType.constant,
       value: [{ provider_name: 'author/tool-b' }, { provider_name: 'author/tool-c' }],
     },
   },
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  setInputs: vi.fn(),
-  handleVarListChange: vi.fn(),
-  handleAddVariable: vi.fn(),
-  currentStrategy: {
-    identity: {
-      author: 'provider',
-      name: 'react',
-      icon: 'icon',
-      label: { en_US: 'React Agent' } as StrategyParamItem['label'],
-      provider: 'provider/agent',
+function renderNode(
+  data: AgentNodeType,
+  parameters = [
+    createStrategyParam(),
+    createStrategyParam({ name: 'optionalModel', required: false }),
+    createStrategyParam({
+      name: 'multiToolParam',
+      type: FormTypeEnum.multiToolSelector,
+      required: false,
+    }),
+  ],
+) {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryKey({
+      input: { params: { provider_name: 'provider/agent' } },
+    }),
+    zAgentProviderResponse.parse(createProvider([createStrategy({ parameters })])),
+  )
+  return renderWorkflowFlowComponent(
+    <NuqsTestingAdapter>
+      <Node id="agent-node" data={data} />
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      nodes: [createNode({ id: 'agent-node', data })],
     },
-    parameters: [
-      createStrategyParam(),
-      createStrategyParam({
-        name: 'optionalModel',
-        required: false,
-      }),
-      createStrategyParam({
-        name: 'toolParam',
-        type: FormTypeEnum.toolSelector,
-        required: false,
-      }),
-      createStrategyParam({
-        name: 'multiToolParam',
-        type: FormTypeEnum.multiToolSelector,
-        required: false,
-      }),
-    ],
-    description: { en_US: 'agent description' } as StrategyParamItem['label'],
-    output_schema: {},
-    features: [],
-  },
-  formData: {},
-  onFormChange: vi.fn(),
-  currentStrategyStatus: {
-    plugin: { source: 'marketplace', installed: true },
-    isExistInPlugin: false,
-  },
-  strategyProvider: undefined,
-  pluginDetail: {
-    declaration: {
-      label: { en_US: 'Plugin Marketplace' } as never,
-    },
-  } as never,
-  availableVars: [],
-  availableNodesWithParent: [],
-  outputSchema: [],
-  handleMemoryChange: vi.fn(),
-  isChatMode: true,
-  ...overrides,
-})
+  )
+}
 
 describe('agent/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
-  })
-
   it('renders the not-set state when no strategy is configured', () => {
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        inputs: createData({
-          agent_strategy_name: undefined,
-          agent_strategy_label: undefined,
-          agent_parameters: {},
-        }),
-        currentStrategy: undefined,
+    renderNode(
+      createData({
+        agent_strategy_name: undefined,
+        agent_strategy_label: undefined,
+        agent_parameters: {},
       }),
     )
-
-    render(<Node id="agent-node" data={createData()} />)
-
-    expect(screen.getByText('workflow.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
-    expect(mockModelBar).not.toHaveBeenCalled()
-    expect(mockToolIcon).not.toHaveBeenCalled()
+    expect(screen.getByText('workflowAgent.nodes.agent.strategyNotSet')).toBeInTheDocument()
+    expect(screen.queryByText('workflowAgent.nodes.agent.model')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflowAgent.nodes.agent.toolbox')).not.toBeInTheDocument()
   })
 
-  it('renders strategy status, required and selected model bars, and tool icons', () => {
-    render(<Node id="agent-node" data={createData()} />)
-
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
-      'React Agent',
-    )
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
-      'Plugin Marketplace',
-    )
-    expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
-    expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
-    expect(screen.getByText('tool:author/tool-a')).toBeInTheDocument()
-    expect(screen.getByText('tool:author/tool-b')).toBeInTheDocument()
-    expect(screen.getByText('tool:author/tool-c')).toBeInTheDocument()
-    expect(mockModelBar).toHaveBeenCalledTimes(2)
-    expect(mockToolIcon).toHaveBeenCalledTimes(3)
+  it('renders required and selected models and the configured tools from the resolved strategy', () => {
+    renderNode(createData())
+    expect(screen.getByText('React Agent')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.toolbox')).toBeInTheDocument()
+    expect(screen.getAllByRole('img', { name: 'tool icon' })).toHaveLength(2)
   })
 
-  it('skips optional models and empty tool values when no configuration is provided', () => {
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        inputs: createData({
-          agent_parameters: {},
-        }),
-        currentStrategy: {
-          ...createConfigResult().currentStrategy!,
-          parameters: [
-            createStrategyParam({
-              name: 'optionalModel',
-              required: false,
-            }),
-            createStrategyParam({
-              name: 'toolParam',
-              type: FormTypeEnum.toolSelector,
-              required: false,
-            }),
-          ],
-        },
-        currentStrategyStatus: {
-          plugin: { source: 'marketplace', installed: true },
-          isExistInPlugin: true,
-        },
-      }),
-    )
-
-    render(<Node id="agent-node" data={createData()} />)
-
-    expect(mockModelBar).not.toHaveBeenCalled()
-    expect(mockToolIcon).not.toHaveBeenCalled()
-    expect(screen.queryByText('optionalModel:empty-model')).not.toBeInTheDocument()
+  it('omits unconfigured optional models and tools', () => {
+    renderNode(createData({ agent_parameters: {} }), [
+      createStrategyParam({ name: 'optionalModel', required: false }),
+    ])
+    expect(screen.getByText('React Agent')).toBeInTheDocument()
+    expect(screen.queryByText('workflowAgent.nodes.agent.model')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflowAgent.nodes.agent.toolbox')).not.toBeInTheDocument()
   })
 })

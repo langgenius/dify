@@ -1,17 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Vision } from '@/app/components/base/icons/src/vender/features'
-import { Infotip } from '@/app/components/base/infotip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -20,7 +19,10 @@ import { Resolution } from '@/types/app'
 import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
-  const { t } = useTranslation()
+  const resolutionLabelId = React.useId()
+
+  const { t } = useTranslation(['fileUpload'])
+  const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
@@ -67,43 +69,43 @@ const ConfigVision: FC = () => {
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <Vision className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-vision size-4 text-text-primary-on-surface"
+          />
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['vision.name'], { ns: 'appDebug' })}
-        </div>
-        <Infotip
-          aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['vision.description'], { ns: 'appDebug' })}
+        <h2 id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
+          {t(($) => $['vision.name'], { ns: 'fileUpload' })}
+        </h2>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
+            {t(($) => $['vision.description'], { ns: 'fileUpload' })}
+          </InfotipContent>
         </Infotip>
       </div>
       <div className="flex shrink-0 items-center">
         {readonly ? (
           <>
             <div className="mr-2 flex items-center gap-0.5">
-              <div className="system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+              <div id={resolutionLabelId} className="system-xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['vision.visionSettings.resolution'], { ns: 'fileUpload' })}
               </div>
-              <Infotip
-                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                  ns: 'appDebug',
-                })}
-                popupClassName="w-[180px]"
-              >
-                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                  .split('\n')
-                  .map((item) => (
-                    <div key={item}>{item}</div>
-                  ))}
+              <Infotip>
+                <InfotipTrigger aria-labelledby={resolutionLabelId} />
+                <InfotipContent
+                  aria-labelledby={resolutionLabelId}
+                  className="w-45 whitespace-pre-wrap"
+                >
+                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'fileUpload' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="flex items-center gap-1">
               <OptionCard
-                title={t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' })}
+                title={t(($) => $['vision.visionSettings.high'], { ns: 'fileUpload' })}
                 selected={file?.image?.detail === Resolution.high}
                 onSelect={noop}
                 className={cn(
@@ -113,7 +115,7 @@ const ConfigVision: FC = () => {
                 )}
               />
               <OptionCard
-                title={t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' })}
+                title={t(($) => $['vision.visionSettings.low'], { ns: 'fileUpload' })}
                 selected={file?.image?.detail === Resolution.low}
                 onSelect={noop}
                 className={cn(
@@ -128,7 +130,12 @@ const ConfigVision: FC = () => {
           <>
             <ParamConfig />
             <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
-            <Switch checked={isImageEnabled} onCheckedChange={handleChange} size="md" />
+            <Switch
+              aria-labelledby={titleId}
+              checked={isImageEnabled}
+              onCheckedChange={handleChange}
+              size="md"
+            />
           </>
         )}
       </div>

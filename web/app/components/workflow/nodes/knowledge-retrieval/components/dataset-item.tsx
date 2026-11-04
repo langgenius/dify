@@ -1,6 +1,7 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -8,15 +9,14 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -25,9 +25,9 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
 type Props = Readonly<{
-  payload: DataSet
+  payload: DatasetDetailWithPartialMembersResponse
   onRemove: () => void
-  onChange: (dataSet: DataSet) => void
+  onChange: (dataSet: DatasetDetailWithPartialMembersResponse) => void
   readonly?: boolean
   editable?: boolean
   settingsDrawerBackdropClassName?: string
@@ -48,20 +48,19 @@ const DatasetItem: FC<Props> = ({
   settingsModalHeight,
 }) => {
   const media = useBreakpoints()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const isMobile = media === MediaType.mobile
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
-  const [isShowSettingsModal, { setTrue: showSettingsModal, setFalse: hideSettingsModal }] =
-    useBoolean(false)
+  const settingsDrawerActionsRef = useRef<DrawerActions>(null)
 
   const handleSave = useCallback(
-    (newDataset: DataSet) => {
+    (newDataset: DatasetDetailWithPartialMembersResponse) => {
       onChange(newDataset)
-      hideSettingsModal()
+      settingsDrawerActionsRef.current?.close()
     },
-    [hideSettingsModal, onChange],
+    [onChange],
   )
 
   const handleRemove = useCallback(
@@ -88,39 +87,64 @@ const DatasetItem: FC<Props> = ({
       }`}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
-        <AppIcon
-          size="tiny"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="tiny" icon={iconInfo} />
         <div className="w-0 grow truncate system-sm-medium text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (
         <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {editable && (
-            <ActionButton
-              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-              onClick={(e) => {
-                e.stopPropagation()
-                showSettingsModal()
-              }}
-            >
-              <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-            </ActionButton>
+            <Drawer actionsRef={settingsDrawerActionsRef} modal swipeDirection="right">
+              <DrawerTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      aria-hidden
+                      className="i-ri-edit-line size-4 shrink-0 text-text-tertiary"
+                    />
+                  </IconButton>
+                }
+              />
+              <DrawerPortal>
+                <DrawerBackdrop
+                  forceRender={settingsDrawerBackdropForceRender}
+                  className={cn(
+                    !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
+                    settingsDrawerBackdropClassName,
+                  )}
+                />
+                <DrawerViewport>
+                  <DrawerPopup
+                    className={cn(
+                      'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl',
+                      settingsDrawerPopupClassName ??
+                        'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
+                    )}
+                  >
+                    <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
+                      <SettingsModal
+                        currentDataset={payload}
+                        height={settingsModalHeight}
+                        onCancel={() => settingsDrawerActionsRef.current?.close()}
+                        onSave={handleSave}
+                      />
+                    </DrawerContent>
+                  </DrawerPopup>
+                </DrawerViewport>
+              </DrawerPortal>
+            </Drawer>
           )}
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
-            state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
+            tone="destructive"
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine
-              className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`}
-            />
-          </ActionButton>
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          </IconButton>
         </div>
       )}
       {payload.is_multimodal && (
@@ -142,45 +166,6 @@ const DatasetItem: FC<Props> = ({
           className="shrink-0 group-hover/dataset-item:hidden"
           text={t(($) => $.externalTag, { ns: 'dataset' })}
         />
-      )}
-
-      {isShowSettingsModal && (
-        <Drawer
-          open={isShowSettingsModal}
-          modal
-          swipeDirection="right"
-          onOpenChange={(open) => {
-            if (!open) hideSettingsModal()
-          }}
-        >
-          <DrawerPortal>
-            <DrawerBackdrop
-              forceRender={settingsDrawerBackdropForceRender}
-              className={cn(
-                !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
-                settingsDrawerBackdropClassName,
-              )}
-            />
-            <DrawerViewport>
-              <DrawerPopup
-                className={cn(
-                  'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl',
-                  settingsDrawerPopupClassName ??
-                    'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
-                )}
-              >
-                <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
-                  <SettingsModal
-                    currentDataset={payload}
-                    height={settingsModalHeight}
-                    onCancel={hideSettingsModal}
-                    onSave={handleSave}
-                  />
-                </DrawerContent>
-              </DrawerPopup>
-            </DrawerViewport>
-          </DrawerPortal>
-        </Drawer>
       )}
     </div>
   )

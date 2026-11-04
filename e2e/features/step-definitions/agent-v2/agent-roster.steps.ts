@@ -1,8 +1,8 @@
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
+import { zPostAgentResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { createE2EResourceName } from '../../../support/naming'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 When('I create an Agent v2 test agent from the Agent Roster', async function (this: DifyWorld) {
   const page = this.getPage()
@@ -30,7 +30,7 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const createResponse = await createResponsePromise
   expect(createResponse.ok()).toBe(true)
 
-  const createdAgent = (await createResponse.json()) as AgentAppDetailWithSite
+  const createdAgent = zPostAgentResponse.parse(await createResponse.json())
   this.createdAgentIds.push(createdAgent.id)
   this.lastCreatedAgentName = createdAgent.name
   this.lastCreatedAgentRole = createdAgent.role ?? undefined

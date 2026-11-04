@@ -1,16 +1,17 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean } from 'ahooks'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import { ActionButton } from '@/app/components/base/action-button'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import { AppModeEnum } from '@/types/app'
-import { useHooksStore } from '../../../hooks-store'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 
 type Props = Readonly<{
   className?: string
@@ -28,28 +29,33 @@ const PromptGeneratorBtn: FC<Props> = ({
   editorId,
   currentPrompt,
 }) => {
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] =
-    useBoolean(false)
+  const { t } = useTranslation(['appDebug'])
+  const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
     (res: GenRes) => {
       onGenerated?.(res.modified)
-      showAutomaticFalse()
+      setShowAutomatic(false)
     },
-    [onGenerated, showAutomaticFalse],
+    [onGenerated],
   )
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
   return (
     <div className={cn(className)}>
-      <ActionButton className="hover:bg-[#155EFF]/8" onClick={showAutomaticTrue}>
-        <Generator className="size-4 text-primary-600" />
-      </ActionButton>
+      <IconButton
+        aria-label={t(($) => $['operation.automatic'], { ns: 'appDebug' })}
+        className="hover:bg-[#155EFF]/8"
+        onClick={() => setShowAutomatic(true)}
+      >
+        <span aria-hidden className="i-custom-vender-other-generator size-4 text-primary-600" />
+      </IconButton>
       {showAutomatic && (
         <GetAutomaticResModal
-          mode={AppModeEnum.CHAT}
+          modelMode="chat"
           isShow={showAutomatic}
-          onClose={showAutomaticFalse}
+          onClose={() => setShowAutomatic(false)}
           onFinished={handleAutomaticRes}
-          flowId={configsMap?.flowId || ''}
+          flowId={resourceId || ''}
           nodeId={nodeId}
           editorId={editorId}
           currentPrompt={currentPrompt}

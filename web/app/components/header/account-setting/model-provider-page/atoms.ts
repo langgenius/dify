@@ -25,8 +25,3 @@ export function useExpandModelProviderList() {
     [set],
   )
 }
-
-export function useResetModelProviderListExpanded() {
-  const set = useSetAtom(expandedAtom)
-  return useCallback(() => set({}), [set])
-}

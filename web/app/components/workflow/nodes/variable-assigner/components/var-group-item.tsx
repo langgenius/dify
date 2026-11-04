@@ -2,17 +2,15 @@
 import type { ChangeEvent, FC } from 'react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Folder } from '@/app/components/base/icons/src/vender/line/files'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import VarList from '../components/var-list'
@@ -46,7 +44,7 @@ const VarGroupItem: FC<Props> = ({
   onRemove,
   availableVars,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
 
   const handleAddVariable = useCallback(
     (value: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
@@ -67,12 +65,7 @@ const VarGroupItem: FC<Props> = ({
     (newList: ValueSelector[], changedItem?: ValueSelector) => {
       if (changedItem) {
         const chosenVariables = payload.variables
-        if (
-          chosenVariables.some(
-            (item) => item.join('.') === (changedItem as ValueSelector).join('.'),
-          )
-        )
-          return
+        if (chosenVariables.some((item) => item.join('.') === changedItem.join('.'))) return
       }
 
       const newPayload = produce(payload, (draft) => {
@@ -92,8 +85,7 @@ const VarGroupItem: FC<Props> = ({
     [payload.output_type],
   )
 
-  const [isEditGroupName, { setTrue: setEditGroupName, setFalse: setNotEditGroupName }] =
-    useBoolean(false)
+  const [isEditGroupName, setIsEditGroupName] = useState(false)
 
   const handleGroupNameChange = useCallback(
     (e: ChangeEvent<any>) => {
@@ -118,17 +110,20 @@ const VarGroupItem: FC<Props> = ({
         groupEnabled ? (
           <div className="flex items-center">
             <div className="flex items-center normal-case!">
-              <Folder className="mr-0.5 size-3.5" />
+              <span aria-hidden className="mr-0.5 i-custom-vender-line-files-folder size-3.5" />
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
-                  onClick={setEditGroupName}
+                  onClick={() => {
+                    if (!readOnly) setIsEditGroupName(true)
+                  }}
                 >
                   {payload.group_name}
                 </div>
               ) : (
                 <input
                   type="text"
+                  disabled={readOnly}
                   className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
                   // style={{
                   //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
@@ -137,7 +132,7 @@ const VarGroupItem: FC<Props> = ({
                   autoFocus
                   value={payload.group_name}
                   onChange={handleGroupNameChange}
-                  onBlur={setNotEditGroupName}
+                  onBlur={() => setIsEditGroupName(false)}
                   maxLength={30}
                 />
               )}
@@ -158,7 +153,7 @@ const VarGroupItem: FC<Props> = ({
       operations={
         <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
               {payload.output_type}
             </div>
           )}

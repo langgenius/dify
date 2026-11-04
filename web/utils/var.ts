@@ -9,7 +9,6 @@ import {
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   getMaxVarNameLength,
-  MARKETPLACE_URL_PREFIX,
   MAX_VAR_KEY_LENGTH,
   VAR_ITEM_TEMPLATE,
   VAR_ITEM_TEMPLATE_IN_WORKFLOW,
@@ -36,7 +35,10 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
+export const getNewVarInWorkflow = (
+  key: string,
+  type: InputVarType = InputVarType.textInput,
+): InputVar => {
   const { ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
@@ -142,44 +144,6 @@ export const getVars = (value: string) => {
 // Set the value of basePath
 // example: /dify
 export const basePath = env.NEXT_PUBLIC_BASE_PATH
-
-type MarketplaceUrlOptions = {
-  source?: string
-}
-
-const getUrlOrigin = (url?: string) => {
-  if (!url) return undefined
-
-  try {
-    return new URL(url).origin
-  } catch {
-    return undefined
-  }
-}
-
-const marketplaceSource = getUrlOrigin(env.NEXT_PUBLIC_WEB_PREFIX)
-
-export function getMarketplaceUrl(
-  path: string,
-  params?: Record<string, string | undefined>,
-  options?: MarketplaceUrlOptions,
-) {
-  const searchParams = new URLSearchParams()
-  const source = getUrlOrigin(options?.source) ?? marketplaceSource
-  if (source) searchParams.set('source', source)
-
-  if (params) {
-    Object.keys(params).forEach((key) => {
-      const value = params[key]
-      if (value !== undefined && value !== null) searchParams.append(key, value)
-    })
-  }
-
-  const queryString = searchParams.toString()
-  return queryString
-    ? `${MARKETPLACE_URL_PREFIX}${path}?${queryString}`
-    : `${MARKETPLACE_URL_PREFIX}${path}`
-}
 
 export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {
   const start = input.selectionStart

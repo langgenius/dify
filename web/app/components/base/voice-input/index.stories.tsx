@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { fn } from 'storybook/test'
 
 // Mock component since VoiceInput requires browser APIs and service dependencies
 const VoiceInputMock = ({ onConverted, onCancel }: any) => {
@@ -26,13 +27,13 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
   return (
     <div className="relative h-16 w-full overflow-hidden rounded-xl border-2 border-primary-600">
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-3.5 pr-[6.5px] pl-[14.5px]">
         {/* Waveform visualization placeholder */}
-        <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-[3px] px-2">
+        <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-0.75 px-2">
           {Array.from({ length: 40 }).map((_, i) => (
             <div
               key={i}
-              className="w-[2px] rounded-t bg-blue-200"
+              className="w-0.5 rounded-t bg-blue-200"
               style={{
                 height: `${Math.random() * 100}%`,
                 animation: state === 'recording' ? 'pulse 1s infinite' : 'none',
@@ -71,7 +72,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
         )}
 
         <div
-          className={`w-[45px] pl-1 text-xs font-medium ${duration > 500 ? 'text-red-600' : 'text-gray-700'}`}
+          className={`w-11.25 pl-1 text-xs font-medium ${duration > 500 ? 'text-red-600' : 'text-gray-700'}`}
         >
           {`0${minutes}:${seconds >= 10 ? seconds : `0${seconds}`}`}
         </div>
@@ -93,6 +94,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
+  args: { onConverted: fn(), onCancel: fn() },
 } satisfies Meta<typeof VoiceInputMock>
 
 export default meta
@@ -148,12 +150,9 @@ export const Default: Story = {
 
 // Recording state
 export const RecordingState: Story = {
-  render: () => (
+  render: (args) => (
     <div style={{ width: '600px' }}>
-      <VoiceInputMock
-        onConverted={() => console.log('Converted')}
-        onCancel={() => console.log('Cancelled')}
-      />
+      <VoiceInputMock {...args} />
       <div className="mt-3 text-xs text-gray-500">
         Recording in progress with live waveform visualization
       </div>
@@ -356,6 +355,7 @@ export const NoteTaking: Story = {
 
 // Real-world example - Form with voice
 const FormWithVoiceDemo = () => {
+  const id = useId()
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -367,8 +367,10 @@ const FormWithVoiceDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Create Product</h3>
 
       <div className="space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Product Name</label>
+        <fieldset>
+          <legend id={`${id}-name`} className="mb-2 block text-sm font-medium text-gray-700">
+            Product Name
+          </legend>
           {activeField === 'name' ? (
             <VoiceInputMock
               onConverted={(text: string) => {
@@ -380,6 +382,7 @@ const FormWithVoiceDemo = () => {
           ) : (
             <div className="flex gap-2">
               <input
+                aria-labelledby={`${id}-name`}
                 type="text"
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder="Enter product name..."
@@ -394,10 +397,12 @@ const FormWithVoiceDemo = () => {
               </button>
             </div>
           )}
-        </div>
+        </fieldset>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Description</label>
+        <fieldset>
+          <legend id={`${id}-description`} className="mb-2 block text-sm font-medium text-gray-700">
+            Description
+          </legend>
           {activeField === 'description' ? (
             <VoiceInputMock
               onConverted={(text: string) => {
@@ -409,6 +414,7 @@ const FormWithVoiceDemo = () => {
           ) : (
             <div className="space-y-2">
               <textarea
+                aria-labelledby={`${id}-description`}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 rows={4}
                 placeholder="Enter product description..."
@@ -423,7 +429,7 @@ const FormWithVoiceDemo = () => {
               </button>
             </div>
           )}
-        </div>
+        </fieldset>
 
         <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
           Create Product

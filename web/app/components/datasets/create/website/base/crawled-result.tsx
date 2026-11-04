@@ -27,7 +27,7 @@ const CrawledResult: FC<Props> = ({
   onPreview,
   usedTime,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const isCheckAll = checkedList.length === list.length
 
@@ -67,7 +67,7 @@ const CrawledResult: FC<Props> = ({
         'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3',
       )}
     >
-      <div className="flex h-[34px] items-center justify-between px-4">
+      <div className="flex h-8.5 items-center justify-between px-4">
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll}
@@ -76,7 +76,7 @@ const CrawledResult: FC<Props> = ({
               ? t(($) => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' })
               : t(($) => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })
           }
-          labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
+          labelClassName="leading-[16px] font-medium text-text-secondary"
         />
         <div className="text-xs text-text-tertiary">
           {t(($) => $[`${I18N_PREFIX}.scrapTimeInfo`], {

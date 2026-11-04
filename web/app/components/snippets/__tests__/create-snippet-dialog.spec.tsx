@@ -1,45 +1,10 @@
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { expectLoadingButton } from '@/test/button'
 import { CreateSnippetDialog } from '../create-snippet-dialog'
-
-let capturedKeyPressHandler: (() => void) | undefined
-let capturedHotkey: string | undefined
-let capturedHotkeyOptions:
-  | {
-      enabled?: boolean
-      ignoreInputs?: boolean
-      preventDefault?: boolean
-      stopPropagation?: boolean
-      target?: React.RefObject<HTMLElement | null>
-    }
-  | undefined
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      handler: () => void,
-      options?: {
-        enabled?: boolean
-        ignoreInputs?: boolean
-        preventDefault?: boolean
-        stopPropagation?: boolean
-        target?: React.RefObject<HTMLElement | null>
-      },
-    ) => {
-      capturedHotkey = hotkey
-      capturedKeyPressHandler = () => {
-        if (options?.enabled !== false) handler()
-      }
-      capturedHotkeyOptions = options
-    },
-  }
-})
 
 const selectedGraph: SnippetCanvasData = {
   nodes: [],
@@ -47,7 +12,7 @@ const selectedGraph: SnippetCanvasData = {
   viewport: { x: 12, y: 24, zoom: 0.8 },
 }
 
-const inputFields: SnippetInputField[] = [
+const inputFields: InputVar[] = [
   {
     label: 'topic',
     variable: 'topic',
@@ -59,9 +24,6 @@ const inputFields: SnippetInputField[] = [
 describe('CreateSnippetDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedKeyPressHandler = undefined
-    capturedHotkey = undefined
-    capturedHotkeyOptions = undefined
   })
 
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
@@ -79,10 +41,13 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    await user.type(
-      screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
-      '  Support snippet  ',
-    )
+    const nameInput = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+
+    await waitFor(() => {
+      expect(nameInput).toHaveFocus()
+    })
+
+    await user.type(nameInput, '  Support snippet  ')
     await user.type(
       screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder'),
       '  Helps agents  ',
@@ -102,7 +67,7 @@ describe('CreateSnippetDialog', () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
 
-    render(
+    const { rerender } = render(
       <CreateSnippetDialog
         isOpen
         onClose={onClose}
@@ -122,6 +87,23 @@ describe('CreateSnippetDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+    rerender(
+      <CreateSnippetDialog
+        isOpen={false}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        initialValue={{ name: 'Draft', description: 'Existing description' }}
+      />,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <CreateSnippetDialog
+        isOpen
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        initialValue={{ name: 'Draft', description: 'Existing description' }}
+      />,
+    )
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toHaveValue('')
@@ -163,69 +145,46 @@ describe('CreateSnippetDialog', () => {
     })
   })
 
-  it('should submit from keyboard shortcuts only while open and not submitting', async () => {
+  it('handles the first shortcut after opening and reopening its portal without a draft change', async () => {
     const onConfirm = vi.fn()
-    const { rerender } = render(
-      <CreateSnippetDialog
-        isOpen={false}
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    capturedKeyPressHandler?.()
-
-    expect(onConfirm).not.toHaveBeenCalled()
-
-    rerender(
-      <CreateSnippetDialog
-        isOpen
-        isSubmitting
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    capturedKeyPressHandler?.()
-
-    expect(onConfirm).not.toHaveBeenCalled()
-
-    rerender(
-      <CreateSnippetDialog
-        isOpen
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    capturedKeyPressHandler?.()
-
-    expect(onConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Keyboard snippet',
-      }),
-    )
-    expect(capturedHotkeyOptions).toMatchObject({
-      enabled: true,
-      ignoreInputs: false,
-      preventDefault: false,
-      stopPropagation: false,
-    })
-    expect(capturedHotkeyOptions?.target?.current).toBe(screen.getByRole('dialog'))
-    expect(capturedHotkey).toBe('Mod+Enter')
+    const props = {
+      initialValue: { name: 'Portal snippet' },
+      onClose: vi.fn(),
+      onConfirm,
+    }
+    const { rerender } = render(<CreateSnippetDialog {...props} isOpen={false} />)
+    for (let opened = 1; opened <= 2; opened++) {
+      rerender(<CreateSnippetDialog {...props} isOpen />)
+      const input = await screen.findByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+      const repeat = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        repeat: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      fireEvent(input, repeat)
+      expect(repeat.defaultPrevented).toBe(true)
+      expect(onConfirm).toHaveBeenCalledTimes(opened - 1)
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+      rerender(<CreateSnippetDialog {...props} isOpen={false} />)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+      expect(onConfirm).toHaveBeenCalledTimes(opened)
+    }
   })
 
-  it('should disable form controls while submitting', () => {
+  it('blocks form controls and the submission shortcut while submitting', () => {
+    const onConfirm = vi.fn()
     render(
       <CreateSnippetDialog
         isOpen
         isSubmitting
         initialValue={{ name: 'Submitting snippet' }}
         onClose={vi.fn()}
-        onConfirm={vi.fn()}
+        onConfirm={onConfirm}
       />,
     )
 
@@ -233,5 +192,7 @@ describe('CreateSnippetDialog', () => {
     expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     expectLoadingButton(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter', ctrlKey: true })
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })

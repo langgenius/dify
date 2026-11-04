@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -6,11 +7,11 @@ import pytest
 from core.app.apps.workflow.active_workflow_tasks import reset_active_workflow_tasks
 from core.app.apps.workflow.command_channels import CelerySignalCommandChannel
 from extensions import workflow_warm_shutdown
-from graphon.graph_engine.entities.commands import AbortCommand
+from graphon.engine.command import AbortCommand
 
 
 @pytest.fixture(autouse=True)
-def reset_warm_shutdown_state() -> None:
+def reset_warm_shutdown_state() -> Generator[None]:
     reset_active_workflow_tasks()
     workflow_warm_shutdown._celery_warm_shutdown_started.clear()
     yield

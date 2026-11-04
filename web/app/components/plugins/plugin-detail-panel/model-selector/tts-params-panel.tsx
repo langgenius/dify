@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
 type Props = Readonly<{
   currentModel: any
@@ -22,7 +22,7 @@ type Props = Readonly<{
 const supportedLanguages = languages.filter((item) => item.supported)
 
 const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const voiceList = useMemo<Array<{ label: string; value: string }>>(() => {
     if (!currentModel) return []
     return currentModel.model_properties.voices.map((item: { mode: string; name: string }) => ({
@@ -51,12 +51,11 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
         >
           <SelectTrigger
             className="w-full"
-            data-testid="tts-language-select-trigger"
             aria-label={t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent popupClassName="w-[354px]">
+          <SelectContent className="w-88.5">
             {supportedLanguages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -79,12 +78,11 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
         >
           <SelectTrigger
             className="w-full"
-            data-testid="tts-voice-select-trigger"
             aria-label={t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent popupClassName="w-[354px]">
+          <SelectContent className="w-88.5">
             {voiceList.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.label}</SelectItemText>

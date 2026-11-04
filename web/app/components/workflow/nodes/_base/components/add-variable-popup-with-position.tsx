@@ -1,7 +1,12 @@
 import type { ValueSelector, Var, VarType } from '../../../types'
 import { useClickAway } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef } from 'react'
-import { useIsChatMode, useNodeDataUpdate, useWorkflow, useWorkflowVariables } from '../../../hooks'
+import { useStore as useReactFlowStore } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
+import { useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import { useStore } from '../../../store'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import { filterVar } from '../../variable-assigner/utils'
@@ -13,11 +18,12 @@ type AddVariablePopupWithPositionProps = {
 }
 const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWithPositionProps) => {
   const ref = useRef<HTMLDivElement>(null)
+  const canvasElement = useReactFlowStore((state) => state.domNode)
   const showAssignVariablePopup = useStore((s) => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore((s) => s.setShowAssignVariablePopup)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleAddVariableInAddVariablePopupWithPosition } = useVariableAssigner()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
 
@@ -47,8 +53,8 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
         } as any,
       ],
       hideEnv: true,
-      hideChatVar: !isChatMode,
-      isChatMode,
+      hideChatVar: !isChatflow,
+      isChatflow,
       filterVar: filterVar(outputType as VarType),
     })
       .map((node) => ({
@@ -62,7 +68,7 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
     showAssignVariablePopup,
     getNodeAvailableVars,
     getBeforeNodesInSameBranch,
-    isChatMode,
+    isChatflow,
     outputType,
   ])
 
@@ -111,7 +117,11 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
       }}
       ref={ref}
     >
-      <AddVariablePopup availableVars={availableVars} onSelect={handleAddVariable} />
+      <AddVariablePopup
+        availableVars={availableVars}
+        keyboardTarget={canvasElement}
+        onSelect={handleAddVariable}
+      />
     </div>
   )
 }

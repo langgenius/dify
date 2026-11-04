@@ -5,10 +5,13 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -19,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
-// import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.http'
 
@@ -54,7 +56,7 @@ const KeyValueItem: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowIntegrations'])
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
 
   const handleChange = useCallback(
@@ -80,7 +82,9 @@ const KeyValueItem: FC<Props> = ({
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleValueContainerClick = useCallback(() => {
@@ -91,10 +95,7 @@ const KeyValueItem: FC<Props> = ({
     // group class name is for hover row show remove button
     <div className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}>
       <div
-        className={cn(
-          'shrink-0 border-r border-divider-regular',
-          isSupportFile ? 'w-[140px]' : 'w-1/2',
-        )}
+        className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-35' : 'w-1/2')}
       >
         {!keyNotSupportVar ? (
           <InputItem
@@ -103,7 +104,7 @@ const KeyValueItem: FC<Props> = ({
             value={payload.key}
             onChange={handleChange('key')}
             hasRemove={false}
-            placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })!}
+            placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflowIntegrations' })!}
             readOnly={readonly}
             insertVarTipToLeft={insertVarTipToLeft}
           />
@@ -116,28 +117,34 @@ const KeyValueItem: FC<Props> = ({
         )}
       </div>
       {isSupportFile && (
-        <div className="w-[70px] shrink-0 border-r border-divider-regular">
+        <div className="w-17.5 shrink-0 border-r border-divider-regular">
           <Select
             value={payload.type ?? 'text'}
             onValueChange={(value) => value && handleChange('type')(value)}
             readOnly={readonly}
           >
             <SelectTrigger
-              aria-label={t(($) => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
+              aria-label={t(($) => $[`${i18nPrefix}.type`], { ns: 'workflowIntegrations' })}
               className="h-7 rounded-none bg-transparent text-text-primary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
-              <SelectItem value="text">
-                <SelectItemText>text</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              <SelectItem value="file">
-                <SelectItemText>file</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectPositioner>
+                <SelectPopup className="w-20">
+                  <SelectList className="min-w-0">
+                    <SelectItem value="text">
+                      <SelectItemText>text</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value="file">
+                      <SelectItemText>file</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  </SelectList>
+                </SelectPopup>
+              </SelectPositioner>
+            </SelectPortal>
           </Select>
         </div>
       )}
@@ -160,7 +167,7 @@ const KeyValueItem: FC<Props> = ({
             onChange={handleChange('value')}
             hasRemove={!readonly && canRemove}
             onRemove={onRemove}
-            placeholder={t(($) => $[`${i18nPrefix}.value`], { ns: 'workflow' })!}
+            placeholder={t(($) => $[`${i18nPrefix}.value`], { ns: 'workflowIntegrations' })!}
             readOnly={readonly}
             isSupportFile={isSupportFile}
             insertVarTipToLeft={insertVarTipToLeft}

@@ -1,210 +1,53 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { DataType } from '../../types'
 import { CreateMetadataModal } from '../create-metadata-modal'
 
-describe('CreateMetadataModal', () => {
-  const mockTrigger = <button>Open Modal</button>
+function Harness({ onSave = vi.fn(), hasBack = false }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <CreateMetadataModal
+      open={open}
+      setOpen={setOpen}
+      hasBack={hasBack}
+      trigger={<button>Add metadata</button>}
+      onSave={onSave}
+    />
+  )
+}
 
-  describe('Rendering', () => {
-    it('should render trigger when closed', () => {
-      render(
-        <CreateMetadataModal
-          open={false}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    it('should render content when open', () => {
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(
-        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render trigger element', () => {
-      render(
-        <CreateMetadataModal
-          open={false}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should pass hasBack to CreateContent', () => {
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-          hasBack
-        />,
-      )
-      expect(
-        screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should pass hasBack=undefined when not provided', () => {
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-      expect(
-        screen.queryByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should accept custom popupLeft', () => {
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-          popupLeft={50}
-        />,
-      )
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should toggle open state when trigger is clicked', () => {
-      const setOpen = vi.fn()
-      render(
-        <CreateMetadataModal
-          open={false}
-          setOpen={setOpen}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Open Modal' }))
-
-      expect(setOpen).toHaveBeenCalledWith(true, expect.any(Object))
-    })
-
-    it('should call onSave when save button is clicked', () => {
-      const handleSave = vi.fn()
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={handleSave}
-        />,
-      )
-
-      fireEvent.change(
-        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
-        {
-          target: { value: 'test' },
-        },
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(handleSave).toHaveBeenCalledWith({
-        type: DataType.string,
-        name: 'test',
-      })
-    })
-
-    it('should close modal when close button is clicked', () => {
-      const setOpen = vi.fn()
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={setOpen}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-      expect(setOpen).toHaveBeenCalledWith(false)
-    })
-
-    it('should close modal when back button is clicked', () => {
-      const setOpen = vi.fn()
-      render(
-        <CreateMetadataModal
-          open={true}
-          setOpen={setOpen}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-          hasBack
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }))
-
-      expect(setOpen).toHaveBeenCalledWith(false)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle switching open state', () => {
-      const { rerender } = render(
-        <CreateMetadataModal
-          open={false}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-      rerender(
-        <CreateMetadataModal
-          open={true}
-          setOpen={vi.fn()}
-          trigger={mockTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-    })
-
-    it('should handle different trigger elements', () => {
-      const customTrigger = <button>Custom</button>
-      render(
-        <CreateMetadataModal
-          open={false}
-          setOpen={vi.fn()}
-          trigger={customTrigger}
-          onSave={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: 'Custom' })).toBeInTheDocument()
-    })
-  })
+it('saves the selected metadata type and entered name from the actual creation form', async () => {
+  const user = userEvent.setup()
+  const onSave = vi.fn()
+  render(<Harness onSave={onSave} />)
+  await user.click(screen.getByRole('button', { name: 'Add metadata' }))
+  await user.click(await screen.findByRole('radio', { name: 'Number' }))
+  await user.type(
+    screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+    'page_count',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(onSave).toHaveBeenCalledWith({ type: DataType.number, name: 'page_count' })
 })
+
+it.each([false, true])(
+  'dismisses an edited draft using hasBack=%s without saving',
+  async (hasBack) => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<Harness onSave={onSave} hasBack={hasBack} />)
+    await user.click(screen.getByRole('button', { name: 'Add metadata' }))
+    await user.type(
+      await screen.findByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      'draft',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: hasBack ? 'dataset.metadata.createMetadata.back' : 'common.operation.close',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onSave).not.toHaveBeenCalled()
+  },
+)

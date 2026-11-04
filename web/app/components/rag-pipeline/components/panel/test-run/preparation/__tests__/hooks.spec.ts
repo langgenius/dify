@@ -1,8 +1,16 @@
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { renderHook } from '@testing-library/react'
-import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
+import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import { act, renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { createDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { DataSourceContext } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { CrawlStep } from '@/models/datasets'
+import { OnlineDriveFileType } from '@/models/pipeline'
 import {
   useDatasourceOptions,
   useOnlineDocument,
@@ -11,230 +19,168 @@ import {
   useWebsiteCrawl,
 } from '../hooks'
 
-const mockNodes: Array<{ id: string; data: Partial<DataSourceNodeType> & { type: string } }> = []
-vi.mock('reactflow', () => ({
-  useNodes: () => mockNodes,
-}))
+it('moves between datasource selection and document processing', () => {
+  const { result } = renderHook(() => useTestRunSteps())
 
-const mockDataSourceStoreGetState = vi.fn()
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/store', () => ({
-  useDataSourceStore: () => ({
-    getState: mockDataSourceStoreGetState,
-  }),
-}))
+  expect(result.current.currentStep).toBe(1)
+  expect(result.current.steps.map((step) => step.value)).toEqual([
+    'dataSource',
+    'documentProcessing',
+  ])
 
-vi.mock('@/app/components/workflow/types', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/workflow/types')>(
-    '@/app/components/workflow/types',
-  )
-  return {
-    ...actual,
-    BlockEnum: {
-      ...actual.BlockEnum,
-      DataSource: 'data-source',
-    },
+  act(() => result.current.handleNextStep())
+  expect(result.current.currentStep).toBe(2)
+
+  act(() => result.current.handleBackStep())
+  expect(result.current.currentStep).toBe(1)
+})
+
+it('keeps datasource options in sync with live canvas changes', () => {
+  const source = createNode({
+    id: 'source-1',
+    data: { type: BlockEnum.DataSource, title: 'Notion source' },
+  })
+  const code = createNode({ id: 'code-1', data: { type: BlockEnum.Code, title: 'Code' } })
+  const anotherSource = createNode({
+    id: 'source-2',
+    data: { type: BlockEnum.DataSource, title: 'Drive source' },
+  })
+  const { result, setCanvas } = renderWorkflowCanvasHook(() => useDatasourceOptions(), {
+    nodes: [source, code],
+  })
+
+  expect(result.current).toEqual([{ label: 'Notion source', value: 'source-1', data: source.data }])
+
+  act(() => setCanvas({ nodes: [code, anotherSource] }))
+  expect(result.current).toEqual([
+    { label: 'Drive source', value: 'source-2', data: anotherSource.data },
+  ])
+
+  act(() => setCanvas({ nodes: [code] }))
+  expect(result.current).toEqual([])
+})
+
+const document: NotionPage = {
+  workspace_id: 'workspace-1',
+  page_id: 'page-1',
+  page_name: 'Architecture',
+  parent_id: 'root',
+  type: 'page',
+  page_icon: null,
+  is_bound: false,
+}
+const documentsData: DataSourceNotionWorkspace[] = [
+  {
+    workspace_id: 'workspace-1',
+    workspace_name: 'Engineering',
+    workspace_icon: null,
+    pages: [document],
+  },
+]
+const websitePage: CrawlResultItem = {
+  title: 'Guide',
+  source_url: 'https://example.com/guide',
+  markdown: '# Guide',
+  description: 'A product guide',
+}
+const crawlResult: CrawlResult = { data: [websitePage], time_consuming: 1 }
+const driveFile: OnlineDriveFile = {
+  id: 'file-1',
+  name: 'Guide.pdf',
+  type: OnlineDriveFileType.file,
+  size: 1024,
+}
+
+function createDataSourceWrapper(store: ReturnType<typeof createDataSourceStore>) {
+  return function DataSourceWrapper({ children }: { children: ReactNode }) {
+    return createElement(DataSourceContext, { value: store }, children)
   }
-})
+}
 
-vi.mock('../../types', () => ({
-  TestRunStep: {
-    dataSource: 'dataSource',
-    documentProcessing: 'documentProcessing',
-  },
-}))
-
-vi.mock('@/models/datasets', () => ({
-  CrawlStep: {
-    init: 'init',
-  },
-}))
-
-describe('useTestRunSteps', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should initialize with step 1', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.currentStep).toBe(1)
-  })
-
-  it('should return 2 steps (dataSource and documentProcessing)', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.steps).toHaveLength(2)
-    expect(result.current.steps[0]!.value).toBe('dataSource')
-    expect(result.current.steps[1]!.value).toBe('documentProcessing')
-  })
-
-  it('should increment step on handleNextStep', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    act(() => {
-      result.current.handleNextStep()
+describe('datasource preparation cleanup', () => {
+  it('clears online document state without disturbing unrelated datasource state', () => {
+    const store = createDataSourceStore()
+    store.setState({
+      currentCredentialId: 'credential-1',
+      documentsData,
+      searchValue: 'architecture',
+      selectedPagesId: new Set(['page-1']),
+      onlineDocuments: [document],
+      currentDocument: document,
+    })
+    store.getState().previewOnlineDocumentRef.current = document
+    const { result } = renderHook(() => useOnlineDocument(), {
+      wrapper: createDataSourceWrapper(store),
     })
 
-    expect(result.current.currentStep).toBe(2)
+    act(() => result.current.clearOnlineDocumentData())
+
+    expect(store.getState()).toMatchObject({
+      currentCredentialId: 'credential-1',
+      documentsData: [],
+      searchValue: '',
+      onlineDocuments: [],
+      currentDocument: undefined,
+    })
+    expect(store.getState().selectedPagesId).toEqual(new Set())
+    expect(store.getState().previewOnlineDocumentRef.current).toBeUndefined()
   })
 
-  it('should decrement step on handleBackStep', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    act(() => {
-      result.current.handleNextStep()
+  it('clears website crawl state without disturbing unrelated datasource state', () => {
+    const store = createDataSourceStore()
+    store.setState({
+      currentCredentialId: 'credential-1',
+      step: CrawlStep.finished,
+      crawlResult,
+      websitePages: [websitePage],
+      currentWebsite: websitePage,
+      previewIndex: 0,
     })
-    expect(result.current.currentStep).toBe(2)
-
-    act(() => {
-      result.current.handleBackStep()
+    store.getState().previewWebsitePageRef.current = websitePage
+    const { result } = renderHook(() => useWebsiteCrawl(), {
+      wrapper: createDataSourceWrapper(store),
     })
-    expect(result.current.currentStep).toBe(1)
+
+    act(() => result.current.clearWebsiteCrawlData())
+
+    expect(store.getState()).toMatchObject({
+      currentCredentialId: 'credential-1',
+      step: CrawlStep.init,
+      crawlResult: undefined,
+      websitePages: [],
+      currentWebsite: undefined,
+      previewIndex: -1,
+    })
+    expect(store.getState().previewWebsitePageRef.current).toBeUndefined()
   })
 
-  it('should have translated step labels', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.steps[0]!.label).toBeDefined()
-    expect(typeof result.current.steps[0]!.label).toBe('string')
-  })
-})
-
-describe('useDatasourceOptions', () => {
-  beforeEach(() => {
-    mockNodes.length = 0
-    vi.clearAllMocks()
-  })
-
-  it('should return empty options when no DataSource nodes', () => {
-    mockNodes.push({ id: 'n1', data: { type: BlockEnum.LLM, title: 'LLM' } })
-
-    const { result } = renderHook(() => useDatasourceOptions())
-
-    expect(result.current).toEqual([])
-  })
-
-  it('should return options from DataSource nodes', () => {
-    mockNodes.push(
-      { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source A' } },
-      { id: 'ds-2', data: { type: BlockEnum.DataSource, title: 'Source B' } },
-    )
-
-    const { result } = renderHook(() => useDatasourceOptions())
-
-    expect(result.current).toHaveLength(2)
-    expect(result.current[0]).toEqual({
-      label: 'Source A',
-      value: 'ds-1',
-      data: expect.objectContaining({ type: 'data-source' }),
+  it('clears online drive selection without disturbing unrelated datasource state', () => {
+    const store = createDataSourceStore()
+    store.setState({
+      currentCredentialId: 'credential-1',
+      breadcrumbs: ['Root', 'Guides'],
+      onlineDriveFileList: [driveFile],
+      bucket: 'documents',
+      prefix: ['guides'],
+      keywords: 'guide',
+      selectedFileIds: ['file-1'],
     })
-    expect(result.current[1]).toEqual({
-      label: 'Source B',
-      value: 'ds-2',
-      data: expect.objectContaining({ type: 'data-source' }),
-    })
-  })
-
-  it('should filter out non-DataSource nodes', () => {
-    mockNodes.push(
-      { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source' } },
-      { id: 'llm-1', data: { type: BlockEnum.LLM, title: 'LLM' } },
-      { id: 'inset-e-1', data: { type: BlockEnum.End, title: 'End' } },
-    )
-
-    const { result } = renderHook(() => useDatasourceOptions())
-
-    expect(result.current).toHaveLength(1)
-    expect(result.current[0]!.value).toBe('ds-1')
-  })
-})
-
-describe('useOnlineDocument', () => {
-  it('should clear all online document data', () => {
-    const mockSetDocumentsData = vi.fn()
-    const mockSetSearchValue = vi.fn()
-    const mockSetSelectedPagesId = vi.fn()
-    const mockSetOnlineDocuments = vi.fn()
-    const mockSetCurrentDocument = vi.fn()
-
-    mockDataSourceStoreGetState.mockReturnValue({
-      setDocumentsData: mockSetDocumentsData,
-      setSearchValue: mockSetSearchValue,
-      setSelectedPagesId: mockSetSelectedPagesId,
-      setOnlineDocuments: mockSetOnlineDocuments,
-      setCurrentDocument: mockSetCurrentDocument,
+    store.getState().previewOnlineDriveFileRef.current = driveFile
+    const { result } = renderHook(() => useOnlineDrive(), {
+      wrapper: createDataSourceWrapper(store),
     })
 
-    const { result } = renderHook(() => useOnlineDocument())
+    act(() => result.current.clearOnlineDriveData())
 
-    act(() => {
-      result.current.clearOnlineDocumentData()
+    expect(store.getState()).toMatchObject({
+      currentCredentialId: 'credential-1',
+      breadcrumbs: ['Root', 'Guides'],
+      onlineDriveFileList: [],
+      bucket: '',
+      prefix: [],
+      keywords: '',
+      selectedFileIds: [],
     })
-
-    expect(mockSetDocumentsData).toHaveBeenCalledWith([])
-    expect(mockSetSearchValue).toHaveBeenCalledWith('')
-    expect(mockSetSelectedPagesId).toHaveBeenCalledWith(new Set())
-    expect(mockSetOnlineDocuments).toHaveBeenCalledWith([])
-    expect(mockSetCurrentDocument).toHaveBeenCalledWith(undefined)
-  })
-})
-
-describe('useWebsiteCrawl', () => {
-  it('should clear all website crawl data', () => {
-    const mockSetStep = vi.fn()
-    const mockSetCrawlResult = vi.fn()
-    const mockSetWebsitePages = vi.fn()
-    const mockSetPreviewIndex = vi.fn()
-    const mockSetCurrentWebsite = vi.fn()
-
-    mockDataSourceStoreGetState.mockReturnValue({
-      setStep: mockSetStep,
-      setCrawlResult: mockSetCrawlResult,
-      setWebsitePages: mockSetWebsitePages,
-      setPreviewIndex: mockSetPreviewIndex,
-      setCurrentWebsite: mockSetCurrentWebsite,
-    })
-
-    const { result } = renderHook(() => useWebsiteCrawl())
-
-    act(() => {
-      result.current.clearWebsiteCrawlData()
-    })
-
-    expect(mockSetStep).toHaveBeenCalledWith('init')
-    expect(mockSetCrawlResult).toHaveBeenCalledWith(undefined)
-    expect(mockSetCurrentWebsite).toHaveBeenCalledWith(undefined)
-    expect(mockSetWebsitePages).toHaveBeenCalledWith([])
-    expect(mockSetPreviewIndex).toHaveBeenCalledWith(-1)
-  })
-})
-
-describe('useOnlineDrive', () => {
-  it('should clear all online drive data', () => {
-    const mockSetOnlineDriveFileList = vi.fn()
-    const mockSetBucket = vi.fn()
-    const mockSetPrefix = vi.fn()
-    const mockSetKeywords = vi.fn()
-    const mockSetSelectedFileIds = vi.fn()
-
-    mockDataSourceStoreGetState.mockReturnValue({
-      setOnlineDriveFileList: mockSetOnlineDriveFileList,
-      setBucket: mockSetBucket,
-      setPrefix: mockSetPrefix,
-      setKeywords: mockSetKeywords,
-      setSelectedFileIds: mockSetSelectedFileIds,
-    })
-
-    const { result } = renderHook(() => useOnlineDrive())
-
-    act(() => {
-      result.current.clearOnlineDriveData()
-    })
-
-    expect(mockSetOnlineDriveFileList).toHaveBeenCalledWith([])
-    expect(mockSetBucket).toHaveBeenCalledWith('')
-    expect(mockSetPrefix).toHaveBeenCalledWith([])
-    expect(mockSetKeywords).toHaveBeenCalledWith('')
-    expect(mockSetSelectedFileIds).toHaveBeenCalledWith([])
+    expect(store.getState().previewOnlineDriveFileRef.current).toBeUndefined()
   })
 })

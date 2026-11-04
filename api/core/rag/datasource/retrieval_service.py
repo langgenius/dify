@@ -1,13 +1,11 @@
 import concurrent.futures
-import functools
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
-from opentelemetry import context as otel_context
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
@@ -26,7 +24,7 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_database import db
-from extensions.otel import trace_span
+from extensions.otel import propagate_context, trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
@@ -37,7 +35,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from services.external_knowledge_service import ExternalDatasetService
+from services.knowledge.external.service import ExternalDatasetService
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -92,20 +90,6 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 logger = logging.getLogger(__name__)
 
 
-def _propagate_otel_context[**P, R](func: Callable[P, R]) -> Callable[P, R]:
-    captured_context = otel_context.get_current()
-
-    @functools.wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        token = otel_context.attach(captured_context)
-        try:
-            return func(*args, **kwargs)
-        finally:
-            otel_context.detach(token)
-
-    return wrapper
-
-
 class RetrievalService:
     # Cache precompiled regular expressions to avoid repeated compilation
     @classmethod
@@ -139,7 +123,7 @@ class RetrievalService:
             if query:
                 futures.append(
                     executor.submit(
-                        _propagate_otel_context(retrieval_service._retrieve),
+                        propagate_context(retrieval_service._retrieve),
                         flask_app=current_app._get_current_object(),  # type: ignore
                         retrieval_method=retrieval_method,
                         dataset=dataset,
@@ -159,7 +143,7 @@ class RetrievalService:
                 for attachment_id in attachment_ids:
                     futures.append(
                         executor.submit(
-                            _propagate_otel_context(retrieval_service._retrieve),
+                            propagate_context(retrieval_service._retrieve),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             retrieval_method=retrieval_method,
                             dataset=dataset,
@@ -502,7 +486,14 @@ class RetrievalService:
                 for doc in session.scalars(
                     select(DatasetDocument)
                     .where(DatasetDocument.id.in_(document_ids))
-                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                    .options(
+                        load_only(
+                            DatasetDocument.id,
+                            DatasetDocument.tenant_id,
+                            DatasetDocument.doc_form,
+                            DatasetDocument.dataset_id,
+                        )
+                    )
                 ).all()
             }
 
@@ -575,7 +566,14 @@ class RetrievalService:
             doc_segment_map: dict[str, list[str]] = {}
             segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
 
-            attachments = cls.get_segment_attachment_infos(image_doc_ids, session)
+            dataset_refs = tuple(
+                {(document.tenant_id, document.dataset_id) for document in valid_dataset_documents.values()}
+            )
+            attachments = cls.get_segment_attachment_infos(
+                image_doc_ids,
+                dataset_refs=dataset_refs,
+                session=session,
+            )
 
             for attachment in attachments:
                 segment_ids.append(attachment["segment_id"])
@@ -605,7 +603,7 @@ class RetrievalService:
 
             if index_node_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.index_node_id.in_(index_node_ids),
                 )
@@ -616,7 +614,7 @@ class RetrievalService:
 
             if segment_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(segment_ids),
                 )
@@ -629,7 +627,7 @@ class RetrievalService:
             if summary_segment_ids:
                 summary_segment_ids_list = list(summary_segment_ids)
                 summary_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(summary_segment_ids_list),
                 )
@@ -673,10 +671,7 @@ class RetrievalService:
                             child_chunk_details: list[ChildChunkDetail] = []
                             for child_chunk in child_chunks:
                                 child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
-                                if child_document:
-                                    child_score = child_document.metadata.get("score", 0.0)
-                                else:
-                                    child_score = 0.0
+                                child_score = child_document.metadata.get("score", 0.0) if child_document else 0.0
                                 child_chunk_detail: ChildChunkDetail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
@@ -820,7 +815,7 @@ class RetrievalService:
                 if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
                     futures.append(
                         executor.submit(
-                            _propagate_otel_context(self.keyword_search),
+                            propagate_context(self.keyword_search),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
@@ -834,7 +829,7 @@ class RetrievalService:
                     if query:
                         futures.append(
                             executor.submit(
-                                _propagate_otel_context(self.embedding_search),
+                                propagate_context(self.embedding_search),
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=query,
@@ -851,7 +846,7 @@ class RetrievalService:
                     if attachment_id:
                         futures.append(
                             executor.submit(
-                                _propagate_otel_context(self.embedding_search),
+                                propagate_context(self.embedding_search),
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=attachment_id,
@@ -868,7 +863,7 @@ class RetrievalService:
                 if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
                     futures.append(
                         executor.submit(
-                            _propagate_otel_context(self.full_text_index_search),
+                            propagate_context(self.full_text_index_search),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
@@ -934,11 +929,18 @@ class RetrievalService:
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
     ) -> SegmentAttachmentResult | None:
-        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == attachment_id).limit(1))
+        """Resolve an attachment only through its tenant and dataset ownership chain."""
+        upload_file = session.scalar(
+            select(UploadFile).where(UploadFile.id == attachment_id, UploadFile.tenant_id == tenant_id).limit(1)
+        )
         if upload_file:
             attachment_binding = session.scalar(
                 select(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
+                .where(
+                    SegmentAttachmentBinding.attachment_id == upload_file.id,
+                    SegmentAttachmentBinding.tenant_id == tenant_id,
+                    SegmentAttachmentBinding.dataset_id == dataset_id,
+                )
                 .limit(1)
             )
             if attachment_binding:
@@ -956,15 +958,30 @@ class RetrievalService:
 
     @classmethod
     def get_segment_attachment_infos(
-        cls, attachment_ids: list[str], session: Session
+        cls,
+        attachment_ids: list[str],
+        *,
+        dataset_refs: Sequence[tuple[str, str]],
+        session: Session,
     ) -> list[SegmentAttachmentInfoResult]:
+        if not attachment_ids or not dataset_refs:
+            return []
         attachment_infos: list[SegmentAttachmentInfoResult] = []
         granted_upload_file_ids: list[str] = []
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
+        tenant_ids = tuple({tenant_id for tenant_id, _ in dataset_refs})
+        upload_files = session.scalars(
+            select(UploadFile).where(
+                UploadFile.id.in_(attachment_ids),
+                UploadFile.tenant_id.in_(tenant_ids),
+            )
+        ).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
             attachment_bindings = session.scalars(
-                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
+                select(SegmentAttachmentBinding).where(
+                    SegmentAttachmentBinding.attachment_id.in_(upload_file_ids),
+                    tuple_(SegmentAttachmentBinding.tenant_id, SegmentAttachmentBinding.dataset_id).in_(dataset_refs),
+                )
             ).all()
             attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
 

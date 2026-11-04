@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { adminCredentials } from '../../../fixtures/auth'
-import { e2eBrowser } from '../../../test-env'
+import { adminCredentials } from '../../../fixtures/auth.ts'
+import { e2eBrowser } from '../../../test-env.ts'
 
 const getAccountMenuTrigger = (world: DifyWorld) =>
   world.getPage().getByRole('button', { name: 'Account' })
@@ -72,6 +72,7 @@ When('I open and close the create app menu using the keyboard', async function (
   const page = this.getPage()
   const trigger = getCreateAppMenuTrigger(this)
 
+  await expect(page.getByRole('heading', { name: 'Build your first App' })).toBeVisible()
   await trigger.press('Enter')
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await page.keyboard.press('Escape')

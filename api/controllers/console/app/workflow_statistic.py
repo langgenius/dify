@@ -1,27 +1,29 @@
-from flask import abort, jsonify, request
+from datetime import datetime
+from http import HTTPStatus
+from uuid import UUID
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import sessionmaker
 
+from controllers.common.errors import InvalidArgumentError
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_user,
+    model_validate,
 )
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
-from libs.login import login_required
-from models.account import Account
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App, AppMode
-from repositories.factory import DifyAPIRepositoryFactory
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from libs.login import current_account_with_tenant
+from machinery.context import RequestContext
+from models.model import AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 
 
 class WorkflowStatisticQuery(BaseModel):
@@ -82,177 +84,151 @@ register_response_schema_models(
 )
 
 
+def _resolve_statistic_time_range(
+    req_data: WorkflowStatisticQuery,
+) -> tuple[datetime | None, datetime | None, str]:
+    timezone = current_account_with_tenant().account.timezone
+    assert timezone is not None
+
+    try:
+        start_date, end_date = parse_time_range(req_data.start, req_data.end, timezone)
+    except ValueError as error:
+        raise InvalidArgumentError(str(error)) from error
+
+    return start_date, end_date, timezone
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
 class WorkflowDailyRunsStatistic(Resource):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-
     @console_ns.doc("get_workflow_daily_runs_statistic")
     @console_ns.doc(description="Get workflow daily runs statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Daily runs statistics retrieved successfully",
         console_ns.models[WorkflowDailyRunsStatisticResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
-    @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
-
-        assert account.timezone is not None
-
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
+    )
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        response_data = self._workflow_run_repo.get_daily_runs_statistics(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            app = application_services().apps.console.get_reference(request_context, str(app_id))
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        start_date, end_date, timezone = _resolve_statistic_time_range(req_data)
+        response_data = application_services().workflow_statistics.get_daily_runs(
+            request_context,
+            app_id=app.id,
             start_date=start_date,
             end_date=end_date,
-            timezone=account.timezone,
+            timezone=timezone,
         )
 
-        return jsonify({"data": response_data})
+        return dump_response(WorkflowDailyRunsStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-terminals")
 class WorkflowDailyTerminalsStatistic(Resource):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-
     @console_ns.doc("get_workflow_daily_terminals_statistic")
     @console_ns.doc(description="Get workflow daily terminals statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Daily terminals statistics retrieved successfully",
         console_ns.models[WorkflowDailyTerminalsStatisticResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
-    @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
-
-        assert account.timezone is not None
-
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
+    )
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        response_data = self._workflow_run_repo.get_daily_terminals_statistics(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            app = application_services().apps.console.get_reference(request_context, str(app_id))
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        start_date, end_date, timezone = _resolve_statistic_time_range(req_data)
+        response_data = application_services().workflow_statistics.get_daily_terminals(
+            request_context,
+            app_id=app.id,
             start_date=start_date,
             end_date=end_date,
-            timezone=account.timezone,
+            timezone=timezone,
         )
 
-        return jsonify({"data": response_data})
+        return dump_response(WorkflowDailyTerminalsStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/token-costs")
 class WorkflowDailyTokenCostStatistic(Resource):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-
     @console_ns.doc("get_workflow_daily_token_cost_statistic")
     @console_ns.doc(description="Get workflow daily token cost statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Daily token cost statistics retrieved successfully",
         console_ns.models[WorkflowDailyTokenCostStatisticResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
-    @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
-
-        assert account.timezone is not None
-
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
+    )
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        response_data = self._workflow_run_repo.get_daily_token_cost_statistics(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            app = application_services().apps.console.get_reference(request_context, str(app_id))
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        start_date, end_date, timezone = _resolve_statistic_time_range(req_data)
+        response_data = application_services().workflow_statistics.get_daily_token_costs(
+            request_context,
+            app_id=app.id,
             start_date=start_date,
             end_date=end_date,
-            timezone=account.timezone,
+            timezone=timezone,
         )
 
-        return jsonify({"data": response_data})
+        return dump_response(WorkflowDailyTokenCostStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/average-app-interactions")
 class WorkflowAverageAppInteractionStatistic(Resource):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-
     @console_ns.doc("get_workflow_average_app_interaction_statistic")
     @console_ns.doc(description="Get workflow average app interaction statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Average app interaction statistics retrieved successfully",
         console_ns.models[WorkflowAverageAppInteractionStatisticResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, account: Account, app_model: App):
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
-
-        assert account.timezone is not None
-
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
+    )
+    @model_validate(WorkflowStatisticQuery)
+    def get(self, req_data: WorkflowStatisticQuery, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
         try:
-            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        response_data = self._workflow_run_repo.get_average_app_interaction_statistics(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            app = application_services().apps.console.get_reference(request_context, str(app_id))
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        supported_modes = (AppMode.WORKFLOW,)
+        if app.mode not in supported_modes:
+            mode_values = {mode.value for mode in supported_modes}
+            raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+        start_date, end_date, timezone = _resolve_statistic_time_range(req_data)
+        response_data = application_services().workflow_statistics.get_average_app_interactions(
+            request_context,
+            app_id=app.id,
             start_date=start_date,
             end_date=end_date,
-            timezone=account.timezone,
+            timezone=timezone,
         )
 
-        return jsonify({"data": response_data})
+        return dump_response(WorkflowAverageAppInteractionStatisticResponse, {"data": response_data})

@@ -4,6 +4,7 @@ import type { InputValueTypes, Task } from '../../../share/text-generation/types
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -11,9 +12,8 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
@@ -33,7 +33,7 @@ type Props = Readonly<{
 }>
 
 const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'share', 'common'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -99,7 +99,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     ;(async () => {
       if (!appData || !appParams) return
       const { site: siteInfo, custom_config } = appData
-      setSiteInfo(siteInfo as SiteInfo)
+      setSiteInfo(siteInfo)
       setCustomConfig(custom_config)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams
@@ -109,7 +109,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         transfer_methods:
           file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
         // oxlint-disable-next-line typescript/no-explicit-any
       } as any)
@@ -159,11 +159,13 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
       <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
         {isCompleted && !isHideTryNotice && (
-          <Alert
-            className="mb-3 shrink-0"
-            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
-            onHide={hideTryNotice}
-          />
+          <Alert type="info" className="mb-3 shrink-0">
+            <AlertTitle>{t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}</AlertTitle>
+            <AlertClose
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={hideTryNotice}
+            />
+          </Alert>
         )}
         {renderRes()}
       </div>
@@ -173,7 +175,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   if (!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -192,7 +194,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       <div
         className={cn(
           'relative flex h-full shrink-0 flex-col',
-          isPC && 'w-[600px] max-w-[50%]',
+          isPC && 'w-150 max-w-[50%]',
           'rounded-l-2xl bg-components-panel-bg',
         )}
       >
@@ -200,11 +202,9 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
               size={isPC ? 'large' : 'small'}
-              iconType={siteInfo.icon_type}
-              icon={siteInfo.icon}
-              background={siteInfo.icon_background || appDefaultIconBackground}
-              imageUrl={siteInfo.icon_url}
+              icon={siteInfo}
             />
             <div className="grow truncate system-md-semibold text-text-secondary">
               {siteInfo.title}
@@ -215,7 +215,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
               <div
                 ref={handleDescRef}
                 className={cn(
-                  'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                  'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                   !descExpanded && 'line-clamp-3',
                   descExpanded && 'max-h-32 overflow-y-auto',
                 )}
@@ -278,7 +278,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
-                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
+                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
             )}
             onClick={() => {
               if (isShowResultPanel) hideResultPanel()

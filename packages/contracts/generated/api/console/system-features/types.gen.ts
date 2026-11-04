@@ -5,7 +5,9 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -16,18 +18,33 @@ export type SystemFeatureModel = {
   enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
+  enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type LicenseModel = {
+  expired_at: string
+  license_expiry_notice_enabled: boolean
+  seats: LicenseLimitationModel
+  status: LicenseStatus
+  workspaces: LicenseLimitationModel
 }
 
 export type BrandingModel = {
@@ -38,11 +55,10 @@ export type BrandingModel = {
   workspace_logo: string
 }
 
-export type LicenseModel = {
-  expired_at: string
-  seats: LicenseLimitationModel
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
+export type LicenseStatusModel = {
   status: LicenseStatus
-  workspaces: LicenseLimitationModel
 }
 
 export type PluginInstallationPermissionModel = {
@@ -50,13 +66,12 @@ export type PluginInstallationPermissionModel = {
   restrict_to_marketplace_only: boolean
 }
 
-export type PluginManagerModel = {
-  enabled: boolean
-}
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
@@ -77,7 +92,7 @@ export type PluginInstallationScope =
   | 'official_only'
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
 }
 
 export type GetSystemFeaturesData = {
@@ -87,8 +102,35 @@ export type GetSystemFeaturesData = {
   url: '/system-features'
 }
 
+export type GetSystemFeaturesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
+
 export type GetSystemFeaturesResponses = {
   200: SystemFeatureModel
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]
+
+export type GetSystemFeaturesLicenseData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/system-features/license'
+}
+
+export type GetSystemFeaturesLicenseErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesLicenseError =
+  GetSystemFeaturesLicenseErrors[keyof GetSystemFeaturesLicenseErrors]
+
+export type GetSystemFeaturesLicenseResponses = {
+  200: LicenseModel
+}
+
+export type GetSystemFeaturesLicenseResponse =
+  GetSystemFeaturesLicenseResponses[keyof GetSystemFeaturesLicenseResponses]

@@ -79,38 +79,27 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @core @skill-fixture
-  Scenario: Applying a Build draft updates supported configuration sections
+  @core @external-model @stable-model @skill-fixture
+  Scenario: Applying a Build draft updates configuration without duplicating an existing Skill
     Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
     And a basic configured Agent v2 test agent has been created via API
-    And an Agent v2 Build draft adds the supported E2E files, skills, and env
+    And an Agent v2 Build draft adds supported E2E files and env while retaining the existing Skill
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
     And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And I should see one e2e-summary-skill Skill in the Skills section
     And the normal Agent v2 draft should still use the normal E2E prompt
-    When I apply the Agent v2 Build draft via API
+    And the Agent v2 draft should include one e2e-summary-skill Skill
+    When I apply the Agent v2 Build draft
     Then the Agent v2 draft should include the supported Build draft config
+    And the Agent v2 draft should include one e2e-summary-skill Skill
     When I refresh the current page
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And I should see the small Agent v2 file in the Files section
-    And I should see the e2e-summary-skill Skill in the Skills section
-    And I should see the supported E2E environment variable in Advanced Settings
-    And the Agent v2 Build draft should no longer be active
-
-  @core @skill-fixture
-  Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
-    Given I am signed in as the default E2E admin
-    And a basic configured Agent v2 test agent has been created via API
-    And an Agent v2 Build draft includes the existing e2e-summary-skill Skill
-    When I open the Agent v2 configure page
-    Then I should see the Agent v2 Build draft pending changes
     And I should see one e2e-summary-skill Skill in the Skills section
     And the Agent v2 draft should include one e2e-summary-skill Skill
-    When I apply the Agent v2 Build draft via API
-    Then the Agent v2 draft should include one e2e-summary-skill Skill
-    When I refresh the current page
-    Then I should see one e2e-summary-skill Skill in the Skills section
-    And the Agent v2 draft should include one e2e-summary-skill Skill
+    And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
   @core

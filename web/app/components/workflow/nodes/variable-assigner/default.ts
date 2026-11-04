@@ -1,13 +1,13 @@
 import type { SelectorParam, TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { VariableAssignerNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { VarType } from '../../types'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Transform,
+  classification: BlockClassification.Transform,
   sort: 3,
   type: BlockEnum.VariableAggregator,
 })
@@ -24,7 +24,7 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     output_type: VarType.any,
     variables: [],
   },
-  checkValid(payload: VariableAssignerNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: VariableAssignerNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { variables, advanced_settings } = payload
     const { group_enabled = false, groups = [] } = advanced_settings || {}

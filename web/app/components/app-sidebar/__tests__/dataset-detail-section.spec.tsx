@@ -1,84 +1,59 @@
-import type { DataSet, RelatedAppResponse } from '@/models/datasets'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  RelatedAppListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockDataset: DataSet | undefined
-let mockRelatedApps: RelatedAppResponse | undefined
+let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
+let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [] as string[],
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
-  renderWithSystemFeatures(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const input = { params: { dataset_id: 'dataset-1' } }
+  queryClient.setQueryData(consoleQuery.datasets.byDatasetId.get.queryKey({ input }), mockDataset)
+  queryClient.setQueryData(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryKey({ input }),
+    mockRelatedApps,
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
   })
+}
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => null,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
-  useDatasetRelatedApps: () => ({ data: mockRelatedApps }),
-}))
 
 vi.mock('../dataset-info', () => ({
-  default: ({ expand }: { expand: boolean }) => (
-    <div data-testid="dataset-info" data-expand={expand} />
-  ),
-}))
-
-vi.mock('../nav-link', () => ({
-  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) => {
-    if (disabled) return <button disabled>{name}</button>
-
-    return <a href={href}>{name}</a>
-  },
+  default: () => <div>dataset info</div>,
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
-  default: ({ expand, documentCount }: { expand: boolean; documentCount?: number }) => (
-    <div data-testid="extra-info" data-expand={expand} data-document-count={documentCount} />
-  ),
+  default: () => <div>dataset extra info</div>,
 }))
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Camera Technical Spec',
@@ -108,7 +83,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     enable_api: true,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetDetailSection', () => {
   beforeEach(() => {
@@ -122,24 +97,14 @@ describe('DatasetDetailSection', () => {
     }
   })
 
-  it('should pin dataset stats and API access to the bottom of the expanded sidebar', () => {
-    render(<DatasetDetailSection expand />)
-
-    const extraInfo = screen.getByTestId('extra-info')
-
-    expect(extraInfo).toHaveAttribute('data-expand', 'true')
-    expect(extraInfo).toHaveAttribute('data-document-count', '120')
-    expect(extraInfo.parentElement).toHaveClass('mt-auto', 'shrink-0')
-  })
-
-  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+  it('hides dataset statistics without edit permission', () => {
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.Readonly],
     })
 
     render(<DatasetDetailSection expand />)
 
-    expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset extra info')).not.toBeInTheDocument()
   })
 
   it('should render resource access navigation when dataset access config permission is granted', () => {
@@ -149,17 +114,16 @@ describe('DatasetDetailSection', () => {
 
     render(<DatasetDetailSection expand />)
 
-    expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute(
-      'href',
-      '/datasets/dataset-1/access-config',
-    )
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
+    ).toHaveAttribute('href', '/datasets/dataset-1/access-config')
   })
 
   it('should hide resource access navigation when dataset access config permission is missing', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 
@@ -172,7 +136,7 @@ describe('DatasetDetailSection', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 

@@ -1,5 +1,6 @@
 import type { TriggerWithProvider } from '../../block-selector/types'
 import type { CommonNodeType, ToolWithProvider } from '../../types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import {
@@ -72,7 +73,7 @@ describe('plugin install check', () => {
 
   describe('matchDataSource', () => {
     const dataSources = [
-      createTool({
+      createDatasourceProvider({
         provider: 'knowledge-provider',
         plugin_id: 'knowledge-plugin',
         plugin_unique_identifier: 'knowledge-plugin@1.0.0',
@@ -95,6 +96,46 @@ describe('plugin install check', () => {
       expect(matchDataSource(dataSources, { provider_name: 'knowledge-provider' })).toEqual(
         dataSources[0],
       )
+    })
+
+    it('keeps plugin identity authoritative when another plugin has the same provider name', () => {
+      const fork = createDatasourceProvider({
+        provider: 'notion',
+        plugin_id: 'acme/notion',
+        plugin_unique_identifier: 'acme/notion:1.0.0',
+        is_authorized: false,
+      })
+      const official = createDatasourceProvider({
+        provider: 'notion',
+        plugin_id: 'langgenius/notion',
+        plugin_unique_identifier: 'langgenius/notion:2.0.0',
+        is_authorized: true,
+      })
+      const savedNode = {
+        plugin_id: official.plugin_id,
+        plugin_unique_identifier: official.plugin_unique_identifier,
+        provider_name: 'notion',
+      }
+      expect(matchDataSource([fork, official], savedNode)).toBe(official)
+      expect(
+        matchDataSource([fork, official], {
+          ...savedNode,
+          plugin_unique_identifier: 'langgenius/notion:1.0.0',
+        }),
+      ).toBe(official)
+      expect(matchDataSource([fork], savedNode)).toBeUndefined()
+      expect(
+        matchDataSource([fork], {
+          plugin_unique_identifier: official.plugin_unique_identifier,
+          provider_name: 'notion',
+        }),
+      ).toBeUndefined()
+      expect(
+        isNodePluginMissing(
+          { ...savedNode, type: BlockEnum.DataSource, title: 'Notion', desc: '' },
+          { dataSourceList: [fork] },
+        ),
+      ).toBe(true)
     })
   })
 
@@ -170,7 +211,7 @@ describe('plugin install check', () => {
         plugin_unique_identifier: 'missing-data-source@1.0.0',
       } as CommonNodeType
 
-      expect(isNodePluginMissing(node, { dataSourceList: [createTool()] })).toBe(true)
+      expect(isNodePluginMissing(node, { dataSourceList: [createDatasourceProvider()] })).toBe(true)
     })
 
     it('should keep data source nodes installable when the list has not loaded yet', () => {

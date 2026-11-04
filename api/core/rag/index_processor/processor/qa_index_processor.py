@@ -1,4 +1,4 @@
-"""Paragraph index processor."""
+"""Question-and-answer index processor."""
 
 import logging
 import re
@@ -17,6 +17,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -28,7 +29,7 @@ from libs import helper
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 raise ValueError("The CSV file is empty.")
 
         except Exception as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
         return text_docs
 
     @override
@@ -179,10 +180,10 @@ class QAIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
+                    SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         vector = Vector(dataset, session=session)
         if node_ids:
@@ -205,9 +206,15 @@ class QAIndexProcessor(BaseIndexProcessor):
             doc = Document(page_content=qa_chunk.question, metadata=metadata)
             documents.append(doc)
         if documents:
+            token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
-            doc_store.add_documents(docs=documents, save_child=False, session=session)
+            doc_store.add_documents(
+                session=session,
+                docs=documents,
+                token_counts=token_counts,
+                save_child=False,
+            )
             session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset, session=session)

@@ -1,19 +1,15 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mocks = vi.hoisted(() => ({
   basePath: '',
-  isCloudEdition: false,
 }))
 
 vi.mock('@/config', () => ({
   API_PREFIX: 'http://localhost:5001/console/api',
   CSRF_COOKIE_NAME: () => 'csrf_token',
   CSRF_HEADER_NAME: 'X-CSRF-Token',
-  get IS_CLOUD_EDITION() {
-    return mocks.isCloudEdition
-  },
 }))
 
 vi.mock('server-only', () => ({}))
@@ -28,23 +24,8 @@ vi.mock('@/utils/var', () => ({
   },
 }))
 
-const getSetCookieHeaders = (headers: Headers) => {
-  const getSetCookie = Reflect.get(headers, 'getSetCookie')
-
-  if (typeof getSetCookie === 'function') {
-    const values: unknown = getSetCookie.call(headers)
-    return Array.isArray(values) ? values : []
-  }
-
-  const setCookie = headers.get('set-cookie')
-  return setCookie ? [setCookie] : []
-}
-
 const createRequest = (url: string, cookie?: string) =>
-  ({
-    url,
-    headers: new Headers(cookie ? { cookie } : undefined),
-  }) as Request
+  new Request(url, { headers: cookie ? { cookie } : undefined })
 
 describe('auth refresh route', () => {
   beforeEach(() => {
@@ -52,21 +33,14 @@ describe('auth refresh route', () => {
     vi.resetModules()
     vi.unstubAllGlobals()
     mocks.basePath = ''
-    mocks.isCloudEdition = false
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('should refresh cookies and redirect back to the requested path', async () => {
     const headers = new Headers()
-    Object.defineProperty(headers, 'getSetCookie', {
-      value: () => [
-        'access_token=new-access; Path=/; HttpOnly',
-        'refresh_token=new-refresh; Path=/; HttpOnly',
-      ],
-    })
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers,
-    } as Response)
+    headers.append('Set-Cookie', 'access_token=new-access; Path=/; HttpOnly')
+    headers.append('Set-Cookie', 'refresh_token=new-refresh; Path=/; HttpOnly')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { headers }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
@@ -89,7 +63,7 @@ describe('auth refresh route', () => {
     expect(fetchHeaders.get('cookie')).toBe('refresh_token=old-refresh')
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/apps?category=workflow')
-    expect(getSetCookieHeaders(response.headers)).toEqual([
+    expect(response.headers.getSetCookie()).toEqual([
       'access_token=new-access; Path=/; HttpOnly',
       'refresh_token=new-refresh; Path=/; HttpOnly',
     ])
@@ -244,8 +218,7 @@ describe('auth refresh route', () => {
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 
-  it('should keep a Cloud staging fallback on the current deployment after refresh', async () => {
-    mocks.isCloudEdition = true
+  it('should keep a staging fallback on the current deployment after refresh', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
 
@@ -260,8 +233,7 @@ describe('auth refresh route', () => {
     expect(response.headers.get('location')).toBe('/')
   })
 
-  it('should carry the current Cloud deployment fallback through signin when refresh fails', async () => {
-    mocks.isCloudEdition = true
+  it('should carry the current deployment fallback through signin when refresh fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     const { GET } = await import('../route')
 
@@ -277,7 +249,6 @@ describe('auth refresh route', () => {
   })
 
   it('should use the current deployment home when a trusted target loops back to auth refresh', async () => {
-    mocks.isCloudEdition = true
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
 
@@ -329,16 +300,9 @@ describe('auth refresh route', () => {
   it('should preserve base path when refreshing and redirecting back', async () => {
     mocks.basePath = '/console'
     const headers = new Headers()
-    Object.defineProperty(headers, 'getSetCookie', {
-      value: () => [
-        'access_token=new-access; Path=/console; HttpOnly',
-        'refresh_token=new-refresh; Path=/console; HttpOnly',
-      ],
-    })
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers,
-    } as Response)
+    headers.append('Set-Cookie', 'access_token=new-access; Path=/console; HttpOnly')
+    headers.append('Set-Cookie', 'refresh_token=new-refresh; Path=/console; HttpOnly')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { headers }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
@@ -351,7 +315,7 @@ describe('auth refresh route', () => {
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/console/apps?category=workflow')
-    expect(getSetCookieHeaders(response.headers)).toEqual([
+    expect(response.headers.getSetCookie()).toEqual([
       'access_token=new-access; Path=/console; HttpOnly',
       'refresh_token=new-refresh; Path=/console; HttpOnly',
     ])

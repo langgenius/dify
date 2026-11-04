@@ -1,28 +1,37 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { Suspense } from 'react'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { I18nClientProvider } from '@/app/components/provider/i18n'
+import { changeLanguage } from '@/i18n/client'
 import ExecutedAction from '../executed-action'
 
-describe('ExecutedAction', () => {
-  it('should render the triggered action information', () => {
-    const executedAction = {
-      id: 'btn_1',
-      title: 'Submit',
-    }
+vi.unmock('react-i18next')
+const mocks = vi.hoisted(() => ({ load: vi.fn() }))
+vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.load }))
 
-    render(<ExecutedAction executedAction={executedAction} />)
+describe('ExecutedAction translations', () => {
+  it('loads its namespace when a completed card opens without workflow translations', async () => {
+    const { loadI18nResource } =
+      await vi.importActual<typeof import('@/i18n/load-resource')>('@/i18n/load-resource')
+    mocks.load.mockImplementation(loadI18nResource)
 
-    expect(screen.getByTestId('executed-action')).toBeInTheDocument()
-
-    // Trans component mock from i18n-mock.ts renders a span with data-i18n-key
-    const trans = screen.getByTestId('executed-action').querySelector('span')
-    expect(trans).toHaveAttribute(
-      'data-i18n-key',
-      'workflow.nodes.humanInput.userActions.triggered',
+    render(
+      <I18nClientProvider locale="en-US" resource={{}}>
+        <Suspense fallback={<span>Loading action</span>}>
+          <ExecutedAction executedAction={{ id: 'Approve', title: 'Approve' }} />
+        </Suspense>
+      </I18nClientProvider>,
     )
 
-    // Check for the trigger icon class
-    expect(
-      screen.getByTestId('executed-action').querySelector('.i-custom-vender-workflow-trigger-all'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/has been triggered/)).toHaveTextContent(
+      'Approve has been triggered',
+    )
+    expect(mocks.load).toHaveBeenCalledWith('en-US', 'workflowHumanInput')
+    expect(screen.queryByText('nodes.humanInput.userActions.triggered')).not.toBeInTheDocument()
+
+    await act(() => changeLanguage('zh-Hans'))
+
+    expect(await screen.findByText('已触发')).toHaveTextContent('已触发Approve')
+    expect(mocks.load).toHaveBeenCalledWith('zh-Hans', 'workflowHumanInput')
   })
 })

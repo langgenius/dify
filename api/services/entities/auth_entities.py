@@ -1,24 +1,10 @@
-from enum import StrEnum, auto
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from libs.helper import EmailStr
 from libs.password import valid_password
-
-
-class LoginFailureReason(StrEnum):
-    """Bounded reason codes for failed login audit logs."""
-
-    ACCOUNT_BANNED = auto()
-    ACCOUNT_IN_FREEZE = auto()
-    ACCOUNT_NOT_FOUND = auto()
-    EMAIL_CODE_EMAIL_MISMATCH = auto()
-    INVALID_CREDENTIALS = auto()
-    INVALID_EMAIL_CODE = auto()
-    INVALID_EMAIL_CODE_TOKEN = auto()
-    INVALID_INVITATION_EMAIL = auto()
-    LOGIN_RATE_LIMITED = auto()
 
 
 class ChangeEmailPhase(StrEnum):
@@ -64,6 +50,26 @@ class ForgotPasswordResetPayload(BaseModel):
     @classmethod
     def validate_password(cls, value: str) -> str:
         return valid_password(value)
+
+
+class ForgotPasswordTokenBase(BaseModel):
+    token_type: Literal["reset_password"] = "reset_password"
+    account_id: str | None = None
+    email: EmailStr
+    code: str = Field(min_length=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ForgotPasswordVerificationTokenData(ForgotPasswordTokenBase):
+    pass
+
+
+class ForgotPasswordResetTokenData(ForgotPasswordTokenBase):
+    phase: Literal["reset"]
+
+
+type ForgotPasswordTokenData = ForgotPasswordResetTokenData | ForgotPasswordVerificationTokenData
 
 
 class ChangeEmailTokenBase(BaseModel):

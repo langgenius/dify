@@ -5,16 +5,8 @@ export type ClientOptions = {
 }
 
 export type VersionResponse = {
-  can_auto_update: boolean
-  features: VersionFeatures
-  release_date: string
   release_notes: string
   version: string
-}
-
-export type VersionFeatures = {
-  can_replace_logo: boolean
-  model_load_balancing_enabled: boolean
 }
 
 export type GetVersionData = {

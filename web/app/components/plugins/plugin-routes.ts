@@ -37,6 +37,13 @@ const getFirstSearchParamValue = (value: string | string[] | undefined) => {
   return value
 }
 
+export const parseMarketplacePluginId = (packageId: string) => {
+  const [org, name, ...extraParts] = packageId.split('/')
+  if (!org || !name || extraParts.length || name.includes(':')) return null
+
+  return { name, org }
+}
+
 const hasInstallSearchParams = (searchParams: LegacyPluginsSearchParams) => {
   return Object.keys(searchParams).some((key) => installSearchParamKeys.has(key))
 }
@@ -142,9 +149,6 @@ const buildMarketplaceRedirectPath = (searchParams: LegacyPluginsSearchParams, t
 export const getLegacyPluginRedirectPath = (searchParams: LegacyPluginsSearchParams = {}) => {
   const tab = getFirstSearchParamValue(searchParams.tab)
 
-  if ((!tab || tab === INSTALLED_PLUGINS_TAB) && hasInstallSearchParams(searchParams))
-    return undefined
-
   if (!tab || tab === INSTALLED_PLUGINS_TAB) return '/integrations'
 
   const integrationPluginPath = getIntegrationPluginPathByTab(tab)
@@ -156,5 +160,5 @@ export const getLegacyPluginRedirectPath = (searchParams: LegacyPluginsSearchPar
 
   if (marketplacePluginTabs.has(tab)) return buildMarketplaceRedirectPath(searchParams, tab)
 
-  return undefined
+  return '/integrations'
 }

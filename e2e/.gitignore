@@ -8,3 +8,4 @@ cucumber-report/
 seed-report/
 .env.local
 .env.*.local
+.vitest/

@@ -48,7 +48,6 @@ export const updatedAgentSoulConfig: AgentSoulConfig = {
 }
 
 const stableAgentModelSettings = {
-  max_tokens: 4096,
   temperature: 0,
 }
 
