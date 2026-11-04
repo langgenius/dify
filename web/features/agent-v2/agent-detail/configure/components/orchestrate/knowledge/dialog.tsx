@@ -57,6 +57,8 @@ type FormProps = Omit<Props, 'open' | 'onOpenChange'> & {
   onClose: () => void
 }
 
+const MAX_SPACE_BINDINGS = 10
+
 const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
   space.state === 'active' &&
   space.technical_status === 'available' &&
@@ -298,7 +300,7 @@ function AgentKnowledgeRetrievalForm({
       name: spaceName(space),
       description: space.technical_summary?.description,
       unavailable: false,
-      disabled: !selectedIds.includes(value) && spaceCount >= 10,
+      disabled: !selectedIds.includes(value) && spaceCount >= MAX_SPACE_BINDINGS,
     })
   }
   for (const item of draft) {
@@ -322,7 +324,7 @@ function AgentKnowledgeRetrievalForm({
       ? [
           {
             value: 'spaces' as const,
-            label: t(($) => $['agentDetail.configure.knowledgeFs.select']),
+            label: t(($) => $['agentDetail.configure.knowledgeFs.title']),
             items: [...spaceOptions.values()],
           },
         ]
@@ -370,7 +372,7 @@ function AgentKnowledgeRetrievalForm({
         const space = spacesById.get(id)
         if (!space || !canBindSpace(space) || next.some((item) => item.controlSpaceId === id))
           continue
-        if (next.filter((item) => item.controlSpaceId).length >= 10) continue
+        if (next.filter((item) => item.controlSpaceId).length >= MAX_SPACE_BINDINGS) continue
         const title = spaceName(space)
         const name = next.some((item) => item.name?.toLowerCase() === title.toLowerCase())
           ? `${title.slice(0, 109)} (${id.slice(0, 8)})`
@@ -444,8 +446,24 @@ function AgentKnowledgeRetrievalForm({
             className="max-h-none overflow-visible p-0"
           >
             {(group) => (
-              <ComboboxGroup key={group.value} items={group.items}>
-                {!!group.label && <ComboboxGroupLabel>{group.label}</ComboboxGroupLabel>}
+              <ComboboxGroup key={group.value} items={group.items} className="not-first:mt-4">
+                {!!group.label && (
+                  <ComboboxGroupLabel className="flex items-center justify-between gap-2 pb-1 normal-case">
+                    {group.value === 'spaces' ? (
+                      <>
+                        <span>{group.label}</span>
+                        <span aria-hidden className="tabular-nums">
+                          {spaceCount}/{MAX_SPACE_BINDINGS}
+                        </span>
+                        <span className="sr-only">
+                          {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+                        </span>
+                      </>
+                    ) : (
+                      group.label
+                    )}
+                  </ComboboxGroupLabel>
+                )}
                 <ComboboxCollection<KnowledgeOption>>
                   {(option) => <KnowledgeOptionItem key={option.value} option={option} />}
                 </ComboboxCollection>
