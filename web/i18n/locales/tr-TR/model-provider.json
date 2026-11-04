@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Metinden Konuşmaya Modeli",
   "modelProvider.ttsModel.tip": "Konuşmada metinden konuşmaya giriş için varsayılan modeli ayarlayın.",
   "modelProvider.upgradeForLoadBalancing": "Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.",
+  "modelProvider.usage.description": "Bu çalışma alanındaki iş akışı taslaklarını, yayımlanmış iş akışlarını ve uygulama model ayarlarını kontrol eder. Kontrol edilmeyenler: önceki iş akışı sürümleri, Agent düğümleri, araç düğümü ayarlarındaki model seçimleri, önerilen sorular gibi uygulama özelliklerinin modelleri ve Ajanlar bölümünde yönetilen ajanlar.",
+  "modelProvider.usage.empty": "Bu çalışma alanında bu modeli kullanan uygulama yok.",
+  "modelProvider.usage.inaccessible_one": "Erişiminiz olmayan uygulamalardaki {{count}} kullanım gösterilmiyor.",
+  "modelProvider.usage.inaccessible_other": "Erişiminiz olmayan uygulamalardaki {{count}} kullanım gösterilmiyor.",
+  "modelProvider.usage.source.app_model_config": "Uygulama model ayarları",
+  "modelProvider.usage.source.workflow_draft": "İş akışı taslağı",
+  "modelProvider.usage.source.workflow_published": "Yayımlanmış iş akışı",
+  "modelProvider.usage.title": "{{model}} kullanan uygulamalar",
+  "modelProvider.usage.view": "Kullanımlar",
   "modelProvider.used": "kullanıldı"
 }

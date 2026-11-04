@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Model tekstu na mowę",
   "modelProvider.ttsModel.tip": "Ustaw domyślny model dla konwersji tekstu na mowę w rozmowach.",
   "modelProvider.upgradeForLoadBalancing": "Uaktualnij swój plan, aby włączyć równoważenie obciążenia.",
+  "modelProvider.usage.description": "Sprawdza wersje robocze przepływów pracy, opublikowane przepływy pracy i ustawienia modelu aplikacji w tym obszarze roboczym. Nie są sprawdzane: wcześniejsze wersje przepływów pracy, węzły Agent, wybory modelu w ustawieniach węzłów narzędzi, modele funkcji aplikacji, takich jak sugerowane pytania, ani agenci zarządzani w sekcji Agenci.",
+  "modelProvider.usage.empty": "Żadna aplikacja w tym obszarze roboczym nie używa tego modelu.",
+  "modelProvider.usage.inaccessible_one": "{{count}} użycie znajduje się w aplikacji, do której nie masz dostępu, i nie jest wyświetlane.",
+  "modelProvider.usage.inaccessible_other": "Użycia w aplikacjach, do których nie masz dostępu, nie są wyświetlane: {{count}}.",
+  "modelProvider.usage.source.app_model_config": "Ustawienia modelu aplikacji",
+  "modelProvider.usage.source.workflow_draft": "Wersja robocza przepływu pracy",
+  "modelProvider.usage.source.workflow_published": "Opublikowany przepływ pracy",
+  "modelProvider.usage.title": "Aplikacje używające {{model}}",
+  "modelProvider.usage.view": "Użycia",
   "modelProvider.used": "wykorzystano"
 }

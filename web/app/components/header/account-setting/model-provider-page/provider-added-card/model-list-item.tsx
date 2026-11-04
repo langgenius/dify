@@ -13,11 +13,12 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
-import { ModelStatusEnum } from '../declarations'
+import { ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import { ModelUsageDialog } from './model-usage-dialog'
 
 type ModelListItemProps = {
   model: ModelItem
@@ -52,6 +53,10 @@ const ModelListItem = ({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  // Matches the usage endpoint's gate; usages are only looked up for LLMs.
+  const canViewUsages =
+    hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences') &&
+    model.model_type === ModelTypeEnum.textGeneration
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const modelProviderModelListQueryKey =
@@ -128,6 +133,7 @@ const ModelListItem = ({
         showFeaturesLabel
       ></ModelName>
       <div className="flex shrink-0 items-center">
+        {canViewUsages && <ModelUsageDialog provider={provider.provider} model={model.model} />}
         {features?.model_load_balancing_enabled &&
           !model.deprecated &&
           model.load_balancing_enabled &&

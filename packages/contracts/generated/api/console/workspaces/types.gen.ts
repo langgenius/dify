@@ -662,6 +662,11 @@ export type ModelParameterRuleListResponse = {
   data: Array<ParameterRule>
 }
 
+export type ModelUsageListResponse = {
+  data: Array<ModelUsageResponse>
+  inaccessible_count: number
+}
+
 export type ParserPreferredProviderType = {
   preferred_provider_type: 'custom' | 'system'
 }
@@ -2194,6 +2199,16 @@ export type ParameterRule = {
   use_template?: string | null
 }
 
+export type ModelUsageResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_id?: string | null
+  node_title?: string | null
+  node_type?: string | null
+  source: ModelUsageSource
+}
+
 export type ProviderWithModelsResponse = {
   icon_small?: ModelRuntimeI18nObject | null
   icon_small_dark?: ModelRuntimeI18nObject | null
@@ -3139,6 +3154,8 @@ export type ModelLoadBalancingConfigResponse = {
 }
 
 export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
+
+export type ModelUsageSource = 'app_model_config' | 'workflow_draft' | 'workflow_published'
 
 export type ProviderModelWithStatusEntity = {
   deprecated?: boolean
@@ -6464,6 +6481,32 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResp
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse =
   GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponses[keyof GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponses]
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsUsagesData = {
+  body?: never
+  path: {
+    provider: string
+  }
+  query: {
+    model: string
+    model_type?: string
+  }
+  url: '/workspaces/current/model-providers/{provider}/models/usages'
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsUsagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsUsagesError =
+  GetWorkspacesCurrentModelProvidersByProviderModelsUsagesErrors[keyof GetWorkspacesCurrentModelProvidersByProviderModelsUsagesErrors]
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsUsagesResponses = {
+  200: ModelUsageListResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsUsagesResponse =
+  GetWorkspacesCurrentModelProvidersByProviderModelsUsagesResponses[keyof GetWorkspacesCurrentModelProvidersByProviderModelsUsagesResponses]
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeData = {
   body: ParserPreferredProviderType

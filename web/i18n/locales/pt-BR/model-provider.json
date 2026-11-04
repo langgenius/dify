@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Modelo de Texto para Fala",
   "modelProvider.ttsModel.tip": "Defina o modelo padrão para entrada de texto para fala na conversa.",
   "modelProvider.upgradeForLoadBalancing": "Atualize seu plano para habilitar o balanceamento de carga.",
+  "modelProvider.usage.description": "Verifica rascunhos de fluxos de trabalho, fluxos de trabalho publicados e configurações de modelo dos aplicativos deste espaço de trabalho. Não verificados: versões anteriores dos fluxos de trabalho, nós Agent, seleções de modelo nas configurações de nós de ferramenta, modelos de recursos do aplicativo como perguntas sugeridas e agentes gerenciados em Agentes.",
+  "modelProvider.usage.empty": "Nenhum aplicativo deste espaço de trabalho usa este modelo.",
+  "modelProvider.usage.inaccessible_one": "{{count}} uso está em um aplicativo ao qual você não tem acesso e não é exibido.",
+  "modelProvider.usage.inaccessible_other": "{{count}} usos estão em aplicativos aos quais você não tem acesso e não são exibidos.",
+  "modelProvider.usage.source.app_model_config": "Configurações de modelo do aplicativo",
+  "modelProvider.usage.source.workflow_draft": "Rascunho do fluxo de trabalho",
+  "modelProvider.usage.source.workflow_published": "Fluxo de trabalho publicado",
+  "modelProvider.usage.title": "Aplicativos que usam {{model}}",
+  "modelProvider.usage.view": "Usos",
   "modelProvider.used": "usados"
 }

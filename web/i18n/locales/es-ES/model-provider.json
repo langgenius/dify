@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Modelo de Texto a Voz",
   "modelProvider.ttsModel.tip": "Establece el modelo predeterminado para la entrada de texto a voz en la conversación.",
   "modelProvider.upgradeForLoadBalancing": "Actualiza tu plan para habilitar el Balanceo de Carga.",
+  "modelProvider.usage.description": "Comprueba los borradores de flujos de trabajo, los flujos de trabajo publicados y la configuración de modelo de las aplicaciones de este espacio de trabajo. No se comprueban: las versiones anteriores de los flujos de trabajo, los nodos Agent, las selecciones de modelo en la configuración de los nodos de herramienta, los modelos de funciones de la aplicación como las preguntas sugeridas ni los agentes gestionados en Agentes.",
+  "modelProvider.usage.empty": "Ninguna aplicación de este espacio de trabajo usa este modelo.",
+  "modelProvider.usage.inaccessible_one": "{{count}} uso está en una aplicación a la que no tiene acceso y no se muestra.",
+  "modelProvider.usage.inaccessible_other": "{{count}} usos están en aplicaciones a las que no tiene acceso y no se muestran.",
+  "modelProvider.usage.source.app_model_config": "Configuración de modelo de la aplicación",
+  "modelProvider.usage.source.workflow_draft": "Borrador del flujo de trabajo",
+  "modelProvider.usage.source.workflow_published": "Flujo de trabajo publicado",
+  "modelProvider.usage.title": "Aplicaciones que usan {{model}}",
+  "modelProvider.usage.view": "Usos",
   "modelProvider.used": "usados"
 }

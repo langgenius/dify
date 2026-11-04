@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "텍스트-to-음성 모델",
   "modelProvider.ttsModel.tip": "대화에서의 텍스트-to-음성 입력에 사용되는 기본 모델을 설정합니다.",
   "modelProvider.upgradeForLoadBalancing": "로드 밸런싱을 사용하도록 계획을 업그레이드합니다.",
+  "modelProvider.usage.description": "이 워크스페이스의 워크플로 초안, 게시된 워크플로, 앱 모델 설정을 확인합니다. 확인하지 않는 항목: 이전 워크플로 버전, Agent 노드, 도구 노드 설정의 모델 선택, 앱 기능(답변 후 추천 질문 등)에서 사용하는 모델, '에이전트'에서 관리하는 에이전트.",
+  "modelProvider.usage.empty": "이 워크스페이스에서 이 모델을 사용하는 앱이 없습니다.",
+  "modelProvider.usage.inaccessible_one": "접근 권한이 없는 앱에 있는 사용처 {{count}}개는 표시되지 않습니다.",
+  "modelProvider.usage.inaccessible_other": "접근 권한이 없는 앱에 있는 사용처 {{count}}개는 표시되지 않습니다.",
+  "modelProvider.usage.source.app_model_config": "앱 모델 설정",
+  "modelProvider.usage.source.workflow_draft": "워크플로 초안",
+  "modelProvider.usage.source.workflow_published": "게시된 워크플로",
+  "modelProvider.usage.title": "{{model}}을(를) 사용하는 앱",
+  "modelProvider.usage.view": "사용처",
   "modelProvider.used": "사용됨"
 }

@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "مدل تبدیل متن به گفتار",
   "modelProvider.ttsModel.tip": "مدل پیش‌فرض را برای ورودی متن به گفتار در مکالمه تنظیم کنید.",
   "modelProvider.upgradeForLoadBalancing": "برای فعال کردن تعادل بار، طرح خود را ارتقا دهید.",
+  "modelProvider.usage.description": "پیش‌نویس‌های گردش کار، گردش‌های کار منتشرشده و تنظیمات مدل برنامه‌های این فضای کاری را بررسی می‌کند. بررسی نمی‌شوند: نسخه‌های قبلی گردش کار، گره‌های Agent، انتخاب مدل در تنظیمات گره‌های ابزار، مدل‌های قابلیت‌های برنامه مانند پرسش‌های پیشنهادی، و عامل‌هایی که در بخش عامل‌ها مدیریت می‌شوند.",
+  "modelProvider.usage.empty": "هیچ برنامه‌ای در این فضای کاری از این مدل استفاده نمی‌کند.",
+  "modelProvider.usage.inaccessible_one": "{{count}} مورد استفاده در برنامه‌هایی است که به آن‌ها دسترسی ندارید و نمایش داده نمی‌شود.",
+  "modelProvider.usage.inaccessible_other": "{{count}} مورد استفاده در برنامه‌هایی است که به آن‌ها دسترسی ندارید و نمایش داده نمی‌شوند.",
+  "modelProvider.usage.source.app_model_config": "تنظیمات مدل برنامه",
+  "modelProvider.usage.source.workflow_draft": "پیش‌نویس گردش کار",
+  "modelProvider.usage.source.workflow_published": "گردش کار منتشرشده",
+  "modelProvider.usage.title": "برنامه‌هایی که از {{model}} استفاده می‌کنند",
+  "modelProvider.usage.view": "موارد استفاده",
   "modelProvider.used": "استفاده‌شده"
 }

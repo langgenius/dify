@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Модель преобразования текста в речь",
   "modelProvider.ttsModel.tip": "Установите модель по умолчанию для ввода текста в речь в разговоре.",
   "modelProvider.upgradeForLoadBalancing": "Обновите свой тарифный план, чтобы включить балансировку нагрузки.",
+  "modelProvider.usage.description": "Проверяет черновики рабочих процессов, опубликованные рабочие процессы и настройки модели приложений в этом рабочем пространстве. Не проверяются: более ранние версии рабочих процессов, узлы Agent, выбор модели в настройках узлов инструментов, модели функций приложений, например предлагаемых вопросов, и агенты, управляемые в разделе «Агенты».",
+  "modelProvider.usage.empty": "Ни одно приложение в этом рабочем пространстве не использует эту модель.",
+  "modelProvider.usage.inaccessible_one": "Использования в приложениях, к которым у вас нет доступа, не показаны: {{count}}.",
+  "modelProvider.usage.inaccessible_other": "Использования в приложениях, к которым у вас нет доступа, не показаны: {{count}}.",
+  "modelProvider.usage.source.app_model_config": "Настройки модели приложения",
+  "modelProvider.usage.source.workflow_draft": "Черновик рабочего процесса",
+  "modelProvider.usage.source.workflow_published": "Опубликованный рабочий процесс",
+  "modelProvider.usage.title": "Приложения, использующие {{model}}",
+  "modelProvider.usage.view": "Использование",
   "modelProvider.used": "использовано"
 }

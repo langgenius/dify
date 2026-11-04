@@ -3522,6 +3522,38 @@ export const zModelParameterRuleListResponse = z.object({
 })
 
 /**
+ * ModelUsageSource
+ *
+ * Stored configuration that holds a model reference.
+ */
+export const zModelUsageSource = z.enum([
+  'app_model_config',
+  'workflow_draft',
+  'workflow_published',
+])
+
+/**
+ * ModelUsageResponse
+ */
+export const zModelUsageResponse = z.object({
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  node_id: z.string().nullish(),
+  node_title: z.string().nullish(),
+  node_type: z.string().nullish(),
+  source: zModelUsageSource,
+})
+
+/**
+ * ModelUsageListResponse
+ */
+export const zModelUsageListResponse = z.object({
+  data: z.array(zModelUsageResponse),
+  inaccessible_count: z.int(),
+})
+
+/**
  * ProviderModelWithStatusEntity
  *
  * Model class for model response.
@@ -7247,6 +7279,21 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesQu
  */
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse =
   zModelParameterRuleListResponse
+
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsUsagesPath = z.object({
+  provider: z.string(),
+})
+
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsUsagesQuery = z.object({
+  model: z.string().min(1).max(255),
+  model_type: z.string().optional().default('llm'),
+})
+
+/**
+ * Model usages retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsUsagesResponse =
+  zModelUsageListResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeBody =
   zParserPreferredProviderType

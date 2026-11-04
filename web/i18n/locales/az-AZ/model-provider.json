@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Mətni nitqə çevirmə modeli",
   "modelProvider.ttsModel.tip": "Söhbətdə mətni nitqə çevirmək üçün standart modeli təyin et.",
   "modelProvider.upgradeForLoadBalancing": "Yük balanslaşdırmasını aktivləşdirmək üçün planını yüksəlt.",
+  "modelProvider.usage.description": "Bu iş sahəsindəki iş axını qaralamalarını, dərc edilmiş iş axınlarını və tətbiqlərin model ayarlarını yoxlayır. Yoxlanılmır: əvvəlki iş axını versiyaları, Agent qovşaqları, alət qovşağı ayarlarındakı model seçimləri, təklif olunan suallar kimi tətbiq funksiyalarının modelləri və Agentlər bölməsində idarə olunan agentlər.",
+  "modelProvider.usage.empty": "Bu iş sahəsində bu modeldən istifadə edən tətbiq yoxdur.",
+  "modelProvider.usage.inaccessible_one": "Giriş icazəniz olmayan tətbiqlərdəki {{count}} istifadə göstərilmir.",
+  "modelProvider.usage.inaccessible_other": "Giriş icazəniz olmayan tətbiqlərdəki {{count}} istifadə göstərilmir.",
+  "modelProvider.usage.source.app_model_config": "Tətbiqin model ayarları",
+  "modelProvider.usage.source.workflow_draft": "İş axını qaralaması",
+  "modelProvider.usage.source.workflow_published": "Dərc edilmiş iş axını",
+  "modelProvider.usage.title": "{{model}} istifadə edən tətbiqlər",
+  "modelProvider.usage.view": "İstifadələr",
   "modelProvider.used": "istifadə olunub"
 }

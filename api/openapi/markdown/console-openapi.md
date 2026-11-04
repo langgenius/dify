@@ -15835,6 +15835,24 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | 200 | Model parameter rules retrieved successfully | **application/json**: [ModelParameterRuleListResponse](#modelparameterrulelistresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/current/model-providers/{provider}/models/usages
+List the current workspace's apps and workflow nodes that select this LLM, read from draft and currently published workflows and app model configurations. Only apps the caller can view are listed.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name | Yes | string |
+| model_type | query | Model type; only llm is supported | No | string, <br>**Default:** llm |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model usages retrieved successfully | **application/json**: [ModelUsageListResponse](#modelusagelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /workspaces/current/model-providers/{provider}/preferred-provider-type
 #### Parameters
 
@@ -31388,6 +31406,33 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
+
+#### ModelUsageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelUsageResponse](#modelusageresponse) ] |  | Yes |
+| inaccessible_count | integer | Matching usages in apps the caller cannot view; not listed in data | Yes |
+
+#### ModelUsageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_id | string |  | No |
+| node_title | string |  | No |
+| node_type | string |  | No |
+| source | [ModelUsageSource](#modelusagesource) |  | Yes |
+
+#### ModelUsageSource
+
+Stored configuration that holds a model reference.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelUsageSource | string | Stored configuration that holds a model reference. |  |
 
 #### ModelWithProviderEntityResponse
 
