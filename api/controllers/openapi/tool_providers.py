@@ -31,7 +31,6 @@ from controllers.openapi._models import (
     ToolRow,
     ToolSource,
 )
-from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
 from core.entities.provider_entities import ProviderConfig
@@ -44,8 +43,9 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
 from libs.i18n_text import localized
+from libs.text_search import matches
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.tool_sources import ToolNodeIdentity
+from services.tools.tool_sources import ToolNodeIdentity, tool_names
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -158,8 +158,13 @@ def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str
 def tool_rows(
     providers: Iterable[ToolProviderApiEntity], *, words: str, provider: str | None, language: str | None
 ) -> list[ToolRow]:
-    rows = [tool_row(p, tool, language) for p in providers if provider is None or p.id == provider for tool in p.tools]
-    rows = [r for r in rows if matches(words, r.name, r.label, r.description, r.provider, r.provider_label)]
+    listed = [
+        (tool_row(p, tool, language), tool_names(p, tool, language))
+        for p in providers
+        if provider is None or p.id == provider
+        for tool in p.tools
+    ]
+    rows = [row for row, names in listed if matches(words, row.label, row.description, *names)]
     return sorted(rows, key=lambda r: (r.provider, r.name))
 
 

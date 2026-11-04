@@ -185,6 +185,14 @@ def test_query_matches_the_description_in_the_request_language_else_its_fallback
     assert _names("web page", language="zh-Hans") == ["jina_reader"]
 
 
+def test_query_matches_the_provider_name_where_it_differs_from_the_id() -> None:
+    mcp = _provider("uuid-1", ToolProviderType.MCP, [_tool("lookup", [])], server_identifier="my-server")
+    mcp = mcp.model_copy(update={"name": "Team Wiki"})
+
+    assert [r.name for r in tool_rows([mcp], words="team wiki", provider=None, language=None)] == ["lookup"]
+    assert [r.name for r in tool_rows([mcp], words="MY-SERVER", provider=None, language=None)] == ["lookup"]
+
+
 def test_page_past_the_end() -> None:
     rows = tool_rows([GITHUB], words="", provider=None, language=None)
     page = ToolListResponse.page_of(rows, query=PageQuery(page=99, limit=20))

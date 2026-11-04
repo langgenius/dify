@@ -154,3 +154,11 @@ class ToolNodeIdentity:
             tool_name=tool.name,
             tool_label=label,
         )
+
+
+def tool_names(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> tuple[str | None, ...]:
+    """What a tool is called besides its label: its name, and its provider's ids, name and label. A tool search
+    finds the tool by any of these, its label or its description.
+    """
+    identity = ToolNodeIdentity.of(provider, tool, language)
+    return tool.name, provider.id, identity.provider_id, provider.name, localized(provider.label, language)
