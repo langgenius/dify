@@ -31,7 +31,7 @@ GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 CANVAS_NOTE_TYPE: Final = "custom-note"
-_START_NODE_ID_KEY: Final = "start_node_id"
+START_NODE_ID_KEY: Final = "start_node_id"
 
 
 class IssueSeverity(StrEnum):
@@ -186,20 +186,25 @@ def _is_node(graph: _Graph, node_id: object) -> bool:
     return node_id in graph.nodes
 
 
+def _start_issue(graph: _Graph, node: _Node) -> GraphIssue | None:
+    if node.type not in CONTAINER_NODE_TYPES:
+        return None
+    loc = data_loc(node.id, START_NODE_ID_KEY)
+    # A missing start_node_id is already reported as invalid data.
+    if any(issue.loc == loc for issue in node.issues):
+        return None
+    start = node.data.get(START_NODE_ID_KEY)
+    if _is_node(graph, start):
+        return None
+    return GraphIssue(IssueCode.CONTAINER_START_MISSING, f"start_node_id {start!r} is not in the graph", node.id, loc)
+
+
 def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
         yield from node.issues
-        if node.type not in CONTAINER_NODE_TYPES:
-            continue
-        loc = data_loc(node.id, _START_NODE_ID_KEY)
-        # A missing start_node_id is already reported as invalid data.
-        if any(issue.loc == loc for issue in node.issues):
-            continue
-        start = node.data.get(_START_NODE_ID_KEY)
-        if _is_node(graph, start):
-            continue
-        message = f"start_node_id {start!r} is not in the graph"
-        yield GraphIssue(IssueCode.CONTAINER_START_MISSING, message, node.id, loc)
+        start_issue = _start_issue(graph, node)
+        if start_issue is not None:
+            yield start_issue
 
 
 def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -263,22 +268,25 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
             )
 
 
+def _reference_issue(graph: _Graph, node: _Node, key: str, selector: Sequence[str]) -> GraphIssue | None:
+    if not selector:
+        return GraphIssue(IssueCode.REFERENCE_EMPTY, f"{key} reads no variable", node.id, data_loc(node.id))
+    if selector[0] in ROOT_VARIABLE_NODE_IDS:
+        return None
+    if selector[0] in graph.nodes:
+        return None
+    return GraphIssue(
+        IssueCode.REFERENCE_MISSING,
+        f"{key} reads node {selector[0]!r}, which is not in the graph",
+        node.id,
+        data_loc(node.id),
+    )
+
+
 def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
-        for key, selector in node.references.items():
-            if not selector:
-                yield GraphIssue(IssueCode.REFERENCE_EMPTY, f"{key} reads no variable", node.id, data_loc(node.id))
-                continue
-            if selector[0] in ROOT_VARIABLE_NODE_IDS:
-                continue
-            if selector[0] in graph.nodes:
-                continue
-            yield GraphIssue(
-                IssueCode.REFERENCE_MISSING,
-                f"{key} reads node {selector[0]!r}, which is not in the graph",
-                node.id,
-                data_loc(node.id),
-            )
+        issues = (_reference_issue(graph, node, key, selector) for key, selector in node.references.items())
+        yield from (issue for issue in issues if issue is not None)
 
 
 _CHECKS: Final[tuple[Callable[[_Graph], Iterable[GraphIssue]], ...]] = (

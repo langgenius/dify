@@ -18,6 +18,7 @@ from pydantic import TypeAdapter
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
+from services.workflow.graph_check import START_NODE_ID_KEY
 
 type Loc = tuple[str | int, ...]
 
@@ -25,7 +26,6 @@ WILDCARD: Final = "*"
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
-_START_NODE_ID_KEY: Final = "start_node_id"
 _ITERATOR_SELECTOR_KEY: Final = "iterator_selector"
 _OUTPUT_SELECTOR_KEY: Final = "output_selector"
 _VARIABLES_KEY: Final = "variables"
@@ -150,7 +150,7 @@ class CanvasNode(StrEnum):
         BuiltinNodeTypes.ITERATION,
         (_ITERATOR_SELECTOR_KEY,),
         (_OUTPUT_SELECTOR_KEY,),
-        (_START_NODE_ID_KEY,),
+        (START_NODE_ID_KEY,),
     )
     # knowledge-retrieval/default.ts:35; the model is required only for single retrieval (:41-45)
     KNOWLEDGE_RETRIEVAL = (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, ("dataset_ids",))
@@ -164,7 +164,7 @@ class CanvasNode(StrEnum):
     # loop/default.ts:36, 51, 57; start_node_id as for iteration
     LOOP = (
         BuiltinNodeTypes.LOOP,
-        (_START_NODE_ID_KEY,),
+        (START_NODE_ID_KEY,),
         ("loop_variables", WILDCARD, "label"),
         ("break_conditions", WILDCARD, "variable_selector"),
         ("break_conditions", WILDCARD, "comparison_operator"),
