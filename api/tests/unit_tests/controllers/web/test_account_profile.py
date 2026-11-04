@@ -4,29 +4,33 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 
-from controllers.web import bp, login, wraps
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
+from controllers.web import bp, login
 from machinery.context import AccountRequestContext
-from models.model import App, EndUser
 from services.account_errors import AccountNotFoundError
+from services.consumer_service import ConsumerIdentity
+from services.web_identity_service import WebIdentityError
+from services.web_passport_service import WebPassportUnauthorizedError
 
 
 @pytest.fixture
 def profile_client(monkeypatch: pytest.MonkeyPatch):
-    app_model = App(tenant_id="tenant-1")
-    end_user = EndUser(account_id="account-1")
     profile = Mock()
-    monkeypatch.setattr(wraps, "decode_jwt_token", lambda: (app_model, end_user))
-    services = SimpleNamespace(accounts=SimpleNamespace(profile=profile))
+    consumer = Mock()
+    consumer.authenticate.return_value = ConsumerIdentity(account_id="account-1")
+    services = SimpleNamespace(accounts=SimpleNamespace(profile=profile), consumer=consumer)
     monkeypatch.setattr(login, "application_services", lambda: services)
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(bp)
-    return app.test_client(), end_user, profile
+    client = app.test_client()
+    client.set_cookie(COOKIE_NAME_WEBAPP_ACCESS_TOKEN, "account-login")
+    return client, consumer, profile
 
 
 @pytest.mark.parametrize("avatar", [None, "https://example.com/avatar.png", "file-id"])
 def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pytest.MonkeyPatch, avatar: str | None):
-    client, _, profile = profile_client
+    client, consumer, profile = profile_client
     profile.get.return_value = SimpleNamespace(name="Alice", avatar=avatar, email="private@example.com")
     monkeypatch.setattr(login, "build_avatar_url", lambda value: f"signed:{value}" if value == "file-id" else value)
 
@@ -42,11 +46,38 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
     context = profile.get.call_args.args[0]
     assert isinstance(context, AccountRequestContext)
     assert context.account_id == "account-1"
+    consumer.authenticate.assert_called_once_with("account-login")
 
 
-def test_anonymous_profile_requires_account(profile_client):
-    client, end_user, profile = profile_client
-    end_user.account_id = None
+@pytest.mark.parametrize(
+    ("cookie_name", "cookie_value"),
+    [
+        pytest.param(COOKIE_NAME_ACCESS_TOKEN, "console-login", id="console-cookie"),
+        pytest.param(COOKIE_NAME_WEBAPP_ACCESS_TOKEN, None, id="missing-webapp-cookie"),
+    ],
+)
+def test_profile_requires_webapp_account_cookie(profile_client, cookie_name, cookie_value):
+    client, consumer, profile = profile_client
+    client.delete_cookie(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)
+    if cookie_value is not None:
+        client.set_cookie(cookie_name, cookie_value)
+    consumer.authenticate.side_effect = WebIdentityError("Account login required.")
+
+    assert client.get("/api/account/profile").status_code == 401
+    consumer.authenticate.assert_called_once_with(None)
+    profile.get.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(WebIdentityError("Account login required."), id="identity"),
+        pytest.param(WebPassportUnauthorizedError("Invalid token."), id="token"),
+    ],
+)
+def test_invalid_webapp_account_login_requires_login(profile_client, error):
+    client, consumer, profile = profile_client
+    consumer.authenticate.side_effect = error
 
     assert client.get("/api/account/profile").status_code == 401
     profile.get.assert_not_called()
