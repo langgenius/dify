@@ -28,6 +28,7 @@ const InputsFormContent = ({ showTip }: Props) => {
   const baseId = useId()
   const {
     appParams,
+    clearChatList,
     inputsForms,
     currentConversationId,
     currentConversationInputs,
@@ -132,8 +133,9 @@ const InputsFormContent = ({ showTip }: Props) => {
               </SelectContent>
             </Select>
           )}
-          {form.type === InputVarType.singleFile && (
+          {!clearChatList && form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
+              key={currentConversationId}
               value={inputsFormValue?.[form.variable] ? [inputsFormValue?.[form.variable]] : []}
               onChange={(files) => handleFormChange(form.variable, files[0])}
               fileConfig={{
@@ -145,8 +147,9 @@ const InputsFormContent = ({ showTip }: Props) => {
               }}
             />
           )}
-          {form.type === InputVarType.multiFiles && (
+          {!clearChatList && form.type === InputVarType.multiFiles && (
             <FileUploaderInAttachmentWrapper
+              key={currentConversationId}
               value={inputsFormValue?.[form.variable] || []}
               onChange={(files) => handleFormChange(form.variable, files)}
               fileConfig={{
