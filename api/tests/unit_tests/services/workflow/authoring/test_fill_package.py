@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.impl.tool import PluginToolManager
+from events.app_event import app_draft_workflow_was_synced
 from extensions.application_services.app import AppServices
 from graphon.enums import BuiltinNodeTypes
 from libs.archive_writer import ArchiveEntry, ArchiveLimits, ArchiveTooLargeError, entries_from_folder
@@ -212,11 +213,13 @@ def test_a_filled_skeleton_imports_as_a_new_app(
     sqlite_session.commit()
     filled = fill_package(entries_from_folder({APP: io.BytesIO(_skeleton_dsl().encode())}), CTX, limits=LIMITS)
 
-    result = app_services.console.import_app(
-        RequestContext("request", None, account.id, tenant.id),
-        AppImportParams(mode="yaml-content"),
-        source=io.BytesIO(filled),
-    )
+    # A connected draft-sync receiver needs a Flask app; it does not bear on whether the package imports.
+    with app_draft_workflow_was_synced.muted():
+        result = app_services.console.import_app(
+            RequestContext("request", None, account.id, tenant.id),
+            AppImportParams(mode="yaml-content"),
+            source=io.BytesIO(filled),
+        )
 
     assert result.status == ImportStatus.COMPLETED, (result.error, result.warnings)
     sqlite_session.expire_all()
