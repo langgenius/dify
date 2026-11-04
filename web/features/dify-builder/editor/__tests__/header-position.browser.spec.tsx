@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/store/workflow'
+import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-store'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import Header from '@/app/components/workflow/header/index'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
@@ -10,6 +10,7 @@ import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import DifyBuilderPanelToggle from '../panel-toggle'
 import 'reactflow/dist/style.css'
 
+// boundary: load the real en-US copy so header reflow is measured at production text lengths.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: workflow } = await import('@/i18n/locales/en-US/workflow.json')
@@ -20,40 +21,47 @@ vi.mock('react-i18next', async () => {
   })
 })
 
+// boundary: edit permission comes from the full workflow canvas runtime, which this layout spec does not mount.
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
 }))
 
+// boundary: node selection drives the canvas runtime; the header only needs a callable.
 vi.mock('@/app/components/workflow/hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeSelect: vi.fn() }),
 }))
 
+// boundary: draft backup ends in a network save.
 vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleBackupDraft: vi.fn() }),
 }))
 
+// boundary: node scrolling moves the ReactFlow viewport, outside the header layout.
 vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   scrollToWorkflowNode: vi.fn(),
 }))
 
+// boundary: RAG pipeline input panels are not mounted in this workflow header.
 vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({ closeAllInputFieldPanels: vi.fn() }),
 }))
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
-
+// boundary: fix the timezone-dependent time label so positions are stable across machines.
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => new Date(timestamp * 1000).toISOString().slice(11, 19),
   }),
 }))
 
+// boundary: fix the relative save time so the label width is deterministic.
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({ formatTimeFromNow: () => '42 minutes ago' }),
 }))
 
 // These independently tested features do not own the header's column layout.
+// boundary: collaborator presence needs a realtime connection and does not own the header columns.
 vi.mock('@/app/components/workflow/header/online-users', () => ({ default: () => null }))
+// boundary: run controls have their own specs; a fixed-size stand-in keeps the column width real.
 vi.mock('@/app/components/workflow/header/run-and-history', () => ({
   default: () => <div className="h-8 w-50">Run controls</div>,
 }))

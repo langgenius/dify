@@ -6,7 +6,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
-import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/store/workflow'
+import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-store'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import {
   builderModel,
