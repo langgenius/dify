@@ -1032,16 +1032,6 @@
       "count": 91
     }
   },
-  "web/app/components/base/chat/chat/answer/agent-roster-response-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat/answer/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
   "web/app/components/base/chat/chat/answer/more.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -4310,11 +4300,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/collapse/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/editor/base.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 6
@@ -4350,11 +4335,6 @@
   "web/app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
@@ -4874,11 +4854,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
