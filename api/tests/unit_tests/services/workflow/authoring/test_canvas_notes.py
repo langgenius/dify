@@ -119,6 +119,21 @@ def test_a_filled_note_dumps_as_plain_yaml() -> None:
     assert yaml.safe_load(yaml.dump(nodes["intake"])) == nodes["intake"]
 
 
+@pytest.mark.parametrize(
+    "wrapper_size",
+    [pytest.param(None, id="sized only in its data"), pytest.param((300, 120), id="stale wrapper size")],
+)
+def test_a_note_frames_a_container_at_the_size_its_data_gives(wrapper_size: tuple[float, float] | None) -> None:
+    loop: _Node = {"id": "loop", "data": {"type": BuiltinNodeTypes.LOOP, "width": 700, "height": 300}}
+    if wrapper_size is not None:
+        loop["width"], loop["height"] = wrapper_size
+
+    note = _fill(_chain(loop, _note("around", "loop")))["around"]
+
+    assert note["width"] == 700 + 2 * NOTE_PADDING
+    assert note["height"] == 300 + 2 * NOTE_PADDING + NOTE_TEXT_ROOM
+
+
 def test_measured_node_sizes_are_used() -> None:
     nodes = _chain(_note("intake", "first"))
     nodes[1].update(width=300, height=150)

@@ -10,14 +10,18 @@ from typing import Any, Final
 from services.workflow.authoring.canvas_notes import (
     POSITION_ABSOLUTE_KEY,
     POSITION_KEY,
+    UNMEASURED_SIZE,
     Moves,
     NoteSize,
     coverable_nodes,
+    drawn_from,
+    is_container,
     is_number,
     measured_length,
+    node_length,
     place,
 )
-from services.workflow.graph_check import CONTAINER_NODE_TYPES, START_NODE_ID_KEY
+from services.workflow.graph_check import START_NODE_ID_KEY
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, source_handle_order
 
 # Where the first node sits, as in the editor layout (core/workflow/editor_graph.py).
@@ -34,7 +38,6 @@ CONTAINER_PADDING: Final[Mapping[NoteSize, float]] = {NoteSize.WIDTH: 60, NoteSi
 # The size the canvas draws a container's start node at, `size-11` under `mt-1` (web workflow/nodes/iteration-start
 # and loop-start index.tsx:12), for one the file gives no measured size.
 START_CHILD_SIZE: Final[Mapping[NoteSize, float]] = {NoteSize.WIDTH: 44, NoteSize.HEIGHT: 48}
-_UNMEASURED: Final[Mapping[NoteSize, float]] = {size: size.node_default for size in NoteSize}
 
 
 @dataclass(frozen=True)
@@ -105,29 +108,11 @@ def _placeable(nodes: Sequence[object], *, parent: str | None) -> dict[str, dict
     }
 
 
-def _drawn_from(node: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
-    """Where the canvas reads a node's size: a container is drawn at its data's (web workflow/nodes/_base/node.tsx:173),
-    its wrapper's only when the data has none.
-    """
-    if _is_container(node["data"]):
-        return node["data"], node
-    return (node,)
-
-
-def _lengths(node: Mapping[str, Any], *, unmeasured: Mapping[NoteSize, float] = _UNMEASURED) -> dict[NoteSize, float]:
+def _lengths(
+    node: Mapping[str, Any], *, unmeasured: Mapping[NoteSize, float] = UNMEASURED_SIZE
+) -> dict[NoteSize, float]:
     """The node's size as the canvas draws it, `unmeasured`'s on an axis the file gives no size for."""
-    lengths: dict[NoteSize, float] = {}
-    for size in NoteSize:
-        measured = measured_length(*_drawn_from(node), size=size)
-        lengths[size] = unmeasured[size] if measured is None else measured
-    return lengths
-
-
-def _is_container(data: Mapping[str, Any]) -> bool:
-    node_type = data.get("type")
-    if not isinstance(node_type, str):
-        return False
-    return node_type in CONTAINER_NODE_TYPES
+    return {size: node_length(*drawn_from(node), size=size, unmeasured=unmeasured) for size in NoteSize}
 
 
 def _fit_children(container: dict[str, Any], *, nodes: Sequence[object], edges: Sequence[object]) -> None:
@@ -136,7 +121,7 @@ def _fit_children(container: dict[str, Any], *, nodes: Sequence[object], edges: 
     container, or a container with no children, is left as it is.
     """
     data = container["data"]
-    if not _is_container(data):
+    if not is_container(data):
         return
     children = _placeable(nodes, parent=container["id"])
     if not children:
@@ -145,13 +130,13 @@ def _fit_children(container: dict[str, Any], *, nodes: Sequence[object], edges: 
         _fit_children(child, nodes=nodes, edges=edges)
     start = data.get(START_NODE_ID_KEY)
     lengths = {
-        child_id: _lengths(child, unmeasured=START_CHILD_SIZE if child_id == start else _UNMEASURED)
+        child_id: _lengths(child, unmeasured=START_CHILD_SIZE if child_id == start else UNMEASURED_SIZE)
         for child_id, child in children.items()
     }
     _lay_out(_Level(children, lengths, _links(edges, children), _INSIDE_CONTAINER))
     for size in NoteSize:
         end = max(child[POSITION_KEY][size.axis] + lengths[child_id][size] for child_id, child in children.items())
-        current = measured_length(*_drawn_from(container), size=size) or 0
+        current = measured_length(*drawn_from(container), size=size) or 0
         # The canvas reads the size from the data and the wrapper, so both get it.
         container[size.value] = data[size.value] = max(current, end + CONTAINER_PADDING[size])
 

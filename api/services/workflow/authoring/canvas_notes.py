@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Final, Self, TypeGuard
 
-from services.workflow.graph_check import CANVAS_NOTE_TYPE
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, CONTAINER_NODE_TYPES
 
 COVERS_KEY: Final = "covers"
 TEXT_KEY: Final = "text"
@@ -92,6 +92,10 @@ class NoteSize(StrEnum):
 
     WIDTH = ("width", "x", 240, NODE_WIDTH, NOTE_PADDING)
     HEIGHT = ("height", "y", 88, NODE_HEIGHT, NOTE_PADDING + NOTE_TEXT_ROOM)
+
+
+# The size the canvas is taken to give a node the file gives no measured size.
+UNMEASURED_SIZE: Final[Mapping[NoteSize, float]] = {size: size.node_default for size in NoteSize}
 
 
 @dataclass(frozen=True)
@@ -333,7 +337,9 @@ def _covered_boxes(covers: object, coverable: Mapping[str, Mapping[str, Any]]) -
 
 
 def _box(node: Mapping[str, Any], *, sizes: Sequence[Mapping[str, Any]] | None = None) -> _Box | None:
-    """The node's extent on each axis; its size is read from the first of `sizes` that has one, default the node."""
+    """The node's extent on each axis; its size is read from the first of `sizes` that has one, by default where
+    the canvas draws the node from.
+    """
     position = node.get(POSITION_KEY)
     if not isinstance(position, Mapping):
         return None
@@ -342,19 +348,41 @@ def _box(node: Mapping[str, Any], *, sizes: Sequence[Mapping[str, Any]] | None =
         start = position.get(size.axis)
         if not is_number(start):
             return None
-        box[size] = _Extent(start, node_length(*(sizes or (node,)), size=size))
+        box[size] = _Extent(start, node_length(*(sizes or drawn_from(node)), size=size))
     return box
 
 
-def node_length(*sources: Mapping[str, Any], size: NoteSize) -> float:
-    """The first measured length of `size` among `sources`, else the one the canvas gives an unmeasured node."""
+def node_length(
+    *sources: Mapping[str, Any], size: NoteSize, unmeasured: Mapping[NoteSize, float] = UNMEASURED_SIZE
+) -> float:
+    """The first measured length of `size` among `sources`, else `unmeasured`'s."""
     length = measured_length(*sources, size=size)
-    return size.node_default if length is None else length
+    return unmeasured[size] if length is None else length
 
 
 def measured_length(*sources: Mapping[str, Any], size: NoteSize) -> float | None:
     """The first measured length of `size` among `sources`; None when none has one."""
     return next((length for source in sources if is_number(length := source.get(size.value))), None)
+
+
+def is_container(data: Mapping[str, Any]) -> bool:
+    """Whether a node's data is that of a loop or an iteration."""
+    node_type = data.get("type")
+    if not isinstance(node_type, str):
+        return False
+    return node_type in CONTAINER_NODE_TYPES
+
+
+def drawn_from(node: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    """Where the canvas reads a node's size: a container is drawn at its data's (web workflow/nodes/_base/node.tsx:173),
+    its wrapper's only when the data has none.
+    """
+    data = node.get("data")
+    if not isinstance(data, Mapping):
+        return (node,)
+    if not is_container(data):
+        return (node,)
+    return data, node
 
 
 def is_number(value: object) -> TypeGuard[float]:
