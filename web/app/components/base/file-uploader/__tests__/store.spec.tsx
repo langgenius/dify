@@ -1,5 +1,6 @@
 import type { FileEntity } from '../types'
-import { render, renderHook, screen } from '@testing-library/react'
+import { act, render, renderHook, screen } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { TransferMethod } from '@/types/app'
 import { createFileStore, FileContext, FileContextProvider, useFileStore, useStore } from '../store'
 
@@ -109,6 +110,46 @@ describe('useFileStore', () => {
 })
 
 describe('FileContextProvider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should ignore file updates after the provider unmounts', () => {
+    const onChange = vi.fn()
+    const files = [createMockFile()]
+    const { result, unmount } = renderHook(() => useFileStore(), {
+      wrapper: ({ children }) => (
+        <FileContextProvider value={files} onChange={onChange}>
+          {children}
+        </FileContextProvider>
+      ),
+    })
+    const store = result.current
+
+    unmount()
+    store.getState().setFiles([])
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(store.getState().files).toEqual(files)
+  })
+
+  it('should keep file updates active when StrictMode replays effects', () => {
+    const onChange = vi.fn()
+    const files = [createMockFile()]
+    const { result } = renderHook(() => useFileStore(), {
+      wrapper: ({ children }) => (
+        <StrictMode>
+          <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
+        </StrictMode>
+      ),
+    })
+
+    act(() => result.current.getState().setFiles(files))
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(files)
+    expect(result.current.getState().files).toEqual(files)
+  })
+
   it('should render children', () => {
     render(
       <FileContextProvider>
