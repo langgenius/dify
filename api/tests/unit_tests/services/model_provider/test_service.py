@@ -5,6 +5,11 @@ from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from core.entities.model_entities import (
     ModelStatus,
     ModelWithProviderEntity,
@@ -42,10 +47,6 @@ from services.credentials.query import CredentialQuery, ModelCredentialRecord
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider import service as service_module
 from services.model_provider.service import ModelProviderService, _ProviderSummaryState
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 
 class _RecordingConfigurations:
@@ -67,9 +68,7 @@ class _RecordingProviderManager:
     """Test double for ProviderManager that records calls instead of using mocks."""
 
     def __init__(self, configurations: object | None = None) -> None:
-        self.configurations: object = (
-            configurations if configurations is not None else _RecordingConfigurations()
-        )
+        self.configurations: object = configurations if configurations is not None else _RecordingConfigurations()
         self.get_configurations_error: Exception | None = None
         self.get_configurations_calls: list[str] = []
         self.get_default_model_result: object | None = None
@@ -83,19 +82,13 @@ class _RecordingProviderManager:
             raise self.get_configurations_error
         return self.configurations
 
-    def get_default_model(
-        self, *, tenant_id: str, model_type: ModelType
-    ) -> object | None:
-        self.get_default_model_calls.append(
-            {"tenant_id": tenant_id, "model_type": model_type}
-        )
+    def get_default_model(self, *, tenant_id: str, model_type: ModelType) -> object | None:
+        self.get_default_model_calls.append({"tenant_id": tenant_id, "model_type": model_type})
         if self.get_default_model_error is not None:
             raise self.get_default_model_error
         return self.get_default_model_result
 
-    def update_default_model_record(
-        self, *, tenant_id: str, model_type: ModelType, provider: str, model: str
-    ) -> None:
+    def update_default_model_record(self, *, tenant_id: str, model_type: ModelType, provider: str, model: str) -> None:
         self.update_default_model_record_calls.append(
             {
                 "tenant_id": tenant_id,
@@ -168,9 +161,7 @@ def _build_provider_configuration(
             models=custom_models,
             can_added_models=[],
         ),
-        system_configuration=SimpleNamespace(
-            enabled=False, current_quota_type=None, quota_configurations=[]
-        ),
+        system_configuration=SimpleNamespace(enabled=False, current_quota_type=None, quota_configurations=[]),
         is_custom_configuration_available=lambda: custom_config_available,
     )
 
@@ -220,14 +211,8 @@ class TestModelProviderServiceCases:
             ]
         )
         sqlite_session.commit()
-        service, _manager, configurations = _create_service_with_fake_manager(
-            monkeypatch
-        )
-        models = (
-            [_build_available_llm("gpt-4o-mini"), _build_available_llm("gpt-4o")]
-            if has_active_models
-            else []
-        )
+        service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
+        models = [_build_available_llm("gpt-4o-mini"), _build_available_llm("gpt-4o")] if has_active_models else []
         configurations.models = models
 
         service.initialize_default_llm("tenant-1")
@@ -238,9 +223,7 @@ class TestModelProviderServiceCases:
             ("tenant-1", ModelType.TEXT_EMBEDDING, "embedding", "embedding-model"),
         }
         if has_active_models:
-            expected_defaults.add(
-                ("tenant-1", ModelType.LLM, "langgenius/openai/openai", "gpt-4o-mini")
-            )
+            expected_defaults.add(("tenant-1", ModelType.LLM, "langgenius/openai/openai", "gpt-4o-mini"))
         assert {
             (
                 record.tenant_id,
@@ -268,9 +251,7 @@ class TestModelProviderServiceCases:
         )
         sqlite_session.add(saved_default)
         sqlite_session.commit()
-        service, manager, _configurations = _create_service_with_fake_manager(
-            monkeypatch
-        )
+        service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
         service.initialize_default_llm("tenant-1")
 
@@ -289,9 +270,7 @@ class TestModelProviderServiceCases:
         selection_time: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service, _manager, configurations = _create_service_with_fake_manager(
-            monkeypatch
-        )
+        service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
         selected = False
 
         def save_selection() -> None:
@@ -307,9 +286,7 @@ class TestModelProviderServiceCases:
             )
             sqlite_session.commit()
 
-        def discover_models(
-            *, model_type: ModelType, only_active: bool
-        ) -> list[ModelWithProviderEntity]:
+        def discover_models(*, model_type: ModelType, only_active: bool) -> list[ModelWithProviderEntity]:
             assert model_type == ModelType.LLM
             assert only_active
             if selection_time == "discovery":
@@ -351,9 +328,7 @@ class TestModelProviderServiceCases:
     def test_initialize_default_llm_propagates_database_failure(
         sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        service, _manager, configurations = _create_service_with_fake_manager(
-            monkeypatch
-        )
+        service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
         configurations.models = [_build_available_llm("gpt-4o-mini")]
         with sqlite_engine.begin() as connection:
             connection.exec_driver_sql(
@@ -370,66 +345,44 @@ class TestModelProviderServiceCases:
     def test_available_credentials_use_injected_query_for_admin_viewer(
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service, manager, _configurations = _create_service_with_fake_manager(
-            monkeypatch
-        )
+        service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
         user = Account(name="Admin", email="admin@example.com")
         user.id = "actor"
         user.role = TenantAccountRole.ADMIN
         query = create_autospec(CredentialQuery, instance=True, spec_set=True)
-        query.list_models.return_value = [
-            ModelCredentialRecord(id="credential", name="Shared credential")
-        ]
+        query.list_models.return_value = [ModelCredentialRecord(id="credential", name="Shared credential")]
 
-        result = service.get_provider_available_credentials(
-            "tenant", "openai", user=user, credential_query=query
-        )
+        result = service.get_provider_available_credentials("tenant", "openai", user=user, credential_query=query)
 
-        query.list_models.assert_called_once_with(
-            workspace_id="tenant", provider="openai", actor_id="actor"
-        )
-        assert result == [
-            CredentialConfiguration(
-                credential_id="credential", credential_name="Shared credential"
-            )
-        ]
+        query.list_models.assert_called_once_with(workspace_id="tenant", provider="openai", actor_id="actor")
+        assert result == [CredentialConfiguration(credential_id="credential", credential_name="Shared credential")]
         assert manager.get_configurations_calls == []
 
     class TestModelProviderServiceConfiguration:
         def test__get_provider_configuration_should_return_configuration_when_provider_exists(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             provider_configuration = SimpleNamespace(name="provider-config")
             manager.configurations = {"openai": provider_configuration}
 
-            result = service._get_provider_configuration(
-                tenant_id="tenant-1", provider="openai"
-            )
+            result = service._get_provider_configuration(tenant_id="tenant-1", provider="openai")
 
             assert result is provider_configuration
 
         def test__get_provider_configuration_should_raise_error_when_provider_is_missing(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             manager.configurations = dict[str, Any]()
 
             with pytest.raises(ProviderNotFoundError, match="does not exist"):
-                service._get_provider_configuration(
-                    tenant_id="tenant-1", provider="missing"
-                )
+                service._get_provider_configuration(tenant_id="tenant-1", provider="missing")
 
         def test_get_provider_list_should_filter_by_model_type_and_build_no_configure_status(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             allowed = _build_provider_configuration(
                 provider_name="openai",
                 supported_model_types=[ModelType.LLM],
@@ -442,9 +395,7 @@ class TestModelProviderServiceCases:
             )
             manager.configurations = {"openai": allowed, "embedding": filtered}
 
-            result = service.get_provider_list(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_provider_list(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert len(result) == 1
             assert result[0].provider == "openai"
@@ -492,27 +443,17 @@ class TestModelProviderServiceCases:
                 preferred_provider_type=ProviderType.CUSTOM,
             )
             call_order: list[str] = []
-            manager_constructor = MagicMock(
-                side_effect=AssertionError("summary must not construct ProviderManager")
-            )
+            manager_constructor = MagicMock(side_effect=AssertionError("summary must not construct ProviderManager"))
             monkeypatch.setattr(service, "_get_provider_manager", manager_constructor)
             monkeypatch.setattr(
                 service_module.PluginService,
                 "list_model_provider_bindings",
-                MagicMock(
-                    side_effect=lambda *_args, **_kwargs: (
-                        call_order.append("bindings") or [binding]
-                    )
-                ),
+                MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("bindings") or [binding]),
             )
             monkeypatch.setattr(
                 service_module.PluginService,
                 "fetch_plugin_model_providers",
-                MagicMock(
-                    side_effect=lambda *_args, **_kwargs: (
-                        call_order.append("providers") or [provider]
-                    )
-                ),
+                MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("providers") or [provider]),
             )
             monkeypatch.setattr(
                 service,
@@ -522,11 +463,7 @@ class TestModelProviderServiceCases:
             monkeypatch.setattr(
                 service_module.ext_hosting_provider.hosting_configuration,
                 "provider_map",
-                {
-                    provider.provider: SimpleNamespace(
-                        enabled=True, quotas=[SimpleNamespace()]
-                    )
-                },
+                {provider.provider: SimpleNamespace(enabled=True, quotas=[SimpleNamespace()])},
             )
 
             providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
@@ -546,10 +483,7 @@ class TestModelProviderServiceCases:
                 ),
             ]
             assert providers[0].custom_configuration.has_custom_models is True
-            assert (
-                providers[0].custom_configuration.current_credential_name
-                == "Production"
-            )
+            assert providers[0].custom_configuration.current_credential_name == "Production"
             assert providers[0].custom_configuration.current_credential_usable is True
             assert providers[0].system_configuration.enabled is True
             assert plugins["langgenius/openai"].installation_id == "installation-1"
@@ -561,9 +495,7 @@ class TestModelProviderServiceCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
         ) -> None:
-            marketplace_binding = _build_model_provider_binding(
-                PluginInstallationSource.Marketplace
-            )
+            marketplace_binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
             package_binding = _build_model_provider_binding(
                 PluginInstallationSource.Package,
                 installation_id="installation-package",
@@ -612,18 +544,10 @@ class TestModelProviderServiceCases:
                 service_module.ext_hosting_provider.hosting_configuration,
                 "provider_map",
                 {
-                    "langgenius/openai/openai": SimpleNamespace(
-                        enabled=True, quotas=[SimpleNamespace()]
-                    ),
-                    "langgenius/package/openai": SimpleNamespace(
-                        enabled=True, quotas=[SimpleNamespace()]
-                    ),
-                    "langgenius/remote/openai": SimpleNamespace(
-                        enabled=True, quotas=[SimpleNamespace()]
-                    ),
-                    "langgenius/unverified/openai": SimpleNamespace(
-                        enabled=True, quotas=[SimpleNamespace()]
-                    ),
+                    "langgenius/openai/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                    "langgenius/package/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                    "langgenius/remote/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                    "langgenius/unverified/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
                 },
             )
             monkeypatch.setattr(
@@ -641,16 +565,11 @@ class TestModelProviderServiceCases:
                 "_load_provider_summary_states",
                 MagicMock(return_value={}),
             )
-            monkeypatch.setattr(
-                service_module, "is_filtered", MagicMock(return_value=False)
-            )
+            monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
 
             providers, _ = ModelProviderService().get_provider_summary_list("tenant-1")
 
-            assert {
-                provider.provider: provider.system_configuration.enabled
-                for provider in providers
-            } == {
+            assert {provider.provider: provider.system_configuration.enabled for provider in providers} == {
                 "langgenius/openai/openai": True,
                 "langgenius/package/openai": False,
                 "langgenius/unhosted/openai": False,
@@ -725,16 +644,10 @@ class TestModelProviderServiceCases:
             monkeypatch.setattr(
                 service_module.PluginService,
                 "fetch_plugin_model_providers",
-                MagicMock(
-                    return_value=[llm_provider, llm_provider, embedding_provider]
-                ),
+                MagicMock(return_value=[llm_provider, llm_provider, embedding_provider]),
             )
-            monkeypatch.setattr(
-                service, "_load_provider_summary_states", MagicMock(return_value={})
-            )
-            monkeypatch.setattr(
-                service_module, "is_filtered", MagicMock(return_value=False)
-            )
+            monkeypatch.setattr(service, "_load_provider_summary_states", MagicMock(return_value={}))
+            monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
 
             providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
 
@@ -753,9 +666,7 @@ class TestModelProviderServiceCases:
         ) -> None:
             from tests.helpers.unit.config_override import apply_config_overrides
 
-            apply_config_overrides(
-                monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY
-            )
+            apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
             state = _ProviderSummaryState(has_custom_provider=True)
 
             preferred_provider_type = ModelProviderService._get_preferred_provider_type(
@@ -887,41 +798,27 @@ class TestModelProviderServiceCases:
             assert "count(" not in statements[1].lower()
             assert "provider_credentials.id" in statements[1]
             assert "provider_credentials.credential_name" in statements[1]
-            assert (
-                "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC"
-                in statements[1]
-            )
+            assert "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC" in statements[1]
             assert "provider_model_credentials" in statements[2]
 
-        def test_list_models_should_pass_filters_through(
-            self, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+        def test_list_models_should_pass_filters_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             filters: list[dict[str, object]] = []
 
-            def get_models(
-                _self: ProviderConfigurations, **kwargs: object
-            ) -> list[ModelWithProviderEntity]:
+            def get_models(_self: ProviderConfigurations, **kwargs: object) -> list[ModelWithProviderEntity]:
                 filters.append(kwargs)
                 return []
 
             monkeypatch.setattr(ProviderConfigurations, "get_models", get_models)
             manager.configurations = ProviderConfigurations(tenant_id="tenant-1")
 
-            assert (
-                service.list_models("tenant-1", provider=None, model_type=ModelType.LLM)
-                == []
-            )
+            assert service.list_models("tenant-1", provider=None, model_type=ModelType.LLM) == []
             assert filters == [{"provider": None, "model_type": ModelType.LLM}]
 
         def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
             class _Model:
                 def __init__(self, model_name: str) -> None:
@@ -949,22 +846,16 @@ class TestModelProviderServiceCases:
                     }
 
             provider_configurations = SimpleNamespace(
-                get_models=MagicMock(
-                    return_value=[_Model("gpt-4o"), _Model("gpt-4o-mini")]
-                )
+                get_models=MagicMock(return_value=[_Model("gpt-4o"), _Model("gpt-4o-mini")])
             )
             manager.configurations = provider_configurations
 
-            result = service.get_models_by_provider(
-                tenant_id="tenant-1", provider="openai"
-            )
+            result = service.get_models_by_provider(tenant_id="tenant-1", provider="openai")
 
             assert len(result) == 2
             assert result[0].model == "gpt-4o"
             assert result[1].provider.provider == "openai"
-            provider_configurations.get_models.assert_called_once_with(
-                provider="openai"
-            )
+            provider_configurations.get_models.assert_called_once_with(provider="openai")
 
     class TestModelProviderServiceDelegation:
         @pytest.mark.parametrize(
@@ -1062,13 +953,9 @@ class TestModelProviderServiceCases:
         ) -> None:
             service = ModelProviderService()
             provider_configuration = MagicMock()
-            getattr(
-                provider_configuration, provider_method_name
-            ).return_value = provider_return
+            getattr(provider_configuration, provider_method_name).return_value = provider_return
             get_provider_config_mock = MagicMock(return_value=provider_configuration)
-            monkeypatch.setattr(
-                service, "_get_provider_configuration", get_provider_config_mock
-            )
+            monkeypatch.setattr(service, "_get_provider_configuration", get_provider_config_mock)
 
             result = getattr(service, method_name)(**method_kwargs)
 
@@ -1245,20 +1132,14 @@ class TestModelProviderServiceCases:
         ) -> None:
             service = ModelProviderService()
             provider_configuration = MagicMock()
-            getattr(
-                provider_configuration, provider_method_name
-            ).return_value = provider_return
+            getattr(provider_configuration, provider_method_name).return_value = provider_return
             get_provider_config_mock = MagicMock(return_value=provider_configuration)
-            monkeypatch.setattr(
-                service, "_get_provider_configuration", get_provider_config_mock
-            )
+            monkeypatch.setattr(service, "_get_provider_configuration", get_provider_config_mock)
 
             result = getattr(service, method_name)(**method_kwargs)
 
             get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
-            getattr(
-                provider_configuration, provider_method_name
-            ).assert_called_once_with(**expected_kwargs)
+            getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
             if method_name == "get_model_credential":
                 assert result == {"api_key": "x"}
             if method_name == "create_model_credential":
@@ -1325,24 +1206,18 @@ class TestModelProviderServiceCases:
             service = ModelProviderService()
             provider_configuration = MagicMock()
             get_provider_config_mock = MagicMock(return_value=provider_configuration)
-            monkeypatch.setattr(
-                service, "_get_provider_configuration", get_provider_config_mock
-            )
+            monkeypatch.setattr(service, "_get_provider_configuration", get_provider_config_mock)
 
             getattr(service, method_name)(**method_kwargs)
 
             get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
-            getattr(
-                provider_configuration, provider_method_name
-            ).assert_called_once_with(**expected_kwargs)
+            getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
 
     class TestModelProviderServiceListingsAndDefaults:
         def test_get_models_by_model_type_should_group_active_non_deprecated_models(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             openai_provider = SimpleNamespace(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -1393,18 +1268,12 @@ class TestModelProviderServiceCases:
                     deprecated=True,
                 ),
             ]
-            provider_configurations = SimpleNamespace(
-                get_models=MagicMock(return_value=models)
-            )
+            provider_configurations = SimpleNamespace(get_models=MagicMock(return_value=models))
             manager.configurations = provider_configurations
 
-            result = service.get_models_by_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_models_by_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
-            provider_configurations.get_models.assert_called_once_with(
-                model_type=ModelType.LLM, only_active=True
-            )
+            provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
             assert len(result) == 1
             assert result[0].provider == "openai"
             assert len(result[0].models) == 1
@@ -1447,9 +1316,7 @@ class TestModelProviderServiceCases:
                 MagicMock(return_value=provider_configuration),
             )
 
-            result = service.get_model_parameter_rules(
-                tenant_id="tenant-1", provider="openai", model="gpt-4o"
-            )
+            result = service.get_model_parameter_rules(tenant_id="tenant-1", provider="openai", model="gpt-4o")
 
             assert len(result) == expected_count
             provider_configuration.get_current_credentials.assert_called_once_with(
@@ -1477,13 +1344,9 @@ class TestModelProviderServiceCases:
                 )
             )
             sqlite_session.commit()
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
-            result = service.get_default_model_selection(
-                "tenant-1", ModelType.LLM, session=sqlite_session
-            )
+            result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
 
             assert result == ("langgenius/openai/openai", "gpt-4o")
             assert manager.get_configurations_calls == []
@@ -1491,9 +1354,7 @@ class TestModelProviderServiceCases:
         def test_get_default_model_selection_uses_first_active_model_without_writing(
             self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, _manager, configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
             configurations.models = [
                 SimpleNamespace(
                     model="gpt-4o",
@@ -1501,58 +1362,37 @@ class TestModelProviderServiceCases:
                 )
             ]
 
-            result = service.get_default_model_selection(
-                "tenant-1", ModelType.LLM, session=sqlite_session
-            )
+            result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
 
             assert result == ("langgenius/openai/openai", "gpt-4o")
-            assert configurations.get_models_calls == [
-                {"model_type": ModelType.LLM, "only_active": True}
-            ]
-            assert (
-                sqlite_session.query(TenantDefaultModel)
-                .filter_by(tenant_id="tenant-1")
-                .first()
-                is None
-            )
+            assert configurations.get_models_calls == [{"model_type": ModelType.LLM, "only_active": True}]
+            assert sqlite_session.query(TenantDefaultModel).filter_by(tenant_id="tenant-1").first() is None
 
         def test_get_default_model_selection_returns_none_when_provider_discovery_fails(
             self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             manager.get_configurations_error = RuntimeError("provider unavailable")
 
-            result = service.get_default_model_selection(
-                "tenant-1", ModelType.LLM, session=sqlite_session
-            )
+            result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
 
             assert result is None
 
         def test_get_default_model_selection_returns_none_when_no_active_models(
             self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, _manager, configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
             configurations.models = []
 
-            result = service.get_default_model_selection(
-                "tenant-1", ModelType.LLM, session=sqlite_session
-            )
+            result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
 
             assert result is None
-            assert configurations.get_models_calls == [
-                {"model_type": ModelType.LLM, "only_active": True}
-            ]
+            assert configurations.get_models_calls == [{"model_type": ModelType.LLM, "only_active": True}]
 
         def test_get_default_model_of_model_type_should_return_response_when_manager_returns_model(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             manager.get_default_model_result = SimpleNamespace(
                 model="gpt-4o",
                 model_type=ModelType.LLM,
@@ -1564,44 +1404,30 @@ class TestModelProviderServiceCases:
                 ),
             )
 
-            result = service.get_default_model_of_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert result is not None
             assert result.model == "gpt-4o"
             assert result.provider.provider == "openai"
-            assert manager.get_default_model_calls == [
-                {"tenant_id": "tenant-1", "model_type": ModelType.LLM}
-            ]
+            assert manager.get_default_model_calls == [{"tenant_id": "tenant-1", "model_type": ModelType.LLM}]
 
         def test_get_default_model_of_model_type_should_return_none_when_manager_returns_none(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
-            result = service.get_default_model_of_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert result is None
-            assert manager.get_default_model_calls == [
-                {"tenant_id": "tenant-1", "model_type": ModelType.LLM}
-            ]
+            assert manager.get_default_model_calls == [{"tenant_id": "tenant-1", "model_type": ModelType.LLM}]
 
         def test_get_default_model_of_model_type_should_return_none_when_no_configuration_is_saved(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             manager.get_default_model_error = RuntimeError("boom")
 
-            result = service.get_default_model_of_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert result is None
 
@@ -1626,14 +1452,10 @@ class TestModelProviderServiceCases:
             )
             sqlite_session.add(saved_model)
             sqlite_session.commit()
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
             manager.get_default_model_error = error
 
-            result = service.get_default_model_of_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert result is not None
             assert result.model == "gpt-4o"
@@ -1669,25 +1491,17 @@ class TestModelProviderServiceCases:
                 )
             )
             sqlite_session.commit()
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
-            manager.get_default_model_error = ValueError(
-                "Invalid provider: langgenius/openai/openai"
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
+            manager.get_default_model_error = ValueError("Invalid provider: langgenius/openai/openai")
 
-            result = service.get_default_model_of_model_type(
-                tenant_id="tenant-1", model_type=ModelType.LLM
-            )
+            result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
             assert result is None
 
         def test_update_default_model_of_model_type_should_delegate_to_provider_manager(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            service, manager, _configurations = _create_service_with_fake_manager(
-                monkeypatch
-            )
+            service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
             service.update_default_model_of_model_type(
                 tenant_id="tenant-1",
@@ -1730,9 +1544,7 @@ class TestModelProviderServiceCases:
             )
 
             factory_constructor.assert_called_once_with(tenant_id="tenant-1")
-            factory_instance.get_provider_icon.assert_called_once_with(
-                "openai", "icon_small", "en_US"
-            )
+            factory_instance.get_provider_icon.assert_called_once_with("openai", "icon_small", "en_US")
             assert result == (b"icon-bytes", "image/png")
 
         def test_switch_preferred_provider_should_convert_enum_and_delegate(
@@ -1753,9 +1565,7 @@ class TestModelProviderServiceCases:
                 preferred_provider_type=ProviderType.SYSTEM.value,
             )
 
-            provider_configuration.switch_preferred_provider_type.assert_called_once_with(
-                ProviderType.SYSTEM
-            )
+            provider_configuration.switch_preferred_provider_type.assert_called_once_with(ProviderType.SYSTEM)
 
         @pytest.mark.parametrize(
             ("method_name", "provider_method_name"),
@@ -1785,9 +1595,7 @@ class TestModelProviderServiceCases:
                 model_type=ModelType.LLM,
             )
 
-            getattr(
-                provider_configuration, provider_method_name
-            ).assert_called_once_with(
+            getattr(provider_configuration, provider_method_name).assert_called_once_with(
                 model="gpt-4o",
                 model_type=ModelType.LLM,
             )
@@ -1810,9 +1618,7 @@ class TestModelProviderServiceSanitizationCases:
         # Build a fake provider schema with minimal fields used by ProviderResponse
         fake_provider = types.SimpleNamespace(
             provider="langgenius/openai_api_compatible/openai_api_compatible",
-            label=I18nObject(
-                en_US="OpenAI API Compatible", zh_Hans="OpenAI API Compatible"
-            ),
+            label=I18nObject(en_US="OpenAI API Compatible", zh_Hans="OpenAI API Compatible"),
             description=None,
             icon_small=None,
             icon_small_dark=None,
@@ -1838,11 +1644,7 @@ class TestModelProviderServiceSanitizationCases:
         fake_custom_provider = types.SimpleNamespace(
             current_credential_id="cred-1",
             current_credential_name="API KEY 1",
-            available_credentials=[
-                CredentialConfiguration(
-                    credential_id="cred-1", credential_name="API KEY 1"
-                )
-            ],
+            available_credentials=[CredentialConfiguration(credential_id="cred-1", credential_name="API KEY 1")],
         )
 
         fake_custom_configuration = types.SimpleNamespace(
@@ -1866,18 +1668,14 @@ class TestModelProviderServiceSanitizationCases:
                 return _FakeConfigurations(fake_provider_configuration)
 
         svc = ModelProviderService()
-        monkeypatch.setattr(
-            svc, "_get_provider_manager", lambda _tenant_id: _FakeProviderManager()
-        )
+        monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: _FakeProviderManager())
         return svc
 
     @staticmethod
     def test_get_provider_list_strips_credentials(
         service_with_fake_configurations: ModelProviderService,
     ) -> None:
-        providers = service_with_fake_configurations.get_provider_list(
-            tenant_id="tenant-1", model_type=None
-        )
+        providers = service_with_fake_configurations.get_provider_list(tenant_id="tenant-1", model_type=None)
 
         assert len(providers) == 1
         custom_models = providers[0].custom_configuration.custom_models
