@@ -661,10 +661,20 @@ export type ErrorDetail = {
 
 export type EventStreamResponse = string
 
+export type FieldHintItemRow = {
+  default?: unknown
+  description: string | null
+  loc: Array<string | number>
+  options: Array<string>
+  required: boolean
+  type: string | null
+}
+
 export type FieldHintRow = {
   default?: unknown
   description: string | null
   example?: unknown
+  items?: Array<FieldHintItemRow>
   loc: Array<string | number>
   options: Array<string>
   required: boolean
