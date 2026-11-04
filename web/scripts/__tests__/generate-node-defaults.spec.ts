@@ -26,34 +26,38 @@ describe('generated node defaults', () => {
         desc: '',
         version: '2',
         authorization: { type: 'no-auth' },
-        classes: [{ id: '1', name: 'a' }],
+        classes: [{ id: '1', name: '' }],
       }),
-    ).toEqual({ authorization: { type: 'no-auth' }, classes: [{ id: '1', name: 'a' }] })
+    ).toEqual({ authorization: { type: 'no-auth' }, classes: [{ id: '1', name: '' }] })
   })
 
-  it('drops null values', () => {
-    expect(canvasDefault({ config: null, score_threshold: null, on: false })).toEqual({ on: false })
-  })
-
-  it('drops empty strings, arrays and records at any depth but keeps zero, false and blank text', () => {
-    expect(canvasDefault({ a: '', b: [], c: {}, d: { e: '' }, f: 0, g: false, h: ' ' })).toEqual({
-      f: 0,
-      g: false,
-      h: ' ',
+  it('drops null values and keeps empty values at any depth', () => {
+    expect(
+      canvasDefault({
+        config: null,
+        score_threshold: null,
+        url: '',
+        variables: [],
+        on: false,
+        context: { variable_selector: [] },
+        prompt: [{ role: 'system', text: '' }],
+      }),
+    ).toEqual({
+      url: '',
+      variables: [],
+      on: false,
+      context: { variable_selector: [] },
+      prompt: [{ role: 'system', text: '' }],
     })
-  })
-
-  it('drops an empty value inside an array item, and an item left empty', () => {
-    expect(canvasDefault({ p: [{ role: 'system', text: '' }] })).toEqual({
-      p: [{ role: 'system' }],
-    })
-    expect(canvasDefault({ q: [{ x: '' }] })).toEqual({})
   })
 
   it('drops null array items at any depth', () => {
     expect(
       canvasDefault({ items: [null, 'a', { list: [null, 1], gone: null }], empty: [null] }),
-    ).toEqual({ items: ['a', { list: [1] }] })
+    ).toEqual({
+      items: ['a', { list: [1] }],
+      empty: [],
+    })
   })
 
   it('renders sorted keys with a trailing newline', () => {
@@ -61,7 +65,9 @@ describe('generated node defaults', () => {
       end: { outputs: [] },
       answer: { variables: [], answer: '' },
     })
-    expect(rendered).toBe('{\n  "answer": {},\n  "end": {}\n}\n')
+    expect(rendered).toBe(
+      '{\n  "answer": {\n    "answer": "",\n    "variables": []\n  },\n  "end": {\n    "outputs": []\n  }\n}\n',
+    )
   })
 })
 
