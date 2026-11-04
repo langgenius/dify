@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Autorisé",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Ce jeton a été modifié ailleurs. Rechargez la dernière version avant d’enregistrer.",
+  "personalAccessToken.copyFailed": "Échec de la copie. Veuillez réessayer.",
   "personalAccessToken.copyNow": "Copiez-le maintenant. Vous ne pourrez plus le voir.",
   "personalAccessToken.createButton": "Créer un jeton",
   "personalAccessToken.createTitle": "Créer un jeton d’accès personnel",

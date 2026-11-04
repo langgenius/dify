@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Dovoljeno",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Ta žeton je bil spremenjen drugje. Pred shranjevanjem naložite najnovejšo različico.",
+  "personalAccessToken.copyFailed": "Kopiranje ni uspelo. Poskusite znova.",
   "personalAccessToken.copyNow": "Kopirajte ga zdaj. Pozneje ga ne boste več mogli videti.",
   "personalAccessToken.createButton": "Ustvari žeton",
   "personalAccessToken.createTitle": "Ustvari osebni dostopni žeton",

@@ -583,10 +583,12 @@ it('shows expiration status and deployment beside the workspace in scope details
     within(dialog).getByText('fatelei · dataset.metadata.datasetMetadata.builtIn'),
   ).toBeInTheDocument()
   expect(
-    within(dialog).getByText('accountSettings.resourceAccessToken.app · ID: app-id'),
+    within(dialog).getByText('accountSettings.resourceAccessToken.tabApps · ID: app-id'),
   ).toBeInTheDocument()
   expect(
-    within(dialog).getByText('accountSettings.resourceAccessToken.knowledge · ID: dataset-id'),
+    within(dialog).getByText(
+      'accountSettings.resourceAccessToken.tabKnowledgeBases · ID: dataset-id',
+    ),
   ).toBeInTheDocument()
   expect(
     within(dialog).getByText(
@@ -847,7 +849,7 @@ it('shows clipboard failure on the created token and lets the user retry', async
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
   await user.click(await within(dialog).findByRole('button', { name: 'common.operation.copy' }))
   expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-    'common.operation.copyErrorFailed',
+    'accountSettings.personalAccessToken.copyFailed',
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.copy' }))
   expect(

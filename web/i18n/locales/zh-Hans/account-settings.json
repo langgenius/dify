@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "允许",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "此令牌已在其他位置修改，请重新加载最新版本后再保存。",
+  "personalAccessToken.copyFailed": "复制失败，请重试。",
   "personalAccessToken.copyNow": "请立即复制，之后将无法再次查看。",
   "personalAccessToken.createButton": "创建令牌",
   "personalAccessToken.createTitle": "创建个人访问令牌",

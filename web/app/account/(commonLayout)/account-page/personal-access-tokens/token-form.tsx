@@ -202,7 +202,7 @@ export default function TokenForm({
           )}
           {copyFailed && (
             <p role="alert" className="mt-2 system-xs-regular text-text-warning">
-              {t(($) => $['operation.copyErrorFailed'], { ns: 'common' })}
+              {t(($) => $['personalAccessToken.copyFailed'])}
             </p>
           )}
           <p className="mt-2 system-xs-regular text-text-tertiary">

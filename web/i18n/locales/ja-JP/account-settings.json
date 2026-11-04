@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "許可",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "このトークンは別の場所で変更されました。最新バージョンを再読み込みしてから保存してください。",
+  "personalAccessToken.copyFailed": "コピーに失敗しました。もう一度お試しください。",
   "personalAccessToken.copyNow": "今すぐコピーしてください。このトークンは再表示されません。",
   "personalAccessToken.createButton": "トークンを作成",
   "personalAccessToken.createTitle": "個人アクセストークンを作成",

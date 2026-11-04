@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "허용됨",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "다른 곳에서 이 토큰이 변경되었습니다. 최신 버전을 다시 불러온 후 저장하세요.",
+  "personalAccessToken.copyFailed": "복사하지 못했습니다. 다시 시도해 주세요.",
   "personalAccessToken.copyNow": "지금 복사하세요. 다시 볼 수 없습니다.",
   "personalAccessToken.createButton": "토큰 생성",
   "personalAccessToken.createTitle": "개인 액세스 토큰 생성",

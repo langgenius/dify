@@ -1041,19 +1041,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       account: {
         personalAccessTokens: {
           byTokenId: {
-            secret: {
-              post: {
-                mutationOptions: {
-                  onError: (error, variables, _onMutateResult, context) =>
-                    refreshRejectedPersonalToken(
-                      error,
-                      context.client,
-                      variables.params.token_id,
-                      consoleQuery,
-                    ),
-                },
-              },
-            },
             delete: {
               mutationOptions: {
                 onSuccess: async (_data, variables, _onMutateResult, context) => {

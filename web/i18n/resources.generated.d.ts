@@ -68,6 +68,7 @@ export default interface Resources {
     'personalAccessToken.allowed': 'Allowed'
     'personalAccessToken.appRunner': 'App Runner'
     'personalAccessToken.conflict': 'This token changed elsewhere. Reload the latest version before saving.'
+    'personalAccessToken.copyFailed': 'Copy failed. Please try again.'
     'personalAccessToken.copyNow': "Copy it now. You won't see it again."
     'personalAccessToken.createButton': 'Create token'
     'personalAccessToken.createTitle': 'Create personal access token'
