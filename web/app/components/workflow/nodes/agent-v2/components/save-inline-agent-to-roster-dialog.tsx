@@ -1,9 +1,11 @@
 'use client'
+
 import type {
   AgentComposerAgentResponse,
-  AgentComposerBindingResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { Ref } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   AgentFormValues,
   AgentIconSelection,
@@ -11,56 +13,104 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import {
-  createAgentIconSelection,
-  defaultAgentIcon,
-} from '@/features/agent-v2/roster/components/agent-form'
+import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
-import { consoleQuery } from '@/service/client'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
 
 type SaveInlineAgentToRosterDialogProps = {
-  flowId?: string
-  flowType?: FlowType
-  formKey: number
-  initialAgent?: AgentComposerAgentResponse | null
+  resource: Extract<EditorResource, { kind: 'app' | 'snippet' }>
+  initialAgent: AgentComposerAgentResponse
   nodeId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSaved: (binding: AgentComposerBindingResponse) => void
+  onSaved: (agentId: string) => void
+}
+
+type SaveInlineAgentToRosterFormSessionProps = {
+  initialAgent: AgentComposerAgentResponse
+  nameInputRef: Ref<HTMLInputElement>
+  pending: boolean
+  onCancel: () => void
+  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
+}
+
+function SaveInlineAgentToRosterFormSession({
+  initialAgent,
+  nameInputRef,
+  pending,
+  onCancel,
+  onSubmit,
+}: SaveInlineAgentToRosterFormSessionProps) {
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
+  const [initialValues] = useState(() => ({
+    fields: {
+      description: initialAgent.description ?? '',
+      name: '',
+      role: initialAgent.role ?? '',
+    } satisfies AgentFormValues,
+    icon: createAgentIconSelection(initialAgent),
+  }))
+  const [agentIcon, setAgentIcon] = useState(initialValues.icon)
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $['roster.saveToRosterDialog.title'], { ns: 'agentRoster' })}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {t(($) => $['roster.saveToRosterDialog.description'], { ns: 'agentRoster' })}
+        </DialogDescription>
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={pending}
+        />
+      </DialogHeader>
+      <Form<AgentFormValues>
+        className="contents"
+        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
+      >
+        <AgentFormFields
+          ref={nameInputRef}
+          defaultValues={initialValues.fields}
+          icon={agentIcon}
+          iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
+          onIconChange={setAgentIcon}
+        />
+        <DialogFooter>
+          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
+            {tCommon(($) => $['operation.cancel'])}
+          </Button>
+          <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
+            {tCommon(($) => $['operation.save'])}
+          </Button>
+        </DialogFooter>
+      </Form>
+    </>
+  )
 }
 
 export function SaveInlineAgentToRosterDialog({
-  flowId,
-  flowType,
-  formKey,
+  resource,
   initialAgent,
   nodeId,
   open,
   onOpenChange,
   onSaved,
 }: SaveInlineAgentToRosterDialogProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState(initialAgent?.description ?? '')
-  const [role, setRole] = useState(initialAgent?.role ?? '')
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() =>
-    initialAgent ? createAgentIconSelection(initialAgent) : defaultAgentIcon,
-  )
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
   )
@@ -69,33 +119,20 @@ export function SaveInlineAgentToRosterDialog({
   )
   const isSavingToRoster =
     appSaveToRosterMutation.isPending || snippetSaveToRosterMutation.isPending
-
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setName('')
-      setDescription(initialAgent?.description ?? '')
-      setRole(initialAgent?.role ?? '')
-      setAgentIcon(initialAgent ? createAgentIconSelection(initialAgent) : defaultAgentIcon)
-    } else {
-      setIconPickerOpen(false)
-    }
+    if (!nextOpen && isSavingToRoster) return
     onOpenChange(nextOpen)
   }
 
-  const handleSubmit = (formValues: AgentFormValues) => {
+  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
     if (isSavingToRoster) return
-
-    if (!flowId) return
-
-    const trimmedName = formValues.name?.trim() ?? ''
-    const trimmedRole = formValues.role?.trim() ?? ''
 
     const body = {
       variant: 'workflow' as const,
       save_strategy: 'save_to_roster' as const,
-      new_agent_name: trimmedName,
-      description: formValues.description?.trim() ?? '',
-      role: trimmedRole,
+      new_agent_name: formValues.name.trim(),
+      description: formValues.description.trim(),
+      role: formValues.role.trim(),
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
@@ -105,17 +142,16 @@ export function SaveInlineAgentToRosterDialog({
         const binding = composerState.binding
         if (binding?.binding_type !== 'roster_agent' || !binding.agent_id) return
 
-        toast.success(t(($) => $['roster.saveToRosterSuccess']))
-        onSaved(binding)
-        handleOpenChange(false)
+        onSaved(binding.agent_id)
+        onOpenChange(false)
       },
     }
 
-    if (flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       snippetSaveToRosterMutation.mutate(
         {
           params: {
-            snippet_id: flowId,
+            snippet_id: resource.snippetId,
             node_id: nodeId,
           },
           body,
@@ -125,11 +161,11 @@ export function SaveInlineAgentToRosterDialog({
       return
     }
 
-    if (flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       appSaveToRosterMutation.mutate(
         {
           params: {
-            app_id: flowId,
+            app_id: resource.appId,
             node_id: nodeId,
           },
           body,
@@ -142,75 +178,16 @@ export function SaveInlineAgentToRosterDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
+        <DialogContent initialFocus={nameInputRef} className="w-130">
+          <SaveInlineAgentToRosterFormSession
+            initialAgent={initialAgent}
+            nameInputRef={nameInputRef}
+            pending={isSavingToRoster}
+            onCancel={() => onOpenChange(false)}
+            onSubmit={handleSubmit}
           />
-          <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['roster.saveToRosterDialog.title'])}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              {t(($) => $['roster.saveToRosterDialog.description'])}
-            </DialogDescription>
-          </div>
-          <Form<AgentFormValues>
-            key={formKey}
-            className="min-h-0 flex-1"
-            onFormSubmit={handleSubmit}
-          >
-            <AgentFormFields
-              description={description}
-              icon={agentIcon}
-              iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'])}
-              name={name}
-              role={role}
-              onDescriptionChange={setDescription}
-              onIconClick={() => setIconPickerOpen(true)}
-              onNameChange={setName}
-              onRoleChange={setRole}
-            />
-            <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
-              <Button
-                type="button"
-                className="min-w-18"
-                onClick={() => handleOpenChange(false)}
-                disabled={isSavingToRoster}
-              >
-                {tCommon(($) => $['operation.cancel'])}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="min-w-18"
-                loading={isSavingToRoster}
-              >
-                {tCommon(($) => $['operation.save'])}
-              </Button>
-            </div>
-          </Form>
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
-        onOpenChange={setIconPickerOpen}
-        onSelect={(icon) => {
-          setAgentIcon(icon)
-        }}
-      />
     </>
   )
 }

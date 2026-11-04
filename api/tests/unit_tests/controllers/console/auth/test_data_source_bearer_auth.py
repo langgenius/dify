@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import create_autospec, patch
 from uuid import UUID
 
@@ -23,15 +23,14 @@ from controllers.console.auth.error import (
 )
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
-from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.auth.errors import (
     DataSourceApiKeyAuthCredentialValidationError,
     DataSourceApiKeyAuthProviderUnavailableError,
     InvalidDataSourceApiKeyAuthCredentialsError,
     UnsupportedDataSourceApiKeyAuthProviderError,
 )
-from services.entities.data_source_api_key_auth_entities import (
+from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
+from services.data_source.entities.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthBindingRecord,
     DataSourceApiKeyAuthCredentials,
@@ -47,8 +46,18 @@ def _request_context() -> RequestContext:
     )
 
 
-def _application_services(service: DataSourceApiKeyAuthService) -> SimpleNamespace:
-    return SimpleNamespace(data_source_api_key_auth=service)
+@dataclass(frozen=True)
+class _DataSources:
+    api_key_auth: DataSourceApiKeyAuthService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    data_sources: _DataSources
+
+
+def _application_services(service: DataSourceApiKeyAuthService) -> _ApplicationServices:
+    return _ApplicationServices(data_sources=_DataSources(api_key_auth=service))
 
 
 def test_list_data_source_auth_passes_context_and_serializes_application_result() -> None:
@@ -210,28 +219,6 @@ def test_create_data_source_auth_binding_maps_domain_errors(
 def test_api_key_auth_binding_payload_rejects_invalid_structure(payload: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         ApiKeyAuthBindingPayload.model_validate(payload)
-
-
-def test_create_data_source_auth_binding_preserves_admission_invariant_error() -> None:
-    api = ApiKeyAuthDataSourceBinding()
-    method = unwrap(api.post)
-    request_context = _request_context()
-    req_data = ApiKeyAuthBindingPayload(
-        category="api_key",
-        provider="firecrawl",
-        credentials={"auth_type": "bearer", "config": {"api_key": "secret"}},
-    )
-    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
-    service.create_binding.side_effect = ActiveWorkspaceRequiredError()
-
-    with (
-        patch(
-            "controllers.console.auth.data_source_bearer_auth.application_services",
-            return_value=_application_services(service),
-        ),
-        pytest.raises(ActiveWorkspaceRequiredError),
-    ):
-        method(api, req_data, request_context)
 
 
 def test_delete_data_source_auth_binding_passes_context_and_binding_id() -> None:

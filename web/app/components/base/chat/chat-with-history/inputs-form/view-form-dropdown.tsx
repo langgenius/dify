@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 
 const ViewFormDropdown = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   return (
     <Popover>
       <PopoverTrigger
@@ -19,7 +19,7 @@ const ViewFormDropdown = () => {
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={4}
         className="border-none bg-transparent shadow-none"

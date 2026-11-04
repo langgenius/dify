@@ -1,30 +1,36 @@
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import type { WorkflowDraftVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
+import { InspectVarsProvider } from '../../__tests__/inspect-vars-provider'
 import { baseRunningData, renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, VarType, WorkflowRunningStatus } from '../../types'
 import VariableInspectTrigger from '../trigger'
+import { EVENT_WORKFLOW_STOP } from '../types'
 
-type InspectVarsState = {
-  conversationVars: VarInInspect[]
-  systemVars: VarInInspect[]
-  nodesWithInspectVars: NodeWithVar[]
-}
-
-const { mockDeleteAllInspectorVars, mockEmit } = vi.hoisted(() => ({
-  mockDeleteAllInspectorVars: vi.fn(),
-  mockEmit: vi.fn(),
-}))
-
-let inspectVarsState: InspectVarsState
-
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  default: () => ({
-    ...inspectVarsState,
-    deleteAllInspectorVars: mockDeleteAllInspectorVars,
-  }),
-}))
+const mockEmit = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.variables.delete': async () => ({}),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -34,12 +40,14 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
+const createVariable = (
+  overrides: Partial<WorkflowDraftVariableResponse> = {},
+): WorkflowDraftVariableResponse => ({
   id: 'var-1',
-  type: VarInInspectType.node,
+  type: VarInInspectType.conversation,
   name: 'result',
   description: '',
-  selector: ['node-1', 'result'],
+  selector: ['conversation', 'result'],
   value_type: VarType.string,
   value: 'cached',
   edited: false,
@@ -48,6 +56,8 @@ const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => 
   full_content: {
     size_bytes: 0,
     download_url: '',
+    length: 0,
+    value_type: VarType.string,
   },
   ...overrides,
 })
@@ -55,27 +65,33 @@ const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => 
 const renderTrigger = ({
   nodes = [createNode()],
   initialStoreState = {},
+  conversationVars = [],
 }: {
   nodes?: Array<ReturnType<typeof createNode>>
   initialStoreState?: Record<string, unknown>
+  conversationVars?: WorkflowDraftVariableResponse[]
 } = {}) => {
-  return renderWorkflowFlowComponent(<VariableInspectTrigger />, {
-    nodes,
-    edges: [],
-    initialStoreState,
-  })
+  const { queryClient } = createConsoleQueryWrapper()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    }),
+    { items: conversationVars },
+  )
+  return renderWorkflowFlowComponent(
+    <InspectVarsProvider>
+      <VariableInspectTrigger />
+    </InspectVarsProvider>,
+    {
+      queryClient,
+      nodes,
+      edges: [],
+      initialStoreState,
+    },
+  )
 }
 
 describe('VariableInspectTrigger', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    inspectVarsState = {
-      conversationVars: [],
-      systemVars: [],
-      nodesWithInspectVars: [],
-    }
-  })
-
   it('should stay hidden when the variable-inspect panel is already open', () => {
     renderTrigger({
       initialStoreState: {
@@ -84,56 +100,86 @@ describe('VariableInspectTrigger', () => {
     })
 
     expect(
-      screen.queryByText('workflow.debug.variableInspect.trigger.normal'),
+      screen.queryByText('workflowDebug.debug.variableInspect.trigger.normal'),
     ).not.toBeInTheDocument()
   })
 
-  it('should open the panel from the normal trigger state', () => {
+  it('should open the panel from the normal trigger state with the keyboard', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger()
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.normal'))
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.normal' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
 
-  it('should block opening while the workflow is read only', () => {
+  it('should block opening while the workflow is read only', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       initialStoreState: {
         isRestoring: true,
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.normal'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.normal'))
 
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
-  it('should clear cached variables and reset the focused node', () => {
-    inspectVarsState = {
-      conversationVars: [
-        createVariable({
-          id: 'conversation-var',
-          type: VarInInspectType.conversation,
-        }),
-      ],
-      systemVars: [],
-      nodesWithInspectVars: [],
-    }
-
+  it('should clear cached variables and reset the focused node with the keyboard', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
+      conversationVars: [
+        createVariable({ id: 'conversation-var', type: VarInInspectType.conversation }),
+      ],
       initialStoreState: {
         currentFocusNodeId: 'node-2',
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.clear'))
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.clear' }),
+    ).toHaveFocus()
+    await user.keyboard(' ')
 
-    expect(screen.getByText('workflow.debug.variableInspect.trigger.cached')).toBeInTheDocument()
-    expect(mockDeleteAllInspectorVars).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.clear' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.normal' }),
+    ).toBeInTheDocument()
     expect(store.getState().currentFocusNodeId).toBe('')
   })
 
-  it('should show the running state and open the panel while running', () => {
+  it('exposes a named stop button that works from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderTrigger({
+      initialStoreState: {
+        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Running } }),
+      },
+    })
+    await user.tab()
+    await user.tab()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mockEmit).toHaveBeenCalledWith({ type: EVENT_WORKFLOW_STOP })
+  })
+
+  it('should show the running state and open the panel while running', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       nodes: [
         createNode({
@@ -152,10 +198,10 @@ describe('VariableInspectTrigger', () => {
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.running'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.running'))
 
     expect(
-      screen.queryByText('workflow.debug.variableInspect.trigger.clear'),
+      screen.queryByText('workflowDebug.debug.variableInspect.trigger.clear'),
     ).not.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })

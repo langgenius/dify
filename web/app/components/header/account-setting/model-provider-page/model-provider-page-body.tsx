@@ -1,6 +1,7 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { ModelProviderPluginSummary } from './index'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -18,8 +19,7 @@ type ModelProviderPageBodyProps = {
   showEmptyProvider: boolean
   showConfiguredProviders: boolean
   showNotConfiguredProviders: boolean
-  showMarketplace: boolean
-  enableMarketplace: boolean
+  marketplace: MarketplaceLinks | null
   searchText: string
   pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   onOpenMarketplace?: () => void
@@ -47,7 +47,7 @@ function ModelProviderCardSkeleton() {
 }
 
 function ModelProviderListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -65,7 +65,7 @@ function EmptyProviderState({
   enableMarketplace: boolean
   stepByStepTourTarget?: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'modelProvider', 'navigation'])
 
   return (
     <div
@@ -76,13 +76,13 @@ function EmptyProviderState({
         <span aria-hidden className="i-ri-brain-2-line size-5 text-text-primary" />
       </div>
       <div className="mt-2 system-sm-medium text-text-secondary">
-        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'common' })}
+        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'modelProvider' })}
       </div>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {enableMarketplace ? (
           <Trans
             i18nKey={($) => $['modelProvider.emptyProviderTipWithMarketplace']}
-            ns="common"
+            ns="modelProvider"
             components={{
               marketplace: (
                 <a
@@ -90,13 +90,13 @@ function EmptyProviderState({
                   aria-label={t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                   className="system-xs-medium text-text-accent hover:underline"
                 >
-                  {t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+                  {t(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
                 </a>
               ),
             }}
           />
         ) : (
-          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'common' })
+          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'modelProvider' })
         )}
       </p>
     </div>
@@ -162,13 +162,12 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   showEmptyProvider,
   showConfiguredProviders,
   showNotConfiguredProviders,
-  showMarketplace,
-  enableMarketplace,
+  marketplace,
   searchText,
   pluginSummaryMap,
   onOpenMarketplace,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -190,7 +189,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       )}
       {showEmptyProvider && (
         <EmptyProviderState
-          enableMarketplace={enableMarketplace}
+          enableMarketplace={marketplace !== null}
           stepByStepTourTarget={
             !showConfiguredProviders && !showNotConfiguredProviders
               ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
@@ -208,7 +207,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       {showNotConfiguredProviders && (
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex h-5 items-center system-md-semibold text-text-primary">
-            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' })}
+            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })}
           </div>
           <ProviderCardList
             firstCardTarget={
@@ -222,9 +221,10 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           />
         </div>
       )}
-      {showMarketplace && (
+      {!isLoadingModelProviders && marketplace && (
         <div>
           <InstallFromMarketplace
+            marketplace={marketplace}
             searchText={searchText}
             onOpenMarketplace={onOpenMarketplace}
             stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}

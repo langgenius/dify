@@ -25,6 +25,7 @@ export const useFormatDetector = () => {
           setSelectedIsItalic,
           setSelectedIsStrikeThrough,
           setSelectedLinkUrl,
+          setSelectedLinkKey,
           setSelectedIsLink,
           setSelectedIsBullet,
         } = noteEditorStore.getState()
@@ -33,16 +34,19 @@ export const useFormatDetector = () => {
         setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
         const parent = node.getParent()
         if ($isLinkNode(parent) || $isLinkNode(node)) {
-          const linkUrl = ($isLinkNode(parent) ? parent : (node as LinkNode)).getURL()
-          setSelectedLinkUrl(linkUrl)
+          const linkNode = $isLinkNode(parent) ? parent : (node as LinkNode)
+          setSelectedLinkUrl(linkNode.getURL())
+          setSelectedLinkKey(linkNode.getKey())
           setSelectedIsLink(true)
         } else {
           setSelectedLinkUrl('')
+          setSelectedLinkKey(null)
           setSelectedIsLink(false)
         }
 
-        if ($isListItemNode(parent) || $isListItemNode(node)) setSelectedIsBullet(true)
-        else setSelectedIsBullet(false)
+        let ancestor = node
+        while (!$isListItemNode(ancestor) && ancestor.getParent()) ancestor = ancestor.getParent()!
+        setSelectedIsBullet($isListItemNode(ancestor))
       }
     })
   }, [editor, noteEditorStore])

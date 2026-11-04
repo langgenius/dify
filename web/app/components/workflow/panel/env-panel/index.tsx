@@ -1,19 +1,23 @@
 import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   EnvironmentVariable,
   LLMEnvironmentVariableValue,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -23,19 +27,27 @@ import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { Resolution } from '@/types/app'
 import {
   fetchModelParameterRulesForModel,
   mergeValidCompletionParams,
 } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { fetchEnvironmentVariables } from './requests'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
 type EnvironmentVariablePatch = {
   environmentVariables: EnvironmentVariable[]
   deletedEnvironmentVariableIds: string[]
+}
+
+type EnvironmentVariablePersistenceResult = {
+  persisted: boolean
+  error?: unknown
 }
 
 const formatSecret = (secret: string) => {
@@ -143,18 +155,17 @@ const environmentVariableGraphPatchMatches = (
 const getLLMEnvironmentValue = (
   variable: EnvironmentVariable,
 ): LLMEnvironmentVariableValue | undefined => {
-  if (variable.value_type !== 'llm' || !variable.value || typeof variable.value !== 'object')
+  if (variable.value_type !== 'llm' || !isLLMEnvironmentVariableValue(variable.value))
     return undefined
 
-  const value = variable.value as Partial<LLMEnvironmentVariableValue>
-  if (!value.provider || !value.name || !value.mode) return undefined
-  return value as LLMEnvironmentVariableValue
+  return variable.value
 }
 
 const useEnvPanelActions = ({
   collaborativeWorkflow,
   workflowStore,
-  appId,
+  resource,
+  doSyncWorkflowDraft,
   updateEnvList,
   setEnvSecrets,
   setControlPromptEditorRerenderKey,
@@ -162,7 +173,8 @@ const useEnvPanelActions = ({
 }: {
   collaborativeWorkflow: ReturnType<typeof useCollaborativeWorkflow>
   workflowStore: ReturnType<typeof useWorkflowStore>
-  appId: string
+  resource: EditorResource
+  doSyncWorkflowDraft: ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
@@ -170,6 +182,8 @@ const useEnvPanelActions = ({
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(
     async (syncWorkflowDraft = false) => {
+      if (resource.kind !== 'app') return
+      const { appId } = resource
       try {
         const { webSocketClient } =
           await import('@/app/components/workflow/collaboration/core/websocket-manager')
@@ -184,37 +198,44 @@ const useEnvPanelActions = ({
         console.error('Failed to emit vars_and_features_update event:', error)
       }
     },
-    [appId],
+    [resource],
   )
 
   const persistEnvironmentVariables = useCallback(
-    async (patch: EnvironmentVariablePatch, syncWorkflowDraft = false) => {
+    async (
+      patch: EnvironmentVariablePatch,
+      syncWorkflowDraft = false,
+    ): Promise<EnvironmentVariablePersistenceResult> => {
+      if (resource.kind !== 'app') {
+        let succeeded = false
+        await doSyncWorkflowDraft(false, {
+          onSuccess: () => {
+            succeeded = true
+          },
+        })
+        return { persisted: succeeded }
+      }
       try {
         const { updateEnvironmentVariables } = await import('@/service/workflow')
-        await updateEnvironmentVariables({
-          appId,
-          ...patch,
-        })
+        await updateEnvironmentVariables({ appId: resource.appId, ...patch }, { silent: true })
         await emitVarsAndFeaturesUpdate(syncWorkflowDraft)
-        return true
+        return { persisted: true }
       } catch (error) {
         console.error('Failed to update environment variables:', error)
-        return false
+        return { persisted: false, error }
       }
     },
-    [appId, emitVarsAndFeaturesUpdate],
+    [resource, doSyncWorkflowDraft, emitVarsAndFeaturesUpdate],
   )
 
   const fetchPersistedEnvironmentVariables = useCallback(async () => {
     try {
-      const { fetchWorkflowDraft } = await import('@/service/workflow')
-      const workflow = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-      return workflow.environment_variables
+      return await fetchEnvironmentVariables(resource)
     } catch (error) {
       console.error('Failed to refresh environment variables:', error)
       return undefined
     }
-  }, [appId])
+  }, [resource])
 
   const getAffectedNodes = useCallback(
     (env: EnvironmentVariable) => {
@@ -289,6 +310,7 @@ const useEnvPanelActions = ({
       const parameterRules = await fetchModelParameterRulesForModel(
         nextModel.provider,
         nextModel.name,
+        { silent: true },
       )
 
       return () => {
@@ -376,8 +398,7 @@ const useEnvPanelActions = ({
       syncWorkflowDraft = false,
     ) => {
       updateEnvList(nextEnvList)
-      const persisted = await persistEnvironmentVariables(patch, syncWorkflowDraft)
-      return persisted
+      return persistEnvironmentVariables(patch, syncWorkflowDraft)
     },
     [persistEnvironmentVariables, updateEnvList],
   )
@@ -413,7 +434,7 @@ const useEnvPanelActions = ({
 }
 
 const EnvPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
@@ -421,7 +442,7 @@ const EnvPanel = () => {
   const updateEnvList = useStore((s) => s.setEnvironmentVariables)
   const setEnvSecrets = useStore((s) => s.setEnvSecrets)
   const setControlPromptEditorRerenderKey = useStore((s) => s.setControlPromptEditorRerenderKey)
-  const appId = useStore((s) => s.appId) as string
+  const resource = useAtomValue(editorResourceAtom)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const {
@@ -436,7 +457,8 @@ const EnvPanel = () => {
   } = useEnvPanelActions({
     collaborativeWorkflow,
     workflowStore,
-    appId,
+    resource,
+    doSyncWorkflowDraft,
     updateEnvList,
     setEnvSecrets,
     setControlPromptEditorRerenderKey,
@@ -448,25 +470,28 @@ const EnvPanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
-  const saveOperationQueueRef = useRef(Promise.resolve())
+  const saveOperationQueueRef = useRefWithInit(() => Promise.resolve())
   const committedEnvListRef = useRef(envList)
   const latestEnvListRef = useRef(envList)
-  const pendingSaveEnvIdsRef = useRef(new Map<string, number>())
+  const pendingSaveEnvIdsRef = useRefWithInit(() => new Map<string, number>())
   useLayoutEffect(() => {
     latestEnvListRef.current = envList
   }, [envList])
 
   useEffect(() => {
     if (pendingSaveEnvIdsRef.current.size === 0) committedEnvListRef.current = envList
-  }, [envList])
+  }, [envList, pendingSaveEnvIdsRef])
 
-  const mergeLatestUntouchedEnvList = useCallback((envListToMerge: EnvironmentVariable[]) => {
-    return mergeUntouchedEnvironmentVariables(
-      envListToMerge,
-      latestEnvListRef.current,
-      new Set(pendingSaveEnvIdsRef.current.keys()),
-    )
-  }, [])
+  const mergeLatestUntouchedEnvList = useCallback(
+    (envListToMerge: EnvironmentVariable[]) => {
+      return mergeUntouchedEnvironmentVariables(
+        envListToMerge,
+        latestEnvListRef.current,
+        new Set(pendingSaveEnvIdsRef.current.keys()),
+      )
+    },
+    [pendingSaveEnvIdsRef],
+  )
 
   const restoreCommittedEnvList = useCallback(() => {
     committedEnvListRef.current = mergeLatestUntouchedEnvList(committedEnvListRef.current)
@@ -524,7 +549,7 @@ const EnvPanel = () => {
       saveOperationQueueRef.current = queuedOperation.catch(() => undefined)
       return queuedOperation
     },
-    [mergeLatestUntouchedEnvList],
+    [mergeLatestUntouchedEnvList, pendingSaveEnvIdsRef, saveOperationQueueRef],
   )
 
   const syncDraftWithResult = useCallback(
@@ -553,13 +578,14 @@ const EnvPanel = () => {
 
   const persistQueuedEnvList = useCallback(
     async (nextEnvList: EnvironmentVariable[], patch: EnvironmentVariablePatch) => {
-      const persisted = await syncEnvList(nextEnvList, patch)
-      if (persisted) return { persisted: true, usedDraftFallback: false }
+      const result = await syncEnvList(nextEnvList, patch)
+      if (result.persisted) return { ...result, usedDraftFallback: false }
 
       const fallbackPersisted = await syncDraftWithResult(patch)
       if (fallbackPersisted) await emitVarsAndFeaturesUpdate()
       return {
         persisted: fallbackPersisted,
+        error: result.error,
         usedDraftFallback: true,
       }
     },
@@ -567,14 +593,17 @@ const EnvPanel = () => {
   )
 
   const persistEnvListWithGraphChanges = useCallback(
-    async (nextEnvList: EnvironmentVariable[], patch: EnvironmentVariablePatch) => {
+    async (
+      nextEnvList: EnvironmentVariable[],
+      patch: EnvironmentVariablePatch,
+    ): Promise<EnvironmentVariablePersistenceResult> => {
       const isCollaborationFollower =
         collaborationManager.isConnected() && !collaborationManager.getIsLeader()
       if (isCollaborationFollower) return syncEnvList(nextEnvList, patch, true)
 
       const persisted = await syncDraftWithResult(patch)
       if (persisted) await emitVarsAndFeaturesUpdate()
-      return persisted
+      return { persisted }
     },
     [emitVarsAndFeaturesUpdate, syncDraftWithResult, syncEnvList],
   )
@@ -599,14 +628,14 @@ const EnvPanel = () => {
         }
         updateEnvList(nextEnvList)
         const rollbackAffectedNodes = updateAffectedNodes(committedEnv, [])
-        const persisted = rollbackAffectedNodes
+        const { persisted, error } = rollbackAffectedNodes
           ? await persistEnvListWithGraphChanges(nextEnvList, patch)
-          : (await persistQueuedEnvList(nextEnvList, patch)).persisted
+          : await persistQueuedEnvList(nextEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
           if (!recovered) {
             rollbackAffectedNodes?.()
-            toast.error(t(($) => $.error, { ns: 'common' }))
+            toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           }
           if (recovered)
             await emitVarsAndFeaturesUpdate(
@@ -666,10 +695,11 @@ const EnvPanel = () => {
             environmentVariables: [env],
             deletedEnvironmentVariableIds: [],
           }
-          const { persisted } = await persistQueuedEnvList(nextEnvList, patch)
+          const { persisted, error } = await persistQueuedEnvList(nextEnvList, patch)
           if (!persisted) {
             const recovered = await reconcileAmbiguousPersistenceFailure(patch)
-            if (!recovered) toast.error(t(($) => $.error, { ns: 'common' }))
+            if (!recovered)
+              toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
             if (recovered) {
               await emitVarsAndFeaturesUpdate()
               if (env.value_type === 'secret') saveSecretValue(env)
@@ -710,9 +740,9 @@ const EnvPanel = () => {
             committedEnv,
             newEnv,
           )
-        } catch {
+        } catch (error) {
           restoreCommittedEnvList()
-          toast.error(t(($) => $.error, { ns: 'common' }))
+          toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           return
         }
 
@@ -732,15 +762,15 @@ const EnvPanel = () => {
           environmentVariables: [newEnv],
           deletedEnvironmentVariableIds: [],
         }
-        const persisted = hasGraphChanges
+        const { persisted, error } = hasGraphChanges
           ? await persistEnvListWithGraphChanges(nextCommittedEnvList, patch)
-          : (await persistQueuedEnvList(nextCommittedEnvList, patch)).persisted
+          : await persistQueuedEnvList(nextCommittedEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
           if (!recovered) {
             rollbackRenamedAffectedNodes?.()
             rollbackReconciledLLMNodes?.()
-            toast.error(t(($) => $.error, { ns: 'common' }))
+            toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           }
           if (recovered)
             await emitVarsAndFeaturesUpdate(
@@ -790,7 +820,7 @@ const EnvPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+        'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">

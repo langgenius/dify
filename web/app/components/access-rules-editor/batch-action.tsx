@@ -2,18 +2,19 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 type AccessRulesBatchActionProps = {
   className?: string
@@ -28,16 +29,21 @@ export default function AccessRulesBatchAction({
   onDelete,
   onCancel,
 }: AccessRulesBatchActionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [hasDeleteError, setHasDeleteError] = useState(false)
 
   const handleDelete = async () => {
+    if (isDeleting) return
     setIsDeleting(true)
+    setHasDeleteError(false)
 
     try {
       await onDelete()
       setIsDeleteConfirmOpen(false)
+    } catch {
+      setHasDeleteError(true)
     } finally {
       setIsDeleting(false)
     }
@@ -46,7 +52,7 @@ export default function AccessRulesBatchAction({
   return (
     <div className={cn('pointer-events-none flex w-full justify-center', className)}>
       <div
-        role="toolbar"
+        role="group"
         aria-label={t(($) => $['operation.selectCount'], {
           ns: 'common',
           count: selectedCount,
@@ -61,12 +67,19 @@ export default function AccessRulesBatchAction({
             {t(($) => $['accessRule.selected'], { ns: 'permission' })}
           </span>
         </div>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
+        <Button
+          variant="ghost"
+          tone="destructive"
+          onClick={() => {
+            setHasDeleteError(false)
+            setIsDeleteConfirmOpen(true)
+          }}
+        >
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
-        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
         <Button variant="ghost" onClick={onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
@@ -78,25 +91,28 @@ export default function AccessRulesBatchAction({
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['accessRule.batchRemoveTitle'], { ns: 'permission' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['accessRule.batchRemoveDescription'], {
                 ns: 'permission',
                 count: selectedCount,
               })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          {hasDeleteError && (
+            <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

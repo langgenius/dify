@@ -2,11 +2,12 @@
 
 import type { FC } from 'react'
 import type { ApprovalContext } from '@/service/device-flow'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { approveExternal, fetchApprovalContext } from '@/service/device-flow'
+import { getAvatarInitial } from '@/utils/avatar'
 import { approveErrorCopy } from '../utils/error-copy'
 
 type Props = {
@@ -26,7 +27,7 @@ type Props = {
  * pre-SSO ?user_code=... query param.
  */
 const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow'])
   const [ctx, setCtx] = useState<ApprovalContext | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadErr, setLoadErr] = useState<string | null>(null)
@@ -97,7 +98,9 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
         <p className="mt-2 text-sm text-text-secondary">{t(($) => $['authorize.ssoSubtitle'])}</p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
-        <Avatar size="md" avatar={null} name={ctx.subject_email} />
+        <Avatar size="md" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(ctx.subject_email)}</AvatarFallback>
+        </Avatar>
         <div>
           <p className="text-sm font-semibold text-text-primary">{ctx.subject_email}</p>
           <p className="text-xs text-text-secondary">{t(($) => $['authorize.viaSSO'])}</p>

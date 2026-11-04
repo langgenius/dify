@@ -1,13 +1,12 @@
 import type { ReactElement } from 'react'
 import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailRegister } from '@/service/use-common'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
@@ -22,17 +21,14 @@ const {
   mockSendGAEvent: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMailRegister: vi.fn(),
 }))
 
 vi.mock('@/utils/timezone', () => ({
@@ -55,13 +51,10 @@ vi.mock('@/utils/create-app-tracking', () => ({
 const mockRegister = vi.fn()
 const mockReplace = vi.fn()
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
-  typeof getBrowserTimezone
->
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockGetBrowserTimezone = getBrowserTimezone as MockedFunction<typeof getBrowserTimezone>
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = new QueryClient({
@@ -80,23 +73,13 @@ describe('Signup Set Password Page', () => {
     Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams('token=register-token') as ReturnType<typeof useSearchParams>,
     )
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
-    mockUseMailRegister.mockReturnValue({
-      mutateAsync: mockRegister,
-      isPending: false,
-    } as unknown as ReturnType<typeof useMailRegister>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
-  })
-
-  it('exposes the page title as the main heading', () => {
-    renderWithQueryClient(<ChangePasswordForm />)
-
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   describe('Registration payload', () => {
@@ -104,10 +87,11 @@ describe('Signup Set Password Page', () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
 
       expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+      expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
       expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
 
       await user.type(passwordInput, 'ValidPass123!')
@@ -115,34 +99,61 @@ describe('Signup Set Password Page', () => {
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({
-          token: 'register-token',
-          new_password: 'ValidPass123!',
-          password_confirm: 'ValidPass123!',
-          language: 'zh-Hans',
-          timezone: 'Asia/Shanghai',
+          body: {
+            token: 'register-token',
+            new_password: 'ValidPass123!',
+            password_confirm: 'ValidPass123!',
+            language: 'zh-Hans',
+            timezone: 'Asia/Shanghai',
+          },
         })
       })
+    })
+
+    it('revalidates the confirmation field when the password changes', async () => {
+      const user = userEvent.setup()
+      renderWithQueryClient(<ChangePasswordForm />)
+
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      await user.type(passwordInput, 'ValidPass123!')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
+      await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
+
+      const error = await screen.findByText('accountSettings.account.notEqual')
+      expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
+      expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(confirmPasswordInput).toHaveFocus()
+      expect(mockRegister).not.toHaveBeenCalled()
+
+      await user.clear(passwordInput)
+      await user.type(passwordInput, 'DifferentPass123!')
+
+      await waitFor(() => {
+        expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
+      })
+      expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
+      expect(mockRegister).not.toHaveBeenCalled()
     })
   })
 
   // On successful registration the Amplitude event is deferred (remembered) so it can
   // fire after the user ID is attached, while the GA event still fires immediately.
   describe('Registration success tracking', () => {
-    const fillAndSubmit = () => {
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    const fillAndSubmit = async () => {
+      const user = userEvent.setup()
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), 'ValidPass123!')
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        'ValidPass123!',
+      )
+      await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
     }
 
     it('should defer the amplitude event and fire GA immediately when registration succeeds', async () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
@@ -160,12 +171,12 @@ describe('Signup Set Password Page', () => {
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(
           'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        ) as ReturnType<typeof useSearchParams>,
       )
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')
@@ -177,7 +188,7 @@ describe('Signup Set Password Page', () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
@@ -196,4 +207,15 @@ describe('Signup Set Password Page', () => {
       expect(Cookies.get('utm_info')).toBeUndefined()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.post': (input) => mockRegister(input),
+    }),
+  }
 })

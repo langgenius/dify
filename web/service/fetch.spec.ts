@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 import {
@@ -5,22 +6,36 @@ import {
   markAppDeletionStarted,
   markAppDeletionSucceeded,
 } from './app-deletion'
-// oxlint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests legacy auth replay.
+import { request } from './base'
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications', () => ({
   toast: {
     add: vi.fn(),
     error: vi.fn(),
   },
 }))
 
-const { toast } = await import('@langgenius/dify-ui/toast')
+vi.mock('./refresh-token', () => ({
+  refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
+}))
+
+const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState({}, '', originalUrl)
+    markAppDeletionFailed('deleted-app')
   })
 
   describe('Public API routing', () => {
@@ -59,7 +74,7 @@ describe('base', () => {
     it.each(['/passport', '/webapp/permission', '/workflows/run', 'parameters', 'meta'])(
       'should route %s to the environment webapp API',
       async (path) => {
-        window.history.replaceState({}, '', '/env/workflow/workflow-app')
+        window.history.replaceState({}, '', '/environment/workflow/workflow-app')
         const fetchSpy = vi
           .spyOn(globalThis, 'fetch')
           .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
@@ -70,18 +85,17 @@ describe('base', () => {
         if (!(request instanceof Request))
           throw new TypeError('Expected fetch to receive a Request')
         const expectedPath = path.startsWith('/') ? path : `/${path}`
-        expect(request.url).toBe(`${PUBLIC_API_PREFIX}/env/workflow-app${expectedPath}`)
+        expect(request.url).toBe(`${PUBLIC_API_PREFIX}/environment/workflow-app${expectedPath}`)
       },
     )
 
     it.each([
-      '/login/status',
       '/email-code-login/validity',
       '/forgot-password',
       '/forgot-password/validity',
       '/enterprise/sso/members/oidc/login',
     ])('should keep environment auth path %s on Dify public API', async (path) => {
-      window.history.replaceState({}, '', '/env/workflow/workflow-app')
+      window.history.replaceState({}, '', '/environment/workflow/workflow-app')
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
@@ -92,10 +106,83 @@ describe('base', () => {
       if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
       expect(request.url).toBe(`${PUBLIC_API_PREFIX}${path}`)
     })
+
+    it('should route environment login status to the environment API', async () => {
+      window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(new Response(JSON.stringify({ logged_in: true, app_logged_in: false })))
+
+      await base('/login/status', {}, { isPublicAPI: true })
+
+      const [request] = fetchSpy.mock.calls[0]!
+      if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
+      expect(request.url).toBe(`${PUBLIC_API_PREFIX}/environment/workflow-app/login/status`)
+    })
+  })
+
+  it('should replay a caller-owned JSON request after refreshing an expired token', async () => {
+    const body = { documentIds: ['document-1'] }
+    const callerRequest = new Request(
+      'http://localhost/console/api/knowledge-fs/spaces/space-1/documents/reindex',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+    const cloneSpy = vi.spyOn(callerRequest, 'clone')
+    const sentRequests: Array<{ body: unknown; method: string }> = []
+    refreshAccessTokenOrReLoginMock.mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource) => {
+      const outgoingRequest =
+        resource instanceof Request ? resource : new Request(resource.toString())
+      sentRequests.push({
+        body: JSON.parse(await outgoingRequest.text()) as unknown,
+        method: outgoingRequest.method,
+      })
+      if (sentRequests.length === 1) {
+        return new Response(
+          JSON.stringify({
+            code: 'unauthorized',
+            message: 'Expired access token',
+            status: 401,
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+      return new Response(JSON.stringify({ result: 'queued' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    // oxlint-disable-next-line typescript/no-deprecated -- This spec directly tests legacy auth replay.
+    const response = await request<Response>(
+      callerRequest.url,
+      {},
+      {
+        fetchCompat: true,
+        request: callerRequest,
+      },
+    )
+
+    await expect(response.json()).resolves.toEqual({ result: 'queued' })
+    expect(refreshAccessTokenOrReLoginMock).toHaveBeenCalledOnce()
+    // happy-dom permits reconstructing an already-used Request, unlike browsers.
+    // Verify the transport preserves its caller-owned input before ky consumes each attempt.
+    expect(cloneSpy).toHaveBeenCalledTimes(2)
+    expect(sentRequests).toEqual([
+      { body, method: 'POST' },
+      { body, method: 'POST' },
+    ])
   })
 
   describe('Error responses', () => {
-    it('should keep the response body readable when a 401 response is rejected', async () => {
+    it('should preserve structured error details when a 401 response is rejected', async () => {
       // Arrange
       const unauthorizedResponse = new Response(
         JSON.stringify({
@@ -122,8 +209,8 @@ describe('base', () => {
       }
 
       // Assert
-      expect(caughtError).toBeInstanceOf(Response)
-      await expect((caughtError as Response).json()).resolves.toEqual({
+      expect(caughtError).toBeInstanceOf(ORPCError)
+      expect(caughtError).toMatchObject({
         code: 'unauthorized',
         message: 'Unauthorized',
         status: 401,
@@ -147,7 +234,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
@@ -168,7 +255,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).not.toHaveBeenCalled()
     })
@@ -193,7 +280,7 @@ describe('base', () => {
       try {
         await expect(
           base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(Response)
+        ).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).not.toHaveBeenCalled()
       } finally {
         markAppDeletionFailed(appId)
@@ -220,7 +307,7 @@ describe('base', () => {
 
       await expect(
         base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(Response)
+      ).rejects.toBeInstanceOf(ORPCError)
       expect(toast.error).not.toHaveBeenCalled()
     })
 
@@ -243,7 +330,7 @@ describe('base', () => {
       )
 
       await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        Response,
+        ORPCError,
       )
       expect(toast.error).toHaveBeenCalledWith('Visible error')
     })
@@ -282,7 +369,7 @@ describe('base', () => {
       )
 
       try {
-        await expect(base(path)).rejects.toBeInstanceOf(Response)
+        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).toHaveBeenCalledWith('Visible error')
       } finally {
         markAppDeletionFailed(appId)

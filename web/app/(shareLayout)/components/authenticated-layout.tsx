@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
@@ -13,7 +13,7 @@ import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)
@@ -116,7 +116,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   ) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

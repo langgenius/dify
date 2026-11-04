@@ -240,7 +240,13 @@ def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int)
     encrypted = provider.encrypt("tenant-1", "secret")
     truncated = encrypted[:truncate_at]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:Malformed Azure Key Vault envelope: truncated metadata|Malformed "
+            "Azure Key Vault envelope: truncated metadata length)"
+        ),
+    ):
         provider.decrypt_with_decoding(truncated, "tenant-1")
 
 

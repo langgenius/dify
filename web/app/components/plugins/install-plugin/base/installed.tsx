@@ -5,7 +5,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Badge from '@/app/components/base/badge/index'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import Link from '@/next/link'
 import Card from '../../card'
@@ -67,21 +67,28 @@ const Installed: FC<Props> = ({
   installContextCategory,
   onCancel,
 }) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin', 'common', 'navigation'])
   const installedCategory = payload?.category
   const categoryTarget =
     !isFailed && installContextCategory && installedCategory !== installContextCategory
       ? categoryTargetMap[installedCategory as PluginCategoryEnum]
       : undefined
-  const categoryName = categoryTarget ? t(($) => $[categoryTarget.labelKey], { ns: 'common' }) : ''
+  const categoryName = categoryTarget
+    ? t(($) => $[categoryTarget.labelKey], { ns: 'navigation' })
+    : ''
 
   const handleClose = () => {
     onCancel()
   }
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
-        <p className="system-md-regular text-text-secondary">
+      <div className="flex min-h-0 min-w-0 flex-col items-start justify-center gap-2 self-stretch overflow-x-hidden overflow-y-auto px-6 py-3">
+        <p
+          className={cn(
+            'w-full max-w-full min-w-0 system-md-regular text-text-secondary',
+            isFailed && 'wrap-anywhere whitespace-pre-wrap',
+          )}
+        >
           {isFailed && errMsg ? (
             errMsg
           ) : categoryTarget ? (
@@ -114,7 +121,7 @@ const Installed: FC<Props> = ({
               installed={!isFailed}
               installFailed={isFailed}
               titleLeft={
-                <Badge className="mx-1" size="s" state={BadgeState.Default}>
+                <Badge className="mx-1" size="s">
                   {(payload as PluginDeclaration).version ||
                     (payload as PluginManifestInMarket).latest_version}
                 </Badge>
@@ -125,7 +132,7 @@ const Installed: FC<Props> = ({
         )}
       </div>
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
+      <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
         {categoryTarget ? (
           <Link
             href={categoryTarget.path}

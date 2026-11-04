@@ -1,9 +1,9 @@
 import type { MockedFunction } from 'vite-plus/test'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailValidity, useSendMail } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import CheckCode from '../page'
 
 const mockBack = vi.fn()
@@ -20,12 +20,9 @@ vi.mock('@/app/components/signin/countdown', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -33,16 +30,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMailValidity: vi.fn(),
-  useSendMail: vi.fn(),
-}))
-
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseMailValidity = useMailValidity as unknown as MockedFunction<typeof useMailValidity>
-const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 describe('Signup Check Code Page', () => {
   beforeEach(() => {
@@ -57,14 +47,8 @@ describe('Signup Check Code Page', () => {
       new URLSearchParams({
         email: 'user@example.com',
         token: 'signup-token',
-      }) as unknown as ReturnType<typeof useSearchParams>,
+      }) as ReturnType<typeof useSearchParams>,
     )
-    mockUseMailValidity.mockReturnValue({
-      mutateAsync: mockVerifyCode,
-    } as unknown as ReturnType<typeof useMailValidity>)
-    mockUseSendMail.mockReturnValue({
-      mutateAsync: mockSubmitMail,
-    } as unknown as ReturnType<typeof useSendMail>)
     mockVerifyCode.mockResolvedValue({ is_valid: true, token: 'verified-token' })
   })
 
@@ -75,7 +59,6 @@ describe('Signup Check Code Page', () => {
     const codeInput = screen.getByRole('textbox', {
       name: 'login.checkCode.verificationCode',
     })
-    expect(codeInput).toHaveAttribute('id', 'code')
     expect(codeInput).toHaveAttribute('name', 'code')
     expect(codeInput).toHaveAttribute('inputmode', 'numeric')
     expect(codeInput).toHaveAttribute('autocomplete', 'one-time-code')
@@ -88,11 +71,47 @@ describe('Signup Check Code Page', () => {
 
     await waitFor(() => {
       expect(mockVerifyCode).toHaveBeenCalledWith({
-        code: '123456',
-        email: 'user@example.com',
-        token: 'signup-token',
+        body: {
+          code: '123456',
+          email: 'user@example.com',
+          token: 'signup-token',
+        },
       })
     })
     expect(mockVerifyCode).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+    const destination = new URL(mockPush.mock.calls[0]![0], window.location.origin)
+    expect(destination.pathname).toBe('/signup/set-password')
+    expect(destination.searchParams.get('email')).toBe('user@example.com')
+    expect(destination.searchParams.get('token')).toBe('verified-token')
   })
+
+  it('associates one localized error with an incomplete verification code', async () => {
+    const user = userEvent.setup()
+    render(<CheckCode />)
+
+    const codeInput = screen.getByRole('textbox', {
+      name: 'login.checkCode.verificationCode',
+    })
+    await user.type(codeInput, '12345{Enter}')
+
+    const errors = await screen.findAllByText('login.checkCode.invalidCode')
+    expect(errors).toHaveLength(1)
+    expect(codeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
+    expect(codeInput).toHaveFocus()
+    expect(mockVerifyCode).not.toHaveBeenCalled()
+  })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.sendEmail.post': (input) => mockSubmitMail(input),
+      'emailRegister.validity.post': (input) => mockVerifyCode(input),
+    }),
+  }
 })

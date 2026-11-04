@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MailAndCodeAuth from '../mail-and-code-auth'
 
@@ -18,7 +19,6 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   render: vi.fn(),
   sendEMailLoginCode: vi.fn(),
-  setCountdownLeftTime: vi.fn(),
   turnstileSiteKey: 'site-key-for-tests',
 }))
 
@@ -49,15 +49,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
-vi.mock('@/app/components/signin/storage', () => ({
-  COUNT_DOWN_TIME_MS: 60_000,
-  useSetCountdownLeftTime: () => mocks.setCountdownLeftTime,
-}))
-
 vi.mock('@/config', async () => {
   const actual = await vi.importActual<typeof import('@/config')>('@/config')
   return {
@@ -68,13 +59,21 @@ vi.mock('@/config', async () => {
   }
 })
 
-vi.mock('@/service/common', () => ({
-  sendEMailLoginCode: (...args: unknown[]) => mocks.sendEMailLoginCode(...args),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'emailCodeLogin.post': mocks.sendEMailLoginCode,
+    }),
+  }
+})
 
 describe('MailAndCodeAuth', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    localStorage.removeItem(COUNT_DOWN_KEY)
     turnstileOptions = undefined
     mocks.turnstileSiteKey = 'site-key-for-tests'
     mocks.render.mockImplementation((_container: HTMLElement, options: TurnstileOptions) => {
@@ -82,17 +81,13 @@ describe('MailAndCodeAuth', () => {
       return 'widget-id'
     })
     mocks.sendEMailLoginCode.mockResolvedValue({ result: 'success', data: 'login-token' })
-    Object.defineProperty(window, 'turnstile', {
-      configurable: true,
-      value: {
-        remove: mocks.remove,
-        render: mocks.render,
-      },
-    })
+    vi.stubGlobal('turnstile', { remove: mocks.remove, render: mocks.render })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    localStorage.removeItem(COUNT_DOWN_KEY)
   })
 
   it('enables SaaS email-code login only while Turnstile verification is valid', async () => {
@@ -148,13 +143,14 @@ describe('MailAndCodeAuth', () => {
     await user.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        'en-US',
-        'turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith({
+        body: { email: 'user@example.com', language: 'en-US', turnstile_token: 'turnstile-token' },
+      })
     })
-    expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
+    const destination = new URL(mocks.push.mock.calls[0]![0], 'https://dify.test')
+    expect(destination.pathname).toBe('/signin/check-code')
+    expect(decodeURIComponent(destination.searchParams.get('email')!)).toBe('user@example.com')
   })
 
   it('requires a fresh Turnstile token after an email-code request fails', async () => {
@@ -176,11 +172,13 @@ describe('MailAndCodeAuth', () => {
     await user.click(continueButton)
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        'en-US',
-        'consumed-turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: 'en-US',
+          turnstile_token: 'consumed-turnstile-token',
+        },
+      })
     })
     await waitFor(() => {
       expect(continueButton).toBeDisabled()
@@ -194,11 +192,13 @@ describe('MailAndCodeAuth', () => {
     await user.click(continueButton)
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith(
-        'user@example.com',
-        'en-US',
-        'fresh-turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: 'en-US',
+          turnstile_token: 'fresh-turnstile-token',
+        },
+      })
     })
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
   })
@@ -211,6 +211,20 @@ describe('MailAndCodeAuth', () => {
 
     expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeEnabled()
     expect(mocks.render).not.toHaveBeenCalled()
+  })
+
+  it('associates one localized error with an invalid email', async () => {
+    const user = userEvent.setup()
+    renderMailAndCodeAuth('COMMUNITY')
+
+    const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+    await user.type(emailInput, 'invalid-email{Enter}')
+
+    const errors = await screen.findAllByText('login.error.emailInValid')
+    expect(errors).toHaveLength(1)
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveAccessibleDescription('login.error.emailInValid')
+    expect(mocks.sendEMailLoginCode).not.toHaveBeenCalled()
   })
 
   it('keeps SaaS email-code login disabled when the Turnstile site key is missing', async () => {

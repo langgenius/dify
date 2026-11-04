@@ -27,7 +27,7 @@ const Actions = ({
   onSelectAll,
   tip = '',
 }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const { datasetId } = useParams()
 
   const indeterminate = useMemo(() => {

@@ -1,88 +1,50 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InSiteMessageNotification from '../notification'
 
-const { mockEdition, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
+const { mockEdition, mockLocale, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
   mockEdition: {
-    value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
+    value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
   },
+  mockLocale: { value: 'en-US' },
   mockNotification: vi.fn(),
   mockNotificationDismiss: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          queryFn: () => new Promise(() => {}),
-          ...options,
-        }),
-      },
-    },
-    notification: {
-      get: {
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'notification', 'get'],
-          queryFn: (...args: unknown[]) => mockNotification(...args),
-          ...options,
-        }),
-      },
-      dismiss: {
-        post: {
-          mutationOptions: (options?: Record<string, unknown>) => ({
-            mutationKey: ['console', 'notification', 'dismiss', 'post'],
-            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
-            ...options,
-          }),
-        },
-      },
-    },
-  },
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale.value,
 }))
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  })
-  queryClient.setQueryData(['console', 'systemFeatures', 'get'], {
-    deployment_edition: mockEdition.value,
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'notification.get': (input) => mockNotification(input),
+      'notification.dismiss.post': (input) => mockNotificationDismiss(input),
+    }),
+  }
+})
 
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-
-  return Wrapper
-}
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: mockEdition.value } })
 
 describe('InSiteMessageNotification', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockEdition.value = 'CLOUD'
-    vi.stubGlobal('open', vi.fn())
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
+    mockLocale.value = 'en-US'
   })
 
   // Validate query gating and empty state rendering.
   describe('Rendering', () => {
     it('should render null and skip query when not cloud edition', async () => {
       mockEdition.value = 'COMMUNITY'
-      const Wrapper = createWrapper()
-      const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+      const { container } = render(<InSiteMessageNotification />)
 
       await waitFor(() => {
         expect(mockNotification).not.toHaveBeenCalled()
@@ -92,19 +54,36 @@ describe('InSiteMessageNotification', () => {
 
     it('should render null when notification list is empty', async () => {
       mockNotification.mockResolvedValue({ notifications: [] })
-      const Wrapper = createWrapper()
-      const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+      const { container } = render(<InSiteMessageNotification />)
 
       await waitFor(() => {
-        expect(mockNotification).toHaveBeenCalledTimes(1)
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
       })
       expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should refetch notification when the interface language changes', async () => {
+      mockNotification.mockResolvedValue({ notifications: [] })
+      const { rerender } = render(<InSiteMessageNotification />)
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
+      })
+
+      mockLocale.value = 'zh-Hans'
+      rerender(<InSiteMessageNotification />)
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'zh-Hans' } })
+      })
+      expect(mockNotification).toHaveBeenCalledTimes(2)
     })
   })
 
   // Validate parsed-body behavior and action handling.
   describe('Notification body parsing and actions', () => {
     it('should render parsed main/actions and dismiss only on close action', async () => {
+      const user = userEvent.setup()
       mockNotification.mockResolvedValue({
         notifications: [
           {
@@ -131,8 +110,7 @@ describe('InSiteMessageNotification', () => {
       })
       mockNotificationDismiss.mockResolvedValue({ success: true })
 
-      const Wrapper = createWrapper()
-      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+      render(<InSiteMessageNotification />)
 
       await waitFor(() => {
         expect(screen.getByText('Parsed body main')).toBeInTheDocument()
@@ -143,27 +121,23 @@ describe('InSiteMessageNotification', () => {
       expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer')
       expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: '100' })).not.toBeInTheDocument()
 
-      fireEvent.click(docsLink)
+      await user.click(docsLink)
       expect(mockNotificationDismiss).not.toHaveBeenCalled()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss now' }))
+      await user.click(screen.getByRole('button', { name: 'Dismiss now' }))
       await waitFor(() => {
-        expect(mockNotificationDismiss).toHaveBeenCalledWith(
-          {
-            body: {
-              notification_id: 'n-1',
-            },
+        expect(mockNotificationDismiss).toHaveBeenCalledWith({
+          body: {
+            notification_id: 'n-1',
           },
-          expect.objectContaining({
-            mutationKey: ['console', 'notification', 'dismiss', 'post'],
-          }),
-        )
+        })
       })
     })
 
     it('should fallback to raw body and default close action when body is invalid json', async () => {
+      const user = userEvent.setup()
       mockNotification.mockResolvedValue({
         notifications: [
           {
@@ -177,27 +151,21 @@ describe('InSiteMessageNotification', () => {
       })
       mockNotificationDismiss.mockResolvedValue({ success: true })
 
-      const Wrapper = createWrapper()
-      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+      render(<InSiteMessageNotification />)
 
       await waitFor(() => {
         expect(screen.getByText('raw body text')).toBeInTheDocument()
       })
 
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      fireEvent.click(closeButton)
+      await user.click(closeButton)
 
       await waitFor(() => {
-        expect(mockNotificationDismiss).toHaveBeenCalledWith(
-          {
-            body: {
-              notification_id: 'n-2',
-            },
+        expect(mockNotificationDismiss).toHaveBeenCalledWith({
+          body: {
+            notification_id: 'n-2',
           },
-          expect.objectContaining({
-            mutationKey: ['console', 'notification', 'dismiss', 'post'],
-          }),
-        )
+        })
       })
     })
 
@@ -219,8 +187,7 @@ describe('InSiteMessageNotification', () => {
         ],
       })
 
-      const Wrapper = createWrapper()
-      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+      render(<InSiteMessageNotification />)
 
       await waitFor(() => {
         expect(screen.getByText('Main from parsed body')).toBeInTheDocument()

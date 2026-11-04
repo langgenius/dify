@@ -19,15 +19,15 @@ type IDefaultContentProps = {
 }
 
 const DefaultContent: FC<IDefaultContentProps> = React.memo(({ onCancel, onConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   return (
     <>
       <div className="pb-4">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+        <AlertDialogTitle>
           {t(($) => $['segment.regenerationConfirmTitle'], { ns: 'datasetDocuments' })}
         </AlertDialogTitle>
-        <AlertDialogDescription className="system-md-regular text-text-secondary">
+        <AlertDialogDescription>
           {t(($) => $['segment.regenerationConfirmMessage'], { ns: 'datasetDocuments' })}
         </AlertDialogDescription>
       </div>
@@ -44,7 +44,7 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({ onCancel, onConfi
 DefaultContent.displayName = 'DefaultContent'
 
 const RegeneratingContent: FC = React.memo(() => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   return (
     <>
@@ -74,7 +74,7 @@ type IRegenerationCompletedContentProps = {
 
 const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = React.memo(
   ({ onClose }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'datasetDocuments'])
     const targetTime = useRef(Date.now() + 5000)
     const [countdown] = useCountDown({
       targetDate: targetTime.current,
@@ -133,7 +133,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
 
   return (
     <AlertDialog open={isShow}>
-      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-120! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
+      <AlertDialogContent className="overflow-hidden border-none p-6 shadow-xl">
         {!loading && !updateSucceeded && (
           <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />
         )}

@@ -1,6 +1,8 @@
 # Advanced Setup
 
-If you need to customize the configuration, please refer to the comments in our [.env.example](../../docker/.env.example) file and update the corresponding values in your `.env` file. Additionally, you might need to make adjustments to the `docker-compose.yaml` file itself, such as changing image versions, port mappings, or volume mounts, based on your specific deployment environment and requirements. After making any changes, please re-run `docker-compose up -d`. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Set local configuration in `docker/.env`. [`.env.example`](../../docker/.env.example) contains essential startup defaults; optional and service-specific settings live under [`docker/envs/`](../../docker/envs/). Copy the templates you need without the `.example` suffix. Values in `.env` take precedence. After changes, run `docker compose up -d` from `docker/`. See the [Docker deployment guide](../../docker/README.md).
+
+## Kubernetes
 
 If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
 

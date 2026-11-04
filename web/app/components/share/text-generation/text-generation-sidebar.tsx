@@ -15,9 +15,9 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { appDefaultIconBackground } from '@/config'
 import { AccessMode } from '@/models/access-control'
-import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
+import TextGenerationMenu from './text-generation-menu'
 
 type TextGenerationSidebarProps = {
   accessMode: AccessMode
@@ -70,7 +70,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   textToSpeechConfig,
   visionConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -95,16 +95,14 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       >
         <div className="flex items-center gap-3">
           <AppIcon
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
             size={isPC ? 'large' : 'small'}
-            iconType={siteInfo.icon_type}
-            icon={siteInfo.icon}
-            background={siteInfo.icon_background || appDefaultIconBackground}
-            imageUrl={siteInfo.icon_url}
+            icon={siteInfo}
           />
           <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}
           </div>
-          <MenuDropdown
+          <TextGenerationMenu
             hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
             data={siteInfo}
           />

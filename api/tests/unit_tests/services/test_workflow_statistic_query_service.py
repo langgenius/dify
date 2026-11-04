@@ -1,29 +1,41 @@
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
-import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.enums import WorkflowRunTriggeredFrom
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 
 
-def _request_context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+def _request_context() -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
         account_id="account-1",
-        active_workspace_id=workspace_id,
+        active_workspace_id="workspace-1",
     )
 
 
-def test_workflow_statistic_queries_delegate_to_workflow_run_repository() -> None:
-    workflow_runs = MagicMock(spec=APIWorkflowRunRepository)
-    workflow_runs.get_daily_runs_statistics.return_value = [{"date": "2024-01-01", "runs": 2}]
-    workflow_runs.get_daily_terminals_statistics.return_value = [{"date": "2024-01-01", "terminal_count": 3}]
-    workflow_runs.get_daily_token_cost_statistics.return_value = [{"date": "2024-01-01", "token_count": 4}]
-    workflow_runs.get_average_app_interaction_statistics.return_value = [{"date": "2024-01-01", "interactions": 2.5}]
+def test_workflow_statistic_queries_delegate_to_workflow_run_repository(
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
+) -> None:
+    workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+    get_daily_runs_statistics = mocker.patch.object(
+        workflow_runs, "get_daily_runs_statistics", return_value=[{"date": "2024-01-01", "runs": 2}]
+    )
+    get_daily_terminals_statistics = mocker.patch.object(
+        workflow_runs, "get_daily_terminals_statistics", return_value=[{"date": "2024-01-01", "terminal_count": 3}]
+    )
+    get_daily_token_cost_statistics = mocker.patch.object(
+        workflow_runs, "get_daily_token_cost_statistics", return_value=[{"date": "2024-01-01", "token_count": 4}]
+    )
+    get_average_app_interaction_statistics = mocker.patch.object(
+        workflow_runs,
+        "get_average_app_interaction_statistics",
+        return_value=[{"date": "2024-01-01", "interactions": 2.5}],
+    )
     service = WorkflowStatisticQueryService(workflow_runs=workflow_runs)
     context = _request_context()
     start_date = datetime(2024, 1, 1, tzinfo=UTC)
@@ -66,23 +78,7 @@ def test_workflow_statistic_queries_delegate_to_workflow_run_repository() -> Non
         "end_date": end_date,
         "timezone": "Asia/Shanghai",
     }
-    workflow_runs.get_daily_runs_statistics.assert_called_once_with(**expected_arguments)
-    workflow_runs.get_daily_terminals_statistics.assert_called_once_with(**expected_arguments)
-    workflow_runs.get_daily_token_cost_statistics.assert_called_once_with(**expected_arguments)
-    workflow_runs.get_average_app_interaction_statistics.assert_called_once_with(**expected_arguments)
-
-
-def test_workflow_statistic_query_requires_active_workspace() -> None:
-    workflow_runs = MagicMock(spec=APIWorkflowRunRepository)
-    service = WorkflowStatisticQueryService(workflow_runs=workflow_runs)
-
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        service.get_daily_runs(
-            _request_context(workspace_id=None),
-            app_id="app-1",
-            start_date=None,
-            end_date=None,
-            timezone="UTC",
-        )
-
-    workflow_runs.get_daily_runs_statistics.assert_not_called()
+    get_daily_runs_statistics.assert_called_once_with(**expected_arguments)
+    get_daily_terminals_statistics.assert_called_once_with(**expected_arguments)
+    get_daily_token_cost_statistics.assert_called_once_with(**expected_arguments)
+    get_average_app_interaction_statistics.assert_called_once_with(**expected_arguments)

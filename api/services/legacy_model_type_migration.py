@@ -179,7 +179,7 @@ class _TenantDefaultModelBusinessKey(_BusinessKey):
 @dataclass(frozen=True, slots=True)
 class _ProviderModelSettingBusinessKey(_BusinessKey):
     """Although `ProviderModelSetting` does not have the unique index
-    (tenant_id, provider_name. model_name, model_type). The acutal business logic
+    (tenant_id, provider_name. model_name, model_type). The actual business logic
     relies on this uniqueness property heavily.
     """
 
@@ -203,7 +203,7 @@ class _LoadBalancingModelConfigInheritBusinessKey(_BusinessKey):
 class _ProviderModelCredentialBusinessKey(_BusinessKey):
     """Although `ProviderModelCredential` does not have the unique index
     (tenant_id, provider_name. model_name, model_type, credential_name).
-    The acutal business logic implies it."""
+    The actual business logic implies it."""
 
     tenant_id: str
     provider_name: str
@@ -876,7 +876,7 @@ class Migration:
                 session.execute(
                     sa.update(ProviderModel)
                     .where(ProviderModel.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
+                    .values(model_type=plan.winner.canonical_model_type)
                 )
             self._log_row_updated(
                 ProviderModel.__tablename__,
@@ -1099,7 +1099,7 @@ class Migration:
                 session.execute(
                     sa.update(TenantDefaultModel)
                     .where(TenantDefaultModel.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
+                    .values(model_type=plan.winner.canonical_model_type)
                 )
             self._log_row_updated(
                 TenantDefaultModel.__tablename__,
@@ -1314,7 +1314,7 @@ class Migration:
                 session.execute(
                     sa.update(ProviderModelSetting)
                     .where(ProviderModelSetting.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
+                    .values(model_type=plan.winner.canonical_model_type)
                 )
             self._log_row_updated(
                 ProviderModelSetting.__tablename__,
@@ -1751,7 +1751,7 @@ class Migration:
                     session.execute(
                         sa.update(LoadBalancingModelConfig)
                         .where(LoadBalancingModelConfig.id == processed_row_id)
-                        .values(model_type=current_row.canonical_model_type.value)
+                        .values(model_type=current_row.canonical_model_type)
                     )
                 self._log_row_updated(
                     LoadBalancingModelConfig.__tablename__,
@@ -2096,7 +2096,7 @@ class Migration:
                 session.execute(
                     sa.update(ProviderModelCredential)
                     .where(ProviderModelCredential.id == winner_credential_id)
-                    .values(model_type=plan.winner.canonical_model_type.value)
+                    .values(model_type=plan.winner.canonical_model_type)
                 )
             self._log_row_updated(
                 ProviderModelCredential.__tablename__,

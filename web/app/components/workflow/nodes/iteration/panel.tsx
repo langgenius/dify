@@ -3,6 +3,14 @@ import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,7 +30,6 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { MAX_PARALLEL_LIMIT } from '@/config'
@@ -34,23 +41,25 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
-  const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], { ns: 'workflow' })
+  const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
+  const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], {
+    ns: 'workflowLogic',
+  })
   const errorResponseMethodLabel = t(($) => $[`${i18nPrefix}.errorResponseMethod`], {
-    ns: 'workflow',
+    ns: 'workflowLogic',
   })
   const responseMethod = [
     {
       value: ErrorHandleMode.Terminated,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.operationTerminated`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.operationTerminated`], { ns: 'workflowLogic' }),
     },
     {
       value: ErrorHandleMode.ContinueOnError,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.continueOnError`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.continueOnError`], { ns: 'workflowLogic' }),
     },
     {
       value: ErrorHandleMode.RemoveAbnormalOutput,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`], { ns: 'workflowLogic' }),
     },
   ]
   const {
@@ -116,10 +125,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
       </div>
       <div className="px-4 pb-2">
         <Field
-          title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflowLogic' })}
           tooltip={
             <div className="w-57.5">
-              {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflowLogic' })}
             </div>
           }
           inline
@@ -134,24 +143,33 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
             isSubTitle
             tooltip={
               <div className="w-57.5">
-                {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflowLogic' })}
               </div>
             }
           >
-            <Fieldset className="row flex">
+            <Fieldset className="flex gap-4">
               <FieldsetLegend className="sr-only">{maxParallelismLabel}</FieldsetLegend>
-              <Input
-                aria-label={maxParallelismLabel}
-                type="number"
-                wrapperClassName="w-18 mr-4"
+              <NumberField
+                className="w-18 shrink-0"
                 max={MAX_PARALLEL_LIMIT}
                 min={MIN_ITERATION_PARALLEL_NUM}
                 value={inputs.parallel_nums}
-                onChange={(e) => {
-                  changeParallelNums(Number(e.target.value))
+                disabled={readOnly}
+                format={{ maximumFractionDigits: 0 }}
+                onValueChange={(value) => {
+                  if (value !== null) changeParallelNums(value)
                 }}
-              />
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={maxParallelismLabel} className="px-2" />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
               <Slider
+                disabled={readOnly}
                 value={inputs.parallel_nums}
                 onValueChange={changeParallelNums}
                 max={MAX_PARALLEL_LIMIT}
@@ -202,10 +220,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
 
       <div className="px-4 py-2">
         <Field
-          title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflowLogic' })}
           tooltip={
             <div className="w-57.5">
-              {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflowLogic' })}
             </div>
           }
           inline

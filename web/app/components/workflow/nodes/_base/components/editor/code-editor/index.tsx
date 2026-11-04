@@ -1,4 +1,5 @@
 'use client'
+import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Editor, { loader } from '@monaco-editor/react'
@@ -11,6 +12,7 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Base from '../base'
+import { serializeCodeEditorValue } from './utils'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
@@ -31,7 +33,7 @@ export type Props = Readonly<{
   isJSONStringifyBeauty?: boolean
   height?: number
   isInNode?: boolean
-  onMount?: (editor: any, monaco: any) => void
+  onMount?: OnMount
   noWrapper?: boolean
   isExpand?: boolean
   showFileList?: boolean
@@ -85,7 +87,7 @@ const CodeEditor: FC<Props> = ({
     return []
   }, [value])
 
-  const editorRef = useRef<any>(null)
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const resizeEditorToContent = () => {
     if (editorRef.current) {
       const contentHeight = editorRef.current.getContentHeight() // Math.max(, minHeight)
@@ -100,7 +102,7 @@ const CodeEditor: FC<Props> = ({
     }, 10)
   }
 
-  const handleEditorDidMount = (editor: any, monaco: any) => {
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
     resizeEditorToContent()
 
@@ -117,14 +119,7 @@ const CodeEditor: FC<Props> = ({
     setIsMounted(true)
   }
 
-  const outPutValue = (() => {
-    if (!isJSONStringifyBeauty) return value as string
-    try {
-      return JSON.stringify(value as object, null, 2)
-    } catch {
-      return value as string
-    }
-  })()
+  const outPutValue = serializeCodeEditorValue(value, isJSONStringifyBeauty)
 
   const theme = useMemo(() => {
     if (appTheme === Theme.light) return 'light'

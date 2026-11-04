@@ -1,102 +1,113 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, isInaccessible, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { marketplaceQuery } from '@/service/marketplace'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ImportFromMarketplaceTemplateModal from '../import-from-marketplace-template-modal'
 
-const mockUseMarketplaceTemplateDetail = vi.fn()
-const mockFetchMarketplaceTemplateDSL = vi.fn()
+const getTemplate = vi.hoisted(() => vi.fn())
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceQuery: {
+      ...actual.marketplaceQuery,
+      templateDetail: {
+        ...actual.marketplaceQuery.templateDetail,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.templateDetail.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.templateDetail.queryOptions(options),
+          queryFn: getTemplate,
+        }),
+      },
+    },
+  }
+})
 
-vi.mock('@/service/marketplace-templates', () => ({
-  useMarketplaceTemplateDetail: (...args: unknown[]) => mockUseMarketplaceTemplateDetail(...args),
-  fetchMarketplaceTemplateDSL: (...args: unknown[]) => mockFetchMarketplaceTemplateDSL(...args),
-}))
+const template = {
+  data: {
+    id: 'human-input-writing',
+    template_name: 'Human Input: Writing Assistant',
+    overview: 'Send your creative brief, get a high-quality draft, and review before publishing.',
+    icon: 'technologist',
+    icon_background: '#D1FAE5',
+    icon_file_key: '',
+    publisher_unique_handle: 'langgenius',
+    usage_count: 261,
+    categories: ['operations'],
+  },
+}
+
+const renderModal = ({ pending = false } = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const onClose = vi.fn()
+  const onConfirm = vi.fn()
+  if (!pending) {
+    queryClient.setQueryData(
+      marketplaceQuery.templateDetail.queryOptions({
+        input: { params: { templateId: template.data.id } },
+      }).queryKey,
+      template,
+    )
+  }
+  renderWithConsoleQuery(
+    <ImportFromMarketplaceTemplateModal
+      templateId={template.data.id}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />,
+    { queryClient },
+  )
+  return { onClose, onConfirm }
+}
 
 describe('ImportFromMarketplaceTemplateModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseMarketplaceTemplateDetail.mockReturnValue({
-      data: {
-        data: {
-          id: 'human-input-writing',
-          template_name: 'Human Input: Writing Assistant',
-          overview:
-            'Send your creative brief, get a high-quality draft, and review before publishing.',
-          icon: 'technologist',
-          icon_background: '#D1FAE5',
-          icon_file_key: '',
-          publisher_unique_handle: 'langgenius',
-          usage_count: 261,
-          categories: ['operations'],
-        },
-      },
-      isLoading: false,
-      isError: false,
-    })
+    getTemplate.mockReset().mockResolvedValue(template)
   })
 
-  it('renders marketplace emoji icons without exposing the emoji id as text', () => {
-    render(
-      <ImportFromMarketplaceTemplateModal
-        templateId="human-input-writing"
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    )
+  it('shows the template with its decorative emoji and closes from its named control', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderModal()
 
     expect(screen.getByText('Human Input: Writing Assistant')).toBeInTheDocument()
     expect(screen.queryByText('technologist')).not.toBeInTheDocument()
-    expect(document.querySelector('em-emoji')?.parentElement).toHaveAttribute('aria-hidden', 'true')
-    expect(
-      screen.getByRole('dialog', { name: /marketplace\.template\.modalTitle/ }),
-    ).toBeInTheDocument()
-  })
-
-  it('exposes a named close control', () => {
-    const onClose = vi.fn()
-    render(
-      <ImportFromMarketplaceTemplateModal
-        templateId="human-input-writing"
-        onClose={onClose}
-        onConfirm={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
-
+    expect(isInaccessible(screen.getByText('🧑‍💻'))).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('exposes loading progress and announces the error state', () => {
-    mockUseMarketplaceTemplateDetail.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-    })
-    const { rerender } = render(
-      <ImportFromMarketplaceTemplateModal
-        templateId="human-input-writing"
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
+  it('blocks import while loading and after the template request fails', async () => {
+    const user = userEvent.setup()
+    let rejectRequest!: (reason: Error) => void
+    getTemplate.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRequest = reject
+        }),
     )
+    const { onConfirm } = renderModal({ pending: true })
 
-    expect(screen.getByText('common.loading').parentElement?.parentElement).toHaveAttribute(
+    expect(screen.getByText('common.loading').closest('[aria-busy]')).toHaveAttribute(
       'aria-busy',
       'true',
     )
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-
-    mockUseMarketplaceTemplateDetail.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: true,
+    const confirmButton = screen.getByRole('button', {
+      name: 'app.marketplace.template.importConfirm',
     })
-    rerender(
-      <ImportFromMarketplaceTemplateModal
-        templateId="human-input-writing"
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    )
+    expect(confirmButton).toBeDisabled()
+    await user.click(confirmButton)
+    expect(onConfirm).not.toHaveBeenCalled()
 
-    expect(screen.getByRole('alert')).toHaveTextContent('app.marketplace.template.fetchFailed')
+    await act(async () => {
+      rejectRequest(new Error('Template unavailable'))
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'app.marketplace.template.fetchFailed',
+    )
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(confirmButton).toBeDisabled()
+    await user.click(confirmButton)
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })

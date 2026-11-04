@@ -1,9 +1,12 @@
 'use client'
+
 import type { ConfigurationPublishConfig } from './configuration-lifecycle/types'
 import type { ConfigurationViewModel } from './configuration-view-model'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { Inputs, ModelConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
@@ -22,11 +25,10 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { useFileUploadConfig } from '@/service/use-common'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import { ModelModeType } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { buildConfigurationFeaturesData, getConfigurationPublishingState } from '../utils'
 import { buildConfigurationContextValue } from './build-configuration-context'
@@ -42,7 +44,7 @@ import { useMultipleModelDebug } from './configuration-lifecycle/use-multiple-mo
 import { usePublishedConfigSync } from './configuration-lifecycle/use-published-config-sync'
 
 export const useConfiguration = (): ConfigurationViewModel => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [_settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
     settingsQueryParser,
@@ -54,16 +56,15 @@ export const useConfiguration = (): ConfigurationViewModel => {
     currentWorkspace,
     isLoadingCurrentWorkspace,
     serverLatestPublishedAt,
-    setShowAppConfigureFeaturesModal,
-    showAppConfigureFeaturesModal,
     updateModelConfig,
   } = useConfigurationAppContext()
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
   const featureConfiguration = useFeatureConfigurationState()
-  const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
+  const [mode, setMode] = useState<ConfigurationAppMode>('chat')
   const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
 
@@ -108,7 +109,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     visionConfig,
   } = modelConfiguration
   const modelModeType = modelConfig.mode
-  const isAgent = mode === AppModeEnum.AGENT_CHAT
+  const isAgent = mode === 'agent-chat'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
@@ -128,7 +129,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
-  const { isAPIKeySet } = useProviderContext()
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelConfig.provider,
     model: modelConfig.model_id,
@@ -146,7 +146,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     modelModeTypeRef.current = resolvedModelModeType
   }, [modelModeTypeRef, resolvedModelModeType])
 
-  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
 
@@ -356,6 +356,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     model: modelConfiguration,
     base: {
       appId,
+      onOpenFeatures: () => setShowAppConfigureFeaturesModal(true),
       canReturnToSimpleMode,
       canTestAndRun: appACLCapabilities.canTestAndRun,
       collectionList,
@@ -367,7 +368,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
       isAdvancedMode,
       isAgent,
       isAllowVideoUpload,
-      isAPIKeySet,
       isFunctionCall,
       isOpenAI: modelConfig.provider === 'langgenius/openai/openai',
       isShowAudioConfig,
@@ -397,6 +397,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
+      appId,
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (serverLatestPublishedAt || 0) * 1000,

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ShortcutPlatform } from '../shortcut-platform'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { detectPlatform, formatForDisplay } from '@tanstack/react-hotkeys'
@@ -16,21 +17,21 @@ function getPlatformSnapshot() {
   return detectPlatform()
 }
 
-function getServerPlatformSnapshot(): ReturnType<typeof detectPlatform> {
-  return 'linux'
+function useDisplayPlatform(initialPlatform: ShortcutPlatform | null) {
+  return useSyncExternalStore(noopSubscribe, getPlatformSnapshot, () => initialPlatform)
 }
 
-function useDisplayPlatform() {
-  return useSyncExternalStore(noopSubscribe, getPlatformSnapshot, getServerPlatformSnapshot)
-}
-
-export function MainNavSearchButton() {
-  const { t } = useTranslation()
-  const displayPlatform = useDisplayPlatform()
-  const ariaKeyShortcuts = GOTO_ANYTHING_HOTKEY.replace(
-    'Mod',
-    displayPlatform === 'mac' ? 'Meta' : 'Control',
-  )
+export function MainNavSearchButton({
+  initialPlatform = null,
+}: {
+  initialPlatform?: ShortcutPlatform | null
+}) {
+  const { t } = useTranslation(['app'])
+  const displayPlatform = useDisplayPlatform(initialPlatform)
+  const ariaKeyShortcuts =
+    displayPlatform === null
+      ? undefined
+      : GOTO_ANYTHING_HOTKEY.replace('Mod', displayPlatform === 'mac' ? 'Meta' : 'Control')
 
   return (
     <DialogTrigger
@@ -40,18 +41,21 @@ export function MainNavSearchButton() {
           type="button"
           aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
           aria-keyshortcuts={ariaKeyShortcuts}
-          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
         />
       }
     >
       <span aria-hidden className="i-custom-vender-main-nav-quick-search h-4 w-4" />
       <Kbd
         aria-hidden="true"
-        className="h-4.5 min-w-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary"
+        data-pending={displayPlatform === null ? '' : undefined}
+        className="h-4.5 min-w-0 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary data-pending:invisible"
       >
-        {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-          <span key={key}>{formatForDisplay(key, { platform: displayPlatform })}</span>
-        ))}
+        {displayPlatform !== null &&
+          formatForDisplay(GOTO_ANYTHING_HOTKEY, {
+            platform: displayPlatform,
+            parts: true,
+          }).map((key) => <span key={key}>{key}</span>)}
       </Kbd>
     </DialogTrigger>
   )

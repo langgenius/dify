@@ -1,10 +1,12 @@
 'use client'
+
 import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -15,17 +17,15 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/marketplace-plugin/action'
 import { useFeaturedToolsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
 import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -37,6 +37,7 @@ const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
 
 type FeaturedToolsProps = {
+  marketplace: MarketplaceLinks
   plugins: Plugin[]
   providerMap: Map<string, ToolWithProvider>
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -51,6 +52,7 @@ type FeaturedToolPreviewPayload = {
 }
 
 const FeaturedTools = ({
+  marketplace,
   plugins,
   providerMap,
   onSelect,
@@ -58,7 +60,7 @@ const FeaturedTools = ({
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<FeaturedToolPreviewPayload>())
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
@@ -125,20 +127,20 @@ const FeaturedTools = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="-ml-2 min-h-0 w-fit justify-start gap-0 rounded-md px-2 py-1 hover:not-data-disabled:bg-transparent focus-visible:ring-inset">
+      <CollapsibleTrigger className="group/collapsible -ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
           aria-hidden
-          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
+          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
 
       <CollapsiblePanel>
         {isLoading && (
           <div className="py-3">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         )}
 
@@ -146,7 +148,7 @@ const FeaturedTools = ({
           <p className="py-2 system-xs-regular text-text-tertiary">
             <Link
               className="text-text-accent"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
+              href={marketplace.category(PluginCategoryEnum.tool)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -174,6 +176,7 @@ const FeaturedTools = ({
               <div className="mt-1 flex flex-col gap-1">
                 {visibleUninstalledPlugins.map((plugin) => (
                   <FeaturedToolUninstalledItem
+                    marketplace={marketplace}
                     key={plugin.plugin_id}
                     plugin={plugin}
                     language={language}
@@ -235,14 +238,16 @@ const FeaturedTools = ({
 }
 
 type FeaturedToolUninstalledItemProps = {
+  marketplace: MarketplaceLinks
   plugin: Plugin
-  language: Locale
+  language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedToolPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedToolUninstalledItem({
+  marketplace,
   plugin,
   language,
   previewCardHandle,
@@ -276,7 +281,7 @@ function FeaturedToolUninstalledItem({
   const detailsLink = (
     <Link
       className="flex h-full w-full min-w-0 items-center rounded-lg px-3 group-hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-      href={getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`)}
+      href={marketplace.plugin(plugin)}
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -332,6 +337,7 @@ function FeaturedToolUninstalledItem({
             </Button>
           )}
           <Action
+            marketplace={marketplace}
             open={actionOpen}
             onOpenChange={setActionOpen}
             author={plugin.org}

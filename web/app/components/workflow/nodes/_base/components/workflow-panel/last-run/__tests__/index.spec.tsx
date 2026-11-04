@@ -1,276 +1,120 @@
-import { act, render, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
+import { createDeferred } from '@/test/deferred'
 import LastRun from '../index'
 
-const mockUseHooksStore = vi.hoisted(() => vi.fn())
-const mockUseLastRun = vi.hoisted(() => vi.fn())
-const mockResultPanel = vi.hoisted(() => vi.fn())
+const lastRun = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': lastRun,
+    }),
+  }
+})
 
-vi.mock('@remixicon/react', () => ({
-  RiLoader2Line: () => <div data-testid="loading-icon" />,
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (
-    selector: (state: { configsMap?: { flowType?: string; flowId?: string } }) => unknown,
-  ) => mockUseHooksStore(selector),
-}))
-
-vi.mock('@/service/use-workflow', () => ({
-  useLastRun: (...args: unknown[]) => mockUseLastRun(...args),
-}))
-
-vi.mock('@/app/components/workflow/run/result-panel', () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockResultPanel(props)
-    return <div data-testid="result-panel">{String(props.status)}</div>
-  },
-}))
-
-vi.mock('../no-data', () => ({
-  __esModule: true,
-  default: ({ onSingleRun }: { onSingleRun: () => void }) => (
-    <button type="button" onClick={onSingleRun}>
-      no-data
-    </button>
-  ),
-}))
-
-describe('LastRun', () => {
-  const updateNodeRunningStatus = vi.fn()
-  const onSingleRunClicked = vi.fn()
-  let visibilityState = 'visible'
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseHooksStore.mockImplementation(
-      (selector: (state: { configsMap?: { flowType?: string; flowId?: string } }) => unknown) =>
-        selector({
-          configsMap: {
-            flowType: 'appFlow',
-            flowId: 'flow-1',
-          },
-        }),
-    )
-    mockUseLastRun.mockReturnValue({
-      data: undefined,
-      isFetching: false,
-      error: undefined,
-    })
-    visibilityState = 'visible'
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => visibilityState,
-    })
+const result = createNodeTracing({
+  outputs: { answer: 'Saved answer' },
+  execution_metadata: { total_tokens: 9, total_price: 0, currency: 'USD' },
+})
+const props = {
+  nodeId: 'node-1',
+  canSingleRun: true,
+  isRunAfterSingleRun: true,
+  updateNodeRunningStatus: vi.fn(),
+  onSingleRunClicked: vi.fn(),
+}
+const setup = (overrides: Partial<ComponentProps<typeof LastRun>> = {}) =>
+  render(<LastRun {...props} {...overrides} />, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  })
+let visibilityState = 'visible'
+const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+beforeEach(() => {
+  lastRun.mockResolvedValue(result)
+  visibilityState = 'visible'
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    get: () => visibilityState,
+  })
+})
+afterEach(() => {
+  if (originalVisibility) Object.defineProperty(document, 'visibilityState', originalVisibility)
+  else Reflect.deleteProperty(document, 'visibilityState')
+})
+const changeVisibility = (value: string) =>
+  act(() => {
+    visibilityState = value
+    document.dispatchEvent(new Event('visibilitychange'))
   })
 
-  it('should show a loader while fetching the last run before any single run starts', () => {
-    mockUseLastRun.mockReturnValue({
-      data: undefined,
-      isFetching: true,
-      error: undefined,
-    })
+it('waits for the selected node last run before showing its saved output', async () => {
+  const pending = createDeferred<typeof result>()
+  lastRun.mockReturnValue(pending.promise)
+  setup({ isRunAfterSingleRun: false })
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  await act(async () => pending.resolve(result))
+  expect(await screen.findByDisplayValue(/Saved answer/)).toHaveAttribute('readonly')
+  expect(lastRun).toHaveBeenCalledWith({ params: { app_id: 'app-1', node_id: 'node-1' } })
+})
 
-    render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun={false}
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-      />,
+it('shows the actual running status before the single run completes', () => {
+  setup({ runningStatus: NodeRunningStatus.Running })
+  expect(screen.getByRole('status')).toHaveTextContent('appLog.status.running')
+  expect(lastRun).not.toHaveBeenCalled()
+})
+
+it('offers single run for a missing last run', async () => {
+  lastRun.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
+  const user = userEvent.setup()
+  setup({ isRunAfterSingleRun: false })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }),
+  )
+  expect(props.onSingleRunClicked).toHaveBeenCalledOnce()
+})
+
+it('shows saved execution data while paused overrides its completed status', async () => {
+  setup({ runningStatus: NodeRunningStatus.Succeeded, isPaused: true })
+  expect(await screen.findByDisplayValue(/Saved answer/)).toHaveAttribute('readonly')
+  expect(screen.getByRole('status')).toHaveTextContent('appLog.status.stopped')
+  expect(screen.getByRole('status')).toHaveTextContent('9 Tokens')
+})
+
+it('respects a stopped single-run status', () => {
+  setup({ runningStatus: NodeRunningStatus.Stopped })
+  expect(screen.getByRole('status')).toHaveTextContent('appLog.status.stopped')
+})
+
+it('restores a completed status after hiding the page loses transient canvas state', async () => {
+  function Scenario({ status }: { status: NodeRunningStatus }) {
+    const [restoredStatus, setRestoredStatus] = useState<NodeRunningStatus>()
+    return (
+      <>
+        <output aria-label="Restored node status">{restoredStatus}</output>
+        <LastRun {...props} runningStatus={status} updateNodeRunningStatus={setRestoredStatus} />
+      </>
     )
-
-    expect(screen.getByTestId('loading-icon')).toBeInTheDocument()
-    expect(screen.queryByTestId('result-panel')).not.toBeInTheDocument()
+  }
+  const { rerender } = render(<Scenario status={NodeRunningStatus.Running} />, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
   })
-
-  it('should show a running result panel while a single run is still executing', () => {
-    render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-        runningStatus={NodeRunningStatus.Running}
-      />,
-    )
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent('running')
-    expect(mockResultPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'running',
-        showSteps: false,
-      }),
-    )
-  })
-
-  it('should render the no-data state for 404 last-run responses and forward single-run clicks', () => {
-    mockUseLastRun.mockReturnValue({
-      data: undefined,
-      isFetching: false,
-      error: { status: 404 },
-    })
-
-    render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun={false}
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-      />,
-    )
-
-    act(() => {
-      screen.getByText('no-data').click()
-    })
-
-    expect(onSingleRunClicked).toHaveBeenCalledTimes(1)
-  })
-
-  it('should render resolved result data and let paused state override the final status', () => {
-    mockUseLastRun.mockReturnValue({
-      data: {
-        status: NodeRunningStatus.Succeeded,
-        execution_metadata: { total_tokens: 9 },
-        created_by_account: { created_by: 'Alice' },
-      },
-      isFetching: false,
-      error: undefined,
-    })
-
-    render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-        runningStatus={NodeRunningStatus.Succeeded}
-        isPaused
-      />,
-    )
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Stopped)
-    expect(mockResultPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: NodeRunningStatus.Stopped,
-        total_tokens: 9,
-        created_by: 'Alice',
-        showSteps: false,
-      }),
-    )
-  })
-
-  it('should respect stopped and listening one-step statuses', () => {
-    mockUseLastRun.mockReturnValue({
-      data: {
-        status: NodeRunningStatus.Succeeded,
-      },
-      isFetching: false,
-      error: undefined,
-    })
-
-    const { rerender } = render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-        runningStatus={NodeRunningStatus.Stopped}
-      />,
-    )
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Stopped)
-
-    rerender(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-        runningStatus={NodeRunningStatus.Listening}
-      />,
-    )
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Listening)
-  })
-
-  it('should react to page visibility changes while keeping the current result rendered', () => {
-    mockUseLastRun.mockReturnValue({
-      data: {
-        status: NodeRunningStatus.Succeeded,
-      },
-      isFetching: false,
-      error: undefined,
-    })
-
-    render(
-      <LastRun
-        appId="app-1"
-        nodeId="node-1"
-        canSingleRun
-        isRunAfterSingleRun
-        updateNodeRunningStatus={updateNodeRunningStatus}
-        onSingleRunClicked={onSingleRunClicked}
-        runningStatus={NodeRunningStatus.Succeeded}
-      />,
-    )
-
-    act(() => {
-      visibilityState = 'hidden'
-      document.dispatchEvent(new Event('visibilitychange'))
-      visibilityState = 'visible'
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
-  })
-
-  it('should restore a completed last run when refreshing the canvas loses its transient status', () => {
-    mockUseLastRun.mockReturnValue({
-      data: {
-        status: NodeRunningStatus.Succeeded,
-      },
-      isFetching: false,
-      error: undefined,
-    })
-
-    const props = {
-      appId: 'app-1',
-      nodeId: 'node-1',
-      canSingleRun: true,
-      isRunAfterSingleRun: true,
-      updateNodeRunningStatus,
-      onSingleRunClicked,
-    }
-    const { rerender } = render(<LastRun {...props} runningStatus={NodeRunningStatus.Running} />)
-    rerender(<LastRun {...props} runningStatus={NodeRunningStatus.Succeeded} />)
-
-    act(() => {
-      visibilityState = 'hidden'
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-    rerender(<LastRun {...props} runningStatus={NodeRunningStatus.NotStart} />)
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
-
-    act(() => {
-      visibilityState = 'visible'
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
-    expect(updateNodeRunningStatus).toHaveBeenCalledWith(NodeRunningStatus.Succeeded)
-  })
+  rerender(<Scenario status={NodeRunningStatus.Succeeded} />)
+  expect(await screen.findByDisplayValue(/Saved answer/)).toBeInTheDocument()
+  changeVisibility('hidden')
+  rerender(<Scenario status={NodeRunningStatus.NotStart} />)
+  expect(screen.getByRole('status', { name: 'Restored node status' })).toBeEmptyDOMElement()
+  changeVisibility('visible')
+  expect(screen.getByRole('status', { name: 'Restored node status' })).toHaveTextContent(
+    'succeeded',
+  )
+  expect(screen.getByDisplayValue(/Saved answer/)).toBeInTheDocument()
 })

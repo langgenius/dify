@@ -6,8 +6,8 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
-import { isEnvironmentDeploymentInProgress } from '@/app/components/app/deploy/state'
-import { consoleQuery } from '@/service/client'
+import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
+import { consoleQuery } from '@/service/console'
 
 export const BUILT_IN_ENVIRONMENT_ID = 'built-in'
 const PUBLISHER_DEPLOYMENT_POLLING_INTERVAL = 3000
@@ -316,7 +316,7 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
 
       const deployment = query.state.data?.environment_deployment
       if (polling?.environmentId !== environmentId)
-        return isEnvironmentDeploymentInProgress(deployment)
+        return shouldPollEnvironmentDeployment(deployment)
           ? PUBLISHER_DEPLOYMENT_POLLING_INTERVAL
           : false
 
@@ -324,7 +324,7 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
       const operationFinished =
         operation?.id === polling.operationId && isDeploymentOperationTerminal(operation.status)
 
-      return operationFinished && !isEnvironmentDeploymentInProgress(deployment)
+      return operationFinished && !shouldPollEnvironmentDeployment(deployment)
         ? false
         : PUBLISHER_DEPLOYMENT_POLLING_INTERVAL
     },

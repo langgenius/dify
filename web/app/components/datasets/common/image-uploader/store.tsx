@@ -7,10 +7,7 @@ type Shape = {
   setFiles: (files: FileEntity[]) => void
 }
 
-export const createFileStore = (
-  value: FileEntity[] = [],
-  onChange?: (files: FileEntity[]) => void,
-) => {
+const createFileStore = (value: FileEntity[] = [], onChange?: (files: FileEntity[]) => void) => {
   return create<Shape>((set) => ({
     files: value ? [...value] : [],
     setFiles: (files) => {

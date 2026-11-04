@@ -1,35 +1,21 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
+import { createRagPipelineSliceSlice } from '../../../store'
 import InputFieldButton from '../input-field-button'
 
-const { mockSetShowInputFieldPanel, mockSetShowEnvPanel } = vi.hoisted(() => ({
-  mockSetShowInputFieldPanel: vi.fn(),
-  mockSetShowEnvPanel: vi.fn(),
-}))
+it('opens the input field panel and closes the environment panel', async () => {
+  const user = userEvent.setup()
+  const store = createWorkflowStore({ injectWorkflowStoreSliceFn: createRagPipelineSliceSlice })
+  store.setState({ showInputFieldPanel: false, showEnvPanel: true })
+  render(
+    <WorkflowContext value={store}>
+      <InputFieldButton />
+    </WorkflowContext>,
+  )
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: {
-      setShowInputFieldPanel: typeof mockSetShowInputFieldPanel
-      setShowEnvPanel: typeof mockSetShowEnvPanel
-    }) => unknown,
-  ) =>
-    selector({
-      setShowInputFieldPanel: mockSetShowInputFieldPanel,
-      setShowEnvPanel: mockSetShowEnvPanel,
-    }),
-}))
+  await user.click(screen.getByRole('button', { name: 'datasetPipeline.inputField' }))
 
-describe('InputFieldButton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should open the input field panel and close the env panel', () => {
-    render(<InputFieldButton />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.inputField' }))
-
-    expect(mockSetShowInputFieldPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-  })
+  expect(store.getState()).toMatchObject({ showInputFieldPanel: true, showEnvPanel: false })
 })

@@ -9,6 +9,8 @@ let capturedResizeCallbacks: ResizeCallback[] = []
 let disconnectSpy: ReturnType<typeof vi.fn>
 let rafCallbacks: FrameRequestCallback[] = []
 
+const bodyWidthDescriptor = Object.getOwnPropertyDescriptor(document.body, 'clientWidth')
+
 const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
   id: `item-${Math.random().toString(36).slice(2)}`,
   content: 'Test content',
@@ -44,7 +46,7 @@ const LayoutHarness = ({
   sidebarCollapseState?: boolean
   attachRefs?: boolean
 }) => {
-  const { width, chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+  const { chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
     useChatLayout({ chatList, sidebarCollapseState })
 
   return (
@@ -85,7 +87,6 @@ const LayoutHarness = ({
           }}
         />
       </div>
-      <output data-testid="layout-width">{width}</output>
     </>
   )
 }
@@ -129,6 +130,9 @@ describe('useChatLayout', () => {
   })
 
   afterEach(() => {
+    if (bodyWidthDescriptor)
+      Object.defineProperty(document.body, 'clientWidth', bodyWidthDescriptor)
+    else Reflect.deleteProperty(document.body, 'clientWidth')
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -150,7 +154,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('600')
       expect(screen.getByTestId('chat-footer').style.width).toBe('400px')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('360px')
       expect((screen.getByTestId('chat-container') as HTMLDivElement).scrollTop).toBe(640)
@@ -196,6 +199,7 @@ describe('useChatLayout', () => {
       const container = screen.getByTestId('chat-container') as HTMLDivElement
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })
@@ -219,6 +223,8 @@ describe('useChatLayout', () => {
         flushAnimationFrames()
         vi.runAllTimers()
       })
+
+      expect(container.scrollTop).toBe(10)
 
       act(() => {
         container.scrollTop = 420
@@ -246,6 +252,7 @@ describe('useChatLayout', () => {
       )
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })
@@ -265,7 +272,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('0')
       expect(capturedResizeCallbacks).toHaveLength(0)
       expect(screen.getByTestId('chat-footer').style.width).toBe('')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('')

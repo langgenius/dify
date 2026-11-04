@@ -8,6 +8,7 @@ import BlockSelector from './block-selector'
 import { NESTED_ELEMENT_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import { useAvailableBlocks } from './hooks/use-available-blocks'
+import { useEdgeAccessibleLabel } from './hooks/use-edge-accessible-label'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
@@ -25,6 +26,7 @@ const CustomEdge = ({
   targetY,
   selected,
 }: EdgeProps) => {
+  const edgeAccessibleLabelRef = useEdgeAccessibleLabel(source, target, sourceHandleId)
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX: sourceX - 8,
     sourceY,
@@ -36,6 +38,7 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const [isTriggerHovered, setIsTriggerHovered] = useState(false)
+  const [isTriggerFocused, setIsTriggerFocused] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks(
     (data as Edge['data'])!.targetType,
@@ -46,7 +49,7 @@ const CustomEdge = ({
     (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop,
   )
   const { _sourceRunningStatus, _targetRunningStatus } = data
-  const isTriggerVisible = !!(data?._hovering || isTriggerHovered || open)
+  const isTriggerVisible = !!(data?._hovering || isTriggerHovered || isTriggerFocused || open)
 
   const linearGradientId = useMemo(() => {
     if (
@@ -113,16 +116,18 @@ const CustomEdge = ({
           }}
         />
       )}
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        style={{
-          stroke,
-          strokeWidth: 2,
-          opacity: data._dimmed ? 0.3 : data._waitingRun ? 0.7 : 1,
-          strokeDasharray: data._isTemp ? '8 8' : undefined,
-        }}
-      />
+      <g ref={edgeAccessibleLabelRef}>
+        <BaseEdge
+          id={id}
+          path={edgePath}
+          style={{
+            stroke,
+            strokeWidth: 2,
+            opacity: data._dimmed ? 0.3 : data._waitingRun ? 0.7 : 1,
+            strokeDasharray: data._isTemp ? '8 8' : undefined,
+          }}
+        />
+      </g>
       <EdgeLabelRenderer>
         <div
           className="nopan nodrag transition-opacity duration-150"
@@ -135,6 +140,10 @@ const CustomEdge = ({
           }}
           onMouseEnter={() => setIsTriggerHovered(true)}
           onMouseLeave={() => setIsTriggerHovered(false)}
+          onFocusCapture={() => setIsTriggerFocused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setIsTriggerFocused(false)
+          }}
         >
           <BlockSelector
             open={open}
@@ -147,7 +156,7 @@ const CustomEdge = ({
               nextNodeTargetHandle: targetHandleId || 'target',
             }}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
-            triggerClassName="transition-transform hover:scale-150"
+            triggerStyle={{ scale: 'var(--workflow-control-scale, 1)' }}
           />
         </div>
       </EdgeLabelRenderer>

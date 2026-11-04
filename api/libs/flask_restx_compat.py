@@ -9,7 +9,7 @@ spec export fail or succeed in the same way.
 import hashlib
 import json
 from collections.abc import Mapping
-from typing import TypeGuard, cast
+from typing import Protocol, TypeGuard, cast, runtime_checkable
 
 from flask import current_app
 from flask_restx import fields
@@ -264,6 +264,17 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
     return f"_AnonymousInlineModel_{digest}"
 
 
+@runtime_checkable
+class DocumentFinisher(Protocol):
+    """An Api that rewrites its finished OpenAPI document to say what Flask-RESTX cannot.
+
+    Runs last in ``Swagger.as_dict``, so the live ``openapi.json``, the spec generator
+    and every test that reads the document see the same result.
+    """
+
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]: ...
+
+
 def install_swagger_compatibility() -> None:
     """Install Dify's Flask-RESTX OpenAPI compatibility hooks.
 
@@ -355,10 +366,12 @@ def install_swagger_compatibility() -> None:
     def responses_for_with_status_specific_media(self: Swagger, doc: dict[str, object], method: str):
         responses = original_responses_for(self, doc, method)
         blueprint = self.api.blueprint
-        if blueprint is None or blueprint.name != "service_api":
-            return responses
         method_doc = doc.get(method)
         if not isinstance(method_doc, dict):
+            return responses
+        vendor = method_doc.get("vendor", {})
+        is_binary_response = isinstance(vendor, dict) and BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY in vendor
+        if blueprint is None or (blueprint.name != "service_api" and not is_binary_response):
             return responses
 
         for status, response in responses.items():
@@ -426,8 +439,10 @@ def install_swagger_compatibility() -> None:
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
         current_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
         try:
-            payload = original_as_dict(self)
-            return finalize_openapi_payload(payload, registered_models=self.api.models)
+            payload = finalize_openapi_payload(original_as_dict(self), registered_models=self.api.models)
+            if isinstance(self.api, DocumentFinisher):
+                payload = self.api.finish_document(payload)
+            return payload
         finally:
             current_app.config["RESTX_INCLUDE_ALL_MODELS"] = include_all_models
 

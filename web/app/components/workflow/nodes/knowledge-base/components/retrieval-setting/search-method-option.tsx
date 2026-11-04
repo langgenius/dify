@@ -3,22 +3,17 @@ import type { WeightedScore } from '../../types'
 import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import type { TopKFieldProps, VisibleScoreThresholdFieldProps } from './top-k-and-score-threshold'
 import type { HybridSearchModeOption, Option } from './type'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Badge from '@/app/components/base/badge'
-import {
-  OptionCardEffectBlue,
-  OptionCardEffectBlueLight,
-  OptionCardEffectOrange,
-  OptionCardEffectPurple,
-  OptionCardEffectTeal,
-} from '@/app/components/base/icons/src/public/knowledge'
-import { Infotip } from '@/app/components/base/infotip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../types'
 import RerankingModelSelector from './reranking-model-selector'
@@ -61,11 +56,24 @@ export type SearchMethodOptionProps = {
 }
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
-  blue: <OptionCardEffectBlue />,
-  'blue-light': <OptionCardEffectBlueLight />,
-  orange: <OptionCardEffectOrange />,
-  purple: <OptionCardEffectPurple />,
-  teal: <OptionCardEffectTeal />,
+  blue: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-blue h-31 w-53.5" />
+  ),
+  'blue-light': (
+    <span
+      aria-hidden
+      className="i-custom-public-knowledge-option-card-effect-blue-light h-18.5 w-53"
+    />
+  ),
+  orange: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-orange h-55 w-55" />
+  ),
+  purple: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-purple h-55 w-55" />
+  ),
+  teal: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-teal h-23 w-53" />
+  ),
 }
 
 function getWeightedScoreValue(weightedScore?: WeightedScore) {
@@ -116,10 +124,12 @@ function getSearchMethodEffect(effectColor: string | undefined, isActive: boolea
   )
 }
 
-function renderSearchMethodIcon(Icon: Option['icon'], isActive: boolean) {
+function renderSearchMethodIcon(iconClassName: Option['iconClassName'], isActive: boolean) {
   return (
-    <Icon
+    <span
+      aria-hidden
       className={cn(
+        iconClassName,
         'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-purple-purple-600',
         isActive && 'text-util-colors-purple-purple-600',
       )}
@@ -134,9 +144,8 @@ function SearchMethodRadioCard({
   isRecommended,
   children,
 }: SearchMethodRadioCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const isActive = option.id === searchMethod
-  const Icon = option.icon
 
   return (
     <div
@@ -159,7 +168,7 @@ function SearchMethodRadioCard({
       >
         {getSearchMethodEffect(option.effectColor, isActive)}
         <div className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
-          {renderSearchMethodIcon(Icon, isActive)}
+          {renderSearchMethodIcon(option.iconClassName, isActive)}
         </div>
         <div className="grow py-1 pt-px">
           <div className="flex items-center">
@@ -202,7 +211,7 @@ function HybridSearchModeRadioCard({
         render={<button type="button" />}
         disabled={readonly}
         className={cn(
-          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden transition-colors',
+          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden',
           'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
           'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           'cursor-pointer hover:shadow-xs data-disabled:cursor-not-allowed data-disabled:hover:shadow-none',
@@ -228,13 +237,15 @@ export function SearchMethodOption({
   reranking,
   retrievalParameters,
 }: SearchMethodOptionProps) {
-  const { t } = useTranslation()
+  const rerankLabelId = useId()
+
+  const { t } = useTranslation(['datasetSettings', 'modelProvider'])
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
   const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)
   const showRerankModelSelector = shouldShowRerankModelSelector(option.id, hybridSearch.mode)
-  const rerankModelLabel = t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })
-  const rerankModelTip = t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })
+  const rerankModelLabel = t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })
+  const rerankModelTip = t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })
   const scoreThresholdHidden = option.id === RetrievalSearchMethodEnum.keywordSearch
   const config = (
     <div className="space-y-3">
@@ -273,17 +284,23 @@ export function SearchMethodOption({
           {showRerankModelSelectorSwitch ? (
             <Field name="reranking_model_enabled" className="mb-1 gap-0">
               <div className="flex items-center">
-                <FieldLabel className="flex min-w-0 items-center py-0 system-sm-semibold text-text-secondary">
+                <FieldLabel className="flex min-w-0 cursor-pointer items-center py-0 system-sm-semibold text-text-secondary has-data-disabled:cursor-not-allowed">
                   <Switch
                     className="mr-1"
                     checked={reranking.enabled ?? false}
                     onCheckedChange={reranking.onEnabledChange}
                     disabled={readonly}
                   />
-                  <span className="truncate">{rerankModelLabel}</span>
+                  <span id={rerankLabelId} className="truncate">
+                    {rerankModelLabel}
+                  </span>
                 </FieldLabel>
-                <Infotip aria-label={rerankModelTip} className="ml-0.5 size-3.5 shrink-0">
-                  {rerankModelTip}
+                <Infotip>
+                  <InfotipTrigger
+                    aria-labelledby={rerankLabelId}
+                    className="ml-0.5 size-3.5 shrink-0"
+                  />
+                  <InfotipContent aria-labelledby={rerankLabelId}>{rerankModelTip}</InfotipContent>
                 </Infotip>
               </div>
             </Field>
@@ -294,15 +311,11 @@ export function SearchMethodOption({
             readonly={readonly}
           />
           {reranking.showMultiModalTip ? (
-            <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-              <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-              <div className="p-1">
-                <div className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
-              </div>
-              <span className="system-xs-medium text-text-primary">
+            <Alert type="warning" className="mt-2">
+              <AlertTitle>
                 {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-              </span>
-            </div>
+              </AlertTitle>
+            </Alert>
           ) : null}
         </div>
       ) : null}

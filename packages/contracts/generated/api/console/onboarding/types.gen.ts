@@ -13,6 +13,16 @@ export type StepByStepTourStateResponse = {
   updated_at?: string | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type StepByStepTourStatePatchPayload = {
   action:
     | 'complete_task'
@@ -30,6 +40,13 @@ export type GetOnboardingStepByStepTourStateData = {
   url: '/onboarding/step-by-step-tour/state'
 }
 
+export type GetOnboardingStepByStepTourStateErrors = {
+  default: ErrorResponse
+}
+
+export type GetOnboardingStepByStepTourStateError =
+  GetOnboardingStepByStepTourStateErrors[keyof GetOnboardingStepByStepTourStateErrors]
+
 export type GetOnboardingStepByStepTourStateResponses = {
   200: StepByStepTourStateResponse
 }
@@ -43,6 +60,13 @@ export type PatchOnboardingStepByStepTourStateData = {
   query?: never
   url: '/onboarding/step-by-step-tour/state'
 }
+
+export type PatchOnboardingStepByStepTourStateErrors = {
+  default: ErrorResponse
+}
+
+export type PatchOnboardingStepByStepTourStateError =
+  PatchOnboardingStepByStepTourStateErrors[keyof PatchOnboardingStepByStepTourStateErrors]
 
 export type PatchOnboardingStepByStepTourStateResponses = {
   200: StepByStepTourStateResponse

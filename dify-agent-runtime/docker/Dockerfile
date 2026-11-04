@@ -18,11 +18,11 @@ RUN CGO_ENABLED=0 go build -o /bin/shellctl ./cmd/shellctl && \
     CGO_ENABLED=0 go build -o /bin/dify-agent ./cmd/dify-agent-cli
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS production
+FROM python:3.13-slim-bookworm AS production
 
-ARG NODE_VERSION=22.22.1
+ARG NODE_VERSION=24.22.1
 ARG PNPM_VERSION=11.9.0
-ARG UV_VERSION=0.8.9
+ARG UV_VERSION=0.13.4
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -35,6 +35,7 @@ RUN apt-get update \
         curl \
         file \
         git \
+        iproute2 \
         jq \
         less \
         openssh-client \

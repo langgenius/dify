@@ -1,20 +1,20 @@
+import type { PluginInstallTaskStartResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
-import { render } from '@/test/console/render'
-import UpdateFromMarketplace from '../from-market-place'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
+import MarketplaceUpdateDialog from '../from-market-place'
 
 const {
-  mockStop,
-  mockCheck,
   mockHandleInstallTaskStart,
   mockRemoveAutoUpgrade,
   mockUpdateFromMarketPlace,
   mockToastError,
 } = vi.hoisted(() => ({
-  mockStop: vi.fn(),
-  mockCheck: vi.fn(),
   mockHandleInstallTaskStart: vi.fn(),
   mockRemoveAutoUpgrade: vi.fn(),
   mockUpdateFromMarketPlace: vi.fn(),
@@ -28,81 +28,17 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/base/badge/index', () => ({
-  __esModule: true,
-  BadgeState: {
-    Warning: 'warning',
-  },
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
 }))
 
-vi.mock('@/app/components/plugins/card', () => ({
-  default: ({
-    titleLeft,
-    payload,
-  }: {
-    titleLeft: React.ReactNode
-    payload: { label: Record<string, string> }
-  }) => (
-    <div data-testid="plugin-card">
-      <div>{payload.label.en_US}</div>
-      <div>{titleLeft}</div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => ({
-  default: () => ({
-    check: mockCheck,
-    stop: mockStop,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/utils', () => ({
-  pluginManifestToCardPluginProps: (payload: unknown) => payload,
-}))
-
-vi.mock('@/service/plugins', () => ({
-  updateFromMarketPlace: mockUpdateFromMarketPlace,
-}))
-
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginTaskList: () => ({
     handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
-  useRemoveAutoUpgrade: () => ({
-    mutateAsync: mockRemoveAutoUpgrade,
-  }),
-}))
-
-vi.mock('../install-plugin/base/use-get-icon', () => ({
-  default: () => ({
-    getIconUrl: async (icon: string) => `https://cdn.example.com/${icon}`,
-  }),
-}))
-
-vi.mock('../downgrade-warning', () => ({
-  default: ({
-    onCancel,
-    onJustDowngrade,
-    onExcludeAndDowngrade,
-  }: {
-    onCancel: () => void
-    onJustDowngrade: () => void
-    onExcludeAndDowngrade: () => void
-  }) => (
-    <div data-testid="downgrade-warning">
-      <button onClick={onCancel}>cancel downgrade</button>
-      <button onClick={onJustDowngrade}>downgrade only</button>
-      <button onClick={onExcludeAndDowngrade}>exclude and downgrade</button>
-    </div>
-  ),
 }))
 
 const createPayload = (
@@ -111,11 +47,10 @@ const createPayload = (
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
     id: 'plugin@1.0.0',
-    payload: {
+    payload: createPluginDeclarationFixture({
       version: '1.0.0',
       icon: 'plugin.png',
-      label: { en_US: 'Plugin Label' },
-    } as UpdateFromMarketPlacePayload['originalPackageInfo']['payload'],
+    }),
   },
   targetPackageInfo: {
     id: 'plugin@2.0.0',
@@ -124,83 +59,212 @@ const createPayload = (
   ...overrides,
 })
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.upgrade.marketplace.post': mockUpdateFromMarketPlace,
+      'workspaces.current.plugin.autoUpgrade.exclude.post': (...args: unknown[]) =>
+        mockRemoveAutoUpgrade(...args),
+    }),
+  }
+})
+
 describe('UpdateFromMarketplace', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockCheck.mockResolvedValue({ status: TaskStatus.success })
+    vi.resetAllMocks()
     mockUpdateFromMarketPlace.mockResolvedValue({
       all_installed: true,
       task_id: 'task-1',
     })
   })
 
-  it('renders the upgrade modal content and current version transition', async () => {
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
-
-    expect(screen.getByText('plugin.upgrade.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.upgrade.description')).toBeInTheDocument()
-    expect(screen.getByText('1.0.0 -> 2.0.0')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByTestId('plugin-card')).toHaveTextContent('Plugin Label')
-    })
-  })
-
-  it('submits the marketplace upgrade and calls onSave when installation is immediate', async () => {
+  it('shows the upgrade failure and lets the user retry successfully', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
-
-    fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
-
-    await waitFor(() => {
-      expect(mockUpdateFromMarketPlace).toHaveBeenCalledWith({
-        original_plugin_unique_identifier: 'plugin@1.0.0',
-        new_plugin_unique_identifier: 'plugin@2.0.0',
-      })
-      expect(onSave).toHaveBeenCalled()
-    })
-  })
-
-  it('surfaces failed upgrade messages from the response task payload', async () => {
-    mockUpdateFromMarketPlace.mockResolvedValue({
+    const failedResponse: PluginInstallTaskStartResponse = {
+      all_installed: false,
+      task_id: 'failed-upgrade',
       task: {
+        id: 'failed-upgrade',
+        created_at: '2026-06-01T00:00:00Z',
+        updated_at: '2026-06-01T00:00:00Z',
         status: TaskStatus.failed,
+        total_plugins: 1,
+        completed_plugins: 0,
         plugins: [
           {
+            plugin_id: 'plugin',
             plugin_unique_identifier: 'plugin@2.0.0',
+            status: TaskStatus.failed,
             message: 'upgrade failed',
+            icon: 'plugin.png',
+            labels: { en_US: 'Test Plugin' },
+            source: 'marketplace',
           },
         ],
       },
-    })
+    }
+    mockUpdateFromMarketPlace.mockResolvedValueOnce(failedResponse)
 
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
 
-    fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
+    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('upgrade failed')
     })
+    expect(mockHandleInstallTaskStart).not.toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
   })
 
-  it('removes auto-upgrade before downgrading when the warning modal is shown', async () => {
+  it('waits for auto-upgrade exclusion before downgrading', async () => {
+    const user = userEvent.setup()
+    const exclusion = createDeferred<object>()
+    mockRemoveAutoUpgrade.mockReturnValueOnce(exclusion.promise)
+    const onSave = vi.fn()
+    const onClose = vi.fn()
+    const upgrade = createDeferred<PluginInstallTaskStartResponse>()
+    mockUpdateFromMarketPlace.mockReturnValueOnce(upgrade.promise)
     render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
+      <MarketplaceUpdateDialog
+        open
+        onClose={onClose}
+        payload={createPayload({ targetPackageInfo: { id: 'plugin@0.9.0', version: '0.9.0' } })}
         pluginId="plugin-1"
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-        isShowDowngradeWarningModal
+        onRefresh={onSave}
+        warnAboutAutoUpdate
       />,
     )
 
-    fireEvent.click(screen.getByText('exclude and downgrade'))
+    await user.click(
+      screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+    )
 
     await waitFor(() => {
       expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({
-        plugin_id: 'plugin-1',
-        category: PluginCategoryEnum.tool,
+        body: {
+          plugin_id: 'plugin-1',
+          category: PluginCategoryEnum.tool,
+        },
       })
-      expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })
+    expect(mockUpdateFromMarketPlace).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
+      'plugin.autoUpdate.pluginDowngradeWarning.description',
+    )
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'app.newApp.Cancel' })).toBeDisabled()
+
+    await act(async () => exclusion.resolve({}))
+
+    await waitFor(() => expect(mockUpdateFromMarketPlace).toHaveBeenCalledOnce())
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    await act(async () => upgrade.resolve({ all_installed: true, task_id: '' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(mockUpdateFromMarketPlace).toHaveBeenCalledWith({
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
+    })
+  })
+  it('downgrades without excluding future automatic upgrades when that action is chosen', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload({ targetPackageInfo: { id: 'plugin@0.9.0', version: '0.9.0' } })}
+        pluginId="plugin-1"
+        onRefresh={onSave}
+        warnAboutAutoUpdate
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade' }),
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
+    expect(mockUpdateFromMarketPlace).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
+    })
+    expect(mockRemoveAutoUpgrade).not.toHaveBeenCalled()
+  })
+
+  it('hands an accepted installation to background tasks and closes without claiming completion', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<PluginInstallTaskStartResponse>()
+    mockUpdateFromMarketPlace.mockReturnValueOnce(pending.promise)
+    const onRefresh = vi.fn()
+    const onClose = vi.fn()
+    render(
+      <MarketplaceUpdateDialog
+        open
+        payload={createPayload()}
+        pluginId="plugin-1"
+        onRefresh={onRefresh}
+        onClose={onClose}
+        warnAboutAutoUpdate
+      />,
+    )
+    const submit = screen.getByRole('button', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade',
+    })
+    await user.click(submit)
+    await user.click(submit)
+    expect(mockUpdateFromMarketPlace).toHaveBeenCalledOnce()
+    expect(onClose).not.toHaveBeenCalled()
+    const response: PluginInstallTaskStartResponse = {
+      all_installed: false,
+      task_id: 'upgrade-task',
+    }
+    await act(async () => pending.resolve(response))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(mockHandleInstallTaskStart).toHaveBeenCalledExactlyOnceWith(response)
+    expect(onRefresh).not.toHaveBeenCalled()
+  })
+
+  it('allows retrying after an upgrade request rejects', async () => {
+    const user = userEvent.setup()
+    mockUpdateFromMarketPlace.mockRejectedValueOnce(new Error('Upgrade request failed'))
+    const onSave = vi.fn()
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(await screen.findByRole('button', { name: 'plugin.upgrade.upgrade' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
+    expect(mockUpdateFromMarketPlace).toHaveBeenCalledTimes(2)
   })
 })

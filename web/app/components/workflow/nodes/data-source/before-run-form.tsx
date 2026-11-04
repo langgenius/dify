@@ -22,7 +22,7 @@ import useBeforeRunForm from './hooks/use-before-run-form'
 
 const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
   const { nodeId, payload, onCancel } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const dataSourceStore = useDataSourceStore()
 
   const {
@@ -94,7 +94,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             onClick={handleRunWithSyncDraft}
             variant="primary"
             loading={isPending}
-            disabled={isPending || startRunBtnDisabled}
+            disabled={startRunBtnDisabled}
           >
             {t(($) => $['singleRun.startRun'], { ns: 'workflow' })}
           </Button>

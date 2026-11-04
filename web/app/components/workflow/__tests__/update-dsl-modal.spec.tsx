@@ -1,27 +1,21 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import type { ReactNode } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import UpdateDSLModal from '../update-dsl-modal'
 
-class MockFileReader {
-  onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
-
-  readAsText(_file: Blob) {
-    const event = {
-      target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' },
-    } as unknown as ProgressEvent<FileReader>
-    this.onload?.call(this as unknown as FileReader, event)
-  }
-}
-
-vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
+const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
+const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -32,10 +26,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/apps', () => ({
-  importDSL: (payload: unknown) => mockImportDSL(payload),
-  importDSLConfirm: (payload: unknown) => mockImportDSLConfirm(payload),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.imports.post': ({ body }: { body: unknown }) => mockImportDSL(body),
+      'apps.imports.byImportId.confirm.post': ({ params }: { params: unknown }) =>
+        mockImportDSLConfirm(params),
+    }),
+  }
+})
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
@@ -45,6 +47,8 @@ vi.mock('@/service/workflow', () => ({
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitWorkflowUpdate: mockEmitWorkflowUpdate,
+    isConnected: mockIsCollaborationConnected,
+    replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
   },
 }))
 
@@ -53,16 +57,6 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
     handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
   }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -75,10 +69,18 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   ),
 }))
 
+function render(children: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  return rtlRender(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
+}
+
 describe('UpdateDSLModal', () => {
   const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
-    onCancel: vi.fn(),
+    appId: 'app-1',
+    appMode: 'workflow' as const,
+    open: true,
+    onOpenChange: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),
   }
@@ -102,6 +104,8 @@ describe('UpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
+    mockIsCollaborationConnected.mockReturnValue(true)
+    mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
   })
 
@@ -115,6 +119,17 @@ describe('UpdateDSLModal', () => {
     )
   }
 
+  it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
+    const user = userEvent.setup()
+    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+    render(<UpdateDSLModal {...defaultProps} />)
+    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
+    await user.upload(screen.getByTestId('dsl-file-input'), file)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalled())
+  })
+
   it('should keep import disabled until a file is selected', () => {
     renderModal()
 
@@ -123,61 +138,105 @@ describe('UpdateDSLModal', () => {
     ).toBeDisabled()
   })
 
-  it('should call backup handler from the warning area', () => {
+  it('should call backup handler from the warning area', async () => {
+    const user = userEvent.setup()
     renderModal()
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.backupCurrentDraft' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.backupCurrentDraft' }))
 
     expect(defaultProps.onBackup).toHaveBeenCalledTimes(1)
   })
 
-  it('should call cancel handler when the import dialog requests close', () => {
-    const onCancel = vi.fn()
-    renderModal({ ...defaultProps, onCancel })
+  it('should call cancel handler when the close button is clicked', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    renderModal({ ...defaultProps, onOpenChange })
 
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
-  it('should call cancel handler when the close button is clicked', () => {
-    const onCancel = vi.fn()
-    renderModal({ ...defaultProps, onCancel })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should import a valid file and emit workflow update payload', async () => {
+  it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
+    const user = userEvent.setup()
+    const importedNode = {
+      id: 'imported-start',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: { type: 'start', title: 'Start', desc: '' },
+    }
+    mockFetchWorkflowDraft.mockResolvedValueOnce({
+      graph: { nodes: [importedNode], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      features: {},
+      hash: 'imported-hash',
+      conversation_variables: [],
+      environment_variables: [],
+    })
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
-
-    await waitFor(() => {
-      expect(mockImportDSL).toHaveBeenCalledWith(
-        expect.objectContaining({
-          app_id: 'app-1',
-          yaml_content: expect.stringContaining('workflow:'),
-        }),
-      )
-    })
-
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
+    const [appId, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
+    expect(appId).toBe('app-1')
+    expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
+    expect(edges).toEqual([])
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+    expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WORKFLOW_DATA_UPDATE',
+        payload: expect.objectContaining({ nodes, edges, hash: 'imported-hash' }),
       }),
     )
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
-    expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
-    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+    expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEmit.mock.invocationCallOrder[0]!,
+    )
+    expect(mockEmit.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEmitWorkflowUpdate.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('updates the imported canvas when collaboration is disconnected', async () => {
+    const user = userEvent.setup()
+    mockIsCollaborationConnected.mockReturnValue(false)
+    renderModal()
+
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
+    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
+  })
+
+  it('reloads instead of showing a graph that collaboration cannot accept', async () => {
+    const user = userEvent.setup()
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    mockReplaceGraphFromCommittedDraft.mockReturnValue(false)
+    renderModal()
+
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    reload.mockRestore()
   })
 
   it('should show Agent package warnings returned by a completed import', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-with-agent-warnings',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
@@ -200,10 +259,11 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
@@ -213,26 +273,32 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should show an error notification when import fails', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-1',
       status: DSLImportStatus.FAILED,
+      error: 'Invalid workflow package',
       app_id: 'app-1',
     })
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['invalid'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['invalid'], 'workflow.yml', { type: 'text/yaml' }),
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid workflow package',
+      })
     })
   })
 
   it('should open the version warning modal for pending imports and confirm them', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-2',
       status: DSLImportStatus.PENDING,
@@ -242,17 +308,18 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
@@ -261,6 +328,7 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should show Agent package warnings returned after confirming a pending import', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-pending-agent',
       status: DSLImportStatus.PENDING,
@@ -282,13 +350,14 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     const confirmButton = await screen.findByRole('button', { name: 'app.newApp.Confirm' })
-    fireEvent.click(confirmButton)
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
@@ -297,7 +366,8 @@ describe('UpdateDSLModal', () => {
     })
   })
 
-  it('should open the pending modal after the timeout and allow dismissing it', async () => {
+  it('returns to the selected file when cancelling version confirmation', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-5',
       status: DSLImportStatus.PENDING,
@@ -307,10 +377,11 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(mockImportDSL).toHaveBeenCalled()
@@ -323,14 +394,19 @@ describe('UpdateDSLModal', () => {
       { timeout: 1000 },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
     })
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).not.toBeDisabled()
   })
 
-  it('should close the pending modal when dialog requests close', async () => {
+  it('returns to the selected file when escaping version confirmation', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-8',
       status: DSLImportStatus.PENDING,
@@ -340,68 +416,182 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
 
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
     })
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).not.toBeDisabled()
+  })
+
+  it('keeps a successful import successful when refreshing the draft fails', async () => {
+    const user = userEvent.setup()
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    mockFetchWorkflowDraft.mockRejectedValue(new Error('Draft refresh unavailable'))
+    renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('common.error', {
+        description: 'Draft refresh unavailable',
+      }),
+    )
+    expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+    expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
+    expect(reload).toHaveBeenCalledTimes(1)
+    reload.mockRestore()
+  })
+
+  it('keeps the import pending until the committed graph has replaced the canvas', async () => {
+    const user = userEvent.setup()
+    let resolveDraft!: (value: unknown) => void
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
+    )
+    const submit = screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })
+    await user.click(submit)
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1))
+    expect(submit).toHaveAttribute('aria-disabled', 'true')
+    await user.click(submit)
+    await user.keyboard('{Escape}')
+    expect(mockImportDSL).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+
+    await act(async () =>
+      resolveDraft({ graph: { nodes: [], edges: [], viewport: {} }, features: {} }),
+    )
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
+    expect(mockEmit).toHaveBeenCalled()
+  })
+
+  it('prevents closing and duplicate confirmation while a pending import is submitted, and allows retry after failure', async () => {
+    const user = userEvent.setup()
+    mockImportDSL.mockResolvedValue({ id: 'pending-1', status: DSLImportStatus.PENDING })
+    let resolveRequest!: (value: { status: DSLImportStatus; error?: string }) => void
+    mockImportDSLConfirm.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRequest = resolve
+      }),
+    )
+    renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    const confirm = await screen.findByRole('button', { name: 'app.newApp.Confirm' })
+    await user.click(confirm)
+    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+    await user.click(confirm)
+    await user.keyboard('{Escape}')
+    expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+
+    await act(async () => resolveRequest({ status: DSLImportStatus.FAILED, error: 'Retry import' }))
+    await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(confirm)
+    await waitFor(() => expect(mockImportDSLConfirm).toHaveBeenCalledTimes(2))
+    expect(mockImportDSLConfirm).toHaveBeenLastCalledWith({ import_id: 'pending-1' })
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
+  })
+
+  it('imports the submitted file snapshot even when selection changes while reading', async () => {
+    const user = userEvent.setup()
+    let resolveContent!: (value: string) => void
+    const file = new File(['first'], 'first.yml')
+    vi.spyOn(file, 'text').mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveContent = resolve
+      }),
+    )
+    renderModal()
+    const input = screen.getByTestId('dsl-file-input')
+    await user.upload(input, file)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { files: [new File(['second'], 'second.yml')] } })
+    await act(async () => resolveContent('workflow: { graph: { nodes: [] } }'))
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+        app_id: 'app-1',
+        mode: 'yaml-content',
+        yaml_content: 'workflow: { graph: { nodes: [] } }',
+      }),
+    )
   })
 
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
-    class InvalidDSLFileReader extends MockFileReader {
-      override readAsText(_file: Blob) {
-        const event = {
-          target: {
-            result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n',
-          },
-        } as unknown as ProgressEvent<FileReader>
-        this.onload?.call(this as unknown as FileReader, event)
-      }
-    }
-
-    vi.stubGlobal('FileReader', InvalidDSLFileReader as unknown as typeof FileReader)
+    const user = userEvent.setup()
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [{ data: { type: answer } }] } }'], 'workflow.yml', {
+        type: 'text/yaml',
+      }),
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalled()
     })
     expect(mockImportDSL).not.toHaveBeenCalled()
-
-    vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
   })
 
   it('should show an error notification when import throws', async () => {
-    mockImportDSL.mockRejectedValue(new Error('boom'))
+    const user = userEvent.setup()
+    mockImportDSL.mockRejectedValue(
+      await httpErrorFromResponse(
+        Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      ),
+    )
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid app package',
+      })
     })
   })
 
   it('should show an error when completed import does not return an app id', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-3',
       status: DSLImportStatus.COMPLETED,
@@ -409,10 +599,11 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalled()
@@ -420,6 +611,7 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should show an error when confirming a pending import fails', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-4',
       status: DSLImportStatus.PENDING,
@@ -428,54 +620,67 @@ describe('UpdateDSLModal', () => {
     })
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.FAILED,
+      error: 'Import session expired',
     })
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Import session expired',
+      })
     })
   })
 
   it('should show an error when confirming a pending import throws', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-6',
       status: DSLImportStatus.PENDING,
       imported_dsl_version: '1.0.0',
       current_dsl_version: '2.0.0',
     })
-    mockImportDSLConfirm.mockRejectedValue(new Error('boom'))
+    mockImportDSLConfirm.mockRejectedValue(
+      await httpErrorFromResponse(
+        Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      ),
+    )
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
+        description: 'Invalid app package',
+      })
     })
   })
 
   it('should show an error when a confirmed pending import completes without an app id', async () => {
+    const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({
       id: 'import-7',
       status: DSLImportStatus.PENDING,
@@ -488,16 +693,17 @@ describe('UpdateDSLModal', () => {
 
     renderModal()
 
-    fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalled()

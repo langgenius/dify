@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { EducationExpireNotice } from '../index'
@@ -11,17 +12,7 @@ const mockEducationStatus = vi.hoisted(() => ({
 }))
 const mockPricingModal = vi.hoisted(() => ({ isOpen: false }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableEducationPlan: true,
-  }),
-}))
-
-vi.mock('@/hooks/use-query-params', () => ({
-  usePricingModal: () => [mockPricingModal.isOpen, vi.fn()],
-}))
-
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default:
     () =>
     ({ expired, onClose }: { expired: boolean; onClose: () => void }) => (
@@ -37,21 +28,35 @@ vi.mock('@/next/dynamic', () => ({
 const renderNotice = (accountId = 'user-1') => {
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: accountId, timezone: 'UTC' },
+    features: { education: { enabled: true } },
     educationStatus: {
       allow_refresh: mockEducationStatus.allowRefresh,
       expire_at: mockEducationStatus.expireAt,
     },
   })
 
-  return render(<EducationExpireNotice />, { wrapper })
+  return render(
+    <NuqsTestingAdapter searchParams={mockPricingModal.isOpen ? '?pricing=open' : ''}>
+      <EducationExpireNotice />
+    </NuqsTestingAdapter>,
+    { wrapper },
+  )
 }
 
 describe('EducationExpireNotice', () => {
+  const storageKey = 'dismissed-education-expire-notice'
+  let previousNotice: string | null
   beforeEach(() => {
-    localStorage.clear()
+    previousNotice = localStorage.getItem(storageKey)
+    localStorage.removeItem(storageKey)
     mockEducationStatus.allowRefresh = true
     mockEducationStatus.expireAt = Date.UTC(2099, 0, 1) / 1000
     mockPricingModal.isOpen = false
+  })
+
+  afterEach(() => {
+    if (previousNotice === null) localStorage.removeItem(storageKey)
+    else localStorage.setItem(storageKey, previousNotice)
   })
 
   it('persists dismissal for the same account, expiration date, and phase', async () => {

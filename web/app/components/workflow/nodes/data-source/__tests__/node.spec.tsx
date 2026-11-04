@@ -1,81 +1,139 @@
 import type { DataSourceNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useNodePluginInstallation } from '../../../hooks/use-node-plugin-installation'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createPluginEntity } from '@/test/fixtures/plugin'
 import Node from '../node'
 
-const mockInstallPluginButton = vi.hoisted(() =>
-  vi.fn(({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
-    <button type="button">{uniqueIdentifier}</button>
-  )),
-)
-
-vi.mock('../../../hooks/use-node-plugin-installation', () => ({
-  useNodePluginInstallation: vi.fn(),
+const requests = vi.hoisted(() => ({
+  manifest: vi.fn(),
+  install: vi.fn(),
+  catalog: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
-  InstallPluginButton: mockInstallPluginButton,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': requests.manifest,
+      'rag.pipelines.datasourcePlugins.get': requests.catalog,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': requests.install,
+    }),
+  }
+})
 
-const mockUseNodePluginInstallation = vi.mocked(useNodePluginInstallation)
-
-const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
+const provider = createDatasourceProvider()
+const data: DataSourceNodeType = {
   title: 'Datasource',
   desc: '',
   type: BlockEnum.DataSource,
-  plugin_id: 'plugin-id',
+  plugin_id: provider.plugin_id,
   provider_type: 'local_file',
-  provider_name: 'file',
+  provider_name: provider.provider,
   datasource_name: 'local-file',
   datasource_label: 'Local File',
   datasource_parameters: {},
   datasource_configurations: {},
-  plugin_unique_identifier: 'plugin-id@1.0.0',
-  ...overrides,
+  plugin_unique_identifier: provider.plugin_unique_identifier,
+}
+
+// Subscribe to the pipeline catalog so invalidation must deliver fresh data.
+function DatasourceCatalog() {
+  const { data: providers } = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions(),
+  )
+  return (
+    <output aria-label="Datasource catalog">
+      {providers?.map((item) => item.provider).join(', ')}
+    </output>
+  )
+}
+
+beforeEach(() => {
+  requests.manifest.mockReset().mockResolvedValue({ plugins: [] })
+  requests.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  requests.catalog.mockReset().mockResolvedValue([])
 })
 
-describe('DataSourceNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodePluginInstallation.mockReturnValue({
-      isChecking: false,
-      isMissing: false,
-      uniqueIdentifier: undefined,
-      canInstall: false,
-      onInstallSuccess: vi.fn(),
-      shouldDim: false,
-    })
+it('installs the missing datasource package, hides installation and refreshes the subscribed catalog', async () => {
+  const user = userEvent.setup()
+  const { queryClient } = createConsoleQueryWrapper({ workspacePermissionKeys: ['plugin.install'] })
+  queryClient.setQueryData(consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey(), [])
+  requests.manifest.mockResolvedValueOnce({ plugins: [] }).mockResolvedValue({
+    plugins: [
+      createPluginEntity({
+        plugin_id: provider.plugin_id,
+        plugin_unique_identifier: provider.plugin_unique_identifier,
+      }),
+    ],
   })
-
-  // The node should only expose install affordances when the backing plugin is missing and installable.
-  describe('Plugin Installation', () => {
-    it('should render the install button when the datasource plugin is missing', () => {
-      mockUseNodePluginInstallation.mockReturnValue({
-        isChecking: false,
-        isMissing: true,
-        uniqueIdentifier: 'plugin-id@1.0.0',
-        canInstall: true,
-        onInstallSuccess: vi.fn(),
-        shouldDim: true,
-      })
-
-      render(<Node id="data-source-node" data={createNodeData()} />)
-
-      expect(screen.getByRole('button', { name: 'plugin-id@1.0.0' })).toBeInTheDocument()
-      expect(mockInstallPluginButton).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uniqueIdentifier: 'plugin-id@1.0.0',
-          extraIdentifiers: ['plugin-id', 'file'],
-        }),
-        undefined,
-      )
-    })
-
-    it('should render nothing when installation is unavailable', () => {
-      const { container } = render(<Node id="data-source-node" data={createNodeData()} />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
+  requests.install.mockImplementation(async () => {
+    requests.catalog.mockResolvedValue([provider])
+    return { all_installed: true, task_id: '' }
   })
+  renderWorkflowComponent(
+    <>
+      <Node id="data-source-node" data={data} />
+      <DatasourceCatalog />
+    </>,
+    {
+      queryClient,
+      initialStoreState: { dataSourceList: [] },
+    },
+  )
+
+  // Settle the initial empty catalog fetch before installation can change the server response.
+  await act(async () => {
+    await queryClient.query(consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions())
+  })
+  expect(screen.getByLabelText('Datasource catalog')).toBeEmptyDOMElement()
+  await user.click(
+    await screen.findByRole('button', {
+      name: 'workflowAgent.nodes.agent.pluginInstaller.install',
+    }),
+  )
+
+  expect(requests.install).toHaveBeenCalledExactlyOnceWith({
+    body: { plugin_unique_identifiers: [provider.plugin_unique_identifier] },
+  })
+  await waitFor(() => expect(screen.getByLabelText('Datasource catalog')).toHaveTextContent('file'))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: /pluginInstaller.install/ }),
+    ).not.toBeInTheDocument(),
+  )
+})
+
+it('does not offer installation without workspace install permission', () => {
+  const { queryClient } = createConsoleQueryWrapper({ workspacePermissionKeys: [] })
+  const pluginIds = Array.from(
+    new Set(
+      [data.plugin_unique_identifier, data.plugin_id, data.provider_name].filter(
+        (item): item is string => Boolean(item),
+      ),
+    ),
+  )
+  // Resolve the manifest before render so query loading cannot hide a permission regression.
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryKey({
+      input: { body: { plugin_ids: pluginIds } },
+    }),
+    { plugins: [] },
+  )
+  renderWorkflowComponent(<Node id="data-source-node" data={data} />, {
+    queryClient,
+    initialStoreState: { dataSourceList: [] },
+  })
+  expect(screen.queryByRole('button', { name: /pluginInstaller.install/ })).not.toBeInTheDocument()
+  expect(requests.install).not.toHaveBeenCalled()
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { loadOpenApiYaml } from './openapi-yaml'
+import { loadOpenApiYaml } from './openapi-yaml.ts'
 
 describe('loadOpenApiYaml', () => {
   it('preserves merge keys and timestamps used by v4 documents', () => {

@@ -1,83 +1,55 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import FloatRightContainer from '../index'
 
-describe('FloatRightContainer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Rendering behavior across mobile and desktop branches.
-  describe('Rendering', () => {
-    it('should render content in drawer when isMobile is true and isOpen is true', async () => {
-      render(
-        <FloatRightContainer isMobile={true} isOpen={true} onClose={vi.fn()} title="Mobile panel">
-          <div>Mobile content</div>
-        </FloatRightContainer>,
-      )
-
-      expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText('Mobile panel')).toBeInTheDocument()
-      expect(screen.getByText('Mobile content')).toBeInTheDocument()
-    })
-
-    it('should not render content when isMobile is true and isOpen is false', () => {
-      render(
-        <FloatRightContainer isMobile={true} isOpen={false} onClose={vi.fn()}>
-          <div>Closed mobile content</div>
-        </FloatRightContainer>,
-      )
-
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.queryByText('Closed mobile content')).not.toBeInTheDocument()
-    })
-
-    it('should render content inline when isMobile is false and isOpen is true', () => {
-      render(
+it('opens mobile content in a named drawer and closes it through the supplied action', async () => {
+  const user = userEvent.setup()
+  const onClose = vi.fn()
+  function Harness() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open panel
+        </button>
         <FloatRightContainer
-          isMobile={false}
-          isOpen={true}
-          onClose={vi.fn()}
-          title="Desktop drawer title should not render"
+          isMobile
+          isOpen={open}
+          title="Mobile panel"
+          showClose
+          onClose={() => {
+            setOpen(false)
+            onClose()
+          }}
         >
-          <div>Desktop inline content</div>
-        </FloatRightContainer>,
-      )
+          Mobile content
+        </FloatRightContainer>
+      </>
+    )
+  }
+  render(<Harness />)
+  await user.click(screen.getByRole('button', { name: 'Open panel' }))
+  expect(await screen.findByRole('dialog', { name: 'Mobile panel' })).toBeInTheDocument()
+  expect(screen.getByText('Mobile content')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(onClose).toHaveBeenCalledOnce()
+})
 
-      expect(screen.getByText('Desktop inline content')).toBeInTheDocument()
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.queryByText('Desktop drawer title should not render')).not.toBeInTheDocument()
-    })
-
-    it('should render nothing when isMobile is false and isOpen is false', () => {
-      const { container } = render(
-        <FloatRightContainer isMobile={false} isOpen={false} onClose={vi.fn()}>
-          <div>Hidden desktop content</div>
-        </FloatRightContainer>,
-      )
-
-      expect(container).toBeEmptyDOMElement()
-      expect(screen.queryByText('Hidden desktop content')).not.toBeInTheDocument()
-    })
-  })
-
-  // Validate that drawer-specific props are passed through in mobile mode.
-  describe('Props forwarding', () => {
-    it('should call onClose when close icon is clicked in mobile drawer mode', async () => {
-      const onClose = vi.fn()
-      render(
-        <FloatRightContainer isMobile={true} isOpen={true} onClose={onClose} showClose={true}>
-          <div>Closable mobile content</div>
-        </FloatRightContainer>,
-      )
-
-      await screen.findByRole('dialog')
-      const closeIcon = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeIcon).toBeInTheDocument()
-
-      await userEvent.click(closeIcon)
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-  })
+it('shows desktop content inline only while open', () => {
+  const { rerender } = render(
+    <FloatRightContainer isMobile={false} isOpen onClose={vi.fn()} title="Drawer title">
+      Desktop content
+    </FloatRightContainer>,
+  )
+  expect(screen.getByText('Desktop content')).toBeVisible()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByText('Drawer title')).not.toBeInTheDocument()
+  rerender(
+    <FloatRightContainer isMobile={false} isOpen={false} onClose={vi.fn()}>
+      Desktop content
+    </FloatRightContainer>,
+  )
+  expect(screen.queryByText('Desktop content')).not.toBeInTheDocument()
 })

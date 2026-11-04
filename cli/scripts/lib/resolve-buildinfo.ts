@@ -12,8 +12,6 @@ export type BuildInfo = {
   commit: string
   buildDate: string
   channel: BuildChannel
-  minDify: string
-  maxDify: string
 }
 
 export type Env = Record<string, string | undefined>
@@ -35,7 +33,6 @@ export const defaultGitProbe: GitProbe = (cmd) => {
 type PackageManifest = {
   difyctl?: {
     channel?: string
-    compat?: { minDify?: string; maxDify?: string }
   }
 }
 
@@ -75,8 +72,6 @@ export function resolveBuildInfo(opts: ResolveOptions = {}): BuildInfo {
   const commit = env.DIFYCTL_COMMIT ?? git('git rev-parse HEAD') ?? 'none'
 
   const buildDate = env.DIFYCTL_BUILD_DATE ?? now().toISOString()
-  const minDify = env.DIFYCTL_MIN_DIFY ?? pkg.difyctl?.compat?.minDify ?? '0.0.0'
-  const maxDify = env.DIFYCTL_MAX_DIFY ?? pkg.difyctl?.compat?.maxDify ?? '0.0.0'
 
-  return { version, commit, buildDate, channel: channel as BuildChannel, minDify, maxDify }
+  return { version, commit, buildDate, channel: channel as BuildChannel }
 }

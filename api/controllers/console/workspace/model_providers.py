@@ -1,25 +1,26 @@
 import io
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID
 
-from flask import request, send_file
+from flask import send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -32,12 +33,16 @@ from services.entities.model_provider_entities import (
     ModelProviderSummaryResponse,
     ProviderResponse,
 )
-from services.model_provider_service import ModelProviderService
-from services.workspace_service import WorkspaceService
+from services.model_provider.service import ModelProviderService
 
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
+
+
+class ModelProviderIconPath(BaseModel):
+    tenant_id: UUID
+    icon_type: Annotated[Literal["icon_small", "icon_small_dark"], BeforeValidator(str.lower)]
 
 
 class ParserCredentialId(BaseModel):
@@ -154,10 +159,8 @@ class ModelProviderListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        payload = request.args.to_dict(flat=True)
-        args = ParserModelList.model_validate(payload)
-
+    @model_validate(ParserModelList)
+    def get(self, args: ParserModelList, tenant_id: str):
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.model_type)
 
@@ -192,9 +195,8 @@ class ModelProviderCreditsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str):
-        credit_pool = WorkspaceService.get_effective_credit_pool(tenant_id, session=session)
+    def get(self, tenant_id: str):
+        credit_pool = application_services().workspaces.management.get_effective_credit_pool(tenant_id)
         return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 
@@ -209,15 +211,13 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
-        # if credential_id is not provided, return current used credential
-        payload = request.args.to_dict(flat=True)
-        args = ParserCredentialId.model_validate(payload)
-
+    @model_validate(ParserCredentialId)
+    def get(self, args: ParserCredentialId, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
+        # if credential_id is not provided, return current used credential
         credentials = model_provider_service.get_provider_credential(
             tenant_id=tenant_id, provider=provider, credential_id=args.credential_id
         )
@@ -229,13 +229,11 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserCredentialCreate.model_validate(payload)
-
+    @model_validate(ParserCredentialCreate)
+    def post(self, args: ParserCredentialCreate, current_tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
 
         try:
@@ -246,7 +244,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -255,13 +253,11 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def put(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserCredentialUpdate.model_validate(payload)
-
+    @model_validate(ParserCredentialUpdate)
+    def put(self, args: ParserCredentialUpdate, current_tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
 
         try:
@@ -273,7 +269,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -282,13 +278,11 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserCredentialDelete.model_validate(payload)
-
+    @model_validate(ParserCredentialDelete)
+    def delete(self, args: ParserCredentialDelete, current_tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         model_provider_service.remove_provider_credential(
             tenant_id=current_tenant_id, provider=provider, credential_id=args.credential_id
@@ -304,13 +298,11 @@ class ModelProviderCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserCredentialSwitch.model_validate(payload)
-
+    @model_validate(ParserCredentialSwitch)
+    def post(self, args: ParserCredentialSwitch, current_tenant_id: str, provider: str):
         service = ModelProviderService()
         service.switch_active_provider_credential(
             tenant_id=current_tenant_id,
@@ -332,10 +324,8 @@ class ModelProviderValidateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserCredentialValidate.model_validate(payload)
-
+    @model_validate(ParserCredentialValidate)
+    def post(self, args: ParserCredentialValidate, current_tenant_id: str, provider: str):
         tenant_id = current_tenant_id
 
         model_provider_service = ModelProviderService()
@@ -365,12 +355,17 @@ class ModelProviderIconApi(Resource):
 
     @console_ns.response(200, "Model provider icon")
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
+        """Return an icon for a tenant UUID and a supported icon type.
+
+        Invalid path arguments fail before provider discovery or asset access.
+        """
         # response-contract:ignore binary send_file response
+        path = ModelProviderIconPath.model_validate({"tenant_id": tenant_id, "icon_type": icon_type})
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            tenant_id=tenant_id,
+            tenant_id=str(path.tenant_id),
             provider=provider,
-            icon_type=icon_type,
+            icon_type=path.icon_type,
             lang=lang,
         )
         if icon is None:
@@ -385,13 +380,11 @@ class PreferredProviderTypeUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
-        args = ParserPreferredProviderType.model_validate(payload)
-
+    @model_validate(ParserPreferredProviderType)
+    def post(self, args: ParserPreferredProviderType, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         model_provider_service.switch_preferred_provider(
             tenant_id=tenant_id, provider=provider, preferred_provider_type=args.preferred_provider_type
@@ -418,10 +411,10 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
         # pyrefly: ignore [deprecated]
-        data = BillingService.get_model_provider_payment_link(
+        link = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             prefilled_email=current_user.email,
         )
-        return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)
+        return dump_response(ModelProviderPaymentCheckoutUrlResponse, {"payment_link": link.url})

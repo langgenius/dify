@@ -5,20 +5,25 @@ import type {
   AppPartial,
   GetAppsData,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
@@ -37,17 +42,22 @@ const getPreloadDistance = (scrollContainer: Element) =>
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 
+type DeleteAppDialogPayload = Pick<AppPartial, 'id' | 'name'> & {
+  fallbackFocus: RefObject<HTMLElement | null>
+  adjacentFocusTargets: HTMLElement[]
+}
+
 type AppListCatalogProps = Readonly<{
   appListQuery: AppListQuery
   canCreateApp: boolean
   dragging: boolean
   hasActiveFilters: boolean
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
   onOpenTagManagement: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   scrollViewportRef: RefObject<HTMLDivElement | null>
 }>
 
@@ -66,7 +76,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   }>
 
 function CatalogSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
@@ -99,14 +109,28 @@ function AppListCatalogContent({
   scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
+  const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAppDialogPayload>())
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const openDeleteDialog = useCallback(
+    (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) =>
+      deleteDialog.openWithPayload({
+        ...app,
+        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+        ),
+        fallbackFocus: { current: null },
+      }),
+    [deleteDialog],
+  )
 
   const apps = useMemo(() => appListPages.flatMap(({ data: pageApps }) => pageApps), [appListPages])
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
     apps.forEach((app) => {
-      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-        appIds.add(app.id)
+      if (app.mode === 'workflow' || app.mode === 'advanced-chat') appIds.add(app.id)
     })
     return Array.from(appIds)
   }, [apps])
@@ -154,6 +178,7 @@ function AppListCatalogContent({
           {starredApps.length > 0 && (
             <StarredAppList
               apps={starredApps}
+              onDelete={openDeleteDialog}
               stepByStepTourCardTarget={
                 shouldHighlightStarredAppRow
                   ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
@@ -196,6 +221,7 @@ function AppListCatalogContent({
                   <AppCard
                     key={app.id}
                     app={app}
+                    onDelete={(item) => openDeleteDialog(app, item)}
                     onlineUsers={workflowOnlineUsersMap[app.id]}
                     onOpenTagManagement={onOpenTagManagement}
                     stepByStepTourActionMenuOpen={
@@ -279,6 +305,53 @@ function AppListCatalogContent({
           </span>
         </div>
       )}
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
+            {payload && (
+              <DeleteAppForm
+                appName={payload.name}
+                isPending={deletion.isPending}
+                error={
+                  deletion.isError
+                    ? `${t(($) => $.appDeleteFailed, { ns: 'app' })}: ${deletion.error.message}`
+                    : undefined
+                }
+                onSubmit={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { app_id: payload.id } },
+                    {
+                      onSuccess: () => {
+                        payload.fallbackFocus.current = scrollViewportRef.current
+                        deleteDialog.close()
+                      },
+                    },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
     </>
   )
 }

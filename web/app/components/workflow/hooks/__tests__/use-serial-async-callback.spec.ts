@@ -1,93 +1,50 @@
 import { act, renderHook } from '@testing-library/react'
+import { createDeferred } from '@/test/deferred'
 import { useSerialAsyncCallback } from '../use-serial-async-callback'
 
-describe('useSerialAsyncCallback', () => {
-  it('should execute a synchronous function and return its result', async () => {
-    const fn = vi.fn((..._args: number[]) => 42)
-    const { result } = renderHook(() => useSerialAsyncCallback(fn))
+it('starts queued calls only after their predecessor resolves and returns each result', async () => {
+  const first = createDeferred<number>()
+  const second = createDeferred<number>()
+  const fn = vi
+    .fn<(id: number) => number | Promise<number>>()
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise)
+    .mockReturnValueOnce(30)
+  const { result } = renderHook(() => useSerialAsyncCallback(fn))
+  const calls = [result.current(1), result.current(2), result.current(3)]
+  await act(async () => {})
+  expect(fn).toHaveBeenCalledExactlyOnceWith(1)
+  await act(async () => first.resolve(10))
+  expect(fn.mock.calls).toEqual([[1], [2]])
+  await act(async () => second.resolve(20))
+  await expect(Promise.all(calls)).resolves.toEqual([10, 20, 30])
+  expect(fn.mock.calls).toEqual([[1], [2], [3]])
+})
 
-    const value = await act(() => result.current(1, 2))
-
-    expect(value).toBe(42)
-    expect(fn).toHaveBeenCalledWith(1, 2)
+it('skips rejected submissions without preventing later accepted calls', async () => {
+  const fn = vi.fn((value: number) => value * 2)
+  const { result, rerender } = renderHook(({ skip }) => useSerialAsyncCallback(fn, () => skip), {
+    initialProps: { skip: true },
   })
+  await expect(result.current(1)).resolves.toBeUndefined()
+  expect(fn).not.toHaveBeenCalled()
+  rerender({ skip: false })
+  await expect(result.current(2)).resolves.toBe(4)
+  expect(fn).toHaveBeenCalledExactlyOnceWith(2)
+})
 
-  it('should execute an async function and return its result', async () => {
-    const fn = vi.fn(async (x: number) => x * 2)
-    const { result } = renderHook(() => useSerialAsyncCallback(fn))
-
-    const value = await act(() => result.current(5))
-
-    expect(value).toBe(10)
-  })
-
-  it('should serialize concurrent calls sequentially', async () => {
-    const order: number[] = []
-    const fn = vi.fn(async (id: number, delay: number) => {
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      order.push(id)
-      return id
-    })
-
-    const { result } = renderHook(() => useSerialAsyncCallback(fn))
-
-    let r1: number | undefined
-    let r2: number | undefined
-    let r3: number | undefined
-
-    await act(async () => {
-      const p1 = result.current(1, 30)
-      const p2 = result.current(2, 10)
-      const p3 = result.current(3, 5)
-      r1 = await p1
-      r2 = await p2
-      r3 = await p3
-    })
-
-    expect(order).toEqual([1, 2, 3])
-    expect(r1).toBe(1)
-    expect(r2).toBe(2)
-    expect(r3).toBe(3)
-  })
-
-  it('should skip execution when shouldSkip returns true', async () => {
-    const fn = vi.fn(async () => 'executed')
-    const shouldSkip = vi.fn(() => true)
-    const { result } = renderHook(() => useSerialAsyncCallback(fn, shouldSkip))
-
-    const value = await act(() => result.current())
-
-    expect(value).toBeUndefined()
-    expect(fn).not.toHaveBeenCalled()
-  })
-
-  it('should execute when shouldSkip returns false', async () => {
-    const fn = vi.fn(async () => 'executed')
-    const shouldSkip = vi.fn(() => false)
-    const { result } = renderHook(() => useSerialAsyncCallback(fn, shouldSkip))
-
-    const value = await act(() => result.current())
-
-    expect(value).toBe('executed')
-    expect(fn).toHaveBeenCalledOnce()
-  })
-
-  it('should continue queuing after a previous call rejects', async () => {
-    let callCount = 0
-    const fn = vi.fn(async () => {
-      callCount++
-      if (callCount === 1) throw new Error('fail')
-      return 'ok'
-    })
-
-    const { result } = renderHook(() => useSerialAsyncCallback(fn))
-
-    await act(async () => {
-      await result.current().catch(() => {})
-      const value = await result.current()
-      expect(value).toBe('ok')
-    })
-
-    expect(fn).toHaveBeenCalledTimes(2)
-  })
+it('rejects a failed call while allowing an already queued successor to run', async () => {
+  const first = createDeferred<string>()
+  const error = new Error('fail')
+  const fn = vi
+    .fn<() => Promise<string>>()
+    .mockReturnValueOnce(first.promise)
+    .mockResolvedValueOnce('ok')
+  const { result } = renderHook(() => useSerialAsyncCallback(fn))
+  const failed = expect(result.current()).rejects.toBe(error)
+  const next = result.current()
+  await act(async () => first.reject(error))
+  await failed
+  await expect(next).resolves.toBe('ok')
+  expect(fn).toHaveBeenCalledTimes(2)
 })

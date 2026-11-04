@@ -1,7 +1,6 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -16,7 +15,6 @@ type Props = Readonly<{
 }>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
-  const { t } = useTranslation()
   const canManageTools = useCanManageTools()
   const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
@@ -24,7 +22,6 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
     if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }
@@ -38,7 +35,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
 }
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addSwaggerAPIAsToolLabel = t(($) => $.addSwaggerAPIAsTool, { ns: 'tools' })
   const {
     canManageTools,
@@ -56,7 +53,6 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
         className="px-3!"
         onClick={() => setIsShowEditCustomCollectionModal(true)}
         title={addSwaggerAPIAsToolLabel}
-        aria-label={addSwaggerAPIAsToolLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addSwaggerAPIAsToolLabel}
@@ -73,7 +69,7 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
 }
 
 const Contribute = ({ onRefreshData, stepByStepTourTarget }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const {
     canManageTools,

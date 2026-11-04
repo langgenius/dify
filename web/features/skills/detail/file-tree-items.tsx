@@ -4,7 +4,7 @@ import type {
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { DragEvent, MouseEvent, ReactElement } from 'react'
+import type { DragEvent, KeyboardEvent, MouseEvent, ReactElement } from 'react'
 import type { SkillDropTarget } from './file-tree-dnd'
 import type { FileTreeInlineAction, FileTreeNode } from './shared'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,20 +15,16 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setSkillFileDragPreview } from './file-tree-drag-preview'
 import {
   getDraggedSkillPaths,
   getSkillFileIconClass,
+  isEditableKeyboardTarget,
   skillFileDragPathsType,
   skillFileDragType,
   skillFileHotkeys,
@@ -134,7 +130,7 @@ function FileActionMenuItems({
   onRename,
   onUploadFiles,
 }: {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   node: FileTreeNode
   onCopy: (path: string) => void
   onCreateFile: () => void
@@ -144,17 +140,17 @@ function FileActionMenuItems({
   onRename: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
-  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
-  const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+  const ActionItem = kind === 'context' ? ContextMenuItem : MenuItem
+  const ActionSeparator = kind === 'context' ? ContextMenuSeparator : MenuSeparator
   const isDirectoryNode = node.type === 'directory'
 
   return (
     <>
       {!isDirectoryNode && (
         <>
-          <MenuItem
+          <ActionItem
             className="gap-2"
             onClick={(event) => {
               event.stopPropagation()
@@ -164,12 +160,12 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.cut.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.cut.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
-          </MenuItem>
-          <MenuItem
+          </ActionItem>
+          <ActionItem
             className="gap-2"
             onClick={(event) => {
               event.stopPropagation()
@@ -179,17 +175,17 @@ function FileActionMenuItems({
             <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
             <KbdGroup className="ml-auto">
-              {skillFileHotkeys.copy.keycaps.map((keycap) => (
+              {formatForDisplay(skillFileHotkeys.copy.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
             </KbdGroup>
-          </MenuItem>
-          <MenuSeparator />
+          </ActionItem>
+          <ActionSeparator />
         </>
       )}
       {isDirectoryNode && (
         <>
-          <MenuItem
+          <ActionItem
             className="gap-2"
             onClick={(event) => {
               event.stopPropagation()
@@ -198,8 +194,8 @@ function FileActionMenuItems({
           >
             <span aria-hidden className="i-ri-file-add-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.createFileMenu'])}</span>
-          </MenuItem>
-          <MenuItem
+          </ActionItem>
+          <ActionItem
             className="gap-2"
             onClick={(event) => {
               event.stopPropagation()
@@ -208,8 +204,8 @@ function FileActionMenuItems({
           >
             <span aria-hidden className="i-ri-folder-add-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.createFolderMenu'])}</span>
-          </MenuItem>
-          <MenuItem
+          </ActionItem>
+          <ActionItem
             className="gap-2"
             onClick={(event) => {
               event.stopPropagation()
@@ -218,11 +214,11 @@ function FileActionMenuItems({
           >
             <span aria-hidden className="i-ri-upload-cloud-2-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.uploadFilesMenu'])}</span>
-          </MenuItem>
-          <MenuSeparator />
+          </ActionItem>
+          <ActionSeparator />
         </>
       )}
-      <MenuItem
+      <ActionItem
         className="gap-2"
         onClick={(event) => {
           event.stopPropagation()
@@ -231,9 +227,9 @@ function FileActionMenuItems({
       >
         <span aria-hidden className="i-ri-input-field size-4 text-text-tertiary" />
         <span>{tCommon(($) => $['operation.rename'])}...</span>
-      </MenuItem>
-      <MenuSeparator />
-      <MenuItem
+      </ActionItem>
+      <ActionSeparator />
+      <ActionItem
         className="gap-2"
         onClick={(event) => {
           event.stopPropagation()
@@ -242,7 +238,7 @@ function FileActionMenuItems({
       >
         <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
         <span>{tCommon(($) => $['operation.delete'])}</span>
-      </MenuItem>
+      </ActionItem>
     </>
   )
 }
@@ -255,6 +251,7 @@ function FileActions({
   onCreateFolder,
   onCut,
   onDelete,
+  onMenuKeyDown,
   onRename,
   onUploadFiles,
 }: {
@@ -265,28 +262,34 @@ function FileActions({
   onCreateFolder: () => void
   onCut: (path: string) => void
   onDelete: () => void
+  onMenuKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onRename: () => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <Menu modal={false}>
+        <MenuTrigger
           aria-label={tCommon(($) => $['operation.more'])}
           className={cn(
-            'relative z-10 size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:flex data-popup-open:bg-state-base-hover',
+            'relative z-10 size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:flex data-popup-open:bg-state-base-hover',
             visible ? 'flex' : 'hidden group-hover:flex',
           )}
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
+        </MenuTrigger>
+        <MenuContent
+          align="end"
+          data-skill-file-menu
+          onKeyDown={onMenuKeyDown}
+          className={skillFileMenuPopupClassName}
+        >
           <FileActionMenuItems
-            kind="dropdown"
+            kind="menu"
             node={node}
             onCopy={onCopy}
             onCreateFile={onCreateFile}
@@ -296,8 +299,8 @@ function FileActions({
             onRename={onRename}
             onUploadFiles={() => uploadInputRef.current?.click()}
           />
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <input
         ref={uploadInputRef}
         type="file"
@@ -318,34 +321,34 @@ export function RootFileActionMenuItems({
   onCreateFolder,
   onUploadFiles,
 }: {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   onCreateFile: () => void
   onCreateFolder: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
+  const { t } = useTranslation(['skill'])
+  const ActionItem = kind === 'context' ? ContextMenuItem : MenuItem
 
   return (
     <>
-      <MenuItem className="gap-2" onClick={onCreateFile}>
+      <ActionItem className="gap-2" onClick={onCreateFile}>
         <span aria-hidden className="i-ri-file-add-line size-4 text-text-secondary" />
         <span className="system-sm-regular">
           {t(($) => $['skillManagement.detail.createFileMenu'])}
         </span>
-      </MenuItem>
-      <MenuItem className="gap-2" onClick={onCreateFolder}>
+      </ActionItem>
+      <ActionItem className="gap-2" onClick={onCreateFolder}>
         <span aria-hidden className="i-ri-folder-add-line size-4 text-text-secondary" />
         <span className="system-sm-regular">
           {t(($) => $['skillManagement.detail.createFolderMenu'])}
         </span>
-      </MenuItem>
-      <MenuItem className="gap-2" onClick={onUploadFiles}>
+      </ActionItem>
+      <ActionItem className="gap-2" onClick={onUploadFiles}>
         <span aria-hidden className="i-ri-upload-cloud-2-line size-4 text-text-secondary" />
         <span className="system-sm-regular">
           {t(($) => $['skillManagement.detail.uploadFilesMenu'])}
         </span>
-      </MenuItem>
+      </ActionItem>
     </>
   )
 }
@@ -405,7 +408,7 @@ export function FileTreeItem({
   selectedPaths: string[]
   selectedPath: string | undefined
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const contextUploadInputRef = useRef<HTMLInputElement>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isDragging = draggingPaths.includes(node.path)
@@ -418,6 +421,25 @@ export function FileTreeItem({
     inlineAction?.kind === 'create' && inlineAction.parentPath === node.path
       ? inlineAction
       : undefined
+
+  const handleMenuKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (readonly || inlineActionLoading || inlineAction || node.type !== 'file') return
+    if (event.defaultPrevented) return
+    if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    const action = matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.copy.command)
+      ? onCopy
+      : matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.cut.command)
+        ? onCut
+        : undefined
+    if (!action) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    if (event.repeat) return
+    action(node.path)
+  }
 
   useEffect(
     () => () => {
@@ -513,7 +535,11 @@ export function FileTreeItem({
       <>
         <ContextMenu>
           <ContextMenuTrigger render={trigger} />
-          <ContextMenuContent className={skillFileMenuPopupClassName}>
+          <ContextMenuContent
+            data-skill-file-menu
+            className={skillFileMenuPopupClassName}
+            onKeyDown={handleMenuKeyDown}
+          >
             <FileActionMenuItems
               kind="context"
               node={node}
@@ -564,33 +590,31 @@ export function FileTreeItem({
               data-skill-file-tree-item
               draggable={!readonly}
               className={cn(
-                'group flex h-6 w-full min-w-0 items-center gap-2 rounded-md pr-1.5 pl-2 system-xs-regular text-text-secondary outline-hidden transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
                 isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid ring-inset',
                 isSelected && 'bg-state-accent-hover text-text-accent',
                 isDragging && 'opacity-30',
               )}
-              role="button"
-              tabIndex={0}
-              title={node.path}
-              onClick={(event) => onItemSelect(node, event)}
               onContextMenu={(event) => {
                 event.stopPropagation()
                 onItemSelect(node, event)
               }}
               onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
-              onDoubleClick={() => onToggleFolder(node.path)}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return
-                event.preventDefault()
-                onItemSelect(node, event as unknown as MouseEvent<HTMLElement>)
-              }}
             >
-              <span
-                aria-hidden
-                className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary"
-              />
-              {nameNode}
+              <button
+                type="button"
+                className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                title={node.path}
+                onClick={(event) => onItemSelect(node, event)}
+                onDoubleClick={() => onToggleFolder(node.path)}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary"
+                />
+                {nameNode}
+              </button>
               {!readonly && detail && (
                 <FileActions
                   node={node}
@@ -599,6 +623,7 @@ export function FileTreeItem({
                   onCreateFolder={() => onCreate('directory', node.path)}
                   onCut={onCut}
                   onDelete={() => onDelete(node)}
+                  onMenuKeyDown={handleMenuKeyDown}
                   onRename={() => onRename(node)}
                   onUploadFiles={onUploadFiles}
                   visible={actionsVisible}
@@ -719,6 +744,7 @@ export function FileTreeItem({
                 onCreateFolder={() => onCreate('directory', node.path)}
                 onCut={onCut}
                 onDelete={() => onDelete(node)}
+                onMenuKeyDown={handleMenuKeyDown}
                 onRename={() => onRename(node)}
                 onUploadFiles={onUploadFiles}
                 visible={actionsVisible}

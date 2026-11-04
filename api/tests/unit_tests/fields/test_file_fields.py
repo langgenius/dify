@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 
 import pytest
@@ -8,6 +9,7 @@ from core.workflow.file_reference import build_file_reference
 from extensions.storage.storage_type import StorageType
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
+from fields.message_fields import JSONValueType
 from graphon.file import File, FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -30,11 +32,11 @@ def test_file_response_serializes_datetime() -> None:
         used=False,
     )
     file_obj.id = "file-1"
-    file_obj.preview_url = "https://preview"
-    file_obj.original_url = "https://origin"
-    file_obj.user_id = "user-1"
-    file_obj.conversation_id = "conv-1"
-    file_obj.file_key = "key-1"
+    file_obj.preview_url = "https://preview"  # pyrefly: ignore[missing-attribute]
+    file_obj.original_url = "https://origin"  # pyrefly: ignore[missing-attribute]
+    file_obj.user_id = "user-1"  # pyrefly: ignore[missing-attribute]
+    file_obj.conversation_id = "conv-1"  # pyrefly: ignore[missing-attribute]
+    file_obj.file_key = "key-1"  # pyrefly: ignore[missing-attribute]
 
     serialized = FileResponse.model_validate(file_obj, from_attributes=True).model_dump(mode="json")
 
@@ -100,7 +102,9 @@ def test_remote_file_info_and_upload_config() -> None:
         message_fields.format_files_contained,
     ],
 )
-def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPatch, formatter) -> None:
+def test_file_formatters_preserve_legacy_file_keys(
+    monkeypatch: pytest.MonkeyPatch, formatter: Callable[[JSONValueType], JSONValueType]
+) -> None:
     monkeypatch.setattr(File, "generate_url", lambda self, for_external=True: "https://preview.example/file")
     reference = build_file_reference(record_id="upload-1", storage_key="files/source.pdf")
 

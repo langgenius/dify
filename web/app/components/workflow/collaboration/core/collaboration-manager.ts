@@ -343,7 +343,7 @@ export class CollaborationManager {
   }
 
   private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'prompt_template', 'parameters'])
+    const listFields = new Set(['variables', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
     container.set('position', toLoroValue(node.position))
@@ -392,7 +392,8 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (listFields.has(key)) this.syncList(container, key, Array.isArray(value) ? value : [])
+      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
+        this.syncList(container, key, Array.isArray(value) ? value : [])
       else dataContainer.set(key, toLoroValue(value))
     })
 
@@ -898,6 +899,18 @@ export class CollaborationManager {
     return true
   }
 
+  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
+    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // A server-side import or restore replaces the whole draft. Its graph must also replace
+    // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
+    this.syncNodes(this.getNodes(), nodes)
+    this.syncEdges(this.getEdges(), edges)
+    this.doc.commit()
+    this.clearUndoStack()
+    return true
+  }
+
   retryGraphReload(request: GraphReloadRequest): void {
     if (!this.isGraphReloadCurrent(request)) return
 
@@ -1081,20 +1094,12 @@ export class CollaborationManager {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
   }
 
-  onAppStateUpdate(callback: (update: CollaborationUpdate) => void): () => void {
-    return this.eventEmitter.on('appStateUpdate', callback)
-  }
-
   onAppPublishUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appPublishUpdate', callback)
   }
 
   onAppMetaUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appMetaUpdate', callback)
-  }
-
-  onMcpServerUpdate(callback: (update: CollaborationUpdate) => void): () => void {
-    return this.eventEmitter.on('mcpServerUpdate', callback)
   }
 
   onNodePanelPresenceUpdate(callback: (presence: NodePanelPresenceMap) => void): () => void {
@@ -1148,7 +1153,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1158,7 +1163,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1195,8 +1200,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
           state.setNodes(updatedNodes)
@@ -1235,8 +1240,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
           state.setNodes(updatedNodes)
@@ -1444,7 +1449,7 @@ export class CollaborationManager {
         const previousNodes = state.getNodes()
         const previousEdges = state.getEdges()
         this.startImportLog('edges', { nodes: previousNodes, edges: previousEdges })
-        const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+        const updatedEdges = this.getEdges()
 
         this.pendingInitialSync = false
 
@@ -1782,14 +1787,10 @@ export class CollaborationManager {
           this.eventEmitter.emit('cursors', { ...this.cursors })
         } else if (update.type === 'vars_and_features_update') {
           this.eventEmitter.emit('varsAndFeaturesUpdate', update)
-        } else if (update.type === 'app_state_update') {
-          this.eventEmitter.emit('appStateUpdate', update)
         } else if (update.type === 'app_meta_update') {
           this.eventEmitter.emit('appMetaUpdate', update)
         } else if (update.type === 'app_publish_update') {
           this.eventEmitter.emit('appPublishUpdate', update)
-        } else if (update.type === 'mcp_server_update') {
-          this.eventEmitter.emit('mcpServerUpdate', update)
         } else if (update.type === 'workflow_update') {
           this.eventEmitter.emit('workflowUpdate', update.data)
         } else if (update.type === 'comments_update') {

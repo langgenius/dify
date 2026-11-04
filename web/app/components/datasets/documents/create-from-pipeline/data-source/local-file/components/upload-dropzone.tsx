@@ -1,7 +1,9 @@
 import type { ChangeEvent, RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 
 type FileUploadConfig = {
   file_size_limit: number
@@ -36,8 +38,10 @@ const UploadDropzone = ({
   onFileChange,
   allowedExtensions,
 }: UploadDropzoneProps) => {
-  const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const { t } = useTranslation(['datasetCreation'])
+  const browseLabelId = useId()
+  const canBrowse = allowedExtensions.length > 0
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
     <>
@@ -46,6 +50,10 @@ const UploadDropzone = ({
         id="fileUploader"
         className="hidden"
         type="file"
+        aria-labelledby={canBrowse ? browseLabelId : undefined}
+        aria-label={
+          canBrowse ? undefined : t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })
+        }
         multiple={supportBatchUpload}
         accept={acceptTypes.join(',')}
         onChange={onFileChange}
@@ -63,15 +71,20 @@ const UploadDropzone = ({
             {supportBatchUpload
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
               : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
-            {allowedExtensions.length > 0 && (
-              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
+            {canBrowse && (
+              <button
+                id={browseLabelId}
+                type="button"
+                className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
+                onClick={onSelectFile}
+              >
                 {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
-              </label>
+              </button>
             )}
           </span>
         </div>
         <div>
-          {enableBilling
+          {deploymentEdition === 'CLOUD'
             ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,

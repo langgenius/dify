@@ -1,9 +1,10 @@
 import type {
   ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryListResponse,
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
@@ -11,14 +12,16 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
-import UpdateSettingDialog from '../update-setting-dialog'
+import { useMarketplace } from '@/features/marketplace/client'
+import { consoleQuery } from '@/service/console'
+import { UpdateSettingDialog } from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
+const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
 
 type SystemModelConfigStatus =
   | 'no-provider'
@@ -51,7 +54,7 @@ const ModelProviderPage = ({
   hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
@@ -68,12 +71,11 @@ const ModelProviderPage = ({
     ModelTypeEnum.tts,
     defaultModelQueryOptions,
   )
-  const {
-    modelProviders: providers,
-    modelProviderPlugins = {},
-    isLoadingModelProviders,
-  } = useProviderContext()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: providerSummary, isLoading: isLoadingModelProviders } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const providers = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
+  const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
 
   const marketplacePluginIds = useMemo(
     () =>
@@ -100,7 +102,7 @@ const ModelProviderPage = ({
     }
     return map
   }, [latestVersionData, modelProviderPlugins])
-  const enableMarketplace = systemFeatures.enable_marketplace
+  const marketplace = useMarketplace()
   const isDefaultModelLoading =
     isTextGenerationDefaultModelLoading ||
     isEmbeddingsDefaultModelLoading ||
@@ -169,11 +171,6 @@ const ModelProviderPage = ({
       <SystemModelSelector
         className={className}
         notConfigured={showWarning}
-        textGenerationDefaultModel={textGenerationDefaultModel}
-        embeddingsDefaultModel={embeddingsDefaultModel}
-        rerankDefaultModel={rerankDefaultModel}
-        speech2textDefaultModel={speech2textDefaultModel}
-        ttsDefaultModel={ttsDefaultModel}
         isLoading={isDefaultModelLoading}
         hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
         onOpenMarketplace={onOpenMarketplace}
@@ -203,7 +200,6 @@ const ModelProviderPage = ({
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
   const showNotConfiguredProviders =
     !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
-  const showMarketplace = !isLoadingModelProviders && enableMarketplace
   const toolbar = (
     <div
       className={
@@ -216,33 +212,41 @@ const ModelProviderPage = ({
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'common' })}
+        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'modelProvider' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
-        {showWarning ? (
-          <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
-            <div className="pointer-events-none absolute -inset-px bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
-            <div className="relative flex shrink-0 items-center gap-1">
-              <span
-                aria-hidden
-                className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
-              />
-              <span
-                className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
-                title={t(($) => $[warningTextKey], { ns: 'common' })}
-              >
-                {t(($) => $[warningTextKey], { ns: 'common' })}
-              </span>
-            </div>
-            <div className="relative shrink-0">
-              {systemModelSelector('h-6 px-1.5 text-xs font-medium')}
-            </div>
+        <div
+          className={
+            showWarning
+              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 ps-2.5 pe-1 shadow-xs backdrop-blur-[5px]'
+              : 'contents'
+          }
+        >
+          {showWarning && (
+            <>
+              <div className="pointer-events-none absolute -inset-px bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
+              <div className="relative flex shrink-0 items-center gap-1">
+                <span
+                  aria-hidden
+                  className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+                />
+                <span
+                  className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
+                  title={t(($) => $[warningTextKey], { ns: 'modelProvider' })}
+                >
+                  {t(($) => $[warningTextKey], { ns: 'modelProvider' })}
+                </span>
+              </div>
+            </>
+          )}
+          <div className={showWarning ? 'relative shrink-0' : 'contents'}>
+            {systemModelSelector(
+              showWarning ? 'h-6 px-1.5 text-xs font-medium' : 'h-8 px-3 system-sm-medium',
+            )}
           </div>
-        ) : (
-          systemModelSelector('h-8 px-3 system-sm-medium')
-        )}
+        </div>
         {canSetPluginPreferences && <UpdateSettingDialog category={PluginCategoryEnum.model} />}
       </div>
     </div>
@@ -257,8 +261,7 @@ const ModelProviderPage = ({
       showEmptyProvider={showEmptyProvider}
       showConfiguredProviders={showConfiguredProviders}
       showNotConfiguredProviders={showNotConfiguredProviders}
-      showMarketplace={showMarketplace}
-      enableMarketplace={enableMarketplace}
+      marketplace={marketplace}
       searchText={searchText}
       pluginSummaryMap={pluginSummaryMap}
       onOpenMarketplace={onOpenMarketplace}

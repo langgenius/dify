@@ -1,15 +1,15 @@
 """Application service for compliance document downloads."""
 
 from collections.abc import Callable
-from typing import Protocol, TypedDict
+from typing import Protocol
 
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.errors.billing import ComplianceRateLimitExceededError
 
 
-class ComplianceDownloadLink(TypedDict):
-    url: str
+class ComplianceDownloadLink(Protocol):
+    @property
+    def url(self) -> str: ...
 
 
 class ComplianceDownloadRateLimiter(Protocol):
@@ -37,9 +37,6 @@ class ComplianceDownloadService:
         device_info: str,
     ) -> ComplianceDownloadLink:
         workspace_id = request_context.active_workspace_id
-        if workspace_id is None:
-            raise ActiveWorkspaceRequiredError
-
         account_id = request_context.account_id
         limiter_key = f"{account_id}:{workspace_id}"
         if self._rate_limiter.is_rate_limited(limiter_key):

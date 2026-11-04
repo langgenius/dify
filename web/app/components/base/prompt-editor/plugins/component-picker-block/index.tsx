@@ -69,7 +69,7 @@ const ComponentPicker = ({
   lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -82,6 +82,8 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
+  const [keyboardTarget, setKeyboardTarget] = useState<HTMLElement | null>(null)
+  useEffect(() => editor.registerRootListener(setKeyboardTarget), [editor])
   const triggerMatchRef = useRef<MenuTextMatch | null>(null)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
@@ -254,7 +256,9 @@ const ComponentPicker = ({
                 {workflowVariableBlock?.show && (
                   <div className="p-1">
                     <VarReferenceVars
-                      hideSearch={triggerString === '/'}
+                      {...(triggerString === '/'
+                        ? { hideSearch: true, keyboardTarget }
+                        : { hideSearch: false })}
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}
@@ -267,7 +271,6 @@ const ComponentPicker = ({
                       onBlur={handleClose}
                       showManageInputField={workflowVariableBlock.showManageInputField}
                       onManageInputField={workflowVariableBlock.onManageInputField}
-                      autoFocus={false}
                       isInCodeGeneratorInstructionEditor={
                         currentBlock?.generatorType === GeneratorType.code
                       }
@@ -320,7 +323,7 @@ const ComponentPicker = ({
                     >
                       <span aria-hidden="true" className="i-ri-add-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">
-                        {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
+                        {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflowAgent' })}
                       </span>
                       <span
                         aria-hidden="true"
@@ -349,6 +352,7 @@ const ComponentPicker = ({
       handleClose,
       currentBlock?.generatorType,
       handleSelectWorkflowVariable,
+      keyboardTarget,
       queryString,
       triggerString,
       workflowVariableBlock?.showManageInputField,
@@ -370,7 +374,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName="z-50 translate-y-[calc(-100%-3px)]"
+      anchorClassName="translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

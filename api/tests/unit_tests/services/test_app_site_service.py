@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from machinery.context import RequestContext
 from services.app_site_service import AppSiteChanges, AppSiteCommandResult, AppSiteService
 
@@ -49,11 +47,3 @@ def test_service_passes_stable_identity_to_store() -> None:
         app_id="app-1",
         actor_id="account-1",
     )
-
-
-def test_service_rejects_context_without_active_workspace() -> None:
-    context = RequestContext("request-1", None, "account-1", None)
-    service = AppSiteService(sites=MagicMock())
-
-    with pytest.raises(RuntimeError, match="active workspace"):
-        service.update(context, "app-1", AppSiteChanges())

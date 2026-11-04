@@ -3,8 +3,8 @@ import { generateMetadata } from '../page'
 
 vi.mock('server-only', () => ({}))
 
-vi.mock('@/i18n-config/server', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/server')>()),
+vi.mock('@/i18n/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/server')>()),
   getLocaleOnServer: async () => 'en-US',
 }))
 

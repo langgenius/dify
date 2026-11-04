@@ -6,7 +6,7 @@ type ManageInputFieldProps = {
 }
 
 const ManageInputField = ({ onManage }: ManageInputFieldProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pipeline'])
 
   return (
     <div className="flex items-center border-t border-divider-subtle pt-1">
