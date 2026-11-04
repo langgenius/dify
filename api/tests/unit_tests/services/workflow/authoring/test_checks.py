@@ -278,6 +278,7 @@ BARE_SEED_MISSING: dict[CanvasNode, list[tuple[str | int, ...]]] = {
     CanvasNode.DOCUMENT_EXTRACTOR: [("variable_selector",)],
     CanvasNode.HTTP_REQUEST: [("url",), ("headers",), ("params",)],
     CanvasNode.HUMAN_INPUT: [("recipients_spec",), ("message_template",), ("debug_mode", "channels")],
+    CanvasNode.IF_ELSE: [("cases", 0, "conditions")],
     CanvasNode.ITERATION: [("start_node_id",), ("iterator_selector",), ("output_selector",)],
     CanvasNode.KNOWLEDGE_RETRIEVAL: [("dataset_ids",)],
     CanvasNode.KNOWLEDGE_RETRIEVAL_V2: [("control_space_ids",)],

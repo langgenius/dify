@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from functools import cached_property
 from importlib import resources
-from typing import Final, Self
+from types import NoneType, UnionType
+from typing import Final, Self, Union, get_args, get_origin
 
 from pydantic import BaseModel, TypeAdapter
 from pydantic.fields import FieldInfo
@@ -21,7 +22,7 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_N
 from core.workflow.node_factory import LATEST_VERSION
 from graphon.enums import BuiltinNodeTypes
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
-from services.workflow.node_defaults import data_model_of, rewrite_sub_objects
+from services.workflow.node_defaults import SubModels, data_model_of, rewrite_sub_objects, sub_models
 
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
@@ -40,12 +41,27 @@ def _is_required_empty(field: FieldInfo | None, value: object) -> bool:
     return isinstance(value, str | list | dict) and not value
 
 
+def _without_none(annotation: object) -> object:
+    """The other arm of an optional annotation (`X | None`); any other annotation as it is."""
+    if get_origin(annotation) not in (Union, UnionType):
+        return annotation
+    arms = [arm for arm in get_args(annotation) if arm is not NoneType]
+    if len(arms) != 1:
+        return annotation
+    return arms[0]
+
+
+def _sub_models_through_optional(annotation: object) -> SubModels:
+    return sub_models(_without_none(annotation))
+
+
 def _without_required_empties(model: type[BaseModel], data: Mapping[str, object]) -> dict[str, object]:
     """`data` less each empty value in a field `model` requires, at any depth its sub-models reach.
 
-    A sub-object is pruned first, so one left empty goes too when its own field is required.
+    The walk reaches the items of an optional list too. A sub-object is pruned first, so one left empty goes too when
+    its own field is required.
     """
-    pruned = rewrite_sub_objects(model, data, _without_required_empties)
+    pruned = rewrite_sub_objects(model, data, _without_required_empties, resolve=_sub_models_through_optional)
     fields = model.model_fields
     return {key: value for key, value in pruned.items() if not _is_required_empty(fields.get(key), value)}
 

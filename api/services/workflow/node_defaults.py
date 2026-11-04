@@ -57,17 +57,17 @@ def _single_model(candidates: Iterable[object]) -> type[BaseModel] | None:
 
 
 @dataclass(frozen=True)
-class _SubModels:
+class SubModels:
     """The model of a field's mapping value (direct or optional), and of each mapping in its list value."""
 
     value: type[BaseModel] | None
     item: type[BaseModel] | None
 
 
-def _sub_models(annotation: object) -> _SubModels:
+def sub_models(annotation: object) -> SubModels:
     arms = get_args(annotation) if get_origin(annotation) in (Union, UnionType) else (annotation,)
     is_sequence = get_origin(annotation) in (list, Sequence)
-    return _SubModels(value=_single_model(arms), item=_single_model(get_args(annotation)) if is_sequence else None)
+    return SubModels(value=_single_model(arms), item=_single_model(get_args(annotation)) if is_sequence else None)
 
 
 def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
@@ -83,15 +83,24 @@ def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
 type SubObjectRewrite = Callable[[type[BaseModel], Mapping[str, Any]], dict[str, Any]]
 
 
-def rewrite_sub_objects(model: type[BaseModel], data: Mapping[str, Any], rewrite: SubObjectRewrite) -> dict[str, Any]:
-    """`data` with each sub-object its field's model reaches, as a mapping or a list item, passed through `rewrite`."""
+def rewrite_sub_objects(
+    model: type[BaseModel],
+    data: Mapping[str, Any],
+    rewrite: SubObjectRewrite,
+    *,
+    resolve: Callable[[object], SubModels] = sub_models,
+) -> dict[str, Any]:
+    """`data` with each sub-object its field's model reaches, as a mapping or a list item, passed through `rewrite`.
+
+    `resolve` reads a field's annotation into the models of its sub-objects.
+    """
     fields = model.model_fields
     rewritten = dict(data)
     for key, value in data.items():
         field = fields.get(key)
         if field is None:
             continue
-        models = _sub_models(field.annotation)
+        models = resolve(field.annotation)
         if isinstance(value, Mapping) and models.value:
             rewritten[key] = rewrite(models.value, value)
         elif isinstance(value, list) and models.item:
