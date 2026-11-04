@@ -3,8 +3,10 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from models import Account
-from models.model import App, Conversation, EndUser
+from models.model import App, AppMode, Conversation, EndUser
+from repositories.conversation_access import conversation_owner_scope
 from services.errors.conversation import ConversationNotExistsError
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
@@ -15,20 +17,26 @@ logger = logging.getLogger(__name__)
 class ConversationService:
     @classmethod
     def get_conversation(
-        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
+        cls,
+        app_model: App,
+        conversation_id: str,
+        user: Account | EndUser | None,
+        *,
+        session: Session,
+        lock: bool = False,
     ):
-        conversation = session.scalar(
-            select(Conversation)
-            .where(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted.is_(False),
-            )
-            .limit(1)
+        """Read current ownership or raise; write callers may lock against history migration."""
+        query = select(Conversation).where(
+            Conversation.id == conversation_id, *conversation_owner_scope(app_model.id, user)
         )
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
+            query = query.with_for_update()
+        conversation = session.scalar(query.limit(1))
 
         if not conversation:
             raise ConversationNotExistsError()

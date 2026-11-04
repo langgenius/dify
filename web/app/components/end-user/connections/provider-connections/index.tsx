@@ -78,7 +78,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
       <div className="overflow-x-auto rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
         <table className="w-full min-w-180 table-fixed border-collapse has-[caption:focus-visible]:inset-ring-2 has-[caption:focus-visible]:inset-ring-state-accent-solid">
           <caption ref={captionRef} tabIndex={-1} className="sr-only">
-            {provider.id}
+            {provider.provider}
           </caption>
           <colgroup>
             <col className="w-76" />
@@ -123,7 +123,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
                     title={t(($) => $['endUser.noProviderConnections'], { ns: 'app' })}
                     description={t(($) => $['endUser.noProviderConnectionsDescription'], {
                       ns: 'app',
-                      provider: provider.id,
+                      provider: provider.provider,
                     })}
                   />
                 </td>

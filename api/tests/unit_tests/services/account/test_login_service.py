@@ -316,6 +316,7 @@ class Dependencies:
         *,
         turnstile_enabled: bool = False,
         turnstile_verify_required: bool = False,
+        defer_workspace_creation: bool = False,
     ) -> ConsoleAuthenticationService:
         return ConsoleAuthenticationService(
             accounts=self.accounts,
@@ -336,6 +337,7 @@ class Dependencies:
             now=lambda: LOGIN_TIME,
             turnstile_enabled=turnstile_enabled,
             turnstile_verify_required=turnstile_verify_required,
+            defer_workspace_creation=defer_workspace_creation,
         )
 
 
@@ -379,6 +381,37 @@ def _email_code_command(**changes: str | None) -> EmailCodeLoginCommand:
     }
     values.update(changes)
     return EmailCodeLoginCommand(**values)  # type: ignore[arg-type]
+
+
+def test_cloud_password_login_allows_accounts_without_a_workspace() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="uninitialized")]
+    dependencies.policies.workspace_creation_allowed = False
+    dependencies.policies.workspace_capacity = False
+
+    result = dependencies.service(defer_workspace_creation=True).login_with_password(_password_command())
+
+    assert result.tokens == TOKENS
+    assert result.workspace_found is False
+    assert dependencies.accounts.completions[0].initialized_at is None
+    assert dependencies.workspaces_provisioning.account_ids == []
+
+
+@pytest.mark.parametrize("existing_account", [False, True])
+def test_cloud_email_login_defers_workspace_creation_until_explicit_activation(existing_account: bool) -> None:
+    dependencies = Dependencies()
+    if existing_account:
+        dependencies.accounts.candidates = [_account(status="uninitialized")]
+    dependencies.policies.workspace_creation_allowed = False
+    dependencies.policies.workspace_capacity = False
+
+    result = dependencies.service(defer_workspace_creation=True).login_with_email_code(_email_code_command())
+
+    assert result == TOKENS
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.accounts_provisioning.calls == []
+    if not existing_account:
+        assert dependencies.accounts_provisioning.account_only_calls[0]["status"] == "uninitialized"
 
 
 def test_password_login_issues_session_and_resets_failures() -> None:

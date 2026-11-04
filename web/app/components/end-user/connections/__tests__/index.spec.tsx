@@ -1,6 +1,8 @@
 import type {
   ConsumerAppResponse,
   ConsumerAppsResponse,
+  ConsumerConnectionProviderResponse,
+  ConsumerConnectionProvidersResponse,
   ConsumerConnectionResponse,
   ConsumerConnectionsResponse,
 } from '@dify/contracts/api/web/types.gen'
@@ -14,8 +16,18 @@ import ConnectionsPage from '../connections-page'
 import ProviderConnectionsPage from '../provider-connections-page'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
+const locale = vi.hoisted(() => ({ language: 'en_US' }))
+vi.mock('@/context/i18n', () => ({ useGetLanguage: () => locale.language }))
 
 const provider = 'langgenius/google/drive'
+const providerMetadata: ConsumerConnectionProviderResponse = {
+  provider,
+  label: { en_US: 'Google Drive', zh_Hans: '谷歌云端硬盘' },
+  description: { en_US: 'Access your files', zh_Hans: '访问您的文件' },
+  icon: 'https://example.com/google.svg',
+  icon_dark: null,
+  connections_count: 2,
+}
 const oauth: ConsumerConnectionResponse = {
   key: '11111111-1111-4111-8111-111111111111',
   provider,
@@ -48,6 +60,10 @@ const page = (
   data: ConsumerConnectionResponse[],
   next_cursor: string | null = null,
 ): ConsumerConnectionsResponse => ({ data, next_cursor, has_more: next_cursor !== null })
+const providersPage = (
+  data: ConsumerConnectionProviderResponse[],
+  next_cursor: string | null = null,
+): ConsumerConnectionProvidersResponse => ({ data, next_cursor, has_more: next_cursor !== null })
 const appsPage = (
   data: ConsumerAppResponse[],
   next_cursor: string | null = null,
@@ -70,6 +86,7 @@ function row(name: string) {
 }
 
 beforeEach(() => {
+  locale.language = 'en_US'
   window.history.replaceState({}, '', '/connections')
 })
 afterEach(() => {
@@ -78,7 +95,7 @@ afterEach(() => {
 })
 
 describe('My connections account API integration', () => {
-  it('retains every connection with the same provider within and across cursor pages', async () => {
+  it('renders server-grouped providers and loads the next provider page', async () => {
     const user = userEvent.setup()
     const requests: URL[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -86,40 +103,72 @@ describe('My connections account API integration', () => {
       requests.push(url)
       return Response.json(
         url.searchParams.has('cursor')
-          ? page([
-              { ...apiKey, key: '44444444-4444-4444-8444-444444444444' },
+          ? providersPage([
               {
-                ...apiKey,
-                key: '55555555-5555-4555-8555-555555555555',
+                ...providerMetadata,
                 provider: 'langgenius/github/github',
+                label: { en_US: 'GitHub' },
+                description: { en_US: 'Access your repositories' },
+                connections_count: 1,
               },
             ])
-          : page([oauth, apiKey], 'next-connection'),
+          : providersPage([providerMetadata], provider),
       )
     })
     setup(<ConnectionsPage />)
 
-    const initialLinks = await screen.findAllByRole('link', { name: provider })
-    expect(initialLinks).toHaveLength(2)
-    for (const link of initialLinks)
-      expect(link).toHaveAttribute('href', `/connections/${encodeURIComponent(provider)}`)
-    expect(screen.getAllByRole('link')).toHaveLength(2)
+    const link = await screen.findByRole('link', { name: /Google Drive/ })
+    expect(link).toHaveAttribute('href', `/connections/${encodeURIComponent(provider)}`)
+    expect(within(link).getByText('Access your files')).toBeVisible()
+    expect(within(link).getByText('2')).toBeVisible()
+    expect(screen.getAllByRole('link')).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'common.operation.viewMore' }))
-    expect(await screen.findByRole('link', { name: 'langgenius/github/github' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /GitHub/ })).toHaveAttribute(
       'href',
       '/connections/langgenius%2Fgithub%2Fgithub',
     )
-    expect(screen.getAllByRole('link', { name: provider })).toHaveLength(3)
-    expect(screen.getAllByRole('link')).toHaveLength(4)
-    for (const link of screen.getAllByRole('link', { name: provider }))
-      expect(link).toHaveAttribute('href', `/connections/${encodeURIComponent(provider)}`)
+    expect(screen.getAllByRole('link')).toHaveLength(2)
     expect(requests).toHaveLength(2)
     expect(requests[0]?.pathname).toBe('/api/me/connections')
-    expect(requests[1]?.searchParams.get('cursor')).toBe('next-connection')
+    expect(requests[1]?.searchParams.get('cursor')).toBe(provider)
     expect(requests[0]?.searchParams.get('provider')).toBeNull()
   })
 
-  it('filters by the full provider ID, displays account labels and lazily paginates linked apps', async () => {
+  it('localizes provider metadata and retains unavailable providers with an ID fallback', async () => {
+    locale.language = 'zh_Hans'
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json(
+        providersPage([
+          providerMetadata,
+          {
+            ...providerMetadata,
+            provider: 'uninstalled/provider',
+            label: {},
+            description: {},
+            icon: null,
+            icon_dark: null,
+          },
+          {
+            ...providerMetadata,
+            provider: 'english/provider',
+            label: { en_US: 'English Provider' },
+            description: { en_US: 'English description' },
+          },
+        ]),
+      ),
+    )
+    setup(<ConnectionsPage />)
+    expect(await screen.findByRole('link', { name: /谷歌云端硬盘/ })).toBeVisible()
+    expect(screen.getByText('访问您的文件')).toBeVisible()
+    expect(screen.getByRole('link', { name: /English Provider/ })).toBeVisible()
+    expect(screen.getByText('English description')).toBeVisible()
+    expect(screen.getByRole('link', { name: /uninstalled\/provider/ })).toHaveAttribute(
+      'href',
+      '/connections/uninstalled%2Fprovider',
+    )
+  })
+
+  it('requests the provider detail endpoint, displays account labels and lazily paginates linked apps', async () => {
     const user = userEvent.setup()
     const requests: URL[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -146,7 +195,10 @@ describe('My connections account API integration', () => {
     expect(await screen.findByRole('row', { name: /work@example.com/ })).toBeVisible()
     expect(screen.queryByText(oauth.name)).not.toBeInTheDocument()
     expect(requests).toHaveLength(1)
-    expect(requests[0]?.searchParams.get('provider')).toBe(provider)
+    expect(decodeURIComponent(requests[0]!.pathname)).toBe(
+      `/api/me/connections/providers/${provider}/connections`,
+    )
+    expect(requests[0]?.searchParams.has('provider')).toBe(false)
     await user.click(
       within(row('work@example.com')).getByRole('button', {
         name: 'app.endUser.linkedAppCount:{"count":3}',
@@ -236,6 +288,30 @@ describe('My connections account API integration', () => {
     expect(
       await screen.findByRole('heading', { name: 'app.endUser.noProviderConnections' }),
     ).toBeVisible()
+  })
+
+  it('paginates the connections of one provider without losing the first page', async () => {
+    const user = userEvent.setup()
+    const requests: URL[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      requests.push(url)
+      return Response.json(
+        url.searchParams.has('cursor') ? page([apiKey]) : page([oauth], oauth.key),
+      )
+    })
+    setup()
+    await screen.findByRole('row', { name: /work@example.com/ })
+    await user.click(screen.getByRole('button', { name: 'common.operation.viewMore' }))
+    expect(await screen.findByRole('row', { name: /Finance API key/ })).toBeVisible()
+    expect(row('work@example.com')).toBeVisible()
+    expect(requests[1]?.searchParams.get('cursor')).toBe(oauth.key)
+    expect(decodeURIComponent(requests[1]!.pathname)).toBe(
+      `/api/me/connections/providers/${provider}/connections`,
+    )
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.viewMore' }),
+    ).not.toBeInTheDocument()
   })
 
   it('does not reuse the previous account connection data after the auth session changes', async () => {

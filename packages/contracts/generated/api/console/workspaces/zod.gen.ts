@@ -19,6 +19,57 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * WorkspaceActivationPayload
+ */
+export const zWorkspaceActivationPayload = z.object({
+  name: z.string().min(1).max(255),
+})
+
+/**
+ * WorkspaceActivationResponse
+ */
+export const zWorkspaceActivationResponse = z.object({
+  first_workspace_created_at: z.int().nullable(),
+  workspace_id: z.string(),
+})
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotAllowedCreateWorkspaceError
+ *
+ * Workspace not found, please contact system admin to invite you to join in a workspace.
+ */
+export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_allowed_create_workspace'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentSkillBindingsPayload
  */
 export const zAgentSkillBindingsPayload = z.object({
@@ -229,18 +280,6 @@ export const zMemberInviteErrorResponse = z.object({
 export const zInvalidRoleError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_role'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * LimitExceededError
- *
- * Unable to create account because the licensed seats limit was exceeded
- */
-export const zLimitExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('limit_exceeded'),
     status: z.literal(400),
   }),
 )
@@ -6286,6 +6325,13 @@ export const zInteractiveSurfaceDeliveryConfigWritable = z.record(z.string(), z.
  * Success
  */
 export const zGetWorkspacesResponse = zTenantListResponse
+
+export const zPostWorkspacesActivateBody = zWorkspaceActivationPayload
+
+/**
+ * Workspace ready
+ */
+export const zPostWorkspacesActivateResponse = zWorkspaceActivationResponse
 
 export const zGetWorkspacesCurrentAgentProviderByProviderNamePath = z.object({
   provider_name: z.string(),

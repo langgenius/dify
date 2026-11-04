@@ -1,5 +1,6 @@
 import type {
   ConsumerAppsResponse,
+  ConsumerConnectionProvidersResponse,
   ConsumerConnectionsResponse,
 } from '@dify/contracts/api/web/types.gen'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
@@ -48,6 +49,20 @@ const connections: ConsumerConnectionsResponse = {
       account_label: 'joel@example.com',
       connection_type: 'oauth2',
       webapps_count: 1,
+    },
+  ],
+  has_more: false,
+  next_cursor: null,
+}
+const providers: ConsumerConnectionProvidersResponse = {
+  data: [
+    {
+      provider: 'langgenius/github/github',
+      label: { en_US: 'GitHub' },
+      description: { en_US: 'Access your repositories' },
+      icon: null,
+      icon_dark: null,
+      connections_count: 1,
     },
   ],
   has_more: false,
@@ -134,11 +149,28 @@ describe('generated account Web App client', () => {
     window.history.replaceState({}, '', '/connections')
     setWebAppAccessToken('old-account-bearer', 'end_user')
     setWebAppPassport({ kind: 'default', code: 'previous-app' }, 'old-app-passport')
-    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(connections))
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(providers))
 
-    await expect(webAppClient.me.connections.get()).resolves.toEqual(connections)
+    await expect(webAppClient.me.connections.get()).resolves.toEqual(providers)
 
     expectAccountRequest(...fetch.mock.calls[0]!, '/me/connections', 'GET')
+  })
+
+  it('loads a provider connection page with the full provider path and cookie-only authentication', async () => {
+    window.history.replaceState({}, '', '/connections')
+    setWebAppPassport({ kind: 'default', code: 'previous-app' }, 'old-app-passport')
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(connections))
+    await expect(
+      webAppClient.me.connections.providers.byProvider.connections.get({
+        params: { provider: 'langgenius/github/github' },
+        query: { cursor: connectionKey, limit: 100 },
+      }),
+    ).resolves.toEqual(connections)
+    expectAccountRequest(
+      ...fetch.mock.calls[0]!,
+      `/me/connections/providers/langgenius%2Fgithub%2Fgithub/connections?cursor=${connectionKey}&limit=100`,
+      'GET',
+    )
   })
 
   it.each(['favorite', 'unfavorite', 'disconnect'] as const)(
@@ -152,12 +184,17 @@ describe('generated account Web App client', () => {
         .mockResolvedValueOnce(new Response(null, { status: 204 }))
       const appsKey = webAppQuery.me.apps.get.queryKey()
       const connectionsKey = webAppQuery.me.connections.get.queryKey()
+      const providerConnectionsKey =
+        webAppQuery.me.connections.providers.byProvider.connections.get.queryKey({
+          input: { params: { provider: 'langgenius/github/github' } },
+        })
       const linkedAppsKey = webAppQuery.me.connections.byConnectionKey.apps.get.queryKey({
         input: { params: { connection_key: connectionKey } },
       })
       const otherKey = webAppQuery.login.status.get.queryKey()
       queryClient.setQueryData(appsKey, apps)
-      queryClient.setQueryData(connectionsKey, connections)
+      queryClient.setQueryData(connectionsKey, providers)
+      queryClient.setQueryData(providerConnectionsKey, connections)
       queryClient.setQueryData(linkedAppsKey, apps)
       queryClient.setQueryData(otherKey, { logged_in: true, app_logged_in: false })
 
@@ -186,6 +223,9 @@ describe('generated account Web App client', () => {
       )
       expect(queryClient.getQueryState(appsKey)?.isInvalidated).toBe(true)
       expect(queryClient.getQueryState(connectionsKey)?.isInvalidated).toBe(action === 'disconnect')
+      expect(queryClient.getQueryState(providerConnectionsKey)?.isInvalidated).toBe(
+        action === 'disconnect',
+      )
       expect(queryClient.getQueryState(linkedAppsKey)?.isInvalidated).toBe(action === 'disconnect')
       expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false)
     },
@@ -222,7 +262,7 @@ describe('generated account Web App client', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
 
     startWebAppAccountSession()
-    resolve(Response.json(connections))
+    resolve(Response.json(providers))
 
     expect(await result).toMatchObject({ name: 'AbortError' })
     expect(queryClient.getQueryData(options.queryKey)).toBeUndefined()

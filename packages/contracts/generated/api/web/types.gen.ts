@@ -148,6 +148,7 @@ export type ClaimablePassportResponse = {
   app_code: string
   app_name: string
   connection_count: number
+  conversation_count: number
   index: number
 }
 
@@ -181,7 +182,9 @@ export type ConnectionClaimErrorResponse = {
     | 'app_not_found'
     | 'connection_claim_unavailable'
     | 'connection_conflict'
+    | 'end_user_busy'
     | 'end_user_login_required'
+    | 'migration_not_ready'
     | 'unauthorized'
     | 'web_app_access_denied'
   message: string
@@ -216,8 +219,10 @@ export type ConnectionClaimSuccessResponse = {
   access_token: string
   app_code: string
   claimed_connections: number
+  claimed_conversations: number
   index: number
   status: 'success'
+  stop_requested_run_count: number
 }
 
 export type ConnectionClaimUnavailableError = ErrorResponse & {
@@ -309,6 +314,7 @@ export type ConnectionRevisionChangedError = ErrorResponse & {
 
 export type ConsumerAppResponse = {
   app_code: string
+  connection_status?: 'not_configured' | null
   description: string
   icon: string | null
   icon_background: string | null
@@ -322,6 +328,25 @@ export type ConsumerAppResponse = {
 
 export type ConsumerAppsResponse = {
   data: Array<ConsumerAppResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type ConsumerConnectionProviderResponse = {
+  connections_count: number
+  description: {
+    [key: string]: string
+  }
+  icon: string | null
+  icon_dark: string | null
+  label: {
+    [key: string]: string
+  }
+  provider: string
+}
+
+export type ConsumerConnectionProvidersResponse = {
+  data: Array<ConsumerConnectionProviderResponse>
   has_more: boolean
   next_cursor: string | null
 }
@@ -429,6 +454,11 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserBusyError = ErrorResponse & {
+  code: 'end_user_busy'
+  status: 409
 }
 
 export type EndUserConnectionCreatePayload = {
@@ -1341,6 +1371,8 @@ export type VerificationTokenResponse = {
 export type WebAccountProfileResponse = {
   avatar: string | null
   readonly avatar_url: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 
@@ -1807,6 +1839,11 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WebappResourcesChangedError = ErrorResponse & {
+  code: 'webapp_resources_changed'
+  status: 409
+}
+
 export type WorkflowNotActiveError = ErrorResponse & {
   code: 'workflow_not_active'
   status: 409
@@ -1869,6 +1906,8 @@ export type HumanInputFormSubmitResponseWritable = {
 
 export type WebAccountProfileResponseWritable = {
   avatar: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 
@@ -1985,6 +2024,8 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
@@ -3203,6 +3244,28 @@ export type GetMeAppsResponses = {
 
 export type GetMeAppsResponse = GetMeAppsResponses[keyof GetMeAppsResponses]
 
+export type DeleteMeAppsByAppIdData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/me/apps/{app_id}'
+}
+
+export type DeleteMeAppsByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteMeAppsByAppIdError = DeleteMeAppsByAppIdErrors[keyof DeleteMeAppsByAppIdErrors]
+
+export type DeleteMeAppsByAppIdResponses = {
+  204: void
+}
+
+export type DeleteMeAppsByAppIdResponse =
+  DeleteMeAppsByAppIdResponses[keyof DeleteMeAppsByAppIdResponses]
+
 export type DeleteMeAppsByAppIdFavoriteData = {
   body?: never
   path: {
@@ -3255,7 +3318,6 @@ export type GetMeConnectionsData = {
   query?: {
     cursor?: string
     limit?: number
-    provider?: string
   }
   url: '/me/connections'
 }
@@ -3267,10 +3329,36 @@ export type GetMeConnectionsErrors = {
 export type GetMeConnectionsError = GetMeConnectionsErrors[keyof GetMeConnectionsErrors]
 
 export type GetMeConnectionsResponses = {
-  200: ConsumerConnectionsResponse
+  200: ConsumerConnectionProvidersResponse
 }
 
 export type GetMeConnectionsResponse = GetMeConnectionsResponses[keyof GetMeConnectionsResponses]
+
+export type GetMeConnectionsProvidersByProviderConnectionsData = {
+  body?: never
+  path: {
+    provider: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/me/connections/providers/{provider}/connections'
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsError =
+  GetMeConnectionsProvidersByProviderConnectionsErrors[keyof GetMeConnectionsProvidersByProviderConnectionsErrors]
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponses = {
+  200: ConsumerConnectionsResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponse =
+  GetMeConnectionsProvidersByProviderConnectionsResponses[keyof GetMeConnectionsProvidersByProviderConnectionsResponses]
 
 export type DeleteMeConnectionsByConnectionKeyData = {
   body?: never
@@ -3909,6 +3997,8 @@ export type PostWorkflowsRunErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

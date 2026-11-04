@@ -79,7 +79,7 @@ class ConnectionOAuthAttempt:
 class ConnectionOAuthGrant:
     credentials: Mapping[str, Any] = field(repr=False)
     expires_at: datetime | None
-    # Masked before leaving the plugin adapter; raw metadata is never persisted.
+    # Original allowlisted identity; arbitrary provider metadata is never persisted.
     account_label: str | None
 
 

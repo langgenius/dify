@@ -144,23 +144,36 @@ class BillingAccountRegistrationPolicyGateway(AccountRegistrationPolicyGateway):
 
 
 class AccountLifecycleRegistrationGateway(AccountRegistrationGateway):
-    def __init__(self, *, accounts: AccountService) -> None:
+    def __init__(self, *, accounts: AccountService, defer_workspace_creation: bool = False) -> None:
         self._accounts = accounts
+        self._defer_workspace_creation = defer_workspace_creation
 
     @override
     def create(
         self, *, email: str, password: str, interface_language: str, timezone: str | None, ip_address: str
     ) -> str:
         try:
-            account = self._accounts.create_account_and_tenant(
-                email=email,
-                name=email,
-                password=password,
-                interface_language=interface_language,
-                timezone=timezone,
-                ip_address=ip_address,
-                check_normalized_email=True,
-            )
+            if self._defer_workspace_creation:
+                account = self._accounts.create_account(
+                    email=email,
+                    name=email,
+                    password=password,
+                    interface_language=interface_language,
+                    timezone=timezone,
+                    ip_address=ip_address,
+                    check_normalized_email=True,
+                    status="uninitialized",
+                )
+            else:
+                account = self._accounts.create_account_and_tenant(
+                    email=email,
+                    name=email,
+                    password=password,
+                    interface_language=interface_language,
+                    timezone=timezone,
+                    ip_address=ip_address,
+                    check_normalized_email=True,
+                )
         except SeatsLimitExceededError as exc:
             raise EmailRegistrationSeatsLimitError from exc
         except (AccountEmailDomainSuspendedError, AccountNormalizedEmailAlreadyInUseError):

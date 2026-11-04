@@ -116,6 +116,8 @@ ignore_imports =
     core.workflow.node_runtime -> extensions.application_services.end_user_connections
     # Initial selections share the new Conversation transaction through the composition root.
     core.app.apps.message_based_app_generator -> extensions.application_services.end_user_connections
+    # Web workflow admission delegates to application-owned hooks.
+    core.app.apps.base_app_generator -> extensions.application_services.web_execution
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
@@ -249,6 +251,18 @@ forbidden_modules =
     services.workspace.gateways
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-workspace-controller-boundary]
+name = Console workspace operations reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.workspace
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:network-access-group-service-boundary]
 name = Network access group application service is framework and persistence neutral

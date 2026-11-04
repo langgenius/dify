@@ -8,8 +8,9 @@ from uuid import UUID
 import pytest
 from sqlalchemy import Engine, event, inspect, select
 from sqlalchemy.dialects import mysql, postgresql
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
+from configs import dify_config
 from factories import variable_factory
 from graphon.variables import VariableBase
 from machinery.context import RequestContext
@@ -114,6 +115,32 @@ def test_read_releases_connection_even_if_variable_decoding_fails(
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+@pytest.mark.parametrize("account_login_enabled", [False, True])
+def test_variable_write_locks_conversation_against_migration(
+    sqlite_session_factory: sessionmaker[Session],
+    end_user_ref: EndUserConversationRef,
+    monkeypatch: pytest.MonkeyPatch,
+    account_login_enabled: bool,
+) -> None:
+    monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", account_login_enabled)
+    with sqlite_session_factory.begin() as session:
+        row = _variable(session, end_user_ref, logical_id="migrated", name="State", created_at=_TIME)
+    statements: list[str] = []
+
+    def record(state: ORMExecuteState) -> None:
+        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+
+    event.listen(sqlite_session_factory, "do_orm_execute", record)
+    try:
+        result = ConversationVariableRepository(session_factory=sqlite_session_factory).update(
+            ref=end_user_ref, variable_id=row.id, transform=_replacement
+        )
+        assert result.variable.value == "updated"
+    finally:
+        event.remove(sqlite_session_factory, "do_orm_execute", record)
+    assert any("FOR UPDATE OF conversations" in statement for statement in statements) is account_login_enabled
 
 
 _TIME = datetime(2026, 10, 12, 12, 0)

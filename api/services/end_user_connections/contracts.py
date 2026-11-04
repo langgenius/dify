@@ -104,8 +104,9 @@ class ListConnectionsInput(ConnectionInput):
 class ConnectionSummary(BaseModel):
     """Allowlisted management result, not proof that a Connection can run a node.
 
-    No owner IDs, ciphertext, credential values, or raw OAuth Client IDs are exposed.
-    account_label is already masked; API-key Connections have no account label.
+    No owner IDs, ciphertext, credential values, or raw OAuth Client IDs are included.
+    account_label retains the provider identity and must be masked by transport
+    serialization; API-key Connections have no account label.
     credential_status is intrinsic lifecycle state, not the node's effective status.
     """
 

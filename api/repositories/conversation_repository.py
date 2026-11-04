@@ -9,6 +9,7 @@ from pydantic import JsonValue
 from sqlalchemy import Select, exists, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
@@ -440,7 +441,7 @@ class ConversationRepository:
 
     def rename(self, *, ref: ConversationRef, name: str, updated_at: datetime | None) -> ConversationRecord:
         with self._session_factory.begin() as session:
-            _, conversation = self._resolve(session=session, ref=ref)
+            _, conversation = self._resolve(session=session, ref=ref, lock=True)
             record = self._to_record(
                 conversation=conversation, inputs=conversation.inputs_with_session(session=session)
             )
@@ -453,7 +454,7 @@ class ConversationRepository:
 
     def delete(self, *, ref: ConversationRef) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app, conversation = self._resolve(session=session, ref=ref)
+            app, conversation = self._resolve(session=session, ref=ref, lock=True)
             retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
             return ConversationDeletion(
                 tenant_id=app.tenant_id,
@@ -501,6 +502,8 @@ class ConversationRepository:
                     )
                 role = CreatorUserRole.END_USER
                 actor_id = ref.end_user_id
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and app.mode == AppMode.ADVANCED_CHAT:
+                    self._resolve(session=session, ref=ref, lock=True)
             pin = session.scalar(
                 select(PinnedConversation)
                 .where(
@@ -528,7 +531,8 @@ class ConversationRepository:
                 session.delete(pin)
 
     @classmethod
-    def _resolve(cls, *, session: Session, ref: ConversationRef) -> tuple[App, Conversation]:
+    def _resolve(cls, *, session: Session, ref: ConversationRef, lock: bool = False) -> tuple[App, Conversation]:
+        """Resolve current ownership; write callers lock Webapp conversations against migration."""
         if isinstance(ref, InstalledAppConversationRef):
             app = cls._get_app(session=session, installed_app=ref.installed_app)
             conversation = cls._get_conversation(
@@ -536,7 +540,7 @@ class ConversationRepository:
             )
             return app, conversation
 
-        result = session.execute(
+        statement = (
             select(App, Conversation)
             .join(Conversation, Conversation.app_id == App.id)
             .join(
@@ -552,7 +556,15 @@ class ConversationRepository:
                 Conversation.from_account_id.is_(None),
                 Conversation.is_deleted.is_(False),
             )
-        ).one_or_none()
+        )
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and session.scalar(select(App.mode).where(App.id == ref.app_id, App.tenant_id == ref.tenant_id))
+            == AppMode.ADVANCED_CHAT
+        ):
+            statement = statement.with_for_update(of=Conversation)
+        result = session.execute(statement).one_or_none()
         if result is None:
             raise ConversationNotExistsError(
                 f"Conversation {ref.conversation_id} does not belong to this end user and app."

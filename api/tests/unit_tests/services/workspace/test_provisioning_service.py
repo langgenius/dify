@@ -14,7 +14,15 @@ from sqlalchemy.orm import Mapper, ORMExecuteState, Session, sessionmaker
 
 from enums import DeploymentEdition
 from models import TenantCreditPool
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
+    TenantStatus,
+)
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account_errors import AccountNotFoundError
@@ -22,6 +30,7 @@ from services.entities.account_entities import AccountSnapshot
 from services.entities.feature_entities import LicenseModel
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
+    WorkSpaceNotAllowedCreateError,
     WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
 )
@@ -403,3 +412,152 @@ def _service(
         memberships=create_autospec(WorkspaceMembershipQuery, instance=True),
         members=create_autospec(WorkspaceMemberWriter, instance=True),
     )
+
+
+def test_activation_starts_at_workspace_commit_and_retries_reuse_membership(
+    gateway: tuple[WorkspaceProvisioningService, Signal], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service, signal = gateway
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="End User", email="consumer@example.com", status=AccountStatus.UNINITIALIZED)
+        account.created_at = datetime(2020, 1, 1)
+        session.add(account)
+        account_id = account.id
+    emitted = []
+
+    def observe(workspace: CreatedWorkspace) -> None:
+        with sqlite_session_factory() as session:
+            owner = session.get(Account, account_id)
+            assert owner is not None
+            assert owner.first_workspace_created_at == workspace.created_at
+        emitted.append(workspace.id)
+
+    signal.connect(observe)
+    result = service.activate(account_id, name="First workspace")
+    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+    repeated = service.activate(account_id, name="Ignored retry name")
+
+    assert result == repeated
+    assert result.workspace_id is not None
+    assert result.first_workspace_created_at is not None
+    assert result.first_workspace_created_at > datetime(2020, 1, 1)
+    assert emitted == [result.workspace_id]
+    with sqlite_session_factory() as session:
+        owner = session.get(Account, account_id)
+        assert owner is not None
+        assert owner.initialized_at is None
+        assert owner.status == AccountStatus.UNINITIALIZED
+        assert session.scalars(select(Tenant.id)).all() == [result.workspace_id]
+
+
+def test_invited_membership_does_not_create_a_personal_workspace_or_start_activation(
+    gateway: tuple[WorkspaceProvisioningService, Signal], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service, _ = gateway
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Invited", email="invited@example.com")
+        workspace = Tenant(name="Team")
+        session.add_all([account, workspace])
+        session.add(TenantAccountJoin(account_id=account.id, tenant_id=workspace.id, role=TenantAccountRole.NORMAL))
+        account_id, workspace_id = account.id, workspace.id
+
+    result = service.activate(account_id, name="Ignored")
+
+    assert result.workspace_id == workspace_id
+    assert result.first_workspace_created_at is None
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(Tenant.id)).all() == [workspace_id]
+
+
+def test_removed_workspace_does_not_reset_builder_origin(
+    gateway: tuple[WorkspaceProvisioningService, Signal], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service, _ = gateway
+    first_created_at = datetime(2020, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=first_created_at)
+        session.add(account)
+        account_id = account.id
+
+    result = service.activate(account_id, name="Restored")
+
+    assert result.workspace_id is not None
+    assert result.first_workspace_created_at == first_created_at
+
+
+@pytest.mark.parametrize("status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE])
+def test_activation_preserves_recorded_origin_with_existing_workspace(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    status: TenantStatus,
+) -> None:
+    service, _ = gateway
+    recorded_at = datetime(2019, 1, 1)
+    historical_created_at = datetime(2020, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=recorded_at)
+        historical = Tenant(name="Historical", status=status)
+        historical.created_at = historical_created_at
+        session.add_all([account, historical])
+        session.add(TenantAccountJoin(account_id=account.id, tenant_id=historical.id, role=TenantAccountRole.OWNER))
+        account_id, historical_id = account.id, historical.id
+
+    result = service.activate(account_id, name="Restored")
+    repeated = service.activate(account_id, name="Repeated")
+
+    assert result == repeated
+    assert result.first_workspace_created_at == recorded_at
+    assert (result.workspace_id == historical_id) is (status == TenantStatus.NORMAL)
+    with sqlite_session_factory() as session:
+        persisted = session.get(Account, account_id)
+        assert persisted is not None
+        assert persisted.first_workspace_created_at == recorded_at
+        assert persisted.initialized_at is None
+
+
+def test_activation_policy_failure_rolls_back_without_starting_builder_lifecycle(
+    gateway: tuple[WorkspaceProvisioningService, Signal], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service, _ = gateway
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com")
+        session.add(account)
+        account_id = account.id
+    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+
+    with pytest.raises(WorkSpaceNotAllowedCreateError):
+        service.activate(account_id, name="Blocked")
+
+    with sqlite_session_factory() as session:
+        owner = session.get(Account, account_id)
+        assert owner is not None
+        assert owner.first_workspace_created_at is None
+        assert session.scalar(select(Tenant.id)) is None
+
+
+def test_activation_prepare_failure_rolls_back_membership_and_first_creation_time(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _ = gateway
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com")
+        session.add(account)
+        account_id = account.id
+
+    def fail_binding(workspace_id: str, account_id: str) -> None:
+        assert workspace_id
+        assert account_id
+        raise RuntimeError("Binding unavailable")
+
+    monkeypatch.setattr(service._effects, "bind_owner", fail_binding)
+    with pytest.raises(RuntimeError, match="Binding unavailable"):
+        service.activate(account_id, name="Interrupted")
+
+    with sqlite_session_factory() as session:
+        owner = session.get(Account, account_id)
+        assert owner is not None
+        assert owner.first_workspace_created_at is None
+        assert session.scalar(select(Tenant.id)) is None
+        assert session.scalar(select(TenantAccountJoin.id)) is None

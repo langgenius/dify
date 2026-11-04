@@ -1,16 +1,18 @@
 'use client'
 
-import type { EndUserConnection } from './model'
+import type { ConsumerConnectionProviderResponse } from '@dify/contracts/api/web/types.gen'
 import { useTranslation } from 'react-i18next'
+import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import ProviderIcon from './provider-icon'
 
 type Props = {
-  connections: readonly EndUserConnection[]
+  providers: readonly ConsumerConnectionProviderResponse[]
 }
 
-export default function Connections({ connections }: Props) {
+export default function Connections({ providers }: Props) {
   const { t } = useTranslation(['app'])
+  const language = useGetLanguage()
 
   return (
     <>
@@ -23,20 +25,26 @@ export default function Connections({ connections }: Props) {
         </p>
       </header>
       <ul className="grid grid-cols-1 gap-3 px-5 pb-8 sm:px-8 lg:grid-cols-2 xl:grid-cols-3">
-        {connections.map((connection) => (
-          <li key={connection.key}>
+        {providers.map((provider) => (
+          <li key={provider.provider}>
             <Link
-              href={`/connections/${encodeURIComponent(connection.provider)}`}
+              href={`/connections/${encodeURIComponent(provider.provider)}`}
               className="flex min-w-0 items-center gap-6 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <ProviderIcon provider={{ id: connection.provider }} />
+                <ProviderIcon provider={provider} />
                 <div className="min-w-0 flex-1">
                   <h2 className="system-xl-semibold leading-5 wrap-anywhere text-text-secondary">
-                    {connection.provider}
+                    {provider.label[language] || provider.label.en_US || provider.provider}
                   </h2>
+                  <p className="mt-1 system-sm-regular wrap-anywhere text-text-tertiary">
+                    {provider.description[language] ?? provider.description.en_US}
+                  </p>
                 </div>
               </div>
+              <span className="system-sm-regular text-text-tertiary">
+                {provider.connections_count}
+              </span>
               <span
                 className="flex size-6 shrink-0 items-center justify-center text-text-tertiary"
                 aria-hidden="true"

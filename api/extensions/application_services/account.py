@@ -164,13 +164,16 @@ def _build_account_oauth_service(
         memberships=memberships,
         invitations=AccountActivationOAuthInvitationGateway(tokens=invitation_tokens, accounts=activation_accounts),
         account_claims=RedisOAuthAccountClaimLock(client=redis),
-        registration=AccountLifecycleOAuthRegistrationGateway(accounts=lifecycle),
+        registration=AccountLifecycleOAuthRegistrationGateway(
+            accounts=lifecycle, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
+        ),
         workspaces=WorkspaceProvisioningOAuthGateway(workspaces=workspace_provisioning),
         sessions=AccountLifecycleOAuthSessionGateway(accounts=lifecycle),
         registration_policy=policy,
         workspace_policy=policy,
         supported_languages=languages,
         now=naive_utc_now,
+        defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
     )
 
 
@@ -236,7 +239,9 @@ def build_account_services(
             passwords=passwords,
             human_verification=TurnstileHumanVerificationGateway(),
             sessions=RedisAccountSessionGateway(redis=redis),
-            refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts),
+            refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(
+                accounts=accounts, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
+            ),
             account_provisioning=workspace_provisioning,
             account_registration=lifecycle,
             workspace_provisioning=workspace_provisioning,
@@ -248,6 +253,7 @@ def build_account_services(
             turnstile_verify_required=(
                 deployment_edition == DeploymentEdition.CLOUD and dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED
             ),
+            defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
         ),
         avatar=AccountAvatarService(
             files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
@@ -290,7 +296,9 @@ def build_account_services(
             account_policy=BillingAccountRegistrationPolicyGateway(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
             ),
-            registration=AccountLifecycleRegistrationGateway(accounts=lifecycle),
+            registration=AccountLifecycleRegistrationGateway(
+                accounts=lifecycle, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
+            ),
         ),
         deletion=AccountDeletionService(
             accounts=accounts,

@@ -1,7 +1,9 @@
-import type { ConsumerConnectionResponse } from '@dify/contracts/api/web/types.gen'
+import type {
+  ConsumerConnectionProviderResponse,
+  ConsumerConnectionResponse,
+} from '@dify/contracts/api/web/types.gen'
 
-export type ConnectionProvider = {
-  id: string
-}
+export type ConnectionProvider = Pick<ConsumerConnectionProviderResponse, 'provider'> &
+  Partial<Pick<ConsumerConnectionProviderResponse, 'icon' | 'icon_dark'>>
 
 export type EndUserConnection = ConsumerConnectionResponse

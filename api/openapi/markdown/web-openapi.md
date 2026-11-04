@@ -13,7 +13,11 @@ Bearer format: API_KEY
 Web application API operations
 
 ### [GET] /account/profile
+**Return the Account profile authenticated by the WebApp login cookie**
+
 Get the authenticated WebApp user's profile
+The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
+A missing, invalid, expired, or unavailable Account identity returns 401.
 
 #### Responses
 
@@ -56,7 +60,7 @@ Create a chat message for conversational applications.
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -1003,7 +1007,7 @@ Logout user from web application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/apps
-List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
+List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
 
 #### Parameters
 
@@ -1019,6 +1023,22 @@ List accessible Chatflow and Workflow Apps using the WebApp Account login cookie
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Accessible personal Apps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}
+Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App removed from personal lists |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /me/apps/{app_id}/favorite
@@ -1050,6 +1070,23 @@ List accessible Chatflow and Workflow Apps using the WebApp Account login cookie
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/connections
+List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connection Providers | **application/json**: [ConsumerConnectionProvidersResponse](#consumerconnectionprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/providers/{provider}/connections
 List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
 
 #### Parameters
@@ -1058,7 +1095,7 @@ List personal Connections grouped by Provider, account label and Connection type
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| provider | query |  | No | string |
+| provider | path |  | Yes | string |
 
 #### Responses
 
@@ -1068,7 +1105,7 @@ List personal Connections grouped by Provider, account label and Connection type
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /me/connections/{connection_key}
-Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
+Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.
 
 #### Parameters
 
@@ -1086,7 +1123,7 @@ Disconnect all owned Connections matching a group key returned by /me/connection
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/connections/{connection_key}/apps
-List accessible WebApps associated with a Connection group returned by /me/connections.
+List accessible WebApps associated with a Connection group from a Provider's list.
 
 #### Parameters
 
@@ -1215,7 +1252,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -1227,14 +1264,14 @@ Claim up to 50 anonymous browser Passports across Web Apps for one authenticated
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 200 | Whole Guest migration results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
 
 #### Request Body
 
@@ -1557,7 +1594,7 @@ Check if user has permission to access a web application.
 ### [POST] /workflows/run
 **Run workflow**
 
-Execute a workflow with provided inputs and files.
+Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
 
 #### Request Body
 
@@ -1574,7 +1611,7 @@ Execute a workflow with provided inputs and files.
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -1830,6 +1867,7 @@ Button styles for user actions.
 | app_code | string |  | Yes |
 | app_name | string |  | Yes |
 | connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
+| conversation_count | integer | Remaining Chatflow conversations; Workflow normally has zero | Yes |
 | index | integer | Index of the candidate in the request's passports list | Yes |
 
 #### ClaimablePassportsPayload
@@ -1866,7 +1904,7 @@ Completion request failed.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "migration_not_ready", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"migration_not_ready"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -1892,11 +1930,11 @@ Completion request failed.
 
 #### ConnectionClaimPreflightFailedError
 
-Connection claim preflight failed. No Connections were transferred.
+Guest migration preflight failed. No resources were transferred.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConnectionClaimPreflightFailedError |  | Connection claim preflight failed. No Connections were transferred. |  |
+| ConnectionClaimPreflightFailedError |  | Guest migration preflight failed. No resources were transferred. |  |
 
 #### ConnectionClaimResponse
 
@@ -1911,16 +1949,18 @@ Connection claim preflight failed. No Connections were transferred.
 | access_token | string |  | Yes |
 | app_code | string |  | Yes |
 | claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| claimed_conversations | integer | Chat conversations transferred for supported Workflow/Chatflow Apps | Yes |
 | index | integer |  | Yes |
 | status | string |  | Yes |
+| stop_requested_run_count | integer | Guest Runs with accepted stop requests; transfer waits until Guest Runs are terminal | Yes |
 
 #### ConnectionClaimUnavailableError
 
-Connection claim is temporarily unavailable. Please retry.
+Guest migration is temporarily unavailable. Please retry.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConnectionClaimUnavailableError |  | Connection claim is temporarily unavailable. Please retry. |  |
+| ConnectionClaimUnavailableError |  | Guest migration is temporarily unavailable. Please retry. |  |
 
 #### ConnectionConfigurationInvalidError
 
@@ -2058,13 +2098,14 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_code | string |  | Yes |
+| connection_status | string | App-level personal Connection status. not_configured means required End User tool nodes lack saved Connections; null means this action is not required. | No |
 | description | string |  | Yes |
 | icon | string |  | Yes |
 | icon_background | string |  | Yes |
 | icon_type | string |  | Yes |
 | id | string |  | Yes |
 | is_favorite | boolean |  | Yes |
-| last_used_at | integer | Creation time of the Account's latest retained published execution. | Yes |
+| last_used_at | integer | Time of the Account's latest accepted WebApp execution, independent of retained execution logs. | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 
@@ -2073,6 +2114,25 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections_count | integer | Number of personal Connection groups under this Provider. | Yes |
+| description | object |  | Yes |
+| icon | string | Public plugin icon URL; null if the Provider is unavailable. | Yes |
+| icon_dark | string | Public dark icon URL; null if unavailable or not declared. | Yes |
+| label | object |  | Yes |
+| provider | string |  | Yes |
+
+#### ConsumerConnectionProvidersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionProviderResponse](#consumerconnectionproviderresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | next_cursor | string |  | Yes |
 
@@ -2206,6 +2266,14 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
+
+#### EndUserBusyError
+
+This Web App identity is being updated. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserBusyError |  | This Web App identity is being updated. Please retry. |  |
 
 #### EndUserConnectionCreatePayload
 
@@ -3432,6 +3500,8 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | Yes |
 | avatar_url | string |  | Yes |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
 | name | string |  | Yes |
 
 #### WebAppAuthModel
@@ -3612,6 +3682,14 @@ Web App login is temporarily unavailable. Please retry.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WebappResourcesChangedError
+
+Web App resources changed before execution. Refresh and retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebappResourcesChangedError |  | Web App resources changed before execution. Refresh and retry. |  |
 
 #### WorkflowNotActiveError
 

@@ -31,6 +31,7 @@ import {
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
+  zEndUserBusyError,
   zEndUserLoginRequiredError,
   zExpiredError,
   zFileExtensionBlockedError,
@@ -79,6 +80,7 @@ import {
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
   zWebLoginUnavailableError,
+  zWebappResourcesChangedError,
   zWorkflowNotActiveError,
 } from './zod.gen.ts'
 import {
@@ -88,6 +90,8 @@ import {
   zDeleteConversationsByCIdResponse,
   zDeleteMeAppsByAppIdFavoritePath,
   zDeleteMeAppsByAppIdFavoriteResponse,
+  zDeleteMeAppsByAppIdPath,
+  zDeleteMeAppsByAppIdResponse,
   zDeleteMeConnectionsByConnectionKeyPath,
   zDeleteMeConnectionsByConnectionKeyResponse,
   zDeleteSavedMessagesByMessageIdPath,
@@ -122,6 +126,9 @@ import {
   zGetMeConnectionsByConnectionKeyAppsPath,
   zGetMeConnectionsByConnectionKeyAppsQuery,
   zGetMeConnectionsByConnectionKeyAppsResponse,
+  zGetMeConnectionsProvidersByProviderConnectionsPath,
+  zGetMeConnectionsProvidersByProviderConnectionsQuery,
+  zGetMeConnectionsProvidersByProviderConnectionsResponse,
   zGetMeConnectionsQuery,
   zGetMeConnectionsResponse,
   zGetMessagesByMessageIdMoreLikeThisPath,
@@ -241,15 +248,21 @@ import {
 } from './zod.gen.ts'
 
 /**
+ * Return the Account profile authenticated by the WebApp login cookie
+ *
  * Get the authenticated WebApp user's profile
+ * The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
+ * A missing, invalid, expired, or unavailable Account identity returns 401.
  */
 export const get = oc
   .route({
-    description: "Get the authenticated WebApp user's profile",
+    description:
+      "Get the authenticated WebApp user's profile\nThe profile is Account-scoped, so neither an App Passport nor X-App-Code is required.\nA missing, invalid, expired, or unavailable Account identity returns 401.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccountProfile',
     path: '/account/profile',
+    summary: 'Return the Account profile authenticated by the WebApp login cookie',
     tags: ['web'],
   })
   .output(zGetAccountProfileResponse)
@@ -355,12 +368,14 @@ export const post3 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const chatMessages = {
@@ -1614,17 +1629,35 @@ export const favorite = {
   put: put2,
 }
 
+/**
+ * Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+ */
+export const delete4 = oc
+  .route({
+    description:
+      'Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteMeAppsByAppId',
+    path: '/me/apps/{app_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteMeAppsByAppIdPath }))
+  .output(zDeleteMeAppsByAppIdResponse)
+
 export const byAppId = {
+  delete: delete4,
   favorite,
 }
 
 /**
- * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
+ * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
  */
 export const get14 = oc
   .route({
     description:
-      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.',
+      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeApps',
@@ -1640,12 +1673,45 @@ export const apps = {
 }
 
 /**
- * List accessible WebApps associated with a Connection group returned by /me/connections.
+ * List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
  */
 export const get15 = oc
   .route({
     description:
-      'List accessible WebApps associated with a Connection group returned by /me/connections.',
+      'List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeConnectionsProvidersByProviderConnections',
+    path: '/me/connections/providers/{provider}/connections',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      params: zGetMeConnectionsProvidersByProviderConnectionsPath,
+      query: zGetMeConnectionsProvidersByProviderConnectionsQuery.optional(),
+    }),
+  )
+  .output(zGetMeConnectionsProvidersByProviderConnectionsResponse)
+
+export const connections2 = {
+  get: get15,
+}
+
+export const byProvider = {
+  connections: connections2,
+}
+
+export const providers = {
+  byProvider,
+}
+
+/**
+ * List accessible WebApps associated with a Connection group from a Provider's list.
+ */
+export const get16 = oc
+  .route({
+    description:
+      "List accessible WebApps associated with a Connection group from a Provider's list.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeConnectionsByConnectionKeyApps',
@@ -1662,16 +1728,16 @@ export const get15 = oc
   .errors({ connection_not_found: { status: 404, data: zConnectionNotFoundError } })
 
 export const apps2 = {
-  get: get15,
+  get: get16,
 }
 
 /**
- * Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
+ * Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.
  */
-export const delete4 = oc
+export const delete5 = oc
   .route({
     description:
-      'Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.',
+      "Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.",
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteMeConnectionsByConnectionKey',
@@ -1687,17 +1753,17 @@ export const delete4 = oc
   })
 
 export const byConnectionKey = {
-  delete: delete4,
+  delete: delete5,
   apps: apps2,
 }
 
 /**
- * List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
+ * List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     description:
-      'List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.',
+      'List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeConnections',
@@ -1707,14 +1773,15 @@ export const get16 = oc
   .input(z.object({ query: zGetMeConnectionsQuery.optional() }).optional())
   .output(zGetMeConnectionsResponse)
 
-export const connections2 = {
-  get: get16,
+export const connections3 = {
+  get: get17,
+  providers,
   byConnectionKey,
 }
 
 export const me = {
   apps,
-  connections: connections2,
+  connections: connections3,
 }
 
 /**
@@ -1749,7 +1816,7 @@ export const feedbacks = {
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get17 = oc
+export const get18 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -1776,13 +1843,13 @@ export const get17 = oc
   })
 
 export const moreLikeThis = {
-  get: get17,
+  get: get18,
 }
 
 /**
  * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
-export const get18 = oc
+export const get19 = oc
   .route({
     description:
       'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
@@ -1809,7 +1876,7 @@ export const get18 = oc
   })
 
 export const suggestedQuestions = {
-  get: get18,
+  get: get19,
 }
 
 export const byMessageId = {
@@ -1821,7 +1888,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get19 = oc
+export const get20 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -1838,7 +1905,7 @@ export const get19 = oc
   })
 
 export const messages = {
-  get: get19,
+  get: get20,
   byMessageId,
 }
 
@@ -1847,7 +1914,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get20 = oc
+export const get21 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -1861,16 +1928,16 @@ export const get20 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get20,
+  get: get21,
 }
 
 /**
- * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+ * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
  */
 export const post29 = oc
   .route({
     description:
-      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.",
+      'Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMigrationClaim',
@@ -1890,12 +1957,12 @@ export const claim = {
 }
 
 /**
- * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+ * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
  */
 export const post30 = oc
   .route({
     description:
-      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
+      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMigrationClaimablePassports',
@@ -1919,7 +1986,7 @@ export const migration = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get21 = oc
+export const get22 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -1936,13 +2003,13 @@ export const get21 = oc
   })
 
 export const parameters = {
-  get: get21,
+  get: get22,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -1976,7 +2043,7 @@ export const post31 = oc
   })
 
 export const passport = {
-  get: get22,
+  get: get23,
   post: post31,
 }
 
@@ -2056,7 +2123,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -2079,7 +2146,7 @@ export const get23 = oc
   })
 
 export const byUrl = {
-  get: get23,
+  get: get24,
 }
 
 export const remoteFiles = {
@@ -2090,7 +2157,7 @@ export const remoteFiles = {
 /**
  * Remove a message from saved messages.
  */
-export const delete5 = oc
+export const delete6 = oc
   .route({
     description: 'Remove a message from saved messages.',
     inputStructure: 'detailed',
@@ -2105,13 +2172,13 @@ export const delete5 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
-  delete: delete5,
+  delete: delete6,
 }
 
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -2141,7 +2208,7 @@ export const post33 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get24,
+  get: get25,
   post: post33,
   byMessageId: byMessageId2,
 }
@@ -2151,7 +2218,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get25 = oc
+export const get26 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -2164,7 +2231,7 @@ export const get25 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get25,
+  get: get26,
 }
 
 /**
@@ -2176,7 +2243,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -2190,7 +2257,7 @@ export const get26 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get26,
+  get: get27,
 }
 
 /**
@@ -2225,7 +2292,7 @@ export const textToAudio = {
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -2239,13 +2306,13 @@ export const get27 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get27,
+  get: get28,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get28 = oc
+export const get29 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -2258,7 +2325,7 @@ export const get28 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get28,
+  get: get29,
 }
 
 export const webapp = {
@@ -2273,7 +2340,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get29 = oc
+export const get30 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -2288,7 +2355,7 @@ export const get29 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get29,
+  get: get30,
 }
 
 export const byTaskId3 = {
@@ -2302,11 +2369,12 @@ export const workflow = {
 /**
  * Run workflow
  *
- * Execute a workflow with provided inputs and files.
+ * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
  */
 export const post35 = oc
   .route({
-    description: 'Execute a workflow with provided inputs and files.',
+    description:
+      'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',
@@ -2333,6 +2401,7 @@ export const post35 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -2343,6 +2412,7 @@ export const post35 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
+    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const run = {

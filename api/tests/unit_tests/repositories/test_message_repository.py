@@ -7,8 +7,10 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Connection, event, inspect, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
+from configs import dify_config
 from extensions.storage.storage_type import StorageType
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from models import Account, EndUser
@@ -997,3 +999,115 @@ def test_all_message_reads_are_select_only_raw_snapshots_without_network(actor_h
         persisted = session.get(MessageFile, legacy_tool.id)
         assert persisted is not None
         assert persisted.upload_file_id is None
+
+
+@pytest.mark.parametrize("account_login_enabled", [False, True])
+@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.CHAT])
+def test_migrated_message_access_uses_current_conversation_owner(
+    sqlite_session_factory: sessionmaker[Session],
+    installation: InstalledAppRef,
+    monkeypatch: pytest.MonkeyPatch,
+    account_login_enabled: bool,
+    mode: AppMode,
+) -> None:
+    monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", account_login_enabled)
+    with sqlite_session_factory.begin() as session:
+        session.execute(update(App).where(App.id == installation.app_id).values(mode=mode))
+        guest = EndUser(
+            tenant_id=installation.app_owner_tenant_id,
+            app_id=installation.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        owner = EndUser(
+            tenant_id=installation.app_owner_tenant_id,
+            app_id=installation.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+            account_id=_ACCOUNT_ID,
+        )
+        session.add_all([guest, owner])
+        session.flush()
+        conversation = _conversation(session, installation)
+        conversation.mode = mode
+        conversation.from_source = ConversationFromSource.API
+        conversation.from_account_id = None
+        conversation.from_end_user_id = guest.id
+        message = _message(session, conversation)
+        conversation.from_end_user_id = owner.id
+    repository = MessageRepository(session_factory=sqlite_session_factory)
+    page = repository.get_message_page(
+        app_id=installation.app_id,
+        app_owner_tenant_id=installation.app_owner_tenant_id,
+        actor=MessageEndUser(owner.id),
+        conversation_id=conversation.id,
+        first_id=None,
+        limit=20,
+        installed_app=None,
+    )
+    assert [item.record.id for item in page.data] == [message.id]
+    with sqlite_session_factory() as session:
+        context = repository.get_suggested_questions_context(
+            app_id=installation.app_id,
+            app_owner_tenant_id=installation.app_owner_tenant_id,
+            session=session,
+            expected_app_mode=mode,
+            actor=MessageEndUser(owner.id),
+            message_id=message.id,
+        )
+        assert context.conversation.id == conversation.id
+        assert session.get_one(Message, message.id).from_end_user_id == guest.id
+        with pytest.raises(MessageNotExistsError):
+            repository.get_suggested_questions_context(
+                app_id=installation.app_id,
+                app_owner_tenant_id=installation.app_owner_tenant_id,
+                session=session,
+                expected_app_mode=mode,
+                actor=MessageEndUser(guest.id),
+                message_id=message.id,
+            )
+    with pytest.raises(ConversationNotExistsError):
+        repository.get_message_page(
+            app_id=installation.app_id,
+            app_owner_tenant_id=installation.app_owner_tenant_id,
+            actor=MessageEndUser(guest.id),
+            conversation_id=conversation.id,
+            first_id=None,
+            limit=20,
+            installed_app=None,
+        )
+    statements: list[str] = []
+
+    def record(state: ORMExecuteState) -> None:
+        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+
+    event.listen(sqlite_session_factory, "do_orm_execute", record)
+    try:
+        feedback = repository.set_feedback(
+            app_id=installation.app_id,
+            app_owner_tenant_id=installation.app_owner_tenant_id,
+            actor=MessageEndUser(owner.id),
+            message_id=message.id,
+            rating=FeedbackRating.LIKE,
+            content="Migrated",
+            app_wide=False,
+            installed_app=None,
+        )
+        assert feedback is not None
+        assert feedback.from_end_user_id == owner.id
+        assert any("FOR UPDATE OF conversations" in statement for statement in statements) is (
+            account_login_enabled and mode == AppMode.ADVANCED_CHAT
+        )
+        with pytest.raises(MessageNotExistsError):
+            repository.set_feedback(
+                app_id=installation.app_id,
+                app_owner_tenant_id=installation.app_owner_tenant_id,
+                actor=MessageEndUser(guest.id),
+                message_id=message.id,
+                rating=FeedbackRating.DISLIKE,
+                content="Rejected",
+                app_wide=False,
+                installed_app=None,
+            )
+    finally:
+        event.remove(sqlite_session_factory, "do_orm_execute", record)

@@ -120,7 +120,9 @@ class AccountIdentityGateway:
 
     def load_user(self, account_id: str) -> Account | None:
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        account = self._accounts.load_identity(
+            account_id, now=now, require_workspace=dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+        )
         if account is None:
             return None
         if account.status == AccountStatus.BANNED:

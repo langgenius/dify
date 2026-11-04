@@ -34,11 +34,11 @@ export default function ConnectionsPage() {
       gcTime: 0,
     }),
   )
-  const connections = list.data?.pages.flatMap((page) => page.data) ?? []
+  const providers = list.data?.pages.flatMap((page) => page.data) ?? []
 
   return (
     <>
-      <Connections connections={connections} />
+      <Connections providers={providers} />
       <div className="px-5 pb-8 sm:px-8">
         {list.isPending && <p role="status">{t(($) => $.loading, { ns: 'common' })}</p>}
         {list.isError && (
@@ -51,7 +51,7 @@ export default function ConnectionsPage() {
             </Button>
           </div>
         )}
-        {list.isSuccess && connections.length === 0 && (
+        {list.isSuccess && providers.length === 0 && (
           <EmptyState
             title={t(($) => $['endUser.noProviderConnections'], { ns: 'app' })}
             description={t(($) => $['endUser.connectionsDescription'], { ns: 'app' })}

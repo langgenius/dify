@@ -20,11 +20,13 @@ export default function ProviderHeader({ provider }: { provider: ConnectionProvi
       <div className="flex min-w-0 items-center gap-4">
         <ProviderIcon provider={provider} size="large" />
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="title-3xl-semi-bold wrap-anywhere text-text-primary">{provider.id}</h1>
+          <h1 className="title-3xl-semi-bold wrap-anywhere text-text-primary">
+            {provider.provider}
+          </h1>
           <p className="system-sm-regular text-text-tertiary">
             {t(($) => $['endUser.providerConnectionsDescription'], {
               ns: 'app',
-              provider: provider.id,
+              provider: provider.provider,
             })}
           </p>
         </div>

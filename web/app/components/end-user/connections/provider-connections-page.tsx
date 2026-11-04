@@ -17,11 +17,12 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
     () => 0,
   )
   const input = (cursor: string | undefined) => ({
-    query: { provider: providerId, limit: 100, cursor },
+    params: { provider: providerId },
+    query: { limit: 100, cursor },
   })
   const context = { authSession, silent: true }
   const list = useInfiniteQuery(
-    webAppQuery.me.connections.get.infiniteOptions({
+    webAppQuery.me.connections.providers.byProvider.connections.get.infiniteOptions({
       input,
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (page, _pages, cursor, cursors) => {
@@ -29,7 +30,10 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
         return next && next !== cursor && !cursors.includes(next) ? next : undefined
       },
       queryKey: [
-        ...webAppQuery.me.connections.get.key({ type: 'infinite', input: input(undefined) }),
+        ...webAppQuery.me.connections.providers.byProvider.connections.get.key({
+          type: 'infinite',
+          input: input(undefined),
+        }),
         authSession,
       ],
       context,
@@ -47,7 +51,7 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
       ),
     ).values(),
   )
-  const provider = { id: providerId }
+  const provider = { provider: providerId }
 
   return (
     <>

@@ -89,6 +89,21 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
+def test_cloud_refresh_accepts_an_account_without_a_workspace(account_domain: AccountDomain) -> None:
+    account = account_domain.accounts.create_account(
+        "consumer@example.com", "Consumer", "en-US", status="uninitialized"
+    )
+    preparation = adapters.SQLAlchemyAccountRefreshPreparationGateway(
+        accounts=account_domain.repository, defer_workspace_creation=True
+    )
+
+    assert preparation.prepare(account.id) == RefreshAccountStatus.READY
+    persisted = account_domain.repository.get(account.id)
+    assert persisted is not None
+    assert persisted.first_workspace_created_at is None
+    assert persisted.initialized_at is None
+
+
 def test_invitation_gateway_restores_editor_membership_without_revoking_token(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
