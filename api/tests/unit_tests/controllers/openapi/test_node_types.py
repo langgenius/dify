@@ -71,10 +71,10 @@ def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> Non
     assert order == sorted(order)
 
 
-def test_the_llm_reply_stays_small(describe: _Describe) -> None:
+def test_the_llm_reply_stays_small_with_items_included(describe: _Describe) -> None:
     body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
 
-    assert len(body.encode()) < 1500
+    assert len(body.encode()) < 2200, "items included: prompt_template and default_value list their item fields"
 
 
 def test_rows_leave_out_what_the_seed_already_holds(describe: _Describe) -> None:
@@ -94,6 +94,21 @@ def test_rows_carry_only_the_parts_they_have(describe: _Describe) -> None:
     assert rows["reasoning_format"]["description"].startswith("Strategy for handling model reasoning output.")
     assert "default" not in rows["memory"]
     assert "description" not in rows["model"]
+
+
+def test_a_list_row_carries_its_item_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.END)).items()}
+
+    items = {item["loc"][0]: item for item in rows["outputs"]["items"]}
+    assert {"variable", "value_selector"} <= items.keys()
+    assert items["variable"]["required"] is True
+    assert all("purpose" not in item and "items" not in item for item in items.values())
+
+
+def test_a_row_that_is_not_a_list_of_objects_leaves_out_items(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
+
+    assert "items" not in rows["model"]
 
 
 def test_include_schema_adds_the_json_schema(describe: _Describe) -> None:
