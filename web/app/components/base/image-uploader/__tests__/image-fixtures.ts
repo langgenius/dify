@@ -2,7 +2,7 @@ import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 
 // A decodable 1×1 PNG: image rendering and FileReader stay real without network traffic.
-export const png =
+const png =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aen0AAAAASUVORK5CYII='
 export const imageUrl = `data:image/png;base64,${png}`
 export const brokenImageUrl = 'data:image/png;base64,broken'
