@@ -9,7 +9,7 @@ from collections.abc import Iterator, Sequence
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
-from sqlalchemy import Connection, Engine, select
+from sqlalchemy import Connection, Engine, delete, select
 from sqlalchemy.orm import Session
 
 import tasks.duplicate_document_indexing_task as task_module
@@ -420,3 +420,127 @@ class TestDuplicateDocumentIndexingSummaries:
             _duplicate_document_indexing_task(dataset.id, [document.id])
 
         delay.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("technique", "setting"),
+        [
+            (IndexTechniqueType.ECONOMY, {"enable": True}),
+            (IndexTechniqueType.HIGH_QUALITY, None),
+            (IndexTechniqueType.HIGH_QUALITY, {}),
+        ],
+    )
+    def test_skips_regeneration_for_datasets_without_summary_indexing(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        technique: str,
+        setting: dict[str, bool] | None,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, document, _ = _persist_document_with_summary(sqlite_session)
+        dataset.indexing_technique = technique
+        dataset.summary_index_setting = setting
+        sqlite_session.commit()
+        indexing_service.run.side_effect = lambda refs: _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+        with patch.object(generate_summary_index_task, "delay", autospec=True) as delay:
+            _duplicate_document_indexing_task(dataset.id, [document.id])
+
+        delay.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("status", "doc_form"),
+        [
+            (IndexingStatus.PARSING, IndexStructureType.PARAGRAPH_INDEX),
+            (IndexingStatus.COMPLETED, IndexStructureType.QA_INDEX),
+        ],
+    )
+    def test_skips_regeneration_for_incomplete_and_qa_documents(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        status: IndexingStatus,
+        doc_form: IndexStructureType,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, document, _ = _persist_document_with_summary(sqlite_session)
+
+        def finish_indexing(refs: Sequence[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                indexed = writer.get(Document, refs[0].document_id)
+                assert indexed is not None
+                indexed.indexing_status = status
+                indexed.doc_form = doc_form
+
+        indexing_service.run.side_effect = finish_indexing
+
+        with patch.object(generate_summary_index_task, "delay", autospec=True) as delay:
+            _duplicate_document_indexing_task(dataset.id, [document.id])
+
+        delay.assert_not_called()
+
+    def test_missing_vector_ids_do_not_delete_other_documents_summaries(
+        self, sqlite_session: Session, summary_harness: tuple[MagicMock, MagicMock]
+    ) -> None:
+        indexing_service, delete_vectors = summary_harness
+        dataset, document, _ = _persist_document_with_summary(sqlite_session)
+        _, _, other_summary = _persist_document_with_summary(sqlite_session, dataset=dataset)
+        other_summary_id = other_summary.id
+        segment = sqlite_session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document.id))
+        assert segment is not None
+        segment.index_node_id = None
+        sqlite_session.commit()
+        indexing_service.run.side_effect = lambda refs: _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+        with patch.object(generate_summary_index_task, "delay", autospec=True) as delay:
+            _duplicate_document_indexing_task(dataset.id, [document.id])
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(DocumentSegmentSummary, other_summary_id) is not None
+        delete_vectors.assert_not_called()
+        delay.assert_called_once_with(dataset.id, document.id, None)
+
+    def test_skips_regeneration_if_dataset_is_removed_during_indexing(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, document, _ = _persist_document_with_summary(sqlite_session)
+        dataset_id, document_id = dataset.id, document.id
+
+        def remove_dataset(refs: Sequence[DocumentRef]) -> None:
+            _complete_indexing(refs, bind=sqlite_session.get_bind())
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                writer.execute(delete(Dataset).where(Dataset.id == dataset_id))
+
+        indexing_service.run.side_effect = remove_dataset
+
+        with patch.object(generate_summary_index_task, "delay", autospec=True) as delay:
+            _duplicate_document_indexing_task(dataset_id, [document_id])
+
+        delay.assert_not_called()
+        assert f"Dataset {dataset_id} not found after duplicate indexing" in caplog.text
+
+    def test_queue_failure_does_not_prevent_the_next_documents_summary(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, first, _ = _persist_document_with_summary(sqlite_session)
+        _, second, _ = _persist_document_with_summary(sqlite_session, dataset=dataset)
+        document_ids = [first.id, second.id]
+        indexing_service.run.side_effect = lambda refs: _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+        with patch.object(
+            generate_summary_index_task, "delay", autospec=True, side_effect=[RuntimeError("broker unavailable"), None]
+        ) as delay:
+            _duplicate_document_indexing_task(dataset.id, document_ids)
+
+        queued_ids = [call.args[1] for call in delay.call_args_list]
+        assert set(queued_ids) == set(document_ids)
+        assert len(queued_ids) == 2
+        assert f"Failed to queue summary index generation task for document {queued_ids[0]}" in caplog.text
