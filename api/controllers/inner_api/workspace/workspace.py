@@ -9,6 +9,7 @@ from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Account
 from models.account import TenantAccountRole
@@ -164,3 +165,15 @@ class EnterpriseWorkspaceMember(Resource):
                 "role": membership.role.value,
             },
         }
+
+
+@inner_api_ns.route("/enterprise/workspace/<uuid:workspace_id>/resources")
+class EnterpriseWorkspaceResourceDeletion(Resource):
+    @setup_required
+    @enterprise_inner_api_only
+    @inner_api_ns.doc("delete_enterprise_workspace_resources")
+    @inner_api_ns.doc(description="Schedule App, Dataset and Agent cleanup; retain the workspace and memberships")
+    @inner_api_ns.doc(responses={202: "Cleanup accepted", 401: "Invalid API key"})
+    def delete(self, workspace_id):
+        application_services().workspace_resource_cleanup.cleanup(str(workspace_id))
+        return {"message": "workspace resource cleanup accepted."}, 202

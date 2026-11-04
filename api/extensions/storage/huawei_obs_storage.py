@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import override
+from typing import Any, override
 
 from obs import ObsClient
 
@@ -51,7 +51,31 @@ class HuaweiObsStorage(BaseStorage):
 
     @override
     def delete(self, filename: str):
-        self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
+        response: Any = self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
+        if response.status == 404 and response.errorCode == "NoSuchKey":
+            raise FileNotFoundError(filename)
+        if response.status >= 300:
+            raise RuntimeError(f"OBS object deletion failed: status={response.status}, code={response.errorCode}")
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        keys: list[str] = []
+        marker = ""
+        while True:
+            # The SDK's decorator annotations do not describe its response model.
+            response: Any = self.client.listObjects(
+                bucketName=self.bucket_name, prefix=path, marker=marker, max_keys=1000
+            )
+            if response.status >= 300:
+                raise RuntimeError(f"OBS object listing failed: status={response.status}, code={response.errorCode}")
+            page = response.body
+            keys.extend(obj.key for obj in page.contents or [])
+            if not page.is_truncated:
+                break
+            if not page.next_marker or page.next_marker == marker:
+                raise RuntimeError("OBS object listing did not advance its pagination marker")
+            marker = page.next_marker
+        return self._filter_scan_keys(keys, files, directories)
 
     def _get_meta(self, filename):
         res = self.client.getObjectMetadata(bucketName=self.bucket_name, objectKey=filename)

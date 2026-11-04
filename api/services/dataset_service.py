@@ -23,6 +23,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.file_reference import resolve_file_record_id
 from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -542,7 +543,16 @@ class DatasetService:
             pipeline_id=pipeline.id,
         )
         session.add(dataset)
+        session.flush()
+        dataset_id = dataset.id
+        creator_id = current_user.id
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            creator_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset_id,
+        )
         return dataset
 
     @staticmethod
@@ -1732,8 +1742,10 @@ class DocumentService:
 
     @staticmethod
     def get_document_download_url(document: Document, session: Session) -> str:
-        """
-        Return a signed download URL for an upload-file document.
+        """Return a signed URL for a file-backed document in the caller's tenant.
+
+        Requires a legacy upload or pipeline local-file reference to an existing tenant-owned
+        UploadFile. On success the URL downloads that file; invalid or missing links raise 404.
         """
         upload_file = DocumentService._get_upload_file_for_upload_file_document(document, session)
         return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
@@ -1829,14 +1841,25 @@ class DocumentService:
         invalid_source_message: str,
         missing_file_message: str,
     ) -> str:
-        """
-        Normalize and validate `Document -> UploadFile` linkage for download flows.
-        """
-        if document.data_source_type != DataSourceType.UPLOAD_FILE:
-            raise NotFound(invalid_source_message)
+        """Resolve a file-backed document's UploadFile id without trusting its source metadata.
 
+        Legacy uploads use ``upload_file_id``; pipeline local files use ``real_file_id``
+        after conversion or ``related_id``/``reference`` when created in a pipeline.
+        Other source types and absent references raise 404; callers must still load the
+        UploadFile within the document's tenant before using the resolved id.
+        """
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-        upload_file_id: str | None = data_source_info.get("upload_file_id")
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
+            upload_file_id = data_source_info.get("upload_file_id")
+        elif document.data_source_type == DataSourceType.LOCAL_FILE:
+            file_reference = (
+                data_source_info.get("real_file_id")
+                or data_source_info.get("related_id")
+                or data_source_info.get("reference")
+            )
+            upload_file_id = resolve_file_record_id(file_reference) if isinstance(file_reference, str) else None
+        else:
+            raise NotFound(invalid_source_message)
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
@@ -1844,9 +1867,7 @@ class DocumentService:
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
-        """
-        Load the `UploadFile` row for an upload-file document.
-        """
+        """Load a file-backed document's UploadFile within its tenant or raise 404."""
         upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="Document does not have an uploaded file to download.",
@@ -1866,8 +1887,10 @@ class DocumentService:
         tenant_id: str,
         session: Session,
     ) -> dict[str, UploadFile]:
-        """
-        Batch load upload files keyed by document id for ZIP downloads.
+        """Load tenant-owned UploadFiles for file-backed documents keyed by document id.
+
+        Requires every requested document and file to exist in the given dataset and tenant.
+        Returns a complete mapping on success; missing or unsupported sources raise 404.
         """
         document_id_list: list[str] = list(document_ids)
 

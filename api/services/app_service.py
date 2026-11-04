@@ -3,11 +3,12 @@ import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from types import EllipsisType
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -117,7 +118,8 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Strict resource scope, independent of maintainer visibility; None is unrestricted.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):
@@ -282,10 +284,9 @@ class AppService:
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
@@ -1075,8 +1076,11 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App, *, session: Session) -> None:
+    def delete_app(self, app: App, *, session: Session, account_id: str | None | EllipsisType = ...) -> None:
         """Delete an App and commit the passed session.
+
+        Omit ``account_id`` to use the logged-in actor; pass ``None`` for
+        tenant-wide system cleanup without a console user.
 
         The transaction releases all of a Workflow App's binding owners across
         draft and published versions, archives a backing Roster Agent, retires
@@ -1129,7 +1133,8 @@ class AppService:
                     AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
-        account_id = current_user.id if current_user else None
+        if isinstance(account_id, EllipsisType):
+            account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED

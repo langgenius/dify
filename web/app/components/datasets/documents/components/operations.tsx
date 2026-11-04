@@ -26,6 +26,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -55,6 +56,7 @@ type OperationsProps = {
     archived: boolean
     id: string
     data_source_type: string
+    data_source_info?: Record<string, unknown> | null
     doc_form: string
     display_status?: string
   }
@@ -94,6 +96,7 @@ const Operations = ({
     enabled = false,
     archived = false,
     data_source_type,
+    data_source_info,
     display_status,
   } = detail || {}
   const [showModal, setShowModal] = useState(false)
@@ -116,7 +119,8 @@ const Operations = ({
   const canShowRenameAction = canEdit && !archived
   const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
-  const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
+  const canShowDownloadAction =
+    canDownload && isDownloadableFileDocument(data_source_type, data_source_info)
   const canShowSyncAction =
     canEdit && !archived && ['notion_import', DataSourceType.WEB].includes(data_source_type)
   const canShowPauseAction = canEdit && !archived && display_status?.toLowerCase() === 'indexing'

@@ -52,6 +52,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
+from services.enterprise import rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
@@ -86,11 +87,32 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
+    app_created: bool = Field(default=False, exclude=True)
     permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
     warnings: list[DslImportWarning] = Field(default_factory=list)
+
+
+def initialize_imported_app_creator_access(result: Import, *, tenant_id: str, account_id: str) -> None:
+    """Initialize ordinary App creator access only after the caller commits the import."""
+    if (
+        result.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
+        and result.app_created
+        and result.app_id
+        and result.app_mode
+        in (
+            AppMode.CHAT,
+            AppMode.ADVANCED_CHAT,
+            AppMode.COMPLETION,
+            AppMode.WORKFLOW,
+            AppMode.AGENT_CHAT,
+        )
+    ):
+        rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id, account_id, rbac_service.RBACResourceType.APP, result.app_id
+        )
 
 
 class PendingData(PendingImportOwner):
@@ -152,6 +174,7 @@ class AppDslService:
             self._session.rollback()
             return result, None
         self._session.commit()
+        initialize_imported_app_creator_access(result, tenant_id=tenant_id, account_id=account.id)
 
         if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
             try:
@@ -345,6 +368,7 @@ class AppDslService:
                 )
 
             # Create or update app
+            app_created = app is None
             app = self._create_or_update_app(
                 app=app,
                 data=data,
@@ -365,6 +389,7 @@ class AppDslService:
                 id=import_id,
                 status=result_status,
                 app_id=app.id,
+                app_created=app_created,
                 app_mode=app.mode,
                 imported_dsl_version=imported_version,
                 warnings=self._warnings,
@@ -433,6 +458,7 @@ class AppDslService:
                     )
 
             # Create or update app
+            app_created = app is None
             app = self._create_or_update_app(
                 app=app,
                 data=data,
@@ -451,6 +477,7 @@ class AppDslService:
                 id=import_id,
                 status=self._status_with_warnings(ImportStatus.COMPLETED),
                 app_id=app.id,
+                app_created=app_created,
                 app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),

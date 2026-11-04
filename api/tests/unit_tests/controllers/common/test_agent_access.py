@@ -101,8 +101,9 @@ class TestAgentAccessFilter:
         )
 
         assert params.accessible_app_ids == ["app-1", "app-2"]
+        assert params.resource_app_ids is None
 
-    def test_empty_visible_set_filters_every_agent_app(self, unbound_session: Session) -> None:
+    def test_empty_visible_set_retains_maintainer_fallback(self, unbound_session: Session) -> None:
         params = AppListParams(mode="agent")
 
         AgentAccessFilter(accessible_agent_ids=set()).apply_to_app_params(
@@ -112,6 +113,7 @@ class TestAgentAccessFilter:
         )
 
         assert params.accessible_app_ids == []
+        assert params.resource_app_ids is None
 
 
 class TestResolveAgentAccessFilter:

@@ -439,7 +439,9 @@ class ClickZettaVolumeStorage(BaseStorage):
             return exists
         except Exception as e:
             logger.warning("Error checking file existence for %s: %s", filename, e)
-            return False
+            # Deletion relies on this result. A failed query is not proof that
+            # the file is absent; retain references so callers can retry.
+            raise
 
     @override
     def delete(self, filename: str):
@@ -483,19 +485,27 @@ class ClickZettaVolumeStorage(BaseStorage):
         """Scan files and directories in ClickZetta Volume.
 
         Args:
-            path: Path to scan (dataset_id for table volumes)
+            path: Path prefix to scan, or a bare dataset_id for a table-volume root
             files: Include files in results
             directories: Include directories in results
 
         Returns:
             List of file/directory paths
         """
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+        requested_path = path
         try:
-            # For table volumes, path is treated as dataset_id
+            # Match save/load/delete: the first path component selects the
+            # table (or special USER VOLUME), and the remainder is its file path.
             dataset_id = None
+            logical_root = ""
             if self._config.volume_type == "table":
-                dataset_id = path
-                path = ""  # Root of the table volume
+                root, separator, relative_path = path.partition("/")
+                dataset_id = root.removeprefix(self._config.table_prefix)
+                path = relative_path
+                if separator:
+                    logical_root = root + "/"
 
             volume_prefix = self._get_volume_sql_prefix(dataset_id)
 
@@ -524,6 +534,10 @@ class ClickZettaVolumeStorage(BaseStorage):
                     if volume_prefix == "USER VOLUME" and file_path.startswith(dify_prefix_with_slash):
                         file_path = file_path[len(dify_prefix_with_slash) :]  # Remove prefix
 
+                    file_path = logical_root + file_path
+                    if logical_root and not file_path.startswith(requested_path):
+                        continue
+
                     if files and not file_path.endswith("/") or directories and file_path.endswith("/"):
                         result.append(file_path)
 
@@ -531,5 +545,5 @@ class ClickZettaVolumeStorage(BaseStorage):
             return result
 
         except Exception:
-            logger.exception("Error scanning path %s", path)
-            return []
+            logger.exception("Error scanning path %s", requested_path)
+            raise

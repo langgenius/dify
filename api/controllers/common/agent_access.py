@@ -27,7 +27,8 @@ class AgentAccessFilter:
     """Resolved resource-level visibility for Agent list endpoints.
 
     ``accessible_agent_ids`` of ``None`` means every Agent is visible. An
-    explicit set limits list queries to exactly those Agent resources.
+    explicit set grants visibility to those Agent resources in addition to
+    Agent Apps maintained by the caller.
     """
 
     accessible_agent_ids: set[str] | None
@@ -37,7 +38,7 @@ class AgentAccessFilter:
         return cls(accessible_agent_ids=None)
 
     def apply_to_app_params(self, params: AppListBaseParams, *, tenant_id: str, session: Session) -> None:
-        """Translate visible Agent ids to their Agent App ids before pagination."""
+        """Translate visible Agent ids, retaining the app-maintainer fallback."""
         if self.accessible_agent_ids is None:
             return
         if not self.accessible_agent_ids:
