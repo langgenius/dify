@@ -97,7 +97,9 @@ export function ModelUsageDialog({ provider, model }: ModelUsageDialogProps) {
           <Button
             variant="secondary"
             size="small"
-            className="me-1 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            // Visually hidden and out of the row layout until hover or keyboard focus,
+            // so a narrow card does not squeeze the model name; it stays focusable.
+            className="me-1 shrink-0 not-group-hover:not-focus-visible:sr-only"
           >
             <span aria-hidden className="i-ri-node-tree size-4" />
             {t(($) => $['modelProvider.usage.view'], { ns: 'modelProvider' })}
