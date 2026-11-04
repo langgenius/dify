@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, ConversationItem } from '@/models/share'
@@ -18,33 +18,29 @@ export const conversation: ConversationItem = {
   introduction: '',
 }
 
-export function renderChatHistory(
-  ui: ReactElement,
-  {
-    currentConversationId = conversation.id,
-    conversations = [conversation],
-    pinnedConversations = [],
-    appInfo = {
-      app_id: 'app-1',
-      end_user_id: 'user-1',
-      site: { title: 'Test Chat' },
-      custom_config: null,
-    },
-    appParams = createChatConfigFixture(),
-    sidebarCollapsed = true,
-    ownerProps = {},
-  }: {
-    currentConversationId?: string
-    conversations?: ConversationItem[]
-    pinnedConversations?: ConversationItem[]
-    appInfo?: AppData
-    appParams?: ChatConfig
-    sidebarCollapsed?: boolean
-    // These are caller-owned display inputs; all conversation commands come from the real owner.
-    ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isMobile' | 'isResponding'>
-  } = {},
-) {
-  window.history.replaceState({}, '', '/')
+export function createChatHistoryTestEnvironment({
+  currentConversationId = conversation.id,
+  conversations = [conversation],
+  pinnedConversations = [],
+  appInfo = {
+    app_id: 'app-1',
+    end_user_id: 'user-1',
+    site: { title: 'Test Chat' },
+    custom_config: null,
+  },
+  appParams = createChatConfigFixture(),
+  sidebarCollapsed = true,
+  ownerProps = {},
+}: {
+  currentConversationId?: string
+  conversations?: ConversationItem[]
+  pinnedConversations?: ConversationItem[]
+  appInfo?: AppData
+  appParams?: ChatConfig
+  sidebarCollapsed?: boolean
+  // These are caller-owned display inputs; all conversation commands come from the real owner.
+  ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isMobile' | 'isResponding'>
+} = {}) {
   const selection = JSON.stringify({
     [appInfo.app_id]: { [appInfo.end_user_id || 'DEFAULT']: currentConversationId },
   })
@@ -66,17 +62,36 @@ export function renderChatHistory(
     has_more: false,
     limit: 100,
   })
-  function Owner() {
+  function Owner({
+    children,
+    displayProps = ownerProps,
+  }: {
+    children: ReactNode
+    displayProps?: typeof ownerProps
+  }) {
     const value = useChatWithHistory()
     return (
-      <ChatWithHistoryContext.Provider value={{ ...value, isMobile: false, ...ownerProps }}>
-        {ui}
+      <ChatWithHistoryContext.Provider value={{ ...value, isMobile: false, ...displayProps }}>
+        {children}
       </ChatWithHistoryContext.Provider>
     )
   }
   return {
-    ...renderWithConsoleQuery(<Owner />, { queryClient }),
+    Owner,
+    queryClient,
     webAppStore: useWebAppStore,
     listKey,
+  }
+}
+
+export function renderChatHistory(
+  ui: ReactElement,
+  options: Parameters<typeof createChatHistoryTestEnvironment>[0] = {},
+) {
+  window.history.replaceState({}, '', '/')
+  const { Owner, queryClient, ...environment } = createChatHistoryTestEnvironment(options)
+  return {
+    ...renderWithConsoleQuery(<Owner>{ui}</Owner>, { queryClient }),
+    ...environment,
   }
 }
