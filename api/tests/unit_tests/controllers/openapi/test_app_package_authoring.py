@@ -34,6 +34,7 @@ from controllers.openapi._models import (
 from controllers.openapi._upload import UploadParts
 from controllers.openapi.app_dsl import AppPackageCheckApi, AppPackageFillApi
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
+from events.app_event import app_draft_workflow_was_synced
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData
@@ -467,9 +468,11 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     assert (third.valid, third.issues) == (True, [])
     exported = world.client.get(f"/openapi/v1/apps/{world.app_id}/dsl", headers=world.headers)
     assert exported.status_code == 200, exported.get_json()
-    imported = _post(
-        world, "packages", package, fields={"app_id": world.app_id, "draft_hash": exported.get_json()["draft_hash"]}
-    )
+    # A connected draft-sync receiver needs the app's database; it does not bear on whether the package imports.
+    with app_draft_workflow_was_synced.muted():
+        imported = _post(
+            world, "packages", package, fields={"app_id": world.app_id, "draft_hash": exported.get_json()["draft_hash"]}
+        )
 
     assert imported.status_code == 200, imported.get_json()
     assert (imported.get_json()["status"], imported.get_json()["app_id"]) == (ImportStatus.COMPLETED, world.app_id)
