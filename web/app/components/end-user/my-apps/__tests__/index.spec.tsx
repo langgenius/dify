@@ -105,9 +105,7 @@ describe('MyApps account API integration', () => {
     expect(requests[0]?.pathname).toMatch(/\/me\/apps$/)
     expect(requests[0]?.searchParams.get('view')).toBe('recent')
     expect(requests[1]?.searchParams.get('cursor')).toBe('next-page')
-    expect(
-      screen.queryByRole('button', { name: appLabel('appActions', alpha) }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: appLabel('appActions', alpha) })).toBeVisible()
     expect(screen.queryByText('app.endUser.notConfigured')).not.toBeInTheDocument()
   })
 
@@ -200,6 +198,87 @@ describe('MyApps account API integration', () => {
       'aria-pressed',
       'false',
     )
+  })
+
+  it('removes an app only after the request succeeds and prevents concurrent card actions', async () => {
+    const user = userEvent.setup()
+    let finishRemoval!: (response: Response) => void
+    const removing = new Promise<Response>((resolve) => {
+      finishRemoval = resolve
+    })
+    let removed = false
+    const changes: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.method === 'DELETE') {
+        changes.push(request)
+        return removing
+      }
+      return Response.json(page(removed ? [zebra] : [alpha, zebra]))
+    })
+    setup()
+    const actions = await screen.findByRole('button', { name: appLabel('appActions', alpha) })
+    await user.click(actions)
+    expect(
+      screen.queryByRole('menuitem', { name: 'app.endUser.removeAndDeleteChats' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+
+    await waitFor(() => expect(actions).toBeDisabled())
+    const star = screen.getByRole('button', { name: appLabel('starApp', alpha) })
+    expect(star).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('link', { name: alpha.name })).toBeVisible()
+    await user.click(actions)
+    await user.click(star)
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.url).toMatch(new RegExp(`/me/apps/${alpha.id}$`))
+    expect(changes[0]?.method).toBe('DELETE')
+    expect(await changes[0]?.text()).toBe('')
+
+    await act(async () => {
+      removed = true
+      finishRemoval(new Response(null, { status: 204 }))
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('link', { name: zebra.name })).toBeVisible()
+  })
+
+  it('keeps a starred app after removal fails and allows retry without changing the filter', async () => {
+    const user = userEvent.setup()
+    let attempts = 0
+    const reads: URL[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.method === 'DELETE') {
+        attempts += 1
+        return attempts === 1
+          ? Response.json(
+              { code: 'invalid_param', message: 'Cannot remove this app.' },
+              { status: 400 },
+            )
+          : new Response(null, { status: 204 })
+      }
+      reads.push(new URL(request.url))
+      return Response.json(page(attempts < 2 ? [zebra] : []))
+    })
+    setup('?view=starred&q=Zebra&sort=name')
+    await user.click(await screen.findByRole('button', { name: appLabel('appActions', zebra) }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Cannot remove this app.')
+    expect(screen.getByRole('link', { name: zebra.name })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: appLabel('appActions', zebra) }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+    expect(await screen.findByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: zebra.name })).not.toBeInTheDocument()
+    expect(attempts).toBe(2)
+    expect(reads).toHaveLength(2)
+    expect(reads[1]?.searchParams.get('view')).toBe('favorites')
+    expect(reads[1]?.searchParams.get('name')).toBe('Zebra')
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue('Zebra')
   })
 
   it('shows list errors with retry rather than an empty library', async () => {

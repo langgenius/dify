@@ -173,7 +173,7 @@ describe('generated account Web App client', () => {
     )
   })
 
-  it.each(['favorite', 'unfavorite', 'disconnect'] as const)(
+  it.each(['favorite', 'unfavorite', 'remove', 'disconnect'] as const)(
     '%s uses a cookie-only account mutation and invalidates the affected account lists',
     async (action) => {
       window.history.replaceState({}, '', '/connections')
@@ -208,6 +208,11 @@ describe('generated account Web App client', () => {
           queryClient,
           webAppQuery.me.apps.byAppId.favorite.delete.mutationOptions(),
         ).mutate({ params: { app_id: appId } })
+      } else if (action === 'remove') {
+        await new MutationObserver(
+          queryClient,
+          webAppQuery.me.apps.byAppId.delete.mutationOptions(),
+        ).mutate({ params: { app_id: appId } })
       } else {
         await new MutationObserver(
           queryClient,
@@ -218,7 +223,11 @@ describe('generated account Web App client', () => {
       expect(fetch).toHaveBeenCalledOnce()
       expectAccountRequest(
         ...fetch.mock.calls[0]!,
-        action === 'disconnect' ? `/me/connections/${connectionKey}` : `/me/apps/${appId}/favorite`,
+        action === 'disconnect'
+          ? `/me/connections/${connectionKey}`
+          : action === 'remove'
+            ? `/me/apps/${appId}`
+            : `/me/apps/${appId}/favorite`,
         action === 'favorite' ? 'PUT' : 'DELETE',
       )
       expect(queryClient.getQueryState(appsKey)?.isInvalidated).toBe(true)

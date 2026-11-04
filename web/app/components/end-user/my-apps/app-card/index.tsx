@@ -3,6 +3,7 @@
 import type { EndUserApp } from '../model'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon, AppTypeLabel } from '@/app/components/app/type-selector'
@@ -28,8 +29,18 @@ export default function EndUserAppCard({ app, authSession }: Props) {
       context,
     }),
   )
-  const pending = favorite.isPending || unfavorite.isPending
-  const error = favorite.error ?? unfavorite.error
+  const removeApp = useMutation(
+    webAppQuery.me.apps.byAppId.delete.mutationOptions({
+      context,
+    }),
+  )
+  const pending = favorite.isPending || unfavorite.isPending || removeApp.isPending
+  const error = favorite.error ?? unfavorite.error ?? removeApp.error
+  const resetErrors = () => {
+    favorite.reset()
+    unfavorite.reset()
+    removeApp.reset()
+  }
 
   return (
     <li className="relative flex min-w-0 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
@@ -70,8 +81,7 @@ export default function EndUserAppCard({ app, authSession }: Props) {
               : t(($) => $['endUser.starApp'], { ns: 'app', name: app.name })
           }
           onClick={() => {
-            favorite.reset()
-            unfavorite.reset()
+            resetErrors()
             if (app.is_favorite) unfavorite.mutate({ params: { app_id: app.id } })
             else favorite.mutate({ params: { app_id: app.id } })
           }}
@@ -88,6 +98,38 @@ export default function EndUserAppCard({ app, authSession }: Props) {
             aria-hidden="true"
           />
         </IconButton>
+        <Menu>
+          <MenuTrigger
+            disabled={pending}
+            render={
+              <IconButton
+                size="md"
+                className="relative size-7"
+                aria-label={t(($) => $['endUser.appActions'], { ns: 'app', name: app.name })}
+              >
+                <span
+                  className={
+                    removeApp.isPending
+                      ? 'i-ri-loader-4-line size-4 animate-spin'
+                      : 'i-ri-more-fill size-4'
+                  }
+                  aria-hidden="true"
+                />
+              </IconButton>
+            }
+          />
+          <MenuContent className="min-w-54.5" side="bottom" align="end">
+            <MenuItem
+              disabled={pending}
+              onClick={() => {
+                resetErrors()
+                removeApp.mutate({ params: { app_id: app.id } })
+              }}
+            >
+              {t(($) => $['endUser.removeFromList'], { ns: 'app' })}
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
       {error && (
         <p role="alert" className="px-4 system-xs-regular text-text-destructive">

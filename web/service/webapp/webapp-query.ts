@@ -9,6 +9,12 @@ export function createWebAppQuery(client: WebAppClient) {
       me: {
         apps: {
           byAppId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, context) =>
+                  context.client.invalidateQueries({ queryKey: query.me.apps.key() }),
+              },
+            },
             favorite: {
               put: {
                 mutationOptions: {
