@@ -371,13 +371,13 @@ export function TidyPage() {
                   : t(($) => $['tidy.tokenNotice'])}
               </DialogDescription>
             </DialogHeader>
-            <DialogBody>
-              {error && (
+            {error && (
+              <DialogBody>
                 <p role="alert" className="text-text-destructive">
                   {error}
                 </p>
-              )}
-            </DialogBody>
+              </DialogBody>
+            )}
             <DialogFooter>
               <Button type="button" disabled={pending} onClick={() => setConfirmation(undefined)}>
                 {common(($) => $['operation.cancel'])}
