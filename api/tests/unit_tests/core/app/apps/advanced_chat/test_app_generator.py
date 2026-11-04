@@ -533,7 +533,13 @@ class TestAdvancedChatAppGeneratorInternals:
         workflow = _app_generator_make_workflow(workflow_id="wf-1", features={"feature": True})
         conversation = _make_conversation(conversation_id="conv-1")
         message = _make_message(message_id="msg-1", conversation_id=conversation.id)
-        sqlite_session.add_all([app, workflow, conversation, message])
+        app.enable_site = True
+        workflow.version = "published"
+        app.workflow_id = workflow.id
+        app_config.workflow_id = workflow.id
+        user = _make_end_user(end_user_id="user")
+        conversation.from_end_user_id = user.id
+        sqlite_session.add_all([app, workflow, user, conversation, message])
         sqlite_session.commit()
         commit_count = 0
 
@@ -596,7 +602,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         response = generator._generate(
             workflow=workflow,
-            user=_app_generator_make_account(account_id="user"),
+            user=user,
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
@@ -648,7 +654,13 @@ class TestAdvancedChatAppGeneratorInternals:
         workflow = _app_generator_make_workflow(workflow_id="wf-2")
         conversation = _make_conversation(conversation_id="conv-2")
         message = _make_message(message_id="msg-2", conversation_id=conversation.id)
-        sqlite_session.add_all([app, workflow, conversation, message])
+        app.enable_site = True
+        workflow.version = "published"
+        app.workflow_id = workflow.id
+        app_config.workflow_id = workflow.id
+        user = _make_end_user(end_user_id="user")
+        conversation.from_end_user_id = user.id
+        sqlite_session.add_all([app, workflow, user, conversation, message])
         sqlite_session.commit()
         commit_count = 0
 
@@ -708,7 +720,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         response = generator._generate(
             workflow=workflow,
-            user=_app_generator_make_account(account_id="user"),
+            user=user,
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
@@ -1542,6 +1554,17 @@ def _account() -> _advanced_chat_app_generator_Account:
 
 
 def test_init_generate_records_sets_conversation_metadata(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
@@ -1559,6 +1582,17 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
 
 
 def test_init_generate_records_marks_existing_conversation(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 

@@ -61,6 +61,7 @@ class WebConversationService:
     def pin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session):
         if not user:
             return
+        ConversationService.get_conversation(app_model, conversation_id, user, session=session, lock=True)
         pinned_conversation = session.scalar(
             select(PinnedConversation)
             .where(
@@ -93,6 +94,7 @@ class WebConversationService:
     def unpin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session):
         if not user:
             return
+        ConversationService.get_conversation(app_model, conversation_id, user, session=session, lock=True)
         pinned_conversation = session.scalar(
             select(PinnedConversation)
             .where(

@@ -462,7 +462,7 @@ class WorkflowResponseConverter:
         *,
         task_id: str,
         workflow_run: WorkflowRun,
-        creator_user: Account | EndUser,
+        creator_user: Account | EndUser | None,
     ) -> WorkflowFinishStreamResponse:
         run_id = workflow_run.id
         elapsed_time = workflow_run.elapsed_time
@@ -474,6 +474,8 @@ class WorkflowResponseConverter:
         created_by: Mapping[str, object]
         user = creator_user
         match user:
+            case None:
+                created_by = {"id": workflow_run.created_by}
             case Account():
                 created_by = {
                     "id": user.id,
