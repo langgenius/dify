@@ -4,7 +4,6 @@ import { useCallback } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { isBuilderCanvasActive } from '../use-workflow-viewport'
 
 export const useWorkflowNodeLoopStarted = () => {
   const store = useStoreApi()
@@ -39,10 +38,7 @@ export const useWorkflowNodeLoopStarted = () => {
       const zoom = transform[2]
 
       const state = workflowStore.getState()
-      if (
-        !currentNode!.parentId &&
-        !(isBuilderCanvasActive(state) && state.builderViewportManuallyChanged)
-      ) {
+      if (!currentNode!.parentId && state.autoFollowExecution) {
         setViewport({
           x:
             (containerParams.clientWidth - 400 - currentNode!.width! * zoom) / 2 -

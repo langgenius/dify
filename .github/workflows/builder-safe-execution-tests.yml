@@ -1261,7 +1261,7 @@ jobs:
         working-directory: web
         run: |
           set -o pipefail
-          vp test run --project unit app/components/workflow-app/components/dify-builder 2>&1 | tee ../builder-api-contracts/builder-consumer-tests.log
+          vp test run --project unit features/dify-builder 2>&1 | tee ../builder-api-contracts/builder-consumer-tests.log
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

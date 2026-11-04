@@ -1,17 +1,17 @@
+import type { ReactNode } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 
-function EditingTitle() {
+function EditingTitle({ saveStatus }: { saveStatus?: ReactNode }) {
   const { t } = useTranslation(['workflow'])
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
   const publishedAt = useStore((state) => state.publishedAt)
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
-  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
 
   return (
     <div
@@ -19,17 +19,15 @@ function EditingTitle() {
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
       className="h-4 system-xs-regular text-text-tertiary"
     >
-      {hasWorkflowDraftConflict && (
-        <span>{t(($) => $['draftConflict.unsaved'], { ns: 'workflow' })}</span>
-      )}
-      {!hasWorkflowDraftConflict && !!draftUpdatedAt && (
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
-          <time dateTime={new Date(draftUpdatedAt).toISOString()}>
-            {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
-          </time>
-        </span>
-      )}
+      {saveStatus ??
+        (!!draftUpdatedAt && (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
+            <time dateTime={new Date(draftUpdatedAt).toISOString()}>
+              {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
+            </time>
+          </span>
+        ))}
       <span aria-hidden="true" className="mx-1 inline-flex items-center">
         ·
       </span>

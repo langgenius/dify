@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
+import type { SyncDraftResult } from '@/app/components/workflow/hooks-store'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, waitFor } from '@testing-library/react'
@@ -123,7 +124,7 @@ describe('usePipelineRunByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     queryClient = createTestQueryClient()
-    mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
+    mockDoSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 1234 })
     const container = document.createElement('div')
     container.id = 'workflow-container'
     Object.defineProperty(container, 'clientWidth', { value: 1000 })
@@ -260,29 +261,33 @@ describe('usePipelineRunByCanEdit', () => {
   })
 
   describe('running', () => {
-    it('resets canvas run state, saves the draft, then streams the run', async () => {
-      const pending = createDeferred<void>()
+    it('saves the draft before resetting canvas run state and streaming the run', async () => {
+      const pending = createDeferred<SyncDraftResult>()
       mockDoSyncWorkflowDraft.mockReturnValue(pending.promise)
       const { result, store } = renderPipelineRun({
         historyWorkflowData: { id: 'old-run' },
       })
 
-      let running!: Promise<void>
+      let running!: ReturnType<typeof result.current.run.handleRun>
       act(() => {
         running = result.current.run.handleRun({ inputs: { query: 'test' } })
+      })
+
+      expect(result.current.nodes.find((node) => node.id === 'source')?.data).toMatchObject({
+        selected: true,
+        _runningStatus: WorkflowRunningStatus.Succeeded,
+      })
+      expect(mockSsePost).not.toHaveBeenCalled()
+
+      await act(async () => {
+        pending.resolve({ hash: 'saved-hash', updatedAt: 1234 })
+        await running
       })
 
       expect(result.current.nodes.find((node) => node.id === 'source')?.data).toMatchObject({
         selected: false,
         _runningStatus: undefined,
       })
-      expect(mockSsePost).not.toHaveBeenCalled()
-
-      await act(async () => {
-        pending.resolve()
-        await running
-      })
-
       expect(store.getState()).toMatchObject({
         historyWorkflowData: undefined,
         workflowRunningData: {

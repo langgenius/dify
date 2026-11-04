@@ -269,11 +269,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/app/log/filter.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -1653,7 +1648,7 @@
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/test-run/result/index.tsx": {
@@ -3121,6 +3116,11 @@
   },
   "web/features/app-access-error/document-response.ts": {
     "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "web/features/app-creation/template-dialog/categories.tsx": {
+    "react/only-export-components": {
       "count": 1
     }
   },

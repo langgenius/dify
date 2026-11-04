@@ -11,6 +11,7 @@ import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/ed
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
+import { useHooksStore } from '../hooks-store'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
@@ -34,6 +35,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
   const { handleNodesCancelSelected } = useNodesInteractions()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const onWorkflowHistoryOpen = useHooksStore((s) => s.onWorkflowHistoryOpen)
   const setControlMode = useStore((s) => s.setControlMode)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
@@ -151,8 +153,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
                         },
                         showInputsPanel: false,
                         showEnvPanel: false,
-                        showDifyBuilderPanel: false,
                       })
+                      onWorkflowHistoryOpen()
                       closeAllInputFieldPanels()
                       handleBackupDraft()
                       setOpen(false)

@@ -12,8 +12,8 @@ import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
 import { consoleQuery } from '@/service/console'
-import { difyBuilderPendingCreationAtom } from '../components/dify-builder/creation'
 
 export const useWorkflowTemplate = () => {
   const isChatflow = useAtomValue(isChatflowAtom)
