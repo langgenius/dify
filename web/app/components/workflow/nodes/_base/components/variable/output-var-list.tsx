@@ -6,7 +6,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -23,6 +23,9 @@ type Props = Readonly<{
 
 const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange, onRemove }) => {
   const { t } = useTranslation(['appDebug', 'workflow'])
+  // A name being typed that another row already holds. `outputs` is keyed by name, so it
+  // stays here instead of being committed over the other row's entry.
+  const [pendingName, setPendingName] = useState<{ index: number; name: string } | null>(null)
 
   const list = outputKeyOrders.map((key) => {
     return {
@@ -58,10 +61,14 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
         replaceSpaceWithUnderscoreInVarNameInput(e.target)
         const newKey = e.target.value
 
-        validateVarInput(
-          list.filter((_, itemIndex) => itemIndex !== index),
-          newKey,
-        )
+        const otherVariables = list.filter((_, itemIndex) => itemIndex !== index)
+        validateVarInput(otherVariables, newKey)
+
+        if (otherVariables.some((item) => item.variable === newKey)) {
+          setPendingName({ index, name: newKey })
+          return
+        }
+        setPendingName(null)
 
         const newOutputs = produce(outputs, (draft) => {
           draft[newKey] = draft[oldKey]!
@@ -73,6 +80,10 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
     },
     [list, onChange, outputs, validateVarInput],
   )
+
+  const handleVarNameBlur = useCallback(() => {
+    setPendingName(null)
+  }, [])
 
   const handleVarTypeChange = useCallback(
     (index: number) => {
@@ -102,8 +113,9 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
         <div className="flex items-center space-x-1" key={index}>
           <Input
             readOnly={readonly}
-            value={item.variable}
+            value={pendingName?.index === index ? pendingName.name : item.variable}
             onChange={handleVarNameChange(index)}
+            onBlur={handleVarNameBlur}
             aria-label={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })}
             placeholder={t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })}
             className="grow"
