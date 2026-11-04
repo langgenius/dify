@@ -1,3 +1,5 @@
+from typing import override
+
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
@@ -17,6 +19,7 @@ class OnlineDocumentDatasourcePluginProviderController(DatasourcePluginProviderC
         self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
+    @override
     def provider_type(self) -> DatasourceProviderType:
         """
         returns the type of the provider

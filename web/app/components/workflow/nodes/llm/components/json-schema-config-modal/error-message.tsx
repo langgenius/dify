@@ -1,23 +1,19 @@
 import type { FC } from 'react'
-import { RiErrorWarningFill } from '@remixicon/react'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type ErrorMessageProps = {
   message: string
 } & React.HTMLAttributes<HTMLDivElement>
 
-const ErrorMessage: FC<ErrorMessageProps> = ({
-  message,
-  className,
-}) => {
+const ErrorMessage: FC<ErrorMessageProps> = ({ message, className }) => {
   return (
-    <div className={cn('mt-1 flex gap-x-1 rounded-lg border-[0.5px] border-components-panel-border bg-toast-error-bg p-2', className)}>
-      <RiErrorWarningFill className="h-4 w-4 shrink-0 text-text-destructive" />
-      <div className="system-xs-medium max-h-12 grow overflow-y-auto whitespace-pre-line wrap-break-word text-text-primary">
-        {message}
-      </div>
-    </div>
+    <Alert type="error" role="note" className={cn('mt-1', className)}>
+      <AlertTitle className="whitespace-pre-line">
+        <div className="max-h-12 overflow-y-auto">{message}</div>
+      </AlertTitle>
+    </Alert>
   )
 }
 

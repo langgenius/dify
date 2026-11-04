@@ -32,6 +32,11 @@ class RedisConfig(BaseSettings):
         default=0,
     )
 
+    REDIS_KEY_PREFIX: str = Field(
+        description="Optional global prefix for Redis keys, topics, and transport artifacts",
+        default="",
+    )
+
     REDIS_USE_SSL: bool = Field(
         description="Enable SSL/TLS for the Redis connection",
         default=False,
@@ -147,6 +152,11 @@ class RedisConfig(BaseSettings):
         description="Interval in seconds between Redis connection health checks (0 to disable)",
         default=30,
     )
+
+    REDIS_KEEPALIVE: bool = Field(default=False, description="Keepalive for Redis connections")
+    REDIS_KEEPALIVE_IDLE: PositiveInt = Field(default=30, description="redis keepalive idle timeout")
+    REDIS_KEEPALIVE_INTERVAL: PositiveInt = Field(default=10, description="redis keepalive interval")
+    REDIS_KEEPALIVE_COUNT: PositiveInt = Field(default=10, description="redis keepalive count")
 
     @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
     @classmethod

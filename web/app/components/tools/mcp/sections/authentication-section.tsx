@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
-import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
 import { API_PREFIX } from '@/config'
-import { cn } from '@/utils/classnames'
 
 type AuthenticationSectionProps = {
   isDynamicRegistration: boolean
@@ -24,50 +25,61 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
   credentials,
   onCredentialsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
+  const dynamicRegistrationLabelId = useId()
+  const clientIdInputId = useId()
+  const clientSecretInputId = useId()
 
   return (
     <>
       <div>
         <div className="mb-1 flex h-6 items-center">
           <Switch
-            className="mr-2"
-            value={isDynamicRegistration}
-            onChange={onDynamicRegistrationChange}
+            aria-labelledby={dynamicRegistrationLabelId}
+            className="me-2"
+            checked={isDynamicRegistration}
+            onCheckedChange={onDynamicRegistrationChange}
           />
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
+          <span id={dynamicRegistrationLabelId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['mcp.modal.useDynamicClientRegistration'], { ns: 'tools' })}
+          </span>
         </div>
         {!isDynamicRegistration && (
-          <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
-            <div className="system-xs-regular text-text-secondary">
-              <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
-              <code className="system-xs-medium block break-all rounded-sm bg-state-warning-active px-2 py-1 text-text-secondary">
+          <Alert type="warning" className="mt-2">
+            <AlertTitle>{t(($) => $['mcp.modal.redirectUrlWarning'], { ns: 'tools' })}</AlertTitle>
+            <AlertDescription>
+              <code className="mt-1 block rounded-sm bg-state-warning-active px-2 py-1 system-xs-medium break-all text-text-secondary">
                 {`${API_PREFIX}/mcp/oauth/callback`}
               </code>
-            </div>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
+          <label htmlFor={clientIdInputId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['mcp.modal.clientID'], { ns: 'tools' })}
+          </label>
         </div>
         <Input
+          id={clientIdInputId}
           value={clientID}
-          onChange={e => onClientIDChange(e.target.value)}
-          placeholder={t('mcp.modal.clientID', { ns: 'tools' })}
+          onChange={(e) => onClientIDChange(e.target.value)}
+          placeholder={t(($) => $['mcp.modal.clientID'], { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
+          <label htmlFor={clientSecretInputId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['mcp.modal.clientSecret'], { ns: 'tools' })}
+          </label>
         </div>
         <Input
+          id={clientSecretInputId}
           value={credentials}
-          onChange={e => onCredentialsChange(e.target.value)}
-          placeholder={t('mcp.modal.clientSecretPlaceholder', { ns: 'tools' })}
+          onChange={(e) => onCredentialsChange(e.target.value)}
+          placeholder={t(($) => $['mcp.modal.clientSecretPlaceholder'], { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />
       </div>

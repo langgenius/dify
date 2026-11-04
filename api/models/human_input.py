@@ -3,11 +3,11 @@ from enum import StrEnum
 from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.workflow.human_input_compat import DeliveryMethodType
+from core.workflow.human_input_adapter import DeliveryMethodType, InstantMessageProvider, InstantMessageRecipientType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.helper import generate_string
 
 from .base import Base, DefaultFieldsMixin
@@ -40,6 +40,8 @@ class HumanInputForm(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    # Chatflow forms retain their conversation for lookup and deletion.
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     form_kind: Mapped[HumanInputFormKind] = mapped_column(
         EnumText(HumanInputFormKind),
         nullable=False,
@@ -127,20 +129,42 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
     )
 
 
+class ApprovalChannel(StrEnum):
+    """Where a paused human input form can be approved, surfaced to API callers."""
+
+    EMAIL = "email"
+    IM = "im"
+    WEB_APP = "web_app"
+    CONSOLE = "console"
+
+
 class RecipientType(StrEnum):
-    # EMAIL_MEMBER member means that the
-    EMAIL_MEMBER = "email_member"
-    EMAIL_EXTERNAL = "email_external"
+    # Second value = the approval channel this recipient maps to (surfaced in `approval_channels`).
+    EMAIL_MEMBER = "email_member", ApprovalChannel.EMAIL
+    EMAIL_EXTERNAL = "email_external", ApprovalChannel.EMAIL
+    INSTANT_MESSAGE = "instant_message", ApprovalChannel.IM
     # STANDALONE_WEB_APP is used by the standalone web app.
     #
     # It's not used while running workflows / chatflows containing HumanInput
     # node inside console.
-    STANDALONE_WEB_APP = "standalone_web_app"
+    STANDALONE_WEB_APP = "standalone_web_app", ApprovalChannel.WEB_APP
     # CONSOLE is used while running workflows / chatflows containing HumanInput
     # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
-    CONSOLE = "console"
+    CONSOLE = "console", ApprovalChannel.CONSOLE
     # BACKSTAGE is used for backstage input inside console.
-    BACKSTAGE = "backstage"
+    BACKSTAGE = "backstage", ApprovalChannel.CONSOLE
+
+    _approval_channel: ApprovalChannel
+
+    def __new__(cls, value: str, approval_channel: ApprovalChannel) -> "RecipientType":
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member._approval_channel = approval_channel
+        return member
+
+    @property
+    def approval_channel(self) -> ApprovalChannel:
+        return self._approval_channel
 
 
 @final
@@ -156,6 +180,26 @@ class EmailMemberRecipientPayload(BaseModel):
 class EmailExternalRecipientPayload(BaseModel):
     TYPE: Literal[RecipientType.EMAIL_EXTERNAL] = RecipientType.EMAIL_EXTERNAL
     email: str
+
+
+@final
+class InstantMessageRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.INSTANT_MESSAGE] = RecipientType.INSTANT_MESSAGE
+    provider: InstantMessageProvider
+    recipient_kind: InstantMessageRecipientType
+    channel_id: str | None = None
+    user_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_target(self) -> Self:
+        match self.recipient_kind:
+            case InstantMessageRecipientType.CHANNEL:
+                if self.channel_id is None or self.user_id is not None:
+                    raise ValueError("channel recipients must include channel_id and must not include user_id")
+            case InstantMessageRecipientType.USER:
+                if self.user_id is None or self.channel_id is not None:
+                    raise ValueError("user recipients must include user_id and must not include channel_id")
+        return self
 
 
 @final
@@ -184,6 +228,7 @@ class ConsoleDeliveryPayload(BaseModel):
 RecipientPayload = Annotated[
     EmailMemberRecipientPayload
     | EmailExternalRecipientPayload
+    | InstantMessageRecipientPayload
     | StandaloneWebAppRecipientPayload
     | ConsoleRecipientPayload
     | BackstageRecipientPayload,
@@ -251,3 +296,55 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
             access_token=_generate_token(),
         )
         return recipient_model
+
+
+class HumanInputFormUploadToken(DefaultFieldsMixin, Base):
+    """Upload authorization token bound to one human input form recipient.
+
+    HITL upload tokens are intentionally separate from app/service bearer tokens.
+    The token is stored as an opaque random value so upload endpoints can perform
+    a direct lookup without entering the normal Web App authentication chain.
+    Upload ownership is resolved from the form's workflow run initiator instead
+    of being persisted on the token row itself.
+    """
+
+    __tablename__ = "human_input_form_upload_tokens"
+    __table_args__ = (
+        sa.UniqueConstraint("token", name="human_input_form_upload_tokens_token_key"),
+        sa.Index("human_input_form_upload_tokens_form_id_idx", "form_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    recipient_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    form: Mapped[HumanInputForm] = relationship(
+        "HumanInputForm",
+        uselist=False,
+        foreign_keys=[form_id],
+        primaryjoin="foreign(HumanInputFormUploadToken.form_id) == HumanInputForm.id",
+        lazy="raise",
+    )
+
+
+class HumanInputFormUploadFile(DefaultFieldsMixin, Base):
+    """Association between a human input form and a file uploaded through its token.
+
+    Ownership remains on ``UploadFile`` itself; this table only records the
+    durable form/token/file linkage needed by Human Input flows.
+    """
+
+    __tablename__ = "human_input_form_upload_files"
+    __table_args__ = (
+        sa.UniqueConstraint("upload_file_id", name="human_input_form_upload_files_upload_file_id_key"),
+        sa.Index("human_input_form_upload_files_form_id_idx", "form_id"),
+        sa.Index("human_input_form_upload_files_upload_token_id_idx", "upload_token_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

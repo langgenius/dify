@@ -1,23 +1,30 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import HiddenFields from './hidden-fields'
 import InitialFields from './initial-fields'
 import { createInputFieldSchema } from './schema'
 import ShowAllSettings from './show-all-settings'
 
-const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, isEditMode = true }: InputFieldFormProps) => {
-  const { t } = useTranslation()
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
+const InputFieldForm = ({
+  initialData,
+  supportFile = false,
+  onCancel,
+  onSubmit,
+  isEditMode = true,
+}: InputFieldFormProps) => {
+  const { t } = useTranslation(['appDebug', 'common'])
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { maxFileUploadLimit } = getFileSizeLimit(fileUploadConfigResponse)
   const inputFieldForm = useAppForm({
     defaultValues: initialData,
     validators: {
@@ -28,7 +35,7 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }
@@ -72,13 +79,13 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
     >
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type="horizontal" />
-        {!showAllSettings && (<ShowAllSettingComp form={inputFieldForm} />)}
-        {showAllSettings && (<HiddenFieldsComp form={inputFieldForm} />)}
+        <Separator className="my-2 h-[0.5px]" orientation="horizontal" />
+        {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
+        {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>
       <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />

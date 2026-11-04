@@ -1,3 +1,4 @@
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
 from graphon.nodes.parameter_extractor.entities import (
@@ -8,8 +9,6 @@ from graphon.nodes.question_classifier.entities import (
     ClassConfig,
     QuestionClassifierNodeData,
 )
-
-from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from services.workflow_service import WorkflowService
 
 

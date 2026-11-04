@@ -4,15 +4,15 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
+from typing import override
 
-from graphon.entities import WorkflowExecution
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.factory import WorkflowExecutionRepository
-from libs.helper import extract_tenant_id
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
     CreatorUserRole,
@@ -20,6 +20,7 @@ from models import (
     WorkflowRun,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
@@ -48,24 +50,24 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -100,7 +102,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Convert status to domain enum
         status = WorkflowExecutionStatus(db_model.status)
 
-        return WorkflowExecution(
+        return TimedWorkflowExecution(
             id_=db_model.id,
             workflow_id=db_model.workflow_id,
             workflow_type=WorkflowType(db_model.type),
@@ -115,6 +117,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             exceptions_count=db_model.exceptions_count,
             started_at=db_model.created_at,
             finished_at=db_model.finished_at,
+            accumulated_elapsed_time=db_model.elapsed_time,
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
@@ -166,14 +169,16 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.created_at = domain_model.started_at
         db_model.finished_at = domain_model.finished_at
 
-        # Calculate elapsed time if finished_at is available
-        if domain_model.finished_at:
-            db_model.elapsed_time = (domain_model.finished_at - domain_model.started_at).total_seconds()
+        if domain_model.finished_at or (
+            isinstance(domain_model, TimedWorkflowExecution) and domain_model.accumulated_elapsed_time is not None
+        ):
+            db_model.elapsed_time = domain_model.elapsed_time
         else:
             db_model.elapsed_time = 0
 
         return db_model
 
+    @override
     def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution domain entity to the database.
@@ -195,12 +200,21 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
-            existing_model = session.get(WorkflowRun, db_model.id)
+            existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id:
                     raise ValueError("Unauthorized access to workflow run")
+                # A delayed persistence task must not resurrect a durably stopped run.
+                if (
+                    existing_model.stop_requested_at is not None
+                    and existing_model.status == WorkflowExecutionStatus.STOPPED
+                ):
+                    return
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
+                # The control repository owns these fields. Dataclass defaults must not clear them on merge.
+                db_model.task_id = existing_model.task_id
+                db_model.stop_requested_at = existing_model.stop_requested_at
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key
@@ -209,3 +223,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.save(execution)

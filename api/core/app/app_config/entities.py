@@ -1,14 +1,14 @@
 from enum import StrEnum, auto
 from typing import Any, Literal
 
-from graphon.file import FileUploadConfig
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
-from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.entities import MetadataFilteringCondition
+from graphon.file import FileUploadConfig
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
 
@@ -237,7 +237,9 @@ class EasyUIBasedAppConfig(AppConfig):
     """
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
-    app_model_config_id: str
+    # Optional: an Agent App has no legacy app_model_config row, so the id may be
+    # absent (persistence then stores NULL for the conversation's id).
+    app_model_config_id: str | None = None
     app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity

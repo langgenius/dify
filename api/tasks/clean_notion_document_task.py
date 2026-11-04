@@ -6,8 +6,9 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -25,27 +26,43 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     start_at = time.perf_counter()
     total_index_node_ids = []
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
         if not dataset:
             raise Exception("Document has no dataset")
-        index_type = dataset.doc_form
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_type = get_dataset_doc_form(dataset, session=session)
 
         document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
         session.execute(document_delete_stmt)
 
         for document_id in document_ids:
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            total_index_node_ids.extend([segment.index_node_id for segment in segments])
+            total_index_node_ids.extend([segment.index_node_id for segment in segments if segment.index_node_id])
 
-    with session_factory.create_session() as session:
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-        if dataset:
-            index_processor.clean(
-                dataset, total_index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-            )
+    # Wrap vector / keyword index cleanup in try/except so that a transient
+    # failure here (e.g. billing API hiccup propagated via FeatureService when
+    # ``ModelManager`` is initialized inside ``Vector(dataset)``) does not abort
+    # the task and leave the already-deleted documents' segments stranded in PG.
+    # The Document rows are hard-deleted in the previous session block, so any
+    # exception escaping this task would produce orphans that no later request
+    # can reference back. Mirrors the pattern in ``clean_dataset_task``.
+    try:
+        clean_document_indexes(
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            doc_form=index_type,
+            new_session=session_factory.create_session,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to clean vector / keyword index in clean_notion_document_task, "
+            "dataset_id=%s, document_ids=%s, index_node_ids_count=%d. "
+            "Continuing with segment deletion; vector orphans can be reaped later.",
+            dataset_id,
+            document_ids,
+            len(total_index_node_ids),
+        )
 
     with session_factory.create_session() as session, session.begin():
         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
@@ -54,9 +71,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     end_at = time.perf_counter()
     logger.info(
         click.style(
-            "Clean document when import form notion document deleted end :: {} latency: {}".format(
-                dataset_id, end_at - start_at
-            ),
+            f"Clean document when import form notion document deleted end :: {dataset_id} latency: {end_at - start_at}",
             fg="green",
         )
     )

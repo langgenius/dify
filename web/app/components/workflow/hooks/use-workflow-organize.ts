@@ -1,10 +1,8 @@
 import { useCallback } from 'react'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from '../store'
-import {
-  getLayoutByELK,
-  getLayoutForChildNodes,
-} from '../utils/elk-layout'
+import { getLayoutByELK, getLayoutForChildNodes } from '../utils/elk-layout'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
@@ -17,33 +15,31 @@ import {
 
 export const useWorkflowOrganize = () => {
   const workflowStore = useWorkflowStore()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const reactflow = useReactFlow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleLayout = useCallback(async () => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     workflowStore.setState({ nodeAnimation: true })
-    const {
-      getNodes,
-      edges,
-      setNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges, setNodes } = collaborativeWorkflow.getState()
     const parentNodes = getLayoutContainerNodes(nodes)
 
     const childLayoutEntries = await Promise.all(
-      parentNodes.map(async node => [node.id, await getLayoutForChildNodes(node.id, nodes, edges)] as const),
+      parentNodes.map(
+        async (node) => [node.id, await getLayoutForChildNodes(node.id, nodes, edges)] as const,
+      ),
     )
-    const childLayoutsMap = childLayoutEntries.reduce((acc, [nodeId, layout]) => {
-      if (layout)
-        acc[nodeId] = layout
-      return acc
-    }, {} as Record<string, NonNullable<Awaited<ReturnType<typeof getLayoutForChildNodes>>>>)
+    const childLayoutsMap = childLayoutEntries.reduce(
+      (acc, [nodeId, layout]) => {
+        if (layout) acc[nodeId] = layout
+        return acc
+      },
+      {} as Record<string, NonNullable<Awaited<ReturnType<typeof getLayoutForChildNodes>>>>,
+    )
 
     const nodesWithUpdatedSizes = applyContainerSizeChanges(
       nodes,
@@ -63,7 +59,14 @@ export const useWorkflowOrganize = () => {
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [getNodesReadOnly, handleSyncWorkflowDraft, reactflow, saveStateToHistory, store, workflowStore])
+  }, [
+    getNodesReadOnly,
+    handleSyncWorkflowDraft,
+    reactflow,
+    saveStateToHistory,
+    collaborativeWorkflow,
+    workflowStore,
+  ])
 
   return {
     handleLayout,

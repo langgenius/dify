@@ -1,14 +1,11 @@
-import base64
 import secrets
 
 import click
-from sqlalchemy.orm import sessionmaker
 
 from constants.languages import languages
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from libs.helper import email as email_validate
-from libs.password import hash_password, password_pattern, valid_password
-from services.account_service import AccountService, RegisterService, TenantService
+from libs.password import password_pattern, valid_password
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -20,35 +17,25 @@ def reset_password(email, new_password, password_confirm):
     Reset password of owner account
     Only available in SELF_HOSTED mode
     """
-    if str(new_password).strip() != str(password_confirm).strip():
+    if new_password.strip() != password_confirm.strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
     normalized_email = email.strip().lower()
 
-    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
+    account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(email.strip())
 
-        if not account:
-            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-            return
+    if not account:
+        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+        return
 
-        try:
-            valid_password(new_password)
-        except:
-            click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
-            return
+    try:
+        valid_password(new_password)
+    except ValueError:
+        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+        return
 
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(new_password, salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        AccountService.reset_login_error_rate_limit(normalized_email)
-        click.echo(click.style("Password reset successfully.", fg="green"))
+    application_services().accounts.lifecycle.reset_password(account.id, new_password, email=normalized_email)
+    click.echo(click.style("Password reset successfully.", fg="green"))
 
 
 @click.command("reset-email", help="Reset the account email.")
@@ -60,26 +47,25 @@ def reset_email(email, new_email, email_confirm):
     Replace account email
     :return:
     """
-    if str(new_email).strip() != str(email_confirm).strip():
+    if new_email.strip() != email_confirm.strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
     normalized_new_email = new_email.strip().lower()
 
-    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
+    account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(email.strip())
 
-        if not account:
-            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-            return
+    if not account:
+        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+        return
 
-        try:
-            email_validate(normalized_new_email)
-        except:
-            click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
-            return
+    try:
+        email_validate(normalized_new_email)
+    except ValueError:
+        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+        return
 
-        account.email = normalized_new_email
-        click.echo(click.style("Email updated successfully.", fg="green"))
+    application_services().accounts.lifecycle.set_email(account.id, normalized_new_email)
+    click.echo(click.style("Email updated successfully.", fg="green"))
 
 
 @click.command("create-tenant", help="Create account and tenant.")
@@ -109,18 +95,28 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
     # Validates name encoding for non-Latin characters.
     name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
-    # generate random password
-    new_password = secrets.token_urlsafe(16)
+    # Generate a random password that satisfies the password policy.
+    # The iteration limit guards against infinite loops caused by unexpected bugs in valid_password.
+    for _ in range(100):
+        new_password = secrets.token_urlsafe(16)
+        try:
+            valid_password(new_password)
+            break
+        except Exception:
+            continue
+    else:
+        click.echo(click.style("Failed to generate a valid password. Please try again.", fg="red"))
+        return
 
     # register account
-    account = RegisterService.register(
+    account = application_services().accounts.lifecycle.register(
         email=email,
         name=account_name,
         password=new_password,
         language=language,
         create_workspace_required=False,
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name)
+    application_services().workspaces.provisioning.create_owner_workspace(account.id, name=name, if_missing=True)
 
     click.echo(
         click.style(

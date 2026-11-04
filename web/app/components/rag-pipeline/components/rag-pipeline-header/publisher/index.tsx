@@ -1,53 +1,147 @@
+import type { IconInfo } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
-import Popup from './popup'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { toast } from '@/app/notifications'
+import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
+import { Popup } from './popup'
 
 const Publisher = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline', 'workflow'])
   const [open, setOpen] = useState(false)
+  const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
+  const docLink = useDocLink()
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
+  const queryClient = useQueryClient()
+  const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
+    useState(false)
+  const [isPublishingAsCustomizedPipeline, setIsPublishingAsCustomizedPipeline] = useState(false)
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (newOpen)
-      handleSyncWorkflowDraft(true)
-    setOpen(newOpen)
-  }, [handleSyncWorkflowDraft])
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (!newOpen && confirmVisible) return
+      if (newOpen && canPipelineRelease) handleSyncWorkflowDraft(true)
+      setOpen(canPipelineRelease && newOpen)
+    },
+    [confirmVisible, handleSyncWorkflowDraft, canPipelineRelease],
+  )
+  const closePopover = useCallback(() => {
+    setOpen(false)
+  }, [])
+  const openPublishAsKnowledgePipelineModal = useCallback(() => {
+    setShowPublishAsKnowledgePipelineModal(true)
+  }, [])
+  const hidePublishAsKnowledgePipelineModal = useCallback(() => {
+    setShowPublishAsKnowledgePipelineModal(false)
+  }, [])
+  const handlePublishAsKnowledgePipeline = useCallback(
+    async (name: string, icon: IconInfo, description?: string) => {
+      try {
+        setIsPublishingAsCustomizedPipeline(true)
+        await publishAsCustomizedPipeline({
+          params: { pipeline_id: pipelineId || '' },
+          body: { name, icon_info: icon, description },
+        })
+        toast.success(
+          t(($) => $['publishTemplate.success.message'], { ns: 'datasetPipeline' }),
+          {
+            description: (
+              <div className="flex flex-col gap-y-1">
+                <span className="system-xs-regular text-text-secondary">
+                  {t(($) => $['publishTemplate.success.tip'], { ns: 'datasetPipeline' })}
+                </span>
+                <Link
+                  href={docLink()}
+                  target="_blank"
+                  className="inline-block system-xs-medium-uppercase text-text-accent"
+                >
+                  {t(($) => $['publishTemplate.success.learnMore'], { ns: 'datasetPipeline' })}
+                </Link>
+              </div>
+            ),
+          },
+        )
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+            input: { query: { type: 'customized' } },
+          }),
+        })
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }),
+        )
+      } finally {
+        setIsPublishingAsCustomizedPipeline(false)
+        hidePublishAsKnowledgePipelineModal()
+      }
+    },
+    [
+      docLink,
+      hidePublishAsKnowledgePipelineModal,
+      queryClient,
+      pipelineId,
+      publishAsCustomizedPipeline,
+      t,
+    ],
+  )
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 40,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
-        <Button
-          className="px-2"
-          variant="primary"
+    <>
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger
+          nativeButton
+          render={
+            <Button className="px-2" variant="primary" disabled={!canPipelineRelease}>
+              <span>{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
+              <RiArrowDownSLine className="size-4" />
+            </Button>
+          }
+        />
+        <PopoverContent
+          align="end"
+          sideOffset={4}
+          alignOffset={40}
+          className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
         >
-          <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-          <RiArrowDownSLine className="h-4 w-4" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
-        <Popup />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+          <Popup
+            onRequestClose={closePopover}
+            confirmVisible={confirmVisible}
+            onShowConfirm={showConfirm}
+            onHideConfirm={hideConfirm}
+            isPublishingAsCustomizedPipeline={isPublishingAsCustomizedPipeline}
+            onShowPublishAsKnowledgePipelineModal={openPublishAsKnowledgePipelineModal}
+          />
+        </PopoverContent>
+      </Popover>
+      {showPublishAsKnowledgePipelineModal && (
+        <PublishAsKnowledgePipelineModal
+          confirmDisabled={isPublishingAsCustomizedPipeline}
+          onConfirm={handlePublishAsKnowledgePipeline}
+          onCancel={hidePublishAsKnowledgePipelineModal}
+        />
+      )}
+    </>
   )
 }
 

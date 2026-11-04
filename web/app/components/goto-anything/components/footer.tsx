@@ -1,90 +1,61 @@
 'use client'
 
-import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useTranslation } from 'react-i18next'
 
 type FooterProps = {
-  resultCount: number
-  searchMode: string
-  isError: boolean
-  isCommandsMode: boolean
-  hasQuery: boolean
+  resultCount: number | null
+  isLoading: boolean
+  hasPartialFailure: boolean
+  onSelectMode: (query: string) => void
 }
 
-const Footer: FC<FooterProps> = ({
-  resultCount,
-  searchMode,
-  isError,
-  isCommandsMode,
-  hasQuery,
-}) => {
-  const { t } = useTranslation()
-
-  const renderLeftContent = () => {
-    if (resultCount > 0 || isError) {
-      if (isError) {
-        return (
-          <span className="text-red-500">
-            {t('gotoAnything.someServicesUnavailable', { ns: 'app' })}
-          </span>
-        )
-      }
-
-      return (
-        <>
-          {t('gotoAnything.resultCount', { ns: 'app', count: resultCount })}
-          {searchMode !== 'general' && (
-            <span className="ml-2 opacity-60">
-              {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
-            </span>
-          )}
-        </>
-      )
-    }
-
-    return (
-      <span className="opacity-60">
-        {(() => {
-          if (isCommandsMode)
-            return t('gotoAnything.selectToNavigate', { ns: 'app' })
-
-          if (hasQuery)
-            return t('gotoAnything.searching', { ns: 'app' })
-
-          return t('gotoAnything.startTyping', { ns: 'app' })
-        })()}
-      </span>
-    )
-  }
-
-  const renderRightContent = () => {
-    if (resultCount > 0 || isError) {
-      return (
-        <span className="opacity-60">
-          {searchMode !== 'general'
-            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
-            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
-        </span>
-      )
-    }
-
-    return (
-      <span className="opacity-60">
-        {hasQuery || isCommandsMode
-          ? t('gotoAnything.tips', { ns: 'app' })
-          : t('gotoAnything.pressEscToClose', { ns: 'app' })}
-      </span>
-    )
-  }
+export function Footer({ resultCount, isLoading, hasPartialFailure, onSelectMode }: FooterProps) {
+  const { t } = useTranslation(['app'])
+  const commandsLabel = t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+  const scopesLabel = t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })
 
   return (
-    <div className="border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary">
-      <div className="flex min-h-[16px] items-center justify-between">
-        <span>{renderLeftContent()}</span>
-        {renderRightContent()}
+    <div className="flex shrink-0 items-center gap-3 border-t border-divider-subtle bg-components-panel-bg-blur px-3 py-2 text-xs text-text-tertiary">
+      <div className="flex min-h-6 min-w-0 flex-1 items-center gap-1">
+        {resultCount === null ? (
+          <>
+            <Button
+              variant="ghost"
+              size="small"
+              aria-label={commandsLabel}
+              onClick={() => onSelectMode('/')}
+            >
+              <Kbd>/</Kbd>
+              <span className="hidden sm:inline">{commandsLabel}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="small"
+              aria-label={scopesLabel}
+              onClick={() => onSelectMode('@')}
+            >
+              <Kbd>@</Kbd>
+              <span className="hidden sm:inline">{scopesLabel}</span>
+            </Button>
+          </>
+        ) : (
+          <span>
+            {hasPartialFailure
+              ? t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })
+              : isLoading && resultCount === 0
+                ? t(($) => $['gotoAnything.searching'], { ns: 'app' })
+                : t(($) => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
+          </span>
+        )}
       </div>
+      {resultCount !== null && resultCount > 0 && (
+        <span className="flex shrink-0 items-center gap-1">
+          <span>{t(($) => $['gotoAnything.activate'], { ns: 'app' })}</span>
+          <Kbd>Enter</Kbd>
+        </span>
+      )}
     </div>
   )
 }
-
-export default Footer

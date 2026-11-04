@@ -1,195 +1,263 @@
 'use client'
-import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppIconType, AppSSO, Language } from '@/types/app'
-import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+
+import type {
+  AppDetailSiteResponse,
+  AppDetailWithSite,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import type { Language } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
+import { useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import PremiumBadge from '@/app/components/base/premium-badge'
-import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
-import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { languages } from '@/i18n-config/language'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
+import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
+import { consoleQuery } from '@/service/console'
 
-type ISettingsModalProps = {
+type SettingsDialogProps = {
   isChat: boolean
-  appInfo: AppDetailResponse & Partial<AppSSO>
-  isShow: boolean
-  defaultValue?: string
-  onClose: () => void
-  onSave?: (params: ConfigParams) => Promise<void>
+  canDeploy?: boolean
+  appInfo?: SettingsAppInfo
+  disabled?: boolean
+  triggerLabel?: string
+  onSave: (params: AppSiteUpdatePayload) => Promise<boolean>
 }
 
-export type ConfigParams = {
-  title: string
-  description: string
-  default_language: string
-  chat_color_theme: string
-  chat_color_theme_inverted: boolean
-  prompt_public: boolean
-  copyright: string
-  privacy_policy: string
-  custom_disclaimer: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string
-  show_workflow_steps: boolean
-  use_icon_as_answer_icon: boolean
-  enable_sso?: boolean
+type SettingsSiteInfo = Pick<
+  AppDetailSiteResponse,
+  | 'title'
+  | 'description'
+  | 'default_language'
+  | 'chat_color_theme'
+  | 'chat_color_theme_inverted'
+  | 'copyright'
+  | 'privacy_policy'
+  | 'custom_disclaimer'
+  | 'input_placeholder'
+  | 'icon_type'
+  | 'icon'
+  | 'icon_background'
+  | 'icon_url'
+  | 'show_workflow_steps'
+  | 'use_icon_as_answer_icon'
+>
+
+type SettingsAppIconSelection =
+  | IconPickerValue
+  | null
+  | {
+      type: 'link'
+      icon: string
+      url: string
+    }
+
+export type SettingsAppInfo = {
+  id: string
+  mode: AppDetailWithSite['mode']
+  site: SettingsSiteInfo
 }
+
+const INPUT_PLACEHOLDER_MAX_LENGTH = 64
+const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppDetailWithSite['mode']> = [
+  'chat',
+  'agent-chat',
+  'advanced-chat',
+] as const
 
 const prefixSettings = 'overview.appInfo.settings'
+type SelectOption = {
+  value: Language
+  name: string
+}
 
-const SettingsModal: FC<ISettingsModalProps> = ({
-  isChat,
-  appInfo,
-  isShow = false,
-  onClose,
-  onSave,
-}) => {
-  const [isShowMore, setIsShowMore] = useState(false)
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
+
+const createInputInfo = (appInfo: SettingsAppInfo) => {
   const {
     title,
-    icon_type,
-    icon,
-    icon_background,
-    icon_url,
     description,
     chat_color_theme,
     chat_color_theme_inverted,
     copyright,
     privacy_policy,
     custom_disclaimer,
-    default_language,
+    input_placeholder,
     show_workflow_steps,
     use_icon_as_answer_icon,
   } = appInfo.site
-  const [inputInfo, setInputInfo] = useState({
+
+  return {
     title,
-    desc: description,
-    chatColorTheme: chat_color_theme,
+    desc: description ?? '',
+    chatColorTheme: chat_color_theme ?? '',
     chatColorThemeInverted: chat_color_theme_inverted,
-    copyright,
+    copyright: copyright ?? '',
     copyrightSwitchValue: !!copyright,
-    privacyPolicy: privacy_policy,
+    privacyPolicy: privacy_policy ?? '',
     customDisclaimer: custom_disclaimer,
+    inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
-    enable_sso: appInfo.enable_sso,
-  })
-  const [language, setLanguage] = useState(default_language)
-  const [saveLoading, setSaveLoading] = useState(false)
-  const { t } = useTranslation()
-  const hideMoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  }
+}
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(
-    icon_type === 'image'
-      ? { type: 'image', url: icon_url!, fileId: icon }
-      : { type: 'emoji', icon, background: icon_background! },
+const createAppIcon = (appInfo: SettingsAppInfo): SettingsAppIconSelection => {
+  const { icon_type, icon, icon_background, icon_url } = appInfo.site
+
+  if (icon_type === 'image' && icon) return { type: 'image', url: icon_url ?? '', fileId: icon }
+
+  if (icon_type === 'link' && icon) return { type: 'link', icon, url: icon }
+
+  if (icon_type === 'emoji' && icon && icon_background)
+    return { type: 'emoji', icon, background: icon_background }
+
+  return null
+}
+
+const getSettingsResetKey = (appInfo: SettingsAppInfo) =>
+  JSON.stringify([
+    appInfo.id,
+    appInfo.site.title,
+    appInfo.site.description,
+    appInfo.site.chat_color_theme,
+    appInfo.site.chat_color_theme_inverted,
+    appInfo.site.copyright,
+    appInfo.site.privacy_policy,
+    appInfo.site.custom_disclaimer,
+    appInfo.site.input_placeholder,
+    appInfo.site.default_language,
+    appInfo.site.icon_type,
+    appInfo.site.icon,
+    appInfo.site.icon_background,
+    appInfo.site.icon_url,
+    appInfo.site.show_workflow_steps,
+    appInfo.site.use_icon_as_answer_icon,
+  ])
+
+function SettingsUpgradeButton() {
+  const { t } = useTranslation(['billing'])
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+
+  return (
+    <PremiumBadgeButton size="s" color="blue" onClick={() => setPricing('open')}>
+      <span
+        aria-hidden="true"
+        className="i-custom-public-common-sparkles-soft size-3.5 text-components-premium-badge-indigo-text-stop-0"
+      />
+      <span className="p-1 system-xs-medium">
+        {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+      </span>
+    </PremiumBadgeButton>
   )
+}
 
-  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const isFreePlan = plan.type === 'sandbox'
-  const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
-  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+function SettingsForm({
+  isChat,
+  canDeploy = false,
+  appInfo,
+  disabled,
+  pending,
+  onSubmit,
+}: Pick<SettingsDialogProps, 'isChat' | 'canDeploy' | 'disabled'> & {
+  appInfo: SettingsAppInfo
+  pending: boolean
+  onSubmit: (params: AppSiteUpdatePayload) => Promise<void>
+}) {
+  const [inputInfo, setInputInfo] = useState(() => createInputInfo(appInfo))
+  const [language, setLanguage] = useState(appInfo.site.default_language)
+  const { t } = useTranslation(['app', 'appOverview', 'common'])
+  const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(() => createAppIcon(appInfo))
+  const settingsResetKey = getSettingsResetKey(appInfo)
+  const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
-  useEffect(() => {
-    setInputInfo({
-      title,
-      desc: description,
-      chatColorTheme: chat_color_theme,
-      chatColorThemeInverted: chat_color_theme_inverted,
-      copyright,
-      copyrightSwitchValue: !!copyright,
-      privacyPolicy: privacy_policy,
-      customDisclaimer: custom_disclaimer,
-      show_workflow_steps,
-      use_icon_as_answer_icon,
-      enable_sso: appInfo.enable_sso,
-    })
-    setLanguage(default_language)
-    setAppIcon(icon_type === 'image'
-      ? { type: 'image', url: icon_url!, fileId: icon }
-      : { type: 'emoji', icon, background: icon_background! })
-  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
-
-  useEffect(() => {
-    return () => {
-      if (hideMoreTimerRef.current) {
-        clearTimeout(hideMoreTimerRef.current)
-        hideMoreTimerRef.current = null
-      }
-    }
-  }, [])
-
-  const onHide = () => {
-    onClose()
-    if (hideMoreTimerRef.current)
-      clearTimeout(hideMoreTimerRef.current)
-    hideMoreTimerRef.current = setTimeout(() => {
-      setIsShowMore(false)
-      hideMoreTimerRef.current = null
-    }, 200)
+  if (previousSettingsResetKey !== settingsResetKey) {
+    setPreviousSettingsResetKey(settingsResetKey)
+    setInputInfo(createInputInfo(appInfo))
+    setLanguage(appInfo.site.default_language)
+    setAppIcon(createAppIcon(appInfo))
   }
 
-  const onClickSave = async () => {
-    if (!inputInfo.title) {
-      toast.error(t('newApp.nameNotEmpty', { ns: 'app' }))
-      return
-    }
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: webappCopyrightEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.webapp_copyright_enabled,
+    }),
+  )
+  const canCustomizePlaceholder = deploymentEdition !== 'CLOUD' || webappCopyrightEnabled === true
+  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
+  const copyrightLegendId = useId()
+  const copyrightDescriptionId = useId()
+  const showUpgrade = deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false
+  const inputPlaceholderField = (
+    <InputGroup>
+      <InputGroupInput
+        readOnly={pending}
+        value={inputInfo.inputPlaceholder}
+        onValueChange={(value) => setInputInfo((item) => ({ ...item, inputPlaceholder: value }))}
+        maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
+        autoComplete="off"
+        placeholder={t(($) => $[`${prefixSettings}.more.inputPlaceholderPlaceholder`], {
+          ns: 'appOverview',
+        })}
+        className="enabled:not-focus:text-text-placeholder"
+      />
+      <InputGroupAddon align="inline-end" aria-hidden="true">
+        <span className="grid size-6 place-items-center rounded-md bg-components-button-primary-bg opacity-50">
+          <span className="i-custom-vender-solid-communication-send-03 size-4 text-components-button-primary-text" />
+        </span>
+      </InputGroupAddon>
+    </InputGroup>
+  )
 
-    const validateColorHex = (hex: string | null) => {
-      if (hex === null || hex?.length === 0)
-        return true
-
-      const regex = /#([A-F0-9]{6})/i
-      const check = regex.test(hex)
-      return check
-    }
-
-    const validatePrivacyPolicy = (privacyPolicy: string | null) => {
-      if (privacyPolicy === null || privacyPolicy?.length === 0)
-        return true
-
-      return privacyPolicy.startsWith('http://') || privacyPolicy.startsWith('https://')
-    }
-
-    if (inputInfo !== null) {
-      if (!validateColorHex(inputInfo.chatColorTheme)) {
-        toast.error(t(`${prefixSettings}.invalidHexMessage`, { ns: 'appOverview' }))
-        return
-      }
-      if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
-        toast.error(t(`${prefixSettings}.invalidPrivacyPolicy`, { ns: 'appOverview' }))
-        return
-      }
-    }
-
-    setSaveLoading(true)
+  const handleFormSubmit = async () => {
+    if (pending) return
     const params = {
       title: inputInfo.title,
       description: inputInfo.desc,
@@ -198,269 +266,425 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
       copyright: !webappCopyrightEnabled
-        ? ''
+        ? undefined
         : inputInfo.copyrightSwitchValue
           ? inputInfo.copyright
           : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      input_placeholder: !canCustomizePlaceholder
+        ? undefined
+        : !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
+          ? ''
+          : inputInfo.inputPlaceholder.slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
+      icon_type: appIcon?.type ?? appInfo.site.icon_type,
+      icon: appIcon
+        ? appIcon.type === 'image'
+          ? appIcon.fileId
+          : appIcon.icon
+        : appInfo.site.icon,
+      icon_background: appIcon
+        ? appIcon.type === 'emoji'
+          ? appIcon.background
+          : undefined
+        : appInfo.site.icon_background,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
-      enable_sso: inputInfo.enable_sso,
     }
-    await onSave?.(params)
-    setSaveLoading(false)
-    onHide()
-  }
-
-  const onChange = (field: string) => {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      let value: string | boolean
-      if (e.target.type === 'checkbox')
-        value = (e.target as HTMLInputElement).checked
-      else
-        value = e.target.value
-
-      setInputInfo(item => ({ ...item, [field]: value }))
-    }
-  }
-
-  const onDesChange = (value: string) => {
-    setInputInfo(item => ({ ...item, desc: value }))
+    await onSubmit(params)
   }
 
   return (
-    <>
-      <Modal
-        isShow={isShow}
-        closable={false}
-        onClose={onHide}
-        className="max-w-[520px] p-0"
-      >
-        {/* header */}
-        <div className="pb-3 pl-6 pr-5 pt-5">
-          <div className="flex items-center gap-1">
-            <div className="grow text-text-primary title-2xl-semi-bold">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</div>
-            <ActionButton className="shrink-0" onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
-            </ActionButton>
-          </div>
-          <div className="mt-0.5 text-text-tertiary system-xs-regular">
-            <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
-          </div>
+    <Form className="contents" onFormSubmit={handleFormSubmit}>
+      {canDeploy && (
+        <div className="px-6 py-2">
+          <Alert type="info">
+            <AlertTitle>
+              {t(($) => $[`${prefixSettings}.multiEnvironmentNotice`], {
+                ns: 'appOverview',
+              })}
+            </AlertTitle>
+          </Alert>
         </div>
-        {/* form body */}
-        <div className="space-y-5 px-6 py-3">
-          {/* name & icon */}
-          <div className="flex gap-4">
-            <div className="grow">
-              <div className={cn('mb-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</div>
-              <Input
-                className="w-full"
-                value={inputInfo.title}
-                onChange={onChange('title')}
-                placeholder={t('appNamePlaceholder', { ns: 'app' }) || ''}
-              />
-            </div>
-            <AppIcon
-              size="xxl"
-              onClick={() => { setShowAppIconPicker(true) }}
-              className="mt-2 cursor-pointer"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+      )}
+      <DialogBody className="flex flex-col gap-y-5">
+        <div className="flex gap-4">
+          <Field name="title" className="grow">
+            <FieldLabel>
+              {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
+            </FieldLabel>
+            <Input
+              readOnly={pending}
+              required
+              value={inputInfo.title}
+              onValueChange={(value) => setInputInfo((item) => ({ ...item, title: value }))}
+              placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' })}
             />
-          </div>
-          {/* description */}
-          <div className="relative">
-            <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
-            <Textarea
-              className="mt-1"
-              value={inputInfo.desc}
-              onChange={e => onDesChange(e.target.value)}
-              placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
-            />
-            <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
-          </div>
-          <Divider className="my-0 h-px" />
-          {/* answer icon */}
-          {isChat && (
-            <div className="w-full">
-              <div className="flex items-center justify-between">
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t('answerIcon.title', { ns: 'app' })}</div>
-                <Switch
-                  value={inputInfo.use_icon_as_answer_icon}
-                  onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
-                />
-              </div>
-              <p className="pb-0.5 text-text-tertiary body-xs-regular">{t('answerIcon.description', { ns: 'app' })}</p>
-            </div>
-          )}
-          {/* language */}
-          <div className="flex items-center">
-            <div className={cn('grow py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
-            <SimpleSelect
-              wrapperClassName="w-[200px]"
-              items={languages.filter(item => item.supported)}
-              defaultValue={language}
-              onSelect={item => setLanguage(item.value as Language)}
-              notClearable
-            />
-          </div>
-          {/* theme color */}
-          {isChat && (
-            <div className="flex items-center">
-              <div className="grow">
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
-                <div className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
-              </div>
-              <div className="shrink-0">
-                <Input
-                  className="mb-1 w-[200px]"
-                  value={inputInfo.chatColorTheme ?? ''}
-                  onChange={onChange('chatColorTheme')}
-                  placeholder="E.g #A020F0"
-                />
-                <div className="flex items-center justify-between">
-                  <p className={cn('text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* workflow detail */}
-          <div className="w-full">
-            <div className="flex items-center justify-between">
-              <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
+            <FieldError match="valueMissing">
+              {t(($) => $['newApp.nameNotEmpty'], { ns: 'app' })}
+            </FieldError>
+          </Field>
+          <IconPicker
+            value={
+              appIcon ??
+              (appInfo.site.icon_type === 'emoji' && appInfo.site.icon
+                ? {
+                    type: 'emoji',
+                    icon: appInfo.site.icon,
+                    background: appInfo.site.icon_background,
+                  }
+                : undefined)
+            }
+            onValueChange={setAppIcon}
+          >
+            <IconPickerTrigger
+              disabled={pending}
+              aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+              className="shrink-0 self-center rounded-2xl"
+            >
+              <IconPickerIcon size="xxl" />
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
+        </div>
+
+        <Field name="description">
+          <FieldLabel>{t(($) => $[`${prefixSettings}.webDesc`], { ns: 'appOverview' })}</FieldLabel>
+          <Textarea
+            readOnly={pending}
+            value={inputInfo.desc}
+            onValueChange={(value) => setInputInfo((item) => ({ ...item, desc: value }))}
+            placeholder={t(($) => $[`${prefixSettings}.webDescPlaceholder`], {
+              ns: 'appOverview',
+            })}
+          />
+          <FieldDescription>
+            {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
+          </FieldDescription>
+        </Field>
+        <Separator />
+
+        {isChat && (
+          <Field name="use_icon_as_answer_icon">
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel>{t(($) => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
               <Switch
-                disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
-                value={inputInfo.show_workflow_steps}
-                onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+                readOnly={pending}
+                checked={inputInfo.use_icon_as_answer_icon}
+                onCheckedChange={(v) =>
+                  setInputInfo((item) => ({ ...item, use_icon_as_answer_icon: v }))
+                }
               />
             </div>
-            <p className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
-          </div>
-          {/* more settings switch */}
-          <Divider className="my-0 h-px" />
-          {!isShowMore && (
-            <div className="flex cursor-pointer items-center" onClick={() => setIsShowMore(true)}>
-              <div className="grow">
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
-                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>
-                  {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })}
-                  {' '}
-                  &
-                  {' '}
-                  {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
-                </p>
+            <FieldDescription>
+              {t(($) => $['answerIcon.description'], { ns: 'app' })}
+            </FieldDescription>
+          </Field>
+        )}
+        <Field name="default_language" className="flex items-center justify-between gap-3">
+          <Select<Language>
+            readOnly={pending}
+            value={selectedLanguage?.value ?? null}
+            onValueChange={(value) => {
+              if (value !== null) setLanguage(value)
+            }}
+          >
+            <SelectLabel>
+              {t(($) => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
+            </SelectLabel>
+            <SelectTrigger className="w-50">
+              {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGE_OPTIONS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  <SelectItemText>{item.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        {isChat && (
+          <div className="grid gap-1">
+            <Field
+              name="chat_color_theme"
+              className="items-start gap-x-3 sm:grid-cols-[minmax(0,1fr)_12.5rem]"
+            >
+              <div>
+                <FieldLabel>
+                  {t(($) => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}
+                </FieldLabel>
+                <FieldDescription>
+                  {t(($) => $[`${prefixSettings}.chatColorThemeDesc`], { ns: 'appOverview' })}
+                </FieldDescription>
               </div>
-              <RiArrowRightSLine className="ml-1 h-4 w-4 shrink-0 text-text-secondary" />
-            </div>
-          )}
-          {/* more settings */}
-          {isShowMore && (
-            <>
-              {/* copyright */}
-              <div className="w-full">
-                <div className="flex items-center">
-                  <div className="flex grow items-center">
-                    <div className={cn('mr-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
-                    {/* upgrade button */}
-                    {enableBilling && isFreePlan && (
-                      <div className="h-[18px] select-none">
-                        <PremiumBadge size="s" color="blue" allowHover={true} onClick={handlePlanClick}>
-                          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-                          <div className="system-xs-medium">
-                            <span className="p-1">
-                              {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-                            </span>
-                          </div>
-                        </PremiumBadge>
-                      </div>
-                    )}
-                  </div>
-                  <Tooltip
-                    disabled={webappCopyrightEnabled}
-                    popupContent={
-                      <div className="w-[180px]">{t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}</div>
-                    }
-                    asChild={false}
-                  >
-                    <Switch
-                      disabled={!webappCopyrightEnabled}
-                      value={inputInfo.copyrightSwitchValue}
-                      onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                    />
-                  </Tooltip>
-                </div>
-                <p className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
-                {inputInfo.copyrightSwitchValue && (
-                  <Input
-                    className="mt-2 h-10"
-                    value={inputInfo.copyright}
-                    onChange={onChange('copyright')}
-                    placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
-                  />
-                )}
-              </div>
-              {/* privacy policy */}
-              <div className="w-full">
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
-                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>
-                  <Trans
-                    i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-                    ns="appOverview"
-                    components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
-                  />
-                </p>
-                <Input
-                  className="mt-1"
-                  value={inputInfo.privacyPolicy}
-                  onChange={onChange('privacyPolicy')}
-                  placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
-                />
-              </div>
-              {/* custom disclaimer */}
-              <div className="w-full">
-                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
-                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
-                <Textarea
-                  className="mt-1"
-                  value={inputInfo.customDisclaimer}
-                  onChange={onChange('customDisclaimer')}
-                  placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
-                />
-              </div>
-            </>
-          )}
-        </div>
-        {/* footer */}
-        <div className="flex justify-end p-6 pt-5">
-          <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
-        </div>
-        {showAppIconPicker && (
-          <div onClick={e => e.stopPropagation()}>
-            <AppIconPicker
-              onSelect={(payload) => {
-                setAppIcon(payload)
-                setShowAppIconPicker(false)
-              }}
-              onClose={() => {
-                setAppIcon(icon_type === 'image'
-                  ? { type: 'image', url: icon_url!, fileId: icon }
-                  : { type: 'emoji', icon, background: icon_background! })
-                setShowAppIconPicker(false)
-              }}
-            />
+              <Input
+                readOnly={pending}
+                pattern="#[A-Fa-f0-9]{6}"
+                value={inputInfo.chatColorTheme}
+                onValueChange={(value) =>
+                  setInputInfo((item) => ({ ...item, chatColorTheme: value }))
+                }
+                placeholder="E.g #A020F0"
+              />
+              <FieldError match="patternMismatch" className="sm:col-start-2">
+                {t(($) => $[`${prefixSettings}.invalidHexMessage`], { ns: 'appOverview' })}
+              </FieldError>
+            </Field>
+            <Field
+              name="chat_color_theme_inverted"
+              className="ms-auto flex w-50 items-center justify-between gap-2"
+            >
+              <FieldLabel>
+                {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
+                  ns: 'appOverview',
+                })}
+              </FieldLabel>
+              <Switch
+                readOnly={pending}
+                checked={inputInfo.chatColorThemeInverted}
+                onCheckedChange={(value) =>
+                  setInputInfo((item) => ({ ...item, chatColorThemeInverted: value }))
+                }
+              />
+            </Field>
           </div>
         )}
-      </Modal>
-    </>
+
+        <Field name="show_workflow_steps">
+          <div className="flex items-center justify-between gap-3">
+            <FieldLabel>
+              {t(($) => $[`${prefixSettings}.workflow.subTitle`], { ns: 'appOverview' })}
+            </FieldLabel>
+            <Switch
+              readOnly={pending}
+              disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
+              checked={inputInfo.show_workflow_steps}
+              onCheckedChange={(v) => setInputInfo((item) => ({ ...item, show_workflow_steps: v }))}
+            />
+          </div>
+          <FieldDescription>
+            {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
+          </FieldDescription>
+        </Field>
+        <Separator />
+        {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
+          <Field name="input_placeholder" disabled={!canCustomizePlaceholder}>
+            <div className="flex items-center gap-1">
+              <FieldLabel>
+                {t(($) => $[`${prefixSettings}.more.inputPlaceholder`], {
+                  ns: 'appOverview',
+                })}
+              </FieldLabel>
+              {showUpgrade && <SettingsUpgradeButton />}
+            </div>
+            <FieldDescription>
+              {t(($) => $[`${prefixSettings}.more.inputPlaceholderTip`], {
+                ns: 'appOverview',
+              })}
+            </FieldDescription>
+            {showUpgrade ? (
+              <Tooltip>
+                <TooltipTrigger render={inputPlaceholderField} />
+                <TooltipContent className="w-45">
+                  {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], {
+                    ns: 'appOverview',
+                  })}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              inputPlaceholderField
+            )}
+            {canCustomizePlaceholder && (
+              <FieldDescription className="text-end">
+                {`${inputInfo.inputPlaceholder.length} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
+              </FieldDescription>
+            )}
+          </Field>
+        )}
+        <Fieldset className="grid gap-1">
+          <Field name="copyright_enabled" disabled={webappCopyrightEnabled !== true}>
+            <div className="flex items-center gap-1">
+              <FieldsetLegend id={copyrightLegendId} className="mb-0">
+                {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
+              </FieldsetLegend>
+              {showUpgrade && <SettingsUpgradeButton />}
+              <Tooltip>
+                <TooltipTrigger render={<div className="ms-auto" />}>
+                  <Switch
+                    readOnly={pending}
+                    aria-labelledby={copyrightLegendId}
+                    checked={inputInfo.copyrightSwitchValue}
+                    onCheckedChange={(value) =>
+                      setInputInfo((item) => ({ ...item, copyrightSwitchValue: value }))
+                    }
+                  />
+                </TooltipTrigger>
+                {webappCopyrightEnabled === false && (
+                  <TooltipContent className="w-45">
+                    {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
+                      ns: 'appOverview',
+                    })}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </div>
+            <FieldDescription id={copyrightDescriptionId}>
+              {t(($) => $[`${prefixSettings}.more.copyrightTip`], { ns: 'appOverview' })}
+            </FieldDescription>
+          </Field>
+          {inputInfo.copyrightSwitchValue && (
+            <Field name="copyright" disabled={webappCopyrightEnabled !== true}>
+              <Input
+                readOnly={pending}
+                aria-labelledby={copyrightLegendId}
+                aria-describedby={copyrightDescriptionId}
+                value={inputInfo.copyright}
+                onValueChange={(value) => setInputInfo((item) => ({ ...item, copyright: value }))}
+                placeholder={t(($) => $[`${prefixSettings}.more.copyRightPlaceholder`], {
+                  ns: 'appOverview',
+                })}
+              />
+            </Field>
+          )}
+        </Fieldset>
+        <Field
+          name="privacy_policy"
+          validate={(value) => {
+            if (typeof value === 'string' && value && !/^https?:\/\//.test(value))
+              return t(($) => $[`${prefixSettings}.invalidPrivacyPolicy`], {
+                ns: 'appOverview',
+              })
+          }}
+        >
+          <FieldLabel>
+            {t(($) => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
+          </FieldLabel>
+          <FieldDescription>
+            <Trans
+              i18nKey={($) => $[`${prefixSettings}.more.privacyPolicyTip`]}
+              ns="appOverview"
+              components={{
+                privacyPolicyLink: (
+                  <Link
+                    href="https://dify.ai/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-accent underline"
+                  />
+                ),
+              }}
+            />
+          </FieldDescription>
+          <Input
+            readOnly={pending}
+            value={inputInfo.privacyPolicy}
+            onValueChange={(value) => setInputInfo((item) => ({ ...item, privacyPolicy: value }))}
+            placeholder={t(($) => $[`${prefixSettings}.more.privacyPolicyPlaceholder`], {
+              ns: 'appOverview',
+            })}
+          />
+          <FieldError />
+        </Field>
+        <Field name="custom_disclaimer">
+          <FieldLabel>
+            {t(($) => $[`${prefixSettings}.more.customDisclaimer`], { ns: 'appOverview' })}
+          </FieldLabel>
+          <FieldDescription>
+            {t(($) => $[`${prefixSettings}.more.customDisclaimerTip`], { ns: 'appOverview' })}
+          </FieldDescription>
+          <Textarea
+            readOnly={pending}
+            value={inputInfo.customDisclaimer}
+            onValueChange={(value) =>
+              setInputInfo((item) => ({ ...item, customDisclaimer: value }))
+            }
+            placeholder={t(($) => $[`${prefixSettings}.more.customDisclaimerPlaceholder`], {
+              ns: 'appOverview',
+            })}
+          />
+        </Field>
+      </DialogBody>
+
+      <DialogFooter>
+        <DialogClose disabled={pending} render={<Button />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button type="submit" variant="primary" loading={pending} disabled={disabled}>
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
+    </Form>
   )
 }
-export default React.memo(SettingsModal)
+
+export function SettingsDialog({
+  appInfo,
+  isChat,
+  canDeploy,
+  disabled,
+  triggerLabel,
+  onSave,
+}: SettingsDialogProps) {
+  const { t } = useTranslation(['appOverview', 'common', 'navigation'])
+  const [pending, setPending] = useState(false)
+  const pendingRef = useRef(false)
+  const actionsRef = useRef<DialogActions>(null)
+  const unavailable = disabled || !appInfo
+  const trigger = (
+    <Button variant="secondary" disabled={unavailable || pending} className="px-3">
+      <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+      {triggerLabel ?? t(($) => $['settings.settings'], { ns: 'navigation' })}
+    </Button>
+  )
+
+  const handleSave = async (params: AppSiteUpdatePayload) => {
+    if (pendingRef.current || unavailable) return
+    pendingRef.current = true
+    setPending(true)
+    try {
+      if ((await onSave(params)) === true) actionsRef.current?.close()
+    } catch {
+      // Request owners report failures; keep the draft on unexpected rejection too.
+    } finally {
+      pendingRef.current = false
+      setPending(false)
+    }
+  }
+
+  if (!appInfo) return trigger
+
+  return (
+    <Dialog
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(_open, details) => {
+        if (pendingRef.current && details.reason !== 'imperative-action') details.cancel()
+      }}
+    >
+      <DialogTrigger render={trigger} />
+      <DialogContent className="w-130">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`${prefixSettings}.title`], { ns: 'appOverview' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}
+          </DialogDescription>
+          <DialogHeaderCloseButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            disabled={pending}
+          />
+        </DialogHeader>
+        <SettingsForm
+          key={appInfo.id}
+          appInfo={appInfo}
+          isChat={isChat}
+          canDeploy={canDeploy}
+          disabled={disabled}
+          pending={pending}
+          onSubmit={handleSave}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}

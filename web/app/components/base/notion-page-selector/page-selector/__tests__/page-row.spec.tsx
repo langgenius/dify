@@ -54,7 +54,7 @@ describe('PageRow', () => {
 
     renderPageRow({ onSelect })
 
-    await user.click(screen.getByTestId('checkbox-notion-page-checkbox-page-1'))
+    await user.click(screen.getByRole('checkbox', { name: 'Page 1' }))
 
     expect(onSelect).toHaveBeenCalledWith('page-1')
   })
@@ -81,6 +81,7 @@ describe('PageRow', () => {
       searchValue: 'Page',
       row: buildRow({
         parentExists: true,
+        hasChild: true,
         ancestors: ['Workspace', 'Section'],
       }),
     })
@@ -89,20 +90,17 @@ describe('PageRow', () => {
     expect(screen.getByText('Workspace / Section / Page 1')).toBeInTheDocument()
   })
 
-  it('should render preview state and call onPreview when the preview button is clicked', async () => {
+  it('previews the requested page without selecting it', async () => {
     const user = userEvent.setup()
     const onPreview = vi.fn()
 
-    renderPageRow({
-      isPreviewed: true,
-      onPreview,
-    })
-
-    expect(screen.getByTestId('notion-page-row-page-1')).toHaveClass('bg-state-base-hover')
+    const onSelect = vi.fn()
+    renderPageRow({ isPreviewed: true, onPreview, onSelect })
 
     await user.click(screen.getByTestId('notion-page-preview-page-1'))
 
-    expect(onPreview).toHaveBeenCalledWith('page-1')
+    expect(onPreview).toHaveBeenCalledExactlyOnceWith('page-1')
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it('should hide the preview button when showPreview is false', () => {

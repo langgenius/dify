@@ -1,8 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import DOMPurify from 'dompurify'
 import { validateDirectiveProps } from '../components/markdown-with-directive-schema'
-import WithIconCardItem from '../components/with-icon-card-item'
-import WithIconCardList from '../components/with-icon-card-list'
 import { MarkdownWithDirective } from '../index'
 
 const FOUR_COLON_RE = /:{4}/
@@ -27,7 +24,9 @@ describe('markdown-with-directive', () => {
     })
 
     it('should return true when withiconcarditem props are valid', () => {
-      expect(validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' })).toBe(true)
+      expect(
+        validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' }),
+      ).toBe(true)
     })
 
     it('should return false and log when directive name is unknown', () => {
@@ -48,7 +47,9 @@ describe('markdown-with-directive', () => {
     it('should return false and log when withiconcarditem icon is not http/https', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const isValid = validateDirectiveProps('withiconcarditem', { icon: 'ftp://example.com/icon.png' })
+      const isValid = validateDirectiveProps('withiconcarditem', {
+        icon: 'ftp://example.com/icon.png',
+      })
 
       expect(isValid).toBe(false)
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -83,45 +84,7 @@ describe('markdown-with-directive', () => {
     })
   })
 
-  // Validate WithIconCardList rendering and class merge behavior.
-  describe('WithIconCardList component', () => {
-    it('should render children and merge className with base class', () => {
-      const { container } = render(
-        <WithIconCardList className="custom-list-class">
-          <span>List child</span>
-        </WithIconCardList>,
-      )
-
-      expect(screen.getByText('List child')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('space-y-1')
-      expect(container.firstElementChild).toHaveClass('custom-list-class')
-    })
-
-    it('should render base class when className is not provided', () => {
-      const { container } = render(
-        <WithIconCardList>
-          <span>Only base class</span>
-        </WithIconCardList>,
-      )
-
-      expect(screen.getByText('Only base class')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('space-y-1')
-    })
-  })
-
   // Validate WithIconCardItem rendering and image prop forwarding.
-  describe('WithIconCardItem component', () => {
-    it('should render icon image and child content', () => {
-      const { container } = render(
-        <WithIconCardItem icon="https://example.com/icon.png">
-          <span>Card item content</span>
-        </WithIconCardItem>,
-      )
-
-      expectDecorativeIcon(container, 'https://example.com/icon.png')
-      expect(screen.getByText('Card item content')).toBeInTheDocument()
-    })
-  })
 
   // Validate markdown parsing pipeline, sanitizer usage, and invalid fallback.
   describe('MarkdownWithDirective component', () => {
@@ -136,7 +99,6 @@ describe('markdown-with-directive', () => {
 
       const list = container.querySelector('.custom-list')
       expect(list).toBeInTheDocument()
-      expect(list).toHaveClass('space-y-1')
       expect(screen.getByText('Card Title')).toBeInTheDocument()
       expectDecorativeIcon(container, 'https://example.com/icon.png')
     })
@@ -173,26 +135,31 @@ describe('markdown-with-directive', () => {
       expect(container.textContent).not.toContain('::::')
     })
 
-    it('should call sanitizer and render based on sanitized markdown', () => {
-      const sanitizeSpy = vi.spyOn(DOMPurify, 'sanitize')
-        .mockReturnValue(':withiconcarditem[Sanitized]{icon="https://example.com/safe.png"}')
+    it('should retain safe external links with opener isolation', () => {
+      render(<MarkdownWithDirective markdown="[Langfuse](https://langfuse.com)" />)
 
-      const { container } = render(<MarkdownWithDirective markdown="<script>alert(1)</script>" />)
-
-      expect(sanitizeSpy).toHaveBeenCalledWith('<script>alert(1)</script>', {
-        ALLOWED_ATTR: [],
-        ALLOWED_TAGS: [],
-      })
-      expect(screen.getByText('Sanitized')).toBeInTheDocument()
-      expectDecorativeIcon(container, 'https://example.com/safe.png')
+      const link = screen.getByRole('link', { name: 'Langfuse' })
+      expect(link).toHaveAttribute('href', 'https://langfuse.com/')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
-    it('should render empty output and skip sanitizer when markdown is empty', () => {
-      const sanitizeSpy = vi.spyOn(DOMPurify, 'sanitize')
+    it('should render empty output when markdown is empty', () => {
       const { container } = render(<MarkdownWithDirective markdown="" />)
 
-      expect(sanitizeSpy).not.toHaveBeenCalled()
       expect(container).toBeEmptyDOMElement()
     })
+  })
+  it('removes raw script and event-handler HTML while preserving a safe directive', () => {
+    const { container } = render(
+      <MarkdownWithDirective
+        markdown={
+          '<script>alert(1)</script><img src="x" onerror="alert(2)">\n\n:withiconcarditem[Safe card]{icon="https://example.com/safe.png"}'
+        }
+      />,
+    )
+    expect(screen.getByText('Safe card')).toBeInTheDocument()
+    expectDecorativeIcon(container, 'https://example.com/safe.png')
+    expect(container.querySelector('script, [onerror]')).toBeNull()
   })
 })

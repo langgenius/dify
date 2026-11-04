@@ -1,49 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CopyIcon from '..'
 
-const copy = vi.fn()
-const reset = vi.fn()
-let copied = false
+it('copies the supplied embed content and resets feedback when the pointer leaves', async () => {
+  const user = userEvent.setup()
+  render(<CopyIcon content="Embed this app" />)
+  const button = screen.getByRole('button', { name: 'common.operation.copy' })
+  await user.click(button)
+  expect(await navigator.clipboard.readText()).toBe('Embed this app')
+  expect(await screen.findByRole('button', { name: 'common.operation.copied' })).toBeInTheDocument()
 
-vi.mock('@/hooks/use-clipboard', () => ({
-  useClipboard: () => ({
-    copy,
-    reset,
-    copied,
-  }),
-}))
-
-describe('copy icon component', () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
-    copied = false
-  })
-
-  it('renders normally', () => {
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = screen.getByTestId('copy-icon')
-    expect(icon).toBeInTheDocument()
-  })
-
-  it('shows copy check icon when copied', () => {
-    copied = true
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = screen.getByTestId('copied-icon')
-    expect(icon).toBeInTheDocument()
-  })
-
-  it('handles copy when clicked', () => {
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = screen.getByTestId('copy-icon')
-    fireEvent.click(icon as Element)
-    expect(copy).toBeCalledTimes(1)
-  })
-
-  it('resets on mouse leave', () => {
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = screen.getByTestId('copy-icon')
-    const div = icon?.parentElement as HTMLElement
-    fireEvent.mouseLeave(div)
-    expect(reset).toBeCalledTimes(1)
-  })
+  await user.unhover(button)
+  expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
 })

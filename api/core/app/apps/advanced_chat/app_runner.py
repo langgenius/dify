@@ -1,24 +1,25 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from collections.abc import Mapping
+from typing import Any, cast, override
 
-from graphon.enums import WorkflowType
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import VariableLoader
-from graphon.variables.variables import Variable
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.apps.workflow.command_channels import (
+    CelerySignalCommandChannel,
+    CombinedCommandChannel,
+    StopFlagCommandChannel,
+)
+from core.app.apps.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
+from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner, WorkflowRunDriver
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AppGenerateEntity,
     InvokeFrom,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -26,12 +27,9 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.db.session_factory import session_factory
+from core.db.session_factory import create_session
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.system_variables import (
     build_bootstrap_variables,
@@ -40,13 +38,17 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
+from graphon.engine.command import RedisChannel
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.enums import WorkflowType
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
-from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -68,16 +70,15 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        execution_driver: WorkflowRunDriver | None = None,
+        graph_runtime_state: RuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
+            execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
-            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -86,12 +87,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self.system_user_id = system_user_id
         self._app = app
-        self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
+        self._response_stream_filter = response_stream_filter
 
-    @trace_span(WorkflowAppRunnerHandler)
-    def run(self):
+    @override
+    def prepare(self) -> PreparedWorkflowRun | None:
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -106,7 +106,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             workflow_execution_id=self.application_generate_entity.workflow_run_id,
         )
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with create_session() as session:
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))
 
         if not app_record:
@@ -130,6 +130,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -138,6 +141,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -152,7 +157,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 message_id=self.message.id,
             )
             if stop:
-                return
+                return None
 
             self.application_generate_entity.inputs = new_inputs
             self.application_generate_entity.query = new_query
@@ -162,13 +167,22 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # annotation reply
-            if self.handle_annotation_reply(
-                app_record=self._app,
-                message=self.message,
-                query=new_query,
-                app_generate_entity=self.application_generate_entity,
-            ):
-                return
+            with create_session() as session:
+                annotation_reply = self.handle_annotation_reply(
+                    app_record=self._app,
+                    message=self.message,
+                    query=new_query,
+                    app_generate_entity=self.application_generate_entity,
+                    session=session,
+                )
+                session.commit()
+            if annotation_reply:
+                self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
+                self._complete_with_stream_output(
+                    text=annotation_reply.content,
+                    stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY,
+                )
+                return None
 
             # Initialize conversation variables
             conversation_variables = self._initialize_conversation_variables()
@@ -188,7 +202,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=new_inputs)
 
             # init graph
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+            graph_runtime_state = RuntimeState(
+                workflow_id=self._workflow.id, variable_pool=variable_pool, start_at=time.time()
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -198,58 +214,46 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
-
-        db.session.close()
 
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
         channel_key = f"workflow:{task_id}:commands"
-        command_channel = RedisChannel(redis_client, channel_key)
+        celery_signal_channel = CelerySignalCommandChannel(
+            shutdown_state_getter=celery_warm_shutdown_started,
+            abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+        )
+        attach_stop_aware_ready_queue(graph_runtime_state, task_id=task_id)
+        command_channel = CombinedCommandChannel(
+            (
+                RedisChannel(redis_client, channel_key),
+                StopFlagCommandChannel(task_id=task_id),
+                celery_signal_channel,
+            )
+        )
 
         workflow_entry = WorkflowEntry(
-            tenant_id=self._workflow.tenant_id,
-            app_id=self._workflow.app_id,
-            workflow_id=self._workflow.id,
             graph=graph,
             graph_config=self._workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            response_stream_filter=self._response_stream_filter,
         )
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=self._workflow.id,
-                workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
+        return PreparedWorkflowRun(
+            entry=workflow_entry,
+            application_layers=self._graph_engine_layers,
+            generate_entity=self.application_generate_entity,
+            workflow_type=WorkflowType(self._workflow.type),
+            workflow_version=self._workflow.version,
         )
-
-        workflow_entry.graph_engine.layer(persistence_layer)
-        conversation_variable_layer = ConversationVariablePersistenceLayer(
-            ConversationVariableUpdater(session_factory.get_session_maker())
-        )
-        workflow_entry.graph_engine.layer(conversation_variable_layer)
-        for layer in self._graph_engine_layers:
-            workflow_entry.graph_engine.layer(layer)
-
-        generator = workflow_entry.run()
-
-        for event in generator:
-            self._handle_event(workflow_entry, event)
 
     def handle_input_moderation(
         self,
@@ -276,25 +280,21 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         return False, new_inputs, new_query
 
     def handle_annotation_reply(
-        self, app_record: App, message: Message, query: str, app_generate_entity: AdvancedChatAppGenerateEntity
-    ) -> bool:
-        annotation_reply = self.query_app_annotations_to_reply(
+        self,
+        app_record: App,
+        message: Message,
+        query: str,
+        app_generate_entity: AdvancedChatAppGenerateEntity,
+        session: Session,
+    ) -> MessageAnnotation | None:
+        return self.query_app_annotations_to_reply(
             app_record=app_record,
             message=message,
             query=query,
             user_id=app_generate_entity.user_id,
             invoke_from=app_generate_entity.invoke_from,
+            session=session,
         )
-
-        if annotation_reply:
-            self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
-
-            self._complete_with_stream_output(
-                text=annotation_reply.content, stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY
-            )
-            return True
-
-        return False
 
     def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """
@@ -305,7 +305,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._publish_event(QueueStopEvent(stopped_by=stopped_by))
 
     def query_app_annotations_to_reply(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+        self,
+        app_record: App,
+        message: Message,
+        query: str,
+        user_id: str,
+        invoke_from: InvokeFrom,
+        session: Session,
     ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
@@ -318,7 +324,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         """
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
-            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+            app_record=app_record,
+            message=message,
+            query=query,
+            user_id=user_id,
+            invoke_from=invoke_from,
+            session=session,
         )
 
     def moderation_for_inputs(
@@ -349,7 +360,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
-            trace_manager=app_generate_entity.trace_manager,
+            trace_scope=app_generate_entity.trace_scope,
         )
 
     def _initialize_conversation_variables(self) -> list[Variable]:
@@ -363,7 +374,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         :return: List of conversation variables ready for use
         """
-        with sessionmaker(bind=db.engine).begin() as session:
+        with create_session() as session, session.begin():
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:
@@ -371,7 +382,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 existing_variables = self._create_all_conversation_variables(session)
             else:
                 # Check and add any missing variables from the workflow
-                existing_variables = self._sync_missing_conversation_variables(session, existing_variables)
+                existing_variables = self._sync_missing_conversation_variables(existing_variables, session)
 
             # Convert to Variable objects for use in the workflow
             conversation_variables = [var.to_variable() for var in existing_variables]
@@ -411,7 +422,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         return new_variables
 
     def _sync_missing_conversation_variables(
-        self, session: Session, existing_variables: list[ConversationVariable]
+        self, existing_variables: list[ConversationVariable], session: Session
     ) -> list[ConversationVariable]:
         """
         Sync missing conversation variables from the workflow definition.
@@ -423,9 +434,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         :param existing_variables: List of existing conversation variables
         :return: Updated list including any newly created variables
         """
-        # Get IDs of existing and workflow variables
+        # Compare stored primary keys. A non-UUID author id is rewritten by
+        # ConversationVariable.storage_id, so the workflow id itself will not match.
         existing_ids = {var.id for var in existing_variables}
-        workflow_variables = {var.id: var for var in self._workflow.conversation_variables}
+        workflow_variables = {
+            ConversationVariable.storage_id(variable): variable for variable in self._workflow.conversation_variables
+        }
 
         # Find missing variable IDs
         missing_ids = set(workflow_variables.keys()) - existing_ids

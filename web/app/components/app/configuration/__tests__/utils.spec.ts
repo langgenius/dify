@@ -1,6 +1,10 @@
 import type { ModelConfig } from '@/models/debug'
-import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
-import { buildConfigurationFeaturesData, getConfigurationPublishingState, withCollectionIconBasePath } from '../utils'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import {
+  buildConfigurationFeaturesData,
+  getConfigurationPublishingState,
+  withCollectionIconBasePath,
+} from '../utils'
 
 const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
@@ -31,13 +35,6 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
   sensitive_word_avoidance: { enabled: false },
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 1,
-    file_size_limit: 1,
-    image_file_size_limit: 1,
-    video_file_size_limit: 1,
-    workflow_file_upload_limit: 1,
-  },
   dataSets: [],
   agentConfig: {
     enabled: false,
@@ -55,13 +52,16 @@ describe('configuration utils', () => {
     })
 
     it('should prefix relative collection icons with the base path', () => {
-      const result = withCollectionIconBasePath([
-        { id: 'tool-1', icon: '/icons/tool.svg' },
-        { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
-      ] as never, '/console')
+      const result = withCollectionIconBasePath(
+        [
+          { id: 'tool-1', icon: '/icons/tool.svg' },
+          { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
+        ] as never,
+        '/console',
+      )
 
-      expect(result[0].icon).toBe('/console/icons/tool.svg')
-      expect(result[1].icon).toBe('/console/icons/prefixed.svg')
+      expect(result[0]!.icon).toBe('/console/icons/tool.svg')
+      expect(result[1]!.icon).toBe('/console/icons/prefixed.svg')
     })
   })
 
@@ -71,23 +71,26 @@ describe('configuration utils', () => {
     })
 
     it('should derive feature toggles and upload fallbacks from model config', () => {
-      const result = buildConfigurationFeaturesData(createModelConfig({
-        opening_statement: 'Welcome',
-        suggested_questions: ['How are you?'],
-        file_upload: {
-          enabled: true,
-          image: {
+      const result = buildConfigurationFeaturesData(
+        createModelConfig({
+          opening_statement: 'Welcome',
+          suggested_questions: ['How are you?'],
+          file_upload: {
             enabled: true,
-            detail: Resolution.low,
+            image: {
+              enabled: true,
+              detail: Resolution.low,
+              number_limits: 2,
+              transfer_methods: [TransferMethod.local_file],
+            },
+            allowed_file_types: ['image'],
+            allowed_file_extensions: ['.png'],
+            allowed_file_upload_methods: [TransferMethod.local_file],
             number_limits: 2,
-            transfer_methods: [TransferMethod.local_file],
           },
-          allowed_file_types: ['image'],
-          allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: [TransferMethod.local_file],
-          number_limits: 2,
-        },
-      }), undefined)
+        }),
+        undefined,
+      )
 
       expect(result.opening).toEqual({
         enabled: true,
@@ -126,7 +129,7 @@ describe('configuration utils', () => {
         hasSetContextVar: false,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'ignored',
       })
@@ -155,7 +158,7 @@ describe('configuration utils', () => {
         hasSetContextVar: false,
         hasSelectedDataSets: true,
         isAdvancedMode: false,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'Prompt',
       })
@@ -185,7 +188,7 @@ describe('configuration utils', () => {
         hasSetContextVar: true,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.chat,
         promptTemplate: 'ignored',
       })
@@ -214,7 +217,7 @@ describe('configuration utils', () => {
         hasSetContextVar: true,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'ignored',
       })

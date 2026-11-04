@@ -65,7 +65,7 @@ class FileMetadata:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> FileMetadata:
+    def from_dict(cls, data: dict[str, Any]) -> FileMetadata:
         """Create instance from dictionary"""
         data = data.copy()
         data["created_at"] = datetime.fromisoformat(data["created_at"])
@@ -372,14 +372,14 @@ class FileLifecycleManager:
                             continue
 
                 # Cleanup old versions for each file
-                for base_filename, versions in file_versions.items():
+                for _base_filename, versions in file_versions.items():
                     # Sort by version number
                     versions.sort(key=operator.itemgetter(0), reverse=True)
 
                     # Keep the newest max_versions versions, delete the rest
                     if len(versions) > max_versions:
                         to_delete = versions[max_versions:]
-                        for version_num, version_file in to_delete:
+                        for _version_num, version_file in to_delete:
                             self._storage.delete(version_file)
                             cleaned_count += 1
                             logger.debug("Cleaned old version: %s", version_file)
@@ -459,7 +459,7 @@ class FileLifecycleManager:
                 newest_file=None,
             )
 
-    def _create_version_backup(self, filename: str, metadata: dict):
+    def _create_version_backup(self, filename: str, metadata: dict[str, Any]):
         """Create version backup"""
         try:
             # Read current file content
@@ -487,7 +487,7 @@ class FileLifecycleManager:
             logger.warning("Failed to load metadata: %s", e)
             return {}
 
-    def _save_metadata(self, metadata_dict: dict):
+    def _save_metadata(self, metadata_dict: dict[str, Any]):
         """Save metadata file"""
         try:
             metadata_content = json.dumps(metadata_dict, indent=2, ensure_ascii=False)

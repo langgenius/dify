@@ -31,14 +31,14 @@ if [[ "${MODE}" == "worker" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
   fi
 
-  # Configure queues based on edition if not explicitly set
+  # Configure queues based on product edition if not explicitly set
   if [[ -z "${CELERY_QUEUES}" ]]; then
-    if [[ "${EDITION}" == "CLOUD" ]]; then
+    if [[ "${DEPLOYMENT_EDITION:-COMMUNITY}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,human_input_delivery,human_input_contact_sync,${OPS_TRACE_QUEUE:-ops_trace_v2},app_deletion,app_rbac,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_publisher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
     else
-      # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
-      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+      # Self-hosted editions: dataset, pipeline and workflow have separate queues
+      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,human_input_delivery,human_input_contact_sync,${OPS_TRACE_QUEUE:-ops_trace_v2},app_deletion,app_rbac,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_publisher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -61,6 +61,40 @@ if [[ "${MODE}" == "worker" ]]; then
   fi
 
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
+  case ",${DEFAULT_QUEUES}," in
+    *,knowledge_fs_upgrade,*)
+      if [[ "${WORKER_POOL}" != "prefork" ]]; then
+        echo "KnowledgeFS upgrades require CELERY_WORKER_POOL=prefork to enforce checkpoint time limits." >&2
+        exit 1
+      fi
+      ;;
+  esac
+  case ",${DEFAULT_QUEUES}," in
+    *,knowledge_fs_document,*|*,knowledge_fs_priority_document,*|*,knowledge_fs_source,*|*,knowledge_fs_research,*|*,knowledge_fs_maintenance,*|*,knowledge_fs_dispatch,*)
+      if [[ "${WORKER_POOL}" != "prefork" || "${CELERY_PREFETCH_MULTIPLIER:-1}" != "1" ]]; then
+        echo "KnowledgeFS queues require CELERY_WORKER_POOL=prefork and CELERY_PREFETCH_MULTIPLIER=1." >&2
+        exit 1
+      fi
+      if [[ "${KNOWLEDGE_BACKGROUND_EXECUTION}" != "celery" || -z "${DATABASE_URL}" || ! -f "${KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH:-/app/knowledge-fs/celery-worker.mjs}" ]]; then
+        echo "KnowledgeFS worker requires Celery execution mode, its durable DATABASE_URL, and a bundled local engine." >&2
+        exit 1
+      fi
+      case ",${DEFAULT_QUEUES}," in
+        *,knowledge_fs_source,*)
+          case ",${DEFAULT_QUEUES}," in
+            *,knowledge_fs_document,*|*,knowledge_fs_priority_document,*)
+              echo "Source and document queues require separate worker pools to avoid publication-wait starvation." >&2
+              exit 1
+              ;;
+          esac
+          ;;
+      esac
+      case "${KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME,,}" in
+        on|true|1) ;;
+        *) echo "KnowledgeFS Celery workers require durable document compilation to be enabled." >&2; exit 1 ;;
+      esac
+      ;;
+  esac
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
   exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
@@ -119,14 +153,18 @@ elif [[ "${MODE}" == "job" ]]; then
 
 else
   if [[ "${DEBUG}" == "true" ]]; then
-    exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
+    export HOST=${DIFY_BIND_ADDRESS:-0.0.0.0}
+    export PORT=${DIFY_PORT:-5001}
+    exec python -m app
   else
     exec gunicorn \
+      --no-control-socket \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
       --workers ${SERVER_WORKER_AMOUNT:-1} \
-      --worker-class ${SERVER_WORKER_CLASS:-gevent} \
+      --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
-      app:app
+      --keep-alive ${GUNICORN_KEEP_ALIVE:-10} \
+      app:socketio_app
   fi
 fi

@@ -1,5 +1,1 @@
-import { defineConfig } from 'vite-plus'
-
-export default defineConfig({
-  staged: {},
-})
+export { default } from '@dify/tooling/repository'

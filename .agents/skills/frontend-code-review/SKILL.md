@@ -1,73 +1,46 @@
 ---
 name: frontend-code-review
-description: "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change reviews and focused file reviews while applying the checklist rules."
+description: Review frontend code under `web/` or `packages/dify-ui/` when the user explicitly requests a review or audit. Supports PRs, branches, pending changes, files, and pasted diffs. Do not use for implementation-only requests, diagnosis without review intent, or backend-only code.
 ---
 
 # Frontend Code Review
 
-## Intent
-Use this skill whenever the user asks to review frontend code (especially `.tsx`, `.ts`, or `.js` files). Support two review modes:
+Review the requested scope for concrete defects and violations of explicit project contracts. This skill owns review decisions; its references route to canonical rules without activating another skill's implementation workflow.
 
-1. **Pending-change review** – inspect staged/working-tree files slated for commit and flag checklist violations before submission.
-2. **File-targeted review** – review the specific file(s) the user names and report the relevant checklist findings.
+## Evidence First
 
-Stick to the checklist below for every applicable file and mode.
+1. Resolve the requested target and scope. For a PR or branch, establish its actual base and head; do not assume the tracking branch is the review base. Include local edits only when they belong to the requested scope. Give delegated reviewers the same scope and revisions.
+2. Read the changed code, its behavior owner, and the applicable scoped `AGENTS.md`. For a diff review, distinguish introduced or re-exposed defects from unrelated existing issues; a file audit may include existing defects.
+3. Trace affected consumers and contracts. When logic is removed or moved, identify the behavior it preserved and where that responsibility now lives. Check affected public types, examples, and tests when they decide correctness.
+4. Verify candidates against actual defaults, guards, reachable states, and documented exceptions. Report an observable failure, security boundary violation, or concrete maintenance cost. Explicit team conventions are also contracts: establish their scope without inventing user impact to justify them.
 
-## Checklist
-See [references/code-quality.md](references/code-quality.md), [references/performance.md](references/performance.md), [references/business-logic.md](references/business-logic.md) for the living checklist split by category—treat it as the canonical set of rules to follow.
+## Rule Routing
 
-Flag each rule violation with urgency metadata so future reviewers can prioritize fixes.
+Read only the packs for contracts affected by the change, not every topic present in a file:
 
-## Review Process
-1. Open the relevant component/module. Gather lines that relate to class names, React Flow hooks, prop memoization, and styling.
-2. For each rule in the review point, note where the code deviates and capture a representative snippet.
-3. Compose the review section per the template below. Group violations first by **Urgent** flag, then by category order (Code Quality, Performance, Business Logic).
+- Changes to semantics, naming, keyboard/focus, forms, pending states, or responsive interaction: [`references/accessibility-ui.md`][accessibility]
+- Changes to Dify UI composition, public API, primitive behavior, or state styling: [`references/dify-ui.md`][dify-ui]
+- Changes to component/module ownership, props, state, Effects, or navigation: [`references/component-architecture.md`][component-architecture]
+- Generated clients, Query, mutations, auth, SSR, URL state, or persistence: [`references/data-query-contracts.md`][data-query]
+- Test files or a concrete missing-regression-test finding: [`references/testing.md`][testing]
+- Bundle, waterfall, rendering, or subscription cost supported by evidence: [`references/performance.md`][performance]
+- Changes to type boundaries, styling composition, or localized copy not covered above: [`references/code-quality.md`][code-quality]
 
-## Required output
-When invoked, the response must exactly follow one of the two templates:
+Follow a known contract directly; use an index only to discover its owner. Project documents define local requirements; installed dependencies and their public APIs establish version-specific behavior. Resolve disagreements with implementation and tests rather than treating existing code as the standard. For unresolved framework, browser, or accessibility behavior, consult current official documentation or standards; use a targeted guidance search when it helps locate them.
 
-### Template A (any findings)
-```
-# Code review
-Found <N> urgent issues need to be fixed:
+## Severity And Output
 
-## 1 <brief description of bug>
-FilePath: <path> line <line>
-<relevant code snippet or pointer>
+- **P0**: critical impact requiring immediate intervention, such as widespread unavailability, severe data loss, or a security/privacy breach.
+- **P1**: major reachable failure of a primary workflow or public contract that should block delivery.
+- **P2**: narrower correctness, accessibility, performance, or test defect; concrete maintenance cost; or a material violation of an explicit project contract.
+- **P3**: minor actionable cleanup; omit unless the user requested a thorough audit.
 
+Choose severity by impact, reachability, and recovery, not by topic; accessibility failures are correctness defects. Lead with verified findings ordered by severity. Include a tight file and line reference, the triggering scenario or applicable project rule, and a concrete fix direction. Deduplicate findings with the same cause. State material verification gaps separately; lack of verification is not itself a defect. When no findings remain, say so briefly. Do not add praise sections, speculative risks, or an unsolicited offer to implement fixes.
 
-### Suggested fix
-<brief description of suggested fix>
-
----
-... (repeat for each urgent issue) ...
-
-Found <M> suggestions for improvement:
-
-## 1 <brief description of suggestion>
-FilePath: <path> line <line>
-<relevant code snippet or pointer>
-
-
-### Suggested fix
-<brief description of suggested fix>
-
----
-
-... (repeat for each suggestion) ...
-```
-
-If there are no urgent issues, omit that section. If there are no suggestions, omit that section.
-
-If the issue number is more than 10, summarize as "10+ urgent issues" or "10+ suggestions" and just output the first 10 issues.
-
-Don't compress the blank lines between sections; keep them as-is for readability.
-
-If you use Template A (i.e., there are issues to fix) and at least one issue requires code changes, append a brief follow-up question after the structured output asking whether the user wants you to apply the suggested fix(es). For example: "Would you like me to use the Suggested fix section to address these issues?"
-
-### Template B (no issues)
-```
-## Code review
-No issues found.
-```
-
+[accessibility]: references/accessibility-ui.md
+[code-quality]: references/code-quality.md
+[component-architecture]: references/component-architecture.md
+[data-query]: references/data-query-contracts.md
+[dify-ui]: references/dify-ui.md
+[performance]: references/performance.md
+[testing]: references/testing.md

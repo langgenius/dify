@@ -6,8 +6,8 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -21,11 +21,14 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
-from models.model import App, EndUser
+from models.model import App, EndUser, load_annotation_reply_config
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -40,7 +43,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
-    ) -> Generator[Mapping | str, None, None]: ...
+        *,
+        session: Session,
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -50,6 +55,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
+        *,
+        session: Session,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -60,7 +67,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -69,7 +78,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         """
         Generate App response.
 
@@ -89,17 +100,24 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_trace_session_id_from_args(args),
+        }
 
         # get conversation
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
         # get app model config
-        app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
+        app_model_config = self._get_app_model_config(
+            app_model=app_model,
+            conversation=conversation,
+            session=session,
+        )
 
         # validate override model config
         override_model_config_dict = None
@@ -109,11 +127,18 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = ChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config", {})
+                tenant_id=app_model.tenant_id, config=args.get("model_config", {}), session=session
             )
 
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
+
+        if override_model_config_dict:
+            annotation_reply = None
+            effective_model_config_dict = override_model_config_dict
+        else:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            effective_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -123,9 +148,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         # `DraftWorkflowNodeRunApi` class which handle this properly.
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args["files"] if args.get("files") else []
-            file_extra_config = FileUploadConfigManager.convert(
-                override_model_config_dict or app_model_config.to_dict()
-            )
+            file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
                     mappings=files,
@@ -142,11 +165,15 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 app_model_config=app_model_config,
                 conversation=conversation,
                 override_config_dict=override_model_config_dict,
+                annotation_reply=annotation_reply,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
             )
 
             # init application generate entity
@@ -161,16 +188,24 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 invoke_from=invoke_from,
                 extras=extras,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 stream=streaming,
             )
 
             # init generate records
-            (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
+            (conversation, message) = self._init_generate_records(
+                application_generate_entity,
+                conversation,
+                session=session,
+            )
 
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
@@ -206,7 +241,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
-                user=user,
                 stream=streaming,
             )
 
@@ -237,12 +271,14 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
                 # chatbot app
                 runner = ChatAppRunner()
-                runner.run(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message,
-                )
+                with session_factory.create_session() as session:
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message,
+                        session=session,
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:

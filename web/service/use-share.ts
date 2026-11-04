@@ -1,5 +1,7 @@
-import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
+import type { WebAppAddress } from './webapp-address'
+import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   AppSourceType,
@@ -14,6 +16,7 @@ import {
   submitHumanInputForm,
 } from './share'
 import { useInvalid } from './use-base'
+import { resolveWebAppAddress } from './webapp-address'
 
 const NAME_SPACE = 'webapp'
 
@@ -43,21 +46,33 @@ type ShareQueryOptions = {
   refetchOnReconnect?: boolean
 }
 
+export class EnvironmentConversationNotFoundError extends Error {
+  constructor() {
+    super('Environment conversation not found')
+    this.name = 'EnvironmentConversationNotFoundError'
+  }
+}
+
 export const shareQueryKeys = {
-  appAccessMode: (code: string | null) => [NAME_SPACE, 'appAccessMode', code] as const,
-  appInfo: [NAME_SPACE, 'appInfo'] as const,
-  appParams: [NAME_SPACE, 'appParams'] as const,
-  appMeta: [NAME_SPACE, 'appMeta'] as const,
+  appAccessMode: (address: WebAppAddress | null, code: string | null) =>
+    [NAME_SPACE, 'appAccessMode', address, code] as const,
+  appInfo: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appInfo'] as const,
+  appParams: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appParams'] as const,
+  appMeta: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appMeta'] as const,
   conversations: [NAME_SPACE, 'conversations'] as const,
-  conversationList: (params: ShareConversationsParams) => [NAME_SPACE, 'conversations', params] as const,
-  chatList: (params: ShareChatListParams) => [NAME_SPACE, 'chatList', params] as const,
-  conversationName: (params: ShareConversationNameParams) => [NAME_SPACE, 'conversationName', params] as const,
+  conversationList: (address: WebAppAddress | null, params: ShareConversationsParams) =>
+    [NAME_SPACE, 'conversations', address, params] as const,
+  chatList: (address: WebAppAddress | null, params: ShareChatListParams) =>
+    [NAME_SPACE, 'chatList', address, params] as const,
+  conversationName: (address: WebAppAddress | null, params: ShareConversationNameParams) =>
+    [NAME_SPACE, 'conversationName', address, params] as const,
   humanInputForm: (token: string) => [NAME_SPACE, 'humanInputForm', token] as const,
 }
 
 export const useGetWebAppAccessModeByCode = (code: string | null) => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appAccessMode(code),
+    queryKey: shareQueryKeys.appAccessMode(address, code),
     queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
     staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
@@ -66,8 +81,9 @@ export const useGetWebAppAccessModeByCode = (code: string | null) => {
 }
 
 export const useGetWebAppInfo = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appInfo,
+    queryKey: shareQueryKeys.appInfo(address),
     queryFn: () => {
       return fetchAppInfo()
     },
@@ -75,8 +91,9 @@ export const useGetWebAppInfo = () => {
 }
 
 export const useGetWebAppParams = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appParams,
+    queryKey: shareQueryKeys.appParams(address),
     queryFn: () => {
       return fetchAppParams(AppSourceType.webApp)
     },
@@ -84,30 +101,35 @@ export const useGetWebAppParams = () => {
 }
 
 export const useGetWebAppMeta = () => {
+  const address = resolveWebAppAddress()
   return useQuery({
-    queryKey: shareQueryKeys.appMeta,
+    queryKey: shareQueryKeys.appMeta(address),
     queryFn: () => {
       return fetchAppMeta(AppSourceType.webApp)
     },
   })
 }
 
-export const useShareConversations = (params: ShareConversationsParams, options: ShareQueryOptions = {}) => {
-  const {
-    enabled = true,
-    refetchOnReconnect,
-    refetchOnWindowFocus,
-  } = options
-  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
+export const useShareConversations = (
+  params: ShareConversationsParams,
+  options: ShareQueryOptions = {},
+) => {
+  const address = resolveWebAppAddress()
+  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  const isEnabled =
+    enabled &&
+    params.appSourceType !== AppSourceType.tryApp &&
+    (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
   return useQuery<AppConversationData>({
-    queryKey: shareQueryKeys.conversationList(params),
-    queryFn: () => fetchConversations(
-      params.appSourceType,
-      params.appId,
-      params.lastId,
-      params.pinned,
-      params.limit,
-    ),
+    queryKey: shareQueryKeys.conversationList(address, params),
+    queryFn: () =>
+      fetchConversations(
+        params.appSourceType,
+        params.appId,
+        params.lastId,
+        params.pinned,
+        params.limit,
+      ),
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -115,15 +137,26 @@ export const useShareConversations = (params: ShareConversationsParams, options:
 }
 
 export const useShareChatList = (params: ShareChatListParams, options: ShareQueryOptions = {}) => {
-  const {
-    enabled = true,
-    refetchOnReconnect,
-    refetchOnWindowFocus,
-  } = options
-  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
+  const address = resolveWebAppAddress()
+  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  const isEnabled =
+    enabled &&
+    params.appSourceType !== AppSourceType.tryApp &&
+    (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
+    !!params.conversationId
   return useQuery({
-    queryKey: shareQueryKeys.chatList(params),
-    queryFn: () => fetchChatList(params.conversationId, params.appSourceType, params.appId),
+    queryKey: shareQueryKeys.chatList(address, params),
+    queryFn: async () => {
+      try {
+        return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
+      } catch (error) {
+        if (address?.kind === 'environment' && error instanceof ORPCError && error.status === 404) {
+          if (error.data?.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND')
+            throw new EnvironmentConversationNotFoundError()
+        }
+        throw error
+      }
+    },
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -134,16 +167,20 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
   })
 }
 
-export const useShareConversationName = (params: ShareConversationNameParams, options: ShareQueryOptions = {}) => {
-  const {
-    enabled = true,
-    refetchOnReconnect,
-    refetchOnWindowFocus,
-  } = options
-  const isEnabled = enabled && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
+export const useShareConversationName = (
+  params: ShareConversationNameParams,
+  options: ShareQueryOptions = {},
+) => {
+  const address = resolveWebAppAddress()
+  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  const isEnabled =
+    enabled &&
+    (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
+    !!params.conversationId
   return useQuery<ConversationItem>({
-    queryKey: shareQueryKeys.conversationName(params),
-    queryFn: () => generationConversationName(params.appSourceType, params.appId, params.conversationId),
+    queryKey: shareQueryKeys.conversationName(address, params),
+    queryFn: () =>
+      generationConversationName(params.appSourceType, params.appId, params.conversationId),
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -154,39 +191,11 @@ export const useInvalidateShareConversations = () => {
   return useInvalid(shareQueryKeys.conversations)
 }
 
-export class HumanInputFormError extends Error {
-  code: string
-  status: number
-
-  constructor(code: string, message: string, status: number) {
-    super(message)
-    this.name = 'HumanInputFormError'
-    this.code = code
-    this.status = status
-  }
-}
-
 export const useGetHumanInputForm = (token: string, options: ShareQueryOptions = {}) => {
-  const {
-    enabled = true,
-    refetchOnReconnect,
-    refetchOnWindowFocus,
-  } = options
-  return useQuery<HumanInputFormData, HumanInputFormError>({
+  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  return useQuery<HumanInputFormData>({
     queryKey: shareQueryKeys.humanInputForm(token),
-    queryFn: async () => {
-      try {
-        return await getHumanInputForm(token)
-      }
-      catch (error) {
-        const response = error as Response
-        if (response.status && response.json) {
-          const errorData = await response.json() as { code: string, message: string }
-          throw new HumanInputFormError(errorData.code, errorData.message, response.status)
-        }
-        throw error
-      }
-    },
+    queryFn: () => getHumanInputForm(token),
     enabled: enabled && !!token,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -197,7 +206,7 @@ export const useGetHumanInputForm = (token: string, options: ShareQueryOptions =
 type SubmitHumanInputFormParams = {
   token: string
   data: {
-    inputs: Record<string, string>
+    inputs: Record<string, unknown>
     action: string
   }
 }

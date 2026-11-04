@@ -1,207 +1,371 @@
-/* eslint-disable ts/no-explicit-any */
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { TFunction } from 'i18next'
+import type { ChangeEvent, ReactNode } from 'react'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { withSelectorKey } from '@/test/i18n-mock'
+import { TransferMethod } from '@/types/app'
 import ConfigModalFormFields from '../form-fields'
 
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: Array<Record<string, unknown>>) => void }) => (
-    <button
-      type="button"
-      onClick={() => onChange([
-        { fileId: 'file-1', type: 'local_file', url: 'https://example.com/file.png' },
-        { fileId: 'file-2', type: 'remote_url', url: 'https://example.com/file-2.png' },
-      ])}
-    >
-      upload-file
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', () => ({
-  default: ({ onChange, isMultiple }: { onChange: (payload: Record<string, unknown>) => void, isMultiple: boolean }) => (
-    <button type="button" onClick={() => onChange({ number_limits: isMultiple ? 3 : 1 })}>
-      {isMultiple ? 'multi-file-setting' : 'single-file-setting'}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button type="button" onClick={() => onChange('{\n  "type": "object"\n}')}>json-editor</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ onCheck, checked }: { onCheck: () => void, checked: boolean }) => (
-    <button type="button" onClick={onCheck}>{checked ? 'checked' : 'unchecked'}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/select', () => ({
-  default: ({ onSelect }: { onSelect: (item: { value: string }) => void }) => (
-    <button type="button" onClick={() => onSelect({ value: 'beta' })}>legacy-select</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
-    <div>
-      <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
-      {children}
-    </div>
-  ),
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectValue: () => <span>select-value</span>,
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('../field', () => ({
-  default: ({ children, title }: { children: ReactNode, title: string }) => (
-    <div>
-      <span>{title}</span>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('../type-select', () => ({
-  default: ({ onSelect }: { onSelect: (item: { value: InputVarType }) => void }) => (
-    <button type="button" onClick={() => onSelect({ value: InputVarType.select })}>type-selector</button>
-  ),
-}))
-
-vi.mock('../../config-select', () => ({
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['alpha', 'beta'])}>config-select</button>
-  ),
-}))
-
-vi.mock('../../config-string', () => ({
-  default: ({ onChange }: { onChange: (value: number) => void }) => (
-    <button type="button" onClick={() => onChange(64)}>config-string</button>
-  ),
-}))
-
-const t = (key: string) => key
-
-const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
-
-const createBaseProps = () => {
-  const payloadChangeHandlers: Record<string, ReturnType<typeof createPayloadChangeHandler>> = {
-    default: createPayloadChangeHandler(),
-    hide: createPayloadChangeHandler(),
-    label: createPayloadChangeHandler(),
-    max_length: createPayloadChangeHandler(),
-    options: createPayloadChangeHandler(),
-    required: createPayloadChangeHandler(),
-  }
-
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   return {
-    checkboxDefaultSelectValue: 'false',
-    isStringInput: false,
-    jsonSchemaStr: '',
-    maxLength: 32,
-    modelId: 'gpt-4o',
-    onFilePayloadChange: vi.fn(),
-    onJSONSchemaChange: vi.fn(),
-    onPayloadChange: (key: string) => {
-      if (!payloadChangeHandlers[key])
-        payloadChangeHandlers[key] = createPayloadChangeHandler()
-      return payloadChangeHandlers[key]
-    },
-    onTypeChange: vi.fn(),
-    onVarKeyBlur: vi.fn(),
-    onVarNameChange: vi.fn(),
-    options: undefined as string[] | undefined,
-    selectOptions: [],
-    tempPayload: {
-      type: InputVarType.textInput,
-      label: 'Question',
-      variable: 'question',
-      required: false,
-      hide: false,
-    } as any,
-    t,
-    payloadChangeHandlers,
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const ns = options?.ns as string | undefined
+        return ns ? `${ns}.${key}` : key
+      }) as TFunction<['appDebug']>,
+      i18n: { language: 'en', changeLanguage: vi.fn() },
+    }),
+    Trans: withSelectorKeyProps(
+      ({ i18nKey, components }: { i18nKey: string; components?: Record<string, ReactNode> }) => (
+        <span data-i18n-key={i18nKey}>
+          {i18nKey}
+          {components?.docLink}
+        </span>
+      ),
+    ),
   }
+})
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({}),
+  usePathname: () => '/',
+}))
+
+const remoteUpload = vi.hoisted(() =>
+  vi.fn<
+    (url: string) => Promise<{
+      id: string
+      name: string
+      size: number
+      mime_type: string
+      url: string
+      created_at: null
+      created_by: null
+      extension: string
+    }>
+  >(),
+)
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createFileUploadConfigFixture } = await import('@/test/fixtures/file-upload-config')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => createFileUploadConfigFixture(),
+      'remoteFiles.upload.post': ({
+        body,
+      }: Parameters<typeof consoleClient.remoteFiles.upload.post>[0]) => remoteUpload(body.url),
+    }),
+  }
+})
+
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug']>
+
+const basePayload: InputVar = {
+  type: InputVarType.textInput,
+  label: 'Question',
+  variable: 'question',
+  required: false,
+  hide: false,
+}
+
+const selectOptions = [
+  { value: InputVarType.textInput, name: 'Text' },
+  { value: InputVarType.select, name: 'Select' },
+  { value: InputVarType.checkbox, name: 'Checkbox' },
+]
+
+type ControlledFieldsProps = {
+  initialPayload?: InputVar
+  options?: string[]
+  showHiddenField?: boolean
+}
+
+function ControlledFields({
+  initialPayload = basePayload,
+  options,
+  showHiddenField,
+}: ControlledFieldsProps) {
+  const [tempPayload, setTempPayload] = useState(initialPayload)
+
+  const setPayloadValue = (key: string) => (value: unknown) => {
+    setTempPayload((payload) => ({ ...payload, [key]: value }) as InputVar)
+  }
+
+  return (
+    <>
+      <ConfigModalFormFields
+        checkboxDefaultSelectValue={tempPayload.default === true ? 'true' : 'false'}
+        isStringInput={false}
+        jsonSchemaStr=""
+        maxLength={32}
+        modelId="gpt-4o"
+        onFilePayloadChange={(payload: UploadFileSetting) =>
+          setTempPayload((current) => ({ ...current, ...payload }))
+        }
+        onJSONSchemaChange={() => undefined}
+        onPayloadChange={setPayloadValue}
+        onTypeChange={(item) => setTempPayload((payload) => ({ ...payload, type: item.value }))}
+        onVarKeyBlur={() => undefined}
+        onVarNameChange={(event: ChangeEvent<HTMLInputElement>) =>
+          setTempPayload((payload) => ({ ...payload, variable: event.target.value }))
+        }
+        options={options}
+        selectOptions={selectOptions}
+        showHiddenField={showHiddenField}
+        tempPayload={tempPayload}
+        t={t}
+      />
+      <output aria-label="Saved variable">{JSON.stringify(tempPayload)}</output>
+    </>
+  )
+}
+
+function getSavedVariable() {
+  return JSON.parse(screen.getByLabelText('Saved variable').textContent || '{}') as InputVar
+}
+
+const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
+  id: 'file-1',
+  name: 'report.txt',
+  size: 1024,
+  type: 'text/plain',
+  progress: 100,
+  transferMethod: TransferMethod.remote_url,
+  supportFileType: 'document',
+  uploadedId: 'uploaded-file-1',
+  url: 'https://example.com/report.txt',
+  isRemote: true,
+  ...overrides,
+})
+
+async function uploadRemoteFile(user: ReturnType<typeof userEvent.setup>, url: string) {
+  let input = screen.queryByPlaceholderText('common.fileUploader.pasteFileLinkInputPlaceholder')
+  if (!input) {
+    await user.click(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ }))
+    input = screen.getByPlaceholderText('common.fileUploader.pasteFileLinkInputPlaceholder')
+  }
+  await user.type(input, url)
+  await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 }
 
 describe('ConfigModalFormFields', () => {
-  it('should update paragraph, number, checkbox, and select defaults', () => {
-    const paragraphProps = createBaseProps()
-    paragraphProps.tempPayload = { ...paragraphProps.tempPayload, type: InputVarType.paragraph, default: 'hello' }
-    render(<ConfigModalFormFields {...paragraphProps} />)
-    fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated paragraph' } })
-    expect(paragraphProps.payloadChangeHandlers.default).toHaveBeenCalledWith('updated paragraph')
-
-    const numberProps = createBaseProps()
-    numberProps.tempPayload = { ...numberProps.tempPayload, type: InputVarType.number, default: '1' }
-    render(<ConfigModalFormFields {...numberProps} />)
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-    expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith('2')
-
-    const checkboxProps = createBaseProps()
-    checkboxProps.tempPayload = { ...checkboxProps.tempPayload, type: InputVarType.checkbox, default: false }
-    checkboxProps.checkboxDefaultSelectValue = 'true'
-    render(<ConfigModalFormFields {...checkboxProps} />)
-    fireEvent.click(screen.getByText('ui-select:true'))
-    expect(checkboxProps.payloadChangeHandlers.default).toHaveBeenCalledWith(false)
-
-    const selectProps = createBaseProps()
-    selectProps.tempPayload = { ...selectProps.tempPayload, type: InputVarType.select, default: 'alpha' }
-    selectProps.options = ['alpha', 'beta']
-    render(<ConfigModalFormFields {...selectProps} />)
-    fireEvent.click(screen.getByText('config-select'))
-    fireEvent.click(screen.getByText('ui-select:alpha'))
-    expect(selectProps.payloadChangeHandlers.options).toHaveBeenCalledWith(['alpha', 'beta'])
-    expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith('beta')
+  beforeEach(() => {
+    remoteUpload.mockImplementation(async (url) => ({
+      id: url.includes('second') ? 'uploaded-file-2' : 'uploaded-file-1',
+      name: url.split('/').at(-1) || 'report.txt',
+      size: 1024,
+      mime_type: 'text/plain',
+      url,
+      created_at: null,
+      created_by: null,
+      extension: 'txt',
+    }))
   })
 
-  it('should wire file, json schema, and visibility controls', () => {
-    const singleFileProps = createBaseProps()
-    singleFileProps.tempPayload = {
-      ...singleFileProps.tempPayload,
-      type: InputVarType.singleFile,
-      allowed_file_types: ['document'],
-      allowed_file_extensions: [],
-      allowed_file_upload_methods: ['remote_url'],
-    }
-    render(<ConfigModalFormFields {...singleFileProps} />)
-    fireEvent.click(screen.getByText('single-file-setting'))
-    fireEvent.click(screen.getByText('upload-file'))
-    fireEvent.click(screen.getAllByText('unchecked')[0])
-    fireEvent.click(screen.getAllByText('unchecked')[1])
+  it.each([
+    {
+      type: InputVarType.textInput,
+      label: 'variableConfig.fieldType',
+      option: 'Select',
+      expected: 'Select',
+    },
+    {
+      type: InputVarType.checkbox,
+      label: 'variableConfig.defaultValue',
+      option: 'variableConfig.startChecked',
+      expected: 'true',
+    },
+    {
+      type: InputVarType.select,
+      label: 'variableConfig.defaultValue',
+      option: 'beta',
+      expected: 'beta',
+    },
+  ])(
+    'should focus the $type selector from its label and select an option',
+    async ({ type, label, option, expected }) => {
+      const user = userEvent.setup()
+      render(
+        <ControlledFields initialPayload={{ ...basePayload, type }} options={['alpha', 'beta']} />,
+      )
 
-    expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
-    expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
-      fileId: 'file-1',
-    }))
-    expect(singleFileProps.payloadChangeHandlers.required).toHaveBeenCalledWith(true)
-    expect(singleFileProps.payloadChangeHandlers.hide).toHaveBeenCalledWith(true)
+      await user.click(screen.getByText(label))
+      const trigger = screen.getByRole('combobox', { name: label })
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{ArrowDown}')
+      await user.click(await screen.findByRole('option', { name: new RegExp(`^${option}`) }))
 
-    const multiFileProps = createBaseProps()
-    multiFileProps.tempPayload = {
-      ...multiFileProps.tempPayload,
-      type: InputVarType.multiFiles,
-      allowed_file_types: ['document'],
-      allowed_file_extensions: [],
-      allowed_file_upload_methods: ['remote_url'],
-    }
-    render(<ConfigModalFormFields {...multiFileProps} />)
-    fireEvent.click(screen.getByText('multi-file-setting'))
-    fireEvent.click(screen.getAllByText('upload-file')[1])
-    expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })
-    expect(multiFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith([
-      expect.objectContaining({ fileId: 'file-1' }),
-      expect.objectContaining({ fileId: 'file-2' }),
-    ])
+      if (type === InputVarType.textInput)
+        expect(screen.getByText('variableConfig.options')).toBeInTheDocument()
+      else expect(screen.getByRole('combobox', { name: label })).toHaveTextContent(expected)
+    },
+  )
 
-    const jsonProps = createBaseProps()
-    jsonProps.tempPayload = { ...jsonProps.tempPayload, type: InputVarType.jsonObject }
-    render(<ConfigModalFormFields {...jsonProps} />)
-    fireEvent.click(screen.getByText('json-editor'))
-    expect(jsonProps.onJSONSchemaChange).toHaveBeenCalledWith('{\n  "type": "object"\n}')
+  it('should hide visibility controls for file inputs and save scalar and list defaults', async () => {
+    const user = userEvent.setup()
+    const textInputView = render(<ControlledFields />)
+    expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'variableConfig.hidden' }))
+    expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    expect(await screen.findByRole('link')).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields',
+    )
+    textInputView.unmount()
+
+    const hiddenFieldDisabledView = render(<ControlledFields showHiddenField={false} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    hiddenFieldDisabledView.unmount()
+
+    const singleFileView = render(
+      <ControlledFields
+        initialPayload={{
+          ...basePayload,
+          type: InputVarType.singleFile,
+          allowed_file_types: ['document'],
+          allowed_file_extensions: [],
+          allowed_file_upload_methods: [TransferMethod.remote_url],
+        }}
+      />,
+    )
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    await uploadRemoteFile(user, 'https://example.com/first.txt')
+    await waitFor(() =>
+      expect(getSavedVariable().default).toEqual(
+        expect.objectContaining({ uploadedId: 'uploaded-file-1' }),
+      ),
+    )
+    expect(Array.isArray(getSavedVariable().default)).toBe(false)
+    expect(screen.getByText('https://example.com/first.txt')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'variableConfig.required' }))
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toBeChecked()
+    singleFileView.unmount()
+
+    render(
+      <ControlledFields
+        initialPayload={{
+          ...basePayload,
+          type: InputVarType.multiFiles,
+          allowed_file_types: ['document'],
+          allowed_file_extensions: [],
+          allowed_file_upload_methods: [TransferMethod.remote_url],
+        }}
+      />,
+    )
+    await uploadRemoteFile(user, 'https://example.com/first.txt')
+    await waitFor(() =>
+      expect(getSavedVariable().default).toEqual([
+        expect.objectContaining({ uploadedId: 'uploaded-file-1' }),
+      ]),
+    )
+    await uploadRemoteFile(user, 'https://example.com/second.txt')
+    await waitFor(() =>
+      expect(getSavedVariable().default).toEqual([
+        expect.objectContaining({ uploadedId: 'uploaded-file-1' }),
+        expect.objectContaining({ uploadedId: 'uploaded-file-2' }),
+      ]),
+    )
+    expect(screen.getByText('https://example.com/first.txt')).toBeInTheDocument()
+    expect(screen.getByText('https://example.com/second.txt')).toBeInTheDocument()
+  })
+
+  it('should clear select defaults and show an empty real uploader', async () => {
+    const user = userEvent.setup()
+    const selectView = render(
+      <ControlledFields
+        initialPayload={{ ...basePayload, type: InputVarType.select, default: 'alpha' }}
+        options={['alpha', ' ', 'beta']}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'variableConfig.defaultValue' }))
+    await user.click(await screen.findByRole('option', { name: 'variableConfig.noDefaultValue' }))
+    expect(getSavedVariable()).not.toHaveProperty('default')
+    selectView.unmount()
+
+    render(
+      <ControlledFields
+        initialPayload={{ ...basePayload, type: InputVarType.singleFile, default: undefined }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ })).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: /common.operation.remove/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should skip rendering the default selector when options are missing', () => {
+    render(<ControlledFields initialPayload={{ ...basePayload, type: InputVarType.select }} />)
+
+    expect(
+      screen.queryByRole('combobox', { name: 'variableConfig.defaultValue' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should preserve supported file defaults when present', () => {
+    const singleFile = createFile({ id: 'existing-file', name: 'existing.txt' })
+    const singleFileView = render(
+      <ControlledFields
+        initialPayload={{
+          ...basePayload,
+          type: InputVarType.singleFile,
+          default: singleFile,
+        }}
+      />,
+    )
+    expect(screen.getByText('existing.txt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ })).toBeDisabled()
+    singleFileView.unmount()
+
+    const existingFiles = [
+      createFile({ id: 'file-1', name: 'first.txt' }),
+      createFile({ id: 'file-2', name: 'second.txt', uploadedId: 'uploaded-file-2' }),
+    ]
+    render(
+      <ControlledFields
+        initialPayload={{
+          ...basePayload,
+          type: InputVarType.multiFiles,
+          default: existingFiles,
+          max_length: 2,
+        }}
+      />,
+    )
+    expect(screen.getByText('first.txt')).toBeInTheDocument()
+    expect(screen.getByText('second.txt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ })).toBeDisabled()
+  })
+
+  it('should disable hide when required becomes true and disable required when hidden', async () => {
+    const user = userEvent.setup()
+    const requiredView = render(<ControlledFields />)
+    await user.click(screen.getByRole('checkbox', { name: 'variableConfig.required' }))
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    requiredView.unmount()
+
+    render(<ControlledFields initialPayload={{ ...basePayload, hide: true }} />)
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toBeChecked()
   })
 })

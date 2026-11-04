@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any, Protocol, TypedDict
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 
 class IndexingResultDict(TypedDict):
@@ -43,15 +44,24 @@ class IndexProcessorProtocol(Protocol):
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: dict[str, Any] | None = None,
+        *,
+        session: Session,
     ) -> IndexingResultDict: ...
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+        self,
+        chunks: Any,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: dict[str, Any] | None,
+        *,
+        session: Session,
     ) -> Preview: ...
 
 
 class SummaryIndexServiceProtocol(Protocol):
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict | None = None
+        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] | None = None
     ) -> None: ...

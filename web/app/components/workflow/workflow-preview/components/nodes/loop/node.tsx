@@ -1,35 +1,25 @@
 import type { FC } from 'react'
 import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import {
-  memo,
-  useEffect,
-} from 'react'
-import {
-  Background,
-  useNodesInitialized,
-  useViewport,
-} from 'reactflow'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useEffect } from 'react'
+import { Background, useNodesInitialized, useViewport } from 'reactflow'
 import { useNodeLoopInteractions } from './hooks'
 
-const Node: FC<NodeProps<LoopNodeType>> = ({
-  id,
-  data: _data,
-}) => {
+const Node: FC<NodeProps<LoopNodeType>> = ({ id, data: _data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeLoopRerender } = useNodeLoopInteractions()
 
   useEffect(() => {
-    if (nodesInitialized)
-      handleNodeLoopRerender(id)
+    if (nodesInitialized) handleNodeLoopRerender(id)
   }, [nodesInitialized, id, handleNodeLoopRerender])
 
   return (
-    <div className={cn(
-      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
-    )}
+    <div
+      className={cn(
+        'relative h-full min-h-22.5 w-full min-w-60 rounded-2xl bg-workflow-canvas-workflow-bg',
+      )}
       // style={{
       //   width: data.width || 'auto',
       // }}

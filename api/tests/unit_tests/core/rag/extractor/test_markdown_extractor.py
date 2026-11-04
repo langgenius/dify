@@ -47,6 +47,37 @@ after
         assert tups[1][0] == "Header"
         assert "# this is not a heading" in tups[1][1]
 
+    @pytest.mark.parametrize(
+        "fence",
+        [
+            "~~~python\n# example comment\n~~~~ \t",
+            "  ```python\n# example comment\n  ```",
+            "````python\n```\n# example comment\n````",
+            "~~~python\n```\n# example comment\n~~~",
+        ],
+    )
+    def test_extract_ignores_headings_inside_fenced_code(self, fence: str, tmp_path: Path):
+        markdown = f"# Intro\nbefore\n{fence}\n# Next\nafter"
+        markdown_file = tmp_path / "example.md"
+        markdown_file.write_text(markdown, encoding="utf-8")
+
+        documents = MarkdownExtractor(
+            file_path=str(markdown_file), encoding="utf-8", autodetect_encoding=False
+        ).extract()
+        nonempty_documents = [document.page_content for document in documents if document.page_content]
+
+        assert len(nonempty_documents) == 2
+        assert nonempty_documents[0].startswith("\n\nIntro\n")
+        assert "# example comment" in nonempty_documents[0]
+        assert nonempty_documents[1].startswith("\n\nNext\n")
+
+    def test_markdown_to_tups_does_not_open_backtick_fence_with_backtick_in_info(self):
+        markdown = "# Intro\n```py`thon\n# Next\nafter"
+
+        tups = MarkdownExtractor(file_path="dummy_path").markdown_to_tups(markdown)
+
+        assert [header for header, _ in tups if header is not None] == ["Intro", "Next"]
+
     def test_remove_images_and_hyperlinks(self):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
@@ -56,7 +87,7 @@ after
         assert extractor.remove_images(with_images) == "before  after"
         assert extractor.remove_hyperlinks(with_links) == "OpenAI"
 
-    def test_parse_tups_reads_file_and_applies_options(self, tmp_path):
+    def test_parse_tups_reads_file_and_applies_options(self, tmp_path: Path):
         markdown_file = tmp_path / "doc.md"
         markdown_file.write_text("# Header\nText with [link](https://example.com) and ![[img.png]]", encoding="utf-8")
 
@@ -74,7 +105,7 @@ after
         assert "[link]" not in tups[1][1]
         assert "img.png" not in tups[1][1]
 
-    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch):
+    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=True)
 
         calls: list[str | None] = []
@@ -99,7 +130,7 @@ after
         assert len(tups) == 2
         assert calls == [None, "bad-encoding", "utf-8"]
 
-    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch):
+    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=False)
 
         def raise_decode(self, encoding=None):
@@ -110,7 +141,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch):
+    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
         def raise_other(self, encoding=None):
@@ -121,7 +152,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch):
+    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
         monkeypatch.setattr(extractor, "parse_tups", lambda _: [(None, "plain"), ("Header", "value")])
 

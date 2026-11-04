@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -40,15 +40,15 @@ export const buildTriggerStatusMap = (triggers: TriggerStatusLike[]) => {
   }, {})
 }
 
-export const coerceReplayUserInputs = (rawInputs: unknown): Record<string, string | number | boolean> | null => {
-  if (!rawInputs || typeof rawInputs !== 'object' || Array.isArray(rawInputs))
-    return null
+export const coerceReplayUserInputs = (
+  rawInputs: unknown,
+): Record<string, string | number | boolean> | null => {
+  if (!rawInputs || typeof rawInputs !== 'object' || Array.isArray(rawInputs)) return null
 
   const userInputs: Record<string, string | number | boolean> = {}
 
   Object.entries(rawInputs as Record<string, unknown>).forEach(([key, value]) => {
-    if (key.startsWith('sys.'))
-      return
+    if (key.startsWith('sys.')) return
 
     if (value == null) {
       userInputs[key] = ''
@@ -62,8 +62,7 @@ export const coerceReplayUserInputs = (rawInputs: unknown): Record<string, strin
 
     try {
       userInputs[key] = JSON.stringify(value)
-    }
-    catch {
+    } catch {
       userInputs[key] = String(value)
     }
   })
@@ -73,7 +72,7 @@ export const coerceReplayUserInputs = (rawInputs: unknown): Record<string, strin
 
 export const buildInitialFeatures = (
   featuresSource: WorkflowFeaturesLike | null | undefined,
-  fileUploadConfigResponse: FileUploadConfigResponse | undefined,
+  fileUploadConfigResponse: UploadConfig | undefined,
 ): FeaturesData => {
   const features = featuresSource || {}
   const fileUpload = features.file_upload
@@ -84,12 +83,18 @@ export const buildInitialFeatures = (
       image: {
         enabled: !!imageUpload?.enabled,
         number_limits: imageUpload?.number_limits || 3,
-        transfer_methods: imageUpload?.transfer_methods || [TransferMethod.local_file, TransferMethod.remote_url],
+        transfer_methods: imageUpload?.transfer_methods || [
+          TransferMethod.local_file,
+          TransferMethod.remote_url,
+        ],
       },
       enabled: !!(fileUpload?.enabled || imageUpload?.enabled),
       allowed_file_types: fileUpload?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: fileUpload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-      allowed_file_upload_methods: fileUpload?.allowed_file_upload_methods || imageUpload?.transfer_methods || [TransferMethod.local_file, TransferMethod.remote_url],
+      allowed_file_extensions:
+        fileUpload?.allowed_file_extensions ||
+        FILE_EXTS[SupportUploadFileTypes.image]!.map((ext) => `.${ext}`),
+      allowed_file_upload_methods: fileUpload?.allowed_file_upload_methods ||
+        imageUpload?.transfer_methods || [TransferMethod.local_file, TransferMethod.remote_url],
       number_limits: fileUpload?.number_limits || imageUpload?.number_limits || 3,
       fileUploadConfig: fileUploadConfigResponse,
     },

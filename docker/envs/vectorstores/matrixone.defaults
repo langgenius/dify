@@ -1,0 +1,8 @@
+# Defaults for MatrixOne. Copy this file to matrixone.env to customize its client connection.
+# docker/.env takes precedence. Change credentials in the database before updating this client.
+
+MATRIXONE_PASSWORD=${MATRIXONE_PASSWORD-111}
+MATRIXONE_HOST=${MATRIXONE_HOST-matrixone}
+MATRIXONE_PORT=${MATRIXONE_PORT-6001}
+MATRIXONE_USER=${MATRIXONE_USER-dump}
+MATRIXONE_DATABASE=${MATRIXONE_DATABASE-dify}

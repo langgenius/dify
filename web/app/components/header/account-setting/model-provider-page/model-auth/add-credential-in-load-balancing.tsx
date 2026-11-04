@@ -1,3 +1,4 @@
+import type { ComponentPropsWithRef } from 'react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -5,15 +6,15 @@ import type {
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { RiAddLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelModalModeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { cn } from '@/utils/classnames'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -22,42 +23,57 @@ type AddCredentialInLoadBalancingProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   modelCredential: ModelCredential
   onSelectCredential: (credential: Credential) => void
-  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
   onRemove?: (credentialId: string) => void
 }
 const AddCredentialInLoadBalancing = ({
   provider,
   model,
   configurationMethod,
+  currentCustomConfigurationModelFixedFields,
   modelCredential,
   onSelectCredential,
   onUpdate,
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation()
-  const {
-    available_credentials,
-  } = modelCredential
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const { available_credentials } = modelCredential
+  const canOpenCredentialMenu =
+    canUseCredential ||
+    canCreateCredential ||
+    (canManageCredential && !!available_credentials?.length)
   const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const handleUpdate = useCallback((payload?: any, formValues?: Record<string, any>) => {
-    onUpdate?.(payload, formValues)
-  }, [onUpdate])
+  const handleUpdate = useCallback(
+    (payload?: unknown, formValues?: Record<string, unknown>) => {
+      onUpdate?.(payload, formValues)
+    },
+    [onUpdate],
+  )
 
-  const renderTrigger = useCallback((open?: boolean) => {
-    const Item = (
-      <div className={cn(
-        'system-sm-medium flex h-8 items-center rounded-lg px-3 text-text-accent hover:bg-state-base-hover',
-        open && 'bg-state-base-hover',
-      )}
-      >
-        <RiAddLine className="mr-2 h-4 w-4" />
-        {t('modelProvider.auth.addCredential', { ns: 'common' })}
-      </div>
-    )
+  const renderTrigger = useCallback(
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
+      const Item = (
+        <button
+          {...triggerProps}
+          type="button"
+          className={cn(
+            'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            open && 'bg-state-base-hover',
+          )}
+        >
+          <span className="me-2 i-ri-add-line size-4" />
+          {t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
+        </button>
+      )
 
-    return Item
-  }, [t, isCustomModel])
+      return Item
+    },
+    [t],
+  )
+
+  if (!canOpenCredentialMenu) return null
 
   return (
     <Authorized
@@ -69,25 +85,29 @@ const AddCredentialInLoadBalancing = ({
         onUpdate: handleUpdate,
         onRemove,
       }}
-      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential}
+      triggerOnlyOpenModal={
+        !available_credentials?.length && !notAllowCustomCredential && canCreateCredential
+      }
       items={[
         {
-          title: isCustomModel ? '' : t('modelProvider.auth.apiKeys', { ns: 'common' }),
+          title: isCustomModel
+            ? ''
+            : t(($) => $['modelProvider.auth.apiKeys'], { ns: 'modelProvider' }),
           model: isCustomModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={isCustomModel
-        ? {
-            __model_name: model.model,
-            __model_type: model.model_type,
-          }
-        : undefined}
+      currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
-      placement="bottom-start"
-      popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}
+      hideAddAction={!canCreateCredential}
+      align="start"
+      popupTitle={
+        isCustomModel
+          ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })
+          : ''
+      }
     />
   )
 }

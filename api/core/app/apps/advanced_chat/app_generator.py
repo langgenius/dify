@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -18,11 +18,7 @@ from constants import UUID_NIL
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
-
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -38,20 +34,31 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
-from core.helper.trace_id_helper import extract_external_trace_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
+    ChatbotAppBlockingResponse,
+    ChatbotAppStreamResponse,
+)
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import RuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from services.app.file_input_defaults import grant_file_default_access
 from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -60,7 +67,16 @@ from services.workflow_draft_variable_service import (
 logger = logging.getLogger(__name__)
 
 
+def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+    if isinstance(args, Mapping):
+        return extract_trace_session_id_from_args(args)
+    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+
+
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, execution_driver: WorkflowRunDriver) -> None:
+        self._execution_driver = execution_driver
+
     _dialogue_count: int
 
     @overload
@@ -74,6 +90,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_run_id: str,
         streaming: Literal[False],
         pause_state_config: PauseStateLayerConfig | None = None,
+        *,
+        session: Session,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -87,7 +105,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_run_id: str,
         streaming: Literal[True],
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Generator[Mapping | str, None, None]: ...
+        *,
+        session: Session,
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -100,7 +120,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_run_id: str,
         streaming: bool,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
         self,
@@ -112,7 +134,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_run_id: str,
         streaming: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
 
@@ -122,6 +146,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param args: request args
         :param invoke_from: invoke from source
         :param streaming: is stream
+        :param session: database session supplied by the caller
         """
         if not args.get("query"):
             raise ValueError("query is required")
@@ -136,15 +161,22 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         extras = {
             "auto_generate_conversation_name": args.get("auto_generate_name", False),
             **extract_external_trace_id_from_args(args),
+            **extract_trace_session_id_from_args(args),
         }
 
         # get conversation
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
-            )
+            try:
+                conversation = ConversationService.get_conversation(
+                    app_model=app_model, conversation_id=conversation_id, user=user, session=session
+                )
+            except ConversationNotExistsError:
+                if invoke_from == InvokeFrom.SERVICE_API:
+                    conversation = None
+                else:
+                    raise
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -168,9 +200,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # convert to app config
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
             )
 
             if invoke_from == InvokeFrom.DEBUGGER:
@@ -188,12 +223,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 workflow_run_id=str(workflow_run_id),
             )
             contexts.plugin_tool_providers.set({})
@@ -210,6 +249,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -217,6 +257,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # Create workflow node execution repository
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -232,6 +273,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation=conversation,
                 stream=streaming,
                 pause_state_config=pause_state_config,
+                session=session,
             )
 
     def resume(
@@ -242,15 +284,33 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         conversation: Conversation,
         message: Message,
+        session: Session,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ):
         """
         Resume a paused advanced chat execution.
+
+        ``trace_scope`` is transient and excluded from generate-entity serialization,
+        so resumed executions create it again before persistence layers receive the entity.
         """
+        if application_generate_entity.trace_scope is None:
+            application_generate_entity = application_generate_entity.model_copy(
+                update={
+                    "trace_scope": create_trace_scope(
+                        tenant_id=app_model.tenant_id,
+                        app_id=app_model.id,
+                        app_tracing=app_model.tracing,
+                        user_id=user.id if isinstance(user, Account) else user.session_id,
+                        extras=application_generate_entity.extras,
+                    )
+                }
+            )
+
         return self._generate(
             workflow=workflow,
             user=user,
@@ -263,6 +323,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=application_generate_entity.stream,
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
+            response_stream_filter=response_stream_filter,
+            session=session,
         )
 
     def single_iteration_generate(
@@ -273,7 +335,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -283,6 +347,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -304,7 +369,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -319,6 +387,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -326,6 +395,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -336,7 +406,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             tenant_id=application_generate_entity.app_config.tenant_id,
             user_id=user.id,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
         return self._generate(
@@ -349,6 +419,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=None,
             stream=streaming,
             variable_loader=var_loader,
+            session=session,
         )
 
     def single_loop_generate(
@@ -359,7 +430,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         args: LoopNodeRunPayload,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+        *,
+        session: Session,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -369,6 +442,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param args: request args
         :param streaming: is stream
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -390,7 +464,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs),
         )
         contexts.plugin_tool_providers.set({})
@@ -403,6 +480,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -410,6 +488,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -420,7 +499,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             tenant_id=application_generate_entity.app_config.tenant_id,
             user_id=user.id,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
         return self._generate(
@@ -433,6 +512,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=None,
             stream=streaming,
             variable_loader=var_loader,
+            session=session,
         )
 
     def _generate(
@@ -442,6 +522,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         invoke_from: InvokeFrom,
         application_generate_entity: AdvancedChatAppGenerateEntity,
+        session: Session,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         conversation: Conversation | None = None,
@@ -449,9 +530,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         pause_state_config: PauseStateLayerConfig | None = None,
-        graph_runtime_state: GraphRuntimeState | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+        graph_runtime_state: RuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -459,6 +540,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param invoke_from: invoke from source
         :param application_generate_entity: application generate entity
+        :param session: database session supplied by the caller
         :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param conversation: conversation
@@ -469,23 +551,28 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             is_first_conversation = conversation is None
 
             if conversation is not None and message is not None:
                 pass
             else:
-                conversation, message = self._init_generate_records(application_generate_entity, conversation)
+                conversation, message = self._init_generate_records(
+                    application_generate_entity,
+                    conversation,
+                    session=session,
+                )
 
             if is_first_conversation:
                 # update conversation features
                 conversation.override_model_configs = workflow.features
-                db.session.commit()
-                db.session.refresh(conversation)
+                session.commit()
+                session.refresh(conversation)
 
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
             # because during the first conversation, dialogue_count should be 1.
-            self._dialogue_count = get_thread_messages_length(conversation.id) + 1
+            self._dialogue_count = get_thread_messages_length(conversation.id, session=session) + 1
 
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
@@ -496,16 +583,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app_mode=conversation.mode,
                 message_id=message.id,
             )
-
-            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
-            if pause_state_config is not None:
-                graph_layers.append(
-                    PauseStatePersistenceLayer(
-                        session_factory=pause_state_config.session_factory,
-                        generate_entity=application_generate_entity,
-                        state_owner_user_id=pause_state_config.state_owner_user_id,
-                    )
-                )
 
             # new thread with request context and contextvars
             context = contextvars.copy_context()
@@ -522,8 +599,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
-                    "graph_engine_layers": tuple(graph_layers),
+                    "pause_state_config": pause_state_config,
                     "graph_runtime_state": graph_runtime_state,
+                    "response_stream_filter": response_stream_filter,
                 },
             )
 
@@ -534,21 +612,36 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
             conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
             message_snapshot = MessageSnapshot.from_message(message)
-            db.session.close()
+            session.close()
 
-            # return response or stream generator
-            response = self._handle_advanced_chat_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow_snapshot,
-                queue_manager=queue_manager,
-                conversation=conversation_snapshot,
-                message=message_snapshot,
-                user=user,
-                stream=stream,
-                draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
-            )
+            try:
+                response = self._handle_advanced_chat_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow_snapshot,
+                    queue_manager=queue_manager,
+                    conversation=conversation_snapshot,
+                    message=message_snapshot,
+                    user=user,
+                    stream=stream,
+                    draft_var_saver_factory=self._get_draft_var_saver_factory(
+                        invoke_from,
+                        account=user,
+                        tenant_id=application_generate_entity.app_config.tenant_id,
+                    ),
+                )
+                converted_response = AdvancedChatAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def _generate_worker(
         self,
@@ -561,8 +654,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateLayerConfig | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -589,6 +683,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_run_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
@@ -610,6 +710,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
+                execution_driver=self._execution_driver,
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
@@ -618,14 +719,15 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow=workflow,
                 system_user_id=system_user_id,
                 app=app,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
-                graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
             )
 
             try:
-                runner.run()
+                with active_workflow_task(application_generate_entity.task_id):
+                    self._execution_driver(
+                        runner, pause_state_config, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -656,7 +758,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> ChatbotAppBlockingResponse | Generator[ChatbotAppStreamResponse, None, None]:
+    ) -> ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | Generator[ChatbotAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -685,7 +787,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e

@@ -9,11 +9,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -31,9 +31,23 @@ class OrderConfig:
 class WorkflowExecutionRepository(Protocol):
     def save(self, execution: WorkflowExecution): ...
 
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        """Commit the SQL control record before publishing a lifecycle transition."""
+        ...
+
 
 class WorkflowNodeExecutionRepository(Protocol):
+    def for_workflow_tool(self, app_id: str) -> "WorkflowNodeExecutionRepository":
+        """Scope hidden Workflow Tool executions to their source app in the same tenant."""
+        ...
+
     def save(self, execution: WorkflowNodeExecution): ...
+
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Save exact records in this owner scope without uploading execution data."""
+        ...
+
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
 
     def save_execution_data(self, execution: WorkflowNodeExecution): ...
 
@@ -41,7 +55,11 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-    ) -> Sequence[WorkflowNodeExecution]: ...
+        *,
+        include_paused: bool = False,
+    ) -> Sequence[WorkflowNodeExecution]:
+        """Read executions in this repository's app/origin scope, optionally including paused nodes."""
+        ...
 
 
 class RepositoryImportError(Exception):
@@ -62,6 +80,7 @@ class DifyCoreRepositoryFactory:
     def create_workflow_execution_repository(
         cls,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom,
@@ -71,7 +90,8 @@ class DifyCoreRepositoryFactory:
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine
-            user: Account or EndUser object
+            tenant_id: Tenant that owns the workflow execution
+            user: Account or EndUser used for creator attribution
             app_id: Application ID
             triggered_from: Source of the execution trigger
 
@@ -87,6 +107,7 @@ class DifyCoreRepositoryFactory:
             repository_class = import_string(class_path)
             return repository_class(
                 session_factory=session_factory,
+                tenant_id=tenant_id,
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -98,6 +119,7 @@ class DifyCoreRepositoryFactory:
     def create_workflow_node_execution_repository(
         cls,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
@@ -107,7 +129,8 @@ class DifyCoreRepositoryFactory:
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine
-            user: Account or EndUser object
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: Application ID
             triggered_from: Source of the execution trigger
 
@@ -123,6 +146,7 @@ class DifyCoreRepositoryFactory:
             repository_class = import_string(class_path)
             return repository_class(
                 session_factory=session_factory,
+                tenant_id=tenant_id,
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,

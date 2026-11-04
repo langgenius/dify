@@ -1,14 +1,24 @@
-from types import SimpleNamespace
+from collections.abc import Callable
 from unittest.mock import patch
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from models.model import AppMode
+from models.model import App, AppMode
+from models.workflow import Workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
+
+
+def _app() -> App:
+    return make_app(name="Workflow App", mode=AppMode.WORKFLOW, icon_type=None)
+
+
+def _workflow() -> Workflow:
+    return make_workflow(workflow_id="wf-1", graph="{}")
 
 
 class TestWorkflowAppConfigManager:
-    def test_get_app_config(self):
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
-        workflow = SimpleNamespace(id="wf-1", features_dict={})
+    def test_get_app_config(self) -> None:
+        app_model = _app()
+        workflow = _workflow()
 
         with (
             patch(
@@ -25,18 +35,11 @@ class TestWorkflowAppConfigManager:
         assert app_config.workflow_id == "wf-1"
         assert app_config.app_mode == AppMode.WORKFLOW
 
-    def test_config_validate_filters_keys(self):
-        def _add_key(key, value):
-            def _inner(*args, **kwargs):
+    def test_config_validate_filters_keys(self) -> None:
+        def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
+            def _inner(config: dict[str, object], **_: object) -> tuple[dict[str, object], list[str]]:
                 # Support both positional and keyword arguments for config
-                if "config" in kwargs:
-                    config = kwargs["config"]
-                elif len(args) > 0:
-                    config = args[0]
-                else:
-                    config = {}
-                config[key] = value
-                return config, [key]
+                return {**config, key: value}, [key]
 
             return _inner
 

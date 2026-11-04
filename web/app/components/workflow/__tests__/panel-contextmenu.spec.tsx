@@ -1,151 +1,169 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import PanelContextmenu from '../panel-contextmenu'
+import type { AvailableNodesMetaData } from '../hooks-store'
+import { ContextMenu } from '@langgenius/dify-ui/context-menu'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { useQueryClient } from '@tanstack/react-query'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { use, useLayoutEffect, useState } from 'react'
+import { useStoreApi } from 'reactflow'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
+import { fullWorkflowAccessControl, HooksStoreContext } from '../hooks-store'
+import { useWorkflowNodeCatalog } from '../node-catalog'
+import codeDefault from '../nodes/code/default'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { PanelContextmenu } from '../panel-contextmenu'
+import { BlockEnum } from '../types'
+import { createNode } from './fixtures'
 
-const mockUseClickAway = vi.hoisted(() => vi.fn())
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
-const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
-const mockUsePanelInteractions = vi.hoisted(() => vi.fn())
-const mockUseWorkflowStartRun = vi.hoisted(() => vi.fn())
-const mockUseOperator = vi.hoisted(() => vi.fn())
-const mockUseDSL = vi.hoisted(() => vi.fn())
+const copied = createNode({
+  id: 'copied-node',
+  data: { ...codeDefault.defaultValue, type: BlockEnum.Code, title: 'Copied code' },
+})
 
-vi.mock('ahooks', () => ({
-  useClickAway: (...args: unknown[]) => mockUseClickAway(...args),
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: {
-    panelMenu?: { left: number, top: number }
-    clipboardElements: unknown[]
-    setShowImportDSLModal: (visible: boolean) => void
-  }) => unknown) => mockUseStore(selector),
-}))
-
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesInteractions: () => mockUseNodesInteractions(),
-  usePanelInteractions: () => mockUsePanelInteractions(),
-  useWorkflowStartRun: () => mockUseWorkflowStartRun(),
-  useDSL: () => mockUseDSL(),
-}))
-
-vi.mock('@/app/components/workflow/operator/hooks', () => ({
-  useOperator: () => mockUseOperator(),
-}))
-
-vi.mock('@/app/components/workflow/operator/add-block', () => ({
-  __esModule: true,
-  default: ({ renderTrigger }: { renderTrigger: () => ReactNode }) => (
-    <div data-testid="add-block">{renderTrigger()}</div>
-  ),
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  __esModule: true,
-  default: ({ className }: { className?: string }) => <div data-testid="divider" className={className} />,
-}))
-
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  __esModule: true,
-  default: ({ keys }: { keys: string[] }) => <span data-testid={`shortcut-${keys.join('-')}`}>{keys.join('+')}</span>,
-}))
-
-describe('PanelContextmenu', () => {
-  const mockHandleNodesPaste = vi.fn()
-  const mockHandlePaneContextmenuCancel = vi.fn()
-  const mockHandleStartWorkflowRun = vi.fn()
-  const mockHandleAddNote = vi.fn()
-  const mockExportCheck = vi.fn()
-  const mockSetShowImportDSLModal = vi.fn()
-  let panelMenu: { left: number, top: number } | undefined
-  let clipboardElements: unknown[]
-  let clickAwayHandler: (() => void) | undefined
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    panelMenu = undefined
-    clipboardElements = []
-    clickAwayHandler = undefined
-
-    mockUseClickAway.mockImplementation((handler: () => void) => {
-      clickAwayHandler = handler
-    })
-    mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
-    })
-    mockUseStore.mockImplementation((selector: (state: {
-      panelMenu?: { left: number, top: number }
-      clipboardElements: unknown[]
-      setShowImportDSLModal: (visible: boolean) => void
-    }) => unknown) => selector({
-      panelMenu,
-      clipboardElements,
-      setShowImportDSLModal: mockSetShowImportDSLModal,
-    }))
-    mockUseNodesInteractions.mockReturnValue({
-      handleNodesPaste: mockHandleNodesPaste,
-    })
-    mockUsePanelInteractions.mockReturnValue({
-      handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
-    })
-    mockUseWorkflowStartRun.mockReturnValue({
-      handleStartWorkflowRun: mockHandleStartWorkflowRun,
-    })
-    mockUseOperator.mockReturnValue({
-      handleAddNote: mockHandleAddNote,
-    })
-    mockUseDSL.mockReturnValue({
-      exportCheck: mockExportCheck,
-    })
+function setup(options: Parameters<typeof renderWorkflowEditor>[1] = {}) {
+  const user = userEvent.setup()
+  const run = vi.fn()
+  const preview = vi.fn()
+  const exportDSL = vi.fn(async () => {})
+  let flow: ReturnType<typeof useStoreApi>
+  let queryClient: ReturnType<typeof useQueryClient>
+  function Menu() {
+    flow = useStoreApi()
+    queryClient = useQueryClient()
+    const [open, setOpen] = useState(true)
+    const catalog = useWorkflowNodeCatalog()
+    const hooksStore = use(HooksStoreContext)!
+    useLayoutEffect(() => {
+      const nodesMap = catalog.nodesMap as NonNullable<AvailableNodesMetaData['nodesMap']>
+      hooksStore.setState({
+        availableNodesMetaData: {
+          nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]),
+          nodesMap,
+        },
+      })
+    }, [catalog, hooksStore])
+    return (
+      <ContextMenu open={open} onOpenChange={setOpen}>
+        <PanelContextmenu onClose={() => setOpen(false)} />
+      </ContextMenu>
+    )
+  }
+  const result = renderWorkflowEditor(<Menu />, {
+    nodes: [],
+    edges: [],
+    historyStore: { nodes: [], edges: [] },
+    ...options,
+    initialStoreState: { contextMenuTarget: { type: 'panel' }, ...options.initialStoreState },
+    hooksStoreProps: {
+      // Execution and DSL export are supplied by the owning app or snippet editor.
+      handleStartWorkflowRun: run,
+      handleWorkflowStartRunInChatflow: preview,
+      exportCheck: exportDSL,
+      ...options.hooksStoreProps,
+    },
   })
+  return {
+    ...result,
+    queryClient: queryClient!,
+    user,
+    run,
+    preview,
+    exportDSL,
+    nodes: () => flow.getState().getNodes(),
+  }
+}
 
-  it('should stay hidden when the panel menu is absent', () => {
-    render(<PanelContextmenu />)
+it('stays hidden without a panel menu target', () => {
+  setup({ initialStoreState: { contextMenuTarget: undefined } })
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+})
 
-    expect(screen.queryByTestId('add-block')).not.toBeInTheDocument()
+it('disables click and keyboard paste when the clipboard is empty', async () => {
+  const { user, nodes } = setup()
+  const paste = await screen.findByRole('menuitem', { name: /workflow.common.pasteHere/ })
+  expect(paste).toHaveAttribute('aria-disabled', 'true')
+  await user.click(paste)
+  const run = screen.getByRole('menuitem', { name: /workflow.common.run/ })
+  act(() => run.focus())
+  const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+  await user.keyboard(`{${mod}>}v{/${mod}}`)
+  expect(nodes()).toEqual([])
+  expect(screen.getByRole('menu')).toBeVisible()
+})
+
+it.each(['click', 'keyboard'] as const)(
+  'pastes a real graph node through %s and closes the menu',
+  async (input) => {
+    const { user, nodes } = setup({ initialStoreState: { clipboardElements: [copied] } })
+    const paste = await screen.findByRole('menuitem', { name: /workflow.common.pasteHere/ })
+    if (input === 'click') await user.click(paste)
+    else {
+      act(() => paste.focus())
+      const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+      await user.keyboard(`{${mod}>}v{/${mod}}`)
+    }
+    await waitFor(() => expect(nodes()).toHaveLength(1))
+    expect(nodes()[0]?.data).toMatchObject({ type: BlockEnum.Code, title: 'Copied code' })
+    expect(nodes()[0]?.id).not.toBe(copied.id)
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+  },
+)
+
+it('starts placing a real note from the menu', async () => {
+  const { user, store } = setup()
+  await user.click(await screen.findByRole('menuitem', { name: 'workflow.nodes.note.addNote' }))
+  expect(store.getState().candidateNode).toMatchObject({
+    type: CUSTOM_NOTE_NODE,
+    data: { text: '', _isCandidate: true },
   })
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+})
 
-  it('should keep paste disabled when the clipboard is empty', () => {
-    panelMenu = { left: 24, top: 48 }
+it.each([
+  ['workflow', 'workflow.common.run'],
+  ['advanced-chat', 'workflow.common.debugAndPreview'],
+] as const)('dispatches the %s execution command and closes the menu', async (mode, label) => {
+  const { user, run, preview } = setup({ resource: { kind: 'app', appId: 'app-1', mode } })
+  await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }))
+  expect(run).toHaveBeenCalledTimes(mode === 'workflow' ? 1 : 0)
+  expect(preview).toHaveBeenCalledTimes(mode === 'advanced-chat' ? 1 : 0)
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+})
 
-    render(<PanelContextmenu />)
+it('dispatches export to the owning editor', async () => {
+  const { user, exportDSL } = setup()
+  await user.click(await screen.findByRole('menuitem', { name: 'app.exportApp' }))
+  expect(exportDSL).toHaveBeenCalledOnce()
+})
 
-    fireEvent.click(screen.getByText('common.pasteHere'))
-
-    expect(mockHandleNodesPaste).not.toHaveBeenCalled()
-    expect(mockHandlePaneContextmenuCancel).not.toHaveBeenCalled()
+it('opens app import but omits that action for snippets', async () => {
+  const { user, store, unmount } = setup()
+  await user.click(await screen.findByRole('menuitem', { name: 'app.importApp' }))
+  expect(store.getState().showImportDSLModal).toBe(true)
+  unmount()
+  setup({
+    resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    hooksStoreProps: { fileSettings: {} },
   })
+  expect(await screen.findByRole('menuitem', { name: 'app.exportApp' })).toBeVisible()
+  expect(screen.queryByRole('menuitem', { name: 'app.importApp' })).not.toBeInTheDocument()
+})
 
-  it('should render actions, position the menu, and execute each action', () => {
-    panelMenu = { left: 24, top: 48 }
-    clipboardElements = [{ id: 'copied-node' }]
-    const { container } = render(<PanelContextmenu />)
-
-    expect(screen.getByTestId('add-block')).toHaveTextContent('common.addBlock')
-    expect(screen.getByTestId('shortcut-alt-r')).toHaveTextContent('alt+r')
-    expect(screen.getByTestId('shortcut-ctrl-v')).toHaveTextContent('ctrl+v')
-    expect(container.firstChild).toHaveStyle({
-      left: '24px',
-      top: '48px',
-    })
-
-    fireEvent.click(screen.getByText('nodes.note.addNote'))
-    fireEvent.click(screen.getByText('common.run'))
-    fireEvent.click(screen.getByText('common.pasteHere'))
-    fireEvent.click(screen.getByText('export'))
-    fireEvent.click(screen.getByText('common.importDSL'))
-    clickAwayHandler?.()
-
-    expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
-    expect(mockHandleStartWorkflowRun).toHaveBeenCalledTimes(1)
-    expect(mockHandleNodesPaste).toHaveBeenCalledTimes(1)
-    expect(mockExportCheck).toHaveBeenCalledTimes(1)
-    expect(mockSetShowImportDSLModal).toHaveBeenCalledWith(true)
-    expect(mockHandlePaneContextmenuCancel).toHaveBeenCalledTimes(4)
+it('allows comments but not node editing when editing permission is denied', async () => {
+  const { user, store, queryClient } = setup({
+    hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit: false } },
   })
+  act(() => seedSystemFeatures(queryClient, { enable_collaboration_mode: true }))
+  const comment = await screen.findByRole('menuitem', {
+    name: 'workflowComments.comments.actions.addComment',
+  })
+  expect(screen.queryByText('workflow.nodes.note.addNote')).not.toBeInTheDocument()
+  expect(screen.queryByText('workflow.common.addBlock')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('menuitem', { name: /workflow.common.pasteHere/ }),
+  ).not.toBeInTheDocument()
+  await user.click(comment)
+  expect(store.getState()).toMatchObject({ isCommentQuickAdd: true, isCommentPlacing: true })
+  expect(store.getState().candidateNode).toBeUndefined()
 })

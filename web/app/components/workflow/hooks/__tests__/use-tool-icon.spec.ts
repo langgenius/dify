@@ -1,39 +1,61 @@
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
-import { resetReactFlowMockState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { renderWorkflowHook as renderWorkflowHookBase } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useGetToolIcon, useToolIcon } from '../use-tool-icon'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
-
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock({
-    buildInTools: [{ id: 'builtin-1', name: 'builtin', icon: '/builtin.svg', icon_dark: '/builtin-dark.svg', plugin_id: 'p1' }],
-    customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
-    workflowTools: [{ id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' }],
-    mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
-  }))
+const renderWorkflowHook = <T>(
+  hook: () => T,
+  options?: Parameters<typeof renderWorkflowHookBase>[1],
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  const tools = consoleQuery.workspaces.current.tools
+  const fixtures = [
+    [
+      tools.builtin.get,
+      {
+        id: 'builtin-1',
+        name: 'builtin',
+        icon: '/builtin.svg',
+        icon_dark: '/builtin-dark.svg',
+        plugin_id: 'p1',
+      },
+    ],
+    [tools.api.get, { id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
+    [
+      tools.workflow.get,
+      { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
+    ],
+    [tools.mcp.get, { id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
+  ] as const
+  for (const [operation, provider] of fixtures)
+    queryClient.setQueryData(operation.queryKey(), [createToolProviderFixture(provider)])
+  return renderWorkflowHookBase(hook, { ...options, queryClient })
+}
 
 vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock({
     triggerPlugins: [{ id: 'trigger-1', icon: '/trigger.svg', icon_dark: '/trigger-dark.svg' }],
-  }))
+  }),
+)
 
 let mockTheme = 'light'
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
 }))
 
-vi.mock('@/utils', () => ({
-  canFindTool: (id: string, target: string) => id === target,
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  basePath: '/dify',
 }))
 
 const baseNodeData = { title: '', desc: '' }
 
 describe('useToolIcon', () => {
   beforeEach(() => {
-    resetReactFlowMockState()
     mockTheme = 'light'
   })
 
@@ -103,8 +125,12 @@ describe('useToolIcon', () => {
       provider_icon_dark: '/fallback-dark.svg',
     }
 
-    expect(renderWorkflowHook(() => useToolIcon(triggerData)).result.current).toBe('/trigger-dark.svg')
-    expect(renderWorkflowHook(() => useToolIcon(providerFallbackData)).result.current).toBe('/fallback-dark.svg')
+    expect(renderWorkflowHook(() => useToolIcon(triggerData)).result.current).toBe(
+      '/trigger-dark.svg',
+    )
+    expect(renderWorkflowHook(() => useToolIcon(providerFallbackData)).result.current).toBe(
+      '/fallback-dark.svg',
+    )
   })
 
   it('should resolve workflow, mcp and datasource icons', () => {
@@ -130,11 +156,13 @@ describe('useToolIcon', () => {
 
     expect(renderWorkflowHook(() => useToolIcon(workflowData)).result.current).toBe('/workflow.svg')
     expect(renderWorkflowHook(() => useToolIcon(mcpData)).result.current).toBe('/mcp.svg')
-    expect(renderWorkflowHook(() => useToolIcon(dataSourceData), {
-      initialStoreState: {
-        dataSourceList: [{ id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource.svg' }] as never,
-      },
-    }).result.current).toBe('/datasource.svg')
+    expect(
+      renderWorkflowHook(() => useToolIcon(dataSourceData), {
+        initialStoreState: {
+          dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
+        },
+      }).result.current,
+    ).toBe('/dify/datasource.svg')
   })
 
   it('should fallback to provider_icon when no collection match', () => {
@@ -176,12 +204,7 @@ describe('useToolIcon', () => {
 
 describe('useGetToolIcon', () => {
   beforeEach(() => {
-    resetReactFlowMockState()
-  })
-
-  it('should return a function', () => {
-    const { result } = renderWorkflowHook(() => useGetToolIcon())
-    expect(typeof result.current).toBe('function')
+    mockTheme = 'light'
   })
 
   it('should find icon for TriggerPlugin node via returned function', () => {
@@ -218,23 +241,29 @@ describe('useGetToolIcon', () => {
   it('should prefer workflow store collections over query collections', () => {
     const { result, store } = renderWorkflowHook(() => useGetToolIcon(), {
       initialStoreState: {
-        buildInTools: [{ id: 'override-1', name: 'override', icon: '/override.svg', plugin_id: 'p1' }] as never,
-        dataSourceList: [{ id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource-store.svg' }] as never,
+        buildInTools: [
+          { id: 'override-1', name: 'override', icon: '/override.svg', plugin_id: 'p1' },
+        ] as never,
+        dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
       },
     })
 
-    expect(result.current({
-      ...baseNodeData,
-      type: BlockEnum.Tool,
-      provider_type: CollectionType.builtIn,
-      provider_id: 'override-1',
-      provider_name: 'override',
-    })).toBe('/override.svg')
-    expect(result.current({
-      ...baseNodeData,
-      type: BlockEnum.DataSource,
-      plugin_id: 'datasource-1',
-    })).toBe('/datasource-store.svg')
+    expect(
+      result.current({
+        ...baseNodeData,
+        type: BlockEnum.Tool,
+        provider_type: CollectionType.builtIn,
+        provider_id: 'override-1',
+        provider_name: 'override',
+      }),
+    ).toBe('/override.svg')
+    expect(
+      result.current({
+        ...baseNodeData,
+        type: BlockEnum.DataSource,
+        plugin_id: 'datasource-1',
+      }),
+    ).toBe('/dify/datasource.svg')
     expect(store.getState().buildInTools).toHaveLength(1)
   })
 

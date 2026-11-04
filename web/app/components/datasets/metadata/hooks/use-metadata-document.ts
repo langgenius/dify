@@ -1,64 +1,72 @@
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
-import type { FullDocumentDetail } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
-import { useBatchUpdateDocMetadata, useCreateMetaData, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { DataType } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentId: string
-  docDetail: FullDocumentDetail
-}
+  docDetail: DocumentDetailResponse
+}>
 const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
-  const { mutateAsync } = useBatchUpdateDocMetadata()
+  const { mutateAsync: updateDocumentMetadata } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
+  )
   const { checkName } = useCheckMetadataName()
   const [isEdit, setIsEdit] = useState(false)
-  const { data: documentDetail } = useDocumentMetaData({
-    datasetId,
-    documentId,
-  })
+  const { data: documentDetail } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'only' },
+      },
+    }),
+  )
   const allList = documentDetail?.doc_metadata || []
-  const list = allList.filter(item => item.id !== 'built-in')
-  const builtList = allList.filter(item => item.id === 'built-in')
+  const list = allList.filter((item) => item.id !== 'built-in')
+  const builtList = allList.filter((item) => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
-  const { mutateAsync: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: createMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
     setTempList((prev) => {
-      const index = prev.findIndex(item => item.id === metaData.id)
-      if (index === -1)
-        return [...prev, metaData]
+      const index = prev.findIndex((item) => item.id === metaData.id)
+      if (index === -1) return [...prev, metaData]
       return prev
     })
   }, [])
-  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
-    const errorMsg = checkName(payload.name).errorMsg
-    if (errorMsg) {
-      toast.error(errorMsg)
-      return Promise.reject(new Error(errorMsg))
-    }
-    await doAddMetaData(payload)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
-  }, [checkName, doAddMetaData, t])
+  const handleAddMetaData = useCallback(
+    async (payload: BuiltInMetadataItem) => {
+      const errorMsg = checkName(payload.name).errorMsg
+      if (errorMsg) {
+        toast.error(errorMsg)
+        return Promise.reject(new Error(errorMsg))
+      }
+      await createMetaData({ params: { dataset_id: datasetId }, body: payload })
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+    },
+    [checkName, createMetaData, datasetId, t],
+  )
   const hasData = list.length > 0
   const handleSave = async () => {
-    await mutateAsync({
-      dataset_id: datasetId,
-      metadata_list: [{
-        document_id: documentId,
-        metadata_list: tempList,
-      }],
+    await updateDocumentMetadata({
+      params: { dataset_id: datasetId },
+      body: { operation_data: [{ document_id: documentId, metadata_list: tempList }] },
     })
     setIsEdit(false)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
   }
   const handleCancel = () => {
     setTempList(list)
@@ -69,7 +77,11 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     setIsEdit(true)
   }
   // built in enabled is set in dataset
-  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+  const { data: datasetMetaData } = useQuery(
+    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  )
   const builtInEnabled = datasetMetaData?.built_in_field_enabled
   // old metadata and technical params
   const metadataMap = useMetadataMap()
@@ -78,26 +90,27 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     const fieldMap = metadataMap[mainField]?.subFieldsMap
     const sourceData = docDetail
     const getTargetMap = (field: string) => {
-      if (field === 'language')
-        return languageMap
+      if (field === 'language') return languageMap
       return {} as any
     }
     const getTargetValue = (field: string) => {
-      const val = get(sourceData, field, '')
-      if (!val && val !== 0)
-        return '-'
-      if (fieldMap[field]?.inputType === 'select')
-        return getTargetMap(field)[val]
+      const val: unknown = get(sourceData, field, '')
+      if (typeof val !== 'string' && typeof val !== 'number') return '-'
+      if (!val && val !== 0) return '-'
+      if (fieldMap[field]?.inputType === 'select') return getTargetMap(field)[val]
       if (fieldMap[field]?.render)
-        return fieldMap[field]?.render?.(val, field === 'hit_count' ? get(sourceData, 'segment_count', 0) as number : undefined)
+        return fieldMap[field]?.render?.(
+          val,
+          field === 'hit_count' ? (get(sourceData, 'segment_count', 0) as number) : undefined,
+        )
       return val
     }
     const fieldList = Object.keys(fieldMap).map((key) => {
       const field = fieldMap[key]
       return {
-        id: field?.label,
+        id: field?.label!,
         type: DataType.string,
-        name: field?.label,
+        name: field?.label!,
         value: getTargetValue(key),
       }
     })
@@ -120,8 +133,8 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     startToEdit,
     handleSave,
     handleCancel,
-    originInfo,
-    technicalParameters,
+    originInfo: originInfo!,
+    technicalParameters: technicalParameters!,
   }
 }
 export default useMetadataDocument

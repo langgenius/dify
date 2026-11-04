@@ -1,6 +1,9 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.errors import register_credential_refresh_error_handler
 from libs.external_api import ExternalApi
 
 bp = Blueprint("inner_api", __name__, url_prefix="/inner/api")
@@ -9,23 +12,105 @@ api = ExternalApi(
     bp,
     version="1.0",
     title="Inner API",
-    description="Internal APIs for enterprise features, billing, and plugin communication",
+    description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
+    authorizations={
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    },
+    security="InnerApiKey",
 )
+register_credential_refresh_error_handler(api)
 
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
-from . import mail as _mail
-from .app import dsl as _app_dsl
-from .plugin import plugin as _plugin
-from .workspace import workspace as _workspace
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespace exists."""
+
+    from . import datasource_credentials, mail, runtime_credentials
+    from .agent import files, knowledge, llm, runtime_usage, tools, tracing
+    from .app import app, dsl, file_grants
+    from .knowledge import retrieval
+    from .knowledge_fs import background, storage, texts, vectors
+    from .plugin import agent_config, plugin, skills
+    from .workspace import workspace
+
+    return (
+        datasource_credentials,
+        mail,
+        runtime_credentials,
+        files,
+        knowledge,
+        llm,
+        runtime_usage,
+        tools,
+        tracing,
+        app,
+        dsl,
+        file_grants,
+        retrieval,
+        background,
+        storage,
+        texts,
+        vectors,
+        agent_config,
+        plugin,
+        skills,
+        workspace,
+    )
+
+
+(
+    _datasource_credentials,
+    _mail,
+    _runtime_credentials,
+    _agent_files,
+    _agent_knowledge,
+    _agent_llm,
+    _agent_runtime_usage,
+    _agent_tools,
+    _agent_tracing,
+    _app_app,
+    _app_dsl,
+    _app_file_grants,
+    _knowledge_retrieval,
+    _knowledge_fs_background,
+    _knowledge_fs_storage,
+    _knowledge_fs_texts,
+    _knowledge_fs_vectors,
+    _agent_config,
+    _plugin,
+    _skills,
+    _workspace,
+) = _register_controllers()
 
 api.add_namespace(inner_api_ns)
 
 __all__ = [
+    "_agent_config",
+    "_agent_files",
+    "_agent_knowledge",
+    "_agent_llm",
+    "_agent_runtime_usage",
+    "_agent_tools",
+    "_app_app",
     "_app_dsl",
+    "_app_file_grants",
+    "_datasource_credentials",
+    "_knowledge_fs_background",
+    "_knowledge_fs_storage",
+    "_knowledge_fs_texts",
+    "_knowledge_fs_vectors",
+    "_knowledge_retrieval",
     "_mail",
     "_plugin",
+    "_runtime_credentials",
+    "_skills",
     "_workspace",
     "api",
     "bp",

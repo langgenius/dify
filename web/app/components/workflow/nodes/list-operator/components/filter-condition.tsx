@@ -1,15 +1,22 @@
 'use client'
 import type { FC } from 'react'
 import type { Condition } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SimpleSelect as Select } from '@/app/components/base/select'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { getConditionValueAsString } from '@/app/components/workflow/nodes/utils'
-import { cn } from '@/utils/classnames'
 import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 import { VarType } from '../../../types'
 import ConditionOperator from '../../if-else/components/condition-list/condition-operator'
@@ -30,14 +37,14 @@ const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   size: VarType.number,
 }
 
-type Props = {
+type Props = Readonly<{
   condition: Condition
   varType: VarType
   onChange: (condition: Condition) => void
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
-}
+}>
 
 const getExpectedVarType = (condition: Condition, varType: VarType) => {
   return condition.key ? VAR_INPUT_SUPPORTED_KEYS[condition.key] : varType
@@ -48,19 +55,18 @@ const getSelectOptions = (
   isSelect: boolean,
   t: ReturnType<typeof useTranslation>['t'],
 ) => {
-  if (!isSelect)
-    return []
+  if (!isSelect) return []
 
   if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
-    return FILE_TYPE_OPTIONS.map(item => ({
-      name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
+    return FILE_TYPE_OPTIONS.map((item) => ({
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
 
   if (condition.key === 'transfer_method') {
-    return TRANSFER_METHOD.map(item => ({
-      name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
+    return TRANSFER_METHOD.map((item) => ({
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
@@ -77,7 +83,8 @@ const getFallbackInputType = ({
   condition: Condition
   varType: VarType
 }) => {
-  return ((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number))
+  return (hasSubVariable && condition.key === 'size') ||
+    (!hasSubVariable && varType === VarType.number)
     ? 'number'
     : 'text'
 }
@@ -104,7 +111,7 @@ const ValueInput = ({
   isArrayValue: boolean
   isBoolean: boolean
   supportVariableInput: boolean
-  selectOptions: Array<{ name: string, value: string }>
+  selectOptions: Array<{ name: string; value: string }>
   condition: Condition
   readOnly: boolean
   availableVars: VariableInputProps['nodesOutputVars']
@@ -122,29 +129,42 @@ const ValueInput = ({
     onFocusChange(value)
   }
 
-  if (comparisonOperatorNotRequireValue(comparisonOperator))
-    return null
+  if (comparisonOperatorNotRequireValue(comparisonOperator)) return null
 
   if (isSelect) {
+    const selectedValue = isArrayValue
+      ? (condition.value as string[])?.[0]
+      : (condition.value as string)
+    const selectedOption = selectOptions.find((option) => option.value === selectedValue) ?? null
+
     return (
       <Select
-        items={selectOptions}
-        defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
-        onSelect={item => onChange(item.value)}
-        className="text-[13px]!"
-        wrapperClassName="grow h-8"
-        placeholder="Select value"
-      />
+        value={selectedOption?.value ?? null}
+        disabled={readOnly}
+        onValueChange={(value) => value && onChange(value)}
+      >
+        <SelectTrigger
+          aria-label={t(($) => $['nodes.listFilter.filterConditionComparisonValue'], {
+            ns: 'workflow',
+          })}
+          className="h-8 grow text-[13px]"
+        >
+          {selectedOption?.name ?? 'Select value'}
+        </SelectTrigger>
+        <SelectContent>
+          {selectOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <SelectItemText>{option.name}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     )
   }
 
   if (isBoolean) {
-    return (
-      <BoolValue
-        value={condition.value as boolean}
-        onChange={onChange}
-      />
-    )
+    return <BoolValue disabled={readOnly} value={condition.value as boolean} onChange={onChange} />
   }
 
   if (supportVariableInput) {
@@ -155,7 +175,7 @@ const ValueInput = ({
           isFocus
             ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
             : 'border-components-input-border-hover bg-components-input-bg-normal',
-          'w-0 grow rounded-lg border px-3 py-[6px]',
+          'w-0 grow rounded-lg border px-3 py-1.5',
         )}
         value={getConditionValueAsString(condition)}
         onChange={onChange}
@@ -163,7 +183,11 @@ const ValueInput = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
-        placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
+        placeholder={
+          !readOnly
+            ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflowIntegrations' })!
+            : ''
+        }
         placeholderClassName="leading-[21px]!"
       />
     )
@@ -172,9 +196,9 @@ const ValueInput = ({
   return (
     <input
       type={getFallbackInputType({ hasSubVariable, condition, varType })}
-      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]"
+      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-1.5"
       value={getConditionValueAsString(condition)}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       readOnly={readOnly}
     />
   )
@@ -188,7 +212,13 @@ const FilterCondition: FC<Props> = ({
   readOnly,
   nodeId,
 }) => {
-  const { t } = useTranslation()
+  const arrayOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+    ComparisonOperator.allOf,
+  ]
+
+  const { t } = useTranslation(['workflowLogic', 'workflowIntegrations', 'workflow'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType
@@ -200,35 +230,45 @@ const FilterCondition: FC<Props> = ({
     },
   })
 
-  const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
+  const isSelect = arrayOperators.includes(condition.comparison_operator)
   const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
   const isBoolean = varType === VarType.boolean
 
-  const selectOptions = useMemo(() => getSelectOptions(condition, isSelect, t), [condition, isSelect, t])
+  const selectOptions = useMemo(
+    () => getSelectOptions(condition, isSelect, t),
+    [condition, isSelect, t],
+  )
 
-  const handleChange = useCallback((key: string) => {
-    return (value: any) => {
+  const handleChange = useCallback(
+    (key: string) => {
+      return (value: any) => {
+        onChange({
+          ...condition,
+          [key]: isArrayValue && key === 'value' ? [value] : value,
+        })
+      }
+    },
+    [condition, onChange, isArrayValue],
+  )
+
+  const handleSubVariableChange = useCallback(
+    (value: string) => {
+      const operators = getOperators(expectedVarType ?? VarType.string, { key: value })
+      const newOperator = operators.length > 0 ? operators[0]! : ComparisonOperator.equal
       onChange({
-        ...condition,
-        [key]: (isArrayValue && key === 'value') ? [value] : value,
+        key: value,
+        comparison_operator: newOperator,
+        value: '',
       })
-    }
-  }, [condition, onChange, isArrayValue])
-
-  const handleSubVariableChange = useCallback((value: string) => {
-    const operators = getOperators(expectedVarType ?? VarType.string, { key: value })
-    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal
-    onChange({
-      key: value,
-      comparison_operator: newOperator,
-      value: '',
-    })
-  }, [onChange, expectedVarType])
+    },
+    [onChange, expectedVarType],
+  )
 
   return (
     <div>
       {hasSubVariable && (
         <SubVariablePicker
+          disabled={readOnly}
           className="mb-2"
           value={condition.key}
           onChange={handleSubVariableChange}

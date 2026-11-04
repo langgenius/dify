@@ -1,28 +1,51 @@
 'use client'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
-import Modal from '@/app/components/base/modal/modal'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import {
-  ConfigurationStepContent,
-  MultiSteps,
-  VerifyStepContent,
-} from './components/modal-steps'
+import { ConfigurationStepContent, MultiSteps, VerifyStepContent } from './components/modal-steps'
 import {
   ApiKeyStep,
   MODAL_TITLE_KEY_MAP,
   useCommonModalState,
 } from './hooks/use-common-modal-state'
 
-type Props = {
+type Props = Readonly<{
+  open?: boolean
   onClose: () => void
   createType: SupportedCreationMethods
   builder?: TriggerSubscriptionBuilder
+}>
+
+export const CommonCreateModal = ({ open = true, onClose, createType, builder }: Props) => {
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()} disablePointerDismissal>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn(
+          'max-h-[80%] min-h-90',
+          createType === SupportedCreationMethods.MANUAL && 'w-160',
+        )}
+      >
+        <CommonCreateModalContent createType={createType} builder={builder} onClose={onClose} />
+      </DialogContent>
+    </Dialog>
+  )
 }
 
-export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
-  const { t } = useTranslation()
+function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 'open'>) {
+  const { t } = useTranslation(['common', 'pluginTrigger'])
 
   const {
     currentStep,
@@ -48,46 +71,60 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const isApiKeyType = createType === SupportedCreationMethods.APIKEY
   const isVerifyStep = currentStep === ApiKeyStep.Verify
   const isConfigurationStep = currentStep === ApiKeyStep.Configuration
+  const isDisabled = isVerifyingCredentials || isBuilding
 
   return (
-    <Modal
-      title={t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
-      confirmButtonText={confirmButtonText}
-      onClose={onClose}
-      onCancel={onClose}
-      onConfirm={handleConfirm}
-      disabled={isVerifyingCredentials || isBuilding}
-      bottomSlot={isVerifyStep ? <EncryptedBottom /> : null}
-      size={createType === SupportedCreationMethods.MANUAL ? 'md' : 'sm'}
-      containerClassName="min-h-[360px]"
-      clickOutsideNotClose
-    >
-      {isApiKeyType && <MultiSteps currentStep={currentStep} />}
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
 
-      {isVerifyStep && (
-        <VerifyStepContent
-          apiKeyCredentialsSchema={apiKeyCredentialsSchema}
-          apiKeyCredentialsFormRef={formRefs.apiKeyCredentialsFormRef}
-          onChange={handleApiKeyCredentialsChange}
-        />
-      )}
+      <DialogBody>
+        {isApiKeyType && <MultiSteps currentStep={currentStep} />}
 
-      {isConfigurationStep && (
-        <ConfigurationStepContent
-          createType={createType}
-          subscriptionBuilder={subscriptionBuilder}
-          subscriptionFormRef={formRefs.subscriptionFormRef}
-          autoCommonParametersSchema={autoCommonParametersSchema}
-          autoCommonParametersFormRef={formRefs.autoCommonParametersFormRef}
-          manualPropertiesSchema={manualPropertiesSchema}
-          manualPropertiesFormRef={formRefs.manualPropertiesFormRef}
-          onManualPropertiesChange={handleManualPropertiesChange}
-          logs={logData?.logs || []}
-          pluginId={detail?.plugin_id || ''}
-          pluginName={detail?.name || ''}
-          provider={detail?.provider || ''}
-        />
-      )}
-    </Modal>
+        {isVerifyStep && (
+          <VerifyStepContent
+            apiKeyCredentialsSchema={apiKeyCredentialsSchema}
+            apiKeyCredentialsFormRef={formRefs.apiKeyCredentialsFormRef}
+            onChange={handleApiKeyCredentialsChange}
+          />
+        )}
+
+        {isConfigurationStep && (
+          <ConfigurationStepContent
+            createType={createType}
+            subscriptionBuilder={subscriptionBuilder}
+            subscriptionFormRef={formRefs.subscriptionFormRef}
+            autoCommonParametersSchema={autoCommonParametersSchema}
+            autoCommonParametersFormRef={formRefs.autoCommonParametersFormRef}
+            manualPropertiesSchema={manualPropertiesSchema}
+            manualPropertiesFormRef={formRefs.manualPropertiesFormRef}
+            onManualPropertiesChange={handleManualPropertiesChange}
+            logs={logData?.logs || []}
+            pluginId={detail?.plugin_id || ''}
+            pluginName={detail?.name || ''}
+            provider={detail?.provider || ''}
+          />
+        )}
+      </DialogBody>
+
+      <DialogFooter>
+        <Button disabled={isDisabled} onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={isDisabled}
+          data-testid="modal-confirm"
+          onClick={handleConfirm}
+        >
+          {confirmButtonText}
+        </Button>
+      </DialogFooter>
+      {isVerifyStep && <EncryptedBottom />}
+    </>
   )
 }

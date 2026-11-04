@@ -1,16 +1,10 @@
 'use client'
-import type { Placement } from '@floating-ui/react'
 import type { FC } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
-type Props = {
+type Props = Readonly<{
   title: string
   isPinned: boolean
   isShowRenameConversation?: boolean
@@ -18,7 +12,10 @@ type Props = {
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
-  placement?: Placement
+}>
+
+const deferAction = (action: () => void) => {
+  queueMicrotask(action)
 }
 
 const Operation: FC<Props> = ({
@@ -29,46 +26,42 @@ const Operation: FC<Props> = ({
   onRenameConversation,
   isShowDelete,
   onDelete,
-  placement = 'bottom-start',
 }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['explore'])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement={placement}
-      offset={4}
-    >
-      <PortalToFollowElemTrigger
-        onClick={() => setOpen(v => !v)}
-      >
-        <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          <div className="system-md-semibold">{title}</div>
-          <RiArrowDownSLine className="h-4 w-4 " />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
-        <div
-          className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
-        >
-          <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
-            <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
-          </div>
-          {isShowRenameConversation && (
-            <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
-            </div>
-          )}
-          {isShowDelete && (
-            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
-              <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
-            </div>
-          )}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+    <Menu>
+      <MenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
+        <span className="system-md-semibold">{title}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+      </MenuTrigger>
+      <MenuContent align="start" className="min-w-30">
+        <MenuItem className="system-md-regular" onClick={togglePin}>
+          <span className="grow">
+            {isPinned
+              ? t(($) => $['sidebar.action.unpin'], { ns: 'explore' })
+              : t(($) => $['sidebar.action.pin'], { ns: 'explore' })}
+          </span>
+        </MenuItem>
+        {isShowRenameConversation && (
+          <MenuItem
+            className="system-md-regular"
+            onClick={() => onRenameConversation && deferAction(onRenameConversation)}
+          >
+            <span className="grow">{t(($) => $['sidebar.action.rename'], { ns: 'explore' })}</span>
+          </MenuItem>
+        )}
+        {isShowDelete && (
+          <MenuItem
+            variant="destructive"
+            className="system-md-regular"
+            onClick={() => deferAction(onDelete)}
+          >
+            <span className="grow">{t(($) => $['sidebar.action.delete'], { ns: 'explore' })}</span>
+          </MenuItem>
+        )}
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(Operation)

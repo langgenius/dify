@@ -1,6 +1,9 @@
+import type { TFunction } from 'i18next'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildSelectOptions,
   createPayloadForType,
@@ -9,12 +12,11 @@ import {
   isJsonSchemaEmpty,
   isStringInputType,
   normalizeSelectDefaultValue,
-  parseCheckboxSelectValue,
   updatePayloadField,
   validateConfigModalPayload,
 } from '../utils'
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,
@@ -28,10 +30,6 @@ const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
 
 describe('config-modal utils', () => {
   describe('payload helpers', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should clear the default value when options no longer include it', () => {
       const payload = createInputVar({
         type: InputVarType.select,
@@ -49,11 +47,13 @@ describe('config-modal utils', () => {
       const payload = createInputVar({
         type: InputVarType.textInput,
         default: 'hello',
+        hide: true,
       })
 
       const nextPayload = createPayloadForType(payload, InputVarType.multiFiles)
 
       expect(nextPayload.type).toBe(InputVarType.multiFiles)
+      expect(nextPayload.hide).toBe(false)
       expect(nextPayload.max_length).toBe(DEFAULT_FILE_UPLOAD_SETTING.max_length)
       expect(nextPayload.allowed_file_types).toEqual(DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types)
       expect(nextPayload.default).toBe('hello')
@@ -71,21 +71,51 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBeUndefined()
     })
 
+    it.each([
+      { from: InputVarType.singleFile, to: InputVarType.textInput },
+      { from: InputVarType.singleFile, to: InputVarType.multiFiles },
+      { from: InputVarType.multiFiles, to: InputVarType.singleFile },
+    ])('should clear the file default when switching from $from to $to', ({ from, to }) => {
+      const file: FileEntity = {
+        id: 'local-file',
+        name: 'document.txt',
+        size: 8,
+        type: 'text/plain',
+        progress: 100,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        uploadedId: 'uploaded-file-id',
+      }
+      const payload = createInputVar({
+        type: from,
+        default: from === InputVarType.singleFile ? file : [file],
+      })
+
+      const nextPayload = createPayloadForType(payload, to)
+
+      expect(nextPayload.type).toBe(to)
+      expect(nextPayload.default).toBeUndefined()
+    })
+
     it('should normalize empty select defaults to undefined', () => {
-      const nextPayload = normalizeSelectDefaultValue(createInputVar({
-        type: InputVarType.select,
-        default: '',
-      }))
+      const nextPayload = normalizeSelectDefaultValue(
+        createInputVar({
+          type: InputVarType.select,
+          default: '',
+        }),
+      )
 
       expect(nextPayload.default).toBeUndefined()
     })
 
-    it('should parse checkbox default values and normalize json schema editor content', () => {
-      expect(parseCheckboxSelectValue('true')).toBe(true)
-      expect(parseCheckboxSelectValue('false')).toBe(false)
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(JSON.stringify({ type: 'object' }, null, 2))
+    it('should normalize json schema editor content', () => {
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(
+        JSON.stringify({ type: 'object' }, null, 2),
+      )
       expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe('{"type":"object"}')
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe(
+        '{"type":"object"}',
+      )
     })
 
     it('should fall back to an empty editor value when json schema serialization fails', () => {
@@ -97,10 +127,6 @@ describe('config-modal utils', () => {
   })
 
   describe('derived values', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should expose upload and json options only when supported', () => {
       const options = buildSelectOptions({
         isBasicApp: false,
@@ -108,11 +134,13 @@ describe('config-modal utils', () => {
         t,
       })
 
-      expect(options.map(option => option.value)).toEqual(expect.arrayContaining([
-        InputVarType.singleFile,
-        InputVarType.multiFiles,
-        InputVarType.jsonObject,
-      ]))
+      expect(options.map((option) => option.value)).toEqual(
+        expect.arrayContaining([
+          InputVarType.singleFile,
+          InputVarType.multiFiles,
+          InputVarType.jsonObject,
+        ]),
+      )
     })
 
     it('should derive checkbox defaults from boolean and string values', () => {
@@ -133,19 +161,81 @@ describe('config-modal utils', () => {
   })
 
   describe('validation', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
+    it.each([InputVarType.singleFile, InputVarType.multiFiles])(
+      'should remove upload binaries from %s defaults without changing the uploader file',
+      (type) => {
+        const originalFile = new File(['document'], 'document.txt', { type: 'text/plain' })
+        const uploadedMetadata: FileEntity = {
+          id: 'local-file',
+          name: 'document.txt',
+          size: originalFile.size,
+          type: originalFile.type,
+          progress: 100,
+          transferMethod: 'local_file',
+          supportFileType: 'document',
+          uploadedId: 'uploaded-file-id',
+        }
+        const uploadedFile = { ...uploadedMetadata, originalFile }
+        const remoteFile: FileEntity = {
+          ...uploadedMetadata,
+          id: 'remote-file',
+          transferMethod: 'remote_url',
+          url: 'https://example.com/document.txt',
+        }
+        const tempPayload = createInputVar({
+          type,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          default: type === InputVarType.singleFile ? uploadedFile : [uploadedFile, remoteFile],
+        })
+
+        const { payloadToSave } = validateConfigModalPayload({ tempPayload, t })
+
+        const savedFiles = [payloadToSave?.default].flat() as FileEntity[]
+        expect(savedFiles.some((file) => file.originalFile instanceof Blob)).toBe(false)
+        expect(payloadToSave?.default).toEqual(
+          type === InputVarType.singleFile ? uploadedMetadata : [uploadedMetadata, remoteFile],
+        )
+        expect(uploadedFile.originalFile).toBe(originalFile)
+      },
+    )
+
+    it.each([
+      '{"originalFile":"document.txt","count":2}',
+      '[null,{"originalFile":"document.txt"}]',
+    ])('should preserve JSON default data: %s', (json) => {
+      const defaultValue = JSON.parse(json)
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({ type: InputVarType.jsonObject, default: defaultValue }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
+    })
+
+    it.each([
+      { type: InputVarType.singleFile, defaultValue: undefined },
+      { type: InputVarType.singleFile, defaultValue: '' },
+      { type: InputVarType.multiFiles, defaultValue: undefined },
+      { type: InputVarType.multiFiles, defaultValue: [] },
+    ])('should preserve an empty $type default', ({ type, defaultValue }) => {
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type,
+          default: defaultValue,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
     })
 
     it('should reject duplicate select options', () => {
-      const checkVariableName = vi.fn(() => true)
-
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
           type: InputVarType.select,
           options: ['alpha', 'alpha'],
         }),
-        checkVariableName,
         payload: createInputVar({
           variable: 'question',
         }),
@@ -153,7 +243,6 @@ describe('config-modal utils', () => {
       })
 
       expect(result.errorMessage).toBe('variableConfig.errorMsg.optionRepeat')
-      expect(checkVariableName).toHaveBeenCalledWith('question')
     })
 
     it('should require custom extensions when custom file types are enabled', () => {
@@ -163,7 +252,6 @@ describe('config-modal utils', () => {
           allowed_file_types: [SupportUploadFileTypes.custom],
           allowed_file_extensions: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -177,7 +265,6 @@ describe('config-modal utils', () => {
           type: InputVarType.select,
           options: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -187,7 +274,6 @@ describe('config-modal utils', () => {
           type: InputVarType.singleFile,
           allowed_file_types: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -203,7 +289,6 @@ describe('config-modal utils', () => {
           json_schema: '{',
         }),
         payload: createInputVar(),
-        checkVariableName: () => true,
         t,
       })
 
@@ -213,7 +298,6 @@ describe('config-modal utils', () => {
           json_schema: JSON.stringify({ type: 'string' }),
         }),
         payload: createInputVar(),
-        checkVariableName: () => true,
         t,
       })
 
@@ -231,15 +315,16 @@ describe('config-modal utils', () => {
         payload: createInputVar({
           variable: 'question_old',
         }),
-        checkVariableName: () => true,
         t,
       })
 
       expect(result.errorMessage).toBeUndefined()
-      expect(result.payloadToSave).toEqual(expect.objectContaining({
-        json_schema: undefined,
-        variable: 'question_new',
-      }))
+      expect(result.payloadToSave).toEqual(
+        expect.objectContaining({
+          json_schema: undefined,
+          variable: 'question_new',
+        }),
+      )
       expect(result.moreInfo).toEqual({
         type: ChangeType.changeVarName,
         payload: {
@@ -249,19 +334,72 @@ describe('config-modal utils', () => {
       })
     })
 
-    it('should stop validation when the variable name checker rejects the payload', () => {
+    it.each([
+      [Number.NaN, 1],
+      [undefined, 1],
+      [0, 1],
+      [5, 3],
+      [2, 2],
+    ])('should normalize multi-file count %s to %s at submission', (count, expected) => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
-          variable: 'invalid_name',
+          type: InputVarType.multiFiles,
+          max_length: count,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        maxFileUploadLimit: 3,
+        t,
+      })
+
+      expect(result.payloadToSave?.max_length).toBe(expected)
+    })
+
+    it('should preserve an existing upload count while the server limit is unavailable', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.multiFiles,
+          max_length: 20,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        t,
+      })
+
+      expect(result.payloadToSave?.max_length).toBe(20)
+    })
+
+    it('should force file inputs to stay visible when saving', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.singleFile,
+          hide: true,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_extensions: [],
+        }),
+        payload: createInputVar(),
+        t,
+      })
+
+      expect(result.payloadToSave).toEqual(
+        expect.objectContaining({
+          hide: false,
+        }),
+      )
+    })
+
+    it('should associate invalid variable names with the variable field', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          variable: 'invalid-name!',
         }),
         payload: createInputVar({
           variable: 'question',
         }),
-        checkVariableName: () => false,
         t,
       })
 
-      expect(result).toEqual({})
+      expect(result.errorField).toBe('variable')
+      expect(result.errorMessage).toBeTruthy()
+      expect(result.payloadToSave).toBeUndefined()
     })
   })
 })

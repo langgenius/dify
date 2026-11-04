@@ -1,6 +1,7 @@
 import type { EditorState, LexicalEditor } from 'lexical'
+import { $createLinkNode } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { useEffect } from 'react'
 import { NoteEditorContextProvider } from '../context'
@@ -8,11 +9,7 @@ import Editor from '../editor'
 
 const emptyValue = JSON.stringify({ root: { children: [] } })
 
-const EditorProbe = ({
-  onReady,
-}: {
-  onReady?: (editor: LexicalEditor) => void
-}) => {
+const EditorProbe = ({ onReady }: { onReady?: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -29,10 +26,7 @@ const renderEditor = (
   return render(
     <NoteEditorContextProvider value={emptyValue}>
       <>
-        <Editor
-          containerElement={document.createElement('div')}
-          {...props}
-        />
+        <Editor containerElement={document.createElement('div')} {...props} />
         <EditorProbe onReady={onEditorReady} />
       </>
     </NoteEditorContextProvider>,
@@ -44,30 +38,34 @@ describe('Editor', () => {
     vi.clearAllMocks()
   })
 
-  // Editor should render the lexical surface with the provided placeholder.
   describe('Rendering', () => {
-    it('should render the placeholder text and content editable surface', () => {
-      renderEditor({ placeholder: 'Type note' })
+    it('supports links in the note editor', async () => {
+      let editor: LexicalEditor | null = null
 
-      expect(screen.getByText('Type note')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-  })
+      renderEditor({}, (instance) => (editor = instance))
 
-  // Focus and blur should toggle workflow shortcuts while editing content.
-  describe('Focus Management', () => {
-    it('should disable shortcuts on focus and re-enable them on blur-sm', () => {
-      const setShortcutsEnabled = vi.fn()
+      await waitFor(() => {
+        expect(editor).not.toBeNull()
+      })
 
-      renderEditor({ setShortcutsEnabled })
+      act(() => {
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            const link = $createLinkNode('https://example.com/docs')
+            link.append($createTextNode('Linked docs'))
+            paragraph.append(link)
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
+      })
 
-      const contentEditable = screen.getByRole('textbox')
+      const link = await screen.findByRole('link', { name: 'Linked docs' })
 
-      fireEvent.focus(contentEditable)
-      fireEvent.blur(contentEditable)
-
-      expect(setShortcutsEnabled).toHaveBeenNthCalledWith(1, false)
-      expect(setShortcutsEnabled).toHaveBeenNthCalledWith(2, true)
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
     })
   })
 
@@ -82,38 +80,43 @@ describe('Editor', () => {
         })
       }
 
-      renderEditor({ onChange: handleChange }, instance => (editor = instance))
+      renderEditor({ onChange: handleChange }, (instance) => (editor = instance))
 
       await waitFor(() => {
         expect(editor).not.toBeNull()
       })
 
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0))
+      act(() => {
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            paragraph.append($createTextNode('hello'))
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       act(() => {
-        editor!.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          paragraph.append($createTextNode('hello'))
-          root.append(paragraph)
-        }, { discrete: true })
-      })
-
-      act(() => {
-        editor!.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          paragraph.append($createTextNode('hello world'))
-          root.append(paragraph)
-        }, { discrete: true })
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            paragraph.append($createTextNode('hello world'))
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       await waitFor(() => {
         expect(changes).toContain('hello world')
+        expect(
+          screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }),
+        ).toHaveTextContent('hello world')
       })
     })
   })

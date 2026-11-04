@@ -1,17 +1,20 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { convertTimezoneToOffsetStr, getTimezoneOffsetMinutes } from '@/utils/timezone'
+import {
+  convertToUserTimezoneRepresentation,
+  getCronExecutionInstants,
+  isValidCronExpression,
+  parseCronExpression,
+} from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
 
 const resolveTimezone = (timezone?: string): string => {
-  if (timezone)
-    return timezone
+  if (timezone) return timezone
 
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE
-  }
-  catch {
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE
+  } catch {
     return DEFAULT_TIMEZONE
   }
 }
@@ -25,21 +28,53 @@ const getUserTimezoneCurrentTime = (timezone?: string): Date => {
     hour12: false,
   })
   const [dateStr, timeStr] = userTimeStr.split(', ')
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const [hour, minute, second] = timeStr.split(':').map(Number)
-  return new Date(year, month - 1, day, hour, minute, second)
+  const [year, month, day] = dateStr!.split('-').map(Number)
+  const [hour, minute, second] = timeStr!.split(':').map(Number)
+  return new Date(year!, month! - 1, day, hour, minute, second)
+}
+
+// The Date objects here hold the wall time of the target timezone in local fields.
+// Turn that wall time back into the real instant so the offset label follows DST.
+// When DST ends, one wall time happens twice. Pick the first one that is not in the past.
+const getWallTimeInstant = (date: Date, timezone: string): Date => {
+  const wallAsUtc = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  )
+  const offsetAt = (time: number) => getTimezoneOffsetMinutes(timezone, new Date(time)) ?? 0
+  // Offsets a day before and after cover both sides of any DST change near this wall time.
+  const offsetsNearby = [offsetAt(wallAsUtc - 24 * 3_600_000), offsetAt(wallAsUtc + 24 * 3_600_000)]
+  const candidates = [...new Set(offsetsNearby)]
+    .map((offset) => wallAsUtc - offset * 60_000)
+    .filter((time) => offsetAt(time) === (wallAsUtc - time) / 60_000)
+    .sort((a, b) => a - b)
+
+  // No candidate means the wall time falls in the DST gap. The run happens after
+  // the clocks move forward, so the label shows the new offset.
+  if (candidates.length === 0) return new Date(wallAsUtc - offsetsNearby[0]! * 60_000)
+
+  const now = Date.now()
+  return new Date(candidates.find((time) => time >= now) ?? candidates[0]!)
 }
 
 // Format date that is already in user timezone, no timezone conversion
-const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: boolean = true, includeTimezone: boolean = true): string => {
+const formatUserTimezoneDate = (
+  date: Date,
+  timezone: string,
+  includeWeekday: boolean = true,
+  includeTimezone: boolean = true,
+): string => {
   const dateOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   }
 
-  if (includeWeekday)
-    dateOptions.weekday = 'long' // Changed from 'short' to 'long' for full weekday name
+  if (includeWeekday) dateOptions.weekday = 'long' // Changed from 'short' to 'long' for full weekday name
 
   const timeOptions: Intl.DateTimeFormatOptions = {
     hour: 'numeric',
@@ -51,7 +86,7 @@ const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: bo
   const timeStr = date.toLocaleTimeString('en-US', timeOptions)
 
   if (includeTimezone) {
-    const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+    const timezoneOffset = convertTimezoneToOffsetStr(timezone, getWallTimeInstant(date, timezone))
     return `${dateStr}, ${timeStr} (${timezoneOffset})`
   }
 
@@ -62,8 +97,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const timezone = resolveTimezone(data.timezone)
 
   if (data.mode === 'cron') {
-    if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
-      return []
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression)) return []
     return parseCronExpression(data.cron_expression, timezone).slice(0, count)
   }
 
@@ -74,7 +108,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const now = new Date()
   const userTodayStr = now.toLocaleDateString('en-CA', { timeZone: timezone })
   const [year, month, day] = userTodayStr.split('-').map(Number)
-  const userToday = new Date(year, month - 1, day, 0, 0, 0, 0)
+  const userToday = new Date(year!, month! - 1, day, 0, 0, 0, 0)
 
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
@@ -83,32 +117,24 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
 
     let hour = userCurrentTime.getHours()
-    if (userCurrentTime.getMinutes() >= onMinute)
-      hour += 1 // Start from next hour if current minute has passed
+    if (userCurrentTime.getMinutes() >= onMinute) hour += 1 // Start from next hour if current minute has passed
 
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
+      // setHours rolls past midnight into the next day, month and year on its own
       execution.setHours(hour + i, onMinute, 0, 0)
-      // Handle day overflow
-      if (hour + i >= 24) {
-        execution.setDate(userToday.getDate() + Math.floor((hour + i) / 24))
-        execution.setHours((hour + i) % 24, onMinute, 0, 0)
-      }
       times.push(execution)
     }
-  }
-  else if (data.frequency === 'daily') {
+  } else if (data.frequency === 'daily') {
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12)
-      displayHour += 12
-    if (period === 'AM' && displayHour === 12)
-      displayHour = 0
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
+    if (period === 'PM' && displayHour !== 12) displayHour += 12
+    if (period === 'AM' && displayHour === 12) displayHour = 0
 
     // Check if today's configured time has already passed
     const todayExecution = new Date(userToday)
-    todayExecution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+    todayExecution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
 
@@ -117,71 +143,39 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
       execution.setDate(userToday.getDate() + startOffset + i)
-      execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+      execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
       times.push(execution)
     }
-  }
-  else if (data.frequency === 'weekly') {
-    const selectedDays = data.visual_config?.weekdays || ['sun']
+  } else if (data.frequency === 'weekly') {
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+    const selectedDays = new Set(
+      (data.visual_config?.weekdays || ['sun'])
+        .map((day) => dayMap[day as keyof typeof dayMap])
+        .filter((day): day is number => day !== undefined),
+    )
+
+    if (selectedDays.size === 0) return times
 
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12)
-      displayHour += 12
-    if (period === 'AM' && displayHour === 12)
-      displayHour = 0
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
+    if (period === 'PM' && displayHour !== 12) displayHour += 12
+    if (period === 'AM' && displayHour === 12) displayHour = 0
 
     // Get current time completely in user timezone
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
 
-    let executionCount = 0
-    let weekOffset = 0
+    let dayOffset = 0
+    while (times.length < count) {
+      const execution = new Date(userToday)
+      execution.setDate(userToday.getDate() + dayOffset)
+      execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
-    while (executionCount < count) {
-      let hasValidDays = false
+      if (selectedDays.has(execution.getDay()) && execution > userCurrentTime) times.push(execution)
 
-      for (const selectedDay of selectedDays) {
-        if (executionCount >= count)
-          break
-
-        const targetDay = dayMap[selectedDay as keyof typeof dayMap]
-        if (targetDay === undefined)
-          continue
-
-        hasValidDays = true
-
-        const currentDayOfWeek = userToday.getDay()
-        const daysUntilTarget = (targetDay - currentDayOfWeek + 7) % 7
-
-        // Check if today's configured time has already passed
-        const todayAtTargetTime = new Date(userToday)
-        todayAtTargetTime.setHours(displayHour, Number.parseInt(minute), 0, 0)
-
-        let adjustedDays = daysUntilTarget
-        if (daysUntilTarget === 0 && todayAtTargetTime <= userCurrentTime)
-          adjustedDays = 7
-
-        const execution = new Date(userToday)
-        execution.setDate(userToday.getDate() + adjustedDays + (weekOffset * 7))
-        execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
-
-        // Only add if execution time is in the future
-        if (execution > userCurrentTime) {
-          times.push(execution)
-          executionCount++
-        }
-      }
-
-      if (!hasValidDays)
-        break
-      weekOffset++
+      dayOffset++
     }
-
-    times.sort((a, b) => a.getTime() - b.getTime())
-  }
-  else if (data.frequency === 'monthly') {
+  } else if (data.frequency === 'monthly') {
     const getSelectedDays = (): (number | 'last')[] => {
       if (data.visual_config?.monthly_days && data.visual_config.monthly_days.length > 0)
         return data.visual_config.monthly_days
@@ -191,12 +185,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     const selectedDays = [...new Set(getSelectedDays())]
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12)
-      displayHour += 12
-    if (period === 'AM' && displayHour === 12)
-      displayHour = 0
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
+    if (period === 'PM' && displayHour !== 12) displayHour += 12
+    if (period === 'AM' && displayHour === 12) displayHour = 0
 
     // Get current time completely in user timezone
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
@@ -206,7 +198,11 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     while (executionCount < count) {
       const targetMonth = new Date(userToday.getFullYear(), userToday.getMonth() + monthOffset, 1)
-      const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+      const daysInMonth = new Date(
+        targetMonth.getFullYear(),
+        targetMonth.getMonth() + 1,
+        0,
+      ).getDate()
 
       const monthlyExecutions: Date[] = []
       const processedDays = new Set<number>()
@@ -216,40 +212,42 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         if (selectedDay === 'last') {
           targetDay = daysInMonth
-        }
-        else {
-          const dayNumber = selectedDay as number
-          if (dayNumber > daysInMonth)
-            continue
+        } else {
+          const dayNumber = selectedDay
+          if (dayNumber > daysInMonth) continue
 
           targetDay = dayNumber
         }
 
-        if (processedDays.has(targetDay))
-          continue
+        if (processedDays.has(targetDay)) continue
 
         processedDays.add(targetDay)
 
-        const execution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+        const execution = new Date(
+          targetMonth.getFullYear(),
+          targetMonth.getMonth(),
+          targetDay,
+          displayHour,
+          Number.parseInt(minute!),
+          0,
+          0,
+        )
 
         // Only add if execution time is in the future
-        if (execution > userCurrentTime)
-          monthlyExecutions.push(execution)
+        if (execution > userCurrentTime) monthlyExecutions.push(execution)
       }
 
       monthlyExecutions.sort((a, b) => a.getTime() - b.getTime())
 
       for (const execution of monthlyExecutions) {
-        if (executionCount >= count)
-          break
+        if (executionCount >= count) break
         times.push(execution)
         executionCount++
       }
 
       monthOffset++
     }
-  }
-  else {
+  } else {
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
       execution.setDate(userToday.getDate() + i)
@@ -260,13 +258,32 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-const formatExecutionTime = (date: Date, timezone: string | undefined, includeWeekday: boolean = true, includeTimezone: boolean = true): string => {
+const formatExecutionTime = (
+  date: Date,
+  timezone: string | undefined,
+  includeWeekday: boolean = true,
+  includeTimezone: boolean = true,
+): string => {
   const resolvedTimezone = resolveTimezone(timezone)
   return formatUserTimezoneDate(date, resolvedTimezone, includeWeekday, includeTimezone)
 }
 
-export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
+export const getFormattedExecutionTimes = (
+  data: ScheduleTriggerNodeType,
+  count: number = 5,
+): string[] => {
   const timezone = resolveTimezone(data.timezone)
+  // Cron runs can repeat a wall time when DST ends, so label each run from its real instant.
+  if (data.mode === 'cron') {
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression)) return []
+    return getCronExecutionInstants(data.cron_expression, timezone)
+      .slice(0, count)
+      .map((instant) => {
+        const wallTime = convertToUserTimezoneRepresentation(instant, timezone)
+        const label = formatUserTimezoneDate(wallTime, timezone, false, false)
+        return `${label} (${convertTimezoneToOffsetStr(timezone, instant)})`
+      })
+  }
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {
@@ -280,20 +297,27 @@ export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
 
   // Return placeholder for cron mode with empty or invalid expression
   if (data.mode === 'cron') {
-    if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
-      return '--'
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression)) return '--'
   }
 
   // Get Date objects (not formatted strings)
   const times = getNextExecutionTimes(data, 1)
   if (times.length === 0) {
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
-    const fallbackDate = new Date(userCurrentTime.getFullYear(), userCurrentTime.getMonth(), userCurrentTime.getDate(), 12, 0, 0, 0)
+    const fallbackDate = new Date(
+      userCurrentTime.getFullYear(),
+      userCurrentTime.getMonth(),
+      userCurrentTime.getDate(),
+      12,
+      0,
+      0,
+      0,
+    )
     const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
     return formatExecutionTime(fallbackDate, timezone, includeWeekday, false) // Node doesn't show timezone
   }
 
   // Format the first execution time without timezone for node display
   const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
-  return formatExecutionTime(times[0], timezone, includeWeekday, false) // Node doesn't show timezone
+  return formatExecutionTime(times[0]!, timezone, includeWeekday, false) // Node doesn't show timezone
 }

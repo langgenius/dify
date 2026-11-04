@@ -1,7 +1,7 @@
+import logging
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import NotFound
 
 import controllers.trigger.trigger as module
 
@@ -22,8 +22,9 @@ INVALID_UUID = "not-a-uuid"
 
 class TestTriggerEndpoint:
     def test_invalid_uuid(self):
-        with pytest.raises(NotFound):
-            module.trigger_endpoint(INVALID_UUID)
+        response = module.trigger_endpoint(INVALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
 
     @patch.object(module.TriggerService, "process_endpoint")
     @patch.object(module.TriggerSubscriptionBuilderService, "process_builder_validation_endpoint")
@@ -52,10 +53,9 @@ class TestTriggerEndpoint:
         mock_trigger.return_value = None
         mock_builder.return_value = None
 
-        response, status = module.trigger_endpoint(VALID_UUID)
-
-        assert status == 404
-        assert response["error"] == "Endpoint not found"
+        response = module.trigger_endpoint(VALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
 
     @patch.object(module.TriggerService, "process_endpoint", side_effect=ValueError("bad input"))
     def test_value_error(self, mock_trigger):
@@ -71,3 +71,11 @@ class TestTriggerEndpoint:
 
         assert status == 500
         assert response["error"] == "Internal server error"
+
+    @patch.object(module.TriggerService, "process_endpoint", side_effect=Exception("boom"))
+    def test_unexpected_exception_logs_endpoint_id(self, mock_trigger, caplog):
+        with caplog.at_level(logging.ERROR, logger=module.logger.name):
+            module.trigger_endpoint(VALID_UUID)
+
+        assert VALID_UUID in caplog.text
+        assert "{endpoint_id}" not in caplog.text

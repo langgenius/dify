@@ -1,93 +1,108 @@
-import type { FC } from 'react'
-import { RiArrowDownSLine, RiCheckLine, RiSortAsc, RiSortDesc } from '@remixicon/react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
 
-type Item = {
-  value: number | string
+type SortItem<Field extends string | number> = {
+  value: Field
   name: string
-} & Record<string, any>
-
-type Props = {
-  order?: string
-  value: number | string
-  items: Item[]
-  onSelect: (item: any) => void
 }
-const Sort: FC<Props> = ({
-  order,
+
+export type SortValue<Field extends string | number> = {
+  field: Field
+  order: 'asc' | 'desc'
+}
+
+type SortProps<Field extends string | number> = Readonly<{
+  value: SortValue<NoInfer<Field>>
+  items: readonly SortItem<Field>[]
+  onValueChange: (value: SortValue<NoInfer<Field>>) => void
+}>
+
+export function Sort<const Field extends string | number>({
   value,
   items,
-  onSelect,
-}) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  const triggerContent = useMemo(() => {
-    return items.find(item => item.value === value)?.name || ''
-  }, [items, value])
+  onValueChange,
+}: SortProps<Field>) {
+  const { t } = useTranslation(['common'])
+  const nextOrder = value.order === 'desc' ? 'asc' : 'desc'
+  const nextOrderLabel =
+    nextOrder === 'asc'
+      ? t(($) => $['sorting.ascending'], { ns: 'common' })
+      : t(($) => $['sorting.descending'], { ns: 'common' })
+  const triggerContent = items.find((item) => item.value === value.field)?.name ?? ''
 
   return (
-    <div className="inline-flex items-center">
-      <PortalToFollowElem
-        open={open}
-        onOpenChange={setOpen}
-        placement="bottom-start"
-        offset={4}
-      >
-        <div className="relative">
-          <PortalToFollowElemTrigger
-            onClick={() => setOpen(v => !v)}
-            className="block"
-          >
-            <div className={cn(
-              'flex min-h-8 cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-              open && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
-            )}
+    <div className="inline-flex w-fit max-w-full min-w-0 items-center gap-px">
+      <Menu>
+        <div className="relative min-w-0 flex-1">
+          <MenuTrigger className="flex min-h-8 w-full min-w-0 items-center rounded-s-lg border-none bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt">
+            <span className="flex min-w-0 items-center gap-0.5 px-1">
+              <span className="system-sm-regular text-text-secondary">
+                {t(($) => $['sorting.sortBy'], { ns: 'common' })}
+              </span>
+              <span className="min-w-0 system-sm-regular wrap-anywhere text-text-secondary">
+                {triggerContent}
+              </span>
+            </span>
+            <span
+              aria-hidden
+              className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
+            />
+          </MenuTrigger>
+          <MenuContent align="start" className="relative w-60 p-0">
+            <MenuRadioGroup<Field>
+              value={value.field}
+              onValueChange={(field) => onValueChange({ field, order: value.order })}
+              className="max-h-72 scroll-py-1 overflow-auto py-1"
             >
-              <div className="flex items-center gap-0.5 px-1">
-                <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
-                <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
-                  {triggerContent}
-                </div>
-              </div>
-              <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-            </div>
-          </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-1002">
-            <div className="relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-              <div className="max-h-72 overflow-auto p-1">
-                {items.map(item => (
-                  <div
-                    key={item.value}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-[6px] pl-3 hover:bg-state-base-hover"
-                    onClick={() => {
-                      onSelect(`${order}${item.value}`)
-                      setOpen(false)
-                    }}
-                  >
-                    <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
-                    {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+              {items.map((item) => (
+                <MenuRadioItem
+                  key={item.value}
+                  value={item.value}
+                  closeOnClick
+                  className="h-auto min-h-8 gap-2 py-1.5"
+                >
+                  <div className="min-w-0 grow system-sm-medium wrap-anywhere text-text-secondary">
+                    {item.name}
                   </div>
-                ))}
-              </div>
-            </div>
-          </PortalToFollowElemContent>
+                  <MenuRadioItemIndicator className="text-util-colors-blue-light-blue-light-600 forced-colors:text-[CanvasText] forced-colors:forced-color-adjust-none" />
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuContent>
         </div>
-      </PortalToFollowElem>
-      <div className="ml-px cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover" onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
-        {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" />}
-        {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" />}
-      </div>
+      </Menu>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              aria-label={nextOrderLabel}
+              data-order={value.order}
+              variant="tertiary"
+              size="lg"
+              className="group/sort-order shrink-0 rounded-s-none"
+              onClick={() => onValueChange({ field: value.field, order: nextOrder })}
+            >
+              <span
+                aria-hidden
+                className="grid size-4 forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
+              >
+                <span className="col-start-1 row-start-1 i-ri-sort-asc size-4 scale-95 opacity-0 transition-[opacity,scale] duration-150 ease-out group-data-[order=asc]/sort-order:scale-100 group-data-[order=asc]/sort-order:opacity-100 motion-reduce:transition-none" />
+                <span className="col-start-1 row-start-1 i-ri-sort-desc size-4 scale-95 opacity-0 transition-[opacity,scale] duration-150 ease-out group-data-[order=desc]/sort-order:scale-100 group-data-[order=desc]/sort-order:opacity-100 motion-reduce:transition-none" />
+              </span>
+            </IconButton>
+          }
+        />
+        <TooltipContent>{nextOrderLabel}</TooltipContent>
+      </Tooltip>
     </div>
-
   )
 }
-
-export default Sort

@@ -1,105 +1,142 @@
-import type { BasicPlan } from '../../../../type'
-import * as React from 'react'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { TFunction } from 'i18next'
+import type { PlanInfo } from '../../../../type'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
-import { Plan } from '../../../../type'
-import Item from './item'
+import { ALL_PLANS } from '../../../../config'
+import { CloudPlanFeature } from './item'
 
-type ListProps = {
-  plan: BasicPlan
+type PlanFeature = {
+  id: string
+  label: string
+  description?: string
 }
 
-const List = ({
-  plan,
-}: ListProps) => {
-  const { t } = useTranslation()
-  const isFreePlan = plan === Plan.sandbox
-  const planInfo = ALL_PLANS[plan]
+function getPlanFeatureGroups(planInfo: PlanInfo, t: TFunction<['billing']>): PlanFeature[][] {
+  const { messageRequest, triggerEvents, startNodes, workflowExecution, logHistory, apiRateLimit } =
+    planInfo
+
+  return [
+    [
+      {
+        id: 'messageRequest',
+        label: messageRequest.perMonth
+          ? t(($) => $['plansCommon.messageRequest.titlePerMonth'], {
+              count: messageRequest.count,
+            })
+          : t(($) => $['plansCommon.messageRequest.title'], { count: messageRequest.count }),
+        description: t(($) => $['plansCommon.messageRequest.tooltip']),
+      },
+      { id: 'teamWorkspace', label: t(($) => $['plansCommon.teamWorkspace'], { count: 1 }) },
+      {
+        id: 'teamMembers',
+        label: t(($) => $['plansCommon.teamMember'], { count: planInfo.teamMembers }),
+      },
+      {
+        id: 'buildApps',
+        label: t(($) => $['plansCommon.buildApps'], { count: planInfo.buildApps }),
+      },
+    ],
+    [
+      {
+        id: 'documents',
+        label: t(($) => $['plansCommon.documents'], { count: planInfo.documents }),
+        description: t(($) => $['plansCommon.documentsTooltip']),
+      },
+      {
+        id: 'vectorSpace',
+        label: t(($) => $['plansCommon.vectorSpace'], { size: planInfo.vectorSpace }),
+        description: t(($) => $['plansCommon.vectorSpaceTooltip']),
+      },
+      {
+        id: 'documentsRequestQuota',
+        label: t(($) => $['plansCommon.documentsRequestQuota'], {
+          count: planInfo.documentsRequestQuota,
+        }),
+        description: t(($) => $['plansCommon.documentsRequestQuotaTooltip']),
+      },
+      {
+        id: 'documentProcessingPriority',
+        label: [
+          t(($) => $[`plansCommon.priority.${planInfo.documentProcessingPriority}`]),
+          t(($) => $['plansCommon.documentProcessingPriority']),
+        ].join(''),
+      },
+    ],
+    [
+      {
+        id: 'triggerEvents',
+        label:
+          triggerEvents === 'unlimited'
+            ? t(($) => $['plansCommon.triggerEvents.unlimited'])
+            : triggerEvents.perMonth
+              ? t(($) => $['plansCommon.triggerEvents.professional'], {
+                  count: triggerEvents.count,
+                })
+              : t(($) => $['plansCommon.triggerEvents.sandbox'], { count: triggerEvents.count }),
+        description: t(($) => $['plansCommon.triggerEvents.tooltip']),
+      },
+      {
+        id: 'startNodes',
+        label:
+          startNodes === 'unlimited'
+            ? t(($) => $['plansCommon.startNodes.unlimited'])
+            : t(($) => $['plansCommon.startNodes.limited'], { count: startNodes }),
+      },
+      {
+        id: 'workflowExecution',
+        label: t(($) => $[`plansCommon.workflowExecution.${workflowExecution}`]),
+        description: t(($) => $['plansCommon.workflowExecution.tooltip']),
+      },
+    ],
+    [
+      {
+        id: 'annotatedResponse',
+        label: t(($) => $['plansCommon.annotatedResponse.title'], {
+          count: planInfo.annotatedResponse,
+        }),
+        description: t(($) => $['plansCommon.annotatedResponse.tooltip']),
+      },
+      {
+        id: 'logHistory',
+        label: t(($) => $['plansCommon.logsHistory'], {
+          days:
+            logHistory === 'unlimited'
+              ? t(($) => $['plansCommon.unlimited'])
+              : `${logHistory} ${t(($) => $['plansCommon.days'])}`,
+        }),
+      },
+      apiRateLimit === 'unlimited'
+        ? { id: 'apiRateLimit', label: t(($) => $['plansCommon.unlimitedApiRate']) }
+        : {
+            id: 'apiRateLimit',
+            label: `${t(($) => $['plansCommon.apiRateLimitUnit'], { count: apiRateLimit })} ${t(($) => $['plansCommon.apiRateLimit'])}/${t(($) => $['plansCommon.month'])}`,
+            description: t(($) => $['plansCommon.apiRateLimitTooltip']),
+          },
+    ],
+    [{ id: 'modelProviders', label: t(($) => $['plansCommon.modelProviders']) }],
+  ]
+}
+
+export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
+  const { t } = useTranslation(['billing'])
+  const featureGroups = getPlanFeatureGroups(ALL_PLANS[plan], t)
 
   return (
     <div className="flex flex-col gap-y-2.5 p-6">
-      <Item
-        label={isFreePlan
-          ? t('plansCommon.messageRequest.title', { ns: 'billing', count: planInfo.messageRequest })
-          : t('plansCommon.messageRequest.titlePerMonth', { ns: 'billing', count: planInfo.messageRequest })}
-        tooltip={t('plansCommon.messageRequest.tooltip', { ns: 'billing' }) as string}
-      />
-      <Item
-        label={t('plansCommon.teamWorkspace', { ns: 'billing', count: planInfo.teamWorkspace })}
-      />
-      <Item
-        label={t('plansCommon.teamMember', { ns: 'billing', count: planInfo.teamMembers })}
-      />
-      <Item
-        label={t('plansCommon.buildApps', { ns: 'billing', count: planInfo.buildApps })}
-      />
-      <Divider bgStyle="gradient" />
-      <Item
-        label={t('plansCommon.documents', { ns: 'billing', count: planInfo.documents })}
-        tooltip={t('plansCommon.documentsTooltip', { ns: 'billing' }) as string}
-      />
-      <Item
-        label={t('plansCommon.vectorSpace', { ns: 'billing', size: planInfo.vectorSpace })}
-        tooltip={t('plansCommon.vectorSpaceTooltip', { ns: 'billing' }) as string}
-      />
-      <Item
-        label={t('plansCommon.documentsRequestQuota', { ns: 'billing', count: planInfo.documentsRequestQuota })}
-        tooltip={t('plansCommon.documentsRequestQuotaTooltip', { ns: 'billing' })}
-      />
-      <Item
-        label={[t(`plansCommon.priority.${planInfo.documentProcessingPriority}`, { ns: 'billing' }), t('plansCommon.documentProcessingPriority', { ns: 'billing' })].join('')}
-      />
-      <Divider bgStyle="gradient" />
-      <Item
-        label={
-          planInfo.triggerEvents === NUM_INFINITE
-            ? t('plansCommon.triggerEvents.unlimited', { ns: 'billing' })
-            : plan === Plan.sandbox
-              ? t('plansCommon.triggerEvents.sandbox', { ns: 'billing', count: planInfo.triggerEvents })
-              : t('plansCommon.triggerEvents.professional', { ns: 'billing', count: planInfo.triggerEvents })
-        }
-        tooltip={t('plansCommon.triggerEvents.tooltip', { ns: 'billing' }) as string}
-      />
-      <Item
-        label={
-          plan === Plan.sandbox
-            ? t('plansCommon.startNodes.limited', { ns: 'billing', count: 2 })
-            : t('plansCommon.startNodes.unlimited', { ns: 'billing' })
-        }
-      />
-      <Item
-        label={
-          plan === Plan.sandbox
-            ? t('plansCommon.workflowExecution.standard', { ns: 'billing' })
-            : plan === Plan.professional
-              ? t('plansCommon.workflowExecution.faster', { ns: 'billing' })
-              : t('plansCommon.workflowExecution.priority', { ns: 'billing' })
-        }
-        tooltip={t('plansCommon.workflowExecution.tooltip', { ns: 'billing' }) as string}
-      />
-      <Divider bgStyle="gradient" />
-      <Item
-        label={t('plansCommon.annotatedResponse.title', { ns: 'billing', count: planInfo.annotatedResponse })}
-        tooltip={t('plansCommon.annotatedResponse.tooltip', { ns: 'billing' }) as string}
-      />
-      <Item
-        label={t('plansCommon.logsHistory', { ns: 'billing', days: planInfo.logHistory === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) as string : `${planInfo.logHistory} ${t('plansCommon.days', { ns: 'billing' })}` })}
-      />
-      <Item
-        label={
-          planInfo.apiRateLimit === NUM_INFINITE
-            ? t('plansCommon.unlimitedApiRate', { ns: 'billing' })
-            : `${t('plansCommon.apiRateLimitUnit', { ns: 'billing', count: planInfo.apiRateLimit })} ${t('plansCommon.apiRateLimit', { ns: 'billing' })}/${t('plansCommon.month', { ns: 'billing' })}`
-        }
-        tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('plansCommon.apiRateLimitTooltip', { ns: 'billing' }) as string}
-      />
-      <Divider bgStyle="gradient" />
-      <Item
-        label={t('plansCommon.modelProviders', { ns: 'billing' })}
-      />
+      {featureGroups.map((features, groupIndex) => (
+        <Fragment key={features[0]!.id}>
+          {groupIndex > 0 && <Separator className="my-2 from-divider-accent" variant="gradient" />}
+          {features.map((feature) => (
+            <CloudPlanFeature
+              key={feature.id}
+              label={feature.label}
+              description={feature.description}
+            />
+          ))}
+        </Fragment>
+      ))}
     </div>
   )
 }
-
-export default React.memo(List)

@@ -1,11 +1,10 @@
-import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { AppModeEnum } from '@/types/app'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import SwitchAppModal from '../index'
 
 const mockPush = vi.fn()
@@ -20,29 +19,24 @@ vi.mock('@/next/navigation', () => ({
 
 // Use real store - global zustand mock will auto-reset between tests
 
-const mockSwitchApp = vi.fn()
-const mockDeleteApp = vi.fn()
-vi.mock('@/service/apps', () => ({
-  switchApp: (...args: unknown[]) => mockSwitchApp(...args),
-  deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
-}))
+const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
+const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
 
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.convertToWorkflow.post': (input) => mockConvertToWorkflow(input),
+      'apps.byAppId.delete': (input) => mockDeleteOriginalApp(input),
+    }),
+  }
+})
 
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlan = {
-  type: Plan.sandbox,
+  type: 'sandbox',
   usage: {
     buildApps: 0,
     teamMembers: 0,
@@ -62,12 +56,6 @@ let mockPlan = {
     vectorSpace: 0,
   },
 }
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: ({ loc }: { loc: string }) => (
@@ -78,25 +66,7 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-icon-picker</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect: (payload: { type: 'image', url: string, fileId: string }) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="app-icon-picker">
-      <button onClick={() => onSelect({ type: 'image', url: 'https://example.com/icon.png', fileId: 'file-id-1' })}>select-app-icon</button>
-      <button onClick={onClose}>close-app-icon-picker</button>
-    </div>
-  ),
-}))
-
-const createMockApp = (overrides: Partial<App> = {}): App => ({
+const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'app-123',
   name: 'Demo App',
   description: 'Demo description',
@@ -106,23 +76,11 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_background: '#FFEAD5',
   icon_url: null,
   use_icon_as_answer_icon: false,
-  mode: AppModeEnum.COMPLETION,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
+  mode: 'completion' as const,
   created_at: Date.now(),
   updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
   tags: [],
-  access_mode: 'public_access' as App['access_mode'],
+  access_mode: 'public',
   ...overrides,
 })
 
@@ -133,12 +91,16 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -146,47 +108,36 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 }))
 
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
-  const onClose = vi.fn()
-  const onSuccess = vi.fn()
+  const onOpenChange = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal
-      show
-      appDetail={appDetail}
-      onClose={onClose}
-      onSuccess={onSuccess}
-      {...overrides}
-    />,
-
+    <SwitchAppModal open sourceApp={appDetail} onOpenChange={onOpenChange} {...overrides} />,
   )
 
   return {
     ...utils,
     notify: toastMocks.notify,
-    onClose,
-    onSuccess,
+    onOpenChange,
     appDetail,
   }
 }
 
-const setAppDetailSpy = vi.fn()
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } },
+  })
+}
 
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSwitchApp.mockReset()
-    mockDeleteApp.mockReset()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
-    mockEnableBilling = false
+    mockConvertToWorkflow.mockReset()
+    mockDeleteOriginalApp.mockReset()
+    deploymentEdition = 'COMMUNITY'
     mockPlan = {
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: {
         buildApps: 0,
         teamMembers: 0,
@@ -210,42 +161,36 @@ describe('SwitchAppModal', () => {
 
   // Rendering behavior for modal visibility and default values.
   describe('Rendering', () => {
-    it('should render modal content when show is true', () => {
-      // Arrange
-      renderComponent()
-
-      // Assert
-      expect(screen.getByText('app.switch')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Demo App(copy)')).toBeInTheDocument()
-    })
-
     it('should not render modal content when show is false', () => {
-      // Arrange
-      renderComponent({ show: false })
+      renderComponent({ open: false })
 
-      // Assert
       expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
     })
   })
 
   // Prop-driven UI states such as disabling actions.
   describe('Props', () => {
-    it('should disable the start button when name is empty', async () => {
+    it('should validate blank names and submit the current field value with Enter', async () => {
       const user = userEvent.setup()
-      // Arrange
       renderComponent()
-
-      // Act
-      const nameInput = screen.getByDisplayValue('Demo App(copy)')
+      const nameInput = screen.getByRole('textbox', { name: 'app.newApp.name' })
+      expect(screen.getByRole('group', { name: 'app.switchLabel' })).toContainElement(nameInput)
       await user.clear(nameInput)
-
-      // Assert
-      expect(screen.getByRole('button', { name: 'app.switchStart' })).toBeDisabled()
+      await user.type(nameInput, '   {Enter}')
+      expect(await screen.findByText('explore.appCustomize.nameRequired')).toBeVisible()
+      expect(mockConvertToWorkflow).not.toHaveBeenCalled()
+      mockConvertToWorkflow.mockResolvedValue({ new_app_id: 'converted-app' })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Renamed workflow{Enter}')
+      await waitFor(() =>
+        expect(mockConvertToWorkflow).toHaveBeenCalledWith(
+          expect.objectContaining({ body: expect.objectContaining({ name: 'Renamed workflow' }) }),
+        ),
+      )
     })
 
     it('should render the apps full warning when plan limits are reached', () => {
-      // Arrange
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan = {
         ...mockPlan,
         usage: { ...mockPlan.usage, buildApps: 10 },
@@ -253,7 +198,6 @@ describe('SwitchAppModal', () => {
       }
       renderComponent()
 
-      // Assert
       expect(screen.getByTestId('apps-full')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'app.switchStart' })).toBeDisabled()
     })
@@ -261,40 +205,47 @@ describe('SwitchAppModal', () => {
 
   // User interactions that trigger navigation and API calls.
   describe('Interactions', () => {
-    it('should call onClose when cancel is clicked', async () => {
+    it('should call onOpenChange when cancel is clicked', async () => {
       const user = userEvent.setup()
-      // Arrange
-      const { onClose } = renderComponent()
 
-      // Act
+      const { onOpenChange } = renderComponent()
+
       await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
-      // Assert
-      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onOpenChange when close button is clicked', async () => {
+      const user = userEvent.setup()
+      const { onOpenChange } = renderComponent()
+
+      await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
-      // Arrange
-      const { appDetail, notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
 
-      // Act
+      const { appDetail, onOpenChange } = renderComponent()
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-001',
+        permission_keys: ['app.acl.view_layout'],
+      })
+
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith({
-          appID: appDetail.id,
-          name: 'Demo App(copy)',
-          icon_type: 'emoji',
-          icon: '🚀',
-          icon_background: '#FFEAD5',
+        expect(mockConvertToWorkflow).toHaveBeenCalledWith({
+          params: { app_id: appDetail.id },
+          body: {
+            name: 'Demo App(copy)',
+            icon_type: 'emoji',
+            icon: '🚀',
+            icon_background: '#FFEAD5',
+          },
         })
-        expect(onSuccess).toHaveBeenCalledTimes(1)
-        expect(onClose).toHaveBeenCalledTimes(1)
-        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+        expect(onOpenChange).toHaveBeenCalledTimes(1)
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
@@ -303,21 +254,34 @@ describe('SwitchAppModal', () => {
     it('should update the icon through the picker before switching apps', async () => {
       const user = userEvent.setup()
       const { appDetail } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-003',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
-      await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
+      })
 
-      await user.click(screen.getByText('select-app-icon'))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
-          appID: appDetail.id,
-          icon_type: 'image',
-          icon: 'file-id-1',
-          icon_background: undefined,
-        }))
+        expect(mockConvertToWorkflow).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: { app_id: appDetail.id },
+            body: expect.objectContaining({
+              icon_type: 'emoji',
+              icon: '🚀',
+              icon_background: '#F3FEE7',
+            }),
+          }),
+        )
       })
     })
 
@@ -325,63 +289,100 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
-      await user.click(screen.getByText('close-app-icon-picker'))
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
+      })
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
-    })
-
-    it('should toggle remove-original from the checkbox control itself', async () => {
-      const user = userEvent.setup()
-      renderComponent()
-
-      await user.click(screen.getByRole('checkbox'))
-
-      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
-      // Arrange
-      const { appDetail } = renderComponent({ inAppDetail: true })
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-002' })
 
-      // Act
+      const { appDetail } = renderComponent()
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-002',
+        permission_keys: ['app.acl.view_layout'],
+      })
+
       await user.click(screen.getByText('app.removeOriginal'))
       const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
+      expect(mockDeleteOriginalApp).not.toHaveBeenCalled()
       await user.click(confirmButton)
+      expect(mockDeleteOriginalApp).not.toHaveBeenCalled()
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
-        expect(mockDeleteApp).toHaveBeenCalledWith(appDetail.id)
+        expect(mockDeleteOriginalApp).toHaveBeenCalledWith({
+          params: { app_id: appDetail.id },
+        })
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps conversion pending until original deletion settles and navigates to the created app if deletion fails', async () => {
+      const user = userEvent.setup()
+      const { onOpenChange, notify } = renderComponent()
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'converted-app',
+        permission_keys: ['app.acl.view_layout'],
+      })
+      let rejectDeletion: (error: Error) => void = () => {}
+      mockDeleteOriginalApp.mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectDeletion = reject
+          }),
+      )
+      await user.click(screen.getByRole('checkbox'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
+      await waitFor(() => expect(mockDeleteOriginalApp).toHaveBeenCalledTimes(1))
+      await user.keyboard('{Escape}')
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'app.switchStart' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
+      expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
+      await act(async () => rejectDeletion(new Error('Failed to delete original')))
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/app/converted-app/workflow'))
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'Failed to delete original' })
+      expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {
       const user = userEvent.setup()
-      // Arrange
-      const { notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockRejectedValueOnce(new Error('fail'))
 
-      // Act
+      const { notify, onOpenChange } = renderComponent()
+      mockConvertToWorkflow.mockRejectedValueOnce(new Error('fail'))
+
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+        expect(notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'fail',
+        })
       })
-      expect(onClose).not.toHaveBeenCalled()
-      expect(onSuccess).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
   })
 })
+
+mockEmojiData()

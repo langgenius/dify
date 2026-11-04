@@ -1,11 +1,16 @@
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
+from http import HTTPStatus
+from inspect import unwrap
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, create_autospec
 
 import pytest
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from flask import Flask
+from flask_restx import Resource
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-import services
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -13,784 +18,354 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console.error import AccountNotLinkTenantError
-from controllers.console.workspace.workspace import (
-    CustomConfigWorkspaceApi,
-    SwitchWorkspaceApi,
-    TenantApi,
-    TenantListApi,
-    WebappLogoWorkspaceApi,
-    WorkspaceInfoApi,
-    WorkspaceListApi,
-    WorkspacePermissionApi,
+from controllers.console import console_ns, flask_admission, wraps
+from controllers.console.error import AccountNotLinkTenantError, NotInitValidateError, NotSetupError
+from controllers.console.notification import NotificationApi
+from controllers.console.workspace import workspace as controller
+from controllers.console.workspace.error import AccountNotInitializedError, CurrentWorkspaceArchivedError
+from controllers.console.workspace.workspace import WorkspacePermissionApi
+from enums import CloudPlan, DeploymentEdition
+from libs import login as login_adapter
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
+from models.account import Account, AccountStatus
+from services.entities.feature_entities import FeatureModel
+from services.errors import file as file_errors
+from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError, WorkspaceNotLinkedError
+from services.workspace.contracts import (
+    WorkspaceCustomConfig,
+    WorkspaceCustomConfigChanges,
+    WorkspacePage,
+    WorkspacePermission,
+    WorkspaceSnapshot,
+    WorkspaceSummary,
 )
-from enums.cloud_plan import CloudPlan
-from libs.datetime_utils import naive_utc_now
-from models.account import TenantStatus
+from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.service import WorkspaceQueryService, WorkspaceService
+
+"""Workspace admission composes existing checks before controller execution."""
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+class TestWorkspaceAdmissionCases:
+    @staticmethod
+    def test_admin_key_admits_without_account_login(app: Flask, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ADMIN_API_KEY="admin")
 
+        class Handler:
+            @flask_admission.console_admin_admission
+            def get(self, *, page: int) -> int:
+                return page
 
-class TestTenantListApi:
-    def test_get_success_saas_path(self, app):
-        api = TenantListApi()
-        method = unwrap(api.get)
+        with app.test_request_context(headers={"Authorization": "Bearer admin"}):
+            assert Handler().get(page=2) == 2
+        with app.test_request_context(), pytest.raises(Unauthorized):
+            Handler().get(page=2)
 
-        tenant1 = MagicMock(
-            id="t1",
-            name="Tenant 1",
-            status="active",
-            created_at=naive_utc_now(),
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("edition", "enabled", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, True, True),
+            (DeploymentEdition.CLOUD, False, False),
+            (DeploymentEdition.COMMUNITY, False, True),
+        ],
+    )
+    def test_custom_brand_billing_admission(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+        enabled: bool,
+        allowed: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+        monkeypatch.setattr(flask_admission, "setup_required", lambda view: view)
+        monkeypatch.setattr(flask_admission, "login_required", lambda view: view)
+        monkeypatch.setattr(flask_admission, "account_initialization_required", lambda view: view)
+        account = Account(name="User", email="user@example.com")
+        identity = AccountWithTenant(account, "workspace")
+        monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
+        monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
+        features = Mock(return_value=FeatureModel(can_replace_logo=enabled))
+        monkeypatch.setattr(wraps.FeatureService, "get_features", features)
+        reached = []
+
+        class Handler:
+            @flask_admission.console_account_admission(billing_resource="workspace_custom")
+            def post(self, context: RequestContext) -> RequestContext:
+                reached.append(context)
+                return context
+
+        with app.test_request_context():
+            if allowed:
+                context = Handler().post()
+                assert isinstance(context, RequestContext)
+                assert context.active_workspace_id == "workspace"
+            else:
+                with pytest.raises(Forbidden):
+                    Handler().post()
+        assert bool(reached) is allowed
+        assert features.call_count == int(edition == DeploymentEdition.CLOUD)
+
+    @staticmethod
+    @pytest.mark.parametrize("controller_type", [WorkspacePermissionApi, NotificationApi])
+    @pytest.mark.parametrize(
+        ("setup_complete", "init_password", "status", "error"),
+        [
+            (False, "", None, NotSetupError),
+            (False, "initial-password", None, NotInitValidateError),
+            (True, "", None, Unauthorized),
+            (True, "", AccountStatus.UNINITIALIZED, AccountNotInitializedError),
+            (True, "", AccountStatus.ACTIVE, NotFound),
+        ],
+    )
+    def test_account_admission_checks_identity_before_edition(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        controller_type: type[WorkspacePermissionApi] | type[NotificationApi],
+        setup_complete: bool,
+        init_password: str,
+        status: AccountStatus | None,
+        error: type[Exception],
+    ) -> None:
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD=init_password, LOGIN_DISABLED=False
         )
-        tenant2 = MagicMock(
-            id="t2",
-            name="Tenant 2",
-            status="active",
-            created_at=naive_utc_now(),
+        monkeypatch.setattr(wraps, "_is_setup_completed", lambda: setup_complete)
+        account = Account(name="User", email="user@example.com", status=status or AccountStatus.ACTIVE)
+        identity = Mock(return_value=account, side_effect=Unauthorized() if status is None else None)
+        monkeypatch.setattr(login_adapter, "_resolve_current_user", identity)
+        monkeypatch.setattr(login_adapter, "check_csrf_token", Mock())
+        monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
+
+        with app.test_request_context(), pytest.raises(error):
+            controller_type().get()
+
+        assert identity.call_count == int(setup_complete)
+
+
+"""Controller contracts: parsing, delegation, serialization and HTTP errors."""
+
+
+CONTEXT = RequestContext("request-1", "trace-1", "account-1", "workspace-1")
+NOW = datetime(2026, 1, 1)
+
+
+@dataclass
+class WorkspaceMocks:
+    management: Mock
+    queries: Mock
+    provisioning: Mock
+
+
+@dataclass
+class Services:
+    workspaces: WorkspaceMocks
+
+
+class TestWorkspaceCases:
+    @staticmethod
+    @pytest.fixture
+    def workspaces(monkeypatch: pytest.MonkeyPatch) -> WorkspaceMocks:
+        services = WorkspaceMocks(
+            management=create_autospec(WorkspaceService, instance=True),
+            queries=create_autospec(WorkspaceQueryService, instance=True),
+            provisioning=create_autospec(WorkspaceProvisioningService, instance=True),
         )
+        monkeypatch.setattr(controller, "application_services", lambda: Services(services))
+        return services
 
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={
-                    "t1": {"plan": CloudPlan.TEAM, "expiration_date": 0},
-                    "t2": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": 0},
-                },
-            ) as get_plan_bulk_mock,
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api)
+    @staticmethod
+    def test_workspace_list_serialization(workspaces: WorkspaceMocks) -> None:
+        workspaces.queries.list_for_account.return_value = (
+            WorkspaceSummary("workspace-1", "Test", "team", "normal", NOW, None, True),
+        )
+        body, status = unwrap(controller.TenantListApi.get)(controller.TenantListApi(), CONTEXT)
+        assert status == HTTPStatus.OK
+        assert body["workspaces"] == [
+            {
+                "id": "workspace-1",
+                "name": "Test",
+                "plan": "team",
+                "status": "normal",
+                "created_at": int(NOW.timestamp()),
+                "last_opened_at": None,
+                "current": True,
+            }
+        ]
+        workspaces.queries.list_for_account.assert_called_once_with(CONTEXT)
 
+    @staticmethod
+    def test_admin_pagination(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.list_all.return_value = WorkspacePage(
+            (WorkspaceSnapshot("w1", "Test", "archive", NOW),), 5, 2, 2, True
+        )
+        with app.test_request_context("/all-workspaces?page=2&limit=2"):
+            body, status = unwrap(controller.WorkspaceListApi.get)(controller.WorkspaceListApi())
         assert status == 200
-        assert len(result["workspaces"]) == 2
-        assert result["workspaces"][0]["current"] is True
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_not_called()
-
-    def test_get_saas_path_partial_fallback_does_not_gate_plan_on_billing_enabled(self, app):
-        """Bulk omits a tenant: resolve plan via subscription.plan only; billing.enabled is not used.
-
-        billing.enabled is mocked False to prove the endpoint does not gate on it for this path
-        (SaaS contract treats enabled as on; display follows subscription.plan).
-        """
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        tenant1 = MagicMock(
-            id="t1",
-            name="Tenant 1",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-        tenant2 = MagicMock(
-            id="t2",
-            name="Tenant 2",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        features_t2 = MagicMock()
-        features_t2.billing.enabled = False
-        features_t2.billing.subscription.plan = CloudPlan.PROFESSIONAL
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={"t1": {"plan": CloudPlan.TEAM, "expiration_date": 0}},
-            ) as get_plan_bulk_mock,
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features",
-                return_value=features_t2,
-            ) as get_features_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_called_once_with("t2")
-
-    def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(self, app):
-        """Test fallback to FeatureService when bulk billing returns empty result.
-
-        BillingService.get_plan_bulk catches exceptions internally and returns empty dict,
-        so we simulate the real failure mode by returning empty dict for non-empty input.
-        """
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        tenant1 = MagicMock(
-            id="t1",
-            name="Tenant 1",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-        tenant2 = MagicMock(
-            id="t2",
-            name="Tenant 2",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        features = MagicMock()
-        features.billing.enabled = False
-        features.billing.subscription.plan = CloudPlan.TEAM
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t2")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={},  # Simulates real failure: empty result for non-empty input
-            ) as get_plan_bulk_mock,
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features",
-                return_value=features,
-            ) as get_features_mock,
-            patch("controllers.console.workspace.workspace.logger.warning") as logger_warning_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        assert get_features_mock.call_count == 2
-        logger_warning_mock.assert_called_once()
-
-    def test_get_billing_disabled_community_path(self, app):
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(
-            id="t1",
-            name="Tenant",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        features = MagicMock()
-        features.billing.enabled = False
-        features.billing.subscription.plan = CloudPlan.SANDBOX
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features",
-                return_value=features,
-            ) as get_features_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
-        get_features_mock.assert_called_once_with("t1")
-
-    def test_get_enterprise_only_skips_feature_service(self, app):
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        tenant1 = MagicMock(
-            id="t1",
-            name="Tenant 1",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-        tenant2 = MagicMock(
-            id="t2",
-            name="Tenant 2",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t2")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
-        assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
-        assert result["workspaces"][0]["current"] is False
-        assert result["workspaces"][1]["current"] is True
-        get_features_mock.assert_not_called()
-
-    def test_get_enterprise_only_with_empty_tenants(self, app):
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), None)
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"] == []
-        get_features_mock.assert_not_called()
-
-
-class TestWorkspaceListApi:
-    def test_get_success(self, app):
-        api = WorkspaceListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=False,
-            total=1,
-        )
-
-        with (
-            app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["total"] == 1
-        assert result["has_more"] is False
-
-    def test_get_has_next_true(self, app):
-        api = WorkspaceListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(
-            id="t1",
-            name="T",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=True,
-            total=10,
-        )
-
-        with (
-            app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch(
-                "controllers.console.workspace.workspace.db.paginate",
-                return_value=paginate_result,
-            ),
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["has_more"] is True
-
-
-class TestTenantApi:
-    def test_post_active_tenant(self, app):
-        api = TenantApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(status="active")
-
-        user = MagicMock(current_tenant=tenant)
-
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.current_account_with_tenant", return_value=(user, "t1")),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["id"] == "t1"
-
-    def test_post_archived_with_switch(self, app):
-        api = TenantApi()
-        method = unwrap(api.post)
-
-        archived = MagicMock(status=TenantStatus.ARCHIVE)
-        new_tenant = MagicMock(status="active")
-
-        user = MagicMock(current_tenant=archived)
-
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[new_tenant]),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "new"}
-            ),
-        ):
-            result, status = method(api)
-
-        assert result["id"] == "new"
-
-    def test_post_archived_no_tenant(self, app):
-        api = TenantApi()
-        method = unwrap(api.post)
-
-        user = MagicMock(current_tenant=MagicMock(status=TenantStatus.ARCHIVE))
-
-        with (
-            app.test_request_context("/workspaces/current"),
-            patch("controllers.console.workspace.workspace.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.workspace.TenantService.get_join_tenants", return_value=[]),
-        ):
-            with pytest.raises(Unauthorized):
-                method(api)
-
-    def test_post_info_path(self, app):
-        api = TenantApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(status="active")
-        user = MagicMock(current_tenant=tenant)
-
-        with (
-            app.test_request_context("/info"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(user, "t1"),
-            ),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"id": "t1"},
-            ),
-            patch("controllers.console.workspace.workspace.logger.warning") as warn_mock,
-        ):
-            result, status = method(api)
-
-        warn_mock.assert_called_once()
-        assert status == 200
-
-
-class TestSwitchWorkspaceApi:
-    def test_switch_success(self, app):
-        api = SwitchWorkspaceApi()
-        method = unwrap(api.post)
-
-        payload = {"tenant_id": "t2"}
-        tenant = MagicMock(id="t2")
-
-        with (
-            app.test_request_context("/workspaces/switch", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
-            ),
-        ):
-            get_mock.return_value = tenant
-            result = method(api)
-
-        assert result["result"] == "success"
-
-    def test_switch_not_linked(self, app):
-        api = SwitchWorkspaceApi()
-        method = unwrap(api.post)
-
-        payload = {"tenant_id": "bad"}
-
-        with (
-            app.test_request_context("/workspaces/switch", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
-        ):
-            with pytest.raises(AccountNotLinkTenantError):
-                method(api)
-
-    def test_switch_tenant_not_found(self, app):
-        api = SwitchWorkspaceApi()
-        method = unwrap(api.post)
-
-        payload = {"tenant_id": "missing"}
-
-        with (
-            app.test_request_context("/workspaces/switch", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
-        ):
-            get_mock.return_value = None
-
-            with pytest.raises(ValueError):
-                method(api)
-
-
-class TestCustomConfigWorkspaceApi:
-    def test_post_success(self, app):
-        api = CustomConfigWorkspaceApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(custom_config_dict={})
-
-        payload = {"remove_webapp_brand": True}
-
-        with (
-            app.test_request_context("/workspaces/custom-config", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
-            ),
-        ):
-            result = method(api)
-
-        assert result["result"] == "success"
-
-    def test_logo_fallback(self, app):
-        api = CustomConfigWorkspaceApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(custom_config_dict={"replace_webapp_logo": "old-logo"})
-
-        payload = {"remove_webapp_brand": False}
-
-        with (
-            app.test_request_context("/workspaces/custom-config", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-            patch(
-                "controllers.console.workspace.workspace.db.get_or_404",
-                return_value=tenant,
-            ),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"id": "t1"},
-            ),
-        ):
-            result = method(api)
-
-        assert tenant.custom_config_dict["replace_webapp_logo"] == "old-logo"
-        assert result["result"] == "success"
-
-
-class TestWebappLogoWorkspaceApi:
-    def test_no_file(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/upload", data={}),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-        ):
-            with pytest.raises(NoFileUploadedError):
-                method(api)
-
-    def test_too_many_files(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        data = {
-            "file": MagicMock(),
-            "extra": MagicMock(),
+        assert body == {
+            "data": [{"id": "w1", "name": "Test", "status": "archive", "created_at": int(NOW.timestamp())}],
+            "total": 5,
+            "page": 2,
+            "limit": 2,
+            "has_more": True,
         }
+        workspaces.management.list_all.assert_called_once_with(page=2, limit=2)
 
-        with (
-            app.test_request_context("/upload", data=data),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-        ):
-            with pytest.raises(TooManyFilesError):
-                method(api)
-
-    def test_invalid_extension(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        file = MagicMock(filename="test.txt")
-
-        with (
-            app.test_request_context("/upload", data={"file": file}),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-        ):
-            with pytest.raises(UnsupportedFileTypeError):
-                method(api)
-
-    def test_upload_success(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        file = FileStorage(
-            stream=BytesIO(b"data"),
-            filename="logo.png",
-            content_type="image/png",
+    @staticmethod
+    def test_summary(workspaces: WorkspaceMocks) -> None:
+        workspaces.management.current_summary.return_value = {
+            "id": "w1",
+            "name": "Test",
+            "role": "owner",
+            "plan": CloudPlan.TEAM,
+            "credits": -1,
+        }
+        body, status = unwrap(controller.CurrentWorkspaceSummaryApi.get)(
+            controller.CurrentWorkspaceSummaryApi(), CONTEXT
         )
-
-        upload = MagicMock(id="file1")
-
-        with (
-            app.test_request_context(
-                "/upload",
-                data={"file": file},
-                content_type="multipart/form-data",
-            ),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
-        ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.return_value = upload
-
-            result, status = method(api)
-
-        assert status == 201
-        assert result["id"] == "file1"
-
-    def test_filename_missing(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        file = FileStorage(
-            stream=BytesIO(b"data"),
-            filename="",
-            content_type="image/png",
-        )
-
-        with (
-            app.test_request_context(
-                "/upload",
-                data={"file": file},
-                content_type="multipart/form-data",
-            ),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-        ):
-            with pytest.raises(FilenameNotExistsError):
-                method(api)
-
-    def test_file_too_large(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        file = FileStorage(
-            stream=BytesIO(b"x"),
-            filename="logo.png",
-            content_type="image/png",
-        )
-
-        with (
-            app.test_request_context(
-                "/upload",
-                data={"file": file},
-                content_type="multipart/form-data",
-            ),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
-        ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.side_effect = services.errors.file.FileTooLargeError("too big")
-
-            with pytest.raises(FileTooLargeError):
-                method(api)
-
-    def test_service_unsupported_file(self, app):
-        api = WebappLogoWorkspaceApi()
-        method = unwrap(api.post)
-
-        file = FileStorage(
-            stream=BytesIO(b"x"),
-            filename="logo.png",
-            content_type="image/png",
-        )
-
-        with (
-            app.test_request_context(
-                "/upload",
-                data={"file": file},
-                content_type="multipart/form-data",
-            ),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), "t1"),
-            ),
-            patch("controllers.console.workspace.workspace.FileService") as fs,
-            patch("controllers.console.workspace.workspace.db") as mock_db,
-        ):
-            mock_db.engine = MagicMock()
-            fs.return_value.upload_file.side_effect = services.errors.file.UnsupportedFileTypeError()
-
-            with pytest.raises(UnsupportedFileTypeError):
-                method(api)
-
-
-class TestWorkspaceInfoApi:
-    def test_post_success(self, app):
-        api = WorkspaceInfoApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock()
-
-        payload = {"name": "New Name"}
-
-        with (
-            app.test_request_context("/workspaces/info", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
-            patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"name": "New Name"},
-            ),
-        ):
-            result = method(api)
-
-        assert result["result"] == "success"
-
-    def test_no_current_tenant(self, app):
-        api = WorkspaceInfoApi()
-        method = unwrap(api.post)
-
-        payload = {"name": "X"}
-
-        with (
-            app.test_request_context("/workspaces/info", json=payload),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), None),
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api)
-
-
-class TestWorkspacePermissionApi:
-    def test_get_success(self, app):
-        api = WorkspacePermissionApi()
-        method = unwrap(api.get)
-
-        permission = MagicMock(
-            workspace_id="t1",
-            allow_member_invite=True,
-            allow_owner_transfer=False,
-        )
-
-        with (
-            app.test_request_context("/permission"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.EnterpriseService.WorkspacePermissionService.get_permission",
-                return_value=permission,
-            ),
-        ):
-            result, status = method(api)
-
         assert status == 200
-        assert result["workspace_id"] == "t1"
+        assert body["credits"] == -1
+        workspaces.management.current_summary.assert_called_once_with(CONTEXT)
 
-    def test_no_current_tenant(self, app):
-        api = WorkspacePermissionApi()
-        method = unwrap(api.get)
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("error", "http_error"),
+        [(WorkspaceArchivedError(), CurrentWorkspaceArchivedError), (WorkspaceNotFoundError(), NotFound)],
+    )
+    def test_summary_errors(workspaces: WorkspaceMocks, error: Exception, http_error: type[Exception]) -> None:
+        workspaces.management.current_summary.side_effect = error
+        with pytest.raises(http_error):
+            unwrap(controller.CurrentWorkspaceSummaryApi.get)(controller.CurrentWorkspaceSummaryApi(), CONTEXT)
 
-        with (
-            app.test_request_context("/permission"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant",
-                return_value=(MagicMock(), None),
+    @staticmethod
+    def test_switch_and_rename(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.switch.return_value = {"id": "target", "name": "Switched"}
+        workspaces.management.rename.return_value = {"id": "workspace-1", "name": "Renamed"}
+        with app.test_request_context(json={"tenant_id": "target"}):
+            body = unwrap(controller.SwitchWorkspaceApi.post)(controller.SwitchWorkspaceApi(), CONTEXT)
+        assert body["new_tenant"]["id"] == "target"
+        workspaces.management.switch.assert_called_once_with(CONTEXT, "target")
+        with app.test_request_context(json={"name": "Renamed"}):
+            body = unwrap(controller.WorkspaceInfoApi.post)(controller.WorkspaceInfoApi(), CONTEXT)
+        assert body["tenant"]["name"] == "Renamed"
+        workspaces.management.rename.assert_called_once_with(CONTEXT, "Renamed")
+
+    @staticmethod
+    def test_switch_not_linked(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.switch.side_effect = WorkspaceNotLinkedError()
+        with app.test_request_context(json={"tenant_id": "target"}), pytest.raises(AccountNotLinkTenantError):
+            unwrap(controller.SwitchWorkspaceApi.post)(controller.SwitchWorkspaceApi(), CONTEXT)
+
+    @staticmethod
+    def test_config_response_and_partial_update(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.custom_config.return_value = WorkspaceCustomConfig(True, "https://files/logo")
+        assert unwrap(controller.CustomConfigWorkspaceApi.get)(controller.CustomConfigWorkspaceApi(), CONTEXT) == {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": "https://files/logo",
+        }
+        workspaces.management.update_custom_config.return_value = {"id": "workspace-1"}
+        with app.test_request_context(json={"remove_webapp_brand": False}):
+            body = unwrap(controller.CustomConfigWorkspaceApi.post)(controller.CustomConfigWorkspaceApi(), CONTEXT)
+        assert body["result"] == "success"
+        workspaces.management.update_custom_config.assert_called_once_with(
+            CONTEXT, WorkspaceCustomConfigChanges(False, None)
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("resource", "method", "payload", "service_method"),
+        [
+            pytest.param(
+                controller.CustomConfigWorkspaceApi,
+                controller.CustomConfigWorkspaceApi.get,
+                {},
+                lambda management: management.custom_config,
+                id="custom_config",
             ),
+            pytest.param(
+                controller.CustomConfigWorkspaceApi,
+                controller.CustomConfigWorkspaceApi.post,
+                {},
+                lambda management: management.update_custom_config,
+                id="update_custom_config",
+            ),
+            pytest.param(
+                controller.WorkspaceInfoApi,
+                controller.WorkspaceInfoApi.post,
+                {"name": "New"},
+                lambda management: management.rename,
+                id="rename",
+            ),
+        ],
+    )
+    def test_missing_workspace(
+        app: Flask,
+        workspaces: WorkspaceMocks,
+        resource: type[Resource],
+        method: Callable[..., object],
+        payload: dict[str, object],
+        service_method: Callable[[Mock], Mock],
+    ) -> None:
+        service_method(workspaces.management).side_effect = WorkspaceNotFoundError()
+        with app.test_request_context(json=payload), pytest.raises(NotFound):
+            unwrap(method)(resource(), CONTEXT)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("files", "error"),
+        [
+            ({}, NoFileUploadedError),
+            ({"file": (BytesIO(b"x"), "a.png"), "extra": (BytesIO(b"x"), "b.png")}, TooManyFilesError),
+            ({"file": (BytesIO(b"x"), "")}, FilenameNotExistsError),
+        ],
+    )
+    def test_upload_form_errors(
+        app: Flask, workspaces: WorkspaceMocks, files: dict[str, tuple[BytesIO, str]], error: type[Exception]
+    ) -> None:
+        with app.test_request_context(method="POST", data=files), pytest.raises(error):
+            unwrap(controller.WebappLogoWorkspaceApi.post)(controller.WebappLogoWorkspaceApi(), CONTEXT)
+        workspaces.management.upload_logo.assert_not_called()
+
+    @staticmethod
+    def test_upload(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.upload_logo.return_value = "upload-1"
+        with app.test_request_context(method="POST", data={"file": (BytesIO(b"image"), "logo.PNG")}):
+            result = unwrap(controller.WebappLogoWorkspaceApi.post)(controller.WebappLogoWorkspaceApi(), CONTEXT)
+        assert result == ({"id": "upload-1"}, HTTPStatus.CREATED)
+        workspaces.management.upload_logo.assert_called_once_with(
+            CONTEXT, filename="logo.PNG", content=b"image", mimetype="image/png"
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("error", "http_error"),
+        [
+            (file_errors.FileTooLargeError(), FileTooLargeError),
+            (file_errors.UnsupportedFileTypeError(), UnsupportedFileTypeError),
+        ],
+    )
+    def test_upload_service_errors(
+        app: Flask, workspaces: WorkspaceMocks, error: Exception, http_error: type[Exception]
+    ) -> None:
+        workspaces.management.upload_logo.side_effect = error
+        with (
+            app.test_request_context(method="POST", data={"file": (BytesIO(b"x"), "logo.png")}),
+            pytest.raises(http_error),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            unwrap(controller.WebappLogoWorkspaceApi.post)(controller.WebappLogoWorkspaceApi(), CONTEXT)
+
+    @staticmethod
+    def test_permissions(workspaces: WorkspaceMocks) -> None:
+        workspaces.management.permission.return_value = WorkspacePermission("workspace-1", True, False)
+        body, status = unwrap(controller.WorkspacePermissionApi.get)(controller.WorkspacePermissionApi(), CONTEXT)
+        assert status == 200
+        assert body == {"workspace_id": "workspace-1", "allow_member_invite": True, "allow_owner_transfer": False}
+        workspaces.management.permission.assert_called_once_with(CONTEXT)
+
+    @staticmethod
+    def test_removed_current_workspace_routes_stay_unregistered() -> None:
+        urls = {url for resource in console_ns.resources for url in resource.urls}
+        assert "/workspaces/current" not in urls
+        assert "/workspaces/current/tool-provider" not in urls

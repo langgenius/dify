@@ -1,51 +1,34 @@
 'use client'
-import type { FC } from 'react'
-import * as React from 'react'
+import type { BillingQuota } from '../quota'
 import { useTranslation } from 'react-i18next'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onClose: () => void
-  onUpgrade: () => void
-  usage: number
-  total: number
-  resetInDays?: number
-}
+  quota: BillingQuota
+}>
 
-const TriggerEventsLimitModal: FC<Props> = ({
-  show,
-  onClose,
-  onUpgrade,
-  usage,
-  total,
-  resetInDays,
-}) => {
-  const { t } = useTranslation()
+export default function TriggerEventsLimitModal({ show, onClose, quota }: Props) {
+  const { t } = useTranslation(['billing'])
 
   return (
     <PlanUpgradeModal
       show={show}
       onClose={onClose}
-      onUpgrade={onUpgrade}
-      Icon={TriggerAll as React.ComponentType<React.SVGProps<SVGSVGElement>>}
-      title={t('triggerLimitModal.title', { ns: 'billing' })}
-      description={t('triggerLimitModal.description', { ns: 'billing' })}
-      extraInfo={(
+      iconClassName={'i-custom-vender-workflow-trigger-all'}
+      title={t(($) => $['triggerLimitModal.title'], { ns: 'billing' })}
+      description={t(($) => $['triggerLimitModal.description'], { ns: 'billing' })}
+      extraInfo={
         <UsageInfo
-          className="mt-4 w-full radius-xl bg-components-panel-on-panel-item-bg"
-          Icon={TriggerAll}
-          name={t('triggerLimitModal.usageTitle', { ns: 'billing' })}
-          usage={usage}
-          total={total}
-          resetInDays={resetInDays}
+          className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
+          iconClassName={'i-custom-vender-workflow-trigger-all'}
+          name={t(($) => $['triggerLimitModal.usageTitle'], { ns: 'billing' })}
+          quota={quota}
           hideIcon
         />
-      )}
+      }
     />
   )
 }
-
-export default React.memo(TriggerEventsLimitModal)

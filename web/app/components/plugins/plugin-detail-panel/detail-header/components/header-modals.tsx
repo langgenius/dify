@@ -3,18 +3,20 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
-import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useTranslation } from 'react-i18next'
+import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
+import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
 import { PluginSource } from '../../../types'
 
@@ -23,23 +25,21 @@ const i18nPrefix = 'action'
 type HeaderModalsProps = {
   detail: PluginDetail
   modalStates: ModalStates
-  targetVersion: VersionTarget
-  isDowngrade: boolean
-  isAutoUpgradeEnabled: boolean
-  onUpdatedFromMarketplace: () => void
+  targetVersion: VersionTarget | undefined
+  onUpdatedFromMarketplace: () => void | Promise<void>
   onDelete: () => void
+  deleting: boolean
 }
 
 const HeaderModals: FC<HeaderModalsProps> = ({
   detail,
   modalStates,
   targetVersion,
-  isDowngrade,
-  isAutoUpgradeEnabled,
   onUpdatedFromMarketplace,
   onDelete,
+  deleting,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const locale = useGetLanguage()
 
   const { source, version, meta } = detail
@@ -53,66 +53,72 @@ const HeaderModals: FC<HeaderModalsProps> = ({
     hidePluginInfo,
     isShowDeleteConfirm,
     hideDeleteConfirm,
-    deleting,
   } = modalStates
 
   return (
     <>
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={isFromGitHub ? meta?.repo : ''}
-          release={version}
-          packageName={meta?.package || ''}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <Dialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+      >
+        <DialogContent className="w-120">
+          <PluginInfoContent
+            repository={isFromGitHub ? meta?.repo : ''}
+            release={version}
+            packageName={meta?.package || ''}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={isShowDeleteConfirm}
-        onOpenChange={(open) => {
-          if (!open)
-            hideDeleteConfirm()
+        onOpenChange={(open, details) => {
+          if (!open && deleting) details.cancel()
+          else if (!open) hideDeleteConfirm()
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pb-4 pt-6">
-            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
-              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
-              {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
-              <span className="text-text-secondary system-md-semibold">{label[locale]}</span>
-              {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
+            <AlertDialogDescription>
+              {t(($) => $[`${i18nPrefix}.deleteContentLeft`], { ns: 'plugin' })}
+              <span className="system-md-semibold text-text-secondary">{label[locale]}</span>
+              {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={onDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+            <AlertDialogConfirmButton loading={deleting} onClick={onDelete}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {isShowUpdateModal && (
-        <UpdateFromMarketplace
-          pluginId={detail.plugin_id}
+      {targetVersion && (
+        <MarketplaceUpdateDialog
+          open={isShowUpdateModal}
+          pluginId={targetVersion.plugin.plugin_id}
           payload={{
-            category: detail.declaration?.category ?? '',
+            category: targetVersion.plugin.declaration.category,
             originalPackageInfo: {
-              id: detail.plugin_unique_identifier,
-              payload: detail.declaration ?? undefined,
+              id: targetVersion.plugin.plugin_unique_identifier,
+              payload: targetVersion.plugin.declaration,
             },
             targetPackageInfo: {
-              id: targetVersion.unique_identifier || '',
-              version: targetVersion.version || '',
+              id: targetVersion.unique_identifier,
+              version: targetVersion.version,
             },
           }}
-          onCancel={hideUpdateModal}
-          onSave={onUpdatedFromMarketplace}
-          isShowDowngradeWarningModal={isDowngrade && isAutoUpgradeEnabled}
+          onRefresh={onUpdatedFromMarketplace}
+          onClose={hideUpdateModal}
+          warnAboutAutoUpdate={!!targetVersion.warnAboutAutoUpdate}
         />
       )}
     </>

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import GenericTable from '../generic-table'
@@ -33,17 +33,16 @@ const advancedColumns = [
     title: 'Preview',
     type: 'custom' as const,
     width: 'w-[120px]',
-    render: (_value: unknown, row: { method?: string }, index: number, onChange: (value: unknown) => void) => (
+    render: (
+      _value: unknown,
+      row: { method?: string },
+      index: number,
+      onChange: (value: unknown) => void,
+    ) => (
       <button type="button" onClick={() => onChange(`${index}:${row.method || 'empty'}`)}>
         custom-render
       </button>
     ),
-  },
-  {
-    key: 'unsupported',
-    title: 'Unsupported',
-    type: 'unsupported' as never,
-    width: 'w-[80px]',
   },
 ]
 
@@ -53,14 +52,10 @@ describe('GenericTable', () => {
     vi.useRealTimers()
   })
 
-  const selectOption = async (triggerName: string, optionName: string) => {
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: triggerName }))
-    })
-
-    await act(async () => {
-      fireEvent.click(await screen.findByRole('option', { name: optionName }))
-    })
+  const selectOption = async (optionName: string) => {
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: optionName }))
   }
 
   it('should render an empty editable row and append a configured row when typing into the virtual row', async () => {
@@ -76,12 +71,15 @@ describe('GenericTable', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'my key' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'my key' },
+    })
 
     expect(onChange).toHaveBeenLastCalledWith([{ name: 'my_key', enabled: false }])
   })
 
-  it('should skip intermediate empty rows and blur-sm the current input when enter is pressed', () => {
+  it('should skip intermediate empty rows and blur the current input on Enter', async () => {
+    const user = userEvent.setup()
     render(
       <GenericTable
         title="Headers"
@@ -96,13 +94,13 @@ describe('GenericTable', () => {
       />,
     )
 
-    const inputs = screen.getAllByRole('textbox')
+    const inputs = screen.getAllByRole('textbox', { name: 'Name' })
     expect(inputs).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
-    const blurSpy = vi.spyOn(inputs[0], 'blur')
-    fireEvent.keyDown(inputs[0], { key: 'Enter' })
-    expect(blurSpy).toHaveBeenCalledTimes(1)
+    inputs[0]!.focus()
+    await user.keyboard('{Enter}')
+    expect(inputs[0]).not.toHaveFocus()
   })
 
   it('should update existing rows, show delete action, and remove rows by primary key', async () => {
@@ -120,9 +118,9 @@ describe('GenericTable', () => {
       />,
     )
 
-    expect(screen.getByText('Name')).toBeInTheDocument()
+    expect(screen.getByText('Name'))!.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
     expect(onChange).toHaveBeenCalledWith([{ name: 'alpha', enabled: true }])
 
     await user.click(screen.getByRole('button', { name: 'Delete row' }))
@@ -144,25 +142,23 @@ describe('GenericTable', () => {
           emptyRowData={{ method: '', preview: '' }}
           onChange={(nextData) => {
             onChange(nextData)
-            setData(nextData as { method: string, preview: string }[])
+            setData(nextData as { method: string; preview: string }[])
           }}
         />
       )
     }
 
-    render(
-      <ControlledTable />,
-    )
+    render(<ControlledTable />)
 
-    await selectOption('Choose method', 'POST')
+    await selectOption('POST')
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
-      expect(screen.getByRole('button', { name: 'POST' })).toBeInTheDocument()
+      expect(screen.getAllByRole('combobox')[0])!.toHaveTextContent('POST')
     })
 
     onChange.mockClear()
-    await user.click(screen.getAllByRole('button', { name: 'custom-render' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'custom-render' })[0]!)
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '0:post' }])
@@ -202,7 +198,7 @@ describe('GenericTable', () => {
       />,
     )
 
-    expect(screen.getByText('No data')).toBeInTheDocument()
+    expect(screen.getByText('No data'))!.toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 import type { ChildProcess } from 'node:child_process'
+import type { WriteStream } from 'node:fs'
 import { spawn } from 'node:child_process'
-import { createWriteStream, type WriteStream } from 'node:fs'
+import { createWriteStream } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import net from 'node:net'
 import { dirname } from 'node:path'
@@ -87,7 +88,7 @@ export const startLoggedProcess = async ({
 }: ManagedProcessOptions): Promise<ManagedProcess> => {
   await mkdir(dirname(logFilePath), { recursive: true })
 
-  const logStream = createWriteStream(logFilePath, { flags: 'a' })
+  const logStream = createWriteStream(logFilePath, { flags: 'w' })
   const childProcess = spawn(command, args, {
     cwd,
     env: {
@@ -118,20 +119,22 @@ const waitForProcessExit = (childProcess: ChildProcess, timeoutMs: number) =>
       return
     }
 
-    const timeout = setTimeout(() => {
-      cleanup()
-      resolve()
-    }, timeoutMs)
+    let timeout: ReturnType<typeof setTimeout>
 
-    const onExit = () => {
-      cleanup()
-      resolve()
-    }
-
-    const cleanup = () => {
+    function cleanup() {
       clearTimeout(timeout)
       childProcess.off('exit', onExit)
     }
+
+    function onExit() {
+      cleanup()
+      resolve()
+    }
+
+    timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, timeoutMs)
 
     childProcess.once('exit', onExit)
   })

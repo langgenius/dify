@@ -1,86 +1,93 @@
-import type { FC } from 'react'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
-import { useRef, useState } from 'react'
+import type { InputGroupInputProps } from '@langgenius/dify-ui/input-group'
+import type { ComponentProps, Ref } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { useSearchInput } from './use-search-input'
 
-type SearchInputProps = {
-  placeholder?: string
-  className?: string
-  value: string
-  onChange: (v: string) => void
-  white?: boolean
+type SearchInputClearProps = Pick<
+  ComponentProps<'button'>,
+  'className' | 'onClick' | 'onMouseDown' | 'tabIndex'
+> & {
+  'aria-label': string
 }
 
-const SearchInput: FC<SearchInputProps> = ({
-  placeholder,
-  className,
-  value,
-  onChange,
-  white,
-}) => {
-  const { t } = useTranslation()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [focus, setFocus] = useState<boolean>(false)
-  const isComposing = useRef<boolean>(false)
-  const [compositionValue, setCompositionValue] = useState<string>('')
-
+// Same look as dify-ui `ComboboxClear` and `MenuClear`; change all three together.
+// Spread `clearProps` from `useSearchInput` so the button stays out of the tab order and never
+// takes focus from the input.
+export function SearchInputClear({ className, ...props }: SearchInputClearProps) {
   return (
-    <div className={cn(
-      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-      focus && 'bg-components-input-bg-active!',
-      white && 'border-gray-300! bg-white! shadow-xs hover:border-gray-300! hover:bg-white!',
-      className,
-    )}
+    <IconButton
+      size="sm"
+      className={cn('hover:bg-components-input-bg-hover', className)}
+      {...props}
     >
-      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
-      </div>
-      <input
-        ref={inputRef}
-        type="text"
-        name="query"
-        className={cn(
-          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-          white && 'bg-white! placeholder:text-gray-400! hover:bg-white! group-hover:bg-white!',
-        )}
-        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
-        value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          const newValue = e.target.value
-          if (isComposing.current)
-            setCompositionValue(newValue)
-          else
-            onChange(newValue)
-        }}
-        onCompositionStart={() => {
-          isComposing.current = true
-          setCompositionValue(value)
-        }}
-        onCompositionEnd={(e) => {
-          isComposing.current = false
-          setCompositionValue('')
-          onChange(e.currentTarget.value)
-        }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-        autoComplete="off"
-      />
-      {value && (
-        <button
-          type="button"
-          aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
-          onClick={() => {
-            onChange('')
-            inputRef.current?.focus()
-          }}
-        >
-          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
-        </button>
-      )}
-    </div>
+      <span className="i-ri-close-line size-4" aria-hidden="true" />
+    </IconButton>
   )
 }
 
-export default SearchInput
+type SearchInputProps = {
+  ref?: Ref<HTMLInputElement>
+  value: string
+  onValueChange: (value: string) => void
+  placeholder?: string
+  className?: string
+} & Pick<
+  InputGroupInputProps,
+  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name' | 'onKeyDown'
+>
+
+export function SearchInput({
+  ref,
+  placeholder,
+  className,
+  value,
+  onValueChange,
+  name = 'query',
+  autoFocus,
+  disabled,
+  onKeyDown,
+  'aria-describedby': ariaDescribedBy,
+  'aria-label': ariaLabel,
+}: SearchInputProps) {
+  const { t } = useTranslation(['common'])
+  const { inputProps, canClear, clearProps } = useSearchInput({ value, onValueChange, ref })
+
+  return (
+    <InputGroup className={className}>
+      <InputGroupInput
+        {...inputProps}
+        name={name}
+        aria-describedby={ariaDescribedBy}
+        aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
+        placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
+        disabled={disabled}
+        autoComplete="off"
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- The caller owns initial focus for its search surface.
+        autoFocus={autoFocus}
+        enterKeyHint="search"
+        onKeyDown={(event) => {
+          // The caller's handler runs after the searchbox has owned Escape.
+          inputProps.onKeyDown(event)
+          onKeyDown?.(event)
+        }}
+      />
+      <InputGroupAddon className="ps-1.75 pe-1.25">
+        <span
+          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          aria-hidden="true"
+        />
+      </InputGroupAddon>
+      {canClear && !disabled && (
+        <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+          <SearchInputClear
+            {...clearProps}
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+          />
+        </InputGroupAddon>
+      )}
+    </InputGroup>
+  )
+}

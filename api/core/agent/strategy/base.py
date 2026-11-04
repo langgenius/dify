@@ -20,7 +20,7 @@ class BaseAgentStrategy(ABC):
         app_id: str | None = None,
         message_id: str | None = None,
         credentials: InvokeCredentials | None = None,
-    ) -> Generator[AgentInvokeMessage, None, None]:
+    ) -> Generator[AgentInvokeMessage]:
         """
         Invoke the agent strategy.
         """
@@ -41,5 +41,5 @@ class BaseAgentStrategy(ABC):
         app_id: str | None = None,
         message_id: str | None = None,
         credentials: InvokeCredentials | None = None,
-    ) -> Generator[AgentInvokeMessage, None, None]:
+    ) -> Generator[AgentInvokeMessage]:
         pass

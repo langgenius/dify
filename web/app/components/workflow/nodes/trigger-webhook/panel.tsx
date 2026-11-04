@@ -1,14 +1,7 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import copy from 'copy-to-clipboard'
-
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import InputWithCopy from '@/app/components/base/input-with-copy'
-import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import {
   NumberField,
   NumberFieldControls,
@@ -16,8 +9,23 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useClipboard } from 'foxact/use-clipboard'
+import * as React from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -25,7 +33,7 @@ import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
 import ParameterTable from './components/parameter-table'
-import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from './use-config'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, useConfig } from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
 
 const i18nPrefix = 'nodes.triggerWebhook'
@@ -37,7 +45,7 @@ const HTTP_METHODS = [
   { name: 'DELETE', value: 'DELETE' },
   { name: 'PATCH', value: 'PATCH' },
   { name: 'HEAD', value: 'HEAD' },
-]
+] satisfies Array<{ name: string; value: HttpMethod }>
 
 const CONTENT_TYPES = [
   { name: 'application/json', value: 'application/json' },
@@ -47,12 +55,54 @@ const CONTENT_TYPES = [
   { name: 'multipart/form-data', value: 'multipart/form-data' },
 ]
 
-const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
-  const [debugUrlCopied, setDebugUrlCopied] = React.useState(false)
+type WebhookMethodSelectorProps = {
+  nodeId: string
+  label: string
+  value: HttpMethod
+  disabled: boolean
+  onChange: (method: HttpMethod) => void
+}
+
+const WebhookMethodSelector = ({
+  nodeId,
+  label,
+  value,
+  disabled,
+  onChange,
+}: WebhookMethodSelectorProps) => {
+  const selectedMethod = HTTP_METHODS.find((item) => item.value === value) ?? null
+
+  const handleMethodChange = (nextValue: string | null) => {
+    const nextMethod = HTTP_METHODS.find((item) => item.value === nextValue)
+    if (nextMethod) onChange(nextMethod.value)
+  }
+
+  return (
+    <Select
+      key={`${nodeId}-method-${value}`}
+      value={selectedMethod?.value ?? null}
+      disabled={disabled}
+      onValueChange={handleMethodChange}
+    >
+      <SelectTrigger aria-label={label}>
+        <SelectValue>{selectedMethod?.name}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="w-26 min-w-26">
+        {HTTP_METHODS.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            <SelectItemText>{item.name}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
+  const { t } = useTranslation(['workflowIntegrations'])
+  const webhookUrlId = useId()
+  const { copied: debugUrlCopied, copy: copyDebugUrl } = useClipboard({ timeout: 2000 })
   const [outputVarsCollapsed, setOutputVarsCollapsed] = useState(false)
   const {
     readOnly,
@@ -76,69 +126,103 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     }
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
+  const selectedContentType =
+    CONTENT_TYPES.find((item) => item.value === inputs.content_type) ?? null
+
   return (
     <div className="mt-2">
-      <div className="space-y-4 px-4 pb-3 pt-2">
+      <span role="status" className="sr-only">
+        {debugUrlCopied
+          ? t(($) => $[`${i18nPrefix}.debugUrlCopied`], { ns: 'workflowIntegrations' })
+          : ''}
+      </span>
+      <div className="space-y-4 px-4 pt-2 pb-3">
         {/* Webhook URL Section */}
-        <Field title={t(`${i18nPrefix}.webhookUrl`, { ns: 'workflow' })}>
+        <Field
+          title={
+            <label htmlFor={webhookUrlId}>
+              {t(($) => $[`${i18nPrefix}.webhookUrl`], { ns: 'workflowIntegrations' })}
+            </label>
+          }
+        >
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
-                <SimpleSelect
-                  items={HTTP_METHODS}
-                  defaultValue={inputs.method}
-                  onSelect={item => handleMethodChange(item.value as HttpMethod)}
+                <WebhookMethodSelector
+                  nodeId={id}
+                  label={t(($) => $[`${i18nPrefix}.method`], { ns: 'workflowIntegrations' })}
+                  value={inputs.method}
                   disabled={readOnly}
-                  className="h-8 pr-8 text-sm"
-                  wrapperClassName="h-8"
-                  optionWrapClassName="w-26 min-w-26 z-5"
-                  allowSearch={false}
-                  notClearable={true}
+                  onChange={handleMethodChange}
                 />
               </div>
-              <div className="flex-1" style={{ width: '284px' }}>
-                <InputWithCopy
+              <InputGroup className="min-w-0 flex-1">
+                <InputGroupInput
+                  id={webhookUrlId}
                   value={inputs.webhook_url || ''}
-                  placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`, { ns: 'workflow' })}
+                  placeholder={t(($) => $[`${i18nPrefix}.webhookUrlPlaceholder`], {
+                    ns: 'workflowIntegrations',
+                  })}
                   readOnly
-                  onCopy={() => {
-                    toast.success(t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }))
-                  }}
                 />
-              </div>
+                <InputGroupAddon align="inline-end" className="pe-2">
+                  <CopyFeedback
+                    content={inputs.webhook_url || ''}
+                    copiedLabel={t(($) => $[`${i18nPrefix}.urlCopied`], {
+                      ns: 'workflowIntegrations',
+                    })}
+                    className="size-4 rounded-sm p-0 [&>span]:size-3.5"
+                  />
+                </InputGroupAddon>
+              </InputGroup>
             </div>
             {inputs.webhook_debug_url && (
               <div className="space-y-2">
-                <Tooltip
-                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
-                  popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
-                  position="top"
-                  offset={{ mainAxis: -20 }}
-                  needsDelay={true}
-                >
-                  <div
-                    className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
-                    style={{ width: '368px', height: '38px' }}
-                    onClick={() => {
-                      copy(inputs.webhook_debug_url || '')
-                      setDebugUrlCopied(true)
-                      setTimeout(() => setDebugUrlCopied(false), 2000)
-                    }}
-                  >
-                    <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
-                    <div className="flex-1" style={{ width: '352px', height: '32px' }}>
-                      <div className="text-xs leading-4 text-text-tertiary">
-                        {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
-                      </div>
-                      <div className="truncate text-xs leading-4 text-text-primary">
-                        {inputs.webhook_debug_url}
-                      </div>
-                    </div>
-                  </div>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        style={{ width: '368px', height: '38px' }}
+                        onClick={() => {
+                          copyDebugUrl(inputs.webhook_debug_url || '')
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="mt-0.5 w-0.5 bg-divider-regular"
+                          style={{ height: '28px' }}
+                        />
+                        <span className="flex-1" style={{ width: '352px', height: '32px' }}>
+                          <span className="block text-xs/4 text-text-tertiary">
+                            {t(($) => $[`${i18nPrefix}.debugUrlTitle`], {
+                              ns: 'workflowIntegrations',
+                            })}
+                          </span>
+                          <span className="block truncate text-xs/4 text-text-primary">
+                            {inputs.webhook_debug_url}
+                          </span>
+                        </span>
+                        <span className="sr-only">
+                          {t(($) => $[`${i18nPrefix}.debugUrlCopy`], {
+                            ns: 'workflowIntegrations',
+                          })}
+                        </span>
+                      </button>
+                    }
+                  />
+                  <TooltipContent side="bottom" sideOffset={4}>
+                    {debugUrlCopied
+                      ? t(($) => $[`${i18nPrefix}.debugUrlCopied`], { ns: 'workflowIntegrations' })
+                      : t(($) => $[`${i18nPrefix}.debugUrlCopy`], { ns: 'workflowIntegrations' })}
+                  </TooltipContent>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="mt-1 px-0 py-[2px] text-text-warning system-xs-regular">
-                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
+                  <div className="mt-1 px-0 py-0.5 system-xs-regular text-text-warning">
+                    {t(($) => $[`${i18nPrefix}.debugUrlPrivateAddressWarning`], {
+                      ns: 'workflowIntegrations',
+                    })}
                   </div>
                 )}
               </div>
@@ -147,20 +231,28 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         </Field>
 
         {/* Content Type */}
-        <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
-          <div className="w-full">
-            <SimpleSelect
-              items={CONTENT_TYPES}
-              defaultValue={inputs.content_type}
-              onSelect={item => handleContentTypeChange(item.value as string)}
-              disabled={readOnly}
-              className="h-8 text-sm"
-              wrapperClassName="h-8"
-              optionWrapClassName="min-w-48 z-5"
-              allowSearch={false}
-              notClearable={true}
-            />
-          </div>
+        <Field title={t(($) => $[`${i18nPrefix}.contentType`], { ns: 'workflowIntegrations' })}>
+          <Select
+            key={`${id}-content-type-${inputs.content_type}`}
+            value={selectedContentType?.value ?? null}
+            disabled={readOnly}
+            onValueChange={(value) => value && handleContentTypeChange(value)}
+          >
+            <SelectLabel className="sr-only">
+              {t(($) => $[`${i18nPrefix}.contentType`], { ns: 'workflowIntegrations' })}
+            </SelectLabel>
+            <SelectTrigger>
+              <SelectValue>{selectedContentType?.name}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {CONTENT_TYPES.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  <SelectItemText>{item.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
 
         {/* Query Parameters */}
@@ -169,15 +261,13 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Query Parameters"
           parameters={inputs.params}
           onChange={handleParamsChange}
-          placeholder={t(`${i18nPrefix}.noQueryParameters`, { ns: 'workflow' })}
+          placeholder={t(($) => $[`${i18nPrefix}.noQueryParameters`], {
+            ns: 'workflowIntegrations',
+          })}
         />
 
         {/* Header Parameters */}
-        <HeaderTable
-          readonly={readOnly}
-          headers={inputs.headers}
-          onChange={handleHeadersChange}
-        />
+        <HeaderTable readonly={readOnly} headers={inputs.headers} onChange={handleHeadersChange} />
 
         {/* Request Body Parameters */}
         <ParameterTable
@@ -185,51 +275,58 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Request Body Parameters"
           parameters={inputs.body}
           onChange={handleBodyChange}
-          placeholder={t(`${i18nPrefix}.noBodyParameters`, { ns: 'workflow' })}
+          placeholder={t(($) => $[`${i18nPrefix}.noBodyParameters`], {
+            ns: 'workflowIntegrations',
+          })}
           contentType={inputs.content_type}
         />
 
         <Split />
 
         {/* Response Configuration */}
-        <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
+        <Field
+          title={t(($) => $[`${i18nPrefix}.responseConfiguration`], { ns: 'workflowIntegrations' })}
+        >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-text-tertiary system-sm-medium">
-                {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
+              <label className="system-sm-medium text-text-tertiary">
+                {t(($) => $[`${i18nPrefix}.statusCode`], { ns: 'workflowIntegrations' })}
               </label>
               <NumberField
-                className="w-[120px]"
+                className="w-30"
                 min={DEFAULT_STATUS_CODE}
                 max={MAX_STATUS_CODE}
                 value={inputs.status_code ?? DEFAULT_STATUS_CODE}
                 disabled={readOnly}
-                onValueChange={value => value !== null && handleStatusCodeChange(value)}
+                onValueChange={(value) => value !== null && handleStatusCodeChange(value)}
                 onValueCommitted={(value, eventDetails) => {
-                  if (eventDetails.reason === 'input-blur' || eventDetails.reason === 'input-clear')
-                    handleStatusCodeChange(normalizeStatusCode(value ?? DEFAULT_STATUS_CODE))
+                  if (eventDetails.reason === 'input-clear')
+                    handleStatusCodeChange(value ?? DEFAULT_STATUS_CODE)
                 }}
               >
-                <NumberFieldGroup size="regular">
+                <NumberFieldGroup>
                   <NumberFieldInput
-                    size="regular"
-                    className="h-8"
+                    aria-label={t(($) => $[`${i18nPrefix}.statusCode`], {
+                      ns: 'workflowIntegrations',
+                    })}
                   />
                   <NumberFieldControls>
-                    <NumberFieldIncrement size="regular" />
-                    <NumberFieldDecrement size="regular" />
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
                   </NumberFieldControls>
                 </NumberFieldGroup>
               </NumberField>
             </div>
             <div>
-              <label className="mb-2 block text-text-tertiary system-sm-medium">
-                {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
+              <label className="mb-2 block system-sm-medium text-text-tertiary">
+                {t(($) => $[`${i18nPrefix}.responseBody`], { ns: 'workflowIntegrations' })}
               </label>
               <ParagraphInput
                 value={inputs.response_body}
                 onChange={handleResponseBodyChange}
-                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`, { ns: 'workflow' })}
+                placeholder={t(($) => $[`${i18nPrefix}.responseBodyPlaceholder`], {
+                  ns: 'workflowIntegrations',
+                })}
                 disabled={readOnly}
               />
             </div>
@@ -240,10 +337,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
       <Split />
 
       <div className="">
-        <OutputVars
-          collapsed={outputVarsCollapsed}
-          onCollapse={setOutputVarsCollapsed}
-        >
+        <OutputVars collapsed={outputVarsCollapsed} onCollapse={setOutputVarsCollapsed}>
           <OutputVariablesContent variables={inputs.variables} />
         </OutputVars>
       </div>

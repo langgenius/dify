@@ -4,26 +4,14 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import Any, NewType, TypedDict
 
-from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
-from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
-from graphon.variables.variables import Variable
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
+    NodeExecutionSnapshot,
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
@@ -64,15 +52,46 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_forms import (
+    load_form_dispositions_by_form_id,
+)
+from core.workflow.human_input_policy import (
+    HumanInputSurface,
+    enrich_human_input_pause_reasons,
+    resolve_variable_select_input_options,
+)
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
+from graphon.entities import WorkflowStartReason
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import FILE_MODEL_IDENTITY, File
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.variables import Variable
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
+
+# Maps the entry surface a workflow was invoked from to the HITL surface that
+# its resume tokens must be filtered for. Surfaces not in this map fall back to
+# the general priority ordering (typically CONSOLE > BACKSTAGE).
+_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
+    InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
+    InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+}
 
 NodeExecutionId = NewType("NodeExecutionId", str)
 logger = logging.getLogger(__name__)
@@ -92,27 +111,46 @@ class EndUserCreatedByDict(TypedDict):
 CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 
-@dataclass(slots=True)
-class _NodeSnapshot:
-    """In-memory cache for node metadata between start and completion events."""
+@dataclass(frozen=True, slots=True)
+class _HumanInputPauseOutput:
+    """Keep a form event paired with its entry in the workflow pause response."""
 
-    title: str
-    index: int
-    start_at: datetime
-    iteration_id: str = ""
-    """Empty string means the node is not executing inside an iteration."""
-    loop_id: str = ""
-    """Empty string means the node is not executing inside a loop."""
+    response: HumanInputRequiredResponse
+    pause_reason: dict[str, Any]
 
 
 class WorkflowResponseConverter:
+    @staticmethod
+    def human_input_v2_required_data(prepared: PreparedForm, *, node_id: str) -> HumanInputRequiredResponse.Data:
+        """Project Dify-owned form data into the existing HITL wire contract.
+
+        Live execution supplies the node's snapshot; reconnect loads the form
+        from its run-owned v2 records. Neither path resolves a v1 token.
+        """
+        reason = build_human_input_v2_pause_reason(
+            prepared.form.resolved_form, form_id=prepared.form.id, node_id=node_id
+        )
+        return HumanInputRequiredResponse.Data(
+            form_version=reason.form_version,
+            form_id=reason.form_id,
+            node_id=node_id,
+            node_title=reason.node_title,
+            form_content=reason.form_content,
+            inputs=reason.inputs,
+            actions=reason.actions,
+            resolved_default_values=reason.resolved_default_values,
+            expiration_time=to_utc_timestamp(prepared.form.expiration_time),
+            display_in_ui=prepared.form_token is not None,
+            form_token=prepared.form_token.get_secret_value() if prepared.form_token is not None else None,
+        )
+
     _truncator: BaseTruncator
 
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
-        user: Union[Account, EndUser],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+        user: Account | EndUser,
         system_variables: Sequence[Variable],
     ):
         self._application_generate_entity = application_generate_entity
@@ -126,7 +164,7 @@ class WorkflowResponseConverter:
         else:
             self._truncator = VariableTruncator.default()
 
-        self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
+        self._node_snapshots: dict[NodeExecutionId, NodeExecutionSnapshot] = {}
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None
 
@@ -157,8 +195,14 @@ class WorkflowResponseConverter:
     # ------------------------------------------------------------------
     # Node snapshot helpers
     # ------------------------------------------------------------------
-    def _store_snapshot(self, event: QueueNodeStartedEvent) -> _NodeSnapshot:
-        snapshot = _NodeSnapshot(
+    def _store_snapshot(self, event: QueueNodeStartedEvent) -> NodeExecutionSnapshot:
+        # The engine may have persisted this start before resumption metadata was loaded.
+        snapshot = self._get_snapshot(event.node_execution_id)
+        if snapshot is not None:
+            return snapshot
+
+        snapshot = NodeExecutionSnapshot(
+            execution_id=event.node_execution_id,
             title=event.node_title,
             index=event.node_run_index,
             start_at=event.start_at,
@@ -169,16 +213,16 @@ class WorkflowResponseConverter:
         self._node_snapshots[node_execution_id] = snapshot
         return snapshot
 
-    def _get_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
+    def _get_snapshot(self, node_execution_id: str) -> NodeExecutionSnapshot | None:
         return self._node_snapshots.get(NodeExecutionId(node_execution_id))
 
-    def _pop_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
+    def _pop_snapshot(self, node_execution_id: str) -> NodeExecutionSnapshot | None:
         return self._node_snapshots.pop(NodeExecutionId(node_execution_id), None)
 
     @staticmethod
     def _merge_metadata(
         base_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None,
-        snapshot: _NodeSnapshot | None,
+        snapshot: NodeExecutionSnapshot | None,
     ) -> Mapping[WorkflowNodeExecutionMetadataKey, Any] | None:
         if not base_metadata and not snapshot:
             return base_metadata
@@ -225,10 +269,16 @@ class WorkflowResponseConverter:
         workflow_run_id: str,
         workflow_id: str,
         reason: WorkflowStartReason,
+        node_execution_snapshots: Sequence[NodeExecutionSnapshot] = (),
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        self._application_generate_entity.workflow_execution_timing.start()
+        if reason == WorkflowStartReason.RESUMPTION:
+            self._node_snapshots.update(
+                (NodeExecutionId(snapshot.execution_id), snapshot) for snapshot in node_execution_snapshots
+            )
 
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -248,7 +298,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_id: str,
         status: WorkflowExecutionStatus,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         error: str | None = None,
         exceptions_count: int = 0,
     ) -> WorkflowFinishStreamResponse:
@@ -260,24 +310,25 @@ class WorkflowResponseConverter:
             )
 
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
 
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
-        if isinstance(user, Account):
-            created_by = AccountCreatedByDict(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-            )
-        elif isinstance(user, EndUser):
-            created_by = EndUserCreatedByDict(
-                id=user.id,
-                user=user.session_id,
-            )
+        match user:
+            case Account():
+                created_by = AccountCreatedByDict(
+                    id=user.id,
+                    name=user.name,
+                    email=user.email,
+                )
+            case EndUser():
+                created_by = EndUserCreatedByDict(
+                    id=user.id,
+                    user=user.session_id,
+                )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -304,7 +355,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueWorkflowPausedEvent,
         task_id: str,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
     ) -> list[StreamResponse]:
         run_id = self._ensure_workflow_run_id()
         started_at = self._workflow_started_at
@@ -312,57 +363,49 @@ class WorkflowResponseConverter:
             raise ValueError(
                 "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
             )
-        paused_at = naive_utc_now()
-        elapsed_time = (paused_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
-        human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
-        expiration_times_by_form_id: dict[str, datetime] = {}
-        display_in_ui_by_form_id: dict[str, bool] = {}
-        form_token_by_form_id: dict[str, str] = {}
-        if human_input_form_ids:
-            stmt = select(
-                HumanInputForm.id,
-                HumanInputForm.expiration_time,
-                HumanInputForm.form_definition,
-            ).where(HumanInputForm.id.in_(human_input_form_ids))
-            with Session(bind=db.engine) as session:
-                for form_id, expiration_time, form_definition in session.execute(stmt):
-                    expiration_times_by_form_id[str(form_id)] = expiration_time
-                    try:
-                        definition_payload = json.loads(form_definition) if form_definition else {}
-                    except (TypeError, json.JSONDecodeError):
-                        definition_payload = {}
-                    display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                form_token_by_form_id = load_form_tokens_by_form_id(human_input_form_ids, session=session)
-
+        v1_outputs = iter(
+            self._human_input_v1_pause_responses(
+                reasons=[
+                    reason
+                    for reason in event.reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+                ],
+                task_id=task_id,
+                variable_pool=graph_runtime_state.variable_pool,
+            )
+        )
+        v2_outputs = iter(
+            self._human_input_v2_pause_responses(
+                reasons=[
+                    reason
+                    for reason in event.reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "2"
+                ],
+                forms=event.human_input_v2_forms,
+                task_id=task_id,
+            )
+        )
         responses: list[StreamResponse] = []
-
+        pause_reasons: list[dict[str, Any]] = []
+        # Each version owns its complete conversion; merge in the original event
+        # order, including scheduling reasons interleaved with approval forms.
         for reason in event.reasons:
-            if isinstance(reason, HumanInputRequired):
-                expiration_time = expiration_times_by_form_id.get(reason.form_id)
-                if expiration_time is None:
-                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
-                responses.append(
-                    HumanInputRequiredResponse(
-                        task_id=task_id,
-                        workflow_run_id=run_id,
-                        data=HumanInputRequiredResponse.Data(
-                            form_id=reason.form_id,
-                            node_id=reason.node_id,
-                            node_title=reason.node_title,
-                            form_content=reason.form_content,
-                            inputs=reason.inputs,
-                            actions=reason.actions,
-                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
-                            form_token=form_token_by_form_id.get(reason.form_id),
-                            resolved_default_values=reason.resolved_default_values,
-                            expiration_time=int(expiration_time.timestamp()),
-                        ),
-                    )
-                )
+            if not isinstance(reason, HumanInputRequired):
+                pause_reasons.append(reason.model_dump(mode="json"))
+                continue
+            match reason.form_version:
+                case "1":
+                    converted = next(v1_outputs)
+                case "2":
+                    converted = next(v2_outputs)
+                case _:
+                    raise ValueError(f"Unsupported Human Input form version: {reason.form_version}")
+            responses.append(converted.response)
+            pause_reasons.append(converted.pause_reason)
 
         responses.append(
             WorkflowPauseStreamResponse(
@@ -388,17 +431,20 @@ class WorkflowResponseConverter:
         self, *, event: QueueHumanInputFormFilledEvent, task_id: str
     ) -> HumanInputFormFilledResponse:
         run_id = self._ensure_workflow_run_id()
-        return HumanInputFormFilledResponse(
-            task_id=task_id,
-            workflow_run_id=run_id,
-            data=HumanInputFormFilledResponse.Data(
-                node_id=event.node_id,
-                node_title=event.node_title,
-                rendered_content=event.rendered_content,
-                action_id=event.action_id,
-                action_text=event.action_text,
-            ),
+        data = HumanInputFormFilledResponse.Data(
+            form_id=event.form_id,
+            node_id=event.node_id,
+            node_title=event.node_title,
+            rendered_content=event.rendered_content,
+            action_id=event.action_id,
+            action_text=event.action_text,
         )
+        if event.submitted_data is not None:
+            runtime_type_converter = WorkflowRuntimeTypeConverter()
+
+            data.submitted_data = runtime_type_converter.value_to_json_encodable_recursive(event.submitted_data)
+
+        return HumanInputFormFilledResponse(task_id=task_id, workflow_run_id=run_id, data=data)
 
     def human_input_form_timeout_to_stream_response(
         self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
@@ -408,9 +454,10 @@ class WorkflowResponseConverter:
             task_id=task_id,
             workflow_run_id=run_id,
             data=HumanInputFormTimeoutResponse.Data(
+                form_id=event.form_id,
                 node_id=event.node_id,
                 node_title=event.node_title,
-                expiration_time=int(event.expiration_time.timestamp()),
+                expiration_time=to_utc_timestamp(event.expiration_time),
             ),
         )
 
@@ -431,17 +478,18 @@ class WorkflowResponseConverter:
 
         created_by: Mapping[str, object]
         user = creator_user
-        if isinstance(user, Account):
-            created_by = {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-            }
-        else:
-            created_by = {
-                "id": user.id,
-                "user": user.session_id,
-            }
+        match user:
+            case Account():
+                created_by = {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                }
+            case _:
+                created_by = {
+                    "id": user.id,
+                    "user": user.session_id,
+                }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -469,10 +517,10 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
+        snapshot = self._store_snapshot(event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
-        snapshot = self._store_snapshot(event)
 
         response = NodeStartStreamResponse(
             task_id=task_id,
@@ -492,6 +540,8 @@ class WorkflowResponseConverter:
 
         try:
             if event.node_type == BuiltinNodeTypes.TOOL:
+                if event.provider_type == ToolProviderType.WORKFLOW:
+                    response.data.extras["workflow_tool"] = True
                 response.data.extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     provider_type=ToolProviderType(event.provider_type),
@@ -538,15 +588,16 @@ class WorkflowResponseConverter:
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
-        if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED
-            error_message = event.error
-        elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED
-            error_message = event.error
-        else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION
-            error_message = event.error
+        match event:
+            case QueueNodeSucceededEvent():
+                status = WorkflowNodeExecutionStatus.SUCCEEDED
+                error_message = event.error
+            case QueueNodeFailedEvent():
+                status = WorkflowNodeExecutionStatus.FAILED
+                error_message = event.error
+            case _:
+                status = WorkflowNodeExecutionStatus.EXCEPTION
+                error_message = event.error
 
         return NodeFinishStreamResponse(
             task_id=task_id,
@@ -812,7 +863,9 @@ class WorkflowResponseConverter:
         return tuple(flattened_files)
 
     @classmethod
-    def _fetch_files_from_variable_value(cls, value: Union[dict, list, Segment]) -> Sequence[Mapping[str, Any]]:
+    def _fetch_files_from_variable_value(
+        cls, value: dict | list | Segment | File | None
+    ) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value
         :param value: variable value
@@ -822,29 +875,29 @@ class WorkflowResponseConverter:
             return []
 
         files: list[Mapping[str, Any]] = []
-        if isinstance(value, FileSegment):
-            files.append(value.value.to_dict())
-        elif isinstance(value, ArrayFileSegment):
-            files.extend([i.to_dict() for i in value.value])
-        elif isinstance(value, File):
-            files.append(value.to_dict())
-        elif isinstance(value, list):
-            for item in value:
-                file = cls._get_file_var_from_value(item)
+        match value:
+            case FileSegment():
+                files.append(value.value.to_dict())
+            case ArrayFileSegment():
+                files.extend([i.to_dict() for i in value.value])
+            case File():
+                files.append(value.to_dict())
+            case list():
+                for item in value:
+                    file = cls._get_file_var_from_value(item)
+                    if file:
+                        files.append(file)
+            case dict():
+                file = cls._get_file_var_from_value(value)
                 if file:
                     files.append(file)
-        elif isinstance(
-            value,
-            dict,
-        ):
-            file = cls._get_file_var_from_value(value)
-            if file:
-                files.append(file)
+            case _:
+                pass
 
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
+    def _get_file_var_from_value(cls, value: object) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
@@ -853,10 +906,11 @@ class WorkflowResponseConverter:
         if not value:
             return None
 
-        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-            return value
-        elif isinstance(value, File):
-            return value.to_dict()
+        match value:
+            case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                return value
+            case File():
+                return value.to_dict()
 
         return None
 
@@ -881,3 +935,97 @@ class WorkflowResponseConverter:
                 node_id=event.node_id,
             ),
         )
+
+    def _human_input_v1_pause_responses(
+        self,
+        *,
+        reasons: Sequence[HumanInputRequired],
+        task_id: str,
+        variable_pool: ReadOnlyVariablePool,
+    ) -> list[_HumanInputPauseOutput]:
+        """Resolve legacy inputs, access channels, and both V1 response payloads."""
+        if not reasons:
+            return []
+        run_id = self._ensure_workflow_run_id()
+        resolved_reasons = [
+            reason.model_copy(
+                update={
+                    "inputs": resolve_variable_select_input_options(reason.inputs, variable_pool=variable_pool),
+                }
+            )
+            for reason in reasons
+        ]
+        form_ids = [reason.form_id for reason in resolved_reasons]
+        expiration_times: dict[str, datetime] = {}
+        display_in_ui: dict[str, bool] = {}
+        stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
+            HumanInputForm.id.in_(form_ids)
+        )
+        surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
+        with Session(bind=db.engine) as session:
+            for form_id, expiration_time, form_definition in session.execute(stmt):
+                expiration_times[str(form_id)] = expiration_time
+                try:
+                    definition_payload = json.loads(form_definition) if form_definition else {}
+                except (TypeError, json.JSONDecodeError):
+                    definition_payload = {}
+                display_in_ui[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+            dispositions = load_form_dispositions_by_form_id(form_ids, session=session, surface=surface)
+        # Preserve the legacy pause-reason fields, which differ from the
+        # human_input_required data payload (notably display_in_ui).
+        pause_reasons = enrich_human_input_pause_reasons(
+            [reason.model_dump(mode="json") for reason in resolved_reasons],
+            dispositions_by_form_id=dispositions,
+            expiration_times_by_form_id={
+                form_id: to_utc_timestamp(value) for form_id, value in expiration_times.items()
+            },
+        )
+        outputs: list[_HumanInputPauseOutput] = []
+        for reason, payload in zip(resolved_reasons, pause_reasons, strict=True):
+            expiration_time = expiration_times.get(reason.form_id)
+            if expiration_time is None:
+                raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
+            disposition = dispositions.get(reason.form_id)
+            response = HumanInputRequiredResponse(
+                task_id=task_id,
+                workflow_run_id=run_id,
+                data=HumanInputRequiredResponse.Data(
+                    form_version=reason.form_version,
+                    form_id=reason.form_id,
+                    node_id=reason.node_id,
+                    node_title=reason.node_title,
+                    form_content=reason.form_content,
+                    inputs=reason.inputs,
+                    actions=reason.actions,
+                    display_in_ui=display_in_ui.get(reason.form_id, False),
+                    form_token=disposition.form_token if disposition else None,
+                    approval_channels=list(disposition.approval_channels) if disposition else [],
+                    resolved_default_values=reason.resolved_default_values,
+                    expiration_time=to_utc_timestamp(expiration_time),
+                ),
+            )
+            outputs.append(_HumanInputPauseOutput(response=response, pause_reason=payload))
+        return outputs
+
+    def _human_input_v2_pause_responses(
+        self,
+        *,
+        reasons: Sequence[HumanInputRequired],
+        forms: Mapping[str, PreparedForm],
+        task_id: str,
+    ) -> list[_HumanInputPauseOutput]:
+        """Build both V2 response payloads from the snapshots emitted by nodes."""
+        if not reasons:
+            return []
+        run_id = self._ensure_workflow_run_id()
+        outputs: list[_HumanInputPauseOutput] = []
+        for reason in reasons:
+            prepared = forms.get(reason.form_id)
+            if prepared is None:
+                raise ValueError(f"Human Input v2 node did not supply its form snapshot: {reason.form_id}")
+            data = self.human_input_v2_required_data(prepared, node_id=reason.node_id)
+            response = HumanInputRequiredResponse(task_id=task_id, workflow_run_id=run_id, data=data)
+            payload = reason.model_dump(mode="json")
+            payload.update(data.model_dump(mode="json"))
+            outputs.append(_HumanInputPauseOutput(response=response, pause_reason=payload))
+        return outputs

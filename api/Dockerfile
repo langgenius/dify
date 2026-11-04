@@ -1,10 +1,13 @@
+# KnowledgeFS is released independently. Its release controller atomically mounts the tested
+# engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
+# Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 WORKDIR /app/api
 
 # Install uv
-ENV UV_VERSION=0.8.9
+ENV UV_VERSION=0.13.4
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 
@@ -17,19 +20,22 @@ FROM base AS packages
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
           # basic environment
-          g++ \
+          git g++ \
           # for building gmpy2
           libmpfr-dev libmpc-dev
 
-# Install Python dependencies
-COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev
+# Install Python dependencies (workspace members under providers/vdb/)
+COPY api/pyproject.toml api/uv.lock ./
+COPY api/providers ./providers
+COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
+COPY dify-agent/src /app/dify-agent/src
+# Trust the checked-in lock during image builds; local path sources are copied from the repository context.
+RUN uv sync --frozen --no-dev --no-editable
 
 # production stage
 FROM base AS production
 
 ENV FLASK_APP=app.py
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL=http://127.0.0.1:3000
@@ -50,15 +56,14 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_MAJOR=22
-ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.22.1-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
 
-RUN \
-    apt-get update \
+RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -87,6 +92,8 @@ RUN \
         media-types \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
+        # Bounded PDF metadata/rasterization invoked by the local KnowledgeFS worker engine.
+        poppler-utils \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -95,9 +102,9 @@ ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
-    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
+    && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
+    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('taggers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
@@ -105,11 +112,15 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
+# Pre-install the spaCy model unstructured needs, so document extraction works offline and as non-root
+RUN python -c "from unstructured.nlp.tokenize import sent_tokenize; sent_tokenize('Warm up.')" \
+    && python -c "import spacy; spacy.load('en_core_web_sm')"
+
 # Copy source code
-COPY --chown=dify:dify . /app/api/
+COPY --chown=dify:dify api /app/api/
 
 # Prepare entrypoint script
-COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
+COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
 
 
 ARG COMMIT_SHA

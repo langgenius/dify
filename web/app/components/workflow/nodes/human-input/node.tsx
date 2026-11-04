@@ -1,72 +1,63 @@
 import type { FC } from 'react'
 import type { HumanInputNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import {
-  RiMailSendFill,
-  RiRobot2Fill,
-} from '@remixicon/react'
+import { RiMailSendFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeSourceHandle } from '../_base/components/node-handle'
+import Badge from '@/app/components/base/badge'
+import { ENABLE_HITL_IM } from '@/config'
+import { isLegacyHumanInputNodeData } from '../human-input-v2/migration/policy'
+import HumanInputNodeBranches from './shared/node-branches'
 import { DeliveryMethodType } from './types'
 
 const i18nPrefix = 'nodes.humanInput'
 
 const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowHumanInput', 'workflow'])
 
   const { data } = props
   const deliveryMethods = data.delivery_methods
-  const userActions = data.user_actions
 
   return (
     <>
+      {ENABLE_HITL_IM && isLegacyHumanInputNodeData(data) && (
+        <div className="px-2.5 pb-1">
+          <Badge
+            text={t(($) => $['nodes.humanInputMigration.oldVersion'], { ns: 'workflow' })}
+            className="border-text-warning-secondary text-text-warning-secondary"
+          />
+        </div>
+      )}
       {deliveryMethods.length > 0 && (
         <div className="space-y-0.5 py-1">
-          <div className="system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflowHumanInput' })}
+          </div>
           <div className="space-y-0.5 px-2.5">
-            {deliveryMethods.map(method => (
-              <div key={method.type} className="flex items-center gap-1 radius-sm bg-workflow-block-parma-bg p-1">
+            {deliveryMethods.map((method) => (
+              <div
+                key={method.type}
+                className="flex items-center gap-1 rounded-md bg-workflow-block-parma-bg p-1"
+              >
                 {method.type === DeliveryMethodType.WebApp && (
-                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
-                    <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                  <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+                    <RiRobot2Fill className="size-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
                 {method.type === DeliveryMethodType.Email && (
-                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
-                    <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                  <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+                    <RiMailSendFill className="size-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
-                <span className="system-xs-regular capitalize text-text-secondary">{method.type}</span>
+                <span className="system-xs-regular text-text-secondary capitalize">
+                  {method.type}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
-      <div className="space-y-0.5 py-1">
-        {userActions.length > 0 && (
-          <>
-            {userActions.map(userAction => (
-              <div key={userAction.id} className="relative flex flex-row-reverse items-center px-4 py-1">
-                <span className="system-xs-semibold-uppercase truncate text-text-secondary">{userAction.id}</span>
-                <NodeSourceHandle
-                  {...props}
-                  handleId={userAction.id}
-                  handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
-                />
-              </div>
-            ))}
-          </>
-        )}
-        <div className="relative flex flex-row-reverse items-center px-4 py-1">
-          <div className="system-xs-semibold-uppercase truncate text-text-secondary">Timeout</div>
-          <NodeSourceHandle
-            {...props}
-            handleId="__timeout"
-            handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
-          />
-        </div>
-      </div>
+      <HumanInputNodeBranches {...props} />
     </>
   )
 }

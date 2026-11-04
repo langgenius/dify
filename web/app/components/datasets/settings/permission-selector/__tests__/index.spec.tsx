@@ -1,490 +1,328 @@
-import type { Member } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { DatasetPermission } from '@/models/datasets'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps, ReactNode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Provider } from 'jotai'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { PermissionLevel } from '@/models/permission'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createQueryAtomTestStore } from '@/test/query-atom'
 import PermissionSelector from '../index'
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
-    id: 'user-1',
-    name: 'Current User',
-    email: 'current@example.com',
+const currentUser = {
+  id: 'user-1',
+  name: 'Current User',
+  email: 'current@example.com',
+  avatar: '',
+  avatar_url: null,
+  is_password_set: true,
+  timezone: 'UTC',
+}
+
+const memberList: AccountWithRoleResponse[] = [
+  {
+    ...currentUser,
     avatar_url: '',
     role: 'owner',
-  }),
-}))
+    roles: [],
+    last_login_at: null,
+    created_at: null,
+    status: 'active',
+  },
+  {
+    id: 'user-2',
+    name: 'John Doe',
+    email: 'john@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'admin',
+    roles: [],
+    last_login_at: null,
+    created_at: null,
+    status: 'active',
+  },
+  {
+    id: 'user-3',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'normal',
+    roles: [],
+    last_login_at: null,
+    created_at: null,
+    status: 'active',
+  },
+]
+
+const defaultProps: ComponentProps<typeof PermissionSelector> = {
+  permission: PermissionLevel.onlyMe,
+  value: ['user-1'],
+  memberList,
+  onChange: vi.fn(),
+  onMemberSelect: vi.fn(),
+}
+
+const renderSelector = (
+  props: Partial<ComponentProps<typeof PermissionSelector>> = {},
+  options: { rbacEnabled?: boolean } = {},
+) => {
+  const { queryClient, store } = createQueryAtomTestStore()
+  queryClient.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: currentUser,
+    meta: { currentVersion: null, currentEnv: null },
+  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({
+      rbac_enabled: options.rbacEnabled ?? false,
+    }),
+  )
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>{children}</Provider>
+    </QueryClientProvider>
+  )
+
+  return render(<PermissionSelector {...defaultProps} {...props} />, { wrapper })
+}
 
 describe('PermissionSelector', () => {
-  const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', last_login_at: '', created_at: '', status: 'active' },
-  ]
-
-  const defaultProps = {
-    permission: DatasetPermission.onlyMe,
-    value: ['user-1'],
-    memberList: mockMemberList,
-    onChange: vi.fn(),
-    onMemberSelect: vi.fn(),
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<PermissionSelector {...defaultProps} />)
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+  it.each([
+    ['the disabled prop', { disabled: true }, false],
+    ['dataset RBAC', {}, true],
+  ])('uses a disabled native trigger for %s', async (_, props, rbacEnabled) => {
+    const user = userEvent.setup()
+    renderSelector(props, { rbacEnabled })
+
+    const trigger = rbacEnabled
+      ? screen.getByRole('button', { name: /permissionsAccessConfig/ })
+      : screen.getByRole('button', { name: /permissionsOnlyMe/ })
+    expect(trigger).toBeDisabled()
+
+    await user.click(trigger)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('can keep access configuration enabled when RBAC is handled by the caller', async () => {
+    const user = userEvent.setup()
+    renderSelector({ disableWhenRbacEnabled: false }, { rbacEnabled: true })
+
+    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
+    expect(trigger).toBeEnabled()
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
+  })
+
+  it('freezes an already open member picker when disabled and permits changes after unlocking', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onMemberSelect = vi.fn()
+    const props = {
+      ...defaultProps,
+      permission: PermissionLevel.partialMembers,
+      value: ['user-1', 'user-2'],
+      onChange,
+      onMemberSelect,
+    }
+    const { rerender } = renderSelector(props)
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const member = within(dialog).getByRole('button', { name: /John Doe/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    const search = within(dialog).getByRole('searchbox', { name: /operation.search/ })
+
+    rerender(<PermissionSelector {...props} disabled />)
+
+    expect(member).toBeDisabled()
+    expect(onlyMe).toBeDisabled()
+    expect(search).toBeDisabled()
+    await user.click(member)
+    await user.click(onlyMe)
+    await user.type(search, 'Jane')
+    expect(search).toHaveValue('')
+    expect(onMemberSelect).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+
+    rerender(<PermissionSelector {...props} disabled={false} />)
+    await user.click(member)
+    expect(onMemberSelect).toHaveBeenCalledWith(['user-1'])
+    await user.click(onlyMe)
+    expect(onChange).toHaveBeenCalledWith(PermissionLevel.onlyMe)
+  })
+
+  it('allows member selection when only visibility changes are disabled', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onMemberSelect = vi.fn()
+    renderSelector({
+      permission: PermissionLevel.partialMembers,
+      permissionChangeDisabled: true,
+      value: ['user-1'],
+      onChange,
+      onMemberSelect,
+    })
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    expect(onlyMe).toBeDisabled()
+    await user.click(onlyMe)
+    await user.click(within(dialog).getByRole('button', { name: /John Doe/ }))
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onMemberSelect).toHaveBeenCalledWith(['user-1', 'user-2'])
+  })
+
+  it('exposes validation state and its accessible description on the trigger', () => {
+    renderSelector({ ariaDescribedBy: 'permission-error', invalid: true })
+
+    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger).toHaveAttribute('aria-describedby', 'permission-error')
+  })
+
+  it('announces the external field label together with the current permission or member names', () => {
+    render(
+      <>
+        <span id="permission-label">Knowledge permission</span>
+        <span id="permission-help">Choose who can read this knowledge.</span>
+      </>,
+    )
+    const props = {
+      ...defaultProps,
+      ariaLabelledBy: 'permission-label',
+      ariaDescribedBy: 'permission-help',
+    }
+    const { rerender } = renderSelector(props)
+    const trigger = screen.getByRole('button', { name: /^Knowledge permission / })
+    expect(trigger).toHaveAccessibleName(
+      'Knowledge permission datasetSettings.form.permissionsOnlyMe',
+    )
+    expect(trigger).toHaveAccessibleDescription('Choose who can read this knowledge.')
+
+    rerender(<PermissionSelector {...props} permission={PermissionLevel.allTeamMembers} />)
+    expect(trigger).toHaveAccessibleName(
+      'Knowledge permission datasetSettings.form.permissionsAllMember',
+    )
+
+    rerender(
+      <PermissionSelector
+        {...props}
+        permission={PermissionLevel.partialMembers}
+        value={['user-1', 'user-2']}
+      />,
+    )
+    expect(trigger).toHaveAccessibleName('Knowledge permission Current User, John Doe')
+    expect(trigger).toHaveAccessibleDescription('Choose who can read this knowledge.')
+  })
+
+  it.each([
+    [PermissionLevel.onlyMe, /permissionsOnlyMe/],
+    [PermissionLevel.allTeamMembers, /permissionsAllMember/],
+  ])('selects %s and closes the popover', async (permission, optionName) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderSelector({
+      permission:
+        permission === PermissionLevel.onlyMe
+          ? PermissionLevel.allTeamMembers
+          : PermissionLevel.onlyMe,
+      onChange,
     })
 
-    it('should render Only Me option when permission is onlyMe', () => {
-      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />)
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: permission === PermissionLevel.onlyMe ? /permissionsAllMember/ : /permissionsOnlyMe/,
+      }),
+    )
+    const popover = screen.getByRole('dialog', { name: /form.permissions/ })
+    await user.click(within(popover).getByRole('radio', { name: optionName }))
+
+    expect(onChange).toHaveBeenCalledWith(permission)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('resets partial access to the current user and keeps the popover open', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onMemberSelect = vi.fn()
+    renderSelector({ onChange, onMemberSelect })
+
+    await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
+    const popover = screen.getByRole('dialog', { name: /form.permissions/ })
+    await user.click(within(popover).getByRole('radio', { name: /permissionsInvitedMembers/ }))
+
+    expect(onChange).toHaveBeenCalledWith(PermissionLevel.partialMembers)
+    expect(onMemberSelect).toHaveBeenCalledWith(['user-1'])
+    expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
+  })
+
+  it('uses radio keyboard navigation without closing the popover', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderSelector({ onChange })
+
+    await user.click(screen.getByRole('button', { name: /permissionsOnlyMe/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    onlyMe.focus()
+    await user.keyboard('{ArrowDown}')
+
+    expect(onChange).toHaveBeenCalledWith(PermissionLevel.allTeamMembers)
+    expect(dialog).toBeInTheDocument()
+  })
+
+  it.each([
+    [['user-1'], ['user-1', 'user-2']],
+    [['user-1', 'user-2'], ['user-1']],
+  ])('toggles a member using a native button', async (value, expectedValue) => {
+    const user = userEvent.setup()
+    const onMemberSelect = vi.fn()
+    renderSelector({
+      permission: PermissionLevel.partialMembers,
+      value,
+      onMemberSelect,
     })
 
-    it('should render All Team Members option when permission is allTeamMembers', () => {
-      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
-      expect(screen.getByText(/form\.permissionsAllMember/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /John Doe/ }))
+
+    expect(onMemberSelect).toHaveBeenCalledWith(expectedValue)
+  })
+
+  it('filters members after the search debounce and clears the query', async () => {
+    const user = userEvent.setup()
+    renderSelector({ permission: PermissionLevel.partialMembers })
+
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    const search = screen.getByRole('searchbox', { name: /operation.search/ })
+    await user.type(search, 'Jane')
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Jane Smith/ })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /John Doe/ })).not.toBeInTheDocument()
     })
 
-    it('should render selected member names when permission is partialMembers', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          value={['user-1', 'user-2']}
-        />,
-      )
-      // Should show member names
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /operation.clear/ }))
+    expect(search).toHaveValue('')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /John Doe/ })).toBeInTheDocument()
     })
   })
 
-  describe('Dropdown Toggle', () => {
-    it('should open dropdown when clicked', async () => {
-      render(<PermissionSelector {...defaultProps} />)
+  it('shows the empty state when no member matches', async () => {
+    const user = userEvent.setup()
+    renderSelector({ permission: PermissionLevel.partialMembers })
 
-      const trigger = screen.getByText(/form\.permissionsOnlyMe/)
-      fireEvent.click(trigger)
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    await user.type(screen.getByRole('searchbox', { name: /operation.search/ }), 'Nobody')
 
-      await waitFor(() => {
-        // Should show all permission options in dropdown
-        expect(screen.getAllByText(/form\.permissionsOnlyMe/).length).toBeGreaterThanOrEqual(1)
-      })
-    })
-
-    it('should not open dropdown when disabled', () => {
-      render(<PermissionSelector {...defaultProps} disabled={true} />)
-
-      const trigger = screen.getByText(/form\.permissionsOnlyMe/)
-      fireEvent.click(trigger)
-
-      // Dropdown should not open - only the trigger text should be visible
-      expect(screen.getAllByText(/form\.permissionsOnlyMe/).length).toBe(1)
-    })
-  })
-
-  describe('Permission Selection', () => {
-    it('should call onChange with onlyMe when Only Me is selected', async () => {
-      const handleChange = vi.fn()
-      render(<PermissionSelector {...defaultProps} onChange={handleChange} permission={DatasetPermission.allTeamMembers} />)
-
-      const trigger = screen.getByText(/form\.permissionsAllMember/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        const onlyMeOptions = screen.getAllByText(/form\.permissionsOnlyMe/)
-        fireEvent.click(onlyMeOptions[0])
-      })
-
-      expect(handleChange).toHaveBeenCalledWith(DatasetPermission.onlyMe)
-    })
-
-    it('should call onChange with allTeamMembers when All Team Members is selected', async () => {
-      const handleChange = vi.fn()
-      render(<PermissionSelector {...defaultProps} onChange={handleChange} />)
-
-      const trigger = screen.getByText(/form\.permissionsOnlyMe/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        const allMemberOptions = screen.getAllByText(/form\.permissionsAllMember/)
-        fireEvent.click(allMemberOptions[0])
-      })
-
-      expect(handleChange).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
-    })
-
-    it('should call onChange with partialMembers when Invited Members is selected', async () => {
-      const handleChange = vi.fn()
-      const handleMemberSelect = vi.fn()
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          onChange={handleChange}
-          onMemberSelect={handleMemberSelect}
-        />,
-      )
-
-      const trigger = screen.getByText(/form\.permissionsOnlyMe/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        const invitedOptions = screen.getAllByText(/form\.permissionsInvitedMembers/)
-        fireEvent.click(invitedOptions[0])
-      })
-
-      expect(handleChange).toHaveBeenCalledWith(DatasetPermission.partialMembers)
-      expect(handleMemberSelect).toHaveBeenCalledWith(['user-1'])
-    })
-  })
-
-  describe('Member Selection', () => {
-    it('should show member list when partialMembers is selected', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        // Should show member list
-        expect(screen.getByText('John Doe')).toBeInTheDocument()
-        expect(screen.getByText('Jane Smith')).toBeInTheDocument()
-      })
-    })
-
-    it('should call onMemberSelect when a member is clicked', async () => {
-      const handleMemberSelect = vi.fn()
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          onMemberSelect={handleMemberSelect}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        const johnDoe = screen.getByText('John Doe')
-        fireEvent.click(johnDoe)
-      })
-
-      expect(handleMemberSelect).toHaveBeenCalledWith(['user-1', 'user-2'])
-    })
-
-    it('should deselect member when clicked again', async () => {
-      const handleMemberSelect = vi.fn()
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          value={['user-1', 'user-2']}
-          onMemberSelect={handleMemberSelect}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        const johnDoe = screen.getByText('John Doe')
-        fireEvent.click(johnDoe)
-      })
-
-      expect(handleMemberSelect).toHaveBeenCalledWith(['user-1'])
-    })
-  })
-
-  describe('Search Functionality', () => {
-    it('should allow typing in search input', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Type in search
-      fireEvent.change(searchInput, { target: { value: 'John' } })
-      expect(searchInput).toHaveValue('John')
-    })
-
-    it('should render search input in partial members mode', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open and search input to be available
-      const searchInput = await screen.findByRole('textbox')
-      expect(searchInput).toBeInTheDocument()
-    })
-
-    it('should filter members after debounce completes', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Type in search
-      fireEvent.change(searchInput, { target: { value: 'John' } })
-
-      // Wait for debounce (500ms) + buffer
-      await waitFor(
-        () => {
-          expect(screen.getByText('John Doe')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should handle clear search functionality', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Type in search
-      fireEvent.change(searchInput, { target: { value: 'test' } })
-      expect(searchInput).toHaveValue('test')
-
-      const clearButton = screen.getByTestId('input-clear')
-      fireEvent.click(clearButton)
-
-      // After clicking clear, input should be empty
-      await waitFor(() => {
-        expect(searchInput).toHaveValue('')
-      })
-    })
-
-    it('should filter members by email', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Search by email
-      fireEvent.change(searchInput, { target: { value: 'john@example' } })
-
-      // Wait for debounce
-      await waitFor(
-        () => {
-          expect(screen.getByText('John Doe')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should show no results message when search matches nothing', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Search for non-existent member
-      fireEvent.change(searchInput, { target: { value: 'nonexistent12345' } })
-
-      // Wait for debounce and no results message
-      await waitFor(
-        () => {
-          expect(screen.getByText(/form\.onSearchResults/)).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should show current user when search matches user name', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Search for current user by name - partial match
-      fireEvent.change(searchInput, { target: { value: 'Current' } })
-
-      // Current user (showMe) should remain visible based on name match
-      // The component uses useMemo to check if userProfile.name.includes(searchKeywords)
-      expect(searchInput).toHaveValue('Current')
-      // Current User label appears multiple times (trigger + member list)
-      expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should show current user when search matches user email', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      const trigger = screen.getByTitle(/Current User/)
-      fireEvent.click(trigger)
-
-      // Wait for dropdown to open
-      const searchInput = await screen.findByRole('textbox')
-
-      // Search for current user by email
-      fireEvent.change(searchInput, { target: { value: 'current@' } })
-
-      // The component checks userProfile.email.includes(searchKeywords)
-      expect(searchInput).toHaveValue('current@')
-      // Current User should remain visible based on email match
-      expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
-    })
-  })
-
-  describe('Disabled State', () => {
-    it('should apply disabled styles when disabled', () => {
-      const { container } = render(<PermissionSelector {...defaultProps} disabled={true} />)
-      // When disabled, the component has cursor-not-allowed! class (escaped in Tailwind)
-      const triggerElement = container.querySelector('[class*="cursor-not-allowed"]')
-      expect(triggerElement).toBeInTheDocument()
-    })
-  })
-
-  describe('Display Variations', () => {
-    it('should display single avatar when only one member selected', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          value={['user-1']}
-        />,
-      )
-
-      // Should display single avatar
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
-    })
-
-    it('should display two avatars when two or more members selected', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          value={['user-1', 'user-2']}
-        />,
-      )
-
-      // Should display member names
-      expect(screen.getByTitle(/Current User, John Doe/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty member list', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
-
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
-    })
-
-    it('should handle member list with only current user', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          memberList={[mockMemberList[0]]}
-        />,
-      )
-
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
-    })
-
-    it('should only show members with allowed roles', () => {
-      // The component filters members by role in useMemo
-      // Allowed roles are: owner, admin, editor, dataset_operator
-      // This is tested indirectly through the memberList filtering
-      const memberListWithNormalUser: Member[] = [
-        ...mockMemberList,
-        { id: 'user-5', name: 'Normal User', email: 'normal@example.com', avatar: '', avatar_url: '', role: 'normal', last_login_at: '', created_at: '', status: 'active' },
-      ]
-
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          memberList={memberListWithNormalUser}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
-
-      // The component renders - the filtering logic is internal
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should update when permission prop changes', () => {
-      const { rerender } = render(<PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />)
-
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
-
-      rerender(<PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
-
-      expect(screen.getByText(/form\.permissionsAllMember/)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/form.onSearchResults/)).toBeInTheDocument()
   })
 })

@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createReactI18nextMock } from '@/test/i18n-mock'
-import ErrorBoundary, { ErrorFallback, useAsyncError, useErrorHandler, withErrorBoundary } from '../index'
+import ErrorBoundary, { withErrorBoundary } from '../index'
 
 const mockConfig = vi.hoisted(() => ({
   isDev: false,
@@ -14,18 +15,20 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'error': 'Error',
-  'errorBoundary.componentStack': 'Component Stack:',
-  'errorBoundary.details': 'Error Details (Development Only)',
-  'errorBoundary.errorCount': 'This error has occurred {{count}} times',
-  'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
-  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
-  'errorBoundary.reloadPage': 'Reload Page',
-  'errorBoundary.title': 'Something went wrong',
-  'errorBoundary.tryAgain': 'Try Again',
-  'errorBoundary.tryAgainCompact': 'Try again',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    error: 'Error',
+    'errorBoundary.componentStack': 'Component Stack:',
+    'errorBoundary.details': 'Error Details (Development Only)',
+    'errorBoundary.errorCount': 'This error has occurred {{count}} times',
+    'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
+    'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+    'errorBoundary.reloadPage': 'Reload Page',
+    'errorBoundary.title': 'Something went wrong',
+    'errorBoundary.tryAgain': 'Try Again',
+    'errorBoundary.tryAgainCompact': 'Try again',
+  }),
+)
 
 type ThrowOnRenderProps = {
   message?: string
@@ -33,8 +36,7 @@ type ThrowOnRenderProps = {
 }
 
 const ThrowOnRender = ({ shouldThrow, message = 'render boom' }: ThrowOnRenderProps) => {
-  if (shouldThrow)
-    throw new Error(message)
+  if (shouldThrow) throw new Error(message)
 
   return <div>Child content rendered</div>
 }
@@ -50,9 +52,9 @@ describe('ErrorBoundary', () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
+    vi.unstubAllGlobals()
   })
 
-  // Verify default render and default fallback behavior.
   describe('Rendering', () => {
     it('should render children when no error occurs', () => {
       render(
@@ -72,13 +74,14 @@ describe('ErrorBoundary', () => {
       )
 
       expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
-      expect(screen.getByText('An unexpected error occurred while rendering this component.')).toBeInTheDocument()
+      expect(
+        screen.getByText('An unexpected error occurred while rendering this component.'),
+      ).toBeInTheDocument()
     })
 
-    it('should render custom title, message, and className in fallback', async () => {
+    it('should render custom title and message in fallback', async () => {
       render(
         <ErrorBoundary
-          className="custom-boundary"
           customMessage="Custom recovery message"
           customTitle="Custom crash title"
           isolate={false}
@@ -89,14 +92,9 @@ describe('ErrorBoundary', () => {
 
       expect(await screen.findByText('Custom crash title')).toBeInTheDocument()
       expect(screen.getByText('Custom recovery message')).toBeInTheDocument()
-
-      const fallbackRoot = document.querySelector('.custom-boundary')
-      expect(fallbackRoot).toBeInTheDocument()
-      expect(fallbackRoot).not.toHaveClass('min-h-[200px]')
     })
   })
 
-  // Validate explicit fallback prop variants.
   describe('Fallback props', () => {
     it('should render node fallback when fallback prop is a React node', async () => {
       render(
@@ -110,24 +108,17 @@ describe('ErrorBoundary', () => {
 
     it('should render function fallback with error message when fallback prop is a function', async () => {
       render(
-        <ErrorBoundary
-          fallback={error => (
-            <div>
-              Function fallback:
-              {' '}
-              {error.message}
-            </div>
-          )}
-        >
+        <ErrorBoundary fallback={(error) => <div>Function fallback: {error.message}</div>}>
           <ThrowOnRender message="function fallback boom" shouldThrow={true} />
         </ErrorBoundary>,
       )
 
-      expect(await screen.findByText('Function fallback: function fallback boom')).toBeInTheDocument()
+      expect(
+        await screen.findByText('Function fallback: function fallback boom'),
+      ).toBeInTheDocument()
     })
   })
 
-  // Validate error reporting and details panel behavior.
   describe('Error reporting', () => {
     it('should call onError with error and errorInfo when child throws', async () => {
       const onError = vi.fn()
@@ -158,30 +149,8 @@ describe('ErrorBoundary', () => {
       expect(screen.getByText('Error:')).toBeInTheDocument()
       expect(screen.getByText(/details boom/i)).toBeInTheDocument()
     })
-
-    it('should log boundary errors in development mode', async () => {
-      mockConfig.isDev = true
-
-      render(
-        <ErrorBoundary>
-          <ThrowOnRender message="dev boom" shouldThrow={true} />
-        </ErrorBoundary>,
-      )
-
-      await screen.findByText('Something went wrong')
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'ErrorBoundary caught an error:',
-        expect.objectContaining({ message: 'dev boom' }),
-      )
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error Info:',
-        expect.objectContaining({ componentStack: expect.any(String) }),
-      )
-    })
   })
 
-  // Validate recovery controls and automatic reset triggers.
   describe('Recovery', () => {
     it('should hide recovery actions when enableRecovery is false', async () => {
       render(
@@ -197,6 +166,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should reset and render children when Try Again is clicked', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
 
       const RecoveryHarness = () => {
@@ -214,13 +184,14 @@ describe('ErrorBoundary', () => {
       }
 
       render(<RecoveryHarness />)
-      fireEvent.click(await screen.findByRole('button', { name: 'Try Again' }))
+      await user.click(await screen.findByRole('button', { name: 'Try Again' }))
 
       await screen.findByText('Child content rendered')
       expect(onReset).toHaveBeenCalledTimes(1)
     })
 
     it('should reset after resetKeys change when boundary is in error state', async () => {
+      const user = userEvent.setup()
       const ResetKeysHarness = () => {
         const [shouldThrow, setShouldThrow] = React.useState(true)
         const [boundaryKey, setBoundaryKey] = React.useState(0)
@@ -245,7 +216,7 @@ describe('ErrorBoundary', () => {
       render(<ResetKeysHarness />)
       await screen.findByText('Something went wrong')
 
-      fireEvent.click(screen.getByRole('button', { name: 'Recover with keys' }))
+      await user.click(screen.getByRole('button', { name: 'Recover with keys' }))
 
       await waitFor(() => {
         expect(screen.getByText('Child content rendered')).toBeInTheDocument()
@@ -253,6 +224,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should not reset when resetKeys reference changes but values are identical', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
 
       const StableKeysHarness = () => {
@@ -270,7 +242,7 @@ describe('ErrorBoundary', () => {
       render(<StableKeysHarness />)
       await screen.findByText('Something went wrong')
 
-      fireEvent.click(screen.getByRole('button', { name: 'Update keys same values' }))
+      await user.click(screen.getByRole('button', { name: 'Update keys same values' }))
 
       await waitFor(() => {
         expect(screen.getByText('Something went wrong')).toBeInTheDocument()
@@ -279,6 +251,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should reset after children change when resetOnPropsChange is true', async () => {
+      const user = userEvent.setup()
       const ResetOnPropsHarness = () => {
         const [shouldThrow, setShouldThrow] = React.useState(true)
         const [childLabel, setChildLabel] = React.useState('first child')
@@ -303,7 +276,7 @@ describe('ErrorBoundary', () => {
       render(<ResetOnPropsHarness />)
       await screen.findByText('Something went wrong')
 
-      fireEvent.click(screen.getByRole('button', { name: 'Replace children' }))
+      await user.click(screen.getByRole('button', { name: 'Replace children' }))
 
       await waitFor(() => {
         expect(screen.getByText('second child')).toBeInTheDocument()
@@ -311,11 +284,9 @@ describe('ErrorBoundary', () => {
     })
 
     it('should call window.location.reload when Reload Page is clicked', async () => {
+      const user = userEvent.setup()
       const reloadSpy = vi.fn()
-      Object.defineProperty(window, 'location', {
-        value: { ...window.location, reload: reloadSpy },
-        writable: true,
-      })
+      vi.stubGlobal('location', { ...window.location, reload: reloadSpy })
 
       render(
         <ErrorBoundary>
@@ -323,11 +294,30 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>,
       )
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Reload Page' }))
+      await user.click(await screen.findByRole('button', { name: 'Reload Page' }))
 
       expect(reloadSpy).toHaveBeenCalledTimes(1)
     })
   })
+  it.each([{ resetKeys: [] }, { resetKeys: undefined }, { resetKeys: ['first'] }])(
+    'recovers when reset keys are removed: $resetKeys',
+    ({ resetKeys }) => {
+      const onReset = vi.fn()
+      const { rerender } = render(
+        <ErrorBoundary resetKeys={['first', 'second']} onReset={onReset}>
+          <ThrowOnRender shouldThrow />
+        </ErrorBoundary>,
+      )
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+      rerender(
+        <ErrorBoundary resetKeys={resetKeys} onReset={onReset}>
+          <ThrowOnRender shouldThrow={false} />
+        </ErrorBoundary>,
+      )
+      expect(screen.getByText('Child content rendered')).toBeInTheDocument()
+      expect(onReset).toHaveBeenCalledOnce()
+    },
+  )
 })
 
 describe('ErrorBoundary utility exports', () => {
@@ -338,57 +328,9 @@ describe('ErrorBoundary utility exports', () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
+    vi.unstubAllGlobals()
   })
 
-  // Validate imperative error hook behavior.
-  describe('useErrorHandler', () => {
-    it('should trigger error boundary fallback when setError is called', async () => {
-      const HookConsumer = () => {
-        const setError = useErrorHandler()
-        return (
-          <button onClick={() => setError(new Error('handler boom'))}>
-            Trigger hook error
-          </button>
-        )
-      }
-
-      render(
-        <ErrorBoundary fallback={<div>Hook fallback shown</div>}>
-          <HookConsumer />
-        </ErrorBoundary>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Trigger hook error' }))
-
-      expect(await screen.findByText('Hook fallback shown')).toBeInTheDocument()
-    })
-  })
-
-  // Validate async error bridge hook behavior.
-  describe('useAsyncError', () => {
-    it('should trigger error boundary fallback when async error callback is called', async () => {
-      const AsyncHookConsumer = () => {
-        const throwAsyncError = useAsyncError()
-        return (
-          <button onClick={() => throwAsyncError(new Error('async hook boom'))}>
-            Trigger async hook error
-          </button>
-        )
-      }
-
-      render(
-        <ErrorBoundary fallback={<div>Async fallback shown</div>}>
-          <AsyncHookConsumer />
-        </ErrorBoundary>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Trigger async hook error' }))
-
-      expect(await screen.findByText('Async fallback shown')).toBeInTheDocument()
-    })
-  })
-
-  // Validate HOC wrapper behavior and metadata.
   describe('withErrorBoundary', () => {
     it('should wrap component and render custom title when wrapped component throws', async () => {
       type WrappedProps = {
@@ -396,8 +338,7 @@ describe('ErrorBoundary utility exports', () => {
       }
 
       const WrappedTarget = ({ shouldThrow }: WrappedProps) => {
-        if (shouldThrow)
-          throw new Error('wrapped boom')
+        if (shouldThrow) throw new Error('wrapped boom')
         return <div>Wrapped content</div>
       }
 
@@ -408,44 +349,6 @@ describe('ErrorBoundary utility exports', () => {
       render(<Wrapped shouldThrow={true} />)
 
       expect(await screen.findByText('Wrapped boundary title')).toBeInTheDocument()
-    })
-
-    it('should set displayName using wrapped component name', () => {
-      const NamedComponent = () => <div>named content</div>
-      const Wrapped = withErrorBoundary(NamedComponent)
-
-      expect(Wrapped.displayName).toBe('withErrorBoundary(NamedComponent)')
-    })
-
-    it('should fallback displayName to Component when wrapped component has no displayName and empty name', () => {
-      const Nameless = (() => <div>nameless</div>) as React.FC
-      Object.defineProperty(Nameless, 'displayName', { value: undefined, configurable: true })
-      Object.defineProperty(Nameless, 'name', { value: '', configurable: true })
-
-      const Wrapped = withErrorBoundary(Nameless)
-
-      expect(Wrapped.displayName).toBe('withErrorBoundary(Component)')
-    })
-  })
-
-  // Validate simple fallback helper component.
-  describe('ErrorFallback', () => {
-    it('should render message and call reset action when button is clicked', () => {
-      const resetErrorBoundaryAction = vi.fn()
-
-      render(
-        <ErrorFallback
-          error={new Error('fallback helper message')}
-          resetErrorBoundaryAction={resetErrorBoundaryAction}
-        />,
-      )
-
-      expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument()
-      expect(screen.getByText('fallback helper message')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-
-      expect(resetErrorBoundaryAction).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -1,25 +1,29 @@
+import type {
+  AppAgentModeResponse,
+  AppSuggestedQuestionsAfterAnswerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
-import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import type { AgentStrategy, Model, ModelModeType, RETRIEVE_TYPE, TtsAutoPlay } from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
 
-export enum PromptMode {
-  simple = 'simple',
-  advanced = 'advanced',
-}
+export const PromptMode = {
+  simple: 'simple',
+  advanced: 'advanced',
+} as const
+
+export type PromptMode = (typeof PromptMode)[keyof typeof PromptMode]
 
 export type PromptItem = {
-  role?: PromptRole
+  role?: string
   text: string
 }
 
@@ -42,17 +46,19 @@ export type BlockStatus = {
   query: boolean
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
+
+export type PromptRole = (typeof PromptRole)[keyof typeof PromptRole]
 
 export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
-  default?: string | number
+  default?: string | number | boolean | FileEntity | FileEntity[]
   required?: boolean
   options?: string[]
   max_length?: number
@@ -74,9 +80,14 @@ export type MoreLikeThisConfig = {
   enabled: boolean
 }
 
-export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
+export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
+  model?: Model
+  prompt?: string
+}
 
-export type SpeechToTextConfig = MoreLikeThisConfig
+export type SpeechToTextConfig = {
+  enabled: boolean
+}
 
 export type TextToSpeechConfig = {
   enabled: boolean
@@ -85,7 +96,9 @@ export type TextToSpeechConfig = {
   autoPlay?: TtsAutoPlay
 }
 
-export type CitationConfig = MoreLikeThisConfig
+export type CitationConfig = {
+  enabled: boolean
+}
 
 export type AnnotationReplyConfig = {
   id: string
@@ -108,15 +121,17 @@ export type ModerationConfig = MoreLikeThisConfig & {
     api_based_extension_id?: string
     inputs_config?: ModerationContentConfig
     outputs_config?: ModerationContentConfig
-  } & Partial<Record<string, any>>
+  } & Partial<Record<string, unknown>>
 }
 
-export type RetrieverResourceConfig = MoreLikeThisConfig
+type RetrieverResourceConfig = {
+  enabled: boolean
+}
 export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy
   max_iteration: number
-  tools: ToolItem[]
+  tools: NonNullable<AppAgentModeResponse['tools']>
 }
 // frontend use. Not the same as backend
 export type ModelConfig = {
@@ -130,7 +145,7 @@ export type ModelConfig = {
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
   suggested_questions: string[] | null
-  suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
+  suggested_questions_after_answer: AppSuggestedQuestionsAfterAnswerResponse | null
   speech_to_text: SpeechToTextConfig | null
   text_to_speech: TextToSpeechConfig | null
   file_upload: FileUpload | null
@@ -138,7 +153,7 @@ export type ModelConfig = {
   sensitive_word_avoidance: ModerationConfig | null
   annotation_reply: AnnotationReplyConfig | null
   external_data_tools?: ExternalDataTool[] | null
-  system_parameters: {
+  system_parameters?: {
     audio_file_size_limit: number
     file_size_limit: number
     image_file_size_limit: number

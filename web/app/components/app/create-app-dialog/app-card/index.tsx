@@ -1,80 +1,103 @@
 'use client'
-import type { App } from '@/models/explore'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
-import { useCallback } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
-import AppListContext from '@/context/app-list-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
-  app: App
+  app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
+  onPreview: () => void
 }
 
-const AppCard = ({
-  app,
-  canCreate,
-  onCreate,
-}: AppCardProps) => {
-  const { t } = useTranslation()
+const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
+  const id = useId()
+  const { t } = useTranslation(['app', 'explore'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { app: appBasicInfo } = app
-  const { systemFeatures } = useGlobalPublicStore()
-  const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
-  const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
-  const showTryAPPPanel = useCallback((appId: string) => {
-    return () => {
-      setShowTryAppPanel?.(true, { appId, app })
-    }
-  }, [setShowTryAppPanel, app.category])
+  const appName = appBasicInfo?.name ?? ''
+  const appMode = appBasicInfo?.mode ?? ''
+
+  const canViewApp = deploymentEdition === 'CLOUD'
+  const handleShowTryAppPanel = useCallback(() => {
+    trackEvent('preview_template', {
+      template_id: app.app_id,
+      template_name: appName,
+      template_mode: appMode,
+      template_categories: app.categories ?? [],
+      page: 'studio',
+    })
+    onPreview()
+  }, [onPreview, app, appName, appMode])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4  shadow-xs hover:shadow-lg')}>
+    <div
+      className={cn(
+        'group relative flex h-33 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
+      )}
+    >
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appBasicInfo.icon_type}
-            icon={appBasicInfo.icon}
-            background={appBasicInfo.icon_background}
-            imageUrl={appBasicInfo.icon_url}
-          />
+          <AppIcon size="large" icon={appBasicInfo} />
           <AppTypeIcon
-            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 radius-xs border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
-            className="h-3 w-3"
-            type={appBasicInfo.mode}
+            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
+            className="size-3"
+            type={appMode}
           />
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appBasicInfo.name}>{appBasicInfo.name}</span>
+            <span
+              id={`${id}-name`}
+              className="system-md-semibold text-text-secondary"
+              title={appName}
+            >
+              {appName}
+            </span>
           </div>
-          <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={app.app.mode} />
+          <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={appMode} />
         </div>
       </div>
-      <div className="system-xs-regular py-1 text-text-tertiary">
-        <div className="line-clamp-3">
-          {app.description}
-        </div>
+      <div className="py-1 system-xs-regular text-text-tertiary">
+        <div className="line-clamp-3">{app.description}</div>
       </div>
-      {(canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && 'grid-cols-2')}>
+      {(canCreate || canViewApp) && (
+        <div
+          className={cn(
+            'pointer-events-none absolute right-0 bottom-0 left-0 flex bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+          )}
+        >
+          <div
+            className={cn(
+              'grid h-8 w-full grid-cols-1 items-center space-x-2',
+              canCreate && canViewApp && 'grid-cols-2',
+            )}
+          >
             {canCreate && (
-              <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="mr-1 h-4 w-4" />
-                <span className="text-xs">{t('newApp.useTemplate', { ns: 'app' })}</span>
+              <Button variant="primary" aria-labelledby={`${id}-use ${id}-name`} onClick={onCreate}>
+                <PlusIcon aria-hidden="true" className="size-4" />
+                <span id={`${id}-use`} className="text-xs">
+                  {t(($) => $['newApp.useTemplate'], { ns: 'app' })}
+                </span>
               </Button>
             )}
-            <Button onClick={showTryAPPPanel(app.app_id)}>
-              <RiInformation2Line className="mr-1 size-4" />
-              <span>{t('appCard.try', { ns: 'explore' })}</span>
-            </Button>
+            {canViewApp && (
+              <Button aria-labelledby={`${id}-details ${id}-name`} onClick={handleShowTryAppPanel}>
+                <RiInformation2Line aria-hidden="true" className="size-4" />
+                <span id={`${id}-details`}>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
+              </Button>
+            )}
           </div>
         </div>
       )}

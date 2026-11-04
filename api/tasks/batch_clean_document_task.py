@@ -8,11 +8,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
+from models.dataset import DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,12 @@ BATCH_SIZE = 1000
 
 
 @shared_task(queue="dataset")
-def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str | None, file_ids: list[str]):
+def batch_clean_document_task(
+    document_ids: list[str],
+    dataset_id: str,
+    doc_form: str | None,
+    file_ids: list[str],
+) -> None:
     """
     Clean document when document deleted.
     :param document_ids: document ids
@@ -40,23 +47,36 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
+    dataset_tenant_id: str | None = None
+    deletable_file_ids = list(file_ids)
 
     try:
         # ============ Step 1: Query segment and file data (short read-only transaction) ============
-        with session_factory.create_session() as session:
+        with session_factory.create_session() as session, session.begin():
             # Get segments info
             segments = session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
             ).all()
 
             if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
+                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                 segment_ids = [segment.id for segment in segments]
 
                 # Collect image file IDs from segment content
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
+
+                total_image_upload_file_ids.extend(
+                    session.scalars(
+                        select(SegmentAttachmentBinding.attachment_id).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                        )
+                    ).all()
+                )
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -67,29 +87,32 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
 
             # Query storage keys for document files
             if file_ids:
-                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
+                leased_file_ids = reserve_upgrade_file_cleanup(session, file_ids)
+                deletable_file_ids = [file_id for file_id in file_ids if file_id not in leased_file_ids]
+                if leased_file_ids:
+                    logger.info(
+                        "Keep %d source files while KnowledgeFS upgrade leases are active, dataset_id=%s",
+                        len(leased_file_ids),
+                        dataset_id,
+                    )
+                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(deletable_file_ids))).all()
                 storage_keys_to_delete.extend([f.key for f in files if f and f.key])
 
-        # ============ Step 2: Clean vector index (external service, fresh session for dataset) ============
-        if index_node_ids:
-            try:
-                # Fetch dataset in a fresh session to avoid DetachedInstanceError
-                with session_factory.create_session() as session:
-                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-                    if not dataset:
-                        logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
-                    else:
-                        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                        index_processor.clean(
-                            dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-                        )
-            except Exception:
-                logger.exception(
-                    "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
-                    dataset_id,
-                    document_ids,
-                    len(index_node_ids),
-                )
+        # A retry can still have summaries even after its segments were deleted.
+        try:
+            dataset_tenant_id = clean_document_indexes(
+                dataset_id=dataset_id,
+                document_ids=document_ids,
+                doc_form=doc_form,
+                new_session=session_factory.create_session,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
+                dataset_id,
+                document_ids,
+                len(index_node_ids),
+            )
 
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
@@ -148,6 +171,13 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
+                        binding_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(batch),
+                        )
+                        session.execute(binding_delete_stmt)
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()
@@ -169,17 +199,17 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 )
 
         # ============ Step 6: Delete document-associated files (separate short transaction) ============
-        if file_ids:
+        if deletable_file_ids:
             try:
                 with session_factory.create_session() as session:
-                    stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
+                    stmt = delete(UploadFile).where(UploadFile.id.in_(deletable_file_ids))
                     session.execute(stmt)
                     session.commit()
             except Exception:
                 logger.exception(
                     "Failed to delete document UploadFile records for dataset_id: %s, file_ids: %s",
                     dataset_id,
-                    file_ids,
+                    deletable_file_ids,
                 )
 
         # ============ Step 7: Delete storage files (I/O operations, no DB transaction) ============
@@ -197,6 +227,9 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 len(storage_keys_to_delete),
                 dataset_id,
             )
+
+        if dataset_tenant_id is not None:
+            schedule_billing_vector_space_refresh(dataset_tenant_id)
 
         end_at = time.perf_counter()
         logger.info(

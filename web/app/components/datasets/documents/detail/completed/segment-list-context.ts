@@ -1,15 +1,18 @@
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContextSelector } from 'use-context-selector'
 
-export type CurrSegmentType = {
-  segInfo?: SegmentDetailModel
+type CurrSegmentType = {
+  segInfo?: SegmentResponse
   showModal: boolean
   isEditMode?: boolean
 }
 
-export type CurrChildChunkType = {
-  childChunkInfo?: ChildChunkDetail
+type CurrChildChunkType = {
+  childChunkInfo?: ChildChunkResponse
   showModal: boolean
 }
 

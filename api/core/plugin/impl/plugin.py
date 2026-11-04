@@ -1,10 +1,12 @@
 from collections.abc import Sequence
+from typing import Any
 
 from requests import HTTPError
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     MissingPluginDependency,
+    PluginCategory,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -12,9 +14,11 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstalledIdsDaemonResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
+    PluginListWithoutTotalResponse,
     PluginReadmeResponse,
 )
 from core.plugin.impl.base import BasePluginClient
@@ -65,12 +69,47 @@ class PluginInstaller(BasePluginClient):
         )
         return result.list
 
+    def list_installed_plugin_ids(self, tenant_id: str, category: PluginCategory) -> list[str]:
+        """List all currently installed plugin IDs in one category."""
+        result = self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/installation/ids",
+            PluginInstalledIdsDaemonResponse,
+            params={"category": category.value},
+        )
+        return result.plugin_ids
+
     def list_plugins_with_total(self, tenant_id: str, page: int, page_size: int) -> PluginListResponse:
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
             params={"page": page, "page_size": page_size, "response_type": "paged"},
+        )
+
+    def list_plugins_by_category(
+        self,
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+        *,
+        query: str = "",
+        tags: Sequence[str] = (),
+        language: str = "en_US",
+    ) -> PluginListWithoutTotalResponse:
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/{category.value}/list",
+            PluginListWithoutTotalResponse,
+            params={
+                "page": page,
+                "page_size": page_size,
+                "response_type": "paged",
+                "query": query,
+                "tags": list(tags),
+                "language": language,
+            },
         )
 
     def upload_pkg(
@@ -263,7 +302,7 @@ class PluginInstaller(BasePluginClient):
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         source: PluginInstallationSource,
-        meta: dict,
+        meta: dict[str, Any],
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.

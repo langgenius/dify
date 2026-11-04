@@ -1,133 +1,136 @@
 'use client'
-import type { FC } from 'react'
-import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
-import Loading from '@/app/components/base/loading'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ParentMode } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import SearchInput from '@/app/components/base/search-input'
+  Menu,
+  MenuContent,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getUploadFileExtension } from '@/app/components/datasets/documents/document-source'
 import { ChunkingMode } from '@/models/datasets'
-import { useDocumentList } from '@/service/knowledge/use-document'
-import { cn } from '@/utils/classnames'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
-type Props = {
-  datasetId: string
-  value: {
-    name?: string
-    extension?: string
-    chunkingMode?: ChunkingMode
-    parentMode?: ParentMode
-  }
-  onChange: (value: SimpleDocumentDetail) => void
+// The list query and the document detail query both describe the picked document.
+export type PickerDocument = Pick<
+  DocumentWithSegmentsResponse,
+  'id' | 'doc_form' | 'data_source_info'
+> & {
+  name?: string | null
+  data_source_detail_dict?: DocumentWithSegmentsResponse['data_source_detail_dict'] | null
 }
 
-const DocumentPicker: FC<Props> = ({
-  datasetId,
-  value,
-  onChange,
-}) => {
-  const { t } = useTranslation()
-  const {
-    name,
-    extension,
-    chunkingMode,
-    parentMode,
-  } = value
-  const [query, setQuery] = useState('')
+type DocumentPickerProps = {
+  datasetId: string
+  currentDocument?: PickerDocument | null
+  parentMode?: ParentMode
+}
 
-  const { data } = useDocumentList({
-    datasetId,
-    query: {
-      keyword: query,
-      page: 1,
-      limit: 20,
-    },
-  })
-  const documentsList = data?.data
-  const isGeneralMode = chunkingMode === ChunkingMode.text
-  const isParentChild = chunkingMode === ChunkingMode.parentChild
-  const isQAMode = chunkingMode === ChunkingMode.qa
-  const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
+function getDocumentExtension(document?: PickerDocument | null) {
+  if (!document) return ''
 
-  const [open, {
-    set: setOpen,
-    toggle: togglePopup,
-  }] = useBoolean(false)
-  const ArrowIcon = RiArrowDownSLine
+  const detailExtension = document.data_source_detail_dict?.upload_file?.extension
+  if (detailExtension) return detailExtension
 
-  const handleChange = useCallback(({ id }: DocumentItem) => {
-    onChange(documentsList?.find(item => item.id === id) as SimpleDocumentDetail)
-    setOpen(false)
-  }, [documentsList, onChange, setOpen])
+  return getUploadFileExtension(document.data_source_info) ?? ''
+}
 
-  const parentModeLabel = useMemo(() => {
-    if (!parentMode)
-      return '--'
-    return parentMode === 'paragraph' ? t('parentMode.paragraph', { ns: 'dataset' }) : t('parentMode.fullDoc', { ns: 'dataset' })
-  }, [parentMode, t])
+function DocumentPickerTriggerValue({
+  currentDocument: document,
+  parentMode,
+}: Pick<DocumentPickerProps, 'currentDocument' | 'parentMode'>) {
+  const { t } = useTranslation(['dataset'])
+  const isGeneralMode = document?.doc_form === ChunkingMode.text
+  const isParentChild = document?.doc_form === ChunkingMode.parentChild
+  const isQAMode = document?.doc_form === ChunkingMode.qa
+  const parentModeLabel = (() => {
+    if (!parentMode) return '--'
+    return parentMode === 'paragraph'
+      ? t(($) => $['parentMode.paragraph'], { ns: 'dataset' })
+      : t(($) => $['parentMode.fullDoc'], { ns: 'dataset' })
+  })()
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-    >
-      <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('ml-1 flex cursor-pointer select-none items-center rounded-lg px-2 py-0.5 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          <FileIcon name={name} extension={extension} size="xl" />
-          <div className="ml-1 mr-0.5 flex flex-col items-start">
-            <div className="flex items-center space-x-0.5">
-              <span className={cn('system-md-semibold text-text-primary')}>
-                {' '}
-                {name || '--'}
-              </span>
-              <ArrowIcon className="h-4 w-4 text-text-primary" />
-            </div>
-            <div className="flex h-3 items-center space-x-0.5 text-text-tertiary">
-              <TypeIcon className="h-3 w-3" />
-              <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
-                {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
-                {isParentChild && `${t('chunkingMode.parentChild', { ns: 'dataset' })} · ${parentModeLabel}`}
-              </span>
-            </div>
-          </div>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pt-2 shadow-lg backdrop-blur-[5px]">
-          <SearchInput value={query} onChange={setQuery} className="mx-1" />
-          {documentsList
-            ? (
-                <DocumentList
-                  className="mt-2"
-                  list={documentsList.map(d => ({
-                    id: d.id,
-                    name: d.name,
-                    extension: d.data_source_detail_dict?.upload_file?.extension || '',
-                  }))}
-                  onChange={handleChange}
-                />
-              )
-            : (
-                <div className="mt-2 flex h-[100px] w-[360px] items-center justify-center">
-                  <Loading />
-                </div>
-              )}
-        </div>
-
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+    <span className="flex min-w-0 items-center gap-1.5">
+      <FileIcon
+        name={document?.name ?? undefined}
+        extension={getDocumentExtension(document)}
+        size="xl"
+      />
+      <span className="flex min-w-0 flex-col items-start">
+        <span className="flex max-w-full min-w-0 items-center gap-1">
+          <span className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary">
+            {document?.name || '--'}
+          </span>
+          <span
+            className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-primary"
+            aria-hidden="true"
+          />
+        </span>
+        <span className="flex h-3 max-w-75 items-center gap-0.5 text-text-tertiary">
+          <span
+            className={cn(
+              'size-3 shrink-0',
+              isParentChild
+                ? 'i-custom-vender-knowledge-parent-child-chunk'
+                : 'i-custom-vender-knowledge-general-chunk',
+            )}
+            aria-hidden="true"
+          />
+          <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
+            {isGeneralMode && t(($) => $['chunkingMode.general'], { ns: 'dataset' })}
+            {isQAMode && t(($) => $['chunkingMode.qa'], { ns: 'dataset' })}
+            {isParentChild &&
+              `${t(($) => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`}
+          </span>
+        </span>
+      </span>
+    </span>
   )
 }
-export default React.memo(DocumentPicker)
+
+export function DocumentPicker({ datasetId, currentDocument, parentMode }: DocumentPickerProps) {
+  const { t } = useTranslation(['common'])
+  const [searchValue, setSearchValue] = useState('')
+
+  return (
+    <MenuFilterProvider filter={null} value={searchValue} onValueChange={setSearchValue}>
+      <Menu>
+        <MenuTrigger
+          aria-label={currentDocument?.name || t(($) => $['operation.search'], { ns: 'common' })}
+          className="ms-1 flex min-w-0 items-center gap-0.5 rounded-lg px-2 py-1 text-start transition-colors hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover motion-reduce:transition-none"
+        >
+          <DocumentPickerTriggerValue currentDocument={currentDocument} parentMode={parentMode} />
+        </MenuTrigger>
+        <MenuContent
+          align="start"
+          sideOffset={0}
+          aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+          className="w-90 max-w-(--available-width)"
+        >
+          <MenuInputGroup>
+            <span
+              className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
+              aria-hidden="true"
+            />
+            <MenuInput
+              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+              placeholder={t(($) => $['operation.search'], { ns: 'common' })}
+            />
+          </MenuInputGroup>
+          <DocumentList
+            datasetId={datasetId}
+            currentDocumentId={currentDocument?.id}
+            searchValue={searchValue}
+          />
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
+  )
+}
