@@ -11,9 +11,10 @@ from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from pydantic import ValidationError
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
@@ -207,7 +208,12 @@ class TestWorkflowCases:
             "WorkflowService",
             Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
         )
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+        database = SQLAlchemy(app)
+        with app.app_context():
+            monkeypatch.setitem(database.engines, None, sqlite_engine)
+        monkeypatch.setattr(workflow_module, "db", database)
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
@@ -245,18 +251,23 @@ class TestWorkflowCases:
             session.flush()
             raise RuntimeError("publish failed")
 
-        monkeypatch.setattr(
-            workflow_module,
-            "WorkflowService",
-            Mock(return_value=SimpleNamespace(publish_workflow=fail_after_update)),
-        )
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+        database = SQLAlchemy(app)
+        with app.app_context():
+            monkeypatch.setitem(database.engines, None, sqlite_engine)
+        monkeypatch.setattr(workflow_module, "db", database)
+        service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
+        monkeypatch.setattr(service, "publish_workflow", fail_after_update)
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             with pytest.raises(RuntimeError, match="publish failed"):
                 inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                     workflow_module.PublishedWorkflowApi(),
                     workflow_module.PublishWorkflowPayload.model_validate({}),
-                    SimpleNamespace(id="account-1"),
+                    current_user,
                     app_model,
                 )
 
