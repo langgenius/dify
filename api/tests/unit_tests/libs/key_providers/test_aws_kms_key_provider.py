@@ -8,6 +8,7 @@ decrypt makes KMS reject a blob wrapped under a different key instead of quietly
 
 import json
 from collections.abc import Callable
+from typing import NoReturn, TypedDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -27,6 +28,20 @@ def _resolve(key_id: str) -> str:
     return _ALIASES.get(key_id, key_id)
 
 
+class _DataKeyResponse(TypedDict):
+    """The subset of a KMS GenerateDataKey response the provider reads."""
+
+    Plaintext: bytes
+    CiphertextBlob: bytes
+    KeyId: str
+
+
+class _DecryptResponse(TypedDict):
+    """The subset of a KMS Decrypt response the provider reads."""
+
+    Plaintext: bytes
+
+
 class FakeKmsClient:
     """
     Stands in for a boto3 KMS client.
@@ -39,12 +54,12 @@ class FakeKmsClient:
     disabled_keys: set[str] = set()
 
     def __init__(self) -> None:
-        self.generate_calls: list[dict] = []
-        self.decrypt_calls: list[dict] = []
+        self.generate_calls: list[dict[str, object]] = []
+        self.decrypt_calls: list[dict[str, object]] = []
 
     # boto3 spells its keyword arguments in PascalCase, and this fake has to accept the same
     # names the provider passes, so N803 is suppressed rather than the signature changed.
-    def generate_data_key(self, *, KeyId: str, KeySpec: str, EncryptionContext: dict[str, str]) -> dict:  # noqa: N803
+    def generate_data_key(self, *, KeyId: str, KeySpec: str, EncryptionContext: dict[str, str]) -> _DataKeyResponse:  # noqa: N803
         self.generate_calls.append({"KeyId": KeyId, "KeySpec": KeySpec, "EncryptionContext": EncryptionContext})
         if KeyId in self.disabled_keys:
             raise ClientError({"Error": {"Code": "DisabledException", "Message": "key is disabled"}}, "GenerateDataKey")
@@ -55,7 +70,7 @@ class FakeKmsClient:
         # Real KMS returns the resolved key ARN, never the alias it was called with.
         return {"Plaintext": plaintext, "CiphertextBlob": blob, "KeyId": resolved}
 
-    def decrypt(self, *, CiphertextBlob: bytes, KeyId: str, EncryptionContext: dict[str, str]) -> dict:  # noqa: N803
+    def decrypt(self, *, CiphertextBlob: bytes, KeyId: str, EncryptionContext: dict[str, str]) -> _DecryptResponse:  # noqa: N803
         self.decrypt_calls.append(
             {"CiphertextBlob": CiphertextBlob, "KeyId": KeyId, "EncryptionContext": EncryptionContext}
         )
@@ -200,7 +215,7 @@ def test_transport_failure_surfaces_as_value_error(monkeypatch: pytest.MonkeyPat
     """BotoCoreError (connection-level) must be translated too, not just ClientError."""
     client = FakeKmsClient()
 
-    def _boom(**_: object) -> dict:
+    def _boom(**_: object) -> NoReturn:
         raise EndpointConnectionError(endpoint_url="https://kms.us-east-1.amazonaws.com")
 
     monkeypatch.setattr(
@@ -276,7 +291,7 @@ def _with_raw_metadata(envelope: bytes, metadata: bytes) -> bytes:
     return head + len(metadata).to_bytes(2, "big") + metadata + rest
 
 
-def _with_metadata(envelope: bytes, metadata: dict) -> bytes:
+def _with_metadata(envelope: bytes, metadata: dict[str, object]) -> bytes:
     return _with_raw_metadata(envelope, json.dumps(metadata).encode())
 
 
