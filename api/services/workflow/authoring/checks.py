@@ -449,8 +449,23 @@ class FieldEmpty(Check):
                 hint=node.hint(loc, required=True),
             )
             for node in target.nodes
-            for loc in empty_purpose_locs(node.data)
+            for loc in _unreported(empty_purpose_locs(node.data), _invalid_locs(target.dsl_issues, node))
         ]
+
+
+def _invalid_locs(issues: Iterable[GraphIssue], node: NodeTarget) -> list[Loc]:
+    """Where the DSL check already reported the node's data as invalid, relative to the data."""
+    return [
+        issue.loc[len(data_loc(node.id)) :]
+        for issue in issues
+        if issue.code == IssueCode.NODE_DATA_INVALID
+        if issue.node_id == node.id
+    ]
+
+
+def _unreported(locs: Iterable[Loc], invalid: Sequence[Loc]) -> list[Loc]:
+    """The locs that are neither at nor under a loc already reported invalid: a field gets one issue."""
+    return [loc for loc in locs if not any(loc[: len(reported)] == reported for reported in invalid)]
 
 
 def check_package(

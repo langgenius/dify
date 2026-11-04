@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from core.workflow.node_factory import node_data_model
 from graphon.nodes.base.node import Node
-from services.workflow.authoring.canvas_defaults import WILDCARD, canvas_value
+from services.workflow.authoring.canvas_defaults import WILDCARD, canvas_example
 from services.workflow.authoring.plugins import (
     NO_DEFAULT,
     DeclarationStatus,
@@ -179,8 +179,7 @@ class NodeTarget:
 
     def example(self, loc: Loc) -> object | None:
         """What the canvas gives a new node at `loc`; a list item takes the example of the canvas's first item."""
-        canvas_loc = tuple(WILDCARD if isinstance(key, int) else key for key in loc)
-        return canvas_value(str(self.data["type"]), canvas_loc, version=self.data.get("version"))
+        return canvas_example(self.data, tuple(WILDCARD if isinstance(key, int) else key for key in loc))
 
     def hint(self, loc: Sequence[str | int], *, required: bool) -> FieldHint:
         """What the agent needs to write the field at `loc` of this node's data, with the canvas's example."""
