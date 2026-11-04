@@ -165,7 +165,10 @@ def test_a_block_seed_is_the_canvas_node() -> None:
         assert node is not None, option.type
         edition = node.edition(option.version)
         assert edition is not None, option.type
-        assert option.seed == {"type": option.type, "version": option.version, "title": option.label, **edition.data}
+        plain = {"type": option.type, "version": option.version, "title": option.label}
+        withheld = edition.withheld(plain)
+        canvas = {key: value for key, value in edition.data.items() if key not in withheld}
+        assert option.seed == {**plain, **canvas}
 
 
 def test_a_human_input_block_seed_has_the_version_two_fields() -> None:
@@ -174,6 +177,13 @@ def test_a_human_input_block_seed_has_the_version_two_fields() -> None:
     assert option.seed["version"] == "2"
     assert set(option.seed) >= V2_ONLY_KEYS
     assert "delivery_methods" not in option.seed
+
+
+@pytest.mark.parametrize("node_type", ["iteration", "loop"])
+def test_a_container_block_seed_has_no_start_node_id(node_type: str) -> None:
+    [option] = [o for o in _options(kind=NodeOptionKind.BLOCK, roster=_NoRoster()) if o.type == node_type]
+
+    assert "start_node_id" not in option.seed
 
 
 def test_tool_rows_include_builtin_current_time(tools: list[ToolSource]) -> None:

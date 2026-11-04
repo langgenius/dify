@@ -12,6 +12,7 @@ from services.workflow.authoring import FillContext, canvas_defaults
 from services.workflow.authoring.canvas_defaults import (
     WILDCARD,
     CanvasNode,
+    canvas_example,
     canvas_node,
     canvas_value,
     with_canvas_defaults,
@@ -92,10 +93,15 @@ def test_a_type_without_a_canvas_node_has_none() -> None:
 
 
 @pytest.mark.parametrize("node", list(CanvasNode))
-def test_a_bare_seed_fills_to_the_canvas_node(node: CanvasNode) -> None:
-    filled = with_canvas_defaults({"type": node.value})
+def test_a_bare_seed_fills_to_the_canvas_node_but_what_it_withholds(node: CanvasNode) -> None:
+    bare = {"type": node.value}
+    edition = node.edition()
+    assert edition is not None
 
-    assert filled == {"type": node.value, **node.data}
+    filled = with_canvas_defaults(bare)
+
+    withheld = edition.withheld(bare)
+    assert filled == {"type": node.value, **{key: value for key, value in node.data.items() if key not in withheld}}
 
 
 V2_ONLY_KEYS = {"recipients_spec", "message_template", "debug_mode"}
@@ -381,6 +387,16 @@ def test_a_container_child_gets_canvas_defaults() -> None:
 
     assert filled["child"]["model"] == filled["plain"]["model"] == CanvasNode.LLM.data["model"]
     assert filled["loop"]["parallel_nums"] == 10
+
+
+@pytest.mark.parametrize("node", [CanvasNode.ITERATION, CanvasNode.LOOP])
+def test_a_container_gets_no_start_node_id_but_keeps_a_written_one(node: CanvasNode) -> None:
+    bare = {"type": node.value}
+    written = {"type": node.value, "start_node_id": "inner-start"}
+
+    assert "start_node_id" not in with_canvas_defaults(bare)
+    assert canvas_example(bare, ("start_node_id",)) is None
+    assert with_canvas_defaults(written)["start_node_id"] == "inner-start"
 
 
 def test_a_container_start_child_is_never_touched() -> None:

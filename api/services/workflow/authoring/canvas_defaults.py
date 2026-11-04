@@ -29,6 +29,8 @@ _JINJA2_EDITION: Final = "jinja2"
 _TEXT_KEY: Final = "text"
 _JINJA2_TEXT_KEY: Final = "jinja2_text"
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
+_START_NODE_ID_KEY: Final = "start_node_id"
+_DELIVERY_METHODS_KEY: Final = "delivery_methods"
 _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
     resources.files(__package__).joinpath(_DEFAULTS_FILE).read_text(encoding="utf-8")
@@ -37,6 +39,11 @@ _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
 
 def _nothing_withheld(_written: Mapping[str, object]) -> frozenset[str]:
     return frozenset()
+
+
+def _start_child_is_written_by_the_agent(_written: Mapping[str, object]) -> frozenset[str]:
+    """A container's start child is a node id; the canvas's empty id is no default, and it hides the missing child."""
+    return frozenset({_START_NODE_ID_KEY})
 
 
 def _completion_model_has_no_chat_prompt(written: Mapping[str, object]) -> frozenset[str]:
@@ -82,6 +89,8 @@ class CanvasEdition:
 
     `withheld` names the canvas keys not to write for the node as written, because the canvas value would not suit it.
     `emptiness` holds the purpose locs whose emptiness is not the generic rule's, each with its own test on the node.
+    `untaken` names the keys the editor's empty containers give every node of the type but this version does not
+    take; fill leaves them out, while import and the draft hash keep them.
     """
 
     version: str | None
@@ -89,6 +98,7 @@ class CanvasEdition:
     purpose: tuple[Loc, ...]
     withheld: Callable[[Mapping[str, object]], frozenset[str]] = _nothing_withheld
     emptiness: Mapping[Loc, Callable[[Mapping[str, object]], bool]] = field(default_factory=dict)
+    untaken: frozenset[str] = frozenset()
 
     @property
     def data(self) -> Mapping[str, object]:
@@ -103,8 +113,8 @@ class CanvasNode(StrEnum):
     listed.
 
     A member is given either the purpose locs of its one edition, or one `CanvasEdition` per version when the versions
-    differ. `data` and `purpose` are those of the first edition, which is the version a node without one has.
-    `edition` picks by a node's version.
+    differ or an edition has hooks. `data` and `purpose` are those of the first edition, which is the version a node
+    without one has. `edition` picks by a node's version.
     """
 
     data: Mapping[str, object]
@@ -182,6 +192,7 @@ class CanvasNode(StrEnum):
                 ("user_actions", WILDCARD, "id"),
                 ("user_actions", WILDCARD, "title"),
             ),
+            untaken=frozenset({_DELIVERY_METHODS_KEY}),
         ),
     )
     # if-else/default.ts:43, 47, 56, 62; the value is required only for some operators (:84-89)
@@ -193,7 +204,15 @@ class CanvasNode(StrEnum):
         ("cases", WILDCARD, "conditions", WILDCARD, "comparison_operator"),
     )
     # iteration/default.ts:32, 39
-    ITERATION = (BuiltinNodeTypes.ITERATION, ("iterator_selector",), ("output_selector",))
+    ITERATION = (
+        BuiltinNodeTypes.ITERATION,
+        CanvasEdition(
+            None,
+            BuiltinNodeTypes.ITERATION,
+            (("iterator_selector",), ("output_selector",)),
+            withheld=_start_child_is_written_by_the_agent,
+        ),
+    )
     # knowledge-retrieval/default.ts:35; the model is required only for single retrieval (:41-45)
     KNOWLEDGE_RETRIEVAL = (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, ("dataset_ids",))
     # knowledge-retrieval-v2/default.ts:31; the text or the image query is enough (:27)
@@ -216,9 +235,16 @@ class CanvasNode(StrEnum):
     # loop/default.ts:36, 51, 57
     LOOP = (
         BuiltinNodeTypes.LOOP,
-        ("loop_variables", WILDCARD, "label"),
-        ("break_conditions", WILDCARD, "variable_selector"),
-        ("break_conditions", WILDCARD, "comparison_operator"),
+        CanvasEdition(
+            None,
+            BuiltinNodeTypes.LOOP,
+            (
+                ("loop_variables", WILDCARD, "label"),
+                ("break_conditions", WILDCARD, "variable_selector"),
+                ("break_conditions", WILDCARD, "comparison_operator"),
+            ),
+            withheld=_start_child_is_written_by_the_agent,
+        ),
     )
     # loop-end/default.ts:15 checks nothing
     LOOP_END = (BuiltinNodeTypes.LOOP_END,)
@@ -320,6 +346,16 @@ def canvas_example(data: Mapping[str, object], loc: Loc) -> object | None:
     if loc and loc[0] in edition.withheld(data):
         return None
     return canvas_value(str(data[_TYPE_KEY]), loc, version=data.get(_VERSION_KEY))
+
+
+def untaken_keys(data: Mapping[str, object]) -> frozenset[str]:
+    """The keys the node's version does not take though the editor's empty containers give them; none for a type or
+    version the canvas does not know.
+    """
+    edition = _edition_of(data)
+    if edition is None:
+        return frozenset()
+    return edition.untaken
 
 
 def purpose_fields(data: Mapping[str, object]) -> frozenset[str | int]:

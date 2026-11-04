@@ -1,4 +1,7 @@
-from services.workflow.node_defaults import fill_graph, fill_node_data
+import pytest
+
+from graphon.enums import BuiltinNodeTypes
+from services.workflow.node_defaults import EDITOR_EMPTY, editor_defaults, fill_graph, fill_node_data
 
 
 def test_start_gets_empty_variables() -> None:
@@ -100,3 +103,20 @@ def test_mapping_typed_fields_are_not_filled_as_their_value_model() -> None:
     datasource_parameters = {"q": {"type": "mixed", "value": "x"}}
     data = fill_node_data({"type": "datasource", "datasource_parameters": datasource_parameters})
     assert data["datasource_parameters"] == datasource_parameters
+
+
+@pytest.mark.parametrize("version", [None, "1", "2"])
+def test_every_human_input_node_gets_the_editor_empties(version: str | None) -> None:
+    data = {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": version}
+    empties: dict[str, list[object]] = {"delivery_methods": [], "user_actions": [], "inputs": []}
+
+    assert editor_defaults(data) == {**empties, **data}
+    assert fill_node_data(data).items() >= empties.items()
+
+
+@pytest.mark.parametrize("node_type", list(EDITOR_EMPTY))
+@pytest.mark.parametrize("version", [None, "1", "2", "99"])
+def test_the_editor_empties_ignore_the_version(node_type: str, version: str | None) -> None:
+    data = {"type": node_type, "version": version}
+
+    assert editor_defaults(data) == {**EDITOR_EMPTY[node_type], **data}
