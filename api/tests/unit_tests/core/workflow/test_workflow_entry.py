@@ -32,6 +32,8 @@ from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel, RedisChannel
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine_events import (
+    FrameStartedEvent,
+    FrameVariablesUpdatedEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPausedEvent,
@@ -59,7 +61,7 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
-from graphon.variables.variables import StringVariable
+from graphon.variables.variables import SecretVariable, StringVariable
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
 from models.workflow import Workflow, WorkflowType
@@ -79,6 +81,55 @@ from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import 
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
+
+
+def test_response_stream_excludes_frame_variable_values() -> None:
+    pool = VariablePool()
+    pool.add(("env", "secret"), SecretVariable(name="secret", value="private-environment-value"))
+    state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0.0)
+    params = build_test_graph_init_params()
+    graph = (
+        Graph.new()
+        .add_root(
+            StartNode("start", StartNodeData(title="Start", variables=[]), init_params=params, runtime_state=state)
+        )
+        .add_node(
+            AnswerNode(
+                "answer",
+                AnswerNodeData(title="Answer", answer="Public response"),
+                init_params=params,
+                runtime_state=state,
+            ),
+            from_node_id="start",
+        )
+        .build()
+    )
+    engine = Engine(graph=graph, runtime_state=state, command_channel=InMemoryChannel())
+
+    events = list(iter_dify_graph_engine_events(engine))
+
+    assert not any(isinstance(event, (FrameStartedEvent, FrameVariablesUpdatedEvent)) for event in events)
+    assert "".join(event.chunk for event in events if isinstance(event, NodeRunStreamChunkEvent)) == "Public response"
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+
+
+def test_workflow_entry_disables_unused_frame_observations() -> None:
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+    params = build_test_graph_init_params()
+    graph = (
+        Graph.new()
+        .add_root(
+            StartNode("start", StartNodeData(title="Start", variables=[]), init_params=params, runtime_state=state)
+        )
+        .build()
+    )
+    entry = WorkflowEntry(graph_config=params.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+
+    events = list(entry.graph_engine.run())
+
+    assert not any(isinstance(event, (FrameStartedEvent, FrameVariablesUpdatedEvent)) for event in events)
+    assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "start" for event in events)
+    assert isinstance(events[-1], GraphRunSucceededEvent)
 
 
 def _build_issue_170_mock_config() -> tuple[WorkflowRunner, MockConfig]:

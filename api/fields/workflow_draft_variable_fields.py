@@ -5,38 +5,46 @@ from typing import Any, override
 from pydantic import model_validator
 
 from fields.base import ResponseModel
+from graphon.file import File
 from graphon.file import helpers as file_helpers
-from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from models.workflow import WorkflowDraftVariable
 
 type RecursiveJSONValue = str | int | float | bool | dict[str, "RecursiveJSONValue"] | list["RecursiveJSONValue"] | None
 
 
-def _convert_values_to_json_serializable_object(value: Segment) -> RecursiveJSONValue:
+def _to_json_value(value: Any) -> RecursiveJSONValue:
+    """Serialize segments and nested file metadata without signing references or mutating values.
+
+    Other values remain subject to the response model's JSON validation.
+    """
     match value:
-        case FileSegment():
-            return value.value.model_dump()
-        case ArrayFileSegment():
-            return [item.model_dump() for item in value.value]
-        case SegmentGroup():
-            return [_convert_values_to_json_serializable_object(item) for item in value.value]
+        case Segment():
+            return _to_json_value(value.value)
+        case File():
+            return value.model_dump(mode="json")
+        case dict():
+            return {key: _to_json_value(item) for key, item in value.items()}
+        case list() | tuple():
+            return [_to_json_value(item) for item in value]
         case _:
-            return value.value
+            return value
 
 
 def _serialize_var_value(variable: WorkflowDraftVariable) -> RecursiveJSONValue:
-    value = variable.get_value()
-    # Create a copy to avoid mutating the model's cached deserialized value.
-    value = value.model_copy(deep=True)
-    # Refresh URL signatures immediately before returning file values to the client.
+    """Serialize a draft value, refreshing URLs for its validated file variable types.
+
+    Cached values remain unchanged; nested file metadata receives no new access grants.
+    """
+    value = variable.get_value().model_copy(deep=True)
+    # Only typed file variables pass through Dify's file ownership validation.
     match value:
         case FileSegment():
             value.value.remote_url = value.value.generate_url()
         case ArrayFileSegment():
             for file in value.value:
                 file.remote_url = file.generate_url()
-    return _convert_values_to_json_serializable_object(value)
+    return _to_json_value(value)
 
 
 class WorkflowDraftVariableFullContentResponse(ResponseModel):
