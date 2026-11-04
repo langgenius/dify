@@ -722,8 +722,9 @@ def _listed_run_ids(
     monkeypatch.setattr(app_workflow, "application_services", lambda: services)
     api = AppRunListApi()
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/runs"):
-        response = cast(_EndpointView, api.get).__handler__(api, ctx, APP_ID, query=query)
-    return [row.id for row in cast(RunListResponse, response).data]
+        response = api.get.__handler__(api, ctx, APP_ID, query=query)  # type: ignore[attr-defined]
+    assert isinstance(response, RunListResponse)
+    return [row.id for row in response.data]
 
 
 @pytest.mark.parametrize(
