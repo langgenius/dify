@@ -27,7 +27,7 @@ export default function DeleteToken({
     <>
       <IconButton
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-5 right-5"
+        className="absolute inset-e-5 top-5"
         onClick={() => onClose()}
       >
         <span aria-hidden="true" className="i-ri-close-line size-4" />
