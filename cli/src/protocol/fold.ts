@@ -60,6 +60,20 @@ function replaceAnswer(result: FoldResult, event: Record<string, unknown>): void
   if (answer !== undefined) result.text.answer = answer
 }
 
+// An Agent app streams its reply as agent_message deltas, then closes with one message carrying
+// the complete answer. That message is the final answer, not more text to append.
+const agentMessageStreamed = new WeakSet<FoldResult>()
+
+function appendAgentMessage(result: FoldResult, event: Record<string, unknown>): void {
+  agentMessageStreamed.add(result)
+  appendAnswer(result, event)
+}
+
+function foldMessage(result: FoldResult, event: Record<string, unknown>): void {
+  if (agentMessageStreamed.has(result)) replaceAnswer(result, event)
+  else appendAnswer(result, event)
+}
+
 function appendTextChunk(result: FoldResult, event: Record<string, unknown>): void {
   const data = asRecord(event.data)
   if (data === undefined) return
@@ -116,8 +130,8 @@ export const foldAnyEvent: EventHandler = (result, event) => {
 }
 
 export const FOLD_TABLE: Readonly<Record<string, EventHandler>> = Object.freeze({
-  message: appendAnswer,
-  agent_message: appendAnswer,
+  message: foldMessage,
+  agent_message: appendAgentMessage,
   message_replace: replaceAnswer,
   text_chunk: appendTextChunk,
   message_end: endMessage,

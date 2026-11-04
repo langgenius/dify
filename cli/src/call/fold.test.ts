@@ -28,6 +28,57 @@ it('folds a chat run and copies the reply hint from message_end', () => {
   expect(code).toBe(0)
 })
 
+it('joins a legacy Agent reply, which streams agent_message only', () => {
+  const { result } = run([
+    ['agent_message', { answer: 'Yes ' }],
+    ['agent_thought', { thought: 'thinking' }],
+    ['agent_message', { answer: 'Miao~' }],
+    ['message_end', {}],
+  ])
+  expect(result.text.answer).toBe('Yes Miao~')
+})
+
+it('takes the closing message of an Agent reply as the answer instead of appending it', () => {
+  const { result } = run([
+    ['agent_message', { answer: 'Yes ' }],
+    ['agent_message', { answer: 'Miao~' }],
+    ['message', { answer: 'Yes Miao~' }],
+    ['message_end', {}],
+  ])
+  expect(result.text.answer).toBe('Yes Miao~')
+})
+
+it('keeps only the closing answer when the Agent streamed other text before it', () => {
+  const { result } = run([
+    ['agent_message', { answer: 'Let me check. ' }],
+    ['agent_thought', { tool: 'clock' }],
+    ['agent_message', { answer: 'It is 3.' }],
+    ['message', { answer: 'It is 3.' }],
+  ])
+  expect(result.text.answer).toBe('It is 3.')
+})
+
+it('keeps an Agent reply that arrives as a message alone, and a later message_replace', () => {
+  expect(run([['message', { answer: 'Blocked by moderation' }]]).result.text.answer).toBe(
+    'Blocked by moderation',
+  )
+  const replaced = run([
+    ['agent_message', { answer: 'bad' }],
+    ['message', { answer: 'bad' }],
+    ['message_replace', { answer: 'redacted' }],
+  ])
+  expect(replaced.result.text.answer).toBe('redacted')
+})
+
+it('does not carry the Agent rule into the next fold', () => {
+  run([['agent_message', { answer: 'a' }]])
+  const chat = run([
+    ['message', { answer: 'a' }],
+    ['message', { answer: 'b' }],
+  ])
+  expect(chat.result.text.answer).toBe('ab')
+})
+
 it('folds a failed workflow without an error event', () => {
   const { result, code } = run([
     [

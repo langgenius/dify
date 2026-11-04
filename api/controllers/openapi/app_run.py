@@ -25,7 +25,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
-from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
+from controllers.openapi._errors import AgentNotPublished, AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -34,6 +34,7 @@ from controllers.openapi._models import (
     CompletionRunPayload,
     DraftWorkflowRunPayload,
     Hint,
+    RunInputs,
     RunPayloadBase,
     TaskStopResponse,
     WorkflowRunPayload,
@@ -62,6 +63,7 @@ from controllers.service_api.app.error import (
     TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
@@ -126,6 +128,8 @@ def _translate_service_errors() -> Generator[None]:
         raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
         raise CompletionRequestError(e.description) from e
+    except AgentAppNotPublishedError as caught_error:
+        raise AgentNotPublished() from caught_error
     except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
         raise BadRequest(_INVALID_RUN_INPUT) from caught_error
@@ -145,7 +149,7 @@ _RUN_GUARDS: Final = (
     CheckAppAccess(),
 )
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
-_STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
+STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
@@ -159,7 +163,7 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
     )
 
 
-def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def generate_args(ctx: Context, payload: RunInputs, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
@@ -169,7 +173,7 @@ def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection
     return args
 
 
-def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
+def stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
     with _translate_service_errors():
         return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
@@ -180,7 +184,7 @@ def _require_mode(app: App, *modes: AppMode) -> None:
         raise AppModeMismatch()
 
 
-def _respond(ctx: Context, stream: Any):
+def respond(ctx: Context, stream: Any):
     app_model = ctx.app
     emit_app_run(
         app_id=app_model.id,
@@ -197,14 +201,14 @@ class _ChatMessageEnd(MessageEndStreamResponse):
     conversation_id: str
 
 
-def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str]:
+def with_reply_hints(events: Iterable[str], *, op: str, target: Mapping[str, str]) -> Generator[str]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
         end = _ChatMessageEnd.model_validate(event)
         return [
             Hint(
                 summary="Reply in this conversation",
                 op=op,
-                input={"app_id": app_id, "conversation_id": end.conversation_id, "query": None, "inputs": {}},
+                input={**target, "conversation_id": end.conversation_id, "query": None, "inputs": {}},
             )
         ]
 
@@ -215,7 +219,7 @@ HintLayer = Callable[[Iterable[str], str, str], Generator[str]]
 
 
 def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
-    return with_reply_hints(events, op=op, app_id=app_id)
+    return with_reply_hints(events, op=op, target={"app_id": app_id})
 
 
 def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
@@ -418,15 +422,15 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         requirements=route.requirements,
         body=route.payload,
         examples=route.examples,
-        returns=_STREAM_RESULT,
+        returns=STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
         if not route.draft:
             _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
+        events = stream(ctx, generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
-            stream = layer(stream, route.op, ctx.app.id)
-        return _respond(ctx, stream)
+            events = layer(events, route.op, ctx.app.id)
+        return respond(ctx, events)
 
     resource = type(route.resource, (Resource,), {"post": post, "__module__": __name__})
     return openapi_ns.route(f"/apps/<string:app_id>/{route.segment}:run")(resource)

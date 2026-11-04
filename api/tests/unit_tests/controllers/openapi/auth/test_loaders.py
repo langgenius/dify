@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth import loaders
-from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.context import Context, RouteContractError
 from controllers.openapi.auth.loaders import (
+    canonical_view_args,
     load_app,
     load_end_user,
     load_workspace,
@@ -19,13 +20,18 @@ from controllers.openapi.auth.loaders import (
 from controllers.openapi.auth.subjects import Subject
 from models import App
 from models.account import TenantAccountRole, TenantStatus
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
+from models.model import AppMode
 from services.app_service import AppService
 from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
+    AGENT_APP_ID,
+    AGENT_ID,
     APP_ID,
     OTHER_TENANT_ID,
     TENANT_ID,
     make_account,
+    make_agent,
     make_app,
     make_membership,
     make_tenant,
@@ -105,6 +111,73 @@ class TestLoadApp:
 
         with pytest.raises(Forbidden, match="workspace unavailable"):
             load_workspace(ctx)
+
+
+class TestCanonicalViewArgs:
+    @pytest.mark.parametrize(
+        ("agent_id", "expected"),
+        [
+            (AGENT_ID, AGENT_ID),
+            (AGENT_ID.replace("-", ""), AGENT_ID),
+            (AGENT_ID.upper(), AGENT_ID),
+            ("not-a-uuid", "not-a-uuid"),
+        ],
+        ids=["dashed", "undashed", "upper-case", "malformed-is-left-for-the-loader"],
+    )
+    def test_spells_an_agent_id_the_way_it_is_stored(self, agent_id: str, expected: str) -> None:
+        view_args = {"workspace_id": TENANT_ID, "agent_id": agent_id}
+
+        assert canonical_view_args(view_args) == {"workspace_id": TENANT_ID, "agent_id": expected}
+
+    def test_leaves_a_route_without_an_agent_alone(self) -> None:
+        assert canonical_view_args({"app_id": APP_ID.replace("-", "")}) == {"app_id": APP_ID.replace("-", "")}
+
+
+class TestLoadAppFromAgent:
+    def test_load_app_resolves_a_roster_agent_to_its_app(self, sqlite_session: Session) -> None:
+        persist(
+            sqlite_session,
+            make_tenant(),
+            make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT),
+            make_agent(),
+        )
+        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": AGENT_ID})
+
+        assert load_app(ctx).id == AGENT_APP_ID
+        assert ctx.app.id == AGENT_APP_ID
+
+    @pytest.mark.parametrize(
+        ("agent", "agent_id"),
+        [
+            (make_agent(tenant_id=OTHER_TENANT_ID), AGENT_ID),
+            (make_agent(scope=AgentScope.WORKFLOW_ONLY, source=AgentSource.WORKFLOW), AGENT_ID),
+            (make_agent(status=AgentStatus.ARCHIVED), AGENT_ID),
+            (make_agent(), "not-a-uuid"),
+        ],
+        ids=["other workspace", "workflow only", "inactive", "malformed uuid"],
+    )
+    def test_load_app_refuses_agents_outside_the_roster(
+        self, sqlite_session: Session, agent: Agent, agent_id: str
+    ) -> None:
+        persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), agent)
+        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": agent_id})
+
+        with pytest.raises(NotFound, match="agent not found"):
+            load_app(ctx)
+
+    def test_load_app_names_an_undashed_agent_id_like_the_dashed_one(self, sqlite_session: Session) -> None:
+        persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), make_agent())
+        view_args = {"workspace_id": TENANT_ID, "agent_id": AGENT_ID.replace("-", "")}
+        ctx = Context(_subject(), sqlite_session, view_args)
+
+        assert load_app(ctx).id == AGENT_APP_ID
+
+    def test_load_app_keeps_app_id_routes(self, sqlite_session: Session) -> None:
+        persist(sqlite_session, make_app())
+
+        assert load_app(Context(_subject(), sqlite_session, {"app_id": APP_ID})).id == APP_ID
+        with pytest.raises(RouteContractError):
+            load_app(Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID}))
 
 
 class TestWorkspaceFromRequest:
