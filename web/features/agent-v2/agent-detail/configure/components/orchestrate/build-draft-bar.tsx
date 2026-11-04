@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AgentBuildGridTexture } from '../build-grid-texture'
+import { BuildGridTexture } from '@/app/components/base/build-grid-texture'
 import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
 import { AgentBuildDraftChangesPanel } from './build-draft-changes-panel'
 
@@ -60,7 +60,7 @@ export function AgentBuildDraftBar({
       aria-label={t(($) => $['agentDetail.configure.buildDraft.title'])}
       className="group/build-draft pointer-events-auto relative w-full max-w-full min-w-0 overflow-hidden rounded-xl border-[1.5px] border-[#A0BDFF] bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
     >
-      <AgentBuildGridTexture
+      <BuildGridTexture
         aria-hidden
         cellOpacityMultiplier={3}
         className="pointer-events-none absolute -top-26 -left-292.75 z-0 opacity-70"

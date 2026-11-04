@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import {
   useWorkflowHistory,
   WorkflowHistoryEvent,
@@ -62,7 +62,7 @@ const ActiveHumanInputMigrationProvider = ({
   const nodes = useNodes() as Node[]
   const store = useStoreApi()
   const collaborativeWorkflow = useCollaborativeWorkflow()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useScheduleDraftSave()
   const { saveStateToHistory } = useWorkflowHistory()
   const { nodesMap } = useNodesMetaData()
   const [dialogOpen, setDialogOpen] = useState(false)

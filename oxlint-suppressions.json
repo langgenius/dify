@@ -548,29 +548,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/create-app-dialog-shell.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/create-app-dialog/app-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/create-from-dsl-modal/uploader.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app/deploy/environment-table/deploy-menu/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -3223,7 +3200,7 @@
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/test-run/result/index.tsx": {
@@ -3665,11 +3642,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/checklist/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/header/checklist/node-group.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -3680,9 +3652,9 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/run-and-history.tsx": {
+  "web/app/components/workflow/header/run-mode.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
+      "count": 5
     }
   },
   "web/app/components/workflow/header/run-mode.tsx": {
@@ -3704,11 +3676,6 @@
     },
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/header/view-history.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/app/components/workflow/header/view-workflow-history.tsx": {
@@ -5811,6 +5778,34 @@
   "web/features/app-access-error/trial-boundary.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
+    }
+  },
+  "web/features/app-creation/dialog-shell.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 1
+    }
+  },
+  "web/features/app-creation/template-dialog/app-card/index.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 2
+    }
+  },
+  "web/features/app-creation/template-dialog/categories.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 2
+    },
+    "react/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/features/app-creation/template-dialog/template-list.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 2
+    }
+  },
+  "web/features/dsl-import/uploader.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 4
     }
   },
   "web/features/network-access/app-binding/chip-affix.tsx": {

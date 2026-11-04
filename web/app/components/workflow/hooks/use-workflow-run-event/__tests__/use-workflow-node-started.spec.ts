@@ -51,17 +51,15 @@ describe('useWorkflowNodeStarted', () => {
   })
 
   it.each([
-    { builderActive: false, manuallyChanged: true, x: 200, y: 310 },
-    { builderActive: true, manuallyChanged: false, x: 200, y: 310 },
-    { builderActive: true, manuallyChanged: true, x: 0, y: 0 },
+    { autoFollowExecution: true, x: 200, y: 310 },
+    { autoFollowExecution: false, x: 0, y: 0 },
   ])(
     'pushes to tracing, sets node running, and adjusts viewport for root node: %j',
-    async ({ builderActive, manuallyChanged, x, y }) => {
+    async ({ autoFollowExecution, x, y }) => {
       const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
         initialStoreState: {
           workflowRunningData: baseRunningData(),
-          canvasReadOnly: builderActive,
-          builderViewportManuallyChanged: manuallyChanged,
+          autoFollowExecution,
         },
       })
 

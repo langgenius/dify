@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react'
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
-import type { ChecklistErrorPayload } from '@/app/components/workflow-app/components/dify-builder/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -12,55 +12,37 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import {
-  difyBuilderAvailableAtom,
-  difyBuilderCanStartFixAtom,
-  difyBuilderCanvasRefreshGenerationAtom,
-  difyBuilderRegisterChecklistErrorsAtom,
-  difyBuilderStartChecklistFixAtom,
-} from '@/app/components/workflow-app/components/dify-builder/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import DifyBuilderEntry from '../../dify-builder-entry'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useStore } from '../../store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
-type WorkflowChecklistProps = {
+export type WorkflowChecklistProps = {
   disabled: boolean
   showGoTo?: boolean
   onItemClick?: (item: ChecklistItem) => void
 }
 
-const toChecklistErrorPayload = (item: ChecklistItem): ChecklistErrorPayload => ({
-  node_id: item.id,
-  node_type: String(item.type),
-  title: item.title,
-  messages: item.errorMessages,
-  unconnected: !!item.unConnected,
-  plugin_missing: !!item.isPluginMissing,
-})
-
-const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
+export const ChecklistView = ({
+  disabled,
+  showGoTo = true,
+  onItemClick,
+  items: needWarningNodes,
+  renderActions,
+}: WorkflowChecklistProps & {
+  items: ChecklistItem[]
+  renderActions?: (close: () => void) => ReactNode
+}) => {
   const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
-  const edges = useEdges<CommonEdgeType>()
-  const nodes = useNodes()
-  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
-  const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
-  const canvasRefreshGeneration = useAtomValue(difyBuilderCanvasRefreshGenerationAtom)
-  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
-  const registerChecklistErrors = useSetAtom(difyBuilderRegisterChecklistErrorsAtom)
-  const startChecklistFix = useSetAtom(difyBuilderStartChecklistFixAtom)
-
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
     const regular: ChecklistItem[] = []
@@ -70,23 +52,6 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
     }
     return { pluginItems: plugins, nodeItems: regular }
   }, [needWarningNodes])
-  const fixableChecklistErrors = useMemo(
-    () =>
-      needWarningNodes
-        .filter(
-          (item) => !item.unConnected && !item.isPluginMissing && item.errorMessages.length > 0,
-        )
-        .map(toChecklistErrorPayload),
-    [needWarningNodes],
-  )
-
-  useEffect(() => {
-    registerChecklistErrors({
-      errors: fixableChecklistErrors,
-      generation: canvasRefreshGeneration,
-    })
-  }, [canvasRefreshGeneration, fixableChecklistErrors, registerChecklistErrors])
-
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
     else {
@@ -107,7 +72,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                 <button
                   type="button"
                   className={cn(
-                    'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    'group relative ms-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
                     'data-disabled:cursor-not-allowed data-disabled:opacity-50',
                   )}
                   disabled={disabled || undefined}
@@ -120,7 +85,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                     />
                   </span>
                   {!!needWarningNodes.length && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                    <span className="absolute -inset-e-1.5 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
                       {needWarningNodes.length}
                     </span>
                   )}
@@ -140,7 +105,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
-              <div className="min-w-0 grow pr-8">
+              <div className="min-w-0 grow pe-8">
                 <PopoverTitle className="text-base/6 font-semibold text-text-primary">
                   {checklistLabel}
                   {needWarningNodes.length > 0 && `(${needWarningNodes.length})`}
@@ -151,7 +116,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   <IconButton
                     size="lg"
                     aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="-mt-1 -mr-1 shrink-0"
+                    className="-me-1 -mt-1 shrink-0"
                   >
                     <span className="i-ri-close-line size-4" aria-hidden="true" />
                   </IconButton>
@@ -176,17 +141,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   onItemClick={handleItemClick}
                 />
               ))}
-              {difyBuilderAvailable && fixableChecklistErrors.length > 0 && (
-                <div className="mt-2 border-t border-divider-subtle pt-3">
-                  <DifyBuilderEntry
-                    disabled={disabled || !canStartFix}
-                    onClick={() => {
-                      setOpen(false)
-                      void startChecklistFix(fixableChecklistErrors)
-                    }}
-                  />
-                </div>
-              )}
+              {renderActions?.(() => setOpen(false))}
             </div>
           ) : (
             <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
@@ -198,6 +153,13 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
       </PopoverContent>
     </Popover>
   )
+}
+
+const WorkflowChecklist = (props: WorkflowChecklistProps) => {
+  const edges = useEdges<CommonEdgeType>()
+  const nodes = useNodes()
+  const items = useChecklist(nodes, edges)
+  return <ChecklistView {...props} items={items} />
 }
 
 export default memo(WorkflowChecklist)

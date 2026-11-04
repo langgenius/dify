@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreateAppCreationFlow } from '@/app/components/app/create-app-entry'
 import LearnDify from '@/app/components/explore/learn-dify'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { AppCreationFlow } from '@/features/app-creation/entry'
 import FirstEmptyActionCard from './action-card'
 
 const EMPTY_PLACEHOLDER_CARD_IDS = Array.from(
@@ -64,7 +64,7 @@ function FirstEmptyState({
                 {t(($) => $['firstEmpty.title'], { ns: 'app' })}
               </h2>
             </div>
-            <CreateAppCreationFlow onCreateTemplate={onCreateTemplate}>
+            <AppCreationFlow onCreateTemplate={onCreateTemplate}>
               {({ onSelectType, disabled, loading, error }) => (
                 <div className="flex w-full flex-col gap-4 rounded-xl p-2">
                   <div className="flex flex-col gap-1">
@@ -192,7 +192,7 @@ function FirstEmptyState({
                   )}
                 </div>
               )}
-            </CreateAppCreationFlow>
+            </AppCreationFlow>
           </div>
         </section>
       </div>

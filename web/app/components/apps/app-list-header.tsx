@@ -4,7 +4,6 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { CreateAppEntry } from '@/app/components/app/create-app-entry'
 import { SearchInput } from '@/app/components/base/search-input'
 import {
   activeStepByStepTourGuideGroupAtom,
@@ -15,6 +14,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { CreateAppEntry } from '@/features/app-creation/entry'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'

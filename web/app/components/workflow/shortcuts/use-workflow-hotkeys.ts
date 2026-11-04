@@ -11,7 +11,7 @@ import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../hooks/use-schedule-draft-save'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
@@ -80,7 +80,7 @@ export const useWorkflowHotkeys = (
     dimOtherNodes,
     undimAllNodes,
   } = useNodesInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { handleEdgeDelete } = useEdgesInteractions()
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
   const {

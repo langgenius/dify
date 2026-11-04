@@ -17,6 +17,10 @@ import { useReactFlow } from 'reactflow'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { Workflow } from '@/app/components/workflow'
+import {
+  useWorkflowAppSelector as useStore,
+  useWorkflowAppStore as useWorkflowStore,
+} from '@/app/components/workflow-app/store/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
@@ -25,29 +29,30 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { DifyBuilderProvider } from '@/features/dify-builder/editor'
+import { DifyBuilderNodeDecoration } from '@/features/dify-builder/editor/node-decoration'
+import { useDifyBuilderViewportInteraction } from '@/features/dify-builder/editor/use-viewport-interaction'
 import { consoleQuery } from '@/service/console'
 import dynamic from '@/next/dynamic'
 import { useStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
+import WorkflowDraftConflict from '../draft/conflict-dialog'
+import { useWorkflowDraftGraphForCanvas } from '../draft/use-draft-graph-for-canvas'
+import { useWorkflowRefreshDraft } from '../draft/use-draft-refresh'
+import { useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
-import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
-import { DifyBuilderProvider } from './dify-builder/provider'
 import WorkflowChildren from './workflow-children'
-import WorkflowDraftConflict from './workflow-draft-conflict'
 
-const DifyBuilderPanel = dynamic(() => import('./dify-builder/panel'), {
+const DifyBuilderPanel = dynamic(() => import('@/features/dify-builder/panel'), {
   ssr: false,
 })
 
@@ -70,6 +75,21 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const onDraftChange = useCallback(() => {
+    workflowStore.getState().markWorkflowDraftDirty()
+  }, [workflowStore])
+  const onViewportInteraction = useDifyBuilderViewportInteraction()
+  const renderNodeDecoration = useCallback(
+    (nodeId: string) => <DifyBuilderNodeDecoration nodeId={nodeId} />,
+    [],
+  )
+  const onWorkflowHistoryOpen = useCallback(() => {
+    workflowStore.getState().setShowDifyBuilderPanel(false)
+  }, [workflowStore])
+  const canRefreshWorkflowDraft = useCallback(
+    () => !workflowStore.getState().hasWorkflowDraftConflict,
+    [workflowStore],
+  )
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -215,7 +235,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   )
 
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose, prepareWorkflowDraftForBuilder } =
-    useNodesSyncDraftByCanEdit(appACLCapabilities.canEdit)
+    useWorkflowDraftSaveByCanEdit(appACLCapabilities.canEdit)
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)
@@ -509,6 +529,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   const hooksStore = useMemo(() => {
     return {
+      onDraftChange,
+      onViewportInteraction,
+      onWorkflowHistoryOpen,
+      canRefreshWorkflowDraft,
+      renderNodeDecoration,
       syncWorkflowDraftWhenPageClose,
       doSyncWorkflowDraft,
       handleRefreshWorkflowDraft,
@@ -546,13 +571,19 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       invalidateConversationVarValues,
       accessControl: {
         canEdit: appACLCapabilities.canEdit,
-        canRun: appACLCapabilities.canTestAndRun,
+        canRun: appACLCapabilities.canTestAndRun && !hasWorkflowDraftConflict,
         canImportExportDSL: appACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
       },
       fileSettings,
     }
   }, [
+    onDraftChange,
+    onViewportInteraction,
+    onWorkflowHistoryOpen,
+    canRefreshWorkflowDraft,
+    renderNodeDecoration,
+    hasWorkflowDraftConflict,
     syncWorkflowDraftWhenPageClose,
     doSyncWorkflowDraft,
     handleRefreshWorkflowDraft,

@@ -1,4 +1,4 @@
-import type { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import type { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 
 export class HumanInputDraftSyncError extends Error {
   constructor() {
@@ -8,7 +8,7 @@ export class HumanInputDraftSyncError extends Error {
 }
 
 export const syncHumanInputDraft = async (
-  syncDraft: ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft'],
+  syncDraft: ReturnType<typeof useScheduleDraftSave>['doSyncWorkflowDraft'],
 ): Promise<void> => {
   let saved = false
   let failed = false

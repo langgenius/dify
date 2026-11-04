@@ -35,7 +35,7 @@ import {
 } from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../../hooks/use-schedule-draft-save'
 import { fetchEnvironmentVariables } from './requests'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
@@ -174,7 +174,7 @@ const useEnvPanelActions = ({
   collaborativeWorkflow: ReturnType<typeof useCollaborativeWorkflow>
   workflowStore: ReturnType<typeof useWorkflowStore>
   resource: EditorResource
-  doSyncWorkflowDraft: ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+  doSyncWorkflowDraft: ReturnType<typeof useScheduleDraftSave>['doSyncWorkflowDraft']
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
@@ -443,7 +443,7 @@ const EnvPanel = () => {
   const setEnvSecrets = useStore((s) => s.setEnvSecrets)
   const setControlPromptEditorRerenderKey = useStore((s) => s.setControlPromptEditorRerenderKey)
   const resource = useAtomValue(editorResourceAtom)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useScheduleDraftSave()
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const {
     emitVarsAndFeaturesUpdate,

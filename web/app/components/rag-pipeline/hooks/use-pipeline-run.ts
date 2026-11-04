@@ -86,7 +86,9 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
-    async (params: any, callback?: IOtherOptions) => {
+    async (params: any, callback?: IOtherOptions): Promise<boolean> => {
+      if (!(await doSyncWorkflowDraft())) return false
+
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
@@ -95,7 +97,6 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      await doSyncWorkflowDraft()
 
       const {
         onWorkflowStarted,
@@ -234,6 +235,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           ...restCallback,
         },
       )
+      return true
     },
     [
       store,

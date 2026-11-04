@@ -3,19 +3,20 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
+import { useWorkflowAppSelector as useStore } from '@/app/components/workflow-app/store/workflow'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
-import { useStore } from '@/app/components/workflow/store'
-import { consoleQuery } from '@/service/console'
+import BuilderFixButton from '@/features/dify-builder/fix-button'
 import {
   difyBuilderAvailableAtom,
   difyBuilderCanStartFixAtom,
   difyBuilderStartRunFixAtom,
-} from './dify-builder/store'
+} from '@/features/dify-builder/state'
+import { consoleQuery } from '@/service/console'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -80,12 +81,14 @@ const WorkflowPanelOnRight = () => {
       {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
       {showDebugAndPreviewPanel && !isChatflow && (
         <WorkflowPreview
-          fixWithBuilderDisabled={!canStartFix}
-          onFixRun={
+          renderFailureActions={
             difyBuilderAvailable && !historyWorkflowData
-              ? (runId: string) => {
-                  void startRunFix(runId)
-                }
+              ? (runId) => (
+                  <BuilderFixButton
+                    disabled={!canStartFix}
+                    onClick={() => void startRunFix(runId)}
+                  />
+                )
               : undefined
           }
         />

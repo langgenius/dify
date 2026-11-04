@@ -1,4 +1,4 @@
-import type { DifyBuilderRuntime } from '@/app/components/workflow-app/components/dify-builder/store'
+import type { DifyBuilderRuntime } from '@/features/dify-builder/state'
 import { vi } from 'vite-plus/test'
 
 type RuntimeOverrides = Omit<Partial<DifyBuilderRuntime>, 'session'> & {

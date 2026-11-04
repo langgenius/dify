@@ -9,7 +9,6 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
-import DifyBuilderButton from './dify-builder-button'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import GlobalVariableButton from './global-variable-button'
@@ -24,12 +23,11 @@ export type HeaderInNormalProps = {
     left?: React.ReactNode
     middle?: React.ReactNode
     chatVariableTrigger?: React.ReactNode
+    actions?: React.ReactNode
   }
   controls?: {
-    hasDifyBuilderSession?: boolean
     showEnvButton?: boolean
     showGlobalVariableButton?: boolean
-    showDifyBuilderButton?: boolean
   }
   runAndHistoryProps?: RunAndHistoryProps
 }
@@ -37,7 +35,6 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const workflowStore = useWorkflowStore()
   const canvasStore = useStoreApi()
   const { nodesReadOnly } = useNodesReadOnly()
-  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { handleNodeSelect } = useNodesInteractions()
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
@@ -46,14 +43,11 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
-  const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
+  const onWorkflowHistoryOpen = useHooksStore((s) => s.onWorkflowHistoryOpen)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
   const showEnvButton = controls?.showEnvButton !== false
   const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
-  const showDifyBuilderButton = controls?.showDifyBuilderButton === true
-  const hasDifyBuilderSession = controls?.hasDifyBuilderSession === true
-  const difyBuilderButtonDisabled = !canEdit || (nodesReadOnly && !hasDifyBuilderSession)
   const showContextButtons =
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
@@ -71,7 +65,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
-    setShowDifyBuilderPanel(false)
+    onWorkflowHistoryOpen()
     closeAllInputFieldPanels()
   }, [
     workflowStore,
@@ -84,7 +78,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel,
     setShowChatVariablePanel,
     setShowGlobalVariablePanel,
-    setShowDifyBuilderPanel,
+    onWorkflowHistoryOpen,
     closeAllInputFieldPanels,
   ])
 
@@ -109,12 +103,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         )}
         {components?.middle}
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
-        {showDifyBuilderButton && (
-          <>
-            <Separator decorative orientation="vertical" className="mx-0 h-4" />
-            <DifyBuilderButton disabled={difyBuilderButtonDisabled} />
-          </>
-        )}
+        {components?.actions}
       </div>
     </div>
   )

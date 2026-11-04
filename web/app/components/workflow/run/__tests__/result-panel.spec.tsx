@@ -1,7 +1,6 @@
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fireEvent } from '@testing-library/react'
 import { renderWorkflowComponent as render } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
@@ -61,6 +60,35 @@ const createAgentLog = (label: string): AgentLogItemWithChildren => ({
 })
 
 describe('ResultPanel', () => {
+  it('renders supplied actions only for a failed workflow run', async () => {
+    const user = userEvent.setup()
+    const onFixRun = vi.fn()
+    const { rerender } = render(
+      <ResultPanel
+        status={WorkflowRunningStatus.Failed}
+        workflowRunId="failed-run"
+        renderFailureActions={(runId) => (
+          <button type="button" onClick={() => onFixRun(runId)}>
+            Recover run
+          </button>
+        )}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Recover run' }))
+    expect(onFixRun).toHaveBeenCalledWith('failed-run')
+    rerender(
+      <ResultPanel
+        status={WorkflowRunningStatus.Succeeded}
+        workflowRunId="successful-run"
+        renderFailureActions={(runId) => (
+          <button type="button" onClick={() => onFixRun(runId)}>
+            Recover run
+          </button>
+        )}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Recover run' })).not.toBeInTheDocument()
+  })
   it('should render status, editors, alerts, error strategy tip, and metadata', () => {
     render(
       <ResultPanel
@@ -232,29 +260,5 @@ describe('ResultPanel', () => {
     )
 
     expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
-  })
-
-  it('should offer App Builder only for a failed workflow run', async () => {
-    const user = userEvent.setup()
-    const onFixRun = vi.fn()
-    const { rerender } = render(
-      <ResultPanel
-        status={WorkflowRunningStatus.Failed}
-        workflowRunId="run-failed-1"
-        onFixRun={onFixRun}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))
-    expect(onFixRun).toHaveBeenCalledWith('run-failed-1')
-
-    rerender(
-      <ResultPanel
-        status={WorkflowRunningStatus.Succeeded}
-        workflowRunId="run-success-1"
-        onFixRun={onFixRun}
-      />,
-    )
-    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
   })
 })
