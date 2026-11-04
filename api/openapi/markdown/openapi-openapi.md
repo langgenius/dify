@@ -2086,7 +2086,7 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_mode | query | The mode of the app the nodes go into | Yes | string, <br>**Available values:** "advanced-chat", "workflow" |
-| keyword | query | Text to find in the label, tool or provider name, node type, or agent name, ignoring case | No | string |
+| keyword | query | Text to find in the label or description, the tool name, the provider id, name or label, the node type, or the agent name, ignoring case | No | string |
 | kind | query | Only options of this kind | No | string, <br>**Available values:** "agent", "block", "note", "tool" |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -2355,7 +2355,7 @@ so an edit made in the same second as the export is not detected.
 | page | query |  | No | integer, <br>**Default:** 1 |
 | provider | query | Only this provider's tools | No | string |
 | provider_type | query | Only tools of this provider type | No | string, <br>**Available values:** "api", "builtin", "mcp", "workflow" |
-| query | query | Words to match in the tool name, label or description, or the provider id or label | No | string |
+| query | query | Text to find in the tool name, label or description, or the provider id, name or label | No | string |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
@@ -3783,7 +3783,7 @@ Where a node option comes from; a kind other than block seeds the nodes whose da
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_mode | string, <br>**Available values:** "advanced-chat", "workflow" | The mode of the app the nodes go into<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
-| keyword | string | Text to find in the label, tool or provider name, node type, or agent name, ignoring case | No |
+| keyword | string | Text to find in the label or description, the tool name, the provider id, name or label, the node type, or the agent name, ignoring case | No |
 | kind | [NodeOptionKind](#nodeoptionkind) | Only options of this kind | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
@@ -4403,7 +4403,7 @@ Binding modes for persisted tool input values.
 | page | integer, <br>**Default:** 1 |  | No |
 | provider | string | Only this provider's tools | No |
 | provider_type | [ToolSource](#toolsource) | Only tools of this provider type | No |
-| query | string | Words to match in the tool name, label or description, or the provider id or label | No |
+| query | string | Text to find in the tool name, label or description, or the provider id, name or label | No |
 
 #### ToolListResponse
 
