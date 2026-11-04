@@ -56,12 +56,15 @@ const BAD_VERIFICATION_URI = 'ftp://elsewhere.example/device'
 const HANG_MS = 30_000
 const OAUTH_PREFIX = '/openapi/v1/oauth/'
 export const FORBIDDEN_HINT = 'ask a workspace owner for the editor role'
+export const TRIGGER_REFUSED_MESSAGE =
+  'This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.'
 
 const ServerErrorCode = {
   Unauthorized: 'unauthorized',
   Forbidden: 'forbidden',
   RateLimited: 'rate_limited',
   Server5xx: 'server_5xx',
+  TriggerRefused: 'trigger_workflow_service_mode_unavailable',
   NotFound: 'not_found',
   CatalogStale: 'catalog_stale',
   ValidationError: 'validation_error',
@@ -498,6 +501,10 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     }
     if (scenario === 'server-5xx') {
       return errorResponse(ServerErrorCode.Server5xx, 'upstream broken', 503)
+    }
+    // The server refuses the request for the app's shape, which is not a permission problem.
+    if (scenario === 'trigger-refused') {
+      return errorResponse(ServerErrorCode.TriggerRefused, TRIGGER_REFUSED_MESSAGE, 422)
     }
     await next()
   })
