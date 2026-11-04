@@ -10,7 +10,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { basePath } from '@/utils/var'
 
@@ -46,8 +45,7 @@ const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
   const isRbacEnabled = systemFeatures.rbac_enabled
 
   const getWebAppType = (appType: AppDetailWithSite['mode']) => {
-    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
-      return AppModeEnum.CHAT
+    if (appType !== 'completion' && appType !== 'workflow') return 'chat'
     return appType
   }
 

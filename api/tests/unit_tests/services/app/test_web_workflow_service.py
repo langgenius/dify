@@ -23,8 +23,8 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.workflow.run_entities import WebWorkflowTarget
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
 
 CONTEXT = WebAppRequestContext(
     request_id="request-1", trace_id=None, tenant_id="tenant-1", app_id="app-1", end_user_id="user-1"
@@ -63,12 +63,12 @@ class Runtime:
         user: str,
         args: Mapping[str, object],
         load_workflow: Callable[[str | None], str | None],
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         self.calls.append((app_model, user, args))
         self.load_workflow = load_workflow
         return self.events()
 
-    def events(self) -> Generator[str, None, None]:
+    def events(self) -> Generator[str]:
         try:
             yield "event-1"
             yield "event-2"
@@ -184,7 +184,7 @@ class RateLimit:
     def exit(self, _request_id: str) -> None:
         self.boundary.operations.append("exit")
 
-    def generate(self, stream: Generator[str, None, None], request_id: str) -> Generator[str, None, None]:
+    def generate(self, stream: Generator[str], request_id: str) -> Generator[str]:
         try:
             yield from stream
         finally:
@@ -206,7 +206,7 @@ class Quota:
 @pytest.fixture
 def boundary(
     sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> Generator[Boundaries, None, None]:
+) -> Generator[Boundaries]:
     app = make_app(app_id="app-1", mode=AppMode.WORKFLOW, workflow_id=WORKFLOW_ID)
     user = make_end_user(end_user_id="user-1", app_id=app.id)
     workflow = make_workflow(workflow_id=WORKFLOW_ID, version="1")
@@ -229,7 +229,7 @@ def boundary(
 
     def retrieve_events(
         app_mode: AppMode, _run_id: str, *, on_subscribe: Callable[[], None]
-    ) -> Generator[Mapping[str, object] | str, None, None]:
+    ) -> Generator[Mapping[str, object] | str]:
         assert app_mode == AppMode.WORKFLOW
         assert boundary.connections == 0
         on_subscribe()
@@ -261,7 +261,7 @@ def test_composed_web_workflow_closes_sessions_before_quota_and_lazy_dispatch(
     response = app_services.web_workflows.run(CONTEXT, app_mode="workflow", args={"inputs": {"name": "value"}})
     assert boundary.queued == []
     assert boundary.connections == 0
-    assert boundary.operations == ["reserve", "enter", "commit", "enter", "exit"]
+    assert boundary.operations == ["reserve", "enter", "commit"]
     assert "workflow_started" in next(response)
     assert len(boundary.queued) == 1
     payload = boundary.queued[0]
@@ -271,7 +271,7 @@ def test_composed_web_workflow_closes_sessions_before_quota_and_lazy_dispatch(
     assert payload["streaming"] is True
     assert payload["invoke_from"] == "web-app"
     close_stream(response)
-    assert boundary.operations == ["reserve", "enter", "commit", "enter", "exit", "exit"]
+    assert boundary.operations == ["reserve", "enter", "commit", "exit"]
 
 
 @pytest.mark.parametrize(

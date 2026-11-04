@@ -33,7 +33,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 type NumberFieldExampleProps = {
-  id: string
   label: string
   name: string
   defaultValue?: number
@@ -48,7 +47,6 @@ type NumberFieldExampleProps = {
 }
 
 function NumberFieldExample({
-  id,
   label,
   name,
   defaultValue,
@@ -61,6 +59,8 @@ function NumberFieldExample({
   disabled,
   readOnly,
 }: NumberFieldExampleProps) {
+  const id = React.useId()
+
   return (
     <div className="grid w-80 gap-1">
       <label htmlFor={id} className="system-sm-medium text-text-secondary">
@@ -92,7 +92,6 @@ function NumberFieldExample({
 export const Basic: Story = {
   render: () => (
     <NumberFieldExample
-      id="top-k-basic"
       name="topK"
       label="Top K"
       defaultValue={3}
@@ -108,7 +107,6 @@ export const Sizes: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
       <NumberFieldExample
-        id="number-field-medium"
         name="mediumNumber"
         label="Medium"
         defaultValue={64}
@@ -118,7 +116,6 @@ export const Sizes: Story = {
         placeholder="Set value…"
       />
       <NumberFieldExample
-        id="number-field-large"
         name="largeNumber"
         label="Large with unit"
         defaultValue={512}

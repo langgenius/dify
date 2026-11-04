@@ -50,6 +50,9 @@ it.each([
     await expect.element(trigger).toMatchTextContent(`${hour}:${minute}`)
     await trigger.click()
     await expect.element(screen.getByRole('gridcell', { selected: true })).toHaveTextContent(day)
+    await expect
+      .element(screen.getByRole('gridcell', { selected: true }).getByRole('button'))
+      .toHaveAccessibleName(new RegExp(`^${day}: `))
     await screen.getByRole('button', { name: /Choose month and year:/ }).click()
     await expect
       .element(screen.getByRole('listbox', { name: 'Year' }).getByRole('option', { name: year }))
@@ -93,7 +96,10 @@ it('locates Persian month/year numbers while preserving canonical civil-date sub
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('grid').getByRole('button', { name: /۱۵/ }).click()
-  expect(changed).toHaveBeenCalledWith('2026-12-15')
+  expect(changed).toHaveBeenCalledWith(
+    '2026-12-15',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
   expect(
     new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).get(
       'date',
@@ -146,7 +152,10 @@ it('updates an open locale without committing or discarding the time draft and c
   await userEvent.keyboard('{Home}12')
   await expect.element(minute).toHaveFocus()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('10:12')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '10:12',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
   expect(
     new FormData(screen.getByRole('form', { name: 'Schedule' }).element() as HTMLFormElement).get(
       'time',

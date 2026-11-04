@@ -1,9 +1,10 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useLocale } from '#i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { selectPipelineTemplateList } from '@/app/components/rag-pipeline/utils/query-select'
+import { useMarketplace } from '@/features/marketplace/client'
 import { LanguagesSupported } from '@/i18n/language'
-import { usePipelineTemplateList } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import CreateCard from './create-card'
 import TemplateCard from './template-card'
 
@@ -13,13 +14,13 @@ const BuiltInPipelineList = () => {
     if (['zh-Hans', 'ja-JP'].includes(locale)) return locale
     return LanguagesSupported[0]
   }, [locale])
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
-  const { data: pipelineList, isLoading } = usePipelineTemplateList(
-    { type: 'built-in', language },
-    enableMarketplace,
+  const enableMarketplace = useMarketplace() !== null
+  const { data: pipelineList, isLoading } = useQuery(
+    consoleQuery.rag.pipeline.templates.get.queryOptions({
+      input: { query: { type: 'built-in', language } },
+      enabled: enableMarketplace,
+      select: selectPipelineTemplateList,
+    }),
   )
   const list = pipelineList?.pipeline_templates || []
 

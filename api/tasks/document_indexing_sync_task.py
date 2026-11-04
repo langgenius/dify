@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import get_session_maker, session_factory
 from core.rag.extractor.notion_extractor import NotionExtractor
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.application_services.data_sources import build_data_source_credentials
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment

@@ -115,6 +115,9 @@ class LogstoreWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
     @override
     def get_workflow_run_by_id(self, tenant_id: str, app_id: str, run_id: str) -> WorkflowRun | None:
         fallback = super().get_workflow_run_by_id
+        control = fallback(tenant_id, app_id, run_id)
+        if control is not None and control.task_id is not None:
+            return control
         return self._read_with_fallback(
             {"tenant_id": tenant_id, "app_id": app_id, "id": run_id},
             lambda: fallback(tenant_id, app_id, run_id),
@@ -123,11 +126,17 @@ class LogstoreWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
     @override
     def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
         fallback = super().get_workflow_run_by_id_and_tenant_id
+        control = fallback(tenant_id, run_id)
+        if control is not None and control.task_id is not None:
+            return control
         return self._read_with_fallback({"tenant_id": tenant_id, "id": run_id}, lambda: fallback(tenant_id, run_id))
 
     @override
     def get_workflow_run_by_id_without_tenant(self, run_id: str) -> WorkflowRun | None:
         fallback = super().get_workflow_run_by_id_without_tenant
+        control = fallback(run_id)
+        if control is not None and control.task_id is not None:
+            return control
         return self._read_with_fallback({"id": run_id}, lambda: fallback(run_id))
 
     @override

@@ -1,17 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ResetPasswordPage from '../page'
 
 const mockPush = vi.fn()
-const mockSetCountdownLeftTime = vi.fn()
-
-vi.mock('@/app/components/signin/storage', () => ({
-  COUNT_DOWN_TIME_MS: 60_000,
-  useSetCountdownLeftTime: () => mockSetCountdownLeftTime,
-}))
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -27,21 +22,32 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  sendResetPasswordCode: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      post: vi.fn(),
+    },
+  },
 }))
+
+afterEach(() => localStorage.removeItem(COUNT_DOWN_KEY))
 
 describe('ResetPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem(COUNT_DOWN_KEY)
     vi.mocked(useLocale).mockReturnValue('en-US')
     vi.mocked(useRouter).mockReturnValue({ push: mockPush } as unknown as ReturnType<
       typeof useRouter
     >)
     vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams() as ReturnType<typeof useSearchParams>,
     )
-    vi.mocked(sendResetPasswordCode).mockResolvedValue({ result: 'success', data: 'reset-token' })
+    vi.mocked(consoleClient.forgotPassword.post).mockResolvedValue({
+      result: 'success',
+      data: 'reset-token',
+    })
   })
 
   it('labels the email field and submits it with Enter', async () => {
@@ -54,8 +60,11 @@ describe('ResetPasswordPage', () => {
     await user.type(emailInput, 'user@example.com{Enter}')
 
     await waitFor(() => {
-      expect(sendResetPasswordCode).toHaveBeenCalledWith('user@example.com', 'en-US')
+      expect(consoleClient.forgotPassword.post).toHaveBeenCalledWith({
+        body: { email: 'user@example.com', language: 'en-US' },
+      })
     })
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
     expect(mockPush).toHaveBeenCalledWith(
       '/reset-password/check-code?token=reset-token&email=user%2540example.com',
     )
@@ -73,7 +82,7 @@ describe('ResetPasswordPage', () => {
     expect(emailInput).toHaveAttribute('aria-invalid', 'true')
     expect(emailInput).toHaveAccessibleDescription('login.error.emailInValid')
     expect(emailInput).toHaveFocus()
-    expect(sendResetPasswordCode).not.toHaveBeenCalled()
+    expect(consoleClient.forgotPassword.post).not.toHaveBeenCalled()
 
     await user.clear(emailInput)
     await user.click(screen.getByRole('button', { name: 'login.sendVerificationCode' }))
@@ -84,6 +93,6 @@ describe('ResetPasswordPage', () => {
     expect(emailInput).toHaveAttribute('aria-invalid', 'true')
     expect(emailInput).toHaveAccessibleDescription('login.error.emailEmpty')
     expect(emailInput).toHaveFocus()
-    expect(sendResetPasswordCode).not.toHaveBeenCalled()
+    expect(consoleClient.forgotPassword.post).not.toHaveBeenCalled()
   })
 })

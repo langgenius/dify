@@ -29,6 +29,13 @@ Autocomplete, Combobox, and Select popups use Base UI's `--anchor-width` and `--
 variables to follow their trigger while clamping to the viewport. Do not replace that sizing with
 a fixed width or an unclamped minimum width.
 
+When a Combobox renders its input inside the popup, do not add a control that clears the typed
+query. The query is per-open state that Base UI resets: choosing an item clears it in `multiple`
+mode and closes the popup in single mode, and closing the popup (Escape, outside press) clears it.
+A clear control there adds a second tab stop to the popup's focus loop and a second x that means
+something other than `ComboboxClear`, which clears the selected value. Outside the popup, use
+`ComboboxClear` or `AutocompleteClear`.
+
 Use `Radio` for the default radio appearance. Use `RadioItem` when custom content itself is a
 radio item, and put `RadioControl` inside it for Dify UI's visual indicator. `RadioControl` is a
 visual part, not a standalone radio.

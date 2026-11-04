@@ -4,20 +4,28 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { createRef } from 'react'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/debug'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import ChatWrapper from '../chat-wrapper'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
-const mockUseSubscription = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/debug', () => ({
-  fetchSuggestedQuestions: vi.fn(),
-  stopChatMessageResponding: vi.fn(),
+let emitWorkflowEvent: ((event: { type: string }) => void) | undefined
+const EmitterProbe = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitWorkflowEvent = (event) => eventEmitter?.emit(event as never)
+  return null
+}
+
+const mockRequest = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
 }))
 
 vi.mock('@/app/components/base/chat/chat', () => ({
@@ -57,8 +65,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
       }
       data-speech-target={speechToTextTarget?.type}
     >
-      <div data-testid="chat-input-disabled">{`${inputDisabled}`}</div>
-      <button type="button" onClick={() => onSend?.('hello', [])}>
+      <button type="button" disabled={inputDisabled} onClick={() => onSend?.('hello', [])}>
         send-chat
       </button>
       <button
@@ -131,17 +138,6 @@ vi.mock('@/app/components/base/features/hooks', () => ({
     }),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: mockUseSubscription,
-    },
-  }),
-}))
-
-const mockFetchSuggestedQuestions = vi.mocked(fetchSuggestedQuestions)
-const mockStopChatMessageResponding = vi.mocked(stopChatMessageResponding)
-
 const createChatState = (overrides: Record<string, unknown> = {}) => ({
   conversationId: 'conversation-1',
   chatList: [],
@@ -156,25 +152,18 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const createChatWrapperRef = () =>
-  ({ current: null }) as unknown as React.RefObject<ChatWrapperRefType>
+const createChatWrapperRef = () => createRef<ChatWrapperRefType>()
 
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        site: {
-          access_token: 'site-token',
-          app_base_url: 'https://example.com',
-        },
-      } as ReturnType<typeof useAppStore.getState>['appDetail'],
-    })
+    mockRequest.mockReset()
+    mockRequest.mockResolvedValue({ data: [] })
     mockUseChat.mockReturnValue(createChatState())
   })
 
   it('seeds start defaults into workflow inputs and exposes restart through the ref handle', async () => {
+    const user = userEvent.setup()
     const chatState = createChatState()
     mockUseChat.mockReturnValue(chatState)
     const chatRef = createChatWrapperRef()
@@ -218,7 +207,7 @@ describe('ChatWrapper', () => {
       })
     })
 
-    await userEvent.click(screen.getByRole('button', { name: 'open-log' }))
+    await user.click(screen.getByRole('button', { name: 'open-log' }))
     expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
 
     act(() => {
@@ -260,7 +249,7 @@ describe('ChatWrapper', () => {
             parentMessageId: 'question-1',
             content: 'latest answer',
             workflowProcess: {
-              status: 'paused',
+              status: 'succeeded',
             },
           },
         ],
@@ -272,13 +261,16 @@ describe('ChatWrapper', () => {
     )
 
     const { store } = renderWorkflowFlowComponent(
-      <ChatWrapper
-        ref={createChatWrapperRef()}
-        showConversationVariableModal={false}
-        onConversationModalHide={vi.fn()}
-        showInputsFieldsPanel={false}
-        onHide={vi.fn()}
-      />,
+      <EventEmitterContextProvider>
+        <EmitterProbe />
+        <ChatWrapper
+          ref={createChatWrapperRef()}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />
+      </EventEmitterContextProvider>,
       {
         nodes: [
           createStartNode({
@@ -310,7 +302,7 @@ describe('ChatWrapper', () => {
       })
     })
 
-    expect(screen.getByTestId('chat-input-disabled')).toHaveTextContent('true')
+    expect(screen.getByRole('button', { name: 'send-chat' })).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: 'send-chat' }))
     expect(handleSend).toHaveBeenCalledWith(
@@ -329,16 +321,13 @@ describe('ChatWrapper', () => {
     )
 
     const sendCallbacks = handleSend.mock.calls[0]?.[1] as {
-      onGetSuggestedQuestions: (
-        messageId: string,
-        getAbortController: () => AbortController,
-      ) => void
+      onGetSuggestedQuestions: (messageId: string, onCancel: (cancel: () => void) => void) => void
     }
-    sendCallbacks.onGetSuggestedQuestions('message-1', () => new AbortController())
-    expect(mockFetchSuggestedQuestions).toHaveBeenCalledWith(
-      'app-1',
-      'message-1',
-      expect.any(Function),
+    await sendCallbacks.onGetSuggestedQuestions('message-1', () => {})
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'byMessageId', 'suggestedQuestions', 'get'],
+      { params: { app_id: 'app-1', message_id: 'message-1' } },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
 
     await user.click(screen.getByRole('button', { name: 'regenerate-chat' }))
@@ -360,8 +349,12 @@ describe('ChatWrapper', () => {
     )
 
     const stopResponding = mockUseChat.mock.calls[0]?.[3] as (taskId: string) => void
-    stopResponding('task-1')
-    expect(mockStopChatMessageResponding).toHaveBeenCalledWith('app-1', 'task-1')
+    await stopResponding('task-1')
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'byTaskId', 'stop', 'post'],
+      { params: { app_id: 'app-1', task_id: 'task-1' } },
+      expect.any(Object),
+    )
 
     await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
     await waitFor(() => {
@@ -371,14 +364,75 @@ describe('ChatWrapper', () => {
       })
     })
 
-    const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: {
-      type: string
-    }) => void
-    act(() => {
-      subscription({ type: EVENT_WORKFLOW_STOP })
-    })
+    act(() => emitWorkflowEvent?.({ type: EVENT_WORKFLOW_STOP }))
 
     expect(handleStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables sending while the latest workflow run is paused', async () => {
+    const user = userEvent.setup()
+    const chatState = createChatState({
+      chatList: [
+        { id: 'answer-1', isAnswer: true, content: '', workflowProcess: { status: 'paused' } },
+      ],
+    })
+    mockUseChat.mockReturnValue(chatState)
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+      { nodes: [createStartNode()], edges: [] },
+    )
+    const send = screen.getByRole('button', { name: 'send-chat' })
+    expect(send).toBeDisabled()
+    await user.click(send)
+    expect(chatState.handleSend).not.toHaveBeenCalled()
+  })
+
+  it('cancels only the requested message query through the chat cancellation callback', async () => {
+    const user = userEvent.setup()
+    const handleSend = vi.fn()
+    mockUseChat.mockReturnValue(createChatState({ handleSend }))
+    mockRequest.mockImplementation(() => new Promise(() => {}))
+
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+      { nodes: [createStartNode()], edges: [] },
+    )
+    await user.click(screen.getByRole('button', { name: 'send-chat' }))
+    const { onGetSuggestedQuestions } = handleSend.mock.calls[0]![1] as {
+      onGetSuggestedQuestions: (
+        messageId: string,
+        onCancel: (cancel: () => void) => void,
+      ) => Promise<unknown>
+    }
+    const onCancelFirst = vi.fn()
+    const onCancelSecond = vi.fn()
+    const firstRequest = onGetSuggestedQuestions('message-1', onCancelFirst)
+    const firstCancelled = expect(firstRequest).rejects.toThrow()
+    const secondRequest = onGetSuggestedQuestions('message-2', onCancelSecond)
+    const secondCancelled = expect(secondRequest).rejects.toThrow()
+
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(2))
+    const firstSignal = mockRequest.mock.calls[0]![2].signal as AbortSignal
+    const secondSignal = mockRequest.mock.calls[1]![2].signal as AbortSignal
+    onCancelFirst.mock.calls[0]![0]()
+    await firstCancelled
+    expect(firstSignal.aborted).toBe(true)
+    expect(secondSignal.aborted).toBe(false)
+
+    onCancelSecond.mock.calls[0]![0]()
+    await secondCancelled
   })
 
   it('collapses the side panel while the chat is responding', async () => {

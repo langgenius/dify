@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, override
 from unittest.mock import PropertyMock, patch
 
@@ -16,13 +17,11 @@ from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from models.tools import ToolLabelBinding
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the SQLite engine to code that owns its session lifecycle."""
 
     engine: Engine
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
 
 
 # Create a mock class for testing abstract/base classes

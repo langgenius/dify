@@ -1,5 +1,4 @@
 'use client'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -10,10 +9,13 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQueryClient } from '@tanstack/react-query'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,8 +26,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
@@ -40,11 +41,29 @@ const InstallForm = () => {
   const { t, i18n } = useTranslation(['login'])
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
-  const { push, replace } = useRouter()
+  const { replace } = useRouter()
   const queryClient = useQueryClient()
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const setupStatus = useQuery(
+    consoleQuery.setup.get.queryOptions({
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
+  const initStatus = useQuery(
+    consoleQuery.init.get.queryOptions({
+      enabled:
+        setupStatus.isSuccess && !setupStatus.isFetching && setupStatus.data.step !== 'finished',
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
 
   const handleSubmit = async (value: AccountFormValues) => {
     if (isSubmitting) return
@@ -52,7 +71,7 @@ const InstallForm = () => {
     setIsSubmitting(true)
     try {
       // First, setup the admin account
-      await setup({
+      await consoleClient.setup.post({
         body: {
           ...value,
           language: i18n.language,
@@ -60,8 +79,7 @@ const InstallForm = () => {
       })
 
       // Then, automatically login with the same credentials
-      const loginRes = await login({
-        url: '/login',
+      const loginRes = await consoleClient.login.post({
         body: {
           email: value.email,
           password: encodePassword(value.password),
@@ -82,20 +100,36 @@ const InstallForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished') {
-        push('/signin')
-      } else {
-        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-          if (res.status === 'not_started') push('/init')
-        })
-      }
-      setLoading(false)
-    })
-  }, [push])
+    if (!setupStatus.isSuccess || setupStatus.isFetching) return
+    if (setupStatus.data.step === 'finished') {
+      replace('/signin')
+    } else if (
+      initStatus.isSuccess &&
+      !initStatus.isFetching &&
+      initStatus.data.status === 'not_started'
+    ) {
+      replace('/init')
+    }
+  }, [
+    replace,
+    setupStatus.isSuccess,
+    setupStatus.isFetching,
+    setupStatus.data,
+    initStatus.isSuccess,
+    initStatus.isFetching,
+    initStatus.data,
+  ])
 
-  return loading ? (
-    <LoadingPlaceholder />
+  const canSetup =
+    setupStatus.isSuccess &&
+    !setupStatus.isFetching &&
+    setupStatus.data.step !== 'finished' &&
+    initStatus.isSuccess &&
+    !initStatus.isFetching &&
+    initStatus.data.status !== 'not_started'
+
+  return !canSetup ? (
+    <LoadingPlaceholder className="grow" />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -122,7 +156,7 @@ const InstallForm = () => {
                 autoComplete="email"
                 spellCheck={false}
                 required
-                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
             </Field>
@@ -141,7 +175,7 @@ const InstallForm = () => {
                 autoComplete="name"
                 required
                 maxLength={30}
-                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
             </Field>
@@ -156,29 +190,15 @@ const InstallForm = () => {
               className="mb-5"
             >
               <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type={showPassword ? 'text' : 'password'}
+              <PasswordField>
+                <PasswordFieldInput
                   autoComplete="new-password"
-                  spellCheck={false}
                   required
                   minLength={8}
-                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
                 />
-                <InputGroupAddon align="inline-end">
-                  <IconButton
-                    aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                      ns: 'login',
-                    })}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'}
-                    />
-                  </IconButton>
-                </InputGroupAddon>
-              </InputGroup>
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
               <FieldValidity>
                 {({ validity }) =>
                   validity.valid === false ? null : (

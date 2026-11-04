@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
@@ -72,9 +72,8 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                     end_at = time.perf_counter()
                     logger.info(
                         click.style(
-                            "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                                document_id, end_at - start_at
-                            ),
+                            f"Cleaned document when document update data source or process rule: {document_id} "
+                            f"latency: {end_at - start_at}",
                             fg="green",
                         )
                     )

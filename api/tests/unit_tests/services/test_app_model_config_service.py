@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from collections.abc import Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from services.app_model_config_service import AppModelConfigService
 
 
 @pytest.fixture
-def mock_config_managers():
+def mock_config_managers() -> Iterator[dict[str, MagicMock]]:
     """Fixture that patches all app config manager validate methods.
 
     Returns a dictionary containing the mocked config_validate methods for each manager.
@@ -41,8 +42,12 @@ class TestAppModelConfigService:
         ],
     )
     def test_should_route_validation_to_correct_manager_based_on_app_mode(
-        self, app_mode, selected_manager, mock_config_managers, unbound_session: Session
-    ):
+        self,
+        app_mode: AppMode,
+        selected_manager: str,
+        mock_config_managers: dict[str, MagicMock],
+        unbound_session: Session,
+    ) -> None:
         """Test configuration validation is delegated to the expected manager for each supported app mode."""
         tenant_id = "tenant-123"
         config = {"temperature": 0.5}
@@ -71,8 +76,8 @@ class TestAppModelConfigService:
             mock_agent_validate.assert_not_called()
 
     def test_should_raise_value_error_when_app_mode_is_not_supported(
-        self, mock_config_managers, unbound_session: Session
-    ):
+        self, mock_config_managers: dict[str, MagicMock], unbound_session: Session
+    ) -> None:
         """Test unsupported app modes raise ValueError with the invalid mode in the message."""
         tenant_id = "tenant-123"
         config = {"temperature": 0.5}

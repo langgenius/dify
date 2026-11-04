@@ -29,8 +29,8 @@ from repositories.workflow.node_execution_writer import (
     _filter_by_offload_type,
     _find_first,
 )
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:

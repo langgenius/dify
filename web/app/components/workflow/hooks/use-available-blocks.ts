@@ -60,7 +60,10 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
         !nodeType ||
         nodeType === BlockEnum.Start ||
         nodeType === BlockEnum.StartPlaceholder ||
-        nodeType === BlockEnum.DataSource
+        nodeType === BlockEnum.DataSource ||
+        nodeType === BlockEnum.TriggerPlugin ||
+        nodeType === BlockEnum.TriggerWebhook ||
+        nodeType === BlockEnum.TriggerSchedule
       )
         availablePrevBlocks = []
 

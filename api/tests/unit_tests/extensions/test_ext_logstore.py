@@ -5,7 +5,7 @@ import pytest
 from dify_app import DifyApp
 from extensions import ext_logstore
 from repositories.workflow.logstore.schema import WORKFLOW_EXECUTION_LOGSTORE, WORKFLOW_NODE_EXECUTION_LOGSTORE
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(("backend", "enabled"), [("rdbms", False), ("logstore", True)])

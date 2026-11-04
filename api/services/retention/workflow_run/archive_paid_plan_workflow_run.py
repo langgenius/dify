@@ -47,7 +47,7 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services import workflow_storage
 from extensions.ext_database import db
@@ -330,10 +330,7 @@ class WorkflowRunArchiver:
 
         # Initialize archive storage (will raise if not configured)
         try:
-            if not self.dry_run:
-                storage = get_archive_storage()
-            else:
-                storage = None
+            storage = get_archive_storage() if not self.dry_run else None
         except ArchiveStorageNotConfiguredError as e:
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
             return summary
@@ -557,7 +554,7 @@ class WorkflowRunArchiver:
         # Filter to paid tenants (any plan except SANDBOX)
         paid = set()
         for tid, info in bulk_info.items():
-            if info and info.get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
+            if info and info.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
                 paid.add(tid)
 
         return paid
@@ -790,7 +787,10 @@ class WorkflowRunArchiver:
                 continue
             # Resolve full Process Data with the existing loader, using the same
             # node snapshot and offload reference that will be written to the archive.
-            execution = WorkflowNodeExecutionModel(**record)
+            execution_values = dict(record)
+            created_at = execution_values.pop("created_at")
+            execution = WorkflowNodeExecutionModel(**execution_values)
+            execution.created_at = created_at
             offload = process_data_offloads.get((record["id"], record["tenant_id"], record["app_id"]))
             execution.offload_data = (
                 [

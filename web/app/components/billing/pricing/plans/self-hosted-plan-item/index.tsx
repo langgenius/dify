@@ -47,7 +47,7 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
   const isPremiumPlan = plan === 'premium'
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       <div className={cn('absolute inset-0 -z-10', STYLE_MAP[plan].bg)} />
       {/* Noise Effect */}
       {STYLE_MAP[plan].noise}
@@ -58,13 +58,13 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
             <h3 className="text-[30px] leading-[1.2] font-medium text-text-primary">
               {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
             </h3>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">
+            <div className="system-md-regular text-text-secondary xl:line-clamp-2">
               {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
             </div>
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
+        <div className="flex flex-wrap items-end gap-x-2 px-1 pt-4 pb-8">
           <div className="shrink-0 title-4xl-semi-bold text-text-primary">
             {t(($) => $[`${i18nPrefix}.price`], { ns: 'billing' })}
           </div>
@@ -79,11 +79,17 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
           data-plan={plan}
           className={cn(
             buttonVariants({ variant: 'tertiary', size: null }),
-            'h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover',
+            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap',
           )}
         >
-          <span className="flex grow items-center gap-x-2">
+          <span className="flex min-w-0 grow flex-wrap items-center gap-x-2 xl:flex-nowrap">
             <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
+            {isPremiumPlan && (
+              <span className="sr-only">
+                {' '}
+                {t(($) => $['plans.premium.marketplaceName'], { ns: 'billing' })}
+              </span>
+            )}
             {isPremiumPlan && (
               <span aria-hidden className="pt-1.75 pb-px">
                 {theme === Theme.light ? (

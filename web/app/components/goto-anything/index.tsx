@@ -10,14 +10,7 @@ import {
   AutocompleteInputGroup,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollArea,
@@ -26,7 +19,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
@@ -36,6 +29,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useMarketplace, useMarketplacePluginSearch } from '@/features/marketplace/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -48,7 +42,7 @@ import { slashCommandRegistry } from './actions/commands/catalog'
 import { createSlashAction } from './actions/commands/slash'
 import { useCommandContext } from './actions/commands/use-command-context'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
-import { pluginSearchQueryOptions } from './actions/plugin'
+import { parsePluginSearchResults } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
@@ -141,6 +135,12 @@ function groupSearchResults(results: SearchResult[]) {
   }, {})
 }
 
+function SearchDialogHotkeys() {
+  // Keep the browser from claiming Mod+K while the global opener is suspended.
+  useHotkey(GOTO_ANYTHING_HOTKEY, () => {})
+  return null
+}
+
 export function GotoAnything() {
   const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
@@ -154,6 +154,7 @@ export function GotoAnything() {
   )
   const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
+  const pluginsAvailable = useMarketplace() !== null
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -162,14 +163,23 @@ export function GotoAnything() {
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchHintId = useId()
+  const hotkeyScopeId = useId()
   const commandContext = useCommandContext(agentsAvailable, skillsAvailable, isWorkflowPage)
   const actions = useMemo(
     () =>
       createActions(createSlashAction(commandContext), isWorkflowPage, isRagPipelinePage, {
         agents: agentsAvailable,
+        plugins: pluginsAvailable,
         skills: skillsAvailable,
       }),
-    [agentsAvailable, commandContext, isWorkflowPage, isRagPipelinePage, skillsAvailable],
+    [
+      agentsAvailable,
+      commandContext,
+      isWorkflowPage,
+      isRagPipelinePage,
+      pluginsAvailable,
+      skillsAvailable,
+    ],
   )
   const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery, commandContext)
   const trimmedSearchQuery = searchQuery.trim()
@@ -190,7 +200,9 @@ export function GotoAnything() {
   const knowledgeSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@knowledge')
   const pluginSearchEnabled =
-    remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@plugin')
+    remoteSearchEnabled &&
+    pluginsAvailable &&
+    (!debouncedAction || debouncedAction.key === '@plugin')
   const skillSearchEnabled =
     remoteSearchEnabled && skillsAvailable && (!debouncedAction || debouncedAction.key === '@skill')
   const agentSearchEnabled =
@@ -209,12 +221,10 @@ export function GotoAnything() {
       placeholderData: keepPreviousData,
     }),
   )
-  const pluginSearchQuery = useQuery(
-    pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale, {
-      enabled: pluginSearchEnabled,
-      placeholderData: keepPreviousData,
-    }),
-  )
+  const pluginSearchQuery = useMarketplacePluginSearch(debouncedSearchTerm, {
+    enabled: pluginSearchEnabled,
+    select: (plugins) => parsePluginSearchResults(plugins, defaultLocale),
+  })
   const skillSearchQuery = useQuery(
     skillSearchQueryOptions(debouncedSearchTerm, {
       enabled: skillSearchEnabled,
@@ -437,12 +447,13 @@ export function GotoAnything() {
         handle={gotoAnythingDialogHandle}
         onOpenChangeComplete={handleDialogOpenChangeComplete}
       >
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup
-            initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 isolate flex max-h-[calc(100dvh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden p-0"
-          >
+        <DialogContent
+          initialFocus={inputRef}
+          className="w-160 data-open:transition-none"
+          backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
+        >
+          <HotkeysProvider scope={hotkeyScopeId} exclusive>
+            <SearchDialogHotkeys />
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
@@ -469,7 +480,8 @@ export function GotoAnything() {
             >
               <AutocompleteInputGroup
                 size="medium"
-                className="h-auto shrink-0 gap-3 rounded-none border-0 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3 shadow-none focus-within:border-state-accent-solid data-focused:border-state-accent-solid"
+                // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
+                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -494,7 +506,7 @@ export function GotoAnything() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden">
+              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
                 <ScrollAreaViewport
                   tabIndex={-1}
                   aria-busy={isLoading || undefined}
@@ -574,8 +586,8 @@ export function GotoAnything() {
             <DialogClose tabIndex={-1} className="sr-only">
               {t(($) => $['operation.close'], { ns: 'common' })}
             </DialogClose>
-          </DialogPopup>
-        </DialogPortal>
+          </HotkeysProvider>
+        </DialogContent>
       </Dialog>
 
       {activePlugin && canInstallPlugin && (

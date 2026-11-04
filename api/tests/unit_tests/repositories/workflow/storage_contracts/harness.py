@@ -10,7 +10,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow.run_repository import APIWorkflowRunRepository
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.repositories.workflow.storage_contracts.transports import AppendOnlyLogStore, TaskDeliveries
 
 BACKENDS = ("rdbms", "celery", "logstore")

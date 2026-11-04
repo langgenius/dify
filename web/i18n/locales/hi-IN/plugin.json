@@ -3,7 +3,6 @@
   "action.delete": "प्लगइन हटाएं",
   "action.deleteContentLeft": "क्या आप हटाना चाहेंगे",
   "action.deleteContentRight": "प्लगइन?",
-  "action.deleteSuccess": "प्लगइन सफलतापूर्वक हटाया गया",
   "action.pluginInfo": "प्लगइन जानकारी",
   "allCategories": "सभी श्रेणियाँ",
   "auth.addApi": "API कुंज जोड़ें",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "टेम्पलेट प्रकाशन मार्गदर्शिका",
-  "upgrade.close": "करीब",
   "upgrade.description": "निम्नलिखित प्लगइन स्थापित करने वाले हैं",
-  "upgrade.successfulTitle": "स्थापना सफल",
   "upgrade.title": "प्लगइन स्थापित करें",
   "upgrade.upgrade": "स्थापित करें",
   "upgrade.upgrading": "स्थापित कर रहा है..."

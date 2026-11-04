@@ -10,7 +10,7 @@ from machinery.context import WebAppRequestContext
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow
 from repositories.app.web_workflow_repository import WebWorkflowRepository
-from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
 
 CONTEXT = WebAppRequestContext(
     request_id="request-1", trace_id=None, tenant_id="tenant-1", app_id="app-1", end_user_id="user-1"

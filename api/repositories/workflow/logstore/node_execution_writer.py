@@ -16,8 +16,10 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.workflow.persistence_ports import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
@@ -32,6 +34,7 @@ from repositories.workflow.logstore.records import node_execution_from_log
 from repositories.workflow.logstore.schema import WORKFLOW_NODE_EXECUTION_LOGSTORE
 from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from repositories.workflow.offload import WorkflowOffloadUploader
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +89,13 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
+        self._upload_file = upload_file
+        self._session_factory = (
+            sessionmaker(bind=session_factory, expire_on_commit=False)
+            if isinstance(session_factory, Engine)
+            else session_factory
+        )
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -104,7 +114,18 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         # and tests share the same validated source.
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
 
-    def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
+    @override
+    def for_workflow_tool(self, app_id: str) -> "LogstoreWorkflowNodeExecutionWriter":
+        return LogstoreWorkflowNodeExecutionWriter(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            upload_file=self._upload_file,
+        )
+
+    def _to_logstore_model(self, domain_model: WorkflowNodeExecution, *, log_version: int) -> Sequence[tuple[str, str]]:
         logger.debug(
             "_to_logstore_model: id=%s, node_id=%s, status=%s",
             domain_model.id,
@@ -118,17 +139,22 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
-        # Generate log_version as nanosecond timestamp for record versioning
-        log_version = str(time.time_ns())
+        version = str(log_version)
 
         json_converter = WorkflowRuntimeTypeConverter()
+        triggered_from_workflow_id = triggered_from_node_execution_id = None
+        if isinstance(domain_model, DifyWorkflowNodeExecution):
+            triggered_from_workflow_id = domain_model.triggered_from_workflow_id
+            triggered_from_node_execution_id = domain_model.triggered_from_node_execution_id
 
         logstore_model = [
             ("id", domain_model.id),
-            ("log_version", log_version),  # Add log_version field for append-only writes
+            ("log_version", version),  # Add log_version field for append-only writes
             ("tenant_id", self._tenant_id),
             ("app_id", self._app_id or ""),
             ("workflow_id", domain_model.workflow_id),
+            ("triggered_from_workflow_id", triggered_from_workflow_id or ""),
+            ("triggered_from_node_execution_id", triggered_from_node_execution_id or ""),
             (
                 "triggered_from",
                 self._triggered_from.value if hasattr(self._triggered_from, "value") else str(self._triggered_from),
@@ -198,8 +224,9 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
             execution.node_execution_id,
             execution.status.value,
         )
+        execution, version = self._prepare_controlled_write(execution)
         try:
-            logstore_model = self._to_logstore_model(execution)
+            logstore_model = self._to_logstore_model(execution, log_version=version)
             self.logstore_client.put_log(WORKFLOW_NODE_EXECUTION_LOGSTORE, logstore_model)
 
             logger.debug(
@@ -225,6 +252,45 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
+    def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
+        """Project durable cancellation onto a snapshot while preserving LogStore ordering."""
+        version = time.time_ns()
+        if execution.status in (
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.RETRY,
+        ):
+            execution = execution.model_copy()
+            with self._session_factory() as session:
+                apply_workflow_stop_to_node(
+                    execution,
+                    get_stopped_workflow_run(
+                        session,
+                        tenant_id=self._tenant_id,
+                        workflow_run_id=execution.workflow_execution_id,
+                    ),
+                )
+        return execution, version
+
+    @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Append exact records and batch the optional SQL backup."""
+        if not executions:
+            return
+        controlled_executions = []
+        for execution in executions:
+            execution, version = self._prepare_controlled_write(execution)
+            controlled_executions.append(execution)
+            self.logstore_client.put_log(
+                WORKFLOW_NODE_EXECUTION_LOGSTORE,
+                self._to_logstore_model(execution, log_version=version),
+            )
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save_many(controlled_executions)
+            except Exception:
+                logger.exception("Failed to dual-write workflow node execution batch: %s", [e.id for e in executions])
+
     @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the SQL caller row required by Agent v2 participant ownership."""
@@ -234,7 +300,11 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """Append the supplied execution snapshot, including updated data fields."""
-        self.logstore_client.put_log(WORKFLOW_NODE_EXECUTION_LOGSTORE, self._to_logstore_model(execution))
+        execution, version = self._prepare_controlled_write(execution)
+        self.logstore_client.put_log(
+            WORKFLOW_NODE_EXECUTION_LOGSTORE,
+            self._to_logstore_model(execution, log_version=version),
+        )
 
         # Dual-write to SQL database if enabled (for safe migration)
         if self._enable_dual_write:
@@ -250,6 +320,8 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         owner = {
             "tenant_id": self._tenant_id,
@@ -271,10 +343,22 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         while True:
             rows = self.logstore_client.execute_sql(
                 sql=node_execution_page(
-                    current, order_by=order, include_paused=False, offset=len(executions), count=page_size
+                    current,
+                    order_by=order,
+                    include_paused=include_paused,
+                    offset=len(executions),
+                    count=page_size,
                 ),
                 logstore=WORKFLOW_NODE_EXECUTION_LOGSTORE,
             )
             executions.extend(node_execution_from_log(row) for row in rows)
             if len(rows) < page_size:
+                with self._session_factory() as session:
+                    stopped = get_stopped_workflow_run(
+                        session,
+                        tenant_id=self._tenant_id,
+                        workflow_run_id=workflow_execution_id,
+                    )
+                    for execution in executions:
+                        apply_workflow_stop_to_node(execution, stopped)
                 return executions

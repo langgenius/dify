@@ -6,7 +6,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 from models.enums import SegmentStatus

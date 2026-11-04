@@ -1,13 +1,13 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import get_args
-from unittest.mock import MagicMock
+from typing import get_args, override
 
 import pytest
 from sqlalchemy import event
 
 from configs.feature import WorkflowStorageConfig
 from core.app.workflow.persistence_ports import OrderConfig
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
@@ -15,9 +15,20 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.repositories.workflow.storage_contracts.entities import START, node, run
 from tests.unit_tests.repositories.workflow.storage_contracts.harness import BACKENDS, StorageContract
+
+
+class _FakeRedisClient(RedisClientWrapper):
+    @override
+    def register_script(self, script: str) -> Callable[..., object]:
+        del script
+
+        def execute(*args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+        return execute
 
 
 def test_every_configured_backend_has_a_contract_driver() -> None:
@@ -41,7 +52,7 @@ def test_independent_configuration_round_trips_run_and_nodes(mixed_storage: Stor
         database_client=mixed_storage.sessions,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_FakeRedisClient(),
     ).workflow_runs
     context = RequestContext("request-1", None, "actor-1", "tenant-1")
     result = queries.get_workflow_run(context, app_id="app-1", run_id="run-1")
@@ -156,7 +167,7 @@ def test_pagination_has_stable_tie_breaking_and_validates_cursor(storage: Storag
     )
     assert [item.id for item in second.data] == ["run-1"]
     assert second.has_more is False
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Last workflow run not exists"):
         storage.runs().get_paginated_workflow_runs(
             "tenant-2", "app-1", WorkflowRunTriggeredFrom.APP_RUN, last_id="run-1"
         )

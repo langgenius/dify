@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "ການໃຊ້ງານ",
   "modelProvider.card.usagePriority": "ລຳດັບຄວາມສຳຄັນຂອງການໃຊ້ງານ",
   "modelProvider.card.usagePriorityTip": "ຕັ້ງຄ່າວ່າຈະໃຊ້ຊັບພະຍາກອນໃດກ່ອນໃນການລັນໂມເດວ.",
+  "modelProvider.clearDefaultModel.description": "ການປ່ຽນແປງນີ້ຈະມີຜົນເມື່ອທ່ານບັນທຶກ. ການລ້າງຄ່າໂມເດວເລີ່ມຕົ້ນນີ້ ອາດເຮັດໃຫ້ Workflow ທີ່ອາໄສໂມເດວນີ້ບໍ່ສາມາດເຮັດວຽກໄດ້ຕາມປົກກະຕິ.",
+  "modelProvider.clearDefaultModel.title": "ລ້າງຄ່າ {{modelType}} ຫຼືບໍ່?",
   "modelProvider.configureTip": "ຕັ້ງຄ່າ api-key ຫຼື ເພີ່ມໂມເດວເພື່ອໃຊ້ງານ",
   "modelProvider.confirmDelete": "ຢືນຢັນການລຶບບໍ?",
   "modelProvider.defaultConfig": "ການຕັ້ງຄ່າເລີ່ມຕົ້ນ",

@@ -13,8 +13,6 @@ from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast
-from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 from aliyun.log import GetLogsRequest, LogItem, PutLogsRequest
@@ -22,6 +20,69 @@ from kombu.serialization import dumps, loads
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from repositories.workflow.logstore.schema import workflow_logstore_indexes
+
+
+class _SDKEndpoint:
+    def __init__(
+        self,
+        put: Callable[[PutLogsRequest], None],
+        get: Callable[[GetLogsRequest], "LogResponse"],
+    ) -> None:
+        self._put = put
+        self._get = get
+
+    def put_logs(self, request: PutLogsRequest) -> None:
+        self._put(request)
+
+    def get_logs(self, request: GetLogsRequest) -> "LogResponse":
+        return self._get(request)
+
+
+class _PGEndpoint:
+    def __init__(
+        self,
+        put: Callable[[str, Sequence[tuple[str, str]], bool], None],
+        query: Callable[[str, str, bool], list[dict[str, object]]],
+    ) -> None:
+        self._put = put
+        self._query = query
+
+    def put_log(self, logstore: str, contents: Sequence[tuple[str, str]], log_enabled: bool) -> None:
+        self._put(logstore, contents, log_enabled)
+
+    def execute_sql(self, sql: str, logstore: str, log_enabled: bool) -> list[dict[str, object]]:
+        return self._query(sql, logstore, log_enabled)
+
+
+class _ContractAliyunLogStore(AliyunLogStore):
+    """Initialize the production adapter with deterministic local endpoints."""
+
+    _instance: AliyunLogStore | None = None
+    client: _SDKEndpoint
+    _pg_client: _PGEndpoint
+
+    def __new__(
+        cls,
+        transport: "AppendOnlyLogStore",
+        *,
+        pg: bool,
+    ) -> "_ContractAliyunLogStore":
+        del transport, pg
+        return super().__new__(cls)
+
+    def __init__(self, transport: "AppendOnlyLogStore", *, pg: bool) -> None:
+        self.project_name = "contract-project"
+        self.log_enabled = False
+        self._use_pg_protocol = pg
+        self.client = _SDKEndpoint(transport._sdk_put, transport._sdk_get)
+        self._pg_client = _PGEndpoint(transport._pg_put, transport._pg_query)
+
+    @classmethod
+    def create(cls, transport: "AppendOnlyLogStore", *, pg: bool) -> "_ContractAliyunLogStore":
+        # The production adapter is a process singleton. Contract transports need
+        # independent local endpoints, so reset only the test subclass singleton.
+        cls._instance = None
+        return cls(transport, pg=pg)
 
 
 def convert_tz(value: str, source: str, target: str) -> str:
@@ -54,17 +115,7 @@ class AppendOnlyLogStore:
         )
         self.failure: Exception | None = None
         # Exercise the production SDK/PG routing, with only the remote endpoints replaced.
-        self.client = object.__new__(AliyunLogStore)
-        self.client.project_name = "contract-project"
-        self.client.log_enabled = False
-        self.client._use_pg_protocol = pg
-        self.client.client = MagicMock()
-        self.client.client.put_logs.side_effect = self._sdk_put
-        self.client.client.get_logs.side_effect = self._sdk_get
-        pg_client = MagicMock()
-        pg_client.put_log.side_effect = self._pg_put
-        pg_client.execute_sql.side_effect = self._pg_query
-        self.client._pg_client = pg_client
+        self.client = _ContractAliyunLogStore.create(self, pg=pg)
         for name, config in workflow_logstore_indexes().items():
             columns = []
             for field, key in config.key_config_list.items():
@@ -98,15 +149,22 @@ class AppendOnlyLogStore:
 
     def _sdk_put(self, request: PutLogsRequest) -> None:
         assert request.get_project() == "contract-project"
-        for item in cast(list[LogItem], request.get_log_items()):
+        items = request.get_log_items()
+        assert isinstance(items, list)
+        for item in items:
+            assert isinstance(item, LogItem)
             self.put_log(request.get_logstore(), item.get_contents())
 
     def _sdk_get(self, request: GetLogsRequest) -> "LogResponse":
         assert request.get_project() == "contract-project"
         assert request.get_logstore() in workflow_logstore_indexes()
         assert request.get_from() == 0
-        assert cast(int, request.get_to()) > 0
-        search, sql = cast(str, request.get_query()).split("|", 1)
+        to_time = request.get_to()
+        assert isinstance(to_time, int)
+        assert to_time > 0
+        query = request.get_query()
+        assert isinstance(query, str)
+        search, sql = query.split("|", 1)
         assert search.strip() == "*"
         return LogResponse([LogEntry(row) for row in self._query(sql)])
 

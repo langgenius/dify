@@ -55,10 +55,8 @@ export function AccessControlForm({
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
         <div className="pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['accessControlDialog.title'], { ns: 'app' })}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogTitle>{t(($) => $['accessControlDialog.title'], { ns: 'app' })}</DialogTitle>
+          <DialogDescription className="mt-1">
             {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
           </DialogDescription>
         </div>

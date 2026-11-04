@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -130,18 +131,18 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             <DialogTrigger
               handle={gotoAnythingDialogHandle}
               render={
-                <button
-                  type="button"
+                <IconButton
+                  size="lg"
                   aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="shrink-0 rounded-[10px] transition-colors"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-                </button>
+                </IconButton>
               }
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1">
+        <TooltipContent side="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
             {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -177,13 +178,6 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
     (item) =>
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
-  const imageUrl =
-    agent?.icon_type === 'image'
-      ? agent.icon_url
-      : agent?.icon_type === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -206,14 +200,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
         >
           <div className={cn('shrink-0', expand && 'mr-2')}>
             <span aria-hidden>
-              <AppIcon
-                size="large"
-                rounded
-                iconType={iconType}
-                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
-                background={agent?.icon_background}
-                imageUrl={imageUrl}
-              />
+              <AppIcon size="large" shape="circle" icon={agent} />
             </span>
           </div>
           <div

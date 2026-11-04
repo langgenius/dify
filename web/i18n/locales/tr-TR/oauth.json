@@ -1,4 +1,8 @@
 {
+  "callback.error": "Yetkilendirme başarısız",
+  "callback.errorHint": "Lütfen önceki sayfaya dönüp tekrar deneyin.",
+  "callback.success": "Yetkilendirme tamamlandı",
+  "callback.successHint": "Artık bu sekmeyi kapatıp önceki sayfaya dönebilirsiniz.",
   "connect": "Bağlan",
   "continue": "Devam et",
   "error.authAppInfoFetchFailed": "Yetkilendirme için uygulama bilgisi alınamadı",

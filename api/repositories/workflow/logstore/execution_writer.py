@@ -10,6 +10,7 @@ from configs import dify_config
 from core.app.workflow.persistence_ports import WorkflowExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
@@ -17,8 +18,10 @@ from models import (
     EndUser,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
 from repositories.workflow.logstore.schema import WORKFLOW_EXECUTION_LOGSTORE
+from repositories.workflow_run_control import get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -71,13 +74,18 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
         )
 
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
+        self._session_factory = (
+            sessionmaker(bind=session_factory, expire_on_commit=False)
+            if isinstance(session_factory, Engine)
+            else session_factory
+        )
 
         # Control flag for whether to write the `graph` field to LogStore.
         # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
         # otherwise write an empty {} instead. Defaults to writing the `graph` field.
         self._enable_put_graph_field = dify_config.LOGSTORE_ENABLE_PUT_GRAPH_FIELD
 
-    def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
+    def _to_logstore_model(self, domain_model: WorkflowExecution, *, log_version: int) -> list[tuple[str, str]]:
         """
         Convert a domain model to a logstore model (List[Tuple[str, str]]).
 
@@ -101,15 +109,14 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
-        # Generate log_version as nanosecond timestamp for record versioning
-        log_version = str(time.time_ns())
+        version = str(log_version)
 
         # Use WorkflowRuntimeTypeConverter to handle complex types (Segment, File, etc.)
         json_converter = WorkflowRuntimeTypeConverter()
 
         logstore_model = [
             ("id", domain_model.id_),
-            ("log_version", log_version),  # Add log_version field for append-only writes
+            ("log_version", version),  # Add log_version field for append-only writes
             ("tenant_id", self._tenant_id),
             ("app_id", self._app_id or ""),
             ("workflow_id", domain_model.workflow_id),
@@ -142,6 +149,7 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
             ("total_tokens", str(domain_model.total_tokens)),
             ("total_steps", str(domain_model.total_steps)),
             ("exceptions_count", str(domain_model.exceptions_count)),
+            ("elapsed_time", str(domain_model.elapsed_time)),
             (
                 "created_by_role",
                 self._creator_user_role.value
@@ -154,6 +162,12 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
         ]
 
         return logstore_model
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        # Keep complete lifecycle state durable even when optional SQL history dual-write is disabled.
+        self.sql_repository.save(execution)
+        self._write_logstore(execution)
 
     @override
     def save(self, execution: WorkflowExecution) -> None:
@@ -174,14 +188,7 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
             "save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value
         )
         self.sql_repository.save_control(execution)
-        try:
-            logstore_model = self._to_logstore_model(execution)
-            self.logstore_client.put_log(WORKFLOW_EXECUTION_LOGSTORE, logstore_model)
-
-            logger.debug("Saved workflow execution to logstore: id=%s", execution.id_)
-        except Exception:
-            logger.exception("Failed to save workflow execution to logstore: id=%s", execution.id_)
-            raise
+        self._write_logstore(execution)
 
         # Dual-write to SQL database if enabled (for safe migration)
         if self._enable_dual_write:
@@ -190,4 +197,28 @@ class LogstoreWorkflowExecutionWriter(WorkflowExecutionRepository):
                 logger.debug("Dual-write: saved workflow execution to SQL database: id=%s", execution.id_)
             except Exception:
                 logger.exception("Failed to dual-write workflow execution to SQL database: id=%s", execution.id_)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    def _write_logstore(self, execution: WorkflowExecution) -> None:
+        # Assign ordering before checking control state so a concurrent stop always sorts last.
+        version = time.time_ns()
+        with self._session_factory() as session:
+            stopped = get_stopped_workflow_run(session, tenant_id=self._tenant_id, workflow_run_id=execution.id_)
+            if stopped is not None:
+                execution = TimedWorkflowExecution.model_validate(
+                    {
+                        **execution.model_dump(),
+                        "status": WorkflowExecutionStatus.STOPPED,
+                        "error_message": stopped.error,
+                        "outputs": stopped.outputs_dict,
+                        "finished_at": stopped.finished_at,
+                        "accumulated_elapsed_time": stopped.elapsed_time,
+                    }
+                )
+        try:
+            logstore_model = self._to_logstore_model(execution, log_version=version)
+            self.logstore_client.put_log(WORKFLOW_EXECUTION_LOGSTORE, logstore_model)
+
+            logger.debug("Saved workflow execution to logstore: id=%s", execution.id_)
+        except Exception:
+            logger.exception("Failed to save workflow execution to logstore: id=%s", execution.id_)
+            raise

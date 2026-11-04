@@ -10,14 +10,18 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { Input } from '@langgenius/dify-ui/input'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 
@@ -56,8 +60,7 @@ const ChangePasswordForm = () => {
 
       setIsSubmitting(true)
       try {
-        await changePasswordWithToken({
-          url: '/forgot-password/resets',
+        await consoleClient.forgotPassword.resets.post({
           body: {
             token: resetToken,
             new_password: formValues.password,
@@ -133,17 +136,18 @@ const ChangePasswordForm = () => {
                 <FieldLabel>
                   {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
-                <Input
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  spellCheck={false}
-                  onValueChange={() => {
-                    if (confirmPasswordRef.current?.value)
-                      formActionsRef.current?.validate('confirmPassword')
-                  }}
-                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                />
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    onValueChange={() => {
+                      if (confirmPasswordRef.current?.value)
+                        formActionsRef.current?.validate('confirmPassword')
+                    }}
+                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
                 <FieldValidity>
                   {({ validity }) =>
                     validity.valid !== false ? (
@@ -180,14 +184,15 @@ const ChangePasswordForm = () => {
                 <FieldLabel>
                   {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
-                <Input
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  spellCheck={false}
-                  ref={confirmPasswordRef}
-                  placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
-                />
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    ref={confirmPasswordRef}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
                 <FieldError>
                   {t(($) => $['account.notEqual'], { ns: 'accountSettings' })}
                 </FieldError>

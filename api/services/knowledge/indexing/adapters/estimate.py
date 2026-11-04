@@ -17,8 +17,8 @@ from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from enums import DeploymentEdition
 from extensions.ext_storage import storage
@@ -26,6 +26,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
@@ -87,6 +88,8 @@ class IndexingEstimateAdapter:
             )
         except (LLMBadRequestError, ProviderTokenNotInitError, PluginDaemonClientSideError) as error:
             raise IndexingEstimateProviderUnavailableError(error.description) from error
+        except CredentialRefreshUnavailableError:
+            raise
         except Exception as error:
             raise IndexingEstimateExecutionError(str(error)) from error
 

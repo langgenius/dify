@@ -372,14 +372,14 @@ class FileLifecycleManager:
                             continue
 
                 # Cleanup old versions for each file
-                for base_filename, versions in file_versions.items():
+                for _base_filename, versions in file_versions.items():
                     # Sort by version number
                     versions.sort(key=operator.itemgetter(0), reverse=True)
 
                     # Keep the newest max_versions versions, delete the rest
                     if len(versions) > max_versions:
                         to_delete = versions[max_versions:]
-                        for version_num, version_file in to_delete:
+                        for _version_num, version_file in to_delete:
                             self._storage.delete(version_file)
                             cleaned_count += 1
                             logger.debug("Cleaned old version: %s", version_file)

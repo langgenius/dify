@@ -7,7 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import override
+from typing import Any, override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from core.app.workflow.persistence_ports import OrderConfig, WorkflowNodeExecutionRepository
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from repositories.workflow.node_execution_writer import (
@@ -23,6 +24,7 @@ from repositories.workflow.node_execution_writer import (
 from repositories.workflow.offload import WorkflowOffloadUploader
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
+    save_workflow_node_executions_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -95,6 +97,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
+        self._upload_file = upload_file
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -122,6 +126,17 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         )
 
     @override
+    def for_workflow_tool(self, app_id: str) -> "CeleryWorkflowNodeExecutionRepository":
+        return CeleryWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            upload_file=self._upload_file,
+        )
+
+    @override
     def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
@@ -134,7 +149,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         try:
             # Serialize execution for Celery task
-            execution_data = execution.model_dump()
+            execution_data = self._serialize_execution(execution)
 
             # Queue the save operation as a Celery task (fire and forget)
             save_workflow_node_execution_task.delay(
@@ -162,6 +177,37 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             raise
 
     @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Cache exact records and queue one storage task for the whole batch."""
+        if not executions:
+            return
+        for execution in executions:
+            self._execution_cache[execution.id] = execution
+            if execution.workflow_execution_id:
+                execution_ids = self._workflow_execution_mapping.setdefault(execution.workflow_execution_id, [])
+                if execution.id not in execution_ids:
+                    execution_ids.append(execution.id)
+        save_workflow_node_executions_task.delay(
+            executions_data=[self._serialize_execution(execution) for execution in executions],
+            tenant_id=self._tenant_id,
+            app_id=self._app_id or "",
+            triggered_from=self._triggered_from.value if self._triggered_from else "",
+            creator_user_id=self._creator_user_id,
+            creator_user_role=self._creator_user_role.value,
+        )
+
+    @staticmethod
+    def _serialize_execution(execution: WorkflowNodeExecution) -> dict[str, Any]:
+        """Project runtime values before model serialization erases their segment types."""
+        converter = WorkflowRuntimeTypeConverter()
+        return {
+            **execution.model_dump(exclude={"inputs", "process_data", "outputs"}),
+            "inputs": converter.to_json_encodable(execution.inputs),
+            "process_data": converter.to_json_encodable(execution.process_data),
+            "outputs": converter.to_json_encodable(execution.outputs),
+        }
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the Agent v2 caller row before runtime participant allocation."""
 
@@ -187,6 +233,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve workflow node executions from cache after loading persisted history once.
@@ -199,6 +247,12 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A sequence of WorkflowNodeExecution instances
         """
         try:
+            if include_paused:
+                return self._sql_repository.get_by_workflow_execution(
+                    workflow_execution_id,
+                    order_config,
+                    include_paused=True,
+                )
             if workflow_execution_id not in self._database_loaded_workflow_executions:
                 try:
                     persisted_executions = self._sql_repository.get_by_workflow_execution(

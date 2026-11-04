@@ -60,6 +60,8 @@ describe('AudioBtn', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    mockPlayAudio.mockReset()
+    mockPauseAudio.mockReset()
     mockGetAudioPlayer.mockReturnValue({
       playAudio: mockPlayAudio,
       pauseAudio: mockPauseAudio,
@@ -194,14 +196,6 @@ describe('AudioBtn', () => {
   })
 
   describe('Play/Pause', () => {
-    it('should call playAudio when clicked', async () => {
-      const user = userEvent.setup()
-      renderAudioButton(<AudioBtn value="test" />)
-      await user.click(getButton())
-
-      await waitFor(() => expect(mockPlayAudio).toHaveBeenCalled())
-    })
-
     it('should call pauseAudio when clicked while playing', async () => {
       const user = userEvent.setup()
       renderAudioButton(<AudioBtn value="test" />)
@@ -226,6 +220,20 @@ describe('AudioBtn', () => {
       expect(await screen.findByRole('button', { name: 'Loading' })).toBeDisabled()
     })
   })
+
+  it.each(['play', 'error'])(
+    'keeps a synchronous player %s event instead of overwriting it with loading',
+    async (event) => {
+      const user = userEvent.setup()
+      mockPlayAudio.mockImplementation(() => getAudioCallback()(event))
+      renderAudioButton(<AudioBtn value="test" />)
+      await user.click(getButton())
+      expect(
+        screen.getByRole('button', { name: event === 'play' ? 'Pause' : 'Play' }),
+      ).toBeEnabled()
+      await hoverAndCheckTooltip(user, event === 'play' ? 'Pause' : 'Play')
+    },
+  )
 
   describe('Props', () => {
     it('should pass props to audio player', async () => {

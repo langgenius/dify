@@ -8,7 +8,7 @@ from sqlalchemy import delete, select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now

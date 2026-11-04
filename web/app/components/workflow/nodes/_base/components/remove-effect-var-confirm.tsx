@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -27,25 +28,18 @@ const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
   return (
     <AlertDialog open={isShow} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle
-            className="w-full truncate title-2xl-semi-bold text-text-primary"
-            title={title}
-          >
-            {title}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {content}
-          </AlertDialogDescription>
-        </div>
-        <AlertDialogActions>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{content}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
           <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

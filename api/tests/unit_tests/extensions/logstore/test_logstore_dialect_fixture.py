@@ -9,8 +9,8 @@ from aliyun.log import IndexConfig
 from configs import dify_config
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.integration_tests.repositories.workflow import test_logstore_dialect as dialect
-from tests.unit_tests.config_override import apply_config_overrides
 
 logstore = dialect.logstore
 

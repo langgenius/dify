@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createDocLinkMock, resolveDocLink } from '@/app/components/workflow/__tests__/i18n'
-import { IndexMethodEnum } from '../../../types'
+import { IndexMethodEnum, RetrievalSearchMethodEnum } from '../../../types'
 import RetrievalSetting from '../index'
 
 const mockUseDocLink = createDocLinkMock()
@@ -24,11 +25,8 @@ const baseProps = {
 }
 
 describe('RetrievalSetting', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render the learn-more link and qualified retrieval method options', () => {
+  it('links to retrieval documentation and selects a qualified search method', async () => {
+    const user = userEvent.setup()
     render(<RetrievalSetting {...baseProps} indexMethod={IndexMethodEnum.QUALIFIED} />)
 
     expect(
@@ -40,6 +38,12 @@ describe('RetrievalSetting', () => {
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('radio', { name: /dataset.retrieval.full_text_search.title/ }),
+    )
+    expect(baseProps.onRetrievalSearchMethodChange).toHaveBeenCalledWith(
+      RetrievalSearchMethodEnum.fullText,
+    )
   })
 
   it('should render only the economical retrieval method for economical indexing', () => {

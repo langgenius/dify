@@ -140,7 +140,7 @@ function CredentialStatus({
       {showWarning && (
         <span
           aria-hidden
-          className="ml-auto i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
+          className="ms-auto i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
         />
       )}
     </>

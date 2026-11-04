@@ -102,6 +102,10 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         )
 
     @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self._control_repository.save(execution)
+
+    @override
     def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance asynchronously using Celery.

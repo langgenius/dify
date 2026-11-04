@@ -26,6 +26,7 @@ from core.errors.error import (
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from machinery.context import WebAppRequestContext
 from services.app.web_workflow_service import WebAppNotWorkflowError, WebWorkflowUnavailableError
 from services.errors.app import (
@@ -41,6 +42,15 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+    )
     @web_ns.doc("Run Workflow")
     @web_ns.doc(description="Execute a workflow with provided inputs and files.")
     @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
@@ -72,31 +82,32 @@ class WorkflowRunApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except WebAppNotWorkflowError:
-            raise NotWorkflowAppError() from None
-        except WebWorkflowUnavailableError:
-            raise NotFound() from None
-        except TriggerWorkflowServiceModeUnavailableServiceError:
-            raise TriggerWorkflowServiceModeUnavailableError()
+        except WebAppNotWorkflowError as caught_error:
+            raise NotWorkflowAppError() from caught_error
+        except WebWorkflowUnavailableError as caught_error:
+            raise NotFound() from caught_error
+        except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+            raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @web_ns.doc("Stop Workflow Task")
     @web_ns.doc(description="Stop a running workflow task.")
     @web_ns.doc(
@@ -109,7 +120,6 @@ class WorkflowTaskStopApi(Resource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }
@@ -122,7 +132,7 @@ class WorkflowTaskStopApi(Resource):
         """
         try:
             application_services().apps.web_workflows.stop(app_mode=app_mode, task_id=task_id)
-        except WebAppNotWorkflowError:
-            raise NotWorkflowAppError() from None
+        except WebAppNotWorkflowError as caught_error:
+            raise NotWorkflowAppError() from caught_error
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

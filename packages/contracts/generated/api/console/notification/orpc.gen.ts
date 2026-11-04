@@ -41,7 +41,7 @@ export const get = oc
     path: '/notification',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetNotificationQuery.optional() }))
+  .input(z.object({ query: zGetNotificationQuery.optional() }).optional())
   .output(zGetNotificationResponse)
 
 export const notification = {

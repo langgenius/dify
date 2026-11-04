@@ -18,8 +18,8 @@ from models.dataset import Pipeline
 from models.workflow import WorkflowDraftVariable, WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
 from repositories.workflow.logstore.schema import WORKFLOW_NODE_EXECUTION_LOGSTORE
 from services.rag_pipeline import rag_pipeline as pipeline_module
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.repositories.workflow.storage_contracts.entities import START, node, run
 from tests.unit_tests.repositories.workflow.storage_contracts.harness import StorageContract
 
@@ -245,11 +245,14 @@ def test_run_can_pause_and_resume_before_log_delivery(
     )
     pause = repo.create_workflow_pause(running.id_, "actor-1", "state-1", [reason])
     assert pause.get_state() == b"state-1"
-    record = repo.get_pause_record(workspace_id="tenant-1", workflow_run_id=running.id_)
+    with storage.sessions() as session:
+        record = repo.get_pause_record(session, workspace_id="tenant-1", workflow_run_id=running.id_)
+        other_tenant_record = repo.get_pause_record(session, workspace_id="other-tenant", workflow_run_id=running.id_)
     assert record is not None
     assert record.status == WorkflowExecutionStatus.PAUSED
-    assert record.reasons == (reason,)
-    assert repo.get_pause_record(workspace_id="other-tenant", workflow_run_id=running.id_) is None
+    assert record.pause is not None
+    assert record.pause.id == pause.id
+    assert other_tenant_record is None
     storage.settle()  # An older RUNNING message must not reverse the SQL pause.
     with storage.sessions() as session:
         control = session.get(WorkflowRun, running.id_)
@@ -260,7 +263,8 @@ def test_run_can_pause_and_resume_before_log_delivery(
     assert resumed.resumed_at is not None
     assert resumed.get_state() == b"state-1"
     storage.settle()  # A delayed PAUSED message must not undo resumption either.
-    record = repo.get_pause_record(workspace_id="tenant-1", workflow_run_id=running.id_)
+    with storage.sessions() as session:
+        record = repo.get_pause_record(session, workspace_id="tenant-1", workflow_run_id=running.id_)
     assert record is not None
     assert record.status == WorkflowExecutionStatus.RUNNING
     repo.delete_workflow_pause(resumed)

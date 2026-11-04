@@ -5,6 +5,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from '../shared/constants'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -19,7 +20,7 @@ type UserActionItemProps = {
 }
 
 const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, readonly }) => {
-  const { t } = useTranslation(['common', 'workflowHumanInput'])
+  const { t } = useTranslation(['common', 'workflowHumanInput', 'workflow'])
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -53,6 +54,16 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
           maxLength: ACTION_ID_MAX_LENGTH,
         }),
       )
+    }
+
+    if (sanitized === HUMAN_INPUT_TIMEOUT_HANDLE) {
+      toast.error(
+        t(($) => $['nodes.humanInput.errorMsg.reservedActionId'], {
+          ns: 'workflow',
+          id: HUMAN_INPUT_TIMEOUT_HANDLE,
+        }),
+      )
+      return
     }
 
     if (sanitized) onChange({ ...data, id: sanitized })

@@ -13,11 +13,12 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.entities.workflow_execution import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def save_workflow_execution_task(
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
         # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
 
 def _create_workflow_run_from_execution(
@@ -136,6 +137,8 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     """
     Fill the SQL log payload without replacing synchronously persisted control state.
     """
+    if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
+        return
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph), ensure_ascii=False)
     workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs), ensure_ascii=False)

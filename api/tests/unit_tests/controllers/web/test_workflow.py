@@ -38,8 +38,8 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.workflow.run_entities import WebWorkflowTarget
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_end_user
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_end_user
 
 
 @dataclass
@@ -69,7 +69,7 @@ class Runtime:
         user: EndUser,
         args: Mapping[str, object],
         load_workflow: Callable[[str | None], Workflow | None],
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         self.calls.append((app_model, user, args))
         self.load_workflow = load_workflow
         if self.error is not None:
@@ -77,7 +77,7 @@ class Runtime:
         return self.events()
 
     @staticmethod
-    def events() -> Generator[str, None, None]:
+    def events() -> Generator[str]:
         yield 'data: {"event":"workflow_started"}\n\n'
         yield 'data: {"event":"workflow_finished"}\n\n'
 
@@ -110,7 +110,7 @@ class Boundary:
 
 
 @pytest.fixture
-def boundary(monkeypatch: pytest.MonkeyPatch) -> Generator[Boundary, None, None]:
+def boundary(monkeypatch: pytest.MonkeyPatch) -> Generator[Boundary]:
     app_model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
     user = make_end_user(end_user_id="eu-1", tenant_id="tenant-1", app_id="app-1")
     queries = Queries(app=app_model, user=user)
@@ -210,7 +210,10 @@ def test_generation_errors_keep_http_mapping(
 def test_validation_errors_remain_unchanged(app: Flask, boundary: Boundary) -> None:
     error = ValueError("Workflow not published")
     boundary.runtime.error = error
-    with app.test_request_context("/", method="POST", json={"inputs": {}}), pytest.raises(ValueError) as raised:
+    with (
+        app.test_request_context("/", method="POST", json={"inputs": {}}),
+        pytest.raises(ValueError, match="Workflow not published") as raised,
+    ):
         workflow.WorkflowRunApi().post()
     assert raised.value is error
 

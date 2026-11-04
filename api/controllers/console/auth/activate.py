@@ -9,17 +9,12 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
-from services.account_activation_service import (
-    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
-)
-from services.account_activation_service import (
-    FrozenAccountError,
-    InvalidInvitationError,
-    InvitationAccountMismatchError,
-)
+from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
+from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import ActivationCommand, InvitationLookup
 
 
@@ -91,7 +86,7 @@ class ActivateCheckApi(Resource):
     )
     @model_validate(ActivateCheckQuery)
     def get(self, args: ActivateCheckQuery):
-        result = application_services().account_activation.check(
+        result = application_services().accounts.activation.check(
             InvitationLookup(
                 workspace_id=args.workspace_id,
                 email=args.email,
@@ -106,6 +101,9 @@ class ActivateCheckApi(Resource):
 
 @console_ns.route("/activate")
 class ActivateApi(Resource):
+    @error_responses(
+        AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError, InvitationAccountMismatchHTTPError
+    )
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
     @console_ns.expect(console_ns.models[ActivatePayload.__name__])
@@ -128,7 +126,7 @@ class ActivateApi(Resource):
             authenticated_account_id = current_account_with_tenant().account.id
 
         try:
-            application_services().account_activation.activate(
+            application_services().accounts.activation.activate(
                 ActivationCommand(
                     invitation=InvitationLookup(
                         workspace_id=args.workspace_id,

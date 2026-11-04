@@ -1,5 +1,7 @@
 """Shared workflow run, pause, retention, and statistics contracts."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -44,6 +46,14 @@ class WorkflowRunCleanupRef:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class AppWorkflowRunStats:
+    """Runs of one app, limited to the requested trigger sources."""
+
+    status_counts: Mapping[WorkflowExecutionStatus, int]
+    last_created_at: datetime
+
+
 class WorkflowRunMessageRef(NamedTuple):
     message_id: str
     conversation_id: str
@@ -51,9 +61,7 @@ class WorkflowRunMessageRef(NamedTuple):
 
 class WorkflowRunPauseRecord(NamedTuple):
     status: WorkflowExecutionStatus
-    paused_at: datetime | None
-    reasons: tuple[DifyPauseReason, ...]
-    form_tokens: Mapping[str, str]
+    pause: WorkflowPauseEntity | None
 
 
 class WorkflowPauseEntity(Protocol):

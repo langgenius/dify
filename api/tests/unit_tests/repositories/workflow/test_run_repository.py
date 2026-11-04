@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,6 +24,14 @@ from repositories.workflow.pause_repository import (
 )
 from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow.run_entities import WorkflowRunMessageRef, WorkflowRunPauseRecord
+
+
+class _DeleteRecordingSession(Session):
+    def __init__(self) -> None:
+        self.deleted_models: list[object] = []
+
+    def delete(self, instance: object) -> None:
+        self.deleted_models.append(instance)
 
 
 def _build_form_model() -> HumanInputForm:
@@ -237,15 +245,14 @@ def test_get_pause_record_scopes_the_workflow_run_to_the_workspace(
     sqlite_session.commit()
     repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
 
-    assert repository.get_pause_record(workspace_id="tenant-2", workflow_run_id="run-1") is None
+    assert repository.get_pause_record(sqlite_session, workspace_id="tenant-2", workflow_run_id="run-1") is None
     assert repository.get_pause_record(
+        sqlite_session,
         workspace_id="tenant-1",
         workflow_run_id="run-1",
     ) == WorkflowRunPauseRecord(
         status=WorkflowExecutionStatus.SUCCEEDED,
-        paused_at=None,
-        reasons=(),
-        form_tokens={},
+        pause=None,
     )
 
 
@@ -281,15 +288,17 @@ def test_get_pause_record_loads_reasons_and_tokens_in_one_repository_call(
     sqlite_session.commit()
     repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
 
-    result = repository.get_pause_record(workspace_id="tenant-1", workflow_run_id="run-1")
+    result = repository.get_pause_record(sqlite_session, workspace_id="tenant-1", workflow_run_id="run-1")
 
     assert result is not None
     assert result.status == WorkflowExecutionStatus.PAUSED
-    assert result.paused_at == pause.created_at
-    assert len(result.reasons) == 1
-    assert isinstance(result.reasons[0], HumanInputRequired)
-    assert result.reasons[0].form_id == "form-1"
-    assert result.form_tokens == {"form-1": "form-token"}
+    assert result.pause is not None
+    assert result.pause.paused_at == pause.created_at
+    reasons = repository.get_legacy_pause_reasons(sqlite_session, result.pause.id)
+    assert len(reasons) == 1
+    assert isinstance(reasons[0], HumanInputRequired)
+    assert reasons[0].form_id == "form-1"
+    assert repository.get_legacy_form_tokens(sqlite_session, form_ids=["form-1"]) == {"form-1": "form-token"}
 
 
 def test_get_workflow_pause_loads_pause_and_reasons_with_projected_run(
@@ -333,7 +342,7 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         state_object_key="workflow-state.json",
     )
     pause_model.id = "pause-1"
-    session = Mock(spec=Session)
+    session = _DeleteRecordingSession()
 
     with (
         patch(
@@ -345,7 +354,7 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         WorkflowPauseRepository._delete_pause_model(session, pause_model)
 
     delete_state_object.assert_called_once_with(pause_model.state_object_key)
-    session.delete.assert_called_once_with(pause_model)
+    assert session.deleted_models == [pause_model]
     assert "pause_id=pause-1" in caplog.text
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text

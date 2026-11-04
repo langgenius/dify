@@ -4,7 +4,9 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from core.ops.utils import JSON_DICT_ADAPTER
+from pydantic import TypeAdapter
+
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -12,6 +14,8 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 
 logger = logging.getLogger(__name__)
+
+_JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
@@ -127,9 +131,9 @@ def workflow_run_from_log(data: dict[str, Any]) -> WorkflowRun:
             case _:
                 model.finished_at = ensure_naive_utc(finished_at)
 
-    # Compute elapsed_time from started_at and finished_at
-    # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity
-    if model.finished_at and model.created_at:
+    if data.get("elapsed_time") is not None:
+        model.elapsed_time = safe_float(data["elapsed_time"])
+    elif model.finished_at and model.created_at:
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
         # Use safe conversion to handle 'null' strings and None values
@@ -191,6 +195,8 @@ def node_execution_model_from_log(data: dict[str, Any]) -> WorkflowNodeExecution
 
     # Optional fields
     model.workflow_run_id = data.get("workflow_run_id")
+    model.triggered_from_workflow_id = data.get("triggered_from_workflow_id") or None
+    model.triggered_from_node_execution_id = data.get("triggered_from_node_execution_id") or None
     model.predecessor_node_id = data.get("predecessor_node_id")
     model.node_execution_id = data.get("node_execution_id")
     model.inputs = data.get("inputs")
@@ -239,10 +245,10 @@ def node_execution_from_log(data: dict[str, Any]) -> WorkflowNodeExecution:
     """
     logger.debug("node_execution_from_log: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
-    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
-    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
-    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
+    inputs = _JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
+    process_data = _JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
+    outputs = _JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
+    metadata = _JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}
@@ -260,10 +266,12 @@ def node_execution_from_log(data: dict[str, Any]) -> WorkflowNodeExecution:
     created_at = datetime.fromisoformat(data.get("created_at", "")) if data.get("created_at") else datetime.now()
     finished_at = datetime.fromisoformat(data.get("finished_at", "")) if data.get("finished_at") else None
 
-    return WorkflowNodeExecution(
+    return DifyWorkflowNodeExecution(
         id=data.get("id", ""),
         node_execution_id=data.get("node_execution_id"),
         workflow_id=data.get("workflow_id", ""),
+        triggered_from_workflow_id=data.get("triggered_from_workflow_id") or None,
+        triggered_from_node_execution_id=data.get("triggered_from_node_execution_id") or None,
         workflow_execution_id=data.get("workflow_run_id"),
         index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),

@@ -10,7 +10,7 @@ from repositories.workflow.logstore.records import workflow_run_from_log
 from repositories.workflow.logstore.run_repository import (
     LogstoreWorkflowRunRepository,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 _START = datetime.datetime(2026, 8, 18, 2, 0, 0, tzinfo=datetime.UTC)
 _FINISH = _START + datetime.timedelta(seconds=30)
@@ -53,8 +53,35 @@ def test_tenant_lookup_rejects_a_log_from_another_tenant(sqlite_session_factory:
         assert repository.get_workflow_run_by_id_and_tenant_id("tenant-1", "run-1") is None
 
 
+@pytest.mark.parametrize(
+    ("method_name", "args"),
+    [
+        ("get_workflow_run_by_id", ("tenant-1", "app-1", "run-1")),
+        ("get_workflow_run_by_id_and_tenant_id", ("tenant-1", "run-1")),
+        ("get_workflow_run_by_id_without_tenant", ("run-1",)),
+    ],
+)
+def test_task_control_row_takes_precedence_over_logstore(
+    sqlite_session_factory: sessionmaker[Session],
+    method_name: str,
+    args: tuple[str, ...],
+) -> None:
+    control = workflow_run_from_log(dict(_BASE))
+    control.task_id = "task-1"
+    with sqlite_session_factory.begin() as session:
+        session.add(control)
+    with patch("repositories.workflow.logstore.run_repository.AliyunLogStore", autospec=True) as client:
+        repository = LogstoreWorkflowRunRepository(sqlite_session_factory)
+
+        result = getattr(repository, method_name)(*args)
+
+    assert result is not None
+    assert result.task_id == "task-1"
+    client.return_value.execute_sql.assert_not_called()
+
+
 @pytest.fixture
-def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     """Run the host clock in UTC+05:30 so local-time conversions become observable."""
     monkeypatch.setenv("TZ", "Asia/Kolkata")
     time.tzset()
@@ -91,3 +118,9 @@ def test_workflow_run_from_log_defaults_missing_started_at_to_naive_utc_now() ->
     assert model.created_at.tzinfo is None
     # A naive local-time default would sit 5h30m ahead of UTC and drive elapsed_time negative.
     assert abs((model.created_at - datetime.datetime.now(tz=datetime.UTC).replace(tzinfo=None)).total_seconds()) < 60
+
+
+def test_workflow_run_from_log_preserves_accumulated_elapsed_time() -> None:
+    model = workflow_run_from_log({**_BASE, "started_at": _START, "elapsed_time": 12.5})
+
+    assert model.elapsed_time == 12.5

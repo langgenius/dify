@@ -26,6 +26,10 @@ describe('SignIn', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('shows account deletion feedback once after the document replacement', () => {
     const info = vi.spyOn(toast, 'info').mockReturnValue('toast-id')
     window.history.replaceState({}, '', '/signin?account_deleted=true&other=value')

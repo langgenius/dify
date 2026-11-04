@@ -25,6 +25,10 @@ class WorkflowExecutionRepository(Protocol):
 
     def save(self, execution: WorkflowExecution) -> None: ...
 
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        """Commit the SQL control record before publishing a lifecycle transition."""
+        ...
+
 
 class WorkflowNodeExecutionRepository(Protocol):
     """Execution log writes and history, plus synchronous caller control state.
@@ -40,7 +44,15 @@ class WorkflowNodeExecutionRepository(Protocol):
     participant allocation, independently of the selected execution-log backend.
     """
 
+    def for_workflow_tool(self, app_id: str) -> "WorkflowNodeExecutionRepository":
+        """Scope hidden Workflow Tool executions to their source app in the same tenant."""
+        ...
+
     def save(self, execution: WorkflowNodeExecution) -> None: ...
+
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Save exact records in this owner scope without uploading execution data."""
+        ...
 
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
 
@@ -50,4 +62,6 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]: ...

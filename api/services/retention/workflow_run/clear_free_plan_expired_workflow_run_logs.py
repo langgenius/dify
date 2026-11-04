@@ -13,7 +13,6 @@ from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, TypedDict
 
 import click
-from opentelemetry.metrics import get_meter
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -21,7 +20,8 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 from services.workflow.run_entities import RunsWithRelatedCountsDict, WorkflowRunCleanupRef
 from services.workflow.run_repository import APIWorkflowRunRepository
 
@@ -83,6 +83,8 @@ class WorkflowRunCleanupMetrics:
             return
 
         try:
+            from opentelemetry.metrics import get_meter
+
             meter = get_meter("workflow_run_cleanup", version=dify_config.project.version)
             self._job_runs_total = meter.create_counter(
                 "workflow_run_cleanup_jobs_total",
@@ -495,7 +497,7 @@ class WorkflowRunCleanup:
                 logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
                 continue
 
-            if info.get("plan") != CloudPlan.SANDBOX:
+            if info.plan != CloudPlan.SANDBOX:
                 continue
 
             if self._is_within_grace_period(tenant_id, info):
@@ -515,12 +517,11 @@ class WorkflowRunCleanup:
             logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
             return None
 
-    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlan) -> bool:
+    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlanItem) -> bool:
         if self.free_plan_grace_period_days <= 0:
             return False
 
-        expiration_value = info.get("expiration_date", -1)
-        expiration_at = self._expiration_datetime(tenant_id, expiration_value)
+        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
         if expiration_at is None:
             return False
 

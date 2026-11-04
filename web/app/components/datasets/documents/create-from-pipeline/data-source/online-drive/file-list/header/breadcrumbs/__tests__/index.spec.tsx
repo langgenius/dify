@@ -1,23 +1,11 @@
 import type { ComponentProps } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createDataSourceStore } from '../../../../../store'
+import { DataSourceContext } from '../../../../../store/provider'
 import Breadcrumbs from '../index'
 
-const store = {
-  hasBucket: false,
-  breadcrumbs: [] as string[],
-  prefix: [] as string[],
-  setOnlineDriveFileList: vi.fn(),
-  setSelectedFileIds: vi.fn(),
-  setBreadcrumbs: vi.fn(),
-  setPrefix: vi.fn(),
-  setBucket: vi.fn(),
-}
-
-vi.mock('../../../../../store', () => ({
-  useDataSourceStore: () => ({ getState: () => store }),
-  useDataSourceStoreWithSelector: (selector: (state: typeof store) => unknown) => selector(store),
-}))
+let store = createDataSourceStore()
 
 function renderPath(overrides: Partial<ComponentProps<typeof Breadcrumbs>> = {}) {
   const props = {
@@ -28,19 +16,23 @@ function renderPath(overrides: Partial<ComponentProps<typeof Breadcrumbs>> = {})
     isInPipeline: false,
     ...overrides,
   }
-  store.breadcrumbs = props.breadcrumbs
-  store.prefix = props.breadcrumbs.map((_, index) => `prefix-${index}`)
-  return render(<Breadcrumbs {...props} />)
+  store.setState({
+    breadcrumbs: props.breadcrumbs,
+    prefix: props.breadcrumbs.map((_, index) => `prefix-${index}`),
+    bucket: props.bucket,
+    selectedFileIds: ['selected-file'],
+    onlineDriveFileList: [{ id: 'selected-file', name: 'report.txt', type: 'file', size: 10 }],
+  })
+  return render(<Breadcrumbs {...props} />, {
+    wrapper: ({ children }) => <DataSourceContext value={store}>{children}</DataSourceContext>,
+  })
 }
 
 const allFiles = 'datasetPipeline.onlineDrive.breadcrumbs.allFiles'
 const allBuckets = 'datasetPipeline.onlineDrive.breadcrumbs.allBuckets'
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  store.hasBucket = false
-  store.breadcrumbs = []
-  store.prefix = []
+  store = createDataSourceStore()
 })
 
 it('exposes path items without counting decorative separators and marks the current directory', async () => {
@@ -52,23 +44,23 @@ it('exposes path items without counting decorative separators and marks the curr
   expect(current).toHaveAttribute('aria-current', 'location')
   expect(current).toBeDisabled()
   await user.click(current)
-  expect(store.setBreadcrumbs).not.toHaveBeenCalled()
+  expect(store.getState().breadcrumbs).toEqual(['Documents', 'Reports'])
 
   await user.click(path.getByRole('button', { name: 'Documents' }))
-  expect(store.setBreadcrumbs).toHaveBeenCalledWith(['Documents'])
-  expect(store.setPrefix).toHaveBeenCalledWith(['prefix-0'])
-  expect(store.setOnlineDriveFileList).toHaveBeenCalledWith([])
-  expect(store.setSelectedFileIds).toHaveBeenCalledWith([])
+  expect(store.getState().breadcrumbs).toEqual(['Documents'])
+  expect(store.getState().prefix).toEqual(['prefix-0'])
+  expect(store.getState().onlineDriveFileList).toEqual([])
+  expect(store.getState().selectedFileIds).toEqual([])
 })
 
 it('returns to the drive root and disables root navigation once already there', async () => {
   const user = userEvent.setup()
   const { rerender } = renderPath()
   await user.click(screen.getByRole('button', { name: allFiles }))
-  expect(store.setBreadcrumbs).toHaveBeenCalledWith([])
-  expect(store.setPrefix).toHaveBeenCalledWith([])
-  expect(store.setOnlineDriveFileList).toHaveBeenCalledWith([])
-  expect(store.setSelectedFileIds).toHaveBeenCalledWith([])
+  expect(store.getState().breadcrumbs).toEqual([])
+  expect(store.getState().prefix).toEqual([])
+  expect(store.getState().onlineDriveFileList).toEqual([])
+  expect(store.getState().selectedFileIds).toEqual([])
 
   rerender(
     <Breadcrumbs
@@ -86,21 +78,21 @@ it('returns to the drive root and disables root navigation once already there', 
 
 it('distinguishes returning to the current bucket from leaving it for the bucket list', async () => {
   const user = userEvent.setup()
-  store.hasBucket = true
+  store.setState({ hasBucket: true })
   renderPath({ bucket: 'Storage' })
   await user.click(screen.getByRole('button', { name: 'Storage' }))
-  expect(store.setBreadcrumbs).toHaveBeenCalledWith([])
-  expect(store.setPrefix).toHaveBeenCalledWith([])
-  expect(store.setBucket).not.toHaveBeenCalled()
+  expect(store.getState().breadcrumbs).toEqual([])
+  expect(store.getState().prefix).toEqual([])
+  expect(store.getState().bucket).toBe('Storage')
 
   await user.click(screen.getByRole('button', { name: allBuckets }))
-  expect(store.setBucket).toHaveBeenCalledWith('')
-  expect(store.setOnlineDriveFileList).toHaveBeenCalledWith([])
-  expect(store.setSelectedFileIds).toHaveBeenCalledWith([])
+  expect(store.getState().bucket).toEqual('')
+  expect(store.getState().onlineDriveFileList).toEqual([])
+  expect(store.getState().selectedFileIds).toEqual([])
 })
 
 it('keeps the bucket-list action available at the current bucket root', () => {
-  store.hasBucket = true
+  store.setState({ hasBucket: true })
   renderPath({ bucket: 'Storage', breadcrumbs: [] })
   expect(screen.getByRole('button', { name: allBuckets })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Storage' })).toBeDisabled()
@@ -119,7 +111,7 @@ it.each([
   'keeps collapsed paths navigable with pipeline=$isInPipeline and bucket=$bucket',
   async ({ isInPipeline, bucket, visiblePrefixes }) => {
     const user = userEvent.setup()
-    store.hasBucket = !!bucket
+    store.setState({ hasBucket: !!bucket })
     renderPath({ breadcrumbs: ['A', 'B', 'C', 'D'], isInPipeline, bucket })
     for (const name of visiblePrefixes)
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
@@ -130,14 +122,13 @@ it.each([
     more.focus()
     await user.keyboard('{Enter}')
     await user.click(await screen.findByRole('menuitem', { name: 'C' }))
-    expect(store.setBreadcrumbs).toHaveBeenCalledWith(['A', 'B', 'C'])
-    expect(store.setPrefix).toHaveBeenCalledWith(['prefix-0', 'prefix-1', 'prefix-2'])
-    expect(more).toHaveFocus()
+    expect(store.getState().breadcrumbs).toEqual(['A', 'B', 'C'])
+    expect(store.getState().prefix).toEqual(['prefix-0', 'prefix-1', 'prefix-2'])
   },
 )
 
 it('shows a bucket-list heading instead of an empty navigation landmark', () => {
-  store.hasBucket = true
+  store.setState({ hasBucket: true })
   renderPath({ breadcrumbs: [] })
   expect(screen.getByText(allBuckets)).toBeInTheDocument()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()

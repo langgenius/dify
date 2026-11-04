@@ -8,7 +8,9 @@ pointer surface without changing the input's native semantics.
 
 ## Anatomy
 
-Compose exactly one direct `InputGroupInput` and one or more direct `InputGroupAddon` children:
+Compose exactly one direct input with the content that shares its surface, usually one or more
+direct `InputGroupAddon` children. The input is `InputGroupInput`, or another native input that owns
+its own value and states:
 
 ```tsx
 <InputGroup>
@@ -21,8 +23,8 @@ Compose exactly one direct `InputGroupInput` and one or more direct `InputGroupA
 `InputGroupInput` owns the native input and its value. Addons own layout and supporting content.
 Do not absolutely position content over a standalone `Input` to recreate this shared surface.
 
-Place `InputGroupInput` before every addon in the DOM. The input is the primary control and addons
-are read or reached after it. Use `align="inline-start"` or `align="inline-end"` for visual
+Place the input before every addon in the DOM. The input is the primary control and addons are
+read or reached after it; only decorative `aria-hidden` content may come first. Use `align="inline-start"` or `align="inline-end"` for visual
 placement without changing semantic or focus order.
 
 ## Accessibility and interaction

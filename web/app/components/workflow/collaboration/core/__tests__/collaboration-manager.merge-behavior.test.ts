@@ -1,347 +1,78 @@
-import type { LoroMap } from 'loro-crdt/base64'
-import type { Node } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt/base64'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { CollaborationManager } from '../collaboration-manager'
-import { attachCrdtRuntime } from './test-crdt-runtime'
+import type { Param } from '@/app/components/workflow/nodes/parameter-extractor/types'
+import type { Node, PromptItem } from '@/app/components/workflow/types'
+import { createCollaborationTestEnvironment } from './test-collaboration-session'
+import {
+  createLLMNode,
+  createParameterNode,
+  createStartNode,
+  createVariable,
+} from './test-graph-fixtures'
 
-const NODE_ID = 'node-1'
-const LLM_NODE_ID = 'llm-node'
-const PARAM_NODE_ID = 'parameter-node'
+const { createSession, setup, cleanup } = createCollaborationTestEnvironment()
+beforeEach(setup)
+afterEach(cleanup)
 
-type WorkflowVariable = {
-  variable: string
-  label: string
-  type: string
-  required: boolean
-  default: string
-  max_length: number
-  placeholder: string
-  options: string[]
-  hint: string
-}
-
-type PromptTemplateItem = {
-  id: string
-  role: string
-  text: string
-}
-
-type ParameterItem = {
-  description: string
-  name: string
-  required: boolean
-  type: string
-}
-
-type StartNodeData = {
-  variables: WorkflowVariable[]
-}
-
-type LLMNodeData = {
-  model: {
-    mode: string
-    name: string
-    provider: string
-    completion_params: {
-      temperature: number
-    }
+const createReplicas = async (node: Node) => {
+  const a = await createSession({ nodes: [node] })
+  const b = await createSession({ role: 'follower' })
+  b.receive('graph_update', a.snapshot())
+  a.emit.mockClear()
+  b.emit.mockClear()
+  const exchange = () => {
+    // Exchange the actual outbound CRDT updates after both clients have edited independently.
+    const updatesA = a.emit.mock.calls.filter(([event]) => event === 'graph_event')
+    const updatesB = b.emit.mock.calls.filter(([event]) => event === 'graph_event')
+    expect(updatesA.length).toBeGreaterThan(0)
+    expect(updatesB.length).toBeGreaterThan(0)
+    for (const [, payload] of updatesA) b.receive('graph_update', payload)
+    for (const [, payload] of updatesB) a.receive('graph_update', payload)
+    expect(b.manager.getNodes()).toEqual(a.manager.getNodes())
   }
-  context: {
-    enabled: boolean
-    variable_selector: string[]
-  }
-  vision: {
-    enabled: boolean
-  }
-  prompt_template: PromptTemplateItem[]
+  return { a: a.manager, b: b.manager, exchange }
 }
 
-type ParameterExtractorNodeData = {
-  model: {
-    mode: string
-    name: string
-    provider: string
-    completion_params: {
-      temperature: number
-    }
-  }
-  parameters: ParameterItem[]
-  query: unknown[]
-  reasoning_mode: string
-  vision: {
-    enabled: boolean
-  }
-}
-
-type CollaborationManagerInternals = {
-  doc: LoroDoc
-  nodesMap: LoroMap
-  edgesMap: LoroMap
-  syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
-}
-
-const createNode = (variables: string[]): Node<StartNodeData> => ({
-  id: NODE_ID,
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.Start,
-    title: 'Start',
-    desc: '',
-    variables: variables.map((name) => ({
-      variable: name,
-      label: name,
-      type: 'text-input',
-      required: true,
-      default: '',
-      max_length: 48,
-      placeholder: '',
-      options: [],
-      hint: '',
-    })),
-  },
+it('preserves concurrent variable insertions on both connected replicas', async () => {
+  const base = createStartNode([createVariable('a')])
+  const { a, b, exchange } = await createReplicas(base)
+  a.setNodes([base], [createStartNode([createVariable('a'), createVariable('b')])])
+  b.setNodes([base], [createStartNode([createVariable('a'), createVariable('c')])])
+  exchange()
+  expect(a.getNodes()).toEqual([
+    expect.objectContaining({
+      data: expect.objectContaining({
+        variables: expect.arrayContaining([
+          createVariable('a'),
+          createVariable('b'),
+          createVariable('c'),
+        ]),
+      }),
+    }),
+  ])
+  expect(a.getNodes()[0]).toHaveProperty('data.variables.length', 3)
 })
 
-const createLLMNode = (templates: PromptTemplateItem[]): Node<LLMNodeData> => ({
-  id: LLM_NODE_ID,
-  type: 'custom',
-  position: { x: 200, y: 200 },
-  data: {
-    type: BlockEnum.LLM,
-    title: 'LLM',
-    desc: '',
-    selected: false,
-    model: {
-      mode: 'chat',
-      name: 'gemini-2.5-pro',
-      provider: 'langgenius/gemini/google',
-      completion_params: {
-        temperature: 0.7,
-      },
-    },
-    context: {
-      enabled: false,
-      variable_selector: [],
-    },
-    vision: {
-      enabled: false,
-    },
-    prompt_template: templates,
-  },
+it('merges a prompt insertion with an edit from another replica', async () => {
+  const prompt: PromptItem = { id: 'system', role: 'system', text: 'Base instruction' }
+  const added: PromptItem = { id: 'user', role: 'user', text: 'Hello from A' }
+  const edited: PromptItem = { ...prompt, text: 'Updated by B' }
+  const base = createLLMNode([prompt])
+  const { a, b, exchange } = await createReplicas(base)
+  a.setNodes([base], [createLLMNode([prompt, added])])
+  b.setNodes([base], [createLLMNode([edited])])
+  exchange()
+  expect(a.getNodes()[0]).toHaveProperty('data.prompt_template', [edited, added])
 })
 
-const createParameterExtractorNode = (
-  parameters: ParameterItem[],
-): Node<ParameterExtractorNodeData> => ({
-  id: PARAM_NODE_ID,
-  type: 'custom',
-  position: { x: 400, y: 120 },
-  data: {
-    type: BlockEnum.ParameterExtractor,
-    title: 'ParameterExtractor',
-    desc: '',
-    selected: true,
-    model: {
-      mode: 'chat',
-      name: '',
-      provider: '',
-      completion_params: {
-        temperature: 0.7,
-      },
-    },
-    query: [],
-    reasoning_mode: 'prompt',
-    parameters,
-    vision: {
-      enabled: false,
-    },
-  },
-})
-
-const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
-  manager as unknown as CollaborationManagerInternals
-
-const getManager = (doc: LoroDoc) => {
-  const manager = new CollaborationManager()
-  attachCrdtRuntime(manager)
-  const internals = getManagerInternals(manager)
-  internals.doc = doc
-  internals.nodesMap = doc.getMap('nodes')
-  internals.edgesMap = doc.getMap('edges')
-  return manager
-}
-
-const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
-
-const syncNodes = (manager: CollaborationManager, previous: Node[], next: Node[]) => {
-  const internals = getManagerInternals(manager)
-  internals.syncNodes(previous, next)
-}
-
-const exportNodes = (manager: CollaborationManager) => manager.getNodes()
-
-describe('Loro merge behavior smoke test', () => {
-  it('inspects concurrent edits after merge', () => {
-    const docA = new LoroDoc()
-    const managerA = getManager(docA)
-    syncNodes(managerA, [], [createNode(['a'])])
-
-    const snapshot = docA.export({ mode: 'snapshot' })
-
-    const docB = LoroDoc.fromSnapshot(snapshot)
-    const managerB = getManager(docB)
-
-    syncNodes(managerA, [createNode(['a'])], [createNode(['a', 'b'])])
-    syncNodes(managerB, [createNode(['a'])], [createNode(['a', 'c'])])
-
-    const updateForA = docB.export({ mode: 'update', from: docA.version() })
-    docA.import(updateForA)
-
-    const updateForB = docA.export({ mode: 'update', from: docB.version() })
-    docB.import(updateForB)
-
-    const finalA = exportNodes(managerA)
-    const finalB = exportNodes(managerB)
-    expect(finalA.length).toBe(1)
-    expect(finalB.length).toBe(1)
-  })
-
-  it('merges prompt template insertions and edits across replicas', () => {
-    const baseTemplate = [
-      {
-        id: 'system-1',
-        role: 'system',
-        text: 'base instruction',
-      },
-    ]
-
-    const docA = new LoroDoc()
-    const managerA = getManager(docA)
-    syncNodes(managerA, [], [createLLMNode(deepClone(baseTemplate))])
-
-    const snapshot = docA.export({ mode: 'snapshot' })
-    const docB = LoroDoc.fromSnapshot(snapshot)
-    const managerB = getManager(docB)
-
-    const additionTemplate = [
-      ...baseTemplate,
-      {
-        id: 'user-1',
-        role: 'user',
-        text: 'hello from docA',
-      },
-    ]
-    syncNodes(
-      managerA,
-      [createLLMNode(deepClone(baseTemplate))],
-      [createLLMNode(deepClone(additionTemplate))],
-    )
-
-    const editedTemplate = [
-      {
-        id: 'system-1',
-        role: 'system',
-        text: 'updated by docB',
-      },
-    ]
-    syncNodes(
-      managerB,
-      [createLLMNode(deepClone(baseTemplate))],
-      [createLLMNode(deepClone(editedTemplate))],
-    )
-
-    const updateForA = docB.export({ mode: 'update', from: docA.version() })
-    docA.import(updateForA)
-
-    const updateForB = docA.export({ mode: 'update', from: docB.version() })
-    docB.import(updateForB)
-
-    const finalA = exportNodes(managerA).find((node) => node.id === LLM_NODE_ID) as
-      | Node<LLMNodeData>
-      | undefined
-    const finalB = exportNodes(managerB).find((node) => node.id === LLM_NODE_ID) as
-      | Node<LLMNodeData>
-      | undefined
-
-    expect(finalA).toBeDefined()
-    expect(finalB).toBeDefined()
-
-    const expectedTemplates = [
-      {
-        id: 'system-1',
-        role: 'system',
-        text: 'updated by docB',
-      },
-      {
-        id: 'user-1',
-        role: 'user',
-        text: 'hello from docA',
-      },
-    ]
-
-    expect(finalA!.data.prompt_template).toEqual(expectedTemplates)
-    expect(finalB!.data.prompt_template).toEqual(expectedTemplates)
-  })
-
-  it('converges when parameter lists are edited concurrently', () => {
-    const baseParameters = [
-      { description: 'bb', name: 'aa', required: false, type: 'string' },
-      { description: 'dd', name: 'cc', required: false, type: 'string' },
-    ]
-
-    const docA = new LoroDoc()
-    const managerA = getManager(docA)
-    syncNodes(managerA, [], [createParameterExtractorNode(deepClone(baseParameters))])
-
-    const snapshot = docA.export({ mode: 'snapshot' })
-    const docB = LoroDoc.fromSnapshot(snapshot)
-    const managerB = getManager(docB)
-
-    const docAUpdate = [
-      { description: 'bb updated by A', name: 'aa', required: true, type: 'string' },
-      { description: 'dd', name: 'cc', required: false, type: 'string' },
-      { description: 'new from A', name: 'ee', required: false, type: 'number' },
-    ]
-    syncNodes(
-      managerA,
-      [createParameterExtractorNode(deepClone(baseParameters))],
-      [createParameterExtractorNode(deepClone(docAUpdate))],
-    )
-
-    const docBUpdate = [
-      { description: 'bb', name: 'aa', required: false, type: 'string' },
-      { description: 'dd updated by B', name: 'cc', required: true, type: 'string' },
-    ]
-    syncNodes(
-      managerB,
-      [createParameterExtractorNode(deepClone(baseParameters))],
-      [createParameterExtractorNode(deepClone(docBUpdate))],
-    )
-
-    const updateForA = docB.export({ mode: 'update', from: docA.version() })
-    docA.import(updateForA)
-
-    const updateForB = docA.export({ mode: 'update', from: docB.version() })
-    docB.import(updateForB)
-
-    const finalA = exportNodes(managerA).find((node) => node.id === PARAM_NODE_ID) as
-      | Node<ParameterExtractorNodeData>
-      | undefined
-    const finalB = exportNodes(managerB).find((node) => node.id === PARAM_NODE_ID) as
-      | Node<ParameterExtractorNodeData>
-      | undefined
-
-    expect(finalA).toBeDefined()
-    expect(finalB).toBeDefined()
-
-    const expectedParameters = [
-      { description: 'bb updated by A', name: 'aa', required: true, type: 'string' },
-      { description: 'dd updated by B', name: 'cc', required: true, type: 'string' },
-      { description: 'new from A', name: 'ee', required: false, type: 'number' },
-    ]
-
-    expect(finalA!.data.parameters).toEqual(expectedParameters)
-    expect(finalB!.data.parameters).toEqual(expectedParameters)
-  })
+it('merges edits to separate parameters while retaining a concurrent insertion', async () => {
+  const first: Param = { name: 'aa', description: 'First', required: false, type: 'string' }
+  const second: Param = { name: 'cc', description: 'Second', required: false, type: 'string' }
+  const added: Param = { name: 'ee', description: 'New from A', required: false, type: 'number' }
+  const editedFirst = { ...first, description: 'Edited by A', required: true }
+  const editedSecond = { ...second, description: 'Edited by B', required: true }
+  const base = createParameterNode([first, second])
+  const { a, b, exchange } = await createReplicas(base)
+  a.setNodes([base], [createParameterNode([editedFirst, second, added])])
+  b.setNodes([base], [createParameterNode([first, editedSecond])])
+  exchange()
+  expect(a.getNodes()[0]).toHaveProperty('data.parameters', [editedFirst, editedSecond, added])
 })

@@ -4,7 +4,7 @@ from core.datasource.entities.datasource_entities import DatasourceInvokeFrom
 
 
 class TestDatasourceRuntime:
-    def test_init(self):
+    def test_init(self) -> None:
         runtime = DatasourceRuntime(
             tenant_id="test-tenant",
             datasource_id="test-ds",
@@ -17,7 +17,7 @@ class TestDatasourceRuntime:
         assert runtime.datasource_id == "test-ds"
         assert runtime.credentials["key"] == "val"
 
-    def test_fake_datasource_runtime(self):
+    def test_fake_datasource_runtime(self) -> None:
         # This covers the FakeDatasourceRuntime class and its __init__
         runtime = FakeDatasourceRuntime()
         assert runtime.tenant_id == "fake_tenant_id"

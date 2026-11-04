@@ -37,7 +37,18 @@ from typing import Any, cast
 from opentelemetry.util.types import AttributeValue
 from sqlalchemy.orm import sessionmaker
 
-from core.ops.entities.trace_entity import (
+from enterprise.telemetry.entities import (
+    EnterpriseTelemetryCounter,
+    EnterpriseTelemetryEvent,
+    EnterpriseTelemetryHistogram,
+    EnterpriseTelemetrySpan,
+    TokenMetricLabels,
+)
+from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
+from extensions.application_services import workflow_storage
+from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from services.tracing.records import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
@@ -51,17 +62,6 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from enterprise.telemetry.entities import (
-    EnterpriseTelemetryCounter,
-    EnterpriseTelemetryEvent,
-    EnterpriseTelemetryHistogram,
-    EnterpriseTelemetrySpan,
-    TokenMetricLabels,
-)
-from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
-from extensions.application_services import workflow_storage
-from extensions.ext_database import db
-from graphon.enums import WorkflowNodeExecutionMetadataKey
 
 logger = logging.getLogger(__name__)
 
@@ -266,15 +266,9 @@ class EnterpriseOtelTrace:
                 invoke_from=invoke_from,
             ),
         )
-        # Prefer wall-clock timestamps over the elapsed_time field: elapsed_time defaults
-        # to 0 in the DB and can be stale if the Celery write races with the trace task.
-        # start_time = workflow_run.created_at, end_time = workflow_run.finished_at.
-        if info.start_time and info.end_time:
-            workflow_duration = (info.end_time - info.start_time).total_seconds()
-        elif info.workflow_run_elapsed_time:
-            workflow_duration = float(info.workflow_run_elapsed_time)
-        else:
-            workflow_duration = 0.0
+        # Wall-clock timestamps, not the elapsed_time field: elapsed_time defaults to 0
+        # in the DB and can be stale if the Celery write races with the trace task.
+        workflow_duration = (info.end_time - info.start_time).total_seconds()
         self._exporter.record_histogram(
             EnterpriseTelemetryHistogram.WORKFLOW_DURATION,
             workflow_duration,

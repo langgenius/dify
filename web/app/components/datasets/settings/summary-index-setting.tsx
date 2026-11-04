@@ -78,7 +78,7 @@ const SummaryIndexSetting = ({
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </span>
             <Infotip>
-              <InfotipTrigger aria-labelledby={summaryLabelId} className="ml-1" />
+              <InfotipTrigger aria-labelledby={summaryLabelId} className="ms-1" />
               <InfotipContent aria-labelledby={summaryLabelId}>
                 {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
               </InfotipContent>
@@ -144,7 +144,7 @@ const SummaryIndexSetting = ({
             <div className="flex items-center system-sm-semibold text-text-secondary">
               <Switch
                 aria-labelledby={summaryLabelId}
-                className="mr-2"
+                className="me-2"
                 checked={summaryIndexSetting?.enable ?? false}
                 onCheckedChange={handleSummaryIndexEnableChange}
                 size="md"
@@ -215,7 +215,7 @@ const SummaryIndexSetting = ({
       <div className="flex h-6 items-center">
         <Switch
           aria-labelledby={summaryLabelId}
-          className="mr-2"
+          className="me-2"
           checked={summaryIndexSetting?.enable ?? false}
           onCheckedChange={handleSummaryIndexEnableChange}
           size="md"

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from tasks.workflow_execution_tasks import save_workflow_execution_task
 from tasks.workflow_node_execution_tasks import save_workflow_node_execution_task
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.repositories.workflow.storage_contracts.harness import BACKENDS, StorageContract
 from tests.unit_tests.repositories.workflow.storage_contracts.transports import (
     AppendOnlyLogStore,

@@ -1,6 +1,6 @@
 # 進階設定
 
-如果您需要自定義配置，請參考我們的 [.env.example](../../docker/.env.example) 文件中的註釋，並在您的 `.env` 文件中更新相應的值。此外，根據您特定的部署環境和需求，您可能需要調整 `docker-compose.yaml` 文件本身，例如更改映像版本、端口映射或卷掛載。進行任何更改後，請重新運行 `docker-compose up -d`。您可以在[這裡](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用環境變數的完整列表。
+在 `docker/.env` 中設定本機配置。[`.env.example`](../../docker/.env.example) 僅包含預設部署所需的啟動設定，可選與服務專用設定位於 [`docker/envs/`](../../docker/envs/)。需要時，將對應範本複製為不含 `.example` 後綴的檔案；`.env` 中的值優先。修改後，在 `docker/` 目錄執行 `docker compose up -d`。詳見 [Docker 部署指南](../../docker/README.md)。
 
 ## 使用 Grafana 進行指標監控
 

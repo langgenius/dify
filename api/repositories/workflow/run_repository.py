@@ -20,7 +20,7 @@ Implementation Notes:
 """
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, cast, override
@@ -41,11 +41,12 @@ from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from models import Message
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.workflow.pause_repository import WorkflowPauseRepository
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 from services.workflow.run_entities import (
+    AppWorkflowRunStats,
     AverageInteractionStats,
     DailyRunsStats,
     DailyTerminalsStats,
@@ -226,6 +227,42 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             return session.scalar(stmt)
 
     @override
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        stmt = (
+            select(WorkflowRun)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id == run_id,
+            )
+            .with_for_update()
+        )
+        return session.scalar(stmt)
+
+    @override
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        run.status = WorkflowExecutionStatus.STOPPED
+        run.error = error
+        run.finished_at = finished_at
+        pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id).with_for_update())
+        if pause is not None and pause.resumed_at is None:
+            pause.resumed_at = finished_at
+
+    @override
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
@@ -304,6 +341,56 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     status_counts[status_val] = count
 
             return {"total": total} | status_counts
+
+    @override
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        if not tenant_id_by_app_id:
+            return {}
+        conditions = self._app_run_conditions(tenant_id_by_app_id, triggered_from)
+        counts_stmt = (
+            select(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status, func.count(WorkflowRun.id))
+            .where(*conditions, WorkflowRun.created_at >= created_since)
+            .group_by(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status)
+        )
+        latest_runs = [
+            select(WorkflowRun.app_id, WorkflowRun.created_at)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from.in_(triggered_from),
+            )
+            .order_by(WorkflowRun.created_at.desc())
+            .limit(1)
+            .subquery()
+            for app_id, tenant_id in tenant_id_by_app_id.items()
+        ]
+        last_stmt = sa.union_all(*(select(latest_run) for latest_run in latest_runs))
+        status_counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
+        with self._session_maker() as session:
+            for tenant_id, app_id, status, count in session.execute(counts_stmt):
+                if tenant_id_by_app_id[app_id] == tenant_id:
+                    status_counts.setdefault(app_id, {})[WorkflowExecutionStatus(status)] = int(count)
+            last_created_at: dict[str, datetime] = dict(session.execute(last_stmt).tuples().all())
+        return {
+            app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
+            for app_id, created_at in last_created_at.items()
+        }
+
+    @staticmethod
+    def _app_run_conditions(
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+    ) -> list[sa.ColumnElement[bool]]:
+        return [
+            WorkflowRun.tenant_id.in_(set(tenant_id_by_app_id.values())),
+            WorkflowRun.app_id.in_(list(tenant_id_by_app_id)),
+            WorkflowRun.triggered_from.in_(triggered_from),
+        ]
 
     @override
     def get_expired_runs_batch(
@@ -632,6 +719,61 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             }
 
     @override
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Delete related run records in the caller-owned transaction."""
+        if not runs:
+            return self._empty_runs_with_related_counts()
+        run_ids = [run.id for run in runs]
+        if delete_node_executions:
+            node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+        else:
+            node_executions_deleted, offloads_deleted = 0, 0
+        app_logs_deleted = (
+            cast(
+                CursorResult,
+                session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))),
+            ).rowcount
+            or 0
+        )
+        pause_ids = session.scalars(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))).all()
+        pause_reasons_deleted = 0
+        pauses_deleted = 0
+        if pause_ids:
+            pause_reasons_deleted = (
+                cast(
+                    CursorResult,
+                    session.execute(delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))),
+                ).rowcount
+                or 0
+            )
+            pauses_deleted = (
+                cast(
+                    CursorResult,
+                    session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids))),
+                ).rowcount
+                or 0
+            )
+        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+        runs_deleted = (
+            cast(CursorResult, session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))).rowcount or 0
+        )
+        return {
+            "runs": runs_deleted,
+            "node_executions": node_executions_deleted,
+            "offloads": offloads_deleted,
+            "app_logs": app_logs_deleted,
+            "trigger_logs": trigger_logs_deleted,
+            "pauses": pauses_deleted,
+            "pause_reasons": pause_reasons_deleted,
+        }
+
+    @override
     def delete_runs_with_related_by_ids(
         self,
         run_ids: Sequence[str],
@@ -952,19 +1094,108 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
     def get_pause_record(
         self,
+        session: Session,
         *,
         workspace_id: str,
         workflow_run_id: str,
     ) -> WorkflowRunPauseRecord | None:
-        return self._pauses.get_pause_record(workspace_id=workspace_id, workflow_run_id=workflow_run_id)
+        return self._pauses.get_pause_record(
+            session,
+            workspace_id=workspace_id,
+            workflow_run_id=workflow_run_id,
+        )
+
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        self._pauses.bind_workflow_task(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            task_id=task_id,
+        )
+
+    def list_legacy_workflow_pauses(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        after_id: str | None,
+        limit: int,
+    ) -> Sequence[tuple[WorkflowRun, WorkflowPauseEntity]]:
+        return self._pauses.list_legacy_workflow_pauses(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            owner=owner,
+            after_id=after_id,
+            limit=limit,
+        )
+
+    def backfill_workflow_pause_task_id(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        pause_id: str,
+        task_id: str,
+    ) -> bool:
+        return self._pauses.backfill_workflow_pause_task_id(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            pause_id=pause_id,
+            task_id=task_id,
+        )
+
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool:
+        return self._pauses.has_active_workflow_pause(
+            session,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            run_id=run_id,
+        )
+
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> Sequence[DifyPauseReason]:
+        return self._pauses.get_legacy_pause_reasons(session, pause_id)
+
+    def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
+        return self._pauses.get_legacy_form_tokens(session, form_ids=form_ids)
+
+    def stop_paused_workflow_task(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> WorkflowRun | None:
+        return self._pauses.stop_paused_workflow_task(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            task_id=task_id,
+            owner=owner,
+        )
 
     @override
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
         pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
     ) -> WorkflowPauseEntity:
-        return self._pauses.resume_workflow_pause(workflow_run_id=workflow_run_id, pause_entity=pause_entity)
+        return self._pauses.resume_workflow_pause(
+            workflow_run_id=workflow_run_id,
+            pause_entity=pause_entity,
+            before_resume=before_resume,
+        )
 
     @override
     def delete_workflow_pause(

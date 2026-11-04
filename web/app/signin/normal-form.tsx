@@ -6,11 +6,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { invitationCheck } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -38,7 +39,7 @@ function NormalForm() {
     error: probeError,
   } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: (err) => !isLegacyBase401(err),
+    throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
   const isLoggedIn = !!userResp && !probeError
@@ -57,13 +58,7 @@ function NormalForm() {
     isError: isInviteCheckError,
   } = useQuery({
     queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () =>
-      invitationCheck({
-        url: '/activate/check',
-        params: {
-          token: inviteToken,
-        },
-      }),
+    queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
     enabled: isInviteLink,
     retry: false,
     refetchOnWindowFocus: false,

@@ -3,7 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 from aliyun.log import IndexConfig, IndexKeyConfig, IndexLineConfig
 
+from extensions.logstore import aliyun_logstore
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -12,14 +14,19 @@ def sdk() -> MagicMock:
 
 
 @pytest.fixture
-def logstore(sdk: MagicMock) -> AliyunLogStore:
-    # Use the real index management code with only the external SDK replaced.
-    store = object.__new__(AliyunLogStore)
-    store.client = sdk
-    store.project_name = "project"
-    store.logstore_ttl = 365
-    store.pg_mode_enabled = False
-    return store
+def logstore(sdk: MagicMock, monkeypatch: pytest.MonkeyPatch) -> AliyunLogStore:
+    """Construct an isolated client with connectivity and SDK effects replaced."""
+    apply_config_overrides(
+        monkeypatch,
+        ALIYUN_SLS_PROJECT_NAME="project",
+        ALIYUN_SLS_LOGSTORE_TTL=365,
+        LOGSTORE_PG_MODE_ENABLED=False,
+    )
+    monkeypatch.setattr(AliyunLogStore, "_instance", None)
+    monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+    monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", lambda *_: None)
+    monkeypatch.setattr(aliyun_logstore, "LogClient", lambda *_args, **_kwargs: sdk)
+    return AliyunLogStore()
 
 
 def test_startup_creates_supplied_logstores_and_indexes(logstore: AliyunLogStore, sdk: MagicMock) -> None:

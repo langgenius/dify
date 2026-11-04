@@ -10,9 +10,10 @@ from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPaus
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from services.workflow.run_entities import (
+    AppWorkflowRunStats,
     AverageInteractionStats,
     DailyRunsStats,
     DailyTerminalsStats,
@@ -23,6 +24,18 @@ from services.workflow.run_entities import (
     WorkflowRunMessageRef,
     WorkflowRunPauseRecord,
 )
+
+
+class WorkflowRunNotPausedError(Exception):
+    """A concurrent stop or resume has already consumed the paused run."""
+
+
+class WorkflowTaskOwnerMismatchError(Exception):
+    """The scoped task belongs to another initiating user."""
+
+
+class WorkflowPauseStoppedError(Exception):
+    """A requested stop won while the engine was persisting its pause."""
 
 
 class APIWorkflowRunRepository(Protocol):
@@ -38,7 +51,13 @@ class APIWorkflowRunRepository(Protocol):
         self, *, app_id: str, workflow_run_ids: Sequence[str]
     ) -> Mapping[str, WorkflowRunMessageRef]: ...
 
-    def get_pause_record(self, *, workspace_id: str, workflow_run_id: str) -> WorkflowRunPauseRecord | None: ...
+    def get_pause_record(
+        self,
+        session: Session,
+        *,
+        workspace_id: str,
+        workflow_run_id: str,
+    ) -> WorkflowRunPauseRecord | None: ...
 
     def get_paginated_workflow_runs(
         self,
@@ -97,6 +116,28 @@ class APIWorkflowRunRepository(Protocol):
         Returns:
             WorkflowRun object if found, None otherwise
         """
+        ...
+
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """Read and lock a run in the complete tenant/app scope."""
+        ...
+
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        """Persist STOPPED and invalidate the run's active pause together."""
         ...
 
     def get_workflow_run_by_id_without_tenant(
@@ -160,6 +201,13 @@ class APIWorkflowRunRepository(Protocol):
             other status counts being 0.
         """
         ...
+
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]: ...
 
     def get_expired_runs_batch(
         self,
@@ -353,6 +401,14 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict: ...
+
     def get_pause_records_by_run_id(
         self,
         session: Session,
@@ -484,10 +540,56 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None: ...
+
+    def list_legacy_workflow_pauses(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        after_id: str | None,
+        limit: int,
+    ) -> Sequence[tuple[WorkflowRun, WorkflowPauseEntity]]: ...
+
+    def backfill_workflow_pause_task_id(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        pause_id: str,
+        task_id: str,
+    ) -> bool: ...
+
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool: ...
+
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> Sequence[DifyPauseReason]: ...
+
+    def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]: ...
+
+    def stop_paused_workflow_task(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> WorkflowRun | None: ...
+
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
         pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
     ) -> WorkflowPauseEntity:
         """
         Resume a paused workflow.
