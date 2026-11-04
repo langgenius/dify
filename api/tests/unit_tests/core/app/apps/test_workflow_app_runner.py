@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from collections.abc import Generator, Mapping
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -1329,6 +1331,78 @@ class TestWorkflowAppRunnerSingleNodeCases:
         assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
         assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
         assert init_graph.call_args.kwargs["call_depth"] == 4
+
+    @staticmethod
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="POSIX-only: cannot force the host timezone")
+    def test_sys_timestamp_is_the_utc_epoch(
+        queue_manager: WorkflowAppQueueManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``sys.timestamp`` is a Unix timestamp, so it must not follow the host timezone."""
+        recorded_at = datetime(2026, 10, 16, 8, 0, 0)
+        app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
+            app_config=WorkflowUIBasedAppConfig(
+                app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
+            ),
+            inputs={},
+            files=[],
+            user_id="user",
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow_execution_id="execution-id",
+            task_id="task-id",
+            stream=True,
+            call_depth=0,
+        )
+
+        workflow = Workflow(
+            tenant_id="tenant",
+            app_id="app",
+            id="workflow",
+            type=ModelWorkflowType.WORKFLOW,
+            version="v1",
+            graph=json.dumps({"nodes": [], "edges": []}),
+            kind=WorkflowKind.WORKFLOW,
+        )
+        workflow.environment_variables = []
+
+        runner = WorkflowAppRunner(
+            application_generate_entity=app_generate_entity,
+            queue_manager=queue_manager,
+            variable_loader=MagicMock(),
+            workflow=workflow,
+            system_user_id="system-user",
+        )
+        monkeypatch.setattr("core.app.apps.workflow.app_runner.naive_utc_now", lambda: recorded_at)
+
+        # Restore TZ by hand instead of calling monkeypatch.undo(): the autouse session
+        # factory fixture shares this monkeypatch instance, so undo() would unbind it.
+        previous_tz = os.environ.get("TZ")
+        monkeypatch.setenv("TZ", "Asia/Shanghai")
+        time.tzset()
+        try:
+            with (
+                patch("core.app.apps.workflow.app_runner.RedisChannel"),
+                patch("core.app.apps.workflow.app_runner.redis_client"),
+                patch("core.app.apps.workflow.app_runner.WorkflowEntry"),
+                patch(
+                    "core.app.apps.workflow.app_runner.build_system_variables", return_value={}
+                ) as build_system_variables,
+                patch("core.app.apps.workflow.app_runner.build_bootstrap_variables", return_value=[]),
+                patch("core.app.apps.workflow.app_runner.add_variables_to_pool"),
+                patch("core.app.apps.workflow.app_runner.get_default_root_node_id", return_value="root-node"),
+                patch("core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=()),
+                patch("core.app.apps.workflow.app_runner.add_node_inputs_to_pool"),
+                patch.object(runner, "_init_graph", return_value=MagicMock()),
+            ):
+                runner.prepare()
+        finally:
+            if previous_tz is None:
+                monkeypatch.delenv("TZ", raising=False)
+            else:
+                monkeypatch.setenv("TZ", previous_tz)
+            time.tzset()
+
+        assert build_system_variables.call_args.kwargs["timestamp"] == 1792137600
 
 
 def _save_form(session: Session, *, status: HumanInputFormStatus) -> HumanInputForm:

@@ -31,7 +31,7 @@ from graphon.engine.layer import Layer
 from graphon.enums import WorkflowType
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 files=self.application_generate_entity.files,
                 user_id=self._sys_user_id,
                 app_id=app_config.app_id,
-                timestamp=int(naive_utc_now().timestamp()),
+                timestamp=to_utc_timestamp(naive_utc_now()),
                 workflow_id=app_config.workflow_id,
                 workflow_execution_id=self.application_generate_entity.workflow_execution_id,
             )
