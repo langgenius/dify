@@ -3829,7 +3829,7 @@ Query parameters for GET /node-types/<node_type>.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default |  | The value the node runs with when the field is left out; left out when there is none | No |
+| default |  | The value the node runs with when the field is left out; left out when there is none or it is null | No |
 | description | string | The first line of the field's description; include_schema=true has the whole text | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] | The values the field accepts | No |
