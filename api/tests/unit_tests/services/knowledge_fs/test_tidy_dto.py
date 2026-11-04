@@ -22,7 +22,7 @@ def test_document_action_requires_an_explicit_side_and_revision() -> None:
     with pytest.raises(ValidationError, match="document to disable"):
         KnowledgeFSTidyActionPayload(action="disable_document", expectedRevision=1)
     with pytest.raises(ValidationError):
-        KnowledgeFSTidyActionPayload(action="undo", expectedRevision=0)
+        KnowledgeFSTidyActionPayload.model_validate({"action": "undo", "expectedRevision": 0})
     assert KnowledgeFSTidyActionPayload(action="undo", expectedRevision=2).documentId is None
 
 
