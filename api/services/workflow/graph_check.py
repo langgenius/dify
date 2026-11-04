@@ -148,6 +148,15 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
     return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))
 
 
+def _unknown_type_message(node_type: str) -> str:
+    if node_type:
+        return f"Unknown node type {node_type!r}"
+    return (
+        "The node has no data.type: write its node type there. "
+        f"A canvas note instead needs type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
+    )
+
+
 def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
     raw_data: Mapping[str, Any] = raw["data"]
     node_type = str(raw_data.get("type", ""))
@@ -157,7 +166,7 @@ def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
         )
     except ValueError:
         issue = GraphIssue(
-            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, data_loc(node_id, "type")
+            IssueCode.UNKNOWN_NODE_TYPE, _unknown_type_message(node_type), node_id, data_loc(node_id, "type")
         )
         return _Node(node_id, raw_data, (issue,))
     try:
