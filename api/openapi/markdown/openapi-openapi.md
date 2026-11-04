@@ -1219,6 +1219,7 @@ Upload a file to use as an input variable when running the app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| include_schema | query | Also return the full JSON schema of the node's data | No | boolean |
 | node_type | path |  | Yes | string |
 
 #### Responses
@@ -1226,6 +1227,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
@@ -3160,6 +3162,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | ---- | ---- | ----------- | -------- |
 | default |  | The value the node runs with when the field is left out | No |
 | description | string |  | Yes |
+| example |  | The value the web canvas gives a new node at this field; left out when the canvas has none | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] |  | Yes |
 | required | boolean |  | Yes |
@@ -3803,14 +3806,37 @@ Where a node option comes from; a kind other than block seeds the nodes whose da
 | type | string |  | Yes |
 | version | string |  | Yes |
 
+#### NodeTypeDescribeQuery
+
+Query parameters for GET /node-types/<node_type>.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_schema | boolean | Also return the full JSON schema of the node's data | No |
+
 #### NodeTypeDetailResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default_config | object |  | Yes |
-| schema | object |  | Yes |
+| fields | [ [NodeTypeFieldRow](#nodetypefieldrow) ] | Every top-level field of the node's data, the required ones first | Yes |
+| handles | [ string ] | Every source handle the node has, in the order the canvas draws them | Yes |
+| schema | object | The JSON schema of the node's data; only with include_schema=true | No |
+| seed | object | The node data to copy into the graph: the canvas's new node | Yes |
 | type | string |  | Yes |
-| version | string |  | Yes |
+| version | string | The node's current version, the one the seed names | Yes |
+
+#### NodeTypeFieldRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out | No |
+| description | string |  | Yes |
+| example |  | The value the web canvas gives a new node at this field; left out when the canvas has none | No |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] |  | Yes |
+| purpose | boolean | True when the web canvas rejects the node with this field left empty | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
 
 #### NodeTypeListResponse
 
