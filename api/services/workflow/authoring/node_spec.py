@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Container, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Final
 
@@ -221,26 +221,30 @@ def _required_first(hint: FieldHint) -> tuple[bool, Loc]:
     return (not hint.required, hint.loc)
 
 
-def node_spec(node: NodeTarget) -> NodeSpec:
-    """What the node still needs: its data schema, its found plugins' parameters, and each top-level field it lacks,
-    the required ones first and each group by loc.
+def top_level_hints(node: NodeTarget, schema: Mapping[str, Any], *, skip: Container[str] = ()) -> tuple[FieldHint, ...]:
+    """A hint for each top-level field of the node's data except those in `skip`, the required ones first and each
+    group by loc. `schema` is the node's data schema.
     """
-    schema = node_data_schema(node.node_class)
-    open_fields = tuple(
+    return tuple(
         sorted(
             (
                 replace(_field_hint(schema, (key,), required=field.is_required()), example=node.example((key,)))
                 for name, field in node.model.model_fields.items()
-                if (key := field.alias or name) not in node.data
+                if (key := field.alias or name) not in skip
             ),
             key=_required_first,
         )
     )
+
+
+def node_spec(node: NodeTarget) -> NodeSpec:
+    """What the node still needs: its data schema, its found plugins' parameters, and each top-level field it lacks."""
+    schema = node_data_schema(node.node_class)
     return NodeSpec(
         node_id=node.id,
         type=str(node.data["type"]),
         version=node.node_class.version(),
         schema=schema,
         plugin_parameters=_declared_parameters(node),
-        open_fields=open_fields,
+        open_fields=top_level_hints(node, schema, skip=node.data),
     )

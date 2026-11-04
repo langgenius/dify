@@ -2,28 +2,27 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Any
 
 from flask_restx import Resource
-from pydantic import BaseModel
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import NodeTypeNotFound
-from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
+from controllers.openapi._models import (
+    NodeTypeDescribeQuery,
+    NodeTypeDetailResponse,
+    NodeTypeFieldRow,
+    NodeTypeListResponse,
+    NodeTypeRow,
+)
 from controllers.openapi.auth.context import Context
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, node_data_model
-from services.workflow.node_defaults import complete_sub_models, node_data_schema
-from services.workflow_service import WorkflowService
-
-
-def _complete_default_config(model: type[BaseModel], default_config: Mapping[str, Any]) -> dict[str, Any]:
-    config = default_config.get("config")
-    if not isinstance(config, Mapping):
-        return dict(default_config)
-    return {**default_config, "config": complete_sub_models(model, config)}
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from services.workflow.authoring.canvas_defaults import purpose_fields
+from services.workflow.authoring.node_options import block_seed
+from services.workflow.authoring.node_spec import NodeTarget, top_level_hints
+from services.workflow.node_defaults import node_data_schema
+from services.workflow_variable_reference_validator import source_handle_order
 
 
 @openapi_ns.route("/node-types")
@@ -49,19 +48,32 @@ class NodeTypeDetailApi(Resource):
     @endpoint(
         op="describe.node_type",
         kind=Kind.OBJECT,
-        summary="The JSON schema of a node type's data and its default config",
-        examples=(Example(title="Describe the LLM node", input={"node_type": "llm"}),),
+        summary="A node type's seed, its fields and its handles; the full data schema on request",
+        examples=(
+            Example(title="Describe the LLM node", input={"node_type": "llm"}),
+            Example(title="Also get its JSON schema", input={"node_type": "llm", "include_schema": True}),
+        ),
         requirements=(),
+        query=NodeTypeDescribeQuery,
         returns=(HTTPStatus.OK, NodeTypeDetailResponse, "Node type"),
     )
-    def get(self, ctx: Context, node_type: str):
+    def get(self, ctx: Context, node_type: str, *, query: NodeTypeDescribeQuery):
         node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
         if node_class is None:
             raise NodeTypeNotFound()
-        model = node_data_model(node_class)
+        version = node_class.version()
+        seed = block_seed(node_type, version)
+        schema = node_data_schema(node_class)
+        target = NodeTarget(id="", data=seed, node_class=node_class, top_level=True, references=())
+        purposes = purpose_fields(node_type, version)
         return NodeTypeDetailResponse(
             type=node_type,
-            version=node_class.version(),
-            schema=node_data_schema(node_class),
-            default_config=_complete_default_config(model, WorkflowService().get_default_block_config(node_type)),
+            version=version,
+            seed=seed,
+            fields=[
+                NodeTypeFieldRow.describing(hint, purpose=hint.loc[0] in purposes)
+                for hint in top_level_hints(target, schema)
+            ],
+            handles=list(source_handle_order(seed)),
+            schema=schema if query.include_schema else None,
         )

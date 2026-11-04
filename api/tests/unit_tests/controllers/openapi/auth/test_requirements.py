@@ -2373,7 +2373,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
     ("get", "/node-types"): frozenset({"200", "default"}),
-    ("get", "/node-types/{node_type}"): frozenset({"200", "default"}),
+    ("get", "/node-types/{node_type}"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/draft/workflow/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/workflow"): frozenset({"201", "422", "default"}),
