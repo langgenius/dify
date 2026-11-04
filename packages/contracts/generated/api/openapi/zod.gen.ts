@@ -1665,11 +1665,24 @@ export const zNodeTypeDescribeQuery = z.object({
 })
 
 /**
+ * NodeTypeFieldItemRow
+ */
+export const zNodeTypeFieldItemRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullish(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()).optional(),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
  * NodeTypeFieldRow
  */
 export const zNodeTypeFieldRow = z.object({
   default: z.unknown().optional(),
   description: z.string().nullish(),
+  items: z.array(zNodeTypeFieldItemRow).optional(),
   loc: z.array(z.union([z.string(), z.int()])),
   options: z.array(z.string()).optional(),
   purpose: z.boolean(),
