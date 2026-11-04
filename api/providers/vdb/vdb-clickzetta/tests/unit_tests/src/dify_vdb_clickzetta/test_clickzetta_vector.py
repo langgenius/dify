@@ -4,14 +4,40 @@ import sys
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
-from typing import Any, NoReturn, Self
+from typing import Any, NoReturn, Self, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+
+class _UnusedEmbeddings(Embeddings):
+    """A real ``Embeddings`` instance for calls that ignore the argument.
+
+    ``ClickzettaVectorFactory.init_vector`` only reads config values and never
+    touches ``embeddings``. Using a real instance here keeps the test free of
+    new test doubles, as required by the repository's guard scripts.
+    """
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    @override
+    def embed_multimodal_documents(self, documents: list[dict[str, Any]]) -> list[list[float]]:
+        raise NotImplementedError
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        raise NotImplementedError
+
+    @override
+    def embed_multimodal_query(self, document: dict[str, Any]) -> list[float]:
+        raise NotImplementedError
 
 
 def _build_fake_clickzetta_module() -> FakeModule:
@@ -284,7 +310,7 @@ def test_factory_honors_inverted_index_setting(
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
 
     with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
+        factory.init_vector(dataset, attributes=[], embeddings=_UnusedEmbeddings(), session=None)
 
     assert vector_cls.call_args.kwargs["config"].enable_inverted_index is expected
 
