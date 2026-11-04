@@ -470,7 +470,9 @@ class WorkflowConverter:
         # Chat Model
         if model_config.mode == LLMMode.CHAT:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
-                if not prompt_template.simple_prompt_template:
+                if prompt_template.simple_prompt_template is None or (
+                    not prompt_template.simple_prompt_template and original_app_mode != AppMode.CHAT
+                ):
                     raise ValueError("Simple prompt template is required")
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
@@ -509,7 +511,9 @@ class WorkflowConverter:
         # Completion Model
         else:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
-                if not prompt_template.simple_prompt_template:
+                if prompt_template.simple_prompt_template is None or (
+                    not prompt_template.simple_prompt_template and original_app_mode != AppMode.CHAT
+                ):
                     raise ValueError("Simple prompt template is required")
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
