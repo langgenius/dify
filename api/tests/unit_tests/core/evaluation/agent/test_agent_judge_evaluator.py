@@ -1,3 +1,6 @@
+from collections.abc import Sequence
+from copy import deepcopy
+
 import pytest
 
 from core.evaluation.agent import agent_judge_evaluator
@@ -46,7 +49,7 @@ class _FakeJudgeModel:
 class _FakeToolArgumentJudgeModel:
     model_identifier = "provider/model"
 
-    def __init__(self, outputs: list[ToolArgumentJudgeOutput]) -> None:
+    def __init__(self, outputs: Sequence[object]) -> None:
         self.outputs = outputs
         self.payload: dict[str, object] | None = None
         self.system_prompt = ""
@@ -376,7 +379,7 @@ def test_tool_argument_correctness_scores_each_assessable_call(
     assert metric.details["call_assessments"][0]["reported_score"] == 1
     assert metric.details["call_assessments"][0]["score"] == 0.7375
     assert metric.details["call_assessments"][0]["tool_call_id"] == "call-1"
-    assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v3"
+    assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v4"
     assert fake_model.call_count == 1
     assert fake_model.payload is not None
     assert fake_model.payload["tool_calls"][0]["tool_description"] == ""
@@ -429,6 +432,62 @@ def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypat
         "call-1",
         "call-2",
     ]
+
+
+def test_tool_argument_correctness_truncates_long_explanations_without_losing_scores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = ToolArgumentJudgeOutput(
+        score=0.6,
+        reason="The arguments need review.",
+        criteria=ToolArgumentCriteria(
+            schema_conformance=_criterion(0.6),
+            required_parameter_coverage=_criterion(0.6),
+            semantic_value_correctness=_criterion(0.6),
+            context_consistency=_criterion(0.6),
+        ),
+    ).model_dump(mode="json")
+    raw_outputs = [deepcopy(output) for _ in range(5)]
+    raw_outputs[2]["reason"] = "Long tool-call explanation. " * 100
+    raw_outputs[2]["criteria"]["semantic_value_correctness"]["reason"] = "Long criterion explanation. " * 100
+    fake_model = _FakeToolArgumentJudgeModel(raw_outputs)
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Convert five times."},
+        output="Converted five times.",
+        tool_calls=[
+            AgentToolCall(
+                name="convert",
+                call_id=f"call-{index}",
+                tool_ref="time/convert",
+                arguments={"time": f"{index:02d}:00"},
+            )
+            for index in range(1, 6)
+        ],
+        available_tools=[
+            AgentToolDefinition(
+                tool_ref="time/convert",
+                name="convert",
+                input_schema={"type": "object", "properties": {"time": {"type": "string"}}},
+            )
+        ],
+    )
+
+    result = AgentLLMJudgeEvaluator().evaluate([item], ["tool_argument_correctness"], "provider", "model", "tenant")[0]
+
+    assert result.error is None
+    assert fake_model.call_count == 1
+    metric = result.metrics[0]
+    assert metric.value == 0.6
+    assert len(metric.details["call_assessments"]) == 5
+    third_assessment = metric.details["call_assessments"][2]
+    assert third_assessment["tool_call_id"] == "call-3"
+    assert len(third_assessment["reason"]) == 500
+    assert third_assessment["reason"].endswith("… [truncated]")
+    criterion_reason = third_assessment["criteria"]["semantic_value_correctness"]["reason"]
+    assert len(criterion_reason) == 300
+    assert criterion_reason.endswith("… [truncated]")
 
 
 def test_tool_argument_correctness_is_not_applicable_without_calls(monkeypatch: pytest.MonkeyPatch) -> None:
