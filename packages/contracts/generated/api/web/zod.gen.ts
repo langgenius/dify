@@ -274,6 +274,7 @@ export const zConnectionRevisionChangeDetails = z.object({
  */
 export const zConsumerAppResponse = z.object({
   app_code: z.string(),
+  connection_status: z.literal('not_configured').nullish(),
   description: z.string(),
   icon: z.string().nullable(),
   icon_background: z.string().nullable(),

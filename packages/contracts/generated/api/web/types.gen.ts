@@ -299,6 +299,7 @@ export type ConnectionRevisionChangedError = ErrorResponse & {
 
 export type ConsumerAppResponse = {
   app_code: string
+  connection_status?: 'not_configured' | null
   description: string
   icon: string | null
   icon_background: string | null
