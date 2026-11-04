@@ -1218,10 +1218,9 @@ export type NodeTypeDetailResponse = {
 
 export type NodeTypeFieldRow = {
   default?: unknown
-  description: string | null
-  example?: unknown
+  description?: string | null
   loc: Array<string | number>
-  options: Array<string>
+  options?: Array<string>
   purpose: boolean
   required: boolean
   type: string | null

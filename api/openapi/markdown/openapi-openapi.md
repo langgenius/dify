@@ -3829,11 +3829,10 @@ Query parameters for GET /node-types/<node_type>.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default |  | The value the node runs with when the field is left out | No |
-| description | string |  | Yes |
-| example |  | The value the web canvas gives a new node at this field; left out when the canvas has none | No |
+| default |  | The value the node runs with when the field is left out; left out when there is none | No |
+| description | string | The first line of the field's description; include_schema=true has the whole text | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
-| options | [ string ] |  | Yes |
+| options | [ string ] | The values the field accepts | No |
 | purpose | boolean | True when the web canvas rejects the node with this field left empty | Yes |
 | required | boolean |  | Yes |
 | type | string |  | Yes |
