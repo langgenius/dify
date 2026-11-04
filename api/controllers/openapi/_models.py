@@ -869,6 +869,11 @@ class FieldHintRow(BaseModel):
     description: str | None
     required: bool
     default: Any = _omitted_without_default("The value the node runs with when the field is left out")
+    example: Any = Field(
+        None,
+        exclude_if=lambda value: value is None,
+        description="The value the web canvas gives a new node at this field; left out when the canvas has none",
+    )
 
     @classmethod
     def of(cls, hint: FieldHint) -> Self:
@@ -879,6 +884,7 @@ class FieldHintRow(BaseModel):
             description=hint.description,
             required=hint.required,
             default=hint.default,
+            example=hint.example,
         )
 
 

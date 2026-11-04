@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Self
 from graphon.enums import NodeExecutionType
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from machinery.context import RequestContext
+from services.workflow.authoring.canvas_defaults import empty_purpose_locs
 from services.workflow.authoring.canvas_notes import (
     COVERS_KEY,
     TEXT_KEY,
@@ -29,7 +30,6 @@ from services.workflow.authoring.node_spec import (
     NodeSpec,
     NodeTarget,
     ResolvedReference,
-    field_hint,
     node_spec,
     read_node,
 )
@@ -71,6 +71,7 @@ class AuthoringIssueCode(StrEnum):
     NOTE_FIELD_MISSING = ("note_field_missing", IssueSeverity.ERROR)
     NOTE_COVER_UNKNOWN = ("note_cover_unknown", IssueSeverity.ERROR)
     NOTE_TOO_SMALL = ("note_too_small", IssueSeverity.WARNING)
+    FIELD_EMPTY = ("field_empty", IssueSeverity.ERROR)
 
 
 @dataclass(frozen=True)
@@ -168,8 +169,8 @@ class Check(ABC):
     @abstractmethod
     def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]: ...
 
-    def issue(self, message: str, *, node_id: str | None, loc: Loc) -> AuthoringIssue:
-        """An issue under this check's own code."""
+    def issue(self, message: str, *, node_id: str | None, loc: Loc, hint: FieldHint | None = None) -> AuthoringIssue:
+        """An issue under this check's own code, with the field to write when it has one."""
         if self.code is None:
             raise TypeError(f"{type(self).__name__} reports no code of its own")
         return AuthoringIssue(
@@ -179,6 +180,7 @@ class Check(ABC):
             message=message,
             node_id=node_id,
             loc=loc,
+            hint=hint,
         )
 
 
@@ -219,7 +221,7 @@ def _missing_field_hint(issue: GraphIssue, nodes: Mapping[str, NodeTarget]) -> F
     node = nodes.get(issue.node_id)
     if node is None:
         return None
-    return field_hint(node.model, issue.loc[len(data_loc(node.id)) :], required=True)
+    return node.hint(issue.loc[len(data_loc(node.id)) :], required=True)
 
 
 class NoRootNode(Check):
@@ -431,6 +433,24 @@ def _below_minimum(value: object, size: NoteSize) -> bool:
     if not is_number(value):
         return False
     return value < size.minimum
+
+
+class FieldEmpty(Check):
+    """Each field the web canvas refuses a node without has a value; fill leaves the canvas's empty slots in place."""
+
+    code = AuthoringIssueCode.FIELD_EMPTY
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        return [
+            self.issue(
+                f"Node {node.id!r} has nothing at {'.'.join(map(str, loc))}, which the canvas needs a value for",
+                node_id=node.id,
+                loc=data_loc(node.id, *loc),
+                hint=node.hint(loc, required=True),
+            )
+            for node in target.nodes
+            for loc in empty_purpose_locs(node.data)
+        ]
 
 
 def check_package(

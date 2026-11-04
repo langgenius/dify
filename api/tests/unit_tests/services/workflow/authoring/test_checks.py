@@ -37,11 +37,12 @@ FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 APP = "app.yaml"
 MANIFEST = "manifest.yaml"
 ITERATION_AND_NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
+# basic_chatflow.yml is left out of the clean exports and of the quiet purpose test: the export never picked a model.
+UNPICKED_MODEL_EXPORT = "basic_chatflow.yml"
 # Exports whose plugins resolve in a bare workspace and that check_graph passes; time is a built-in tool. Their
 # models are not set up in a bare workspace, so they carry resource_unavailable warnings.
 CLEAN_EXPORTS = [
     "array_iteration_formatting_workflow.yml",
-    "basic_chatflow.yml",
     "basic_llm_chat_workflow.yml",
     "chatflow_time_tool_static_output_workflow.yml",
     "dual_switch_variable_aggregator_workflow.yml",
@@ -53,7 +54,11 @@ CLEAN_EXPORTS = [
     "update-conversation-variable-in-iteration.yml",
 ]
 START = {"id": "start", "data": {"type": BuiltinNodeTypes.START}}
-END = {"id": "end", "data": {"type": BuiltinNodeTypes.END}}
+END = {
+    "id": "end",
+    "data": {"type": BuiltinNodeTypes.END, "outputs": [{"variable": "out", "value_selector": ["start", "query"]}]},
+}
+BARE_END = {"id": "end", "data": {"type": BuiltinNodeTypes.END}}
 LLM_WITHOUT_MODEL = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}
 
 
@@ -143,7 +148,13 @@ def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hint
     issues = _issues_of(check, "extractor")
     missing = [issue for issue in issues if issue.code == IssueCode.NODE_DATA_INVALID]
     assert missing
-    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID}
+    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID, AuthoringIssueCode.FIELD_EMPTY}
+    assert _empty_locs(check, "extractor") == {
+        _data("extractor", "query"),
+        _data("extractor", "model", "provider"),
+        _data("extractor", "model", "name"),
+        _data("extractor", "parameters"),
+    }
     assert all(issue.hint is not None and issue.hint.required for issue in missing)
     [parameters] = [issue for issue in missing if issue.loc == ("nodes", "extractor", "data", "parameters")]
     assert parameters.hint is not None
@@ -155,12 +166,12 @@ def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hint
 
 
 def _unconnected_branch_dsl() -> str:
-    no_conditions: list[object] = []
+    condition = {"id": "c1", "variable_selector": ["start", "query"], "comparison_operator": "empty"}
     branch = {
         "id": "if",
         "data": {
             "type": BuiltinNodeTypes.IF_ELSE,
-            "cases": [{"case_id": "yes", "logical_operator": "and", "conditions": no_conditions}],
+            "cases": [{"case_id": "yes", "logical_operator": "and", "conditions": [condition]}],
         },
     }
     return _dsl([START, branch], [{"source": "start", "target": "if"}])
@@ -222,6 +233,132 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked(dsl: DslCheckRequest) 
     check = _check_text(app, dsl)
 
     assert check == PackageCheck(valid=True, issues=(), node_specs=())
+
+
+def _empty_locs(check: PackageCheck, node_id: str) -> set[tuple[str | int, ...]]:
+    return {issue.loc for issue in _issues_of(check, node_id) if issue.code == AuthoringIssueCode.FIELD_EMPTY}
+
+
+def _data(node_id: str, *loc: str | int) -> tuple[str | int, ...]:
+    return ("nodes", node_id, "data", *loc)
+
+
+def test_a_bare_llm_reports_model_and_prompt_as_empty(dsl: DslCheckRequest) -> None:
+    check = _chain(dsl, START, LLM_WITHOUT_MODEL, END)
+
+    assert _empty_locs(check, "llm") == {
+        _data("llm", "model", "provider"),
+        _data("llm", "model", "name"),
+        _data("llm", "prompt_template"),
+    }
+    issues = [issue for issue in _issues_of(check, "llm") if issue.code == AuthoringIssueCode.FIELD_EMPTY]
+    assert all(issue.hint is not None and issue.hint.example is not None for issue in issues)
+    assert all(issue.hint is not None and issue.hint.required for issue in issues)
+    assert all((issue.severity, issue.refuses_import) == (IssueSeverity.ERROR, False) for issue in issues)
+    assert check.valid is False
+
+
+def test_an_llm_with_memory_is_not_asked_for_a_prompt(dsl: DslCheckRequest) -> None:
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "memory": {"window": {"enabled": False, "size": 10}}}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert _data("llm", "prompt_template") not in _empty_locs(check, "llm")
+
+
+@pytest.mark.parametrize(
+    ("prompt", "empty"),
+    [
+        pytest.param([{"role": "system", "text": ""}, {"role": "user", "text": "  "}], True, id="all-blank"),
+        pytest.param([{"role": "system", "text": ""}, {"role": "user", "text": "Hi {{#start.q#}}"}], False, id="one"),
+        pytest.param(
+            [{"role": "user", "edition_type": "jinja2", "text": "x", "jinja2_text": ""}], True, id="jinja-empty"
+        ),
+        pytest.param(
+            [{"role": "user", "edition_type": "jinja2", "text": "", "jinja2_text": "{{ a }}"}], False, id="jinja"
+        ),
+        pytest.param({"text": ""}, True, id="completion-blank"),
+        pytest.param({"text": "Say hi"}, False, id="completion-text"),
+        pytest.param([], True, id="no-messages"),
+    ],
+)
+def test_an_llm_prompt_is_empty_only_when_no_message_has_text(
+    prompt: object, empty: bool, dsl: DslCheckRequest
+) -> None:
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "prompt_template": prompt}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert (_data("llm", "prompt_template") in _empty_locs(check, "llm")) is empty
+
+
+def test_an_if_else_case_without_conditions_is_reported_per_case(dsl: DslCheckRequest) -> None:
+    branch = {
+        "id": "if",
+        "data": {
+            "type": BuiltinNodeTypes.IF_ELSE,
+            "cases": [
+                {"case_id": "a", "logical_operator": "and", "conditions": []},
+                {"case_id": "b", "logical_operator": "and", "conditions": []},
+            ],
+        },
+    }
+
+    check = _check(dsl, [START, branch], [{"source": "start", "target": "if"}])
+
+    assert _empty_locs(check, "if") == {_data("if", "cases", 0, "conditions"), _data("if", "cases", 1, "conditions")}
+
+
+def test_an_end_without_outputs_and_an_answer_without_text_are_reported(dsl: DslCheckRequest) -> None:
+    workflow = _chain(dsl, START, BARE_END)
+    answer = {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER}}
+    chatflow = _check_text(_dsl([START, answer], [{"source": "start", "target": "answer"}], AppMode.ADVANCED_CHAT), dsl)
+
+    assert _empty_locs(workflow, "end") == {_data("end", "outputs")}
+    assert _empty_locs(chatflow, "answer") == {_data("answer", "answer")}
+
+
+@pytest.mark.parametrize(
+    ("text", "empty"),
+    [("{{#start.q#}}", False), ("Hello", False), ("   ", True), ("", True)],
+)
+def test_text_holding_only_a_reference_is_not_empty(text: str, empty: bool, dsl: DslCheckRequest) -> None:
+    answer = {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER, "answer": text}}
+
+    check = _check_text(_dsl([START, answer], [{"source": "start", "target": "answer"}], AppMode.ADVANCED_CHAT), dsl)
+
+    assert (_data("answer", "answer") in _empty_locs(check, "answer")) is empty
+
+
+def test_a_type_with_no_canvas_entry_gets_no_purpose_issue(dsl: DslCheckRequest) -> None:
+    check = _chain(dsl, START, _tool("current_time"), END)
+
+    assert AuthoringIssueCode.FIELD_EMPTY not in {issue.code for issue in _issues_of(check, "tool")}
+
+
+def test_an_unknown_node_version_gets_no_purpose_issue(dsl: DslCheckRequest) -> None:
+    future = {"id": "human", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "99"}}
+
+    check = _chain(dsl, START, future, END)
+
+    assert _empty_locs(check, "human") == set()
+
+
+@pytest.mark.parametrize(
+    "fixture", sorted(path.name for path in FIXTURES.glob("*.y*ml") if path.name != UNPICKED_MODEL_EXPORT)
+)
+def test_purpose_issues_are_quiet_on_every_console_export_fixture(fixture: str, dsl: DslCheckRequest) -> None:
+    check = _check_text((FIXTURES / fixture).read_text(), dsl)
+
+    assert [issue for issue in check.issues if issue.code == AuthoringIssueCode.FIELD_EMPTY] == []
+
+
+def test_an_export_that_never_picked_a_model_reports_the_model_but_not_the_prompt(dsl: DslCheckRequest) -> None:
+    check = _check_text((FIXTURES / UNPICKED_MODEL_EXPORT).read_text(), dsl)
+
+    empty = [issue for issue in check.issues if issue.code == AuthoringIssueCode.FIELD_EMPTY]
+    assert sorted(issue.loc for issue in empty) == [_data("llm", "model", "name"), _data("llm", "model", "provider")]
+    assert _beyond_missing_models(check) == empty
 
 
 def test_new_codes_are_errors_but_a_small_note_and_only_manifest_issues_refuse_an_import() -> None:
@@ -420,6 +557,7 @@ def _check_keys(check: PackageCheck) -> set[_IssueKey]:
 
 _DSL_CHECKED_APPS = [
     *[pytest.param((FIXTURES / fixture).read_text(), id=fixture) for fixture in CLEAN_EXPORTS],
+    pytest.param((FIXTURES / UNPICKED_MODEL_EXPORT).read_text(), id=UNPICKED_MODEL_EXPORT),
     pytest.param((FIXTURES / ITERATION_AND_NOTES_EXPORT).read_text(), id=ITERATION_AND_NOTES_EXPORT),
     pytest.param(_skeleton_dsl(), id="skeleton-workflow"),
     pytest.param(_skeleton_dsl(AppMode.ADVANCED_CHAT), id="skeleton-chatflow"),

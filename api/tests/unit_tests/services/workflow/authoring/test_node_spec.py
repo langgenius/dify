@@ -145,6 +145,40 @@ def test_open_fields_are_every_top_level_field_the_data_lacks() -> None:
     assert fields[("memory",)].default is None
 
 
+def test_open_fields_list_required_fields_first() -> None:
+    spec = _spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "title": "LLM"}})
+
+    order = [(not hint.required, hint.loc) for hint in spec.open_fields]
+    assert order == sorted(order)
+    assert spec.open_fields[0].required is True
+    assert spec.open_fields[-1].required is False
+
+
+def test_an_open_field_carries_the_canvas_example() -> None:
+    spec = _spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "title": "LLM"}})
+
+    fields = {hint.loc: hint for hint in spec.open_fields}
+    assert fields[("context",)].example == {"enabled": False, "variable_selector": []}
+    assert fields[("memory",)].example is None
+
+
+def test_a_node_data_invalid_hint_carries_the_canvas_example() -> None:
+    node = read_node({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}, CTX)
+    assert node is not None
+
+    hint = node.hint(("context",), required=True)
+
+    assert hint.example == {"enabled": False, "variable_selector": []}
+    assert hint.required is True
+
+
+def test_a_hint_under_a_list_item_takes_the_example_of_the_first_item() -> None:
+    node = read_node({"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}, CTX)
+    assert node is not None
+
+    assert node.hint(("cases", 3, "logical_operator"), required=False).example == "and"
+
+
 @pytest.mark.parametrize(
     "node",
     [

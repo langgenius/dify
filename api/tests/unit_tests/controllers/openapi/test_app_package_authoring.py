@@ -113,7 +113,8 @@ def _start() -> dict[str, object]:
 
 
 def _end() -> dict[str, object]:
-    return {"id": "end", "data": {"type": BuiltinNodeTypes.END}}
+    outputs = [{"variable": "out", "value_selector": ["start", "query"]}]
+    return {"id": "end", "data": {"type": BuiltinNodeTypes.END, "outputs": outputs}}
 
 
 def _fill(app: Flask, package: FileStorage | UploadParts) -> Response:
@@ -189,7 +190,11 @@ def test_check_reports_a_missing_field_with_a_hint_and_a_spec_per_node(app: Flas
     response, status = _check(app, _folder({_APP: _chain_dsl(_start(), _EXTRACTOR_WITHOUT_PARAMETERS, _end())}))
 
     assert (status, response.valid) == (200, False)
-    [parameters] = [issue for issue in response.issues if issue.loc == ["nodes", "extractor", "data", "parameters"]]
+    [parameters] = [
+        issue
+        for issue in response.issues
+        if issue.loc == ["nodes", "extractor", "data", "parameters"] and issue.code == IssueCode.NODE_DATA_INVALID
+    ]
     assert (parameters.severity, parameters.refuses_import, parameters.node_id) == ("error", True, "extractor")
     assert parameters.hint is not None
     assert (parameters.hint.loc, parameters.hint.required) == (["parameters"], True)
@@ -342,6 +347,21 @@ def test_a_field_hint_sends_a_null_default_and_leaves_out_a_missing_one(
 
 
 @pytest.mark.parametrize(
+    ("example", "expected"), [(None, {}), ("", {"example": ""}), ({"enabled": False}, {"example": {"enabled": False}})]
+)
+def test_a_field_hint_sends_its_canvas_example_and_leaves_out_a_missing_one(
+    example: object, expected: dict[str, object]
+) -> None:
+    hint = FieldHint(
+        loc=("x",), type="string", options=(), description=None, required=False, default=NO_DEFAULT, example=example
+    )
+
+    body = FieldHintRow.of(hint).model_dump(mode="json", by_alias=True)
+
+    assert {key: value for key, value in body.items() if key == "example"} == expected
+
+
+@pytest.mark.parametrize(
     ("default", "expected"), [(None, {"default": None}), ("UTC", {"default": "UTC"}), (NO_DEFAULT, {})]
 )
 def test_a_declared_parameter_sends_a_null_default_and_leaves_out_a_missing_one(
@@ -413,7 +433,10 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     package = _members(filled.get_data())
 
     first = _check_over_the_wire(world, package)
-    assert (first.valid, first.issues) == (True, [])
+    assert first.valid is False
+    assert [(issue.code, issue.loc, issue.refuses_import) for issue in first.issues] == [
+        (AuthoringIssueCode.FIELD_EMPTY, ["nodes", "end", "data", "outputs"], False)
+    ]
     assert _node_data(_app_graph(package), "end")["outputs"] == []
 
     end_outputs = [{"variable": "current_time", "value_type": "string", "value_selector": ["now", "text"]}]
