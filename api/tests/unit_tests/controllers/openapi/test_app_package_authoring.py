@@ -445,10 +445,7 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     package = _members(filled.get_data())
 
     first = _check_over_the_wire(world, package)
-    assert first.valid is False
-    assert [(issue.code, issue.loc, issue.refuses_import) for issue in first.issues] == [
-        (AuthoringIssueCode.FIELD_EMPTY, ["nodes", "end", "data", "outputs"], False)
-    ]
+    assert (first.valid, first.issues) == (True, [])
     assert "outputs" not in _node_data(_app_graph(package), "end")
 
     end_outputs = [{"variable": "current_time", "value_type": "string", "value_selector": ["now", "text"]}]

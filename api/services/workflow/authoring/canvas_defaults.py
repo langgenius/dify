@@ -7,8 +7,8 @@ locs are written by hand from each node's `checkValid`, which is code with trans
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from importlib import resources
 from typing import Final, Self
@@ -16,130 +16,32 @@ from typing import Final, Self
 from pydantic import TypeAdapter
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
-from core.workflow.llm_environment_variable import parse_llm_model_selector, should_resolve_llm_model_selector
 from graphon.enums import BuiltinNodeTypes
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 type Loc = tuple[str | int, ...]
-type EmptyLocs = Callable[[Mapping[str, object], Loc], list[Loc]]
 
 WILDCARD: Final = "*"
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
-_JINJA2_EDITION: Final = "jinja2"
-_TEXT_KEY: Final = "text"
-_JINJA2_TEXT_KEY: Final = "jinja2_text"
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _START_NODE_ID_KEY: Final = "start_node_id"
 _ITERATOR_SELECTOR_KEY: Final = "iterator_selector"
 _OUTPUT_SELECTOR_KEY: Final = "output_selector"
-_MODEL_SELECTOR_KEY: Final = "model_selector"
 _VARIABLES_KEY: Final = "variables"
-_ADVANCED_SETTINGS_KEY: Final = "advanced_settings"
-_GROUP_ENABLED_KEY: Final = "group_enabled"
-_GROUPS_KEY: Final = "groups"
-_GROUP_LOCS: Final[tuple[Loc, ...]] = (
-    (_ADVANCED_SETTINGS_KEY, _GROUPS_KEY),
-    (_ADVANCED_SETTINGS_KEY, _GROUPS_KEY, WILDCARD, _VARIABLES_KEY, WILDCARD),
-)
 _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
     resources.files(__package__).joinpath(_DEFAULTS_FILE).read_text(encoding="utf-8")
 )
 
 
-def _is_empty(value: object) -> bool:
-    """Missing, None, blank text, or a list or dict with nothing in it; a reference such as `{{#x.y#}}` is text."""
-    if value is None:
-        return True
-    if isinstance(value, str):
-        return not value.strip()
-    if isinstance(value, (Mapping, Sequence)):
-        return len(value) == 0
-    return False
-
-
-def _message_has_text(message: object) -> bool:
-    if not isinstance(message, Mapping):
-        return False
-    text_key = _JINJA2_TEXT_KEY if message.get("edition_type") == _JINJA2_EDITION else _TEXT_KEY
-    return not _is_empty(message.get(text_key))
-
-
-def _llm_prompt_is_empty(written: Mapping[str, object]) -> bool:
-    """A chat prompt is a list of messages and a completion prompt is one message; either is empty when no message has
-    text. A node with memory is not asked for a prompt.
-    """
-    if written.get("memory") is not None:
-        return False
-    prompt = written.get("prompt_template")
-    messages = prompt if isinstance(prompt, list) else [prompt]
-    return not any(_message_has_text(message) for message in messages)
-
-
-def _empty_purpose(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    """The generic rule: the places `loc` names in the node that are empty."""
-    return _empty_locs(written, loc, ())
-
-
-def _empty_llm_prompt(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    return [loc] if _llm_prompt_is_empty(written) else []
-
-
-def _names_an_environment_model(selector: object) -> bool:
-    try:
-        parse_llm_model_selector(selector)
-    except ValueError:
-        return False
-    return True
-
-
-def _empty_llm_model(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    """A selector meant for an environment model (llm/utils.ts isEnvironmentModelSource) replaces the written model:
-    it passes when it names one, and asks for the model whatever is written when it doesn't (llm/default.ts:92-99).
-    """
-    selector = written.get(_MODEL_SELECTOR_KEY)
-    if not should_resolve_llm_model_selector(selector):
-        return _empty_purpose(written, loc)
-    if _names_an_environment_model(selector):
-        return []
-    return [loc]
-
-
-def _groups_enabled(written: Mapping[str, object]) -> bool:
-    settings = written.get(_ADVANCED_SETTINGS_KEY)
-    if not isinstance(settings, Mapping):
-        return False
-    return bool(settings.get(_GROUP_ENABLED_KEY))
-
-
-def _empty_variables_or_groups(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    """A grouped aggregator is asked for groups and for each variable in them, not for its own variables; a group with
-    no variables passes, as on the web.
-    """
-    if not _groups_enabled(written):
-        return _empty_purpose(written, loc)
-    return [found for group_loc in _GROUP_LOCS for found in _empty_purpose(written, group_loc)]
-
-
-def _empty_ungrouped_variable(written: Mapping[str, object], loc: Loc) -> list[Loc]:
-    if _groups_enabled(written):
-        return []
-    return _empty_purpose(written, loc)
-
-
 @dataclass(frozen=True)
 class CanvasEdition:
-    """What the canvas gives a node of one version of a block type, from the web entry `entry`.
-
-    `emptiness` holds the purpose locs whose emptiness is not the generic rule's, each with its own finder of the
-    empty locs it names in the node.
-    """
+    """What the canvas gives a node of one version of a block type, from the web entry `entry`."""
 
     version: str | None
     entry: str
     purpose: tuple[Loc, ...]
-    emptiness: Mapping[Loc, EmptyLocs] = field(default_factory=dict)
 
     @property
     def data(self) -> Mapping[str, object]:
@@ -154,8 +56,8 @@ class CanvasNode(StrEnum):
     listed.
 
     A member is given either the purpose locs of its one edition, or one `CanvasEdition` per version when the versions
-    differ or an edition has hooks. `data` and `purpose` are those of the first edition, which is the version a node
-    without one has. `edition` picks by a node's version.
+    differ. `data` and `purpose` are those of the first edition, which is the version a node without one has.
+    `edition` picks by a node's version.
     """
 
     data: Mapping[str, object]
@@ -256,22 +158,9 @@ class CanvasNode(StrEnum):
     KNOWLEDGE_RETRIEVAL_V2 = (KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE, ("control_space_ids",))
     # list-operator/default.ts:43; the filter condition is required only when the filter is on (:50-75)
     LIST_OPERATOR = (BuiltinNodeTypes.LIST_OPERATOR, ("variable",))
-    LLM = (
-        BuiltinNodeTypes.LLM,
-        # llm/default.ts:92-99 (provider; an empty name means no model is chosen yet; a model an `env` selector names
-        # comes from that variable, :77-90), 101-117 (a prompt is empty when every message's text is "", and is not
-        # checked with memory); a prompt for a completion model is not the canvas's chat list (:103-111)
-        CanvasEdition(
-            None,
-            BuiltinNodeTypes.LLM,
-            (("model", "provider"), ("model", "name"), ("prompt_template",)),
-            emptiness={
-                ("model", "provider"): _empty_llm_model,
-                ("model", "name"): _empty_llm_model,
-                ("prompt_template",): _empty_llm_prompt,
-            },
-        ),
-    )
+    # llm/default.ts:92-99 (provider; an empty name means no model is chosen yet), 101-117; a model an `env` selector
+    # names (:77-90) and a prompt with memory are not listed
+    LLM = (BuiltinNodeTypes.LLM, ("model", "provider"), ("model", "name"), ("prompt_template",))
     # loop/default.ts:36, 51, 57; start_node_id as for iteration
     LOOP = (
         BuiltinNodeTypes.LOOP,
@@ -315,20 +204,8 @@ class CanvasNode(StrEnum):
     TRIGGER_SCHEDULE = (TRIGGER_SCHEDULE_NODE_TYPE, ("mode",))
     # trigger-webhook/default.ts:32 checks the webhook_url, which the server supplies
     TRIGGER_WEBHOOK = (TRIGGER_WEBHOOK_NODE_TYPE,)
-    # variable-assigner/default.ts:54-59; a grouped aggregator checks its groups and each group's variables instead
-    # (:42-52)
-    VARIABLE_AGGREGATOR = (
-        BuiltinNodeTypes.VARIABLE_AGGREGATOR,
-        CanvasEdition(
-            None,
-            BuiltinNodeTypes.VARIABLE_AGGREGATOR,
-            ((_VARIABLES_KEY,), (_VARIABLES_KEY, WILDCARD)),
-            emptiness={
-                (_VARIABLES_KEY,): _empty_variables_or_groups,
-                (_VARIABLES_KEY, WILDCARD): _empty_ungrouped_variable,
-            },
-        ),
-    )
+    # variable-assigner/default.ts:54-59; the groups of a grouped aggregator (:42-52) are not listed
+    VARIABLE_AGGREGATOR = (BuiltinNodeTypes.VARIABLE_AGGREGATOR, (_VARIABLES_KEY,), (_VARIABLES_KEY, WILDCARD))
 
 
 def canvas_node(node_type: str) -> CanvasNode | None:
@@ -425,33 +302,3 @@ def _value_at(edition: CanvasEdition, loc: Loc) -> object | None:
         if value is None:
             return None
     return copy.deepcopy(value)
-
-
-def _empty_locs(value: object, loc: Loc, path: Loc) -> list[Loc]:
-    """The places under `value` that `loc` names and that are empty. A list that is missing or has no items has no
-    item to name, so a `*` over it names nothing; the loc of the list itself says it must not be empty.
-    """
-    if not loc:
-        return [path] if _is_empty(value) else []
-    head, *rest = loc
-    if head == WILDCARD:
-        items = value if isinstance(value, list) else []
-        return [found for index, item in enumerate(items) for found in _empty_locs(item, tuple(rest), (*path, index))]
-    child = value.get(head) if isinstance(value, Mapping) else None
-    return _empty_locs(child, tuple(rest), (*path, head))
-
-
-def _empty_at(edition: CanvasEdition, data: Mapping[str, object], loc: Loc) -> list[Loc]:
-    return edition.emptiness.get(loc, _empty_purpose)(data, loc)
-
-
-def empty_purpose_locs(data: Mapping[str, object]) -> tuple[Loc, ...]:
-    """The purpose fields of a node's data that are still empty, each as its path with `*` resolved to the real index.
-
-    Empty is missing, None, blank text, `[]` or `{}`; a loc in the edition's `emptiness` has its own finder. A type the
-    canvas does not know, and a version it does not know, have no purpose fields.
-    """
-    edition = _edition_of(data)
-    if edition is None:
-        return ()
-    return tuple(empty for loc in edition.purpose for empty in _empty_at(edition, data, loc))

@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from typing_extensions import TypedDict
 
-from core.plugin.impl.tool import PluginToolManager
 from graphon.enums import BuiltinNodeTypes
 from models import AppMode
 from services.workflow.authoring import FillContext, canvas_defaults
@@ -122,7 +121,7 @@ def test_a_human_input_node_of_an_unknown_version_is_left_alone(version: object)
     assert with_canvas_defaults(data) == data
 
 
-def test_a_v2_human_input_node_gets_no_v1_key() -> None:
+def test_each_human_input_version_gets_no_key_of_the_other() -> None:
     filled = _filled_data(
         [
             {"id": "v1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}},
@@ -384,9 +383,9 @@ def test_a_container_gets_no_start_node_id_but_keeps_a_written_one(node: CanvasN
 
 def _bare_nodes() -> list[dict[str, object]]:
     return [
-        {"type": node.value, **({"version": version} if node is CanvasNode.HUMAN_INPUT else {})}
+        {"type": node.value, **({} if version is None else {"version": version})}
         for node in CanvasNode
-        for version in (node.editions if node is CanvasNode.HUMAN_INPUT else [None])
+        for version in node.editions
     ]
 
 
@@ -418,11 +417,7 @@ def test_fill_writes_no_empty_value(data: dict[str, object]) -> None:
     ],
     ids=["tool", "agent", "unknown", "human-input-3"],
 )
-def test_fill_leaves_types_and_versions_it_does_not_know_as_written(
-    data: dict[str, object], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
-
+def test_fill_leaves_types_and_versions_it_does_not_know_as_written(data: dict[str, object]) -> None:
     assert _filled_data([{"id": "n", "data": copy.deepcopy(data)}]) == {"n": data}
 
 

@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Self
 from graphon.enums import NodeExecutionType
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from machinery.context import RequestContext
-from services.workflow.authoring.canvas_defaults import empty_purpose_locs
 from services.workflow.authoring.canvas_notes import (
     COVERS_KEY,
     TEXT_KEY,
@@ -71,7 +70,6 @@ class AuthoringIssueCode(StrEnum):
     NOTE_FIELD_MISSING = ("note_field_missing", IssueSeverity.ERROR)
     NOTE_COVER_UNKNOWN = ("note_cover_unknown", IssueSeverity.ERROR)
     NOTE_TOO_SMALL = ("note_too_small", IssueSeverity.WARNING)
-    FIELD_EMPTY = ("field_empty", IssueSeverity.ERROR)
 
 
 @dataclass(frozen=True)
@@ -433,39 +431,6 @@ def _below_minimum(value: object, size: NoteSize) -> bool:
     if not is_number(value):
         return False
     return value < size.minimum
-
-
-class FieldEmpty(Check):
-    """Each field the web canvas refuses a node without has a value; fill leaves the canvas's empty slots in place."""
-
-    code = AuthoringIssueCode.FIELD_EMPTY
-
-    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
-        return [
-            self.issue(
-                f"Node {node.id!r} has nothing at {'.'.join(map(str, loc))}, which the canvas needs a value for",
-                node_id=node.id,
-                loc=data_loc(node.id, *loc),
-                hint=node.hint(loc, required=True),
-            )
-            for node in target.nodes
-            for loc in _unreported(empty_purpose_locs(node.data), _invalid_locs(target.dsl_issues, node))
-        ]
-
-
-def _invalid_locs(issues: Iterable[GraphIssue], node: NodeTarget) -> list[Loc]:
-    """Where the DSL check already reported the node's data as invalid, relative to the data."""
-    return [
-        issue.loc[len(data_loc(node.id)) :]
-        for issue in issues
-        if issue.code == IssueCode.NODE_DATA_INVALID
-        if issue.node_id == node.id
-    ]
-
-
-def _unreported(locs: Iterable[Loc], invalid: Sequence[Loc]) -> list[Loc]:
-    """The locs that are neither at nor under a loc already reported invalid: a field gets one issue."""
-    return [loc for loc in locs if not any(loc[: len(reported)] == reported for reported in invalid)]
 
 
 def check_package(
