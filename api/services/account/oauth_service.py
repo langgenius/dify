@@ -96,6 +96,7 @@ class AccountOAuthService:
         workspace_policy: OAuthWorkspacePolicyGateway,
         supported_languages: Sequence[str],
         now: Callable[[], datetime],
+        defer_workspace_creation: bool = False,
     ) -> None:
         self._providers = dict(providers)
         self._accounts = accounts
@@ -110,6 +111,7 @@ class AccountOAuthService:
         self._workspace_policy = workspace_policy
         self._supported_languages = tuple(supported_languages)
         self._now = now
+        self._defer_workspace_creation = defer_workspace_creation
 
     def start_authorization(self, provider: str, request: OAuthAuthorizationRequest) -> str:
         return self._provider(provider).get_authorization_url(request)
@@ -149,7 +151,7 @@ class AccountOAuthService:
         self._integrations.link(account.id, provider=command.provider, open_id=identity.id)
         identity_claim.ensure_owned()
         with self._account_claims.acquire_account(account.id) as account_claim:
-            if command.mode == LoginMode.CONSOLE:
+            if command.mode == LoginMode.CONSOLE and not self._defer_workspace_creation:
                 if oauth_new_user:
                     self._provision_new_account_workspaces(account.id, account_claim)
                 else:

@@ -16,7 +16,7 @@ from pydantic import (
     model_validator,
 )
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX
@@ -84,6 +84,7 @@ from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.workflow.tool_credentials import WorkflowToolEndUserAuthError
 
 logger = logging.getLogger(__name__)
 
@@ -915,9 +916,8 @@ class ToolWorkflowProviderCreateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowToolCreatePayload)
     def post(self, req_data: WorkflowToolCreatePayload, tenant_id: str, user: Account):
-        return dump_response(
-            SimpleResultResponse,
-            WorkflowToolManageService.create_workflow_tool(
+        try:
+            result = WorkflowToolManageService.create_workflow_tool(
                 user_id=user.id,
                 tenant_id=tenant_id,
                 workflow_app_id=req_data.workflow_app_id,
@@ -928,7 +928,12 @@ class ToolWorkflowProviderCreateApi(Resource):
                 parameters=req_data.parameters,
                 privacy_policy=req_data.privacy_policy or "",
                 labels=req_data.labels or [],
-            ),
+            )
+        except WorkflowToolEndUserAuthError as exc:
+            raise BadRequest(str(exc)) from exc
+        return dump_response(
+            SimpleResultResponse,
+            result,
         )
 
 
@@ -945,9 +950,8 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowToolUpdatePayload)
     def post(self, req_data: WorkflowToolUpdatePayload, tenant_id: str, user: Account):
-        return dump_response(
-            SimpleResultResponse,
-            WorkflowToolManageService.update_workflow_tool(
+        try:
+            result = WorkflowToolManageService.update_workflow_tool(
                 user.id,
                 tenant_id,
                 req_data.workflow_tool_id,
@@ -958,8 +962,10 @@ class ToolWorkflowProviderUpdateApi(Resource):
                 req_data.parameters,
                 req_data.privacy_policy or "",
                 req_data.labels or [],
-            ),
-        )
+            )
+        except WorkflowToolEndUserAuthError as exc:
+            raise BadRequest(str(exc)) from exc
+        return dump_response(SimpleResultResponse, result)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")

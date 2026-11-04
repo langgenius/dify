@@ -1,17 +1,28 @@
 """Application service for reading and updating the current account profile."""
 
-from machinery.context import RequestContext
+from typing import Protocol
+
+from machinery.context import AccountRequestContext, RequestContext
 from services.account_errors import AccountNotFoundError
-from services.account_ports import AccountRepository
-from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
+from services.entities.account_entities import AccountProfile, AccountProfileChanges, AccountSnapshot
+
+
+class AccountProfileStore(Protocol):
+    def get_profile(self, account_id: str) -> AccountProfile | None:
+        """Read the Account and its existing membership flags in one database snapshot."""
+        ...
+
+    def get(self, account_id: str) -> AccountSnapshot | None: ...
+
+    def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None: ...
 
 
 class AccountProfileService:
-    def __init__(self, *, accounts: AccountRepository) -> None:
+    def __init__(self, *, accounts: AccountProfileStore) -> None:
         self._accounts = accounts
 
-    def get(self, context: RequestContext) -> AccountSnapshot:
-        account = self._accounts.get(context.account_id)
+    def get(self, context: AccountRequestContext | RequestContext) -> AccountProfile:
+        account = self._accounts.get_profile(context.account_id)
         if account is None:
             raise AccountNotFoundError
         return account

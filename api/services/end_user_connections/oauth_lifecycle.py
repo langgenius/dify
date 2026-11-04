@@ -9,7 +9,12 @@ from typing import Any, Protocol
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
 from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
 from services.end_user_connections.contracts import ConnectionCheckOutcome, ConnectionCheckView
-from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
+from services.end_user_connections.entities import (
+    ConnectionManagementContext,
+    ConnectionMutationGuard,
+    ConnectionOAuthClient,
+    WebConnectionContext,
+)
 from services.end_user_connections.errors import (
     ConnectionConflictError,
     ConnectionNotFoundError,
@@ -31,15 +36,27 @@ class OAuthLifecycleGateway(Protocol):
     ) -> ResolvedOAuthClient: ...
 
     def refresh(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> ConnectionOAuthGrant | CredentialCheckResult: ...
 
     def check(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> CredentialCheckResult: ...
 
     def revoke(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: ConnectionManagementContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> OAuthRevokeResult: ...
 
 
@@ -254,7 +271,7 @@ class OAuthConnectionLifecycleService:
             client=client.snapshot,
         )
 
-    def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
+    def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
         reference = record.access.oauth_client
         if (
             reference is None

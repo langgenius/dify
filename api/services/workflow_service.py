@@ -103,7 +103,12 @@ from services.errors.app import (
 )
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
-from services.workflow.tool_credentials import ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credentials import (
+    ToolCredentialConfig,
+    WorkflowToolEndUserAuthError,
+    check_tool_credentials,
+    first_end_user_tool_node,
+)
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -711,6 +716,8 @@ class WorkflowService:
             environment_variables=draft_workflow.environment_variables,
         )
 
+        self._validate_publish_tool_credentials(draft_workflow)
+
         # Validate credentials before publishing, for credential policy check
         if SystemFeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
@@ -749,6 +756,22 @@ class WorkflowService:
                 if trigger_node_count > 2:
                     raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
 
+        if node_id := first_end_user_tool_node(draft_workflow.graph_dict):
+            # Finish external validation before serializing publication with Tool conversion.
+            session.scalar(
+                select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
+            )
+            tool_id = session.scalar(
+                select(WorkflowToolProvider.id)
+                .where(
+                    WorkflowToolProvider.tenant_id == app_model.tenant_id,
+                    WorkflowToolProvider.app_id == app_model.id,
+                )
+                .with_for_update()
+            )
+            if tool_id is not None:
+                raise WorkflowToolEndUserAuthError(node_id)
+
         # create new workflow
         workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
@@ -783,6 +806,47 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    def _validate_publish_tool_credentials(self, workflow: Workflow) -> None:
+        """Reject the first invalid tool authentication configuration before publication."""
+        from clients.plugin.auth import PluginCredentialAuthClient
+        from services.end_user_connection_adapters import (
+            PluginApiKeyCredentialGateway,
+            validate_provider_authentication,
+        )
+        from services.end_user_connections.errors import ConnectionConfigurationError
+
+        graph = workflow.graph_dict
+        if issues := check_tool_credentials(graph, complete=True):
+            issue = issues[0]
+            location = ".".join(str(part) for part in issue.path)
+            raise ValueError(f"Node {issue.node_id} ({location}): {issue.message}")
+
+        nodes = [node for node in graph.get("nodes", []) if node.get("type") != "custom-note"]
+        has_trigger = any(
+            isinstance(node.get("data", {}).get("type"), str) and is_trigger_node_type(node["data"]["type"])
+            for node in nodes
+        )
+        providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+        for node in nodes:
+            data = node.get("data", {})
+            node_id = node.get("id")
+            if data.get("type") != "tool":
+                continue
+            config = ToolCredentialConfig.model_validate(data)
+            if config.credential_source != "end_user":
+                continue
+            if has_trigger:
+                raise ValueError(f"Node {node_id}: EndUser credentials are not supported in trigger workflows.")
+            assert config.end_user_auth is not None
+            try:
+                provider = providers.provider(workflow.tenant_id, data["provider_id"])
+                provider.get_tool(data["tool_name"])
+                validate_provider_authentication(provider, config.end_user_auth)
+            except (ConnectionConfigurationError, ValueError) as exc:
+                raise ValueError(
+                    f"Node {node_id}: The provider or tool does not support this authentication configuration."
+                ) from exc
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """

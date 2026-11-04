@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.uuid_utils import uuidv7
 from models.end_user_connection import (
@@ -18,7 +18,9 @@ from models.end_user_connection import (
     OAuthClientSource,
     SessionConnection,
 )
-from services.end_user_connection_labels import mask_account_label
+from repositories.end_user_connection_repository import EndUserConnectionRepository
+from services.consumer_service import ConsumerIdentity
+from services.end_user_connections.errors import ConnectionNotFoundError
 
 
 def new_connection() -> EndUserConnection:
@@ -63,6 +65,48 @@ def new_session_selection(connection: EndUserConnection) -> SessionConnection:
 
 
 class ConnectionPersistenceTests:
+    def test_consumer_groups_page_and_resolve_all_owned_members(self, connection_session: Session) -> None:
+        api_key = new_connection()
+        assert api_key.account_id is not None
+        oauth = replace(
+            api_key,
+            credential_type=ConnectionCredentialType.OAUTH2,
+            oauth_client_source=OAuthClientSource.WORKSPACE,
+            account_label="al***@example.com",
+        )
+        duplicate = replace(oauth, tenant_id=str(UUID(int=10)))
+        foreign = replace(oauth, account_id=str(UUID(int=11)))
+        connection_session.add_all([api_key, oauth, duplicate, foreign])
+        connection_session.commit()
+        repository = EndUserConnectionRepository(
+            session_factory=sessionmaker(bind=connection_session.get_bind(), expire_on_commit=False)
+        )
+        identity = ConsumerIdentity(api_key.account_id)
+        groups = repository.account_connection_groups(identity, provider=None, after=None, limit=10)
+        assert len(groups) == 2
+        api_key_group = next(group for group in groups if group.key.connection_id == UUID(api_key.id))
+        oauth_group = next(group for group in groups if group.key.account_label == oauth.account_label)
+        assert oauth_group.representative_id == min(UUID(oauth.id), UUID(duplicate.id))
+        first_group = min(groups, key=lambda group: group.representative_id)
+        first = repository.account_connection_groups(identity, provider=None, after=None, limit=1)
+        assert first == (first_group,)
+        second = repository.account_connection_groups(
+            identity, provider=None, after=first[0].representative_id, limit=1
+        )
+        assert len(second) == 1
+        assert second[0] != first_group
+        assert repository.account_connection_group(identity, duplicate.id) == oauth_group.key
+        with pytest.raises(ConnectionNotFoundError):
+            repository.account_connection_group(identity, foreign.id)
+        assert repository.account_group_connections(identity, (oauth_group.key,))[oauth_group.key] == tuple(
+            sorted((oauth.id, duplicate.id))
+        )
+        assert (
+            repository.account_connection_groups(identity, provider=None, after=second[0].representative_id, limit=1)
+            == ()
+        )
+        assert api_key_group in groups
+
     @pytest.mark.parametrize("account_owned", [True, False])
     def test_multiple_connections_per_owner_and_provider(
         self, connection_session: Session, account_owned: bool
@@ -150,31 +194,30 @@ class ConnectionPersistenceTests:
             savepoint.rollback()
 
     @pytest.mark.parametrize("label", ["alice@example.com", "alice", None])
-    def test_masked_account_label_is_stored_separately_from_name(
+    def test_original_account_label_is_stored_separately_from_name(
         self, connection_session: Session, label: str | None
     ) -> None:
         connection = replace(
             new_connection(),
             credential_type=ConnectionCredentialType.OAUTH2,
             oauth_client_source=OAuthClientSource.WORKSPACE,
-            account_label=mask_account_label(label),
+            account_label=label,
         )
         name = connection.name
         connection_session.add(connection)
         connection_session.flush()
         connection_session.expire(connection)
-        expected = "al***@example.com" if label == "alice@example.com" else "al***" if label else None
-        assert connection.account_label == expected
+        assert connection.account_label == label
         assert connection.name == name
         assert (
             connection_session.scalar(
                 sa.text("SELECT account_label FROM end_user_connections WHERE id = :id"), {"id": connection.id}
             )
-            == expected
+            == label
         )
 
         # A successful reauthorization without account metadata must clear the old label.
-        connection.account_label = mask_account_label(None)
+        connection.account_label = None
         connection_session.flush()
         connection_session.expire(connection)
         assert connection.account_label is None

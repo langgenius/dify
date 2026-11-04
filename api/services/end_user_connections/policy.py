@@ -4,6 +4,7 @@ from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialType
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
+    ConnectionManagementContext,
     ConnectionMutationGuard,
     ToolConnectionTarget,
     WebConnectionContext,
@@ -17,13 +18,13 @@ from services.end_user_connections.errors import (
 )
 
 
-def require_personal_connection_access(context: WebConnectionContext) -> None:
+def require_personal_connection_access(context: ConnectionManagementContext) -> None:
     if context.account_id is None and not dify_config.END_USER_AUTH_ALLOW_ANONYMOUS:
         raise ConnectionAccountRequiredError()
 
 
 def require_owned_connection(
-    context: WebConnectionContext, record: ConnectionAccessRecord | None
+    context: ConnectionManagementContext, record: ConnectionAccessRecord | None
 ) -> ConnectionAccessRecord:
     """Ownership allows management even when a node, Provider, or Client changed.
 
@@ -106,7 +107,7 @@ def require_applicable_connection(
 
 
 def connection_mutation_guard(
-    context: WebConnectionContext, record: ConnectionAccessRecord | None
+    context: ConnectionManagementContext, record: ConnectionAccessRecord | None
 ) -> ConnectionMutationGuard:
     owned = require_owned_connection(context, record)
     return ConnectionMutationGuard(

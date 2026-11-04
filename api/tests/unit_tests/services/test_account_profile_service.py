@@ -4,7 +4,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_errors import AccountNotFoundError
 from services.account_profile_service import AccountProfileService
@@ -25,17 +25,28 @@ def accounts(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyAccount
     return SQLAlchemyAccountRepository(sqlite_session_factory)
 
 
+@pytest.mark.parametrize(
+    "context",
+    [_context(), AccountRequestContext(request_id="request-1", trace_id="trace-1", account_id="account-1")],
+)
 def test_get_returns_framework_neutral_account_snapshot(
-    accounts: SQLAlchemyAccountRepository, mocker: MockerFixture
+    accounts: SQLAlchemyAccountRepository, mocker: MockerFixture, context: AccountRequestContext | RequestContext
 ) -> None:
-    expected = accounts.get("account-1")
-    lookup = mocker.spy(accounts, "get")
+    expected = accounts.get_profile("account-1")
+    lookup = mocker.spy(accounts, "get_profile")
     service = AccountProfileService(accounts=accounts)
 
-    result = service.get(_context())
+    result = service.get(context)
 
     assert result == expected
     lookup.assert_called_once_with("account-1")
+
+
+def test_get_rejects_missing_account(sqlite_session_factory: sessionmaker[Session]) -> None:
+    service = AccountProfileService(accounts=SQLAlchemyAccountRepository(sqlite_session_factory))
+
+    with pytest.raises(AccountNotFoundError):
+        service.get(_context())
 
 
 def test_update_applies_profile_changes(accounts: SQLAlchemyAccountRepository, mocker: MockerFixture) -> None:

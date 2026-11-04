@@ -79,6 +79,9 @@ def test_read_configuration_without_credential_io(
     assert detail["name"] == selected.name
     assert detail["credential_type"] == credential_type
     assert detail["provider"] == selected.provider
+    assert selected.account_label == ("alice@example.com" if credential_type == "oauth2" else None)
+    assert detail["account_label"] == ("al***@example.com" if credential_type == "oauth2" else None)
+    assert client.get("/api/connections").get_json()["data"] == [detail]
     for field in ("created_at", "updated_at", "last_active_at"):
         assert isinstance(detail[field], int)
     assert detail["expires_at"] is None or isinstance(detail["expires_at"], int)
@@ -100,7 +103,38 @@ def test_read_configuration_without_credential_io(
         assert response.status_code == 200
         assert response.get_json() == {"connections": {"tool-1": detail}, "reauthorization_required": False}
         assert "secret" not in response.get_data(as_text=True)
+        assert "alice@example.com" not in response.get_data(as_text=True)
     assert base.auth.calls == []
+
+
+@pytest.mark.parametrize("conversation", [False, True])
+def test_save_and_rename_mask_identity_without_changing_storage(
+    harness: ConversationHarness, client: FlaskClient, conversation: bool
+) -> None:
+    base = harness.oauth.base
+    selected = harness.oauth.finish(harness.oauth.start())
+    conversation_id = harness.create_conversation() if conversation else None
+    saved = client.put(
+        "/api/connections/configuration",
+        json={
+            "connection_revision": base.connection_revision,
+            "conversation_id": conversation_id,
+            "connections": {"tool-1": selected.id},
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.get_json()["connections"]["tool-1"]["account_label"] == "al***@example.com"
+    assert "alice@example.com" not in saved.get_data(as_text=True)
+    renamed = client.patch(f"/api/connections/{selected.id}", json={"name": "Renamed"})
+    assert renamed.status_code == 200
+    assert renamed.get_json()["name"] == "Renamed"
+    assert renamed.get_json()["account_label"] == "al***@example.com"
+    assert "alice@example.com" not in renamed.get_data(as_text=True)
+    with harness.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == selected.id))
+            == "alice@example.com"
+        )
 
 
 @pytest.mark.parametrize("publication", ["changed", "missing"])
