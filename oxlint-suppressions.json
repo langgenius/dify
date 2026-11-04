@@ -1285,11 +1285,6 @@
       "count": 6
     }
   },
-  "web/app/components/base/file-uploader/file-from-link-or-local/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-from-link-or-local/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
