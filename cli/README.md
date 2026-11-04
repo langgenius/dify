@@ -121,7 +121,7 @@ Pass `--stream` on a streaming operation to print every event as one JSON line, 
 difyctl run console_app chat --app-id … --query hello --inputs '{}' --stream
 ```
 
-`--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, run_id?, error?, hints}`.
+`--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, run_id?, task_id?, error?, hints}`. A stream that breaks or closes before the run finished folds to `status: "incomplete"` and exits 1; with `--stream` no result is printed, only a stderr notice and the exit code.
 
 ## Exit codes
 

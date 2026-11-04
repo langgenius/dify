@@ -96,7 +96,7 @@ it('sse exit code follows the fold in both modes', async () => {
   expect(await render('sse', sse(events), { stream: true }).code).toBe(1)
 })
 
-it('a stream that breaks after the run started keeps its ids and points at the run', async () => {
+it('a stream that breaks after the run started keeps its ids and hints at following the run', async () => {
   const r = render(
     'sse',
     brokenSse(
@@ -110,13 +110,12 @@ it('a stream that breaks after the run started keeps its ids and points at the r
   const result = JSON.parse(r.buf.outBuf())
   expect(result).toMatchObject({ status: 'incomplete', run_id: 'run-9', task_id: 'task-9' })
   expect(result.hints).toEqual([
-    expect.objectContaining({ op: 'describe.run', input: { app_id: 'app-1', run_id: 'run-9' } }),
-    expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } }),
+    expect.objectContaining({ op: 'get.run.event', input: { app_id: 'app-1', run_id: 'run-9' } }),
   ])
   expect(result.hints[0].summary).toMatch(/still be running/)
 })
 
-it('a stream that breaks before any event says no run id arrived and lists the runs', async () => {
+it('a stream that breaks before any run id arrived gets no hint', async () => {
   const r = render(
     'sse',
     brokenSse([], 'The socket connection was closed unexpectedly.'),
@@ -124,21 +123,63 @@ it('a stream that breaks before any event says no run id arrived and lists the r
     { app_id: 'app-1' },
   )
   expect(await r.code).toBe(1)
-  const result = JSON.parse(r.buf.outBuf())
-  expect(result.status).toBe('incomplete')
-  expect(result.run_id).toBeUndefined()
-  expect(result.hints).toEqual([
-    expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } }),
-  ])
-  expect(result.hints[0].summary).toMatch(/No run id arrived/)
+  expect(JSON.parse(r.buf.outBuf())).toMatchObject({ status: 'incomplete', hints: [] })
 })
 
-it('a broken stream without an app id still hints at the run list', async () => {
-  const r = render('sse', brokenSse([], 'boom'))
+it('a chat run that breaks keeps its message id and gets no hint', async () => {
+  const r = render(
+    'sse',
+    brokenSse([{ event: 'message', message_id: 'm-1', conversation_id: 'c-1', answer: 'hi' }], 'x'),
+    {},
+    { app_id: 'app-1' },
+  )
   expect(await r.code).toBe(1)
-  const [hint] = JSON.parse(r.buf.outBuf()).hints
-  expect(hint.op).toBe('get.run')
-  expect(hint).not.toHaveProperty('input')
+  expect(JSON.parse(r.buf.outBuf())).toMatchObject({
+    status: 'incomplete',
+    message_id: 'm-1',
+    conversation_id: 'c-1',
+    hints: [],
+  })
+})
+
+it('a broken stream that knows the run but not the app gets no hint', async () => {
+  const r = render(
+    'sse',
+    brokenSse([{ event: 'workflow_started', workflow_run_id: 'run-9', data: {} }], 'x'),
+  )
+  expect(await r.code).toBe(1)
+  expect(JSON.parse(r.buf.outBuf())).toMatchObject({ run_id: 'run-9', hints: [] })
+})
+
+it('an error after the terminal event leaves the finished run alone', async () => {
+  const r = render(
+    'sse',
+    brokenSse(
+      [
+        { event: 'workflow_started', workflow_run_id: 'run-9', data: {} },
+        { event: 'workflow_finished', data: { status: 'succeeded' } },
+      ],
+      'reset',
+    ),
+    {},
+    { app_id: 'app-1' },
+  )
+  expect(await r.code).toBe(0)
+  expect(JSON.parse(r.buf.outBuf())).toMatchObject({ status: 'ended', hints: [] })
+})
+
+it('a stream that closes cleanly before the run finished exits 1 with its own notice and hint', async () => {
+  const r = render(
+    'sse',
+    sse([{ event: 'workflow_started', workflow_run_id: 'run-9', data: {} }]),
+    {},
+    { app_id: 'app-1' },
+  )
+  expect(await r.code).toBe(1)
+  expect(r.buf.errBuf()).toBe('stream closed before the run finished\n')
+  expect(JSON.parse(r.buf.outBuf()).hints).toEqual([
+    expect.objectContaining({ op: 'get.run.event', input: { app_id: 'app-1', run_id: 'run-9' } }),
+  ])
 })
 
 it('the stderr notice drops the runtime suffix and keeps the failure', async () => {
@@ -161,6 +202,8 @@ it('a stream that finished, paused or failed keeps its exit code', async () => {
   expect(await render('sse', sse(ended)).code).toBe(0)
   const paused = [{ event: 'human_input_required', hints: [] }]
   expect(await render('sse', sse(paused)).code).toBe(0)
+  const failed = [{ event: 'error', message: 'boom', code: 'x' }]
+  expect(await render('sse', sse(failed)).code).toBe(1)
 })
 
 it('unknown kind renders as object with one warning line', async () => {

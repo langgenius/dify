@@ -197,7 +197,7 @@ it('a stream that dies mid-run folds as incomplete, exit 1, with one stderr noti
     status: 'incomplete',
     text: { answer: 'partial' },
     message_id: 'msg-1',
-    hints: [expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } })],
+    hints: [],
   })
   expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
   expect(w.io.errBuf()).toMatch(/^stream ended early: /)

@@ -17,30 +17,24 @@ export function finishFold(result: FoldResult): FoldResult {
   return result
 }
 
-const OP_LIST_RUNS = 'get.run'
-const OP_DESCRIBE_RUN = 'describe.run'
-const HINT_SEEN_RUN = 'The run may still be running on the server. Read it to see where it got to'
-const HINT_UNSEEN_RUN =
-  'No run id arrived before the stream broke. The run may still be running on the server. List the newest runs of the app to find it'
+const OP_FOLLOW_RUN = 'get.run.event'
+const HINT_FOLLOW_RUN = 'The run may still be running on the server. Follow it to its end'
 
-/** The stream broke before a terminal event: say how to find the run, which may still be going. */
+/**
+ * The stream ended before a terminal event. Only a workflow run can be followed again, and only
+ * when the call named its app and an event named the run; any other hint would not be true.
+ */
 export function foldBrokenStream(
   result: FoldResult,
   input: Readonly<Record<string, unknown>>,
 ): void {
-  const appId = typeof input.app_id === 'string' ? input.app_id : undefined
-  const appInput = appId === undefined ? undefined : { app_id: appId }
-  if (result.run_id !== undefined) {
-    result.hints.push({
-      summary: HINT_SEEN_RUN,
-      op: OP_DESCRIBE_RUN,
-      input: { ...appInput, run_id: result.run_id },
-    })
-  }
+  if (result.status !== FOLD_STATUS.Incomplete) return
+  const appId = input.app_id
+  if (typeof appId !== 'string' || result.run_id === undefined) return
   result.hints.push({
-    summary: result.run_id === undefined ? HINT_UNSEEN_RUN : 'List the newest runs of the app',
-    op: OP_LIST_RUNS,
-    input: appInput,
+    summary: HINT_FOLLOW_RUN,
+    op: OP_FOLLOW_RUN,
+    input: { app_id: appId, run_id: result.run_id },
   })
 }
 
