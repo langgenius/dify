@@ -1,7 +1,8 @@
-import { QueryClientProvider } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
 
@@ -11,7 +12,8 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const account = await import('@/i18n/locales/en-US/account-settings.json')
   const common = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({ ...account.default, ...common.default })
+  const dataset = await import('@/i18n/locales/en-US/dataset.json')
+  return createReactI18nextMock({ ...account.default, ...common.default, ...dataset.default })
 })
 it('lets users submit a long selected scope on a short narrow viewport', async () => {
   // Real hit testing and nested scrolling prove that the footer remains reachable;
@@ -35,12 +37,14 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
     if (path.at(-1) === 'post') throw new Error('Service temporarily unavailable')
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
+  const queryClient = createTestQueryClient()
+  seedSystemFeatures(queryClient)
   const screen = await render(
-    <QueryClientProvider client={createTestQueryClient()}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
         <PersonalAccessTokens />
       </NuqsTestingAdapter>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   await screen.getByRole('button', { name: 'Create token' }).click()
   const dialog = screen.getByRole('dialog')
@@ -49,7 +53,7 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
     .getByRole('radiogroup', { name: 'Resources' })
     .getByRole('radio', { name: 'Selected' })
     .click()
-  await dialog.getByRole('checkbox', { name: 'Assistant 20' }).click()
+  await dialog.getByRole('checkbox', { name: 'Built-in' }).nth(19).click()
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   expect(
     transport.call.mock.calls.find(([path]) => path.at(-1) === 'post')?.[1].body.resource_scope
@@ -97,17 +101,19 @@ it('returns keyboard focus to Create token after deletion removes the trigger ro
       has_more: false,
     }
   })
+  const queryClient = createTestQueryClient()
+  seedSystemFeatures(queryClient)
   const screen = await render(
-    <QueryClientProvider client={createTestQueryClient()}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
         <PersonalAccessTokens />
       </NuqsTestingAdapter>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
-  await expect.element(screen.getByText('No access tokens yet')).toBeVisible()
+  await expect.element(screen.getByText('No personal access tokens')).toBeVisible()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
 })

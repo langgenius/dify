@@ -4,7 +4,9 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
+from typing import Literal
 
+from pydantic import TypeAdapter
 from sqlalchemy import Select, String, cast, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -30,6 +32,9 @@ from services.personal_access_token_service import (
     PersonalAccessTokenUpdateConflictError,
     PersonalAccessTokenWorkspaceView,
 )
+
+_RESOURCE_TYPE = TypeAdapter(Literal["app", "dataset", "app_runner"])
+_SCOPE_MODE = TypeAdapter(Literal["all", "selected", "none"])
 
 
 class PersonalAccessTokenRepository:
@@ -174,12 +179,10 @@ class PersonalAccessTokenRepository:
             return self._record(session, token)
 
     def _record(self, session: Session, token: PersonalAccessToken) -> PersonalAccessTokenRecord:
-        from typing import Literal
-        from typing import cast as type_cast
-
+        """Project a persisted token, rejecting invalid resource kinds or scope modes."""
         resources = tuple(
             PersonalAccessTokenResourceRef(
-                type_cast(Literal["app", "dataset", "app_runner"], row.resource_type),
+                _RESOURCE_TYPE.validate_python(row.resource_type),
                 row.resource_id,
             )
             for row in session.scalars(
@@ -202,9 +205,9 @@ class PersonalAccessTokenRepository:
             creation_key=token.creation_key,
             creation_fingerprint=token.creation_fingerprint,
             scopes=PersonalAccessTokenScopes(
-                resource_mode=type_cast(Literal["all", "selected", "none"], token.resource_scope_mode),
+                resource_mode=_SCOPE_MODE.validate_python(token.resource_scope_mode),
                 resources=resources,
-                workspace_mode=type_cast(Literal["all", "selected", "none"], token.workspace_scope_mode),
+                workspace_mode=_SCOPE_MODE.validate_python(token.workspace_scope_mode),
                 workspace_ids=workspace_ids,
             ),
         )

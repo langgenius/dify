@@ -57,7 +57,10 @@ def _console_account_loader() -> AccountLoader:
     method = request.method.lower()
     handler = next((base.__dict__[method] for base in resource.__mro__ if method in base.__dict__), None)
     if handler is not None and handler.__dict__.get(ACCOUNT_ONLY_ADMISSION_ATTR, False):
-        return cast(AccountLoader, current_app.extensions["account_only_identity_loader"])
+        loader = current_app.extensions["account_only_identity_loader"]
+        if not callable(loader):
+            raise TypeError("account_only_identity_loader must be callable")
+        return loader
     return load_account
 
 
