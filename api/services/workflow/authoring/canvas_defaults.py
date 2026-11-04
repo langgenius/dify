@@ -419,7 +419,7 @@ def canvas_example(data: Mapping[str, object], loc: Loc) -> object | None:
         return None
     if loc and loc[0] in edition.withheld(data):
         return None
-    return canvas_value(str(data[_TYPE_KEY]), loc, version=data.get(_VERSION_KEY))
+    return _value_at(edition, loc)
 
 
 def untaken_keys(data: Mapping[str, object]) -> frozenset[str]:
@@ -460,6 +460,10 @@ def canvas_value(node_type: str, loc: Loc, *, version: object = None) -> object 
     edition = node.edition(version)
     if edition is None:
         return None
+    return _value_at(edition, loc)
+
+
+def _value_at(edition: CanvasEdition, loc: Loc) -> object | None:
     value: object | None = edition.data
     for key in loc:
         value = _step(value, key)

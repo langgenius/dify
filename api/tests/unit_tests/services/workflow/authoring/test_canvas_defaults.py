@@ -20,6 +20,7 @@ from services.workflow.authoring.canvas_defaults import (
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
 from services.workflow.node_defaults import editor_defaults, editor_empties, rewrite_old_shapes
+from tests.unit_tests.services.workflow.authoring.conftest import V2_ONLY_KEYS, written_canvas
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
@@ -100,11 +101,7 @@ def test_a_bare_seed_fills_to_the_canvas_node_but_what_it_withholds(node: Canvas
 
     filled = with_canvas_defaults(bare)
 
-    withheld = edition.withheld(bare)
-    assert filled == {"type": node.value, **{key: value for key, value in node.data.items() if key not in withheld}}
-
-
-V2_ONLY_KEYS = {"recipients_spec", "message_template", "debug_mode"}
+    assert filled == {"type": node.value, **written_canvas(edition, bare)}
 
 
 def test_a_human_input_node_gets_the_defaults_of_its_version() -> None:
