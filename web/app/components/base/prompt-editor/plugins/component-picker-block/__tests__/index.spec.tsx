@@ -35,6 +35,7 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
+import { CustomTextNode } from '../../custom-text/node'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../../last-run-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../../variable-block'
@@ -174,6 +175,7 @@ const MinimalEditor: React.FC<{
   const initialConfig = React.useMemo(
     () => ({
       namespace: 'component-picker-test',
+      nodes: [CustomTextNode],
       onError: (e: Error) => {
         throw e
       },
@@ -274,6 +276,32 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
     })
   })
+
+  it.each(['{[', '[Open manual]({source_url})'])(
+    'keeps the add-variable action usable after entering "%s"',
+    async (text) => {
+      const user = userEvent.setup()
+      const captures: Captures = { editor: null, eventEmitter: null }
+      render(
+        <MinimalEditor
+          triggerString="{"
+          variableBlock={{ show: true, variables: [] }}
+          captures={captures}
+        />,
+      )
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, text, true)
+
+      const addVariable = await screen.findByRole('option', {
+        name: 'common.promptEditor.variable.modal.add',
+      })
+      expect(readEditorText(editor)).toBe(text)
+      await user.click(addVariable)
+
+      await waitFor(() => expect(readEditorText(editor)).toContain('{{}}'))
+    },
+  )
 
   it('renders prompt options in a portal and removes the trigger TextNode when selecting a normal option', async () => {
     const user = userEvent.setup()

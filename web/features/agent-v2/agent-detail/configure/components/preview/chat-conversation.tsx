@@ -29,12 +29,15 @@ import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
-  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
-    params: {
-      agent_id: agentId,
-      task_id: taskId,
+  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post(
+    {
+      params: {
+        agent_id: agentId,
+        task_id: taskId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
@@ -152,7 +155,7 @@ export function AgentPreviewChatConversation({
     },
     initialChatTree,
     (taskId) => {
-      void stopAgentChatMessageResponding(agentId, taskId)
+      return stopAgentChatMessageResponding(agentId, taskId)
     },
     clearChatList,
     onClearChatListChange,
@@ -208,14 +211,11 @@ export function AgentPreviewChatConversation({
             },
             onGetSuggestedQuestions: (responseItemId) =>
               fetchAgentSuggestedQuestions(agentId, responseItemId),
-            onUnhandledEvent: (event) => {
-              if (event.event !== 'error' || typeof event.message !== 'string') return
-
-              const errorCode = typeof event.code === 'string' ? event.code : undefined
+            onNotifyError: (message, errorCode) => {
               if (errorCode === 'agent_run_limit_exceeded') {
                 // The backend currently uses the same code for time and request-count limits.
                 // Pydantic AI's request-count error includes its `request_limit` field name.
-                const errorMessage = event.message.includes('request_limit')
+                const errorMessage = message.includes('request_limit')
                   ? t(
                       ($) =>
                         $['agentDetail.configure.preview.errors.agentModelRequestLimitExceeded'],
@@ -234,14 +234,6 @@ export function AgentPreviewChatConversation({
                   ),
                   timeout: 0,
                 })
-              }
-
-              return {
-                conversationId:
-                  typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
-                messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
-                errorMessage: event.message,
-                errorCode,
               }
             },
             onConversationComplete: (completedConversationId, workflowRunId) => {
@@ -284,9 +276,8 @@ export function AgentPreviewChatConversation({
     ],
   )
 
-  const doStopResponding = useCallback(() => {
-    handleStop()
-    notifySendInterrupted()
+  const doStopResponding = useCallback(async () => {
+    if (await handleStop()) notifySendInterrupted()
   }, [handleStop, notifySendInterrupted])
 
   const doRegenerate = useCallback(

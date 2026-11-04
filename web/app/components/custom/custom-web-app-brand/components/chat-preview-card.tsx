@@ -1,4 +1,4 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import PoweredByBrand from './powered-by-brand'
 
@@ -33,12 +33,15 @@ const ChatPreviewCard = ({
           </div>
         </div>
         <div className="shrink-0 px-4 py-3">
-          <Button variant="secondary-accent" className="w-full justify-center">
+          <div
+            aria-hidden="true"
+            className={cn(buttonVariants({ variant: 'secondary-accent' }), 'w-full justify-center')}
+          >
             <span className="i-ri-edit-box-line size-4" />
             <div className="p-1 opacity-20">
               <div className="h-2 w-23.5 rounded-xs bg-text-accent-light-mode-only"></div>
             </div>
-          </Button>
+          </div>
         </div>
         <div className="grow px-3 pt-5">
           <div className="flex h-8 items-center px-3 py-1">
@@ -71,9 +74,9 @@ const ChatPreviewCard = ({
             <div className="mb-1 body-md-regular text-text-primary">
               Hello! How can I assist you today?
             </div>
-            <Button size="small">
+            <div aria-hidden="true" className={buttonVariants({ size: 'small' })}>
               <div className="h-2 w-36 rounded-xs bg-text-quaternary opacity-20"></div>
-            </Button>
+            </div>
           </div>
           <div className="flex h-13 w-144.5 items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">
             Talk to Dify

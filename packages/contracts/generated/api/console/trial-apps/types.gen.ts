@@ -339,6 +339,9 @@ export type Parameters = {
   sensitive_word_avoidance: {
     enabled?: boolean
   }
+  show_thoughts?: {
+    enabled?: boolean
+  }
   speech_to_text: {
     enabled?: boolean
   }
@@ -711,8 +714,6 @@ export type TextToSpeechRequest = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -1009,6 +1010,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -1056,6 +1058,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -1215,6 +1218,14 @@ export type AgentKnowledgeSetConfig = {
   retrieval: AgentKnowledgeRetrievalConfig
 }
 
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
+}
+
 export type AgentMemoryArtifactConfig = {
   id?: string | null
   name?: string | null
@@ -1233,7 +1244,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig | null
+  response_format?: string | AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -2052,6 +2063,7 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2184,7 +2196,7 @@ export type PostTrialAppsByAppIdTextToAudioError =
   PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
 
 export type PostTrialAppsByAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostTrialAppsByAppIdTextToAudioResponse =

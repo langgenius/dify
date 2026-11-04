@@ -102,6 +102,33 @@ describe('Citation', () => {
     expect(screen.getByTestId('popup-hit-info')).toHaveTextContent('100')
   })
 
+  it('keeps KnowledgeFS spaces and document versions separate while exposing receipt anchors', () => {
+    const data = ['space-a', 'space-b', 'space-a'].map((space, index) =>
+      makeCitationItem({
+        data_source_type: 'knowledge_fs',
+        dataset_id: space,
+        document_id: 'shared',
+        document_name: `Shared ${index}`,
+        document_version: index === 2 ? 2 : 1,
+        knowledge_fs_citation: {
+          id: `kfs_${String(index).repeat(32)}`,
+          control_space_id: '00000000-0000-4000-8000-000000000001',
+          space_name: space,
+          node_id: `node-${index}`,
+          document_asset_id: 'shared',
+          artifact_hash: `hash-${index}`,
+        },
+      }),
+    )
+    const { container } = renderCitations(data)
+    for (const source of data) {
+      expect(screen.getByRole('button', { name: source.document_name })).toBeInTheDocument()
+      expect(
+        container.querySelector(`[id="${source.knowledge_fs_citation!.id}"]`),
+      ).toBeInTheDocument()
+    }
+  })
+
   it.each([
     [840, ['Alpha', 'Beta', 'Gamma'], 0],
     [250, ['Alpha', 'Beta'], 1],

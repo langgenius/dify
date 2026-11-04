@@ -163,7 +163,7 @@ export default function InviteSettingsPage() {
       const res = await consoleClient.activate.post({ body })
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
-        if (requiresAccountSetup) await setLocaleOnClient(language!, false)
+        if (requiresAccountSetup) await setLocaleOnClient(language!)
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
@@ -247,7 +247,7 @@ export default function InviteSettingsPage() {
                 required
                 value={name}
                 onValueChange={setName}
-                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
             </Field>

@@ -20,9 +20,11 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console import api as console_api
+from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceApplicationError
 
@@ -70,8 +72,27 @@ def test_permission_error_mapping_is_not_registered_on_generic_apis() -> None:
     assert response.json == {"code": "unknown", "message": "Internal Server Error", "status": 500}
 
 
+@pytest.mark.parametrize("source_api", [console_api, inner_api], ids=["console", "inner_api"])
+def test_refresh_unavailability_has_one_documented_response(source_api: ExternalApi) -> None:
+    error = CredentialRefreshUnavailableError()
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    api.error_handlers = source_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise error
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+
+    assert response.status_code == 503
+    assert response.json == {"code": "service_unavailable", "message": str(error), "status": 503}
+    assert source_api.resolve_error(CredentialRefreshUnavailableError) == (503, "service_unavailable")
+
+
 class TestFilenameNotExistsError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FilenameNotExistsError()
 
         assert error.code == 400
@@ -85,7 +106,7 @@ class TestFilenameNotExistsError:
 
 
 class TestRemoteFileUploadError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = RemoteFileUploadError()
 
         assert error.code == 400
@@ -139,7 +160,7 @@ def test_remote_file_errors(
 
 
 class TestFileTooLargeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FileTooLargeError()
 
         assert error.code == 413
@@ -148,7 +169,7 @@ class TestFileTooLargeError:
 
 
 class TestUnsupportedFileTypeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = UnsupportedFileTypeError()
 
         assert error.code == 415
@@ -157,7 +178,7 @@ class TestUnsupportedFileTypeError:
 
 
 class TestBlockedFileExtensionError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = BlockedFileExtensionError()
 
         assert error.code == 400
@@ -166,7 +187,7 @@ class TestBlockedFileExtensionError:
 
 
 class TestTooManyFilesError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = TooManyFilesError()
 
         assert error.code == 400
@@ -175,7 +196,7 @@ class TestTooManyFilesError:
 
 
 class TestNoFileUploadedError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = NoFileUploadedError()
 
         assert error.code == 400

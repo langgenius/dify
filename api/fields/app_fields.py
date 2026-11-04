@@ -17,6 +17,8 @@ from services.entities.dsl_entities import DslImportWarning, ImportStatus
 class AppTraceResponse(ResponseModel):
     enabled: bool = False
     tracing_provider: str | None = None
+    capture_content: bool = False
+    capture_agent: bool = True
 
 
 class Tag(ResponseModel):

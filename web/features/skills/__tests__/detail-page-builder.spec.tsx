@@ -601,10 +601,16 @@ describe('SkillDetailPage builder', () => {
         { timeout: 5000 },
       ),
     )
-    const dialog = await screen.findByRole('dialog', {
-      name: 'modelProvider.modelProvider.modelSettings',
-    })
-    const temperature = await within(dialog).findByRole('spinbutton', { name: 'Temperature' })
+    const dialog = await screen.findByRole(
+      'dialog',
+      { name: 'modelProvider.modelProvider.modelSettings' },
+      { timeout: 5000 },
+    )
+    const temperature = await within(dialog).findByRole(
+      'spinbutton',
+      { name: 'Temperature' },
+      { timeout: 5000 },
+    )
     await user.clear(temperature)
     await user.type(temperature, '1.2')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))

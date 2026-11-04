@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법에 대한 이메일을 보내드리겠습니다.",
   "go": "Dify 로 이동",
   "goToInit": "계정이 초기화되지 않았다면 초기화 페이지로 이동하세요.",
-  "hidePassword": "비밀번호 숨기기",
   "installBtn": "설치",
   "interfaceLanguage": "인터페이스 언어",
   "invalid": "링크의 유효 기간이 만료되었습니다.",

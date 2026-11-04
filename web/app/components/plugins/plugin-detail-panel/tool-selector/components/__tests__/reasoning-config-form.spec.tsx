@@ -352,8 +352,8 @@ describe('ReasoningConfigForm', () => {
     }
     render(<Owner />)
 
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.placeholder' }))
+    await user.click(screen.getAllByRole('button', { name: 'app.appSelector.placeholder' })[1]!)
     await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
     await user.type(await screen.findByPlaceholderText('Topic'), 'hello')
 
@@ -370,9 +370,9 @@ describe('ReasoningConfigForm', () => {
     )
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('button', { name: 'Support Bot' }))
     expect(await screen.findByPlaceholderText('Topic')).toHaveValue('hello')
-    expect(screen.getByRole('combobox', { name: 'app.appSelector.label' })).toHaveTextContent(
+    expect(screen.getAllByRole('button', { name: 'Support Bot' })[1]!).toHaveTextContent(
       'Support Bot',
     )
   })
@@ -395,7 +395,7 @@ describe('ReasoningConfigForm', () => {
         nodeId="node-1"
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('button', { name: 'Support Bot' }))
     expect(await screen.findByPlaceholderText('Topic')).toHaveValue('Saved topic')
     expect(onChange).not.toHaveBeenCalled()
   })

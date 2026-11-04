@@ -43,8 +43,8 @@ from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.tool_fixtures import make_runtime_tool
-from tests.unit_tests.core.model_fixtures import make_model_config
 
 
 def _message(
@@ -418,10 +418,10 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value, *args, **kwargs):
-        if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
+    def dumps_side_effect(value: object, *, ensure_ascii: bool = True) -> str:
+        if value in (tool_input, observation, tool_meta) and ensure_ascii is False:
             raise TypeError("fail")
-        return real_dumps(value, *args, **kwargs)
+        return real_dumps(value, ensure_ascii=ensure_ascii)
 
     mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
 

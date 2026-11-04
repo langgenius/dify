@@ -1,8 +1,8 @@
 import type { Window } from 'happy-dom'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n'
+import type { consoleClient } from '@/service/console'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
@@ -25,16 +25,25 @@ vi.mock('react-papaparse', () => ({
   jsonToCSV: (data: unknown) => mockJsonToCSV(data),
 }))
 
-const { mockedFetchAnnotations } = vi.hoisted(() => ({
+const { mockedFetchAnnotations, addAnnotation } = vi.hoisted(() => ({
+  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
   mockedFetchAnnotations: vi.fn(),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: { byAppId: { annotations: { export: { get: mockedFetchAnnotations } } } },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.post': (input) => addAnnotation(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.export.get': (input) => mockedFetchAnnotations(input),
+    }),
+  }
+})
 
 const { mockedRequest } = vi.hoisted(() => ({
   mockedRequest:
@@ -65,7 +74,6 @@ const renderComponent = (
 
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
-    onAdd: vi.fn(),
     onAdded: vi.fn(),
     controlUpdateList: 0,
     ...props,
@@ -109,7 +117,7 @@ const clickOperationAction = async (
   await clickMenuItem(user, item)
 }
 
-const mockAnnotations: AnnotationItemBasic[] = [
+const mockAnnotations = [
   {
     question: 'Question 1',
     answer: 'Answer 1',
@@ -219,11 +227,12 @@ describe('HeaderOptions', () => {
     expect(mockJsonToCSV).not.toHaveBeenCalled()
   })
 
-  it('should open the add annotation modal and forward the onAdd callback', async () => {
+  it('creates an annotation through the dialog and refreshes the parent and export data', async () => {
     mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
     const user = userEvent.setup()
-    const onAdd = vi.fn().mockResolvedValue(undefined)
-    renderComponent({ onAdd })
+    const onAdded = vi.fn()
+    addAnnotation.mockResolvedValue({ id: 'annotation-id' })
+    renderComponent({ onAdded })
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalled())
 
@@ -240,10 +249,12 @@ describe('HeaderOptions', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith({
-        question: 'Integration question',
-        answer: 'Integration answer',
+      expect(addAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app-id' },
+        body: { question: 'Integration question', answer: 'Integration answer' },
       })
+      expect(onAdded).toHaveBeenCalledOnce()
+      expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -371,9 +382,7 @@ describe('HeaderOptions', () => {
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
 
-    view.rerender(
-      <HeaderOptions appId="test-app-id" onAdd={vi.fn()} onAdded={vi.fn()} controlUpdateList={1} />,
-    )
+    view.rerender(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} controlUpdateList={1} />)
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
   })

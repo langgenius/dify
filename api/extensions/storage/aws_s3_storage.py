@@ -27,13 +27,19 @@ class AwsS3Storage(BaseStorage):
         else:
             logger.info("Using ak and sk for S3")
 
+            config = Config(
+                s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            )
+
             self.client = boto3.client(
                 "s3",
                 aws_secret_access_key=dify_config.S3_SECRET_KEY,
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
+                config=config,
             )
         # create bucket
         try:
@@ -52,19 +58,6 @@ class AwsS3Storage(BaseStorage):
     @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
-
-    @override
-    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
-        if not files and not directories:
-            raise ValueError("At least one of files or directories must be True")
-        keys: list[str] = []
-        paginator = self.client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=path):
-            for obj in page.get("Contents", []):
-                key = obj["Key"]
-                if (key.endswith("/") and directories) or (not key.endswith("/") and files):
-                    keys.append(key)
-        return keys
 
     @override
     def load_once(self, filename: str) -> bytes:
@@ -123,3 +116,33 @@ class AwsS3Storage(BaseStorage):
             Params=params,
             ExpiresIn=expires_in,
         )
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        """Recursively list keys below a portable storage directory."""
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+
+        normalized_path = path.strip("/")
+        prefix = f"{normalized_path}/" if normalized_path else ""
+        results: set[str] = set()
+        paginator = self.client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+            for item in page.get("Contents", []):
+                key = item.get("Key")
+                if not isinstance(key, str) or not key.startswith(prefix):
+                    continue
+                if key.endswith("/"):
+                    if directories:
+                        results.add(key)
+                    continue
+
+                if files:
+                    results.add(key)
+                if directories:
+                    current = prefix
+                    for segment in key[len(prefix) :].split("/")[:-1]:
+                        current = f"{current}{segment}/"
+                        results.add(current)
+
+        return sorted(results)

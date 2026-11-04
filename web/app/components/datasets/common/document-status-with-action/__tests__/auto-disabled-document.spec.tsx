@@ -4,7 +4,15 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AutoDisabledDocument from '../auto-disabled-document'
 
-const { getLogs, enable } = vi.hoisted(() => ({ getLogs: vi.fn(), enable: vi.fn() }))
+const { getLogs, enable, successToast } = vi.hoisted(() => ({
+  getLogs: vi.fn(),
+  enable: vi.fn(),
+  successToast: vi.fn(),
+}))
+vi.mock('@/app/notifications', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/notifications')>()),
+  toast: { success: successToast },
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -35,6 +43,7 @@ it('offers enable only after disabled documents load, then refreshes their statu
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'dataset.enable' })).not.toBeInTheDocument(),
   )
+  expect(successToast).not.toHaveBeenCalled()
 })
 
 it('does not offer enable when no documents were automatically disabled', async () => {

@@ -76,7 +76,7 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
           size="small"
           loading={isLoadingProviderDetail}
           onClick={handleManageClick}
-          className="mr-0.5 text-text-tertiary"
+          className="me-0.5 text-text-tertiary"
         >
           {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>
@@ -88,7 +88,7 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
         onClick={handleAddClick}
         className="text-text-tertiary"
       >
-        <span className="mr-1 i-ri-add-circle-fill size-3.5" />
+        <span className="me-1 i-ri-add-circle-fill size-3.5" />
         {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
       </Button>
     </>

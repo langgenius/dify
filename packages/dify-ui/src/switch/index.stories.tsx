@@ -122,9 +122,10 @@ function AllStatesDemo() {
     <div style={{ width: '600px' }} className="space-y-6">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-gray-500">
+          <tr className="text-start text-gray-500">
             <th className="pb-3 font-medium">Size</th>
             <th className="pb-3 font-medium">Default</th>
+            <th className="pb-3 font-medium">Read-only</th>
             <th className="pb-3 font-medium">Disabled</th>
             <th className="pb-3 font-medium">Loading</th>
             <th className="pb-3 font-medium">Skeleton</th>
@@ -147,6 +148,22 @@ function AllStatesDemo() {
                     checked={true}
                     onCheckedChange={() => {}}
                     aria-label={`${size} checked switch`}
+                  />
+                </div>
+              </td>
+              <td className="py-3">
+                <div className="flex gap-2">
+                  <Switch
+                    size={size}
+                    checked={false}
+                    readOnly
+                    aria-label={`${size} read-only unchecked switch`}
+                  />
+                  <Switch
+                    size={size}
+                    checked={true}
+                    readOnly
+                    aria-label={`${size} read-only checked switch`}
                   />
                 </div>
               </td>
