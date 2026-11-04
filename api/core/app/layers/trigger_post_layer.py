@@ -6,8 +6,14 @@ from pydantic import TypeAdapter
 
 from core.db.session_factory import session_factory
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
+    EngineEvent,
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPausedEvent,
+    GraphRunSucceededEvent,
+)
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
@@ -15,14 +21,15 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 logger = logging.getLogger(__name__)
 
 
-class TriggerPostLayer(GraphEngineLayer):
+class TriggerPostLayer(Layer):
     """
     Trigger post layer.
     """
 
-    _STATUS_MAP: ClassVar[dict[type[GraphEngineEvent], WorkflowTriggerStatus]] = {
+    _STATUS_MAP: ClassVar[dict[type[EngineEvent], WorkflowTriggerStatus]] = {
         GraphRunSucceededEvent: WorkflowTriggerStatus.SUCCEEDED,
         GraphRunFailedEvent: WorkflowTriggerStatus.FAILED,
+        GraphRunAbortedEvent: WorkflowTriggerStatus.FAILED,
         GraphRunPausedEvent: WorkflowTriggerStatus.PAUSED,
     }
 
@@ -38,11 +45,7 @@ class TriggerPostLayer(GraphEngineLayer):
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
 
     @override
-    def on_graph_start(self):
-        pass
-
-    @override
-    def on_event(self, event: GraphEngineEvent):
+    def on_event(self, event: EngineEvent):
         """
         Update trigger log with success or failure.
         """
@@ -55,24 +58,27 @@ class TriggerPostLayer(GraphEngineLayer):
                     return
 
                 # Calculate elapsed time
-                elapsed_time = (datetime.now(UTC) - self.start_time).total_seconds()
+                now = datetime.now(UTC)
+                elapsed_time = (now - self.start_time).total_seconds()
 
                 # Extract relevant data from result
-                outputs = self.graph_runtime_state.outputs
+                outputs = self.runtime_state.outputs
 
                 # BASICLY, workflow_execution_id is the same as workflow_run_id
                 workflow_run_id = get_system_text(
-                    self.graph_runtime_state.variable_pool,
+                    self.runtime_state.variable_pool,
                     SystemVariableKey.WORKFLOW_EXECUTION_ID,
                 )
                 assert workflow_run_id, "Workflow run id is not set"
 
-                total_tokens = self.graph_runtime_state.total_tokens
+                total_tokens = self.runtime_state.total_tokens
 
                 # Update trigger log with success
                 trigger_log.status = self._STATUS_MAP[type(event)]
                 trigger_log.workflow_run_id = workflow_run_id
                 trigger_log.outputs = TypeAdapter(dict[str, Any]).dump_json(outputs).decode()
+                if isinstance(event, GraphRunAbortedEvent):
+                    trigger_log.error = event.reason or "Workflow execution aborted"
 
                 if trigger_log.elapsed_time is None:
                     trigger_log.elapsed_time = elapsed_time
@@ -80,10 +86,7 @@ class TriggerPostLayer(GraphEngineLayer):
                     trigger_log.elapsed_time += elapsed_time
 
                 trigger_log.total_tokens = total_tokens
-                trigger_log.finished_at = datetime.now(UTC)
+                trigger_log.finished_at = now
                 repo.update(trigger_log)
                 session.commit()
-
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        pass
+                self.start_time = now

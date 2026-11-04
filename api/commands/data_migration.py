@@ -1,6 +1,12 @@
+"""Online data migration and application import/export CLI commands."""
+
 from __future__ import annotations
 
+import io
 import json
+import os
+import sys
+from contextlib import AbstractContextManager, nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
@@ -9,8 +15,16 @@ from uuid import UUID
 import click
 import sqlalchemy as sa
 import yaml
+from sqlalchemy.orm import Session
 
+from commands.rbac import (
+    migrate_dataset_permissions_to_rbac,
+    migrate_only_me_resource_whitelist_scopes_to_automatic_include,
+    migrate_resource_whitelist_scopes_to_automatic_include,  # noqa: F401
+)
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import Tenant
 from models.model import App
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
@@ -27,12 +41,181 @@ from services.data_migration.export_service import ExportConfigParser, Migration
 from services.data_migration.import_service import ImportRequest, MigrationImportService
 from services.data_migration.package_service import MigrationPackageService
 from services.data_migration.report_service import MigrationReportService
+from services.legacy_model_type_migration import (
+    VALID_TABLE_NAMES,
+    LegacyModelTypeMigrationService,
+    load_tenant_ids_from_file,
+)
 
+_SUPPORTED_MODEL_TYPE_CHOICES = (
+    ModelType.LLM.value,
+    ModelType.TEXT_EMBEDDING.value,
+    ModelType.RERANK.value,
+)
+_DEFAULT_CONCURRENCY = os.cpu_count() or 1
 ID_STRATEGY_CHOICES = ["preserve-id", "generate-new-id"]
 CONFLICT_STRATEGY_CHOICES = ["fail", "skip", "update"]
 SUPPORTED_WIZARD_APP_MODES = ["workflow", "advanced-chat"]
 WizardToolMap = dict[str, dict[str, str | None]]
 WizardToolSelection = dict[str, list[str]]
+
+
+def _normalize_multi_value_option(
+    values: tuple[str, ...],
+    *,
+    valid_values: tuple[str, ...],
+    option_name: str,
+) -> tuple[str, ...]:
+    normalized_values: list[str] = []
+    seen_values: set[str] = set()
+
+    for value in values:
+        for item in value.split(","):
+            normalized_item = item.strip()
+            if not normalized_item:
+                continue
+            if normalized_item not in valid_values:
+                raise click.BadParameter(
+                    f"invalid value '{normalized_item}'. valid values: {', '.join(valid_values)}",
+                    param_hint=option_name,
+                )
+            if normalized_item in seen_values:
+                continue
+            seen_values.add(normalized_item)
+            normalized_values.append(normalized_item)
+
+    return tuple(normalized_values)
+
+
+@click.group(
+    "data-migrate",
+    help="Online data migration commands.",
+)
+def data_migrate() -> None:
+    """Namespace for production data migration commands."""
+
+
+@click.command(
+    "legacy-model-types",
+    help=(
+        "Migrate legacy provider model_type values to canonical values. "
+        "Default is dry-run and emits JSON lines only. "
+        "If --tables includes provider_model_credentials, the command may also update "
+        "provider_models and load_balancing_model_configs references so merged credentials stay reachable."
+    ),
+)
+@click.option(
+    "--apply",
+    is_flag=True,
+    default=False,
+    help="Apply the migration. Default is dry-run.",
+)
+@click.option(
+    "--tables",
+    "tables",
+    multiple=True,
+    type=str,
+    help=(
+        "Limit migration to specific tables. Accepts comma-separated values or repeated flags.\n"
+        "\n"
+        "Options: load_balancing_model_configs, provider_model_credentials, "
+        "provider_model_settings, provider_models, tenant_default_models.\n\n"
+        "When provider_model_credentials is selected, provider_models and "
+        "load_balancing_model_configs may also be updated for credential reference rewrites.\n"
+        "\n"
+        "If unspecified, all relevant tables are migrated."
+    ),
+)
+@click.option(
+    "--model-types",
+    "model_types",
+    multiple=True,
+    type=str,
+    help=(
+        "Canonical model types to migrate. Accepts comma-separated values or repeated flags.\n"
+        "\n"
+        "Options: llm,text-embedding,rerank\n"
+        "\n"
+        "If unspecified, all relevant legacy model types are migrated."
+    ),
+)
+@click.option(
+    "--tenant-id-file",
+    type=click.Path(exists=True, dir_okay=False, readable=True, resolve_path=True),
+    help="Optional file containing tenant ids, one per line.",
+)
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, resolve_path=True, path_type=Path),
+    help=(
+        "Optional file path for JSON lines event logs. Defaults to stdout.\n"
+        "It's highly recommended to save the event logs to a file and preserve it for a period of time."
+    ),
+)
+@click.option(
+    "--concurrency",
+    type=click.IntRange(min=1),
+    default=_DEFAULT_CONCURRENCY,
+    show_default=True,
+    help="Number of tenant-level worker threads to run in parallel.",
+)
+def legacy_model_types(
+    apply: bool,
+    tables: tuple[str, ...],
+    model_types: tuple[str, ...],
+    tenant_id_file: str | None,
+    output: Path | None,
+    concurrency: int = _DEFAULT_CONCURRENCY,
+) -> None:
+    """
+    Migrate legacy provider-related model_type values and emit JSON lines events.
+    """
+
+    normalized_tables = _normalize_multi_value_option(
+        tables,
+        valid_values=VALID_TABLE_NAMES,
+        option_name="--tables",
+    )
+    normalized_model_types = _normalize_multi_value_option(
+        model_types,
+        valid_values=_SUPPORTED_MODEL_TYPE_CHOICES,
+        option_name="--model-types",
+    )
+    selected_model_types = (
+        tuple(ModelType(model_type) for model_type in normalized_model_types)
+        if normalized_model_types
+        else (
+            ModelType.LLM,
+            ModelType.TEXT_EMBEDDING,
+            ModelType.RERANK,
+        )
+    )
+    tenant_ids = load_tenant_ids_from_file(tenant_id_file) if tenant_id_file else None
+
+    output_context: AbstractContextManager[io.TextIOBase]
+    if output is None:
+        output_context = nullcontext(cast(io.TextIOBase, sys.stdout))
+    else:
+        try:
+            output_context = output.open("w", encoding="utf-8")
+        except OSError as exc:
+            raise click.ClickException(f"failed to open output file '{output}': {exc.strerror or exc}") from exc
+
+    with output_context as output_stream:
+        LegacyModelTypeMigrationService(
+            engine=db.engine,
+            apply=apply,
+            concurrency=concurrency,
+            output=cast(io.TextIOBase, output_stream),
+            tables=normalized_tables or None,
+            model_types=selected_model_types,
+            tenant_ids=tenant_ids,
+        ).migrate()
+
+
+data_migrate.add_command(legacy_model_types)
+data_migrate.add_command(migrate_dataset_permissions_to_rbac)
+data_migrate.add_command(migrate_only_me_resource_whitelist_scopes_to_automatic_include)
 
 
 def _scripted_export_template() -> dict[str, Any]:
@@ -106,7 +289,8 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         assert output_file is not None
         raw_config = _load_json_object(input_file, "Export config")
         selection = ExportConfigParser().parse(raw_config)
-        result = MigrationExportService().export(selection)
+        with session_factory.create_session() as session:
+            result = MigrationExportService().export(selection, session=session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
@@ -153,19 +337,21 @@ def import_migration_data(
         _require_options(("--input", input_file))
         assert input_file is not None
         package = MigrationPackageService().load_package(input_file)
-        result = MigrationImportService().import_package(
-            ImportRequest(
-                package=package,
-                cli_target_tenant=target_tenant,
-                operator_email=operator_email,
-                options_override=_build_options_override(
-                    package.metadata.import_options,
-                    id_strategy=id_strategy,
-                    conflict_strategy=conflict_strategy,
-                    create_app_api_token_on_import=create_app_api_token_on_import,
+        with session_factory.create_session() as session:
+            result = MigrationImportService().import_package(
+                ImportRequest(
+                    package=package,
+                    cli_target_tenant=target_tenant,
+                    operator_email=operator_email,
+                    options_override=_build_options_override(
+                        package.metadata.import_options,
+                        id_strategy=id_strategy,
+                        conflict_strategy=conflict_strategy,
+                        create_app_api_token_on_import=create_app_api_token_on_import,
+                    ),
                 ),
+                session=session,
             )
-        )
         _render_report(result.report_items, context=result.report_context)
     except MigrationDataError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -213,7 +399,9 @@ def migration_data_wizard() -> None:
             default=True,
             show_default=False,
         )
-        auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
+        auto_tools = _discover_auto_tools(
+            [app for app in apps if app.id in set(app_ids)], include_referenced_tools, session=db.session()
+        )
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
@@ -248,7 +436,8 @@ def migration_data_wizard() -> None:
             conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
-        result = MigrationExportService().export(selection)
+        with session_factory.create_session() as session:
+            result = MigrationExportService().export(selection, session=session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _print_wizard_step("Report")
@@ -389,13 +578,13 @@ def _prompt_import_options() -> tuple[bool, bool, str, str]:
     return include_secrets, create_tokens, id_strategy, conflict_strategy
 
 
-def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> WizardToolMap:
+def _discover_auto_tools(apps: list[App], include_referenced_tools: bool, *, session: Session) -> WizardToolMap:
     auto_tools: WizardToolMap = {"api_tools": {}, "workflow_tools": {}, "mcp_tools": {}}
     if not include_referenced_tools:
         return auto_tools
     discovery_service = DependencyDiscoveryService()
     for app in apps:
-        dsl_content = AppDslService.export_dsl(app_model=app, include_secret=False)
+        dsl_content = AppDslService.export_dsl(app_model=app, session=session, include_secret=False)
         raw_dsl = yaml.safe_load(dsl_content) if dsl_content else {}
         dsl = raw_dsl if isinstance(raw_dsl, dict) else {}
         for dependency in discovery_service.discover_from_dsl(dsl):

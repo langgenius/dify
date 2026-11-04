@@ -4,6 +4,18 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type EventStreamResponse = string
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowPauseDetailsResponse = {
   paused_at?: string | null
   paused_nodes: Array<PausedNodeResponse>
@@ -18,7 +30,8 @@ export type PausedNodeResponse = {
 export type HumanInputPauseTypeResponse = {
   backstage_input_url?: string | null
   form_id: string
-  type: string
+  form_version?: '1' | '2'
+  type: 'human_input'
 }
 
 export type GetWorkflowByWorkflowRunIdEventsData = {
@@ -30,14 +43,19 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
   url: '/workflow/{workflow_run_id}/events'
 }
 
-export type GetWorkflowByWorkflowRunIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type GetWorkflowByWorkflowRunIdEventsErrors = {
+  default: ErrorResponse
 }
 
-export type GetWorkflowByWorkflowRunIdEventsResponse
-  = GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
+export type GetWorkflowByWorkflowRunIdEventsError =
+  GetWorkflowByWorkflowRunIdEventsErrors[keyof GetWorkflowByWorkflowRunIdEventsErrors]
+
+export type GetWorkflowByWorkflowRunIdEventsResponses = {
+  200: EventStreamResponse
+}
+
+export type GetWorkflowByWorkflowRunIdEventsResponse =
+  GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
   body?: never
@@ -49,17 +67,16 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWorkflowByWorkflowRunIdPauseDetailsError
-  = GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
+export type GetWorkflowByWorkflowRunIdPauseDetailsError =
+  GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse
 }
 
-export type GetWorkflowByWorkflowRunIdPauseDetailsResponse
-  = GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]
+export type GetWorkflowByWorkflowRunIdPauseDetailsResponse =
+  GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]

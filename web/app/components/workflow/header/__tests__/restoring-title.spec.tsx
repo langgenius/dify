@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import RestoringTitle from '../restoring-title'
@@ -18,7 +18,9 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersion = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-1',
   graph: {
     nodes: [],
@@ -64,7 +66,7 @@ describe('RestoringTitle', () => {
 
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(currentVersion.updated_at * 1000)
     expect(mockFormatTime).toHaveBeenCalledWith(currentVersion.created_at, 'HH:mm:ss')
-    expect(container).toHaveTextContent('workflow.versionHistory.currentDraft')
+    expect(container).toHaveTextContent('workflowHistory.versionHistory.currentDraft')
     expect(container).toHaveTextContent('workflow.common.viewOnly')
     expect(container).toHaveTextContent('workflow.common.unpublished')
     expect(container).toHaveTextContent('3 hours ago 09:30:00')
@@ -83,18 +85,15 @@ describe('RestoringTitle', () => {
     })
 
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(currentVersion.created_at * 1000)
-    expect(container).toHaveTextContent('workflow.versionHistory.defaultName')
+    expect(container).toHaveTextContent('workflowHistory.versionHistory.defaultName')
     expect(container).toHaveTextContent('workflow.common.published')
     expect(container).toHaveTextContent('Alice')
   })
 
-  it('should render an empty creator name when the version creator name is missing', () => {
+  it('should render the version number when the marked name is empty', () => {
     const currentVersion = createVersion({
-      created_by: {
-        id: 'user-1',
-        name: '',
-        email: 'alice@example.com',
-      },
+      marked_name: '',
+      version_number: 5,
     })
 
     const { container } = renderWorkflowComponent(<RestoringTitle />, {
@@ -103,7 +102,7 @@ describe('RestoringTitle', () => {
       },
     })
 
-    expect(container).toHaveTextContent('workflow.common.published')
-    expect(container).not.toHaveTextContent('Alice')
+    expect(container).toHaveTextContent('# 5')
+    expect(container).not.toHaveTextContent('workflowHistory.versionHistory.defaultName')
   })
 })

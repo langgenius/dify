@@ -2,25 +2,20 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zDataSourceApiKeyAuthProviderUnavailableError,
+  zUnsupportedDataSourceApiKeyAuthProviderError,
+} from './zod.gen.ts'
 import {
   zDeleteApiKeyAuthDataSourceByBindingIdPath,
   zDeleteApiKeyAuthDataSourceByBindingIdResponse,
   zGetApiKeyAuthDataSourceResponse,
   zPostApiKeyAuthDataSourceBindingBody,
   zPostApiKeyAuthDataSourceBindingResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postApiKeyAuthDataSourceBinding',
@@ -29,6 +24,16 @@ export const post = oc
   })
   .input(z.object({ body: zPostApiKeyAuthDataSourceBindingBody }))
   .output(zPostApiKeyAuthDataSourceBindingResponse)
+  .errors({
+    data_source_api_key_auth_provider_unavailable: {
+      status: 502,
+      data: zDataSourceApiKeyAuthProviderUnavailableError,
+    },
+    unsupported_data_source_api_key_auth_provider: {
+      status: 400,
+      data: zUnsupportedDataSourceApiKeyAuthProviderError,
+    },
+  })
 
 export const binding = {
   post,

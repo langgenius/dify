@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -14,26 +14,27 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { toast } from '@/app/notifications'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
   isHideRemoveBtn?: boolean
   onRemove?: () => void
   isSaving?: boolean
-}
+  readonly?: boolean
+}>
 
 const ConfigCredential: FC<Props> = ({
   collection,
@@ -42,8 +43,9 @@ const ConfigCredential: FC<Props> = ({
   isHideRemoveBtn,
   onRemove = noop,
   isSaving,
+  readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
@@ -63,7 +65,12 @@ const ConfigCredential: FC<Props> = ({
   const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }))
+        toast.error(
+          t(($) => $['errorMsg.fieldRequired'], {
+            ns: 'common',
+            field: field.label[language] || field.label.en_US,
+          }),
+        )
         return
       }
     }
@@ -71,8 +78,7 @@ const ConfigCredential: FC<Props> = ({
     try {
       await onSaved(tempCredential)
       setIsLoading(false)
-    }
-    finally {
+    } finally {
       setIsLoading(false)
     }
   }
@@ -83,8 +89,7 @@ const ConfigCredential: FC<Props> = ({
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
       <DrawerPortal>
@@ -93,61 +98,88 @@ const ConfigCredential: FC<Props> = ({
           <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                    {t('auth.setupModalTitle', { ns: 'tools' })}
+                    {t(($) => $['auth.setupModalTitle'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t('operation.close', { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
-                <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
-                  {t('auth.setupModalTitleDescription', { ns: 'tools' })}
+                <DrawerDescription className="ps-6 pe-10 system-xs-regular text-text-tertiary">
+                  {t(($) => $['auth.setupModalTitleDescription'], { ns: 'tools' })}
                 </DrawerDescription>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-                {!credentialSchema
-                  ? <Loading type="app" />
-                  : (
-                      <>
-                        <Form
-                          value={tempCredential}
-                          onChange={(v) => {
-                            setTempCredential(v)
-                          }}
-                          formSchemas={credentialSchema}
-                          isEditMode={true}
-                          showOnVariableMap={{}}
-                          validating={false}
-                          inputClassName="bg-components-input-bg-normal!"
-                          fieldMoreInfo={item => item.url
-                            ? (
-                                <a
-                                  href={item.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center text-xs text-text-accent"
-                                >
-                                  {t('howToGet', { ns: 'tools' })}
-                                  <LinkExternal02 className="ml-1 size-3" />
-                                </a>
-                              )
-                            : null}
-                        />
-                        <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
-                          {
-                            (collection.is_team_authorization && !isHideRemoveBtn) && (
-                              <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>
-                            )
-                          }
-                          <div className="flex space-x-2">
-                            <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-                            <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                {!credentialSchema ? (
+                  <LoadingPlaceholder className="h-full" />
+                ) : (
+                  <>
+                    <Form
+                      value={tempCredential}
+                      onChange={(v) => {
+                        setTempCredential(v)
+                      }}
+                      formSchemas={credentialSchema}
+                      isEditMode={true}
+                      readonly={readonly}
+                      showOnVariableMap={{}}
+                      validating={false}
+                      inputClassName="bg-components-input-bg-normal!"
+                      fieldMoreInfo={(item) =>
+                        item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-xs text-text-accent"
+                          >
+                            {t(($) => $.howToGet, { ns: 'tools' })}
+                            <span
+                              aria-hidden
+                              className="ms-1 i-custom-vender-line-general-link-external-02 size-3 rtl:-scale-x-100"
+                            />
+                          </a>
+                        ) : null
+                      }
+                    />
+                    <div
+                      className={cn(
+                        collection.is_team_authorization && !isHideRemoveBtn
+                          ? 'justify-between'
+                          : 'justify-end',
+                        'mt-2 flex',
+                      )}
+                    >
+                      {collection.is_team_authorization && !isHideRemoveBtn && !readonly && (
+                        <Button onClick={onRemove}>
+                          {t(($) => $['operation.remove'], { ns: 'common' })}
+                        </Button>
+                      )}
+                      <div className="flex space-x-2">
+                        <Button onClick={onCancel}>
+                          {t(($) => $['operation.cancel'], { ns: 'common' })}
+                        </Button>
+                        {!readonly && (
+                          <Button
+                            loading={isLoading || isSaving}
+                            variant="primary"
+                            onClick={handleSave}
+                          >
+                            {t(($) => $['operation.save'], { ns: 'common' })}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </DrawerContent>
           </DrawerPopup>

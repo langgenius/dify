@@ -1,3 +1,4 @@
+import type { ExternalTraceRun } from './external-trace-row'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
@@ -5,7 +6,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
-import { AgentResultPanel } from './agent-log'
+import AgentResultPanel from './agent-log/agent-result-panel'
 import { IterationResultPanel } from './iteration-log'
 import { LoopResultPanel } from './loop-log'
 import { RetryResultPanel } from './retry-log'
@@ -29,6 +30,7 @@ export type SpecialResultPanelProps = {
   agentOrToolLogItemStack?: AgentLogItemWithChildren[]
   agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  externalTraceRun?: ExternalTraceRun
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -49,49 +51,42 @@ const SpecialResultPanel = ({
   agentOrToolLogItemStack,
   agentOrToolLogListMap,
   handleShowAgentOrToolLog,
+  externalTraceRun,
 }: SpecialResultPanelProps) => {
   return (
-    <div onClick={(e) => {
-      e.stopPropagation()
-      e.nativeEvent.stopImmediatePropagation()
-    }}
+    <div
+      onClick={(e) => {
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+      }}
     >
-      {
-        !!showRetryDetail && !!retryResultList?.length && setShowRetryDetailFalse && (
-          <RetryResultPanel
-            list={retryResultList}
-            onBack={setShowRetryDetailFalse}
-          />
-        )
-      }
-      {
-        showIteratingDetail && !!iterationResultList?.length && setShowIteratingDetailFalse && (
-          <IterationResultPanel
-            list={iterationResultList}
-            onBack={setShowIteratingDetailFalse}
-            iterDurationMap={iterationResultDurationMap}
-          />
-        )
-      }
-      {
-        showLoopingDetail && !!loopResultList?.length && setShowLoopingDetailFalse && (
-          <LoopResultPanel
-            list={loopResultList}
-            onBack={setShowLoopingDetailFalse}
-            loopDurationMap={loopResultDurationMap}
-            loopVariableMap={loopResultVariableMap}
-          />
-        )
-      }
-      {
-        !!agentOrToolLogItemStack?.length && agentOrToolLogListMap && handleShowAgentOrToolLog && (
-          <AgentResultPanel
-            agentOrToolLogItemStack={agentOrToolLogItemStack}
-            agentOrToolLogListMap={agentOrToolLogListMap}
-            onShowAgentOrToolLog={handleShowAgentOrToolLog}
-          />
-        )
-      }
+      {!!showRetryDetail && !!retryResultList?.length && setShowRetryDetailFalse && (
+        <RetryResultPanel list={retryResultList} onBack={setShowRetryDetailFalse} />
+      )}
+      {showIteratingDetail && !!iterationResultList?.length && setShowIteratingDetailFalse && (
+        <IterationResultPanel
+          list={iterationResultList}
+          onBack={setShowIteratingDetailFalse}
+          iterDurationMap={iterationResultDurationMap}
+          externalTraceRun={externalTraceRun}
+        />
+      )}
+      {showLoopingDetail && !!loopResultList?.length && setShowLoopingDetailFalse && (
+        <LoopResultPanel
+          list={loopResultList}
+          onBack={setShowLoopingDetailFalse}
+          loopDurationMap={loopResultDurationMap}
+          loopVariableMap={loopResultVariableMap}
+          externalTraceRun={externalTraceRun}
+        />
+      )}
+      {!!agentOrToolLogItemStack?.length && agentOrToolLogListMap && handleShowAgentOrToolLog && (
+        <AgentResultPanel
+          agentOrToolLogItemStack={agentOrToolLogItemStack}
+          agentOrToolLogListMap={agentOrToolLogListMap}
+          onShowAgentOrToolLog={handleShowAgentOrToolLog}
+        />
+      )}
     </div>
   )
 }

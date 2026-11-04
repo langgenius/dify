@@ -1,0 +1,467 @@
+import type {
+  AgentLogListResponse,
+  AgentLogMessageListResponse,
+  AgentLogSourceListResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
+import { QueryClient } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { AgentLogsPage } from '../page'
+
+const mocks = vi.hoisted(() => ({
+  logsQueryFn: vi.fn(),
+  logSourcesQueryFn: vi.fn(),
+  messagesQueryFn: vi.fn(),
+  feedbackMutationFn: vi.fn(),
+}))
+
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (value: number) => `formatted-${value}`,
+  }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': async () =>
+        createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+      'agent.byAgentId.logs.get': mocks.logsQueryFn,
+      'agent.byAgentId.logSources.get': mocks.logSourcesQueryFn,
+      'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'message',
+        source_id: 'message-1',
+      }),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'workflow',
+        source_id: 'message-1',
+      }),
+      'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
+    }),
+  }
+})
+
+const emptyLogsResponse: AgentLogListResponse = {
+  data: [],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 0,
+}
+
+const populatedLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'conversation-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'log-1',
+      message_count: 3,
+      operation_rate: null,
+      source: {
+        app_icon: '📙',
+        app_icon_background: '#FFF4ED',
+        app_icon_type: 'emoji',
+        app_id: 'webapp-app-id',
+        app_name: 'Book Translation',
+        id: 'webapp:webapp-app-id',
+        type: 'webapp',
+      },
+      status: 'success',
+      title: 'Previous conversation',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
+const workflowLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'execution-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'execution-1',
+      message_count: 1,
+      operation_rate: null,
+      source: {
+        app_icon: '🖌',
+        app_icon_background: '#EEF4FF',
+        app_icon_type: 'emoji',
+        app_id: 'workflow-app-id',
+        app_name: 'SVG Logo Design',
+        id: 'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+        node_id: 'agent-node-id',
+        type: 'workflow',
+        workflow_id: 'workflow-id',
+        workflow_version: 'v3',
+      },
+      status: 'success',
+      title: 'Workflow agent execution',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
+const logSourcesResponse: AgentLogSourceListResponse = {
+  data: [],
+  groups: [
+    {
+      label: 'Webapp',
+      type: 'webapp',
+      sources: [
+        {
+          app_icon: '📙',
+          app_icon_background: '#FFF4ED',
+          app_icon_type: 'emoji',
+          app_id: 'webapp-app-id',
+          app_name: 'Book Translation',
+          id: 'webapp:webapp-app-id',
+          type: 'webapp',
+        },
+      ],
+    },
+    {
+      label: 'Workflow',
+      type: 'workflow',
+      sources: [
+        {
+          app_icon: '🖌',
+          app_icon_background: '#EEF4FF',
+          app_icon_type: 'emoji',
+          app_id: 'workflow-app-id',
+          app_name: 'SVG Logo Design',
+          id: 'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+          node_id: 'agent-node-id',
+          type: 'workflow',
+          workflow_id: 'workflow-id',
+          workflow_version: 'v3',
+        },
+      ],
+    },
+  ],
+}
+
+const messagesResponse: AgentLogMessageListResponse = {
+  data: [
+    {
+      answer: 'Translated chapter summary',
+      answer_tokens: 12,
+      conversation_id: 'conversation-1',
+      created_at: 1781660001,
+      currency: 'USD',
+      error: null,
+      from_account_id: null,
+      from_end_user_id: 'end-user-1',
+      feedback_enabled: true,
+      feedbacks: [],
+      id: 'message-1',
+      latency: 1.234,
+      message_id: 'message-1',
+      message_tokens: 8,
+      query: 'Translate this chapter',
+      status: 'success',
+      total_price: '0.001',
+      total_tokens: 20,
+      updated_at: 1781660002,
+    },
+  ],
+  has_more: false,
+  limit: 100,
+  page: 1,
+  total: 1,
+}
+
+const renderPage = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  queryClient.setQueryData(
+    consoleQuery.systemFeatures.get.queryKey(),
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
+
+  render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <AgentLogsPage agentId="agent-1" />
+    </QueryClientTestProvider>,
+  )
+
+  return queryClient
+}
+
+const getLatestLogsQueryInput = () => {
+  const latestCall = mocks.logsQueryFn.mock.calls.at(-1)
+
+  if (!latestCall) throw new Error('Expected a logs request')
+
+  return latestCall[0]
+}
+
+describe('AgentLogsPage', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
+    mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
+    mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
+    mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
+  })
+
+  describe('Query contract', () => {
+    it('should request logs with generated contract filters by default', async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(mocks.logsQueryFn).toHaveBeenCalled()
+      })
+
+      expect(getLatestLogsQueryInput()).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: expect.objectContaining({
+          keyword: undefined,
+          limit: 25,
+          page: 1,
+          sort_by: 'created_at',
+          sort_order: 'desc',
+        }),
+      })
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('source')
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('sources')
+    })
+
+    it('should send multiple source ids through the sources array filter', async () => {
+      const user = userEvent.setup()
+
+      renderPage()
+
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
+      await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
+      await user.click(await screen.findByRole('option', { name: /SVG Logo Design/ }))
+
+      await waitFor(() => {
+        expect(getLatestLogsQueryInput().query).toEqual(
+          expect.objectContaining({
+            sources: [
+              'webapp:webapp-app-id',
+              'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+            ],
+          }),
+        )
+      })
+
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('source')
+    })
+
+    it('should translate Sort selection into sort_by and sort_order query params', async () => {
+      const user = userEvent.setup()
+
+      renderPage()
+
+      const createdHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.createdTime',
+      })
+      const updatedHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.updatedTime',
+      })
+      expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
+      expect(updatedHeader).not.toHaveAttribute('aria-sort')
+
+      await user.click(screen.getByRole('button', { name: /common\.sorting\.sortBy/ }))
+      await user.click(
+        await screen.findByRole('menuitemradio', {
+          name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(getLatestLogsQueryInput().query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'desc',
+          }),
+        )
+      })
+
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'descending')
+
+      await user.click(screen.getByRole('button', { name: 'common.sorting.ascending' }))
+
+      await waitFor(() => {
+        expect(getLatestLogsQueryInput().query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'asc',
+          }),
+        )
+      })
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'ascending')
+    })
+
+    it('should expose unread status in the matching log row', async () => {
+      const readLog = populatedLogsResponse.data[0]!
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [
+          readLog,
+          { ...readLog, id: 'unread-log', title: 'Unread conversation', unread: true },
+        ],
+        total: 2,
+      })
+
+      renderPage()
+
+      const unreadRow = await screen.findByRole('row', { name: /Unread conversation/ })
+      const readRow = screen.getByRole('row', { name: /Previous conversation/ })
+      expect(
+        within(unreadRow).getByRole('cell', {
+          name: 'agentV2.agentDetail.logs.table.unread',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        within(readRow).queryByText('agentV2.agentDetail.logs.table.unread'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('includes the visible fallback label in an untitled log button name', async () => {
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [{ ...populatedLogsResponse.data[0]!, title: '' }],
+      })
+
+      renderPage()
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.logs.notAvailable conversation-1',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('should keep existing log rows visible while filter changes refetch', async () => {
+      const user = userEvent.setup()
+      let resolveNextLogs: (value: AgentLogListResponse) => void = () => undefined
+      const nextLogsPromise = new Promise<AgentLogListResponse>((resolve) => {
+        resolveNextLogs = resolve
+      })
+      mocks.logsQueryFn
+        .mockResolvedValueOnce(populatedLogsResponse)
+        .mockReturnValueOnce(nextLogsPromise)
+
+      renderPage()
+
+      expect(await screen.findByText('Previous conversation')).toBeInTheDocument()
+
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
+      await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
+
+      await waitFor(() => {
+        expect(getLatestLogsQueryInput().query).toEqual(
+          expect.objectContaining({
+            sources: ['webapp:webapp-app-id'],
+          }),
+        )
+        expect(mocks.logsQueryFn).toHaveBeenCalledTimes(2)
+      })
+
+      expect(screen.getByText('Previous conversation')).toBeInTheDocument()
+
+      resolveNextLogs(emptyLogsResponse)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Previous conversation')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should open chatbot-style log detail drawer with generated messages contract when a row is clicked', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(populatedLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
+
+      expect(screen.getByRole('dialog', { name: 'Previous conversation' })).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryFn).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+            conversation_id: 'conversation-1',
+          },
+          query: {
+            limit: 100,
+            page: 1,
+            sort_by: 'created_at',
+            sort_order: 'asc',
+            sources: ['webapp:webapp-app-id'],
+          },
+        })
+      })
+      expect(screen.getByText('appLog.detail.conversationId')).toBeInTheDocument()
+      expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
+    })
+
+    it('should identify workflow log details by execution id', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(workflowLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Workflow agent execution' }))
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryFn).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+            conversation_id: 'execution-1',
+          },
+          query: {
+            limit: 100,
+            page: 1,
+            sort_by: 'created_at',
+            sort_order: 'asc',
+            sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
+          },
+        })
+      })
+      expect(screen.getByText('agentV2.agentDetail.logs.executionId')).toBeInTheDocument()
+      expect(screen.queryByText('appLog.detail.conversationId')).not.toBeInTheDocument()
+    })
+  })
+})

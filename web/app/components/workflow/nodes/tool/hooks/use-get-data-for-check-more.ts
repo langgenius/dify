@@ -6,10 +6,7 @@ type Params = {
   payload: ToolNodeType
 }
 
-const useGetDataForCheckMore = ({
-  id,
-  payload,
-}: Params) => {
+const useGetDataForCheckMore = ({ id, payload }: Params) => {
   const { getMoreDataForCheckValid } = useConfig(id, payload)
 
   return {

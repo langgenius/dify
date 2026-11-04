@@ -1,20 +1,20 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { OperationName } from '../types'
-import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
-import s from '../style.module.css'
+import { getErrorMessage } from '@/utils/error-message'
 import { useIndexStatus } from './hooks'
 
 const STATUS_TEXT_COLOR_MAP: Record<StatusDotStatus, string> = {
@@ -37,77 +37,108 @@ type StatusItemProps = {
   }
   datasetId?: string
   onUpdate?: (operationName?: string) => void
+  canEdit?: boolean
 }
-const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }: StatusItemProps) => {
-  const { t } = useTranslation()
+const StatusItem = ({
+  status,
+  reverse = false,
+  scene = 'list',
+  textCls = '',
+  errorMessage,
+  datasetId = '',
+  detail,
+  onUpdate,
+  canEdit = false,
+}: StatusItemProps) => {
+  const statusLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
   const { enabled = false, archived = false, id = '' } = detail || {}
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const documents = consoleQuery.datasets.byDatasetId.documents
+  const { mutateAsync: changeDocumentStatus } = useMutation(
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+  )
+  const { mutateAsync: deleteDocuments } = useMutation(
+    documents.delete.mutationOptions({ context: { silent: true } }),
+  )
   const onOperate = async (operationName: OperationName) => {
-    let opApi = deleteDocument
-    switch (operationName) {
-      case 'enable':
-        opApi = enableDocument
-        break
-      case 'disable':
-        opApi = disableDocument
-        break
-    }
-    const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
+    if (!canEdit) return
+
+    const [e] = await asyncRunSafe(
+      operationName === 'enable' || operationName === 'disable'
+        ? changeDocumentStatus({
+            params: { dataset_id: datasetId, action: operationName },
+            query: { document_id: [id] },
+          })
+        : deleteDocuments({ params: { dataset_id: datasetId }, query: { document_id: [id] } }),
+    )
     if (!e) {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       onUpdate?.(operationName)
-    }
-    else {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    } else {
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     }
   }
-  const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
-      return
-    if (operationName === 'disable' && !enabled)
-      return
-    onOperate(operationName)
-  }, { wait: 500 })
+  const { run: handleSwitch } = useDebounceFn(
+    (operationName: OperationName) => {
+      if (!canEdit) return
+      if (operationName === 'enable' && enabled) return
+      if (operationName === 'disable' && !enabled) return
+      onOperate(operationName)
+    },
+    { wait: 500 },
+  )
   const embedding = useMemo(() => {
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
   return (
-    <div className={cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')}>
-      <StatusDot status={statusItem.status} className={reverse ? 'ml-2' : 'mr-2'} />
-      <span className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}>
+    <div
+      className={cn(
+        'flex items-center',
+        reverse ? 'flex-row-reverse' : '',
+        scene === 'detail' &&
+          'me-2 inline-flex rounded-lg border-[0.5px] border-components-button-secondary-border py-2 ps-2.5 pe-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+      )}
+    >
+      <StatusDot status={statusItem.status} className={reverse ? 'ms-2' : 'me-2'} />
+      <span
+        id={statusLabelId}
+        className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}
+      >
         {statusItem.text}
       </span>
       {errorMessage && (
-        <Infotip
-          aria-label={errorMessage}
-          className="ml-1"
-          popupClassName="max-w-[260px] break-all"
-        >
-          {errorMessage}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={statusLabelId} className="ms-1" />
+          <InfotipContent aria-labelledby={statusLabelId} className="max-w-65">
+            {errorMessage}
+          </InfotipContent>
         </Infotip>
       )}
       {scene === 'detail' && (
-        <div className="ml-1.5 flex items-center justify-between">
+        <div className="ms-1.5 flex items-center justify-between">
           <Tooltip disabled={!archived}>
             <TooltipTrigger
-              render={(
+              render={
                 <span className="flex">
                   <Switch
+                    aria-labelledby={statusLabelId}
                     checked={archived ? false : enabled}
-                    onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-                    disabled={embedding || archived}
+                    onCheckedChange={(v) =>
+                      !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')
+                    }
+                    disabled={embedding || archived || !canEdit}
                     size="md"
                   />
                 </span>
-              )}
+              }
             />
-            <TooltipContent className="system-xs-medium text-text-secondary">
-              {t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+            <TooltipContent>
+              {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
             </TooltipContent>
           </Tooltip>
         </div>

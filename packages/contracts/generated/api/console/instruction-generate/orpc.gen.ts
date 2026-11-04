@@ -2,26 +2,25 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
 import {
   zPostInstructionGenerateBody,
   zPostInstructionGenerateResponse,
   zPostInstructionGenerateTemplateBody,
   zPostInstructionGenerateTemplateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get instruction generation template
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Get instruction generation template\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get instruction generation template',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstructionGenerateTemplate',
@@ -37,16 +36,10 @@ export const template = {
 
 /**
  * Generate instruction for workflow nodes or general use
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generate instruction for workflow nodes or general use\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Generate instruction for workflow nodes or general use',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstructionGenerate',
@@ -55,6 +48,12 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostInstructionGenerateBody }))
   .output(zPostInstructionGenerateResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const instructionGenerate = {
   post: post2,

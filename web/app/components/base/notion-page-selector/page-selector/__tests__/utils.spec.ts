@@ -58,7 +58,7 @@ describe('page-selector utils', () => {
       expandedIds: new Set(['root-1', 'child-1']),
     })
 
-    expect(rows.map(row => row.page.page_id)).toEqual([
+    expect(rows.map((row) => row.page.page_id)).toEqual([
       'root-1',
       'child-1',
       'grandchild-1',
@@ -91,28 +91,34 @@ describe('page-selector utils', () => {
   it('should toggle selected ids correctly in single and multiple mode', () => {
     const treeMap = buildNotionPageTree(list, pagesMap)
 
-    expect(getNextSelectedPageIds({
-      checkedIds: new Set(['root-1']),
-      pageId: 'child-1',
-      searchValue: '',
-      selectionMode: 'single',
-      treeMap,
-    })).toEqual(new Set(['child-1']))
+    expect(
+      getNextSelectedPageIds({
+        checkedIds: new Set(['root-1']),
+        pageId: 'child-1',
+        searchValue: '',
+        selectionMode: 'single',
+        treeMap,
+      }),
+    ).toEqual(new Set(['child-1']))
 
-    expect(getNextSelectedPageIds({
-      checkedIds: new Set<string>(),
-      pageId: 'root-1',
-      searchValue: '',
-      selectionMode: 'multiple',
-      treeMap,
-    })).toEqual(new Set(['root-1', 'child-1', 'grandchild-1', 'child-2']))
+    expect(
+      getNextSelectedPageIds({
+        checkedIds: new Set<string>(),
+        pageId: 'root-1',
+        searchValue: '',
+        selectionMode: 'multiple',
+        treeMap,
+      }),
+    ).toEqual(new Set(['root-1', 'child-1', 'grandchild-1', 'child-2']))
 
-    expect(getNextSelectedPageIds({
-      checkedIds: new Set(['child-1']),
-      pageId: 'child-1',
-      searchValue: 'Child',
-      selectionMode: 'multiple',
-      treeMap,
-    })).toEqual(new Set<string>())
+    expect(
+      getNextSelectedPageIds({
+        checkedIds: new Set(['child-1']),
+        pageId: 'child-1',
+        searchValue: 'Child',
+        selectionMode: 'multiple',
+        treeMap,
+      }),
+    ).toEqual(new Set<string>())
   })
 })

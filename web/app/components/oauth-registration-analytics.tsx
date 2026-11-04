@@ -2,14 +2,19 @@
 
 import Cookies from 'js-cookie'
 import { useEffect, useRef } from 'react'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
-import { trackEvent } from './base/amplitude'
-
-const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+import {
+  clearOAuthRegistrationGAGuard,
+  hasSentOAuthRegistrationGA,
+  markOAuthRegistrationGASent,
+} from './base/amplitude/registration-session-state'
+import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
+import {
+  OAUTH_NEW_USER_PARAM,
+  readOAuthRegistrationAttribution,
+} from './oauth-registration-attribution'
 
 const removeOAuthNewUserParam = () => {
   const url = new URL(window.location.href)
@@ -18,49 +23,68 @@ const removeOAuthNewUserParam = () => {
 }
 
 export function OAuthRegistrationAnalytics() {
+  const analyticsConsent = useAnalyticsConsent()
   const searchParams = useSearchParams()
   const oauthNewUserParam = searchParams.get(OAUTH_NEW_USER_PARAM)
-  const handledParamRef = useRef<string | null>(null)
+  const gaHandledRef = useRef(false)
+  const amplitudeHandledRef = useRef(false)
+  const cleanedRef = useRef(false)
+  const utmInfoRef = useRef<ReturnType<typeof readOAuthRegistrationAttribution> | undefined>(
+    undefined,
+  )
 
   useEffect(() => {
-    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam)
+    if (oauthNewUserParam === null) {
+      clearOAuthRegistrationGAGuard()
       return
+    }
 
-    handledParamRef.current = oauthNewUserParam
     const oauthNewUser = oauthNewUserParam === 'true'
     if (!oauthNewUser) {
-      removeOAuthNewUserParam()
+      if (!cleanedRef.current) {
+        cleanedRef.current = true
+        clearOAuthRegistrationGAGuard()
+        removeOAuthNewUserParam()
+      }
       return
     }
 
-    let utmInfo: Record<string, unknown> | null = null
-    const utmInfoStr = Cookies.get('utm_info')
-    if (utmInfoStr) {
-      try {
-        const parsed: unknown = JSON.parse(utmInfoStr)
-        if (isRecord(parsed))
-          utmInfo = parsed
-      }
-      catch (e) {
-        console.error('Failed to parse utm_info cookie:', e)
-      }
+    if (utmInfoRef.current === undefined) {
+      utmInfoRef.current = readOAuthRegistrationAttribution({
+        cookieValue: Cookies.get('utm_info'),
+        searchParams,
+      })
     }
+    const utmInfo = utmInfoRef.current
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    trackEvent(eventName, {
-      method: 'oauth',
-      ...utmInfo,
-    })
+    if (!gaHandledRef.current) {
+      gaHandledRef.current = true
+      if (!hasSentOAuthRegistrationGA()) {
+        sendGAEvent(eventName, {
+          method: 'oauth',
+          ...utmInfo,
+        })
+        markOAuthRegistrationGASent()
+      }
+    }
 
-    sendGAEvent(eventName, {
-      method: 'oauth',
-      ...utmInfo,
-    })
+    if (
+      (analyticsConsent === 'unknown' || analyticsConsent === 'granted') &&
+      !amplitudeHandledRef.current
+    ) {
+      const persisted = rememberRegistrationSuccess({ method: 'oauth', utmInfo })
+      if (!persisted) return
+      amplitudeHandledRef.current = true
+    }
 
-    Cookies.remove('utm_info')
-    removeOAuthNewUserParam()
-  }, [oauthNewUserParam])
+    if (!cleanedRef.current) {
+      cleanedRef.current = true
+      Cookies.remove('utm_info')
+      removeOAuthNewUserParam()
+    }
+  }, [analyticsConsent, oauthNewUserParam, searchParams])
 
   return null
 }

@@ -9,23 +9,32 @@ persists them onto the app's ``app_model_config`` without touching anything the
 Soul owns.
 """
 
-from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from events.app_event import app_model_config_was_updated
-from libs.login import current_account_with_tenant, login_required
-from models.model import App, AppMode
-from services.agent_app_feature_service import AgentAppFeatureConfigService
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, validate_request
+from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from models.agent_config_entities import (
+    AgentFeatureToggleConfig,
+    AgentSensitiveWordAvoidanceFeatureConfig,
+    AgentSuggestedQuestionsAfterAnswerFeatureConfig,
+    AgentTextToSpeechFeatureConfig,
+)
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
-class AgentAppFeaturesRequest(BaseModel):
+class AgentAppFeaturesPayload(BaseModel):
     """Presentation features configurable on an Agent App.
 
     All fields are optional; an omitted field is reset to its disabled/empty
@@ -36,45 +45,43 @@ class AgentAppFeaturesRequest(BaseModel):
     suggested_questions: list[str] | None = Field(
         default=None, description="Preset questions shown alongside the opener"
     )
-    suggested_questions_after_answer: dict[str, Any] | None = Field(
+    suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig | None = Field(
         default=None, description="Follow-up suggestions config, e.g. {'enabled': true}"
     )
-    speech_to_text: dict[str, Any] | None = Field(default=None, description="Speech-to-text config")
-    text_to_speech: dict[str, Any] | None = Field(default=None, description="Text-to-speech config")
-    retriever_resource: dict[str, Any] | None = Field(
+    speech_to_text: AgentFeatureToggleConfig | None = Field(default=None, description="Speech-to-text config")
+    text_to_speech: AgentTextToSpeechFeatureConfig | None = Field(default=None, description="Text-to-speech config")
+    retriever_resource: AgentFeatureToggleConfig | None = Field(
         default=None, description="Citations / attributions config, e.g. {'enabled': true}"
     )
-    sensitive_word_avoidance: dict[str, Any] | None = Field(default=None, description="Content moderation config")
+    sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = Field(
+        default=None, description="Content moderation config"
+    )
 
 
-register_schema_models(console_ns, AgentAppFeaturesRequest)
+register_schema_models(console_ns, AgentAppFeaturesPayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-features")
+@console_ns.route("/agent/<uuid:agent_id>/features")
 class AgentAppFeatureConfigResource(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("update_agent_app_features")
     @console_ns.doc(description="Update an Agent App's presentation features (opener, follow-up, citations, ...)")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AgentAppFeaturesRequest.__name__])
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.expect(console_ns.models[AgentAppFeaturesPayload.__name__])
     @console_ns.response(200, "Features updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid configuration")
-    @console_ns.response(404, "App not found")
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
-    def post(self, app_model: App):
-        args = AgentAppFeaturesRequest.model_validate(console_ns.payload)
-        current_user, _ = current_account_with_tenant()
-
-        new_app_model_config = AgentAppFeatureConfigService.update_features(
-            app_model=app_model,
-            account=current_user,
-            config=args.model_dump(exclude_none=True),
-        )
-
-        app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
-
-        return {"result": "success"}
+    @console_ns.response(404, "Agent not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()),),
+    )
+    def post(self, context: RequestContext, agent_id: UUID):
+        payload = validate_request(AgentAppFeaturesPayload)
+        try:
+            application_services().agent_apps.features.update_features(
+                context, str(agent_id), payload.model_dump(exclude_none=True)
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return SimpleResultResponse(result="success").model_dump(mode="json")

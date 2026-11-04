@@ -14,12 +14,13 @@ class AttachmentService:
     _session_maker: sessionmaker
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
-        if isinstance(session_factory, Engine):
-            self._session_maker = sessionmaker(bind=session_factory)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_maker = session_factory
-        else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+        match session_factory:
+            case Engine():
+                self._session_maker = sessionmaker(bind=session_factory)
+            case sessionmaker():
+                self._session_maker = session_factory
+            case _:
+                raise AssertionError("must be a sessionmaker or an Engine.")
 
     def get_file_base64(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:

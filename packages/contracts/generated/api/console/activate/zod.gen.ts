@@ -7,9 +7,9 @@ import * as z from 'zod'
  */
 export const zActivatePayload = z.object({
   email: z.string().nullish(),
-  interface_language: z.string(),
-  name: z.string().max(30),
-  timezone: z.string(),
+  interface_language: z.string().nullish(),
+  name: z.string().max(30).nullish(),
+  timezone: z.string().nullish(),
   token: z.string(),
   workspace_id: z.string().nullish(),
 })
@@ -22,10 +22,76 @@ export const zActivationResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AlreadyActivateError
+ *
+ * Auth Token is invalid or account already activated, please check again.
+ */
+export const zAlreadyActivateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_activate'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * InvitationAccountMismatchError
+ *
+ * This invitation was sent to another account. Please sign in with the invited account.
+ */
+export const zInvitationAccountMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invitation_account_mismatch'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({
+  account_status: z.string().nullish(),
   email: z.string().nullable(),
+  requires_setup: z.boolean().nullish(),
   workspace_id: z.string().nullable(),
   workspace_name: z.string().nullable(),
 })
@@ -34,7 +100,7 @@ export const zActivationCheckData = z.object({
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: zActivationCheckData.optional(),
+  data: zActivationCheckData.nullish(),
   is_valid: z.boolean(),
 })
 
@@ -46,9 +112,9 @@ export const zPostActivateBody = zActivatePayload
 export const zPostActivateResponse = zActivationResponse
 
 export const zGetActivateCheckQuery = z.object({
-  email: z.string().nullish(),
+  email: z.string().optional(),
   token: z.string(),
-  workspace_id: z.string().nullish(),
+  workspace_id: z.string().optional(),
 })
 
 /**

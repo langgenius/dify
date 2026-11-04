@@ -1,59 +1,65 @@
 'use client'
 
-import type { Tabs as BaseTabsNS } from '@base-ui/react/tabs'
 import { Tabs as BaseTabs } from '@base-ui/react/tabs'
 import { cn } from '../cn'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-export type TabsProps = BaseTabsNS.Root.Props
+type TabsProps = BaseTabs.Root.Props
+type TabsChangeEventReason = BaseTabs.Root.ChangeEventReason
+type TabsChangeEventDetails = BaseTabs.Root.ChangeEventDetails
+const Tabs = BaseTabs.Root
 
-export const Tabs = BaseTabs.Root
+type TabsListProps = BaseTabs.List.Props
 
-export type TabsListProps = Omit<BaseTabsNS.List.Props, 'className'> & {
-  className?: string
-}
-
-export function TabsList({
-  className,
-  ...props
-}: TabsListProps) {
+function TabsList({ className, ...props }: TabsListProps) {
   return (
     <BaseTabs.List
-      className={cn('flex', className)}
+      className={(state) => cn('flex gap-4', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-export type TabsTabProps = Omit<BaseTabsNS.Tab.Props, 'className'> & {
-  className?: string
-}
+type TabsTabProps = BaseTabs.Tab.Props
 
-export function TabsTab({
-  className,
-  ...props
-}: TabsTabProps) {
+function TabsTab({ className, ...props }: TabsTabProps) {
   return (
     <BaseTabs.Tab
-      className={cn('touch-manipulation focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-components-input-border-hover data-disabled:cursor-not-allowed data-disabled:text-text-disabled', className)}
+      className={(state) =>
+        cn(
+          focusRingClassName,
+          'relative flex touch-manipulation items-center border-b-2 border-transparent pt-2.5 pb-2 system-md-semibold text-text-tertiary data-active:border-components-tab-active data-active:text-text-primary data-disabled:cursor-not-allowed data-disabled:text-text-tertiary data-disabled:opacity-30 data-active:data-disabled:text-text-primary',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-export type TabsPanelProps = Omit<BaseTabsNS.Panel.Props, 'className'> & {
-  className?: string
-}
+type TabsPanelProps = BaseTabs.Panel.Props
 
-export function TabsPanel({
-  className,
-  ...props
-}: TabsPanelProps) {
+function TabsPanel({ className, ...props }: TabsPanelProps) {
   return (
     <BaseTabs.Panel
-      className={className}
+      className={(state) => cn(insetFocusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-export const TabsIndicator = BaseTabs.Indicator
+const TabsIndicator = BaseTabs.Indicator
+type TabsIndicatorProps = BaseTabs.Indicator.Props
+
+export { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab }
+
+export type {
+  TabsChangeEventDetails,
+  TabsChangeEventReason,
+  TabsIndicatorProps,
+  TabsListProps,
+  TabsPanelProps,
+  TabsProps,
+  TabsTabProps,
+}

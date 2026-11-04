@@ -1,108 +1,237 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean, useDebounceFn } from 'ahooks'
-
 // Libraries
-import { useState } from 'react'
+import { useBoolean } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import {
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  resolveStepByStepTourGuideGroupAtom,
+} from '@/app/components/step-by-step-tour/state'
+import {
+  getStepByStepTourGuides,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
+import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { hasPermission } from '@/utils/permission'
 // Components
-import ExternalAPIPanel from '../external-api/external-api-panel'
-import ServiceApi from '../extra-info/service-api'
-import DatasetFooter from './dataset-footer'
+import FilterEmptyState from '../../base/filter-empty-state'
+import { creatorIdsParser } from '../creator-filter-query'
 import Datasets from './datasets'
+import DatasetFirstEmptyState from './first-empty-state'
+import DatasetListHeader from './header'
+import { KnowledgeListTitleBar } from './title-bar'
+import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
 
-const List = () => {
-  const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceOwner } = useAppContext()
+const knowledgeViewParser = parseAsStringLiteral(['classic', 'agent']).withDefault('classic')
+
+function LegacyList() {
+  const { t } = useTranslation(['dataset'])
+  const { push } = useRouter()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
-  useDocumentTitle(t('knowledge', { ns: 'dataset' }))
+  useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const { run: handleTagsUpdate } = useDebounceFn(() => {
-    setTagIDs(tagFilterValue)
-  }, { wait: 500 })
-  const handleTagsChange = (value: string[]) => {
-    setTagFilterValue(value)
-    handleTagsUpdate()
-  }
+  const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
+  const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
+  const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
-  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
+  const canConnectExternalDataset = hasPermission(
+    workspacePermissionKeys,
+    'dataset.external.connect',
+  )
+  const datasetListQuery = useDatasetList({
+    creatorIds: creatorIDs,
+    includeAll,
+    keyword: searchKeywords,
+    tagIds: tagIDs,
+  })
+  const pages = datasetListQuery.data?.pages ?? []
+  const hasResolvedFirstPage = pages.length > 0
+  const hasAnyDataset = (pages[0]?.total ?? 0) > 0
+  const hasActiveFilters =
+    tagIDs.length > 0 ||
+    creatorIDs.length > 0 ||
+    keywords.trim().length > 0 ||
+    searchKeywords.trim().length > 0 ||
+    includeAll
+  const showEmptyDataList = !hasAnyDataset && hasResolvedFirstPage && !hasActiveFilters
+  const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
+  const filtersHaveSettled =
+    keywords === searchKeywords &&
+    tagFilterValue.length === tagIDs.length &&
+    tagFilterValue.every((id, index) => id === tagIDs[index])
+  const announceFilteredEmptyState =
+    showFilteredEmptyState &&
+    filtersHaveSettled &&
+    !datasetListQuery.isFetching &&
+    !datasetListQuery.isPlaceholderData &&
+    !datasetListQuery.isError
+  const filteredEmptyMessage = t(($) => $['filterEmpty.noKnowledge'], { ns: 'dataset' })
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
+  const activeKnowledgeGuideGroup = hasAnyDataset
+    ? 'knowledgeWithDatasets'
+    : showEmptyDataList && canCreateDataset && canConnectExternalDataset
+      ? 'knowledgeEmpty'
+      : undefined
+  const activeKnowledgeGuides =
+    activeStepByStepTourTaskId === 'knowledge' && activeKnowledgeGuideGroup
+      ? getStepByStepTourGuides('knowledge', activeKnowledgeGuideGroup)
+      : []
+  const activeKnowledgeGuide = activeKnowledgeGuides[activeStepByStepTourGuideIndex ?? 0]
+  const shouldOpenStepByStepTourCreateMenu =
+    activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate
+  const shouldOpenStepByStepTourDatasetCardActionMenu =
+    activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard
+
+  useEffect(() => {
+    if (activeStepByStepTourTaskId !== 'knowledge') return
+    if (!hasResolvedFirstPage || !activeKnowledgeGuideGroup) return
+    if (activeStepByStepTourGuideGroup === activeKnowledgeGuideGroup) return
+
+    resolveStepByStepTourGuideGroup({
+      taskId: 'knowledge',
+      guideGroup: activeKnowledgeGuideGroup,
+    })
+  }, [
+    activeStepByStepTourGuideGroup,
+    activeStepByStepTourTaskId,
+    activeKnowledgeGuideGroup,
+    hasResolvedFirstPage,
+    resolveStepByStepTourGuideGroup,
+  ])
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
-        <div className="flex items-center justify-center gap-2">
-          {isCurrentWorkspaceOwner && (
-            <CheckboxWithLabel
-              isChecked={includeAll}
-              onChange={toggleIncludeAll}
-              label={t('allKnowledge', { ns: 'dataset' })}
-              labelClassName="system-md-regular text-text-secondary"
-              className="mr-2"
-              tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
-            />
-          )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName="w-[200px]"
-            value={keywords}
-            onChange={e => handleKeywordsChange(e.target.value)}
-            onClear={() => handleKeywordsChange('')}
-          />
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
-            )
-          }
-          <div className="h-4 w-px bg-divider-regular" />
-          <Button
-            className="gap-0.5 shadow-xs"
-            onClick={() => setShowExternalApiPanel(true)}
-          >
-            <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
-            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
-          </Button>
-        </div>
+      <DatasetListHeader
+        canConnectExternalDataset={canConnectExternalDataset}
+        canCreateDataset={canCreateDataset}
+        creatorFilterValue={creatorIDs}
+        includeAll={includeAll}
+        isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
+        keywords={keywords}
+        tagFilterValue={tagFilterValue}
+        onCreateDataset={() => push('/datasets/create')}
+        onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
+        onConnectDataset={() => push('/datasets/connect')}
+        onCreatorsChange={(value) => void setCreatorIDs(value)}
+        onIncludeAllChange={toggleIncludeAll}
+        onKeywordsChange={setKeywords}
+        onOpenTagManagement={() => setShowTagManagementModal(true)}
+        onTagsChange={setTagFilterValue}
+        stepByStepTourCreateMenuOpen={
+          activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
+        }
+        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+        stepByStepTourCreateMenuHighlightPart={
+          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
+        }
+      />
+      <div role="status" aria-atomic="true" className="sr-only">
+        {announceFilteredEmptyState ? filteredEmptyMessage : ''}
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-      {!systemFeatures.branding.enabled && <DatasetFooter />}
+      {showEmptyDataList ? (
+        <DatasetFirstEmptyState
+          canConnectExternalDataset={canConnectExternalDataset}
+          canCreateDataset={canCreateDataset}
+        />
+      ) : (
+        <Datasets
+          datasetList={datasetListQuery.data}
+          emptyElement={
+            showFilteredEmptyState ? (
+              <FilterEmptyState title={<span aria-hidden="true">{filteredEmptyMessage}</span>} />
+            ) : undefined
+          }
+          fetchNextPage={datasetListQuery.fetchNextPage}
+          hasNextPage={datasetListQuery.hasNextPage}
+          isFetching={datasetListQuery.isFetching}
+          isFetchingNextPage={datasetListQuery.isFetchingNextPage}
+          isLoading={datasetListQuery.isLoading}
+          isPlaceholderData={datasetListQuery.isPlaceholderData}
+          onOpenTagManagement={() => setShowTagManagementModal(true)}
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+          }
+          stepByStepTourActionMenuOpen={shouldOpenStepByStepTourDatasetCardActionMenu}
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />
+      )}
       <TagManagementModal
         type="knowledge"
         show={showTagManagementModal}
         onClose={() => setShowTagManagementModal(false)}
         onTagsChange={invalidDatasetList}
       />
-      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )
+}
+
+function KnowledgeFsList() {
+  const docLink = useDocLink()
+  const [view, setView] = useQueryState('view', knowledgeViewParser)
+
+  return (
+    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('agent')}>
+      <div className="flex min-h-0 grow flex-col bg-background-body">
+        <KnowledgeListTitleBar
+          apiReferenceUrl={
+            view === 'agent' ? docLink('/api-reference/guides/knowledge-base') : undefined
+          }
+          className={view === 'agent' ? 'px-4 sm:px-8' : 'px-8'}
+          viewSwitcher={
+            <KnowledgeViewSwitcher value={view} onChange={(nextView) => void setView(nextView)} />
+          }
+        />
+        {view === 'agent' ? <NewKnowledgeList /> : <LegacyList />}
+      </div>
+    </KnowledgeUpgradeProvider>
+  )
+}
+
+function List() {
+  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_knowledge_fs,
+    }),
+  )
+
+  if (!knowledgeFsEnabled) {
+    return (
+      <div className="flex min-h-0 grow flex-col bg-background-body">
+        <KnowledgeListTitleBar className="px-8" />
+        <LegacyList />
+      </div>
+    )
+  }
+
+  return <KnowledgeFsList />
 }
 
 export default List

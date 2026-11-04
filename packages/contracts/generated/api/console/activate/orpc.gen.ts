@@ -2,13 +2,18 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zAccountInFreezeError,
+  zAlreadyActivateError,
+  zEmailDomainSuspendedError,
+  zInvitationAccountMismatchError,
+} from './zod.gen.ts'
 import {
   zGetActivateCheckQuery,
   zGetActivateCheckResponse,
   zPostActivateBody,
   zPostActivateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Check if activation token is valid
@@ -30,19 +35,32 @@ export const check = {
 }
 
 /**
+ * Accept an invitation without letting an existing session act for another account
+ *
  * Activate account with invitation token
+ * Token-only activation remains available for legacy clients. When the request already
+ * carries a console session, that session must belong to the account encoded in the
+ * invitation before the token is consumed or tenant membership is changed.
  */
 export const post = oc
   .route({
-    description: 'Activate account with invitation token',
+    description:
+      'Activate account with invitation token\nToken-only activation remains available for legacy clients. When the request already\ncarries a console session, that session must belong to the account encoded in the\ninvitation before the token is consumed or tenant membership is changed.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postActivate',
     path: '/activate',
+    summary: 'Accept an invitation without letting an existing session act for another account',
     tags: ['console'],
   })
   .input(z.object({ body: zPostActivateBody }))
   .output(zPostActivateResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    already_activate: { status: 403, data: zAlreadyActivateError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invitation_account_mismatch: { status: 403, data: zInvitationAccountMismatchError },
+  })
 
 export const activate = {
   post,

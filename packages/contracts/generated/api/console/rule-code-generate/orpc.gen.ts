@@ -2,21 +2,20 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
-import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.gen'
+import {
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
+import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.gen.ts'
 
 /**
  * Generate code rules using LLM
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generate code rules using LLM\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Generate code rules using LLM',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRuleCodeGenerate',
@@ -25,6 +24,12 @@ export const post = oc
   })
   .input(z.object({ body: zPostRuleCodeGenerateBody }))
   .output(zPostRuleCodeGenerateResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const ruleCodeGenerate = {
   post,

@@ -1,19 +1,28 @@
-export type Scenario
-  = | 'happy'
-    | 'sso'
-    | 'no-email'
-    | 'denied'
-    | 'expired'
-    | 'auth-expired'
-    | 'rate-limited'
-    | 'server-5xx'
-    | 'slow-down'
-    | 'stream-error'
-    | 'hitl-pause'
-    | 'hitl-resume'
-    | 'server-version-empty'
-    | 'server-version-unsupported'
-    | 'run-422-stale'
+export type Scenario =
+  | 'happy'
+  | 'resource-token'
+  | 'sso'
+  | 'no-email'
+  | 'denied'
+  | 'expired'
+  | 'auth-expired'
+  | 'forbidden'
+  | 'rate-limited'
+  | 'server-5xx'
+  | 'slow-down'
+  | 'stream-error'
+  | 'slow-stream'
+  | 'broken-stream'
+  | 'hitl-pause'
+  | 'hitl-resume'
+  | 'catalog-changed'
+  | 'no-catalog'
+  | 'workspaces-malformed'
+  | 'always-stale'
+  | 'import-pending'
+  | 'import-failed'
+  | 'no-device-flow'
+  | 'bad-verification-uri'
 
 export type AccountFixture = {
   id: string
@@ -28,7 +37,6 @@ export type WorkspaceFixture = {
   name: string
   role: string
   status: string
-  is_current: boolean
 }
 
 export type AppFixture = {
@@ -68,8 +76,18 @@ export const ACCOUNT: AccountFixture = {
 }
 
 export const WORKSPACES: WorkspaceFixture[] = [
-  { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', is_current: true },
-  { id: 'ws-2', name: 'Other', role: 'normal', status: 'normal', is_current: false },
+  {
+    id: 'ws-1',
+    name: 'Default',
+    role: 'owner',
+    status: 'normal',
+  },
+  {
+    id: 'ws-2',
+    name: 'Other',
+    role: 'normal',
+    status: 'normal',
+  },
 ]
 
 export const APPS: AppFixture[] = [
@@ -140,6 +158,13 @@ export const APPS: AppFixture[] = [
     service_api_enabled: false,
   },
 ]
+
+export const DSL_YAML = `app:
+  description: A simple greeting bot
+  mode: chat
+  name: Greeter
+version: '0.1.4'
+`
 
 export const SESSIONS: SessionFixture[] = [
   {

@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -46,14 +46,14 @@ class EventParameter(BaseModel):
     )
     template: PluginParameterTemplate | None = Field(default=None, description="The template of the parameter")
     scope: str | None = None
-    required: bool | None = False
-    multiple: bool | None = Field(
+    required: bool = False
+    multiple: bool = Field(
         default=False,
         description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
     )
-    default: Union[int, float, str, list[Any], None] = None
-    min: Union[float, int, None] = None
-    max: Union[float, int, None] = None
+    default: int | float | str | list[Any] | None = None
+    min: float | int | None = None
+    max: float | int | None = None
     precision: int | None = None
     options: list[PluginParameterOption] | None = None
     description: I18nObject | None = None

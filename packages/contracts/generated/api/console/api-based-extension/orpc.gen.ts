@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteApiBasedExtensionByIdPath,
   zDeleteApiBasedExtensionByIdResponse,
@@ -14,7 +13,7 @@ import {
   zPostApiBasedExtensionByIdPath,
   zPostApiBasedExtensionByIdResponse,
   zPostApiBasedExtensionResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Delete API-based extension

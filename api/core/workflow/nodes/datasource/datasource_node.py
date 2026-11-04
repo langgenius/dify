@@ -1,5 +1,5 @@
-from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.datasource.datasource_manager import DatasourceManager
@@ -21,8 +21,7 @@ from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownlo
 from .exc import DatasourceNodeError
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 
 class DatasourceNode(Node[DatasourceNodeData]):
@@ -38,28 +37,32 @@ class DatasourceNode(Node[DatasourceNodeData]):
         node_id: str,
         data: DatasourceNodeData,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
+        datasource_credentials: Callable[[str, str, str, str | None], dict[str, Any]],
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self.datasource_manager = DatasourceManager
+        self._datasource_credentials = datasource_credentials
 
+    @override
     def populate_start_event(self, event) -> None:
         event.provider_id = f"{self.node_data.plugin_id}/{self.node_data.provider_name}"
         event.provider_type = self.node_data.provider_type
 
+    @override
     def _run(self) -> Generator:
         """
         Run the datasource node
         """
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         node_data = self.node_data
-        variable_pool = self.graph_runtime_state.variable_pool
+        variable_pool = self.runtime_state.variable_pool
         datasource_type_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_TYPE)
         if not datasource_type_segment:
             raise DatasourceNodeError("Datasource type is not set")
@@ -115,9 +118,9 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         datasource_type=datasource_type.value,
                         provider_id=provider_id,
                         tenant_id=dify_ctx.tenant_id,
-                        provider=node_data.provider_name,
-                        plugin_id=node_data.plugin_id,
-                        credential_id=credential_id,
+                        credentials=self._datasource_credentials(
+                            dify_ctx.tenant_id, node_data.provider_name, node_data.plugin_id, credential_id
+                        ),
                         parameters_for_log=parameters_for_log,
                         datasource_info=datasource_info,
                         variable_pool=variable_pool,
@@ -183,6 +186,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,
@@ -219,5 +223,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
         return result
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"

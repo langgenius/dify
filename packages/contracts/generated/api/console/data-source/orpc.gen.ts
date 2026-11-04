@@ -2,34 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import { zInvalidActionError } from './zod.gen.ts'
 import {
-  zGetDataSourceIntegratesByBindingIdByActionPath,
-  zGetDataSourceIntegratesByBindingIdByActionResponse,
   zGetDataSourceIntegratesResponse,
   zPatchDataSourceIntegratesByBindingIdByActionPath,
   zPatchDataSourceIntegratesByBindingIdByActionResponse,
-  zPatchDataSourceIntegratesResponse,
-} from './zod.gen'
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDataSourceIntegratesByBindingIdByAction',
-    path: '/data-source/integrates/{binding_id}/{action}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDataSourceIntegratesByBindingIdByActionPath }))
-  .output(zGetDataSourceIntegratesByBindingIdByActionResponse)
+} from './zod.gen.ts'
 
 export const patch = oc
   .route({
@@ -41,9 +19,9 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
   .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction = {
-  get,
   patch,
 }
 
@@ -51,16 +29,8 @@ export const byBindingId = {
   byAction,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get2 = oc
+export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDataSourceIntegrates',
@@ -69,19 +39,8 @@ export const get2 = oc
   })
   .output(zGetDataSourceIntegratesResponse)
 
-export const patch2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'patchDataSourceIntegrates',
-    path: '/data-source/integrates',
-    tags: ['console'],
-  })
-  .output(zPatchDataSourceIntegratesResponse)
-
 export const integrates = {
-  get: get2,
-  patch: patch2,
+  get,
   byBindingId,
 }
 

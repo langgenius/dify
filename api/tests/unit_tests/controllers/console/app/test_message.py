@@ -1,0 +1,273 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
+
+from controllers.console.app import message as message_module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.conversation_fields import MessageResponseSource
+from models.account import Account
+from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.model import (
+    App,
+    AppAnnotationHitHistory,
+    AppMode,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageAnnotation,
+    MessageFeedback,
+)
+
+
+def _account() -> Account:
+    account = Account(name="Account", email="account@example.com")
+    account.id = "account-1"
+    return account
+
+
+def _app(*, app_id: str = "app-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id="tenant-1",
+        name="Chat App",
+        description="",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
+    conversation = Conversation(
+        app_id=app_id,
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.CHAT,
+        name="Conversation",
+        _inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="account-1",
+    )
+    conversation.id = "conversation-1"
+    message = Message(
+        app_id=app_id,
+        conversation_id=conversation.id,
+        _inputs={},
+        query="query",
+        message="",
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer="answer",
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        provider_response_latency=0,
+        total_price=0,
+        currency="USD",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="account-1",
+        app_mode=AppMode.CHAT,
+    )
+    message.id = message_id
+    session.add_all([_account(), _app(app_id=app_id), conversation, message])
+    session.flush()
+    return message
+
+
+class TestMessageApiCases:
+    @staticmethod
+    def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_session: Session) -> None:
+        session = sqlite_session
+        message_id = "550e8400-e29b-41d4-a716-446655440000"
+        message = _persist_message(sqlite_session, message_id=message_id)
+        message.inputs = {"topic": "support"}
+        feedback = MessageFeedback(
+            app_id=message.app_id,
+            conversation_id=message.conversation_id,
+            message_id=message.id,
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
+            from_account_id="account-1",
+        )
+        annotation = MessageAnnotation(
+            app_id=message.app_id,
+            question="Question",
+            content="Answer",
+            account_id="account-1",
+            conversation_id=message.conversation_id,
+            message_id=message.id,
+        )
+        annotation.id = "annotation-1"
+        annotation_hit = AppAnnotationHitHistory(
+            app_id=message.app_id,
+            annotation_id=annotation.id,
+            source="annotation",
+            question="Question",
+            account_id="account-1",
+            score=0.0,
+            message_id=message.id,
+            annotation_question="Question",
+            annotation_content="Answer",
+        )
+        thought = MessageAgentThought(
+            message_id=message.id,
+            position=1,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+            thought="Consider the request",
+            tool_labels_str="{}",
+            tool_meta_str="{}",
+        )
+        sqlite_session.add_all([feedback, annotation, annotation_hit, thought])
+        sqlite_session.commit()
+
+        source = MessageResponseSource(message, session=session)
+
+        assert source.inputs == {"topic": "support"}
+        assert source.user_feedback is feedback
+        assert source.feedbacks[0].from_account.id == "account-1"
+        annotation_source = source.annotation
+        assert annotation_source is not None
+        assert annotation_source.account.id == "account-1"
+        annotation_hit_history_source = source.annotation_hit_history
+        assert annotation_hit_history_source is not None
+        assert annotation_hit_history_source.annotation_create_account.id == "account-1"
+        assert source.agent_thoughts == [thought]
+        assert source.message_files == []
+
+    @staticmethod
+    def test_chat_messages_query_valid(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test valid ChatMessagesQuery with all fields."""
+        query = message_module.ChatMessagesQuery(
+            conversation_id="550e8400-e29b-41d4-a716-446655440000",
+            first_id="550e8400-e29b-41d4-a716-446655440001",
+            limit=50,
+        )
+        assert query.limit == 50
+
+    @staticmethod
+    def test_chat_messages_query_defaults(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test ChatMessagesQuery with defaults."""
+        query = message_module.ChatMessagesQuery(conversation_id="550e8400-e29b-41d4-a716-446655440000")
+        assert query.first_id is None
+        assert query.limit == 20
+
+    @staticmethod
+    def test_chat_messages_query_empty_first_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test ChatMessagesQuery converts empty first_id to None."""
+        query = message_module.ChatMessagesQuery(
+            conversation_id="550e8400-e29b-41d4-a716-446655440000",
+            first_id="",
+        )
+        assert query.first_id is None
+
+    @staticmethod
+    def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test AppMessageFeedbackPayload with like rating."""
+        payload = message_module.AppMessageFeedbackPayload(
+            message_id="550e8400-e29b-41d4-a716-446655440000",
+            rating="like",
+            content="Good answer",
+        )
+        assert payload.rating == "like"
+        assert payload.content == "Good answer"
+
+    @staticmethod
+    def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test AppMessageFeedbackPayload with dislike rating."""
+        payload = message_module.AppMessageFeedbackPayload(
+            message_id="550e8400-e29b-41d4-a716-446655440000",
+            rating="dislike",
+        )
+        assert payload.rating == "dislike"
+
+    @staticmethod
+    def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test AppMessageFeedbackPayload without rating."""
+        payload = message_module.AppMessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
+        assert payload.rating is None
+
+    @staticmethod
+    @staticmethod
+    def test_message_detail_response_normalizes_aliases_and_timestamp(
+        app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test MessageDetailResponse normalizes alias fields and datetime timestamps."""
+        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+        response = message_module.MessageDetailResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+                "inputs": {"foo": "bar"},
+                "query": "hello",
+                "message": [{"text": "hello"}],
+                "message_tokens": 7,
+                "answer": "world",
+                "answer_tokens": 11,
+                "provider_response_latency": 1.25,
+                "from_source": "user",
+                "from_end_user_id": None,
+                "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+                "feedbacks": [],
+                "workflow_run_id": None,
+                "annotation": None,
+                "annotation_hit_history": None,
+                "status": "normal",
+                "created_at": created_at,
+                "agent_thoughts": [],
+                "message_files": [],
+                "message_metadata_dict": {"token_usage": 3},
+                "error": None,
+                "parent_message_id": None,
+                "extra_contents": [],
+            }
+        )
+        assert response.answer == "world"
+        assert response.message_tokens == 7
+        assert response.answer_tokens == 11
+        assert response.provider_response_latency == 1.25
+        assert response.metadata == {"token_usage": 3}
+        assert response.created_at == int(created_at.timestamp())
+        assert response.model_dump(mode="json") == {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+            "inputs": {"foo": "bar"},
+            "query": "hello",
+            "message": [{"text": "hello"}],
+            "message_tokens": 7,
+            "answer": "world",
+            "answer_tokens": 11,
+            "provider_response_latency": 1.25,
+            "from_source": "user",
+            "from_end_user_id": None,
+            "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+            "feedbacks": [],
+            "workflow_run_id": None,
+            "annotation": None,
+            "annotation_hit_history": None,
+            "created_at": int(created_at.timestamp()),
+            "agent_thoughts": [],
+            "message_files": [],
+            "metadata": {"token_usage": 3},
+            "retriever_resources": [],
+            "status": "normal",
+            "error": None,
+            "parent_message_id": None,
+            "extra_contents": [],
+        }

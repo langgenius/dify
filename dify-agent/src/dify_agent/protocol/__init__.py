@@ -1,17 +1,21 @@
-"""Public protocol exports shared by the Dify Agent server and clients."""
+"""Public run-protocol exports shared by the Dify Agent server and clients.
+
+Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
+run API package boundary stays explicit.
+"""
 
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     RUN_EVENT_ADAPTER,
+    AgentRunUsage,
     BaseRunEvent,
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
     EmptyRunEventData,
-    LayerExitSignals,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -21,30 +25,60 @@ from .schemas import (
     RunEventsResponse,
     RunFailedEvent,
     RunFailedEventData,
-    RunPausedEvent,
-    RunPausedEventData,
-    RunPurpose,
+    RunFailureType,
     RunLayerSpec,
+    SessionSnapshot,
     RunStartedEvent,
     RunStatus,
     RunStatusResponse,
     RunSucceededEvent,
     RunSucceededEventData,
-    normalize_composition,
     utc_now,
+)
+from .execution_binding import (
+    CreateExecutionBindingRequest,
+    CreateExecutionBindingResponse,
+    DestroyExecutionBindingRequest,
+)
+from .binding_file import (
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileEntry,
+    BindingFileListRequest,
+    BindingFileListResponse,
+    BindingFileReadRequest,
+    BindingFileReadResponse,
+)
+from .home_snapshot import (
+    CreateHomeSnapshotFromBindingRequest,
+    DeleteHomeSnapshotRequest,
+    HomeSnapshotResponse,
 )
 
 __all__ = [
     "BaseRunEvent",
+    "BindingFileDownloadRequest",
+    "BindingFileDownloadResponse",
+    "BindingFileEntry",
+    "BindingFileListRequest",
+    "BindingFileListResponse",
+    "BindingFileReadRequest",
+    "BindingFileReadResponse",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "CreateExecutionBindingRequest",
+    "CreateExecutionBindingResponse",
+    "CreateHomeSnapshotFromBindingRequest",
+    "DeleteHomeSnapshotRequest",
     "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
+    "DestroyExecutionBindingRequest",
     "EmptyRunEventData",
-    "LayerExitSignals",
+    "HomeSnapshotResponse",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",
@@ -55,15 +89,13 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPausedEvent",
-    "RunPausedEventData",
-    "RunPurpose",
+    "RunFailureType",
     "RunLayerSpec",
+    "SessionSnapshot",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
-    "normalize_composition",
     "utc_now",
 ]

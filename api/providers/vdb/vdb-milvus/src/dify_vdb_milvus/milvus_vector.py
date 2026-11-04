@@ -1,11 +1,12 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, cast, override
 
 from packaging import version
 from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException  # type: ignore
 from pymilvus.milvus_client import IndexParams  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -120,12 +121,14 @@ class MilvusVector(BaseVector):
             logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
+    @override
     def get_type(self) -> str:
         """
         Get the type of vector storage (Milvus).
         """
         return VectorType.MILVUS
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Create a collection and add texts with embeddings.
@@ -135,6 +138,7 @@ class MilvusVector(BaseVector):
         self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Add texts and their embeddings to the collection.
@@ -157,13 +161,14 @@ class MilvusVector(BaseVector):
             # Insert into the collection.
             batch_insert_list = insert_dict_list[i : i + 1000]
             try:
-                ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
-                pks.extend(ids)
+                result = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
+                pks.extend(result.get("ids", []))
             except MilvusException as e:
                 logger.exception("Failed to insert batch starting at entity: %s/%s", i, total_count)
                 raise e
         return pks
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         """
         Get document IDs by metadata field key and value.
@@ -176,6 +181,7 @@ class MilvusVector(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         """
         Delete documents by metadata field key and value.
@@ -185,6 +191,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
@@ -197,6 +204,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
+    @override
     def delete(self):
         """
         Delete the entire collection.
@@ -204,6 +212,7 @@ class MilvusVector(BaseVector):
         if self._client.has_collection(self._collection_name):
             self._client.drop_collection(self._collection_name, None)
 
+    @override
     def text_exists(self, id: str) -> bool:
         """
         Check if a text with the given ID exists in the collection.
@@ -245,6 +254,7 @@ class MilvusVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search for documents by vector similarity.
@@ -269,6 +279,7 @@ class MilvusVector(BaseVector):
             score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """
         Search for documents by full-text search (if hybrid search is enabled).
@@ -343,12 +354,15 @@ class MilvusVector(BaseVector):
                 ):
                     content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
 
-                fields.append(FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs))
-
-                # Create the primary key field
-                fields.append(FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True))
-                # Create the vector field, supports binary or float vectors
-                fields.append(FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim))
+                fields.extend(
+                    [
+                        FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs),
+                        # Create the primary key field
+                        FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True),
+                        # Create the vector field, supports binary or float vectors
+                        FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim),
+                    ]
+                )
                 # Create Sparse Vector Index for the collection
                 if self._hybrid_search_enabled:
                     fields.append(FieldSchema(Field.SPARSE_VECTOR, DataType.SPARSE_FLOAT_VECTOR))
@@ -411,7 +425,10 @@ class MilvusVectorFactory(AbstractVectorFactory):
     Factory class for creating MilvusVector instances.
     """
 
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MilvusVector:
         """
         Initialize a MilvusVector instance for the given dataset.
         """

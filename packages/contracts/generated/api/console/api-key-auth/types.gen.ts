@@ -8,12 +8,34 @@ export type ApiKeyAuthDataSourceListResponse = {
   sources: Array<ApiKeyAuthDataSourceItem>
 }
 
-export type ApiKeyAuthBindingPayload = {
-  category: string
-  credentials: {
+export type ErrorResponse = {
+  code: string
+  details?: {
     [key: string]: unknown
   }
+  message: string
+  params?: string
+  status: number
+}
+
+export type ApiKeyAuthBindingPayload = {
+  category: string
+  credentials: ApiKeyAuthCredentialsPayload
   provider: string
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type UnsupportedDataSourceApiKeyAuthProviderError = ErrorResponse & {
+  code: 'unsupported_data_source_api_key_auth_provider'
+  status: 400
+}
+
+export type DataSourceApiKeyAuthProviderUnavailableError = ErrorResponse & {
+  code: 'data_source_api_key_auth_provider_unavailable'
+  status: 502
 }
 
 export type ApiKeyAuthDataSourceItem = {
@@ -25,6 +47,16 @@ export type ApiKeyAuthDataSourceItem = {
   updated_at: number
 }
 
+export type ApiKeyAuthCredentialsPayload = {
+  auth_type: string
+  config: ApiKeyAuthConfigPayload
+}
+
+export type ApiKeyAuthConfigPayload = {
+  api_key: string
+  [key: string]: unknown
+}
+
 export type GetApiKeyAuthDataSourceData = {
   body?: never
   path?: never
@@ -32,12 +64,19 @@ export type GetApiKeyAuthDataSourceData = {
   url: '/api-key-auth/data-source'
 }
 
+export type GetApiKeyAuthDataSourceErrors = {
+  default: ErrorResponse
+}
+
+export type GetApiKeyAuthDataSourceError =
+  GetApiKeyAuthDataSourceErrors[keyof GetApiKeyAuthDataSourceErrors]
+
 export type GetApiKeyAuthDataSourceResponses = {
   200: ApiKeyAuthDataSourceListResponse
 }
 
-export type GetApiKeyAuthDataSourceResponse
-  = GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
+export type GetApiKeyAuthDataSourceResponse =
+  GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
 
 export type PostApiKeyAuthDataSourceBindingData = {
   body: ApiKeyAuthBindingPayload
@@ -46,14 +85,21 @@ export type PostApiKeyAuthDataSourceBindingData = {
   url: '/api-key-auth/data-source/binding'
 }
 
-export type PostApiKeyAuthDataSourceBindingResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostApiKeyAuthDataSourceBindingErrors = {
+  400: UnsupportedDataSourceApiKeyAuthProviderError | ErrorResponse
+  502: DataSourceApiKeyAuthProviderUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostApiKeyAuthDataSourceBindingResponse
-  = PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
+export type PostApiKeyAuthDataSourceBindingError =
+  PostApiKeyAuthDataSourceBindingErrors[keyof PostApiKeyAuthDataSourceBindingErrors]
+
+export type PostApiKeyAuthDataSourceBindingResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostApiKeyAuthDataSourceBindingResponse =
+  PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
 
 export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   body?: never
@@ -64,11 +110,16 @@ export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   url: '/api-key-auth/data-source/{binding_id}'
 }
 
-export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
-  204: {
-    [key: string]: never
-  }
+export type DeleteApiKeyAuthDataSourceByBindingIdErrors = {
+  default: ErrorResponse
 }
 
-export type DeleteApiKeyAuthDataSourceByBindingIdResponse
-  = DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]
+export type DeleteApiKeyAuthDataSourceByBindingIdError =
+  DeleteApiKeyAuthDataSourceByBindingIdErrors[keyof DeleteApiKeyAuthDataSourceByBindingIdErrors]
+
+export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
+  204: void
+}
+
+export type DeleteApiKeyAuthDataSourceByBindingIdResponse =
+  DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]

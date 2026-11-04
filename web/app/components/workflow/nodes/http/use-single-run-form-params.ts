@@ -7,10 +7,10 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 type Params = {
   id: string
   payload: HttpNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
@@ -23,12 +23,11 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<HttpNodeType>(id, payload)
 
   const fileVarInputs = useMemo(() => {
-    if (!Array.isArray(inputs.body.data))
-      return ''
+    if (!Array.isArray(inputs.body.data)) return ''
 
     const res = inputs.body.data
-      .filter(item => item.file?.length)
-      .map(item => item.file ? `{{#${item.file.join('.')}#}}` : '')
+      .filter((item) => item.file?.length)
+      .map((item) => (item.file ? `{{#${item.file.join('.')}#}}` : ''))
       .join(' ')
     return res
   }, [inputs.body.data])
@@ -36,18 +35,22 @@ const useSingleRunFormParams = ({
     inputs.url,
     inputs.headers,
     inputs.params,
-    typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data?.map(item => item.value).join(''),
+    typeof inputs.body.data === 'string'
+      ? inputs.body.data
+      : inputs.body.data?.map((item) => item.value).join(''),
     fileVarInputs,
   ])
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, unknown>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
   const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
+    const vars: Record<string, unknown> = {}
+    Object.keys(runInputData).forEach((key) => {
+      vars[key] = runInputData[key]
+    })
     return vars
   })()
 
@@ -62,13 +65,14 @@ const useSingleRunFormParams = ({
   }, [inputVarValues, setInputVarValues, varInputs])
 
   const getDependentVars = () => {
-    return varInputs.map((item) => {
-      // Guard against null/undefined variable to prevent app crash
-      if (!item.variable || typeof item.variable !== 'string')
-        return []
+    return varInputs
+      .map((item) => {
+        // Guard against null/undefined variable to prevent app crash
+        if (!item.variable || typeof item.variable !== 'string') return []
 
-      return item.variable.slice(1, -1).split('.')
-    }).filter(arr => arr.length > 0)
+        return item.variable.slice(1, -1).split('.')
+      })
+      .filter((arr) => arr.length > 0)
   }
 
   return {

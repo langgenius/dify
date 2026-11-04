@@ -1,28 +1,14 @@
 import type { CurrentBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import {
-  $insertNodes,
-  COMMAND_PRIORITY_EDITOR,
-  createCommand,
-} from 'lexical'
-import {
-  memo,
-  useEffect,
-} from 'react'
-import {
-  $createCurrentBlockNode,
-  CurrentBlockNode,
-} from './node'
+import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
+import { memo, useEffect } from 'react'
+import { $createCurrentBlockNode, CurrentBlockNode } from './node'
 
 export const INSERT_CURRENT_BLOCK_COMMAND = createCommand('INSERT_CURRENT_BLOCK_COMMAND')
 export const DELETE_CURRENT_BLOCK_COMMAND = createCommand('DELETE_CURRENT_BLOCK_COMMAND')
 
-const CurrentBlock = memo(({
-  generatorType,
-  onInsert,
-  onDelete,
-}: CurrentBlockType) => {
+const CurrentBlock = memo(({ generatorType, onInsert, onDelete }: CurrentBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -37,8 +23,7 @@ const CurrentBlock = memo(({
 
           $insertNodes([currentBlockNode])
 
-          if (onInsert)
-            onInsert()
+          if (onInsert) onInsert()
 
           return true
         },
@@ -47,8 +32,7 @@ const CurrentBlock = memo(({
       editor.registerCommand(
         DELETE_CURRENT_BLOCK_COMMAND,
         () => {
-          if (onDelete)
-            onDelete()
+          if (onDelete) onDelete()
 
           return true
         },

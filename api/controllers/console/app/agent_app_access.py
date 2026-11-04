@@ -5,25 +5,35 @@ reference. This exposes the read-only "Workflow access" surface from the PRD:
 which workflow apps use this Agent, without leaking the workflows' internals.
 """
 
+from uuid import UUID
+
 from flask_restx import Resource
 from pydantic import Field
 
+from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.login import current_account_with_tenant, login_required
-from models.model import App, AppMode
-from services.agent.roster_service import AgentRosterService
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentReferencingWorkflowResponse(ResponseModel):
     app_id: str
     app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
     app_mode: str
+    app_updated_at: int | None = None
     workflow_id: str
+    workflow_version: str
     node_ids: list[str] = Field(default_factory=list)
 
 
@@ -34,26 +44,22 @@ class AgentReferencingWorkflowsResponse(ResponseModel):
 register_response_schema_models(console_ns, AgentReferencingWorkflowsResponse)
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-referencing-workflows")
+@console_ns.route("/agent/<uuid:agent_id>/referencing-workflows")
 class AgentAppReferencingWorkflowsResource(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("list_agent_app_referencing_workflows")
     @console_ns.doc(description="List workflow apps that reference this Agent App's bound Agent (read-only)")
-    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.response(
         200,
         "Referencing workflows listed successfully",
         console_ns.models[AgentReferencingWorkflowsResponse.__name__],
     )
-    @console_ns.response(404, "App not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
-    def get(self, app_model: App):
-        _, tenant_id = current_account_with_tenant()
-        workflows = AgentRosterService(db.session).list_workflows_referencing_app_agent(
-            tenant_id=tenant_id, app_id=app_model.id
-        )
-        return AgentReferencingWorkflowsResponse(
-            data=[AgentReferencingWorkflowResponse.model_validate(workflow) for workflow in workflows]
-        ).model_dump(mode="json")
+    @console_ns.response(404, "Agent not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID):
+        try:
+            workflows = application_services().agent_apps.access.list_referencing_workflows(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentReferencingWorkflowsResponse, {"data": workflows})

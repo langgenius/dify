@@ -1,4 +1,5 @@
 import logging
+from typing import override
 
 from pydantic import BaseModel
 
@@ -15,6 +16,7 @@ class CheckCredentialPolicyComplianceRequest(BaseModel):
     provider: str
     credential_type: PluginCredentialType
 
+    @override
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
         data["credential_type"] = self.credential_type.to_number()

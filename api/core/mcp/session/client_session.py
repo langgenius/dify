@@ -41,10 +41,11 @@ class MessageHandlerFnT(Protocol):
 def _default_message_handler(
     message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
 ):
-    if isinstance(message, Exception):
-        raise ValueError(str(message))
-    elif isinstance(message, (types.ServerNotification | RequestResponder)):
-        pass
+    match message:
+        case Exception():
+            raise ValueError(str(message))
+        case types.ServerNotification() | RequestResponder():
+            pass
 
 
 def _default_sampling_callback(
@@ -306,12 +307,13 @@ class ClientSession(
             types.CompleteResult,
         )
 
-    def list_tools(self) -> types.ListToolsResult:
-        """Send a tools/list request."""
+    def list_tools(self, cursor: str | None = None) -> types.ListToolsResult:
+        """Send a tools/list request for one page."""
         return self.send_request(
             types.ClientRequest(
                 types.ListToolsRequest(
                     method="tools/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListToolsResult,

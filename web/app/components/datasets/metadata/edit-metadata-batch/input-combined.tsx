@@ -14,14 +14,14 @@ import * as React from 'react'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   type: DataType
   value: any
   onChange: (value: any) => void
   readOnly?: boolean
-}
+}>
 
 const InputCombined: FC<Props> = ({
   className: configClassName,
@@ -36,9 +36,10 @@ const InputCombined: FC<Props> = ({
     return (
       <Datepicker
         label={label}
-        className={className}
+        className={cn(className, 'min-w-0')}
         value={value}
         onChange={onChange}
+        readOnly={readOnly}
       />
     )
   }
@@ -50,13 +51,10 @@ const InputCombined: FC<Props> = ({
           className="min-w-0"
           value={value}
           readOnly={readOnly}
-          onValueChange={value => onChange(value ?? 0)}
+          onValueChange={(value) => onChange(value ?? 0)}
         >
           <NumberFieldGroup>
-            <NumberFieldInput
-              aria-label={label}
-              className={cn(className, 'rounded-l-md')}
-            />
+            <NumberFieldInput aria-label={label} className={cn(className, 'rounded-s-md')} />
             <NumberFieldControls className="overflow-hidden">
               <NumberFieldIncrement className="py-0" />
               <NumberFieldDecrement className="py-0" />
@@ -71,7 +69,7 @@ const InputCombined: FC<Props> = ({
       aria-label={label}
       className={cn(configClassName, className, 'rounded-md')}
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       readOnly={readOnly}
     />
   )

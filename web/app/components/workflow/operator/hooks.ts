@@ -1,19 +1,20 @@
 import type { NoteNodeType } from '../note-node/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { useAppContext } from '@/context/app-context'
-import { useLocalStorage } from '@/hooks/use-local-storage'
-import {
-  CUSTOM_NOTE_NODE,
-  NOTE_SHOW_AUTHOR_STORAGE_KEY,
-} from '../note-node/constants'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
+import { useWorkflowNoteShowAuthorValue } from '../persistence/local-storage-options'
 import { useWorkflowStore } from '../store'
 import { generateNewNode } from '../utils'
 
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
-  const { userProfile } = useAppContext()
-  const [showAuthorStorage] = useLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, 'true', { raw: true })
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const showAuthorStorage = useWorkflowNoteShowAuthorValue()
 
   const handleAddNote = useCallback(() => {
     const { newNode } = generateNewNode({

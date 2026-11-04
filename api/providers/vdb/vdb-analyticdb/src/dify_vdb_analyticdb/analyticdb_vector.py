@@ -1,5 +1,7 @@
 import json
-from typing import Any
+from typing import Any, override
+
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -32,39 +34,51 @@ class AnalyticdbVector(BaseVector):
                 raise ValueError("Either api_config or sql_config must be provided")
             self.analyticdb_vector = AnalyticdbVectorBySql(collection_name, sql_config)
 
+    @override
     def get_type(self) -> str:
         return VectorType.ANALYTICDB
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self.analyticdb_vector.create_collection_if_not_exists(dimension)
         self.analyticdb_vector.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         self.analyticdb_vector.add_texts(documents, embeddings)
         return []
 
+    @override
     def text_exists(self, id: str) -> bool:
         return self.analyticdb_vector.text_exists(id)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         self.analyticdb_vector.delete_by_ids(ids)
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         self.analyticdb_vector.delete_by_metadata_field(key, value)
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         return self.analyticdb_vector.search_by_vector(query_vector, **kwargs)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self.analyticdb_vector.search_by_full_text(query, **kwargs)
 
+    @override
     def delete(self):
         self.analyticdb_vector.delete()
 
 
 class AnalyticdbVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> AnalyticdbVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> AnalyticdbVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()
@@ -75,7 +89,7 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
 
         if dify_config.ANALYTICDB_HOST is None:
             # implemented through OpenAPI
-            apiConfig = AnalyticdbVectorOpenAPIConfig(
+            api_config = AnalyticdbVectorOpenAPIConfig(
                 access_key_id=dify_config.ANALYTICDB_KEY_ID or "",
                 access_key_secret=dify_config.ANALYTICDB_KEY_SECRET or "",
                 region_id=dify_config.ANALYTICDB_REGION_ID or "",
@@ -83,12 +97,12 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 account=dify_config.ANALYTICDB_ACCOUNT or "",
                 account_password=dify_config.ANALYTICDB_PASSWORD or "",
                 namespace=dify_config.ANALYTICDB_NAMESPACE or "",
-                namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD,
+                namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD or "",
             )
-            sqlConfig = None
+            sql_config = None
         else:
             # implemented through sql
-            sqlConfig = AnalyticdbVectorBySqlConfig(
+            sql_config = AnalyticdbVectorBySqlConfig(
                 host=dify_config.ANALYTICDB_HOST,
                 port=dify_config.ANALYTICDB_PORT,
                 account=dify_config.ANALYTICDB_ACCOUNT or "",
@@ -97,9 +111,9 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 max_connection=dify_config.ANALYTICDB_MAX_CONNECTION,
                 namespace=dify_config.ANALYTICDB_NAMESPACE or "",
             )
-            apiConfig = None
+            api_config = None
         return AnalyticdbVector(
             collection_name,
-            apiConfig,
-            sqlConfig,
+            api_config,
+            sql_config,
         )

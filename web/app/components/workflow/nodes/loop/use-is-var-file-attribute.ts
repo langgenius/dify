@@ -1,28 +1,28 @@
 import type { ValueSelector } from '../../types'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
-import { useIsChatMode, useWorkflow, useWorkflowVariables } from '../../hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflow } from '../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { VarType } from '../../types'
 
 type Params = {
   nodeId: string
 }
-const useIsVarFileAttribute = ({
-  nodeId,
-}: Params) => {
-  const isChatMode = useIsChatMode()
+const useIsVarFileAttribute = ({ nodeId }: Params) => {
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(nodeId)
   }, [getBeforeNodesInSameBranch, nodeId])
   const { getCurrentVariableType } = useWorkflowVariables()
   const getIsVarFileAttribute = (variable: ValueSelector) => {
-    if (variable.length !== 3)
-      return false
+    if (variable.length !== 3) return false
     const parentVariable = variable.slice(0, 2)
     const varType = getCurrentVariableType({
       valueSelector: parentVariable,
       availableNodes,
-      isChatMode,
+      isChatflow,
       isConstant: false,
     })
     return varType === VarType.file

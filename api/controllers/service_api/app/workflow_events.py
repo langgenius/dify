@@ -7,11 +7,15 @@ from collections.abc import Generator
 
 from flask import Response, request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
+from controllers.common.fields import EventStreamResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
+from controllers.service_api.schema import event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -21,32 +25,66 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
-@service_api_ns.route("/workflow/<string:task_id>/events")
+class WorkflowEventsQuery(BaseModel):
+    user: str = Field(
+        ...,
+        description="End-user identifier that originally triggered the run. Must match the creator of the run.",
+    )
+    include_state_snapshot: bool = Field(
+        default=False,
+        description=(
+            "When `true`, replay from the persisted state snapshot to include a status summary of already-executed "
+            "nodes before streaming new events."
+        ),
+    )
+    continue_on_pause: bool = Field(
+        default=False,
+        description=(
+            "Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when "
+            "the workflow has more than one Human Input node in sequence. By default, the stream closes after the "
+            "first pause."
+        ),
+    )
+
+
+register_schema_models(service_api_ns, WorkflowEventsQuery)
+register_response_schema_model(service_api_ns, EventStreamResponse)
+
+
+@service_api_ns.route("/workflow/<string:workflow_run_id>/events")
 class WorkflowEventsApi(Resource):
     """Service API for getting workflow execution events after resume."""
 
+    @error_responses(NotWorkflowAppError)
+    @service_api_ns.doc(
+        summary="Stream Workflow Events",
+        description=(
+            "Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE "
+            "connection. For runs that have already finished, the stream emits a single "
+            "`workflow_finished` event and closes."
+        ),
+        tags=["Chatflows", "Workflows"],
+        responses={
+            200: (
+                "Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads "
+                "follow the same schemas as the original streaming response."
+            ),
+            400: "`not_workflow_app` : Please check if your app mode matches the right API route.",
+            404: "`not_found` : Workflow run not found.",
+        },
+    )
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc("get_workflow_events")
     @service_api_ns.doc(description="Get workflow execution events stream after resume")
-    @service_api_ns.doc(
-        params={
-            "task_id": "Workflow run ID",
-            "user": "End user identifier (query param)",
-            "include_state_snapshot": (
-                "Whether to replay from persisted state snapshot, "
-                'specify `"true"` to include a status snapshot of executed nodes'
-            ),
-            "continue_on_pause": (
-                "Whether to keep the stream open across workflow_paused events,"
-                'specify `"true"` to keep the stream open for `workflow_paused` events.'
-            ),
-        }
-    )
+    @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID returned by the original workflow run request."})
+    @service_api_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @service_api_ns.doc(
         responses={
             200: "SSE event stream",
@@ -54,8 +92,9 @@ class WorkflowEventsApi(Resource):
             404: "Workflow run not found",
         }
     )
+    @service_api_ns.response(200, "SSE event stream", service_api_ns.models[EventStreamResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
-    def get(self, app_model: App, end_user: EndUser, task_id: str):
+    def get(self, app_model: App, end_user: EndUser, workflow_run_id: str):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise NotWorkflowAppError()
@@ -64,7 +103,7 @@ class WorkflowEventsApi(Resource):
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
-            run_id=task_id,
+            run_id=workflow_run_id,
         )
 
         if workflow_run is None:
@@ -91,17 +130,17 @@ class WorkflowEventsApi(Resource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator
             elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator
             else:
                 raise NotWorkflowAppError()
 

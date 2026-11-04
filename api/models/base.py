@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import override
 from uuid import uuid4
 
 from sqlalchemy import DateTime, func
@@ -51,6 +52,7 @@ class DefaultFieldsMixin:
         onupdate=func.current_timestamp(),
     )
 
+    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(id={self.id})>"
 
@@ -87,6 +89,7 @@ class DefaultFieldsDCMixin(MappedAsDataclass):
         onupdate=func.current_timestamp(),
     )
 
+    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(id={self.id})>"
 
@@ -100,5 +103,5 @@ def gen_uuidv4_string() -> str:
 
 
 def gen_uuidv7_string() -> str:
-    """gen_uuidv4_string generate a UUIDv4 string."""
+    """Generate a UUIDv7 string."""
     return str(uuidv7())

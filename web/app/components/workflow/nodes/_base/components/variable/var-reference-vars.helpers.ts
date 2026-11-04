@@ -9,10 +9,8 @@ export const getVariableDisplayName = (
   isFlat: boolean,
   isInCodeGeneratorInstructionEditor?: boolean,
 ) => {
-  if (VAR_SHOW_NAME_MAP[variable])
-    return VAR_SHOW_NAME_MAP[variable]
-  if (!isFlat)
-    return variable
+  if (VAR_SHOW_NAME_MAP[variable]) return VAR_SHOW_NAME_MAP[variable]
+  if (!isFlat) return variable
   if (variable === 'current')
     return isInCodeGeneratorInstructionEditor ? 'current_code' : 'current_prompt'
   return variable
@@ -29,14 +27,10 @@ export const getVariableCategory = ({
   isLoopVar?: boolean
   isRagVariable?: boolean
 }) => {
-  if (isEnv)
-    return 'environment'
-  if (isChatVar)
-    return 'conversation'
-  if (isLoopVar)
-    return 'loop'
-  if (isRagVariable)
-    return 'rag'
+  if (isEnv) return 'environment'
+  if (isChatVar) return 'conversation'
+  if (isLoopVar) return 'loop'
+  if (isRagVariable) return 'rag'
   return 'system'
 }
 
@@ -63,23 +57,24 @@ export const getValueSelector = ({
   nodeId: string
   objPath: string[]
 }): ValueSelector | undefined => {
-  if (!isSupportFileVar && isFile)
-    return undefined
+  if (!isSupportFileVar && isFile) return undefined
 
-  if (isFlat)
-    return [itemData.variable]
+  if (isFlat) return [itemData.variable]
   if (isSys || isEnv || isChatVar || isRagVariable)
     return [...objPath, ...itemData.variable.split('.')]
   return [nodeId, ...objPath, itemData.variable]
 }
 
 const getVisibleChildren = (vars: Var[]) => {
-  return vars.filter(variable => checkKeys([variable.variable], false).isValid || isSpecialVar(variable.variable.split('.')[0]!))
+  return vars.filter(
+    (variable) =>
+      checkKeys([variable.variable], false).isValid ||
+      isSpecialVar(variable.variable.split('.')[0]!),
+  )
 }
 
 const includesSearchText = (value: string | undefined, searchTextLower: string) => {
-  if (!value)
-    return false
+  if (!value) return false
 
   return value.toLowerCase().includes(searchTextLower)
 }
@@ -88,36 +83,43 @@ const isStructuredOutputChildren = (children: Var['children']): children is Stru
   return !!children && !Array.isArray(children) && 'schema' in children
 }
 
-const matchesStructuredField = (fieldName: string, field: Field, searchTextLower: string): boolean => {
-  if (includesSearchText(fieldName, searchTextLower))
-    return true
+const matchesStructuredField = (
+  fieldName: string,
+  field: Field,
+  searchTextLower: string,
+): boolean => {
+  if (includesSearchText(fieldName, searchTextLower)) return true
 
   if (field.properties)
-    return Object.entries(field.properties).some(([childName, childField]) => matchesStructuredField(childName, childField, searchTextLower))
+    return Object.entries(field.properties).some(([childName, childField]) =>
+      matchesStructuredField(childName, childField, searchTextLower),
+    )
 
-  if (field.items)
-    return matchesStructuredField(field.items.type, field.items, searchTextLower)
+  if (field.items) return matchesStructuredField(field.items.type, field.items, searchTextLower)
 
   return false
 }
 
 const matchesVariableSearch = (variable: Var, searchTextLower: string): boolean => {
   if (
-    includesSearchText(variable.variable, searchTextLower)
-    || includesSearchText(variable.des, searchTextLower)
-    || includesSearchText(variable.schemaType, searchTextLower)
+    includesSearchText(variable.variable, searchTextLower) ||
+    includesSearchText(variable.des, searchTextLower) ||
+    includesSearchText(variable.schemaType, searchTextLower)
   ) {
     return true
   }
 
-  if (!variable.children)
-    return false
+  if (!variable.children) return false
 
   if (Array.isArray(variable.children))
-    return getVisibleChildren(variable.children).some(child => matchesVariableSearch(child, searchTextLower))
+    return getVisibleChildren(variable.children).some((child) =>
+      matchesVariableSearch(child, searchTextLower),
+    )
 
   if (isStructuredOutputChildren(variable.children))
-    return Object.entries(variable.children.schema.properties).some(([fieldName, field]) => matchesStructuredField(fieldName, field, searchTextLower))
+    return Object.entries(variable.children.schema.properties).some(([fieldName, field]) =>
+      matchesStructuredField(fieldName, field, searchTextLower),
+    )
 
   return false
 }
@@ -126,21 +128,21 @@ export const filterReferenceVars = (vars: NodeOutPutVar[], searchText: string) =
   const searchTextLower = searchText.toLowerCase()
 
   return vars
-    .map(node => ({ ...node, vars: getVisibleChildren(node.vars) }))
-    .filter(node => node.vars.length > 0)
+    .map((node) => ({ ...node, vars: getVisibleChildren(node.vars) }))
+    .filter((node) => node.vars.length > 0)
     .filter((node) => {
-      if (!searchText)
-        return true
-      return node.vars.some(variable => matchesVariableSearch(variable, searchTextLower))
-        || node.title.toLowerCase().includes(searchTextLower)
+      if (!searchText) return true
+      return (
+        node.vars.some((variable) => matchesVariableSearch(variable, searchTextLower)) ||
+        node.title.toLowerCase().includes(searchTextLower)
+      )
     })
     .map((node) => {
-      if (!searchText || node.title.toLowerCase().includes(searchTextLower))
-        return node
+      if (!searchText || node.title.toLowerCase().includes(searchTextLower)) return node
 
       return {
         ...node,
-        vars: node.vars.filter(variable => matchesVariableSearch(variable, searchTextLower)),
+        vars: node.vars.filter((variable) => matchesVariableSearch(variable, searchTextLower)),
       }
     })
 }

@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, override
 
 import qdrant_client
 from flask import current_app
@@ -19,6 +19,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -33,7 +34,6 @@ from models.dataset import Dataset, DatasetCollectionBinding
 
 if TYPE_CHECKING:
     from qdrant_client.conversions import common_types
-    from qdrant_client.http import models as rest
 
     type DictFilter = dict[str, str | int | bool | dict | list]
     type MetadataFilter = DictFilter | common_types.Filter
@@ -90,6 +90,7 @@ class QdrantVector(BaseVector):
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
+    @override
     def get_type(self) -> str:
         return VectorType.QDRANT
 
@@ -100,6 +101,7 @@ class QdrantVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
             # get embedding vector size
@@ -169,6 +171,7 @@ class QdrantVector(BaseVector):
                 self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
@@ -192,7 +195,7 @@ class QdrantVector(BaseVector):
         ids: Sequence[str] | None = None,
         batch_size: int = 64,
         group_id: str | None = None,
-    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]]]:
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)
@@ -224,6 +227,7 @@ class QdrantVector(BaseVector):
                         group_id or "",  # Ensure group_id is never None
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -251,6 +255,7 @@ class QdrantVector(BaseVector):
 
         return payloads
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -279,6 +284,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete(self):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -304,6 +310,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -329,6 +336,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
         collections_response = self._client.get_collections()
@@ -341,6 +349,7 @@ class QdrantVector(BaseVector):
 
         return len(response) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
@@ -393,6 +402,7 @@ class QdrantVector(BaseVector):
         docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by full-text search.
 
@@ -433,8 +443,12 @@ class QdrantVector(BaseVector):
             return []
 
         top_k = kwargs.get("top_k", 2)
+        if top_k <= 0:
+            return []
+
         seen_ids: set[str | int] = set()
         documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
 
         # Search each keyword separately and merge results.
         # This ensures each keyword gets its own search, preventing one keyword's
@@ -458,14 +472,29 @@ class QdrantVector(BaseVector):
                 with_vectors=True,
             )
             results = response[0]
+            keyword_results.append(results)
 
-            for result in results:
-                if result and result.id not in seen_ids:
-                    seen_ids.add(result.id)
-                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                    documents.append(document)
-                    if len(documents) >= top_k:
-                        return documents
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        documents.append(document)
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 
@@ -488,10 +517,16 @@ class QdrantVector(BaseVector):
 
 
 class QdrantVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> QdrantVector:
         if dataset.collection_binding_id:
             stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
+            # Annotation bindings may only be flushed in the caller's transaction.
+            # Keep the legacy lookup for workflows initialized with session=None.
+            binding_session = session if session is not None else db.session
+            dataset_collection_binding = binding_session.scalars(stmt).one_or_none()
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:

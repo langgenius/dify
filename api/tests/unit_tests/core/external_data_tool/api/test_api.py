@@ -1,57 +1,80 @@
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
+import core.external_data_tool.api.api as api_module
 from core.external_data_tool.api.api import ApiExternalDataTool
-from models.api_based_extension import APIBasedExtensionPoint
+from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [(APIBasedExtension,)], indirect=True),
+]
 
 
-def test_api_external_data_tool_name():
+@dataclass(eq=False, repr=False)
+class _DatabaseBinding:
+    """Expose the real SQLite session used by extension queries."""
+
+    session: Session
+
+
+@pytest.fixture(autouse=True)
+def bind_sqlite_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(api_module, "db", _DatabaseBinding(sqlite_session))
+
+
+@pytest.fixture
+def api_extension(sqlite_session: Session) -> APIBasedExtension:
+    extension = APIBasedExtension(
+        tenant_id="tenant_id",
+        name="Test extension",
+        api_endpoint="http://api",
+        api_key="encrypted_key",
+    )
+    extension.id = "ext_id"
+    sqlite_session.add(extension)
+    sqlite_session.commit()
+    return extension
+
+
+def test_api_external_data_tool_name() -> None:
     assert ApiExternalDataTool.name == "api"
 
 
-@patch("core.external_data_tool.api.api.db")
-def test_validate_config_success(mock_db):
-    mock_extension = MagicMock()
-    mock_extension.id = "ext_id"
-    mock_extension.tenant_id = "tenant_id"
-    mock_db.session.scalar.return_value = mock_extension
-
+def test_validate_config_success(api_extension: APIBasedExtension) -> None:
     # Should not raise exception
     ApiExternalDataTool.validate_config("tenant_id", {"api_based_extension_id": "ext_id"})
 
 
-def test_validate_config_missing_id():
+def test_validate_config_missing_id() -> None:
     with pytest.raises(ValueError, match="api_based_extension_id is required"):
         ApiExternalDataTool.validate_config("tenant_id", {})
 
 
-@patch("core.external_data_tool.api.api.db")
-def test_validate_config_invalid_id(mock_db):
-    mock_db.session.scalar.return_value = None
-
+def test_validate_config_invalid_id() -> None:
     with pytest.raises(ValueError, match="api_based_extension_id is invalid"):
         ApiExternalDataTool.validate_config("tenant_id", {"api_based_extension_id": "ext_id"})
 
 
 @pytest.fixture
-def api_tool():
+def api_tool() -> ApiExternalDataTool:
     # Use standard kwargs as it inherits from ExternalDataTool which is typically a Pydantic BaseModel
     return ApiExternalDataTool(
         tenant_id="tenant_id", app_id="app_id", variable="var1", config={"api_based_extension_id": "ext_id"}
     )
 
 
-@patch("core.external_data_tool.api.api.db")
 @patch("core.external_data_tool.api.api.encrypter")
 @patch("core.external_data_tool.api.api.APIBasedExtensionRequestor")
-def test_query_success(mock_requestor_class, mock_encrypter, mock_db, api_tool):
-    mock_extension = MagicMock()
-    mock_extension.id = "ext_id"
-    mock_extension.tenant_id = "tenant_id"
-    mock_extension.api_endpoint = "http://api"
-    mock_extension.api_key = "encrypted_key"
-    mock_db.session.scalar.return_value = mock_extension
+def test_query_success(
+    mock_requestor_class: MagicMock,
+    mock_encrypter: MagicMock,
+    api_tool: ApiExternalDataTool,
+    api_extension: APIBasedExtension,
+) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 
     mock_requestor = mock_requestor_class.return_value
@@ -68,37 +91,32 @@ def test_query_success(mock_requestor_class, mock_encrypter, mock_db, api_tool):
     )
 
 
-def test_query_missing_config():
+def test_query_missing_config() -> None:
     api_tool = ApiExternalDataTool(tenant_id="tenant_id", app_id="app_id", variable="var1")
     api_tool.config = None  # Force None
     with pytest.raises(ValueError, match="config is required"):
         api_tool.query({}, "")
 
 
-def test_query_missing_extension_id():
+def test_query_missing_extension_id() -> None:
     api_tool = ApiExternalDataTool(tenant_id="tenant_id", app_id="app_id", variable="var1", config={"dummy": "value"})
     with pytest.raises(AssertionError, match="api_based_extension_id is required"):
         api_tool.query({}, "")
 
 
-@patch("core.external_data_tool.api.api.db")
-def test_query_invalid_extension(mock_db, api_tool):
-    mock_db.session.scalar.return_value = None
-
+def test_query_invalid_extension(api_tool: ApiExternalDataTool) -> None:
     with pytest.raises(ValueError, match=".*error: api_based_extension_id is invalid"):
         api_tool.query({}, "")
 
 
-@patch("core.external_data_tool.api.api.db")
 @patch("core.external_data_tool.api.api.encrypter")
 @patch("core.external_data_tool.api.api.APIBasedExtensionRequestor")
-def test_query_requestor_init_error(mock_requestor_class, mock_encrypter, mock_db, api_tool):
-    mock_extension = MagicMock()
-    mock_extension.id = "ext_id"
-    mock_extension.tenant_id = "tenant_id"
-    mock_extension.api_endpoint = "http://api"
-    mock_extension.api_key = "encrypted_key"
-    mock_db.session.scalar.return_value = mock_extension
+def test_query_requestor_init_error(
+    mock_requestor_class: MagicMock,
+    mock_encrypter: MagicMock,
+    api_tool: ApiExternalDataTool,
+    api_extension: APIBasedExtension,
+) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 
     mock_requestor_class.side_effect = Exception("init error")
@@ -107,16 +125,14 @@ def test_query_requestor_init_error(mock_requestor_class, mock_encrypter, mock_d
         api_tool.query({}, "")
 
 
-@patch("core.external_data_tool.api.api.db")
 @patch("core.external_data_tool.api.api.encrypter")
 @patch("core.external_data_tool.api.api.APIBasedExtensionRequestor")
-def test_query_no_result_in_response(mock_requestor_class, mock_encrypter, mock_db, api_tool):
-    mock_extension = MagicMock()
-    mock_extension.id = "ext_id"
-    mock_extension.tenant_id = "tenant_id"
-    mock_extension.api_endpoint = "http://api"
-    mock_extension.api_key = "encrypted_key"
-    mock_db.session.scalar.return_value = mock_extension
+def test_query_no_result_in_response(
+    mock_requestor_class: MagicMock,
+    mock_encrypter: MagicMock,
+    api_tool: ApiExternalDataTool,
+    api_extension: APIBasedExtension,
+) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 
     mock_requestor = mock_requestor_class.return_value
@@ -126,16 +142,14 @@ def test_query_no_result_in_response(mock_requestor_class, mock_encrypter, mock_
         api_tool.query({}, "")
 
 
-@patch("core.external_data_tool.api.api.db")
 @patch("core.external_data_tool.api.api.encrypter")
 @patch("core.external_data_tool.api.api.APIBasedExtensionRequestor")
-def test_query_result_not_string(mock_requestor_class, mock_encrypter, mock_db, api_tool):
-    mock_extension = MagicMock()
-    mock_extension.id = "ext_id"
-    mock_extension.tenant_id = "tenant_id"
-    mock_extension.api_endpoint = "http://api"
-    mock_extension.api_key = "encrypted_key"
-    mock_db.session.scalar.return_value = mock_extension
+def test_query_result_not_string(
+    mock_requestor_class: MagicMock,
+    mock_encrypter: MagicMock,
+    api_tool: ApiExternalDataTool,
+    api_extension: APIBasedExtension,
+) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 
     mock_requestor = mock_requestor_class.return_value

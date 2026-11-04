@@ -1,57 +1,149 @@
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any
+from http import HTTPStatus
+from typing import Annotated, Any, Never
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, select
-from werkzeug.exceptions import Forbidden, NotFound
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator, model_validator
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
-import services
-from configs import dify_config
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_errors, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_rate_limit_check,
-    enterprise_license_required,
-    is_admin_or_owner_required,
-    setup_required,
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+    KnowledgeFSUpgradeModelsUnavailableHTTPError,
 )
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.indexing_runner import IndexingRunner
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
-from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
+from controllers.console.error import ApiKeyLimitExceededHTTPError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import (
+    RBACPermission,
+    cloud_edition_billing_rate_limit_check,
+    model_validate,
+)
+from core.entities.knowledge_entities import IndexingEstimate
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
+from extensions.ext_application_services import application_services
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse
-from graphon.model_runtime.entities.model_entities import ModelType
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+    NotionEstimateWorkspacePayload,
+)
+from fields.document_fields import DocumentStatusListResponse
+from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from libs.url_utils import normalize_api_base_url
-from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.dataset import DatasetPermission, DatasetPermissionEnum
-from models.enums import ApiTokenType, SegmentStatus
-from models.provider_ids import ModelProviderID
-from services.api_token_service import ApiTokenCache
-from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from models.enums import CreatorUserRole, DatasetQuerySource
+from models.enums import PermissionEnum as DatasetPermissionEnum
+from models.model import AppMode, IconType
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeModelsUnavailableError,
+    KnowledgeFSUpgradeNotFoundError,
+    upgrade_job_response,
+)
+from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError
+from services.knowledge.entities.indexing_estimate import (
+    NewEstimateSource,
+    NewSourcesEstimateCommand,
+    NotionEstimateSource,
+    UploadFileEstimateSource,
+    WebsiteEstimateSource,
+)
+from services.knowledge.entities.knowledge_entities import FileInfo, WebsiteInfo
+from services.knowledge.indexing.estimate import (
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSIdempotencyHeader,
+    KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobListResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradePreparationResponse,
+    KnowledgeFSUpgradeRetryResponse,
+    KnowledgeFSUpgradeStartPayload,
+)
+
+_DATASET_EDIT_ROLES = frozenset(
+    {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
+)
+_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS = {
+    "Idempotency-Key": {
+        "description": "Stable key used to make the Dataset upgrade safe to retry",
+        "in": "header",
+        "maxLength": 255,
+        "minLength": 8,
+        "required": True,
+        "type": "string",
+    }
+}
+
+
+def _raise_dataset_error(error: Exception) -> Never:
+    """Translate the scope errors every dataset operation can raise."""
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFound("Dataset not found.") from error
+    if isinstance(error, DatasetAccessDeniedError):
+        raise Forbidden(str(error)) from error
+    raise error
+
+
+def _raise_dataset_create_error(error: Exception) -> Never:
+    if isinstance(error, DatasetNameDuplicateFailure):
+        raise DatasetNameDuplicateError() from error
+    _raise_dataset_error(error)
+
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
+
+
+@contextmanager
+def _upgrade_errors() -> Generator[None]:
+    try:
+        yield
+    except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
+        _raise_dataset_error(error)
+    except (KnowledgeFSUpgradeNotFoundError, KnowledgeFSUpgradeUnavailableError) as error:
+        raise NotFound(str(error) or None) from error
+    except KnowledgeFSUpgradeConflictError as error:
+        raise Conflict(str(error)) from error
+    except KnowledgeFSUpgradeModelsUnavailableError as error:
+        raise KnowledgeFSUpgradeModelsUnavailableHTTPError(error.issues) from error
+
+
+def _knowledge_fs_upgrade_idempotency_key() -> str:
+    try:
+        header = KnowledgeFSIdempotencyHeader.model_validate(
+            {"idempotency-key": request.headers.get("Idempotency-Key")}
+        )
+    except ValidationError as error:
+        raise BadRequest("A valid Idempotency-Key header is required") from error
+    return header.idempotency_key
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
         return value
-    if value not in Dataset.INDEXING_TECHNIQUE_LIST:
+    if value not in {"high_quality", "economy"}:
         raise ValueError("Invalid indexing technique.")
     return value
 
@@ -59,7 +151,7 @@ def _validate_indexing_technique(value: str | None) -> str | None:
 def _validate_doc_form(value: str | None) -> str | None:
     if value is None:
         return value
-    if value not in Dataset.DOC_FORM_LIST:
+    if value not in {member.value for member in IndexStructureType}:
         raise ValueError("Invalid doc_form.")
     return value
 
@@ -81,7 +173,7 @@ class DatasetCreatePayload(BaseModel):
     @field_validator("provider")
     @classmethod
     def validate_provider(cls, value: str) -> str:
-        if value not in Dataset.PROVIDER_LIST:
+        if value not in {"vendor", "external"}:
             raise ValueError("Invalid provider.")
         return value
 
@@ -93,13 +185,13 @@ class DatasetUpdatePayload(BaseModel):
     indexing_technique: str | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    retrieval_model: dict[str, Any] | None = None
-    summary_index_setting: dict[str, Any] | None = None
+    retrieval_model: dict[str, Any] | None = Field(default=None)
+    summary_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
-    icon_info: dict[str, Any] | None = None
+    icon_info: dict[str, Any] | None = Field(default=None)
     is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")
@@ -133,6 +225,53 @@ class IndexingEstimatePayload(BaseModel):
         return result
 
 
+_NOTION_SELECTIONS = TypeAdapter(list[NotionEstimateWorkspacePayload])
+
+
+def _new_estimate_sources(info_list: dict[str, Any]) -> tuple[NewEstimateSource, ...]:
+    match info_list.get("data_source_type"):
+        case "upload_file":
+            files = FileInfo.model_validate(info_list.get("file_info_list"))
+            return tuple(UploadFileEstimateSource(file_id=file_id) for file_id in dict.fromkeys(files.file_ids))
+        case "notion_import":
+            workspaces = _NOTION_SELECTIONS.validate_python(info_list.get("notion_info_list"))
+            return tuple(
+                NotionEstimateSource(
+                    workspace_id=workspace.workspace_id,
+                    credential_id=workspace.credential_id,
+                    page_id=page.page_id,
+                    page_type=page.page_type,
+                )
+                for workspace in workspaces
+                for page in workspace.pages
+            )
+        case "website_crawl":
+            values = info_list.get("website_info_list")
+            if not isinstance(values, dict):
+                raise ValueError("Website info list is required")
+            website = WebsiteInfo.model_validate({"only_main_content": False, **values})
+            return tuple(
+                WebsiteEstimateSource(
+                    provider=website.provider,
+                    job_id=website.job_id,
+                    url=url,
+                    only_main_content=website.only_main_content,
+                )
+                for url in website.urls
+            )
+        case _:
+            raise ValueError("Data source type not support")
+
+
+class DatasetApiKeyCreatePayload(BaseModel):
+    # Knowledge bases to scope the key to. Both lists absent/empty => the key can access
+    # every knowledge base in the tenant (default). Legacy datasets and KnowledgeFS spaces
+    # live in different tables, so they are listed separately. Declared so the generated
+    # client can send them.
+    dataset_ids: list[str] = Field(default_factory=list)
+    knowledge_space_ids: list[str] = Field(default_factory=list)
+
+
 class ConsoleDatasetListQuery(BaseModel):
     page: int = Field(default=1, description="Page number")
     limit: int = Field(default=20, description="Number of items per page")
@@ -140,10 +279,16 @@ class ConsoleDatasetListQuery(BaseModel):
     include_all: bool = Field(default=False, description="Include all datasets")
     ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    creator_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] = Field(
+        default_factory=list,
+        max_length=100,
+        description="Filter by creator account IDs",
+    )
 
 
 class DatasetListItemResponse(DatasetDetailResponse):
     partial_member_list: list[str]
+    knowledge_fs_upgrade: KnowledgeFSUpgradeDiscoveryResponse
 
 
 class DatasetListResponse(ResponseModel):
@@ -168,7 +313,7 @@ class DatasetQueryFileInfoResponse(ResponseModel):
 
 
 class DatasetQueryContentResponse(ResponseModel):
-    content_type: str
+    content_type: QueryType
     content: str
     file_info: DatasetQueryFileInfoResponse | None = None
 
@@ -176,9 +321,9 @@ class DatasetQueryContentResponse(ResponseModel):
 class DatasetQueryDetailResponse(ResponseModel):
     id: str
     queries: list[DatasetQueryContentResponse]
-    source: str
+    source: DatasetQuerySource
     source_app_id: str | None
-    created_by_role: str
+    created_by_role: CreatorUserRole
     created_by: str
     created_at: int
 
@@ -200,8 +345,8 @@ class RelatedAppResponse(ResponseModel):
     id: str
     name: str
     description: str
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: IconType | None
     icon: str | None
     icon_background: str | None
     icon_url: str | None = None
@@ -217,58 +362,14 @@ class RelatedAppListResponse(ResponseModel):
     total: int
 
 
-class DocumentStatusResponse(ResponseModel):
-    id: str
-    indexing_status: str
-    processing_started_at: int | None
-    parsing_completed_at: int | None
-    cleaning_completed_at: int | None
-    splitting_completed_at: int | None
-    completed_at: int | None
-    paused_at: int | None
-    error: str | None
-    stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
-
-    @field_validator(
-        "processing_started_at",
-        "parsing_completed_at",
-        "cleaning_completed_at",
-        "splitting_completed_at",
-        "completed_at",
-        "paused_at",
-        "stopped_at",
-        mode="before",
-    )
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class DocumentStatusListResponse(ResponseModel):
-    data: list[DocumentStatusResponse]
-
-
 class ErrorDocsResponse(DocumentStatusListResponse):
     total: int
 
 
-class IndexingEstimatePreviewItemResponse(ResponseModel):
-    content: str
-    child_chunks: list[str] | None = None
-    summary: str | None = None
-
-
-class IndexingEstimateQaPreviewItemResponse(ResponseModel):
-    question: str
-    answer: str
-
-
-class IndexingEstimateResponse(ResponseModel):
-    total_segments: int
-    preview: list[IndexingEstimatePreviewItemResponse]
-    qa_preview: list[IndexingEstimateQaPreviewItemResponse] | None = None
+class IndexingEstimateResponse(IndexingEstimate):
+    tokens: int
+    total_price: float | int
+    currency: str
 
 
 class RetrievalSettingResponse(ResponseModel):
@@ -285,7 +386,13 @@ class AutoDisableLogsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetApiKeyCreatePayload,
+    KnowledgeFSUpgradeStartPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -300,83 +407,12 @@ register_response_schema_models(
     RetrievalSettingResponse,
     PartialMemberListResponse,
     AutoDisableLogsResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeRetryResponse,
+    KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradePreparationResponse,
+    KnowledgeFSUpgradeJobListResponse,
 )
-
-
-def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
-    """
-    Get supported retrieval methods based on vector database type.
-
-    Args:
-        vector_type: Vector database type, can be None
-        is_mock: Whether this is a Mock API, affects MILVUS handling
-
-    Returns:
-        Dictionary containing supported retrieval methods
-
-    Raises:
-        ValueError: If vector_type is None or unsupported
-    """
-    if vector_type is None:
-        raise ValueError("Vector store type is not configured.")
-
-    # Define vector database types that only support semantic search
-    semantic_only_types = {
-        VectorType.RELYT,
-        VectorType.TIDB_VECTOR,
-        VectorType.CHROMA,
-        VectorType.PGVECTO_RS,
-        VectorType.VIKINGDB,
-        VectorType.UPSTASH,
-    }
-
-    # Define vector database types that support all retrieval methods
-    full_search_types = {
-        VectorType.QDRANT,
-        VectorType.WEAVIATE,
-        VectorType.OPENSEARCH,
-        VectorType.ANALYTICDB,
-        VectorType.MYSCALE,
-        VectorType.ORACLE,
-        VectorType.ELASTICSEARCH,
-        VectorType.ELASTICSEARCH_JA,
-        VectorType.PGVECTOR,
-        VectorType.VASTBASE,
-        VectorType.TIDB_ON_QDRANT,
-        VectorType.LINDORM,
-        VectorType.COUCHBASE,
-        VectorType.OPENGAUSS,
-        VectorType.OCEANBASE,
-        VectorType.SEEKDB,
-        VectorType.TABLESTORE,
-        VectorType.HUAWEI_CLOUD,
-        VectorType.TENCENT,
-        VectorType.MATRIXONE,
-        VectorType.CLICKZETTA,
-        VectorType.BAIDU,
-        VectorType.ALIBABACLOUD_MYSQL,
-        VectorType.IRIS,
-        VectorType.HOLOGRES,
-    }
-
-    semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-    full_methods = {
-        "retrieval_method": [
-            RetrievalMethod.SEMANTIC_SEARCH.value,
-            RetrievalMethod.FULL_TEXT_SEARCH.value,
-            RetrievalMethod.HYBRID_SEARCH.value,
-        ]
-    }
-
-    if vector_type == VectorType.MILVUS:
-        return semantic_methods if is_mock else full_methods
-
-    if vector_type in semantic_only_types:
-        return semantic_methods
-    elif vector_type in full_search_types:
-        return full_methods
-    else:
-        raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 @console_ns.route("/datasets")
@@ -384,117 +420,43 @@ class DatasetListApi(Resource):
     @console_ns.doc("get_datasets")
     @console_ns.doc(description="Get list of datasets")
     @console_ns.doc(params=query_params_from_model(ConsoleDatasetListQuery))
-    @console_ns.response(200, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
-        # Convert query parameters to dict, handling list parameters correctly
+    @console_ns.response(
+        HTTPStatus.OK, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__]
+    )
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, request_context: RequestContext):
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
-        # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
-        if "ids" in request.args:
-            query_params["ids"] = request.args.getlist("ids")
-        if "tag_ids" in request.args:
-            query_params["tag_ids"] = request.args.getlist("tag_ids")
+        for key in ("ids", "tag_ids", "creator_ids"):
+            if key in request.args:
+                query_params[key] = request.args.getlist(key)
         query = ConsoleDatasetListQuery.model_validate(query_params)
-        # provider = request.args.get("provider", default="vendor")
-        if query.ids:
-            datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
-        else:
-            datasets, total = DatasetService.get_datasets(
-                query.page,
-                query.limit,
-                current_tenant_id,
-                current_user,
-                query.keyword,
-                query.tag_ids,
-                query.include_all,
-            )
+        result = application_services().knowledge.datasets.list_datasets(
+            request_context, DatasetListFilter(**query.model_dump())
+        )
+        return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
-        # check embedding setting
-        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
-        configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
-
-        embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
-        model_names = []
-        for embedding_model in embedding_models:
-            model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
-        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
-        dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
-        partial_members_map: dict[str, list[str]] = {}
-        if dataset_ids:
-            permissions = db.session.execute(
-                select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
-                    DatasetPermission.dataset_id.in_(dataset_ids)
-                )
-            ).all()
-
-            for dataset_id, account_id in permissions:
-                partial_members_map.setdefault(dataset_id, []).append(account_id)
-
-        for item in data:
-            # convert embedding_model_provider to plugin standard format
-            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
-                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
-                if item_model in model_names:
-                    item["embedding_available"] = True
-                else:
-                    item["embedding_available"] = False
-            else:
-                item["embedding_available"] = True
-
-            if item.get("permission") == "partial_members":
-                item.update({"partial_member_list": partial_members_map.get(item["id"], [])})
-            else:
-                item.update({"partial_member_list": []})
-
-        response = {
-            "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
-            "total": total,
-            "page": query.page,
-        }
-        return dump_response(DatasetListResponse, response), 200
-
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
-    @console_ns.response(201, "Dataset created successfully", console_ns.models[DatasetDetailResponse.__name__])
+    @console_ns.response(
+        201, "Dataset created successfully", console_ns.models[DatasetDetailWithPartialMembersResponse.__name__]
+    )
     @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()),),
+    )
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
-        payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
-        current_user, current_tenant_id = current_account_with_tenant()
-
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-
+    @model_validate(DatasetCreatePayload)
+    def post(self, req_data: DatasetCreatePayload, request_context: RequestContext):
         try:
-            dataset = DatasetService.create_empty_dataset(
-                tenant_id=current_tenant_id,
-                name=payload.name,
-                description=payload.description,
-                indexing_technique=payload.indexing_technique,
-                account=current_user,
-                permission=payload.permission or DatasetPermissionEnum.ONLY_ME,
-                provider=payload.provider,
-                external_knowledge_api_id=payload.external_knowledge_api_id,
-                external_knowledge_id=payload.external_knowledge_id,
+            result = application_services().knowledge.datasets.create_dataset(
+                request_context, values=req_data.model_dump()
             )
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
-
-        return dump_response(DatasetDetailResponse, dataset), 201
+        except Exception as error:
+            _raise_dataset_create_error(error)
+        return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
@@ -509,48 +471,13 @@ class DatasetApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
+    @console_account_admission()
+    def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-        data = dump_response(DatasetDetailResponse, dataset)
-        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            if dataset.embedding_model_provider:
-                provider_id = ModelProviderID(dataset.embedding_model_provider)
-                data["embedding_model_provider"] = str(provider_id)
-        if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-            data.update({"partial_member_list": part_users_list})
-
-        # check embedding setting
-        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
-        configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
-
-        embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
-        model_names = []
-        for embedding_model in embedding_models:
-            model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
-        if data["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
-            item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
-            if item_model in model_names:
-                data["embedding_available"] = True
-            else:
-                data["embedding_available"] = False
-        else:
-            data["embedding_available"] = True
-
-        return data, 200
+            result = application_services().knowledge.datasets.get_dataset(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
@@ -562,73 +489,117 @@ class DatasetApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+    )
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
-        current_user, current_tenant_id = current_account_with_tenant()
-        # check embedding model setting
-        if (
-            payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-            and payload.embedding_model_provider is not None
-            and payload.embedding_model is not None
-        ):
-            is_multimodal = DatasetService.check_is_multimodal_model(
-                dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
-            )
-            payload.is_multimodal = is_multimodal
-        payload_data = payload.model_dump(exclude_unset=True)
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        DatasetPermissionService.check_permission(
-            current_user, dataset, payload.permission, payload.partial_member_list
-        )
-
-        dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user)
-
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        result_data = dump_response(DatasetDetailResponse, dataset)
-        tenant_id = current_tenant_id
-
-        if payload.partial_member_list is not None and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-            DatasetPermissionService.update_partial_member_list(tenant_id, dataset_id_str, payload.partial_member_list)
-        # clear partial member list when permission is only_me or all_team_members
-        elif payload.permission in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
-            DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-
-        partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-        result_data.update({"partial_member_list": partial_member_list})
-
-        return result_data, 200
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.response(204, "Dataset deleted successfully")
-    def delete(self, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        current_user, _ = current_account_with_tenant()
-
-        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
-            raise Forbidden()
-
+    @model_validate(DatasetUpdatePayload)
+    def patch(self, req_data: DatasetUpdatePayload, request_context: RequestContext, dataset_id: UUID):
         try:
-            if DatasetService.delete_dataset(dataset_id_str, current_user):
-                DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return "", 204
-            else:
-                raise NotFound("Dataset not found.")
-        except services.errors.dataset.DatasetInUseError:
-            raise DatasetInUseError()
+            result = application_services().knowledge.datasets.update_dataset(
+                request_context, dataset_id=str(dataset_id), values=req_data.model_dump(exclude_unset=True)
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
+
+    @console_ns.response(204, "Dataset deleted successfully")
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()),)
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def delete(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            application_services().knowledge.datasets.delete_dataset(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return "", 204
+
+
+@console_ns.route("/datasets/knowledge-fs-upgrade-jobs")
+class DatasetKnowledgeFSUpgradeJobsApi(Resource):
+    @console_ns.response(
+        200,
+        "Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradeJobListResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, Workspace()),))
+    def get(self, request_context: RequestContext):
+        jobs = application_services().knowledge.upgrades.list_recoverable_jobs(request_context)
+        return dump_response(KnowledgeFSUpgradeJobListResponse, {"data": [upgrade_job_response(job) for job in jobs]})
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades")
+class DatasetKnowledgeFSUpgradeApi(Resource):
+    @console_ns.response(
+        200,
+        "Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradePreparationResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        with _upgrade_errors():
+            discovery = application_services().knowledge.upgrades.discovery(request_context, dataset_id=str(dataset_id))
+        return dump_response(KnowledgeFSUpgradePreparationResponse, discovery)
+
+    @error_responses(KnowledgeFSUpgradeModelsUnavailableHTTPError)
+    @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.expect(console_ns.models[KnowledgeFSUpgradeStartPayload.__name__])
+    @console_ns.response(
+        202,
+        "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            payload = KnowledgeFSUpgradeStartPayload.model_validate(request.get_json() if request.is_json else {})
+        except ValidationError as error:
+            raise BadRequest("Invalid upgrade model selection") from error
+        upgrades = application_services().knowledge.upgrades
+        with _upgrade_errors():
+            job = upgrades.start(
+                request_context,
+                dataset_id=str(dataset_id),
+                idempotency_key=_knowledge_fs_upgrade_idempotency_key(),
+                models=payload.models,
+            )
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job)), 202
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades/<string:job_id>")
+class DatasetKnowledgeFSUpgradeJobApi(Resource):
+    @console_ns.response(
+        200,
+        "Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID, job_id: str):
+        with _upgrade_errors():
+            job = application_services().knowledge.upgrades.get_job(
+                request_context, dataset_id=str(dataset_id), job_id=job_id
+            )
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job))
+
+    @console_ns.response(
+        202,
+        "Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
+        console_ns.models[KnowledgeFSUpgradeRetryResponse.__name__],
+    )
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID, job_id: str):
+        with _upgrade_errors():
+            job = application_services().knowledge.upgrades.retry(
+                request_context, dataset_id=str(dataset_id), job_id=job_id
+            )
+        return dump_response(KnowledgeFSUpgradeRetryResponse, {"id": job.id, "status": "queued"}), 202
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
@@ -641,58 +612,47 @@ class DatasetUseCheckApi(Resource):
         "Dataset use status retrieved successfully",
         console_ns.models[UsageCheckResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.is_in_use(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(UsageCheckResponse, {"is_using": result}), 200
 
-        dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
-        return {"is_using": dataset_is_using}, 200
+
+class DatasetQueryListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
-    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DatasetQueryListQuery)})
     @console_ns.response(
         200,
         "Query history retrieved successfully",
         console_ns.models[DatasetQueryListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-
-        dataset_queries, total = DatasetService.get_dataset_queries(dataset_id=dataset.id, page=page, per_page=limit)
-
-        response = {
-            "data": dataset_queries,
-            "has_more": len(dataset_queries) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return dump_response(DatasetQueryListResponse, response), 200
+            result = application_services().knowledge.datasets.queries(
+                request_context,
+                dataset_id=str(dataset_id),
+                page=request.args.get("page", default=1, type=int),
+                limit=request.args.get("limit", default=20, type=int),
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DatasetQueryListResponse, result), 200
 
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @error_responses(DatasetAccessDeniedRequestError, IndexingEstimateError, ProviderNotInitializeError)
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(
@@ -700,95 +660,61 @@ class DatasetIndexingEstimateApi(Resource):
         "Indexing estimate calculated successfully",
         console_ns.models[IndexingEstimateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
-    def post(self):
-        payload = IndexingEstimatePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump()
-        _, current_tenant_id = current_account_with_tenant()
-        # validate args
-        DocumentService.estimate_args_validate(args)
-        extract_settings = []
-        match args["info_list"]["data_source_type"]:
-            case "upload_file":
-                file_ids = args["info_list"]["file_info_list"]["file_ids"]
-                file_details = db.session.scalars(
-                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-                ).all()
-                if file_details is None:
-                    raise NotFound("File not found.")
-
-                if file_details:
-                    for file_detail in file_details:
-                        extract_setting = ExtractSetting(
-                            datasource_type=DatasourceType.FILE,
-                            upload_file=file_detail,
-                            document_model=args["doc_form"],
-                        )
-                        extract_settings.append(extract_setting)
-            case "notion_import":
-                notion_info_list = args["info_list"]["notion_info_list"]
-                for notion_info in notion_info_list:
-                    workspace_id = notion_info["workspace_id"]
-                    credential_id = notion_info.get("credential_id")
-                    for page in notion_info["pages"]:
-                        extract_setting = ExtractSetting(
-                            datasource_type=DatasourceType.NOTION,
-                            notion_info=NotionInfo.model_validate(
-                                {
-                                    "credential_id": credential_id,
-                                    "notion_workspace_id": workspace_id,
-                                    "notion_obj_id": page["page_id"],
-                                    "notion_page_type": page["type"],
-                                    "tenant_id": current_tenant_id,
-                                }
-                            ),
-                            document_model=args["doc_form"],
-                        )
-                        extract_settings.append(extract_setting)
-            case "website_crawl":
-                website_info_list = args["info_list"]["website_info_list"]
-                for url in website_info_list["urls"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.WEBSITE,
-                        website_info=WebsiteInfo.model_validate(
-                            {
-                                "provider": website_info_list["provider"],
-                                "job_id": website_info_list["job_id"],
-                                "url": url,
-                                "tenant_id": current_tenant_id,
-                                "mode": "crawl",
-                                "only_main_content": website_info_list["only_main_content"],
-                            }
-                        ),
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-            case _:
-                raise ValueError("Data source type not support")
-        indexing_runner = IndexingRunner()
+    @console_account_admission()
+    @model_validate(IndexingEstimatePayload)
+    def post(self, req_data: IndexingEstimatePayload, request_context: RequestContext):
+        if req_data.dataset_id:
+            checks = [RBACCheck(RBACPermission.DATASET_USE, DatasetId())]
+            path_args = {"dataset_id": req_data.dataset_id}
+        else:
+            checks = [RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace())]
+            path_args = None
+        enforce_rbac_checks(
+            tenant_id=request_context.active_workspace_id,
+            account_id=request_context.account_id,
+            checks=checks,
+            path_args=path_args,
+        )
+        command = NewSourcesEstimateCommand(
+            sources=_new_estimate_sources(req_data.info_list),
+            process_rule=req_data.process_rule,
+            doc_form=req_data.doc_form,
+            doc_language=req_data.doc_language,
+            dataset_id=req_data.dataset_id,
+            indexing_technique=req_data.indexing_technique,
+        )
         try:
-            response = indexing_runner.indexing_estimate(
-                current_tenant_id,
-                extract_settings,
-                args["process_rule"],
-                args["doc_form"],
-                args["doc_language"],
-                args["dataset_id"],
-                args["indexing_technique"],
+            response = application_services().knowledge.indexing_estimates.estimate_new_sources(
+                request_context,
+                command,
             )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except Exception as e:
-            raise IndexingEstimateError(str(e))
+        except (
+            IndexingEstimateCredentialUnavailableError,
+            EstimateSourceNotFoundError,
+            DatasetNotFoundError,
+        ) as error:
+            raise NotFoundError(description=str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise DatasetAccessDeniedRequestError(description=str(error)) from error
+        except UnsupportedEstimateSourceError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        except IndexingEstimateProviderUnavailableError as error:
+            raise ProviderNotInitializeError(str(error)) from error
+        except IndexingEstimateExecutionError as error:
+            raise IndexingEstimateError(str(error)) from error
 
-        return response.model_dump(), 200
+        return (
+            IndexingEstimateResponse(
+                tokens=0,
+                total_price=0,
+                currency="USD",
+                total_segments=response.total_segments,
+                preview=response.preview,
+                qa_preview=response.qa_preview,
+            ).model_dump(mode="json", exclude_none=True),
+            200,
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
@@ -797,34 +723,17 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Related apps retrieved successfully",
         console_ns.models[RelatedAppListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-
-        app_dataset_joins = DatasetService.get_related_apps(dataset.id)
-
-        related_apps = []
-        for app_dataset_join in app_dataset_joins:
-            app_model = app_dataset_join.app
-            if app_model:
-                related_apps.append(app_model)
-
-        return dump_response(RelatedAppListResponse, {"data": related_apps, "total": len(related_apps)}), 200
+            result = application_services().knowledge.datasets.related_apps(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(RelatedAppListResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
@@ -837,160 +746,89 @@ class DatasetIndexingStatusApi(Resource):
         "Indexing status retrieved successfully",
         console_ns.models[DocumentStatusListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        _, current_tenant_id = current_account_with_tenant()
-        dataset_id_str = str(dataset_id)
-        documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
-        ).all()
-        documents_status = []
-        for document in documents:
-            completed_segments = (
-                db.session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.indexing_status(
+                request_context, dataset_id=str(dataset_id)
             )
-            total_segments = (
-                db.session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            # Create a dictionary with document attributes and additional fields
-            document_dict = {
-                "id": document.id,
-                "indexing_status": document.indexing_status,
-                "processing_started_at": document.processing_started_at,
-                "parsing_completed_at": document.parsing_completed_at,
-                "cleaning_completed_at": document.cleaning_completed_at,
-                "splitting_completed_at": document.splitting_completed_at,
-                "completed_at": document.completed_at,
-                "paused_at": document.paused_at,
-                "error": document.error,
-                "stopped_at": document.stopped_at,
-                "completed_segments": completed_segments,
-                "total_segments": total_segments,
-            }
-            documents_status.append(document_dict)
-        return dump_response(DocumentStatusListResponse, {"data": documents_status}), 200
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DocumentStatusListResponse, result), 200
 
 
 @console_ns.route("/datasets/api-keys")
 class DatasetApiKeyApi(Resource):
-    max_keys = 10
-    token_prefix = "dataset-"
-    resource_type = ApiTokenType.DATASET
-
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
-        keys = db.session.scalars(
-            select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
-        ).all()
-        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
+    )
+    def get(self, request_context: RequestContext):
+        with api_key_errors():
+            keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(ApiKeyLimitExceededHTTPError)
+    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @account_initialization_required
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
-
-        current_key_count = (
-            db.session.scalar(
-                select(func.count(ApiToken.id)).where(
-                    ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id
-                )
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
+    )
+    def post(self, request_context: RequestContext):
+        # Preserve the optional scope and validation response of the workspace route.
+        payload = request.get_json(silent=True) or {}
+        raw_dataset_ids = self._id_list(payload, "dataset_ids")
+        knowledge_space_ids = self._id_list(payload, "knowledge_space_ids")
+        with api_key_create_errors():
+            key = application_services().dataset_api_keys.create_workspace_key(
+                request_context, tuple(raw_dataset_ids), knowledge_space_ids=tuple(knowledge_space_ids)
             )
-            or 0
-        )
+        return dump_response(ApiKeyItem, key), 200
 
-        if current_key_count >= self.max_keys:
-            console_ns.abort(
-                400,
-                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                custom="max_keys_exceeded",
-            )
-
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
-        api_token = ApiToken()
-        api_token.tenant_id = current_tenant_id
-        api_token.token = key
-        api_token.type = self.resource_type
-        db.session.add(api_token)
-        db.session.commit()
-        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
+    @staticmethod
+    def _id_list(payload: object, key: str) -> list[str]:
+        raw = payload.get(key) if isinstance(payload, dict) else None
+        raw = raw or []
+        if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+            raise BadRequest(f"{key} must be a list of strings.")
+        return list(dict.fromkeys(raw))
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
-    resource_type = ApiTokenType.DATASET
-
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")
     @console_ns.doc(params={"api_key_id": "API key ID"})
     @console_ns.response(204, "API key deleted successfully")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @account_initialization_required
-    def delete(self, api_key_id: UUID):
-        _, current_tenant_id = current_account_with_tenant()
-        api_key_id_str = str(api_key_id)
-        key = db.session.scalar(
-            select(ApiToken)
-            .where(
-                ApiToken.tenant_id == current_tenant_id,
-                ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id_str,
-            )
-            .limit(1)
-        )
-
-        if key is None:
-            console_ns.abort(404, message="API key not found")
-
-        # Invalidate cache before deleting from database
-        # Type assertion: key is guaranteed to be non-None here because abort() raises
-        assert key is not None  # nosec - for type checker only
-        ApiTokenCache.delete(key.token, key.type)
-
-        db.session.delete(key)
-        db.session.commit()
-
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
+    )
+    def delete(self, request_context: RequestContext, api_key_id: UUID):
+        with api_key_errors():
+            application_services().dataset_api_keys.delete_workspace_key(request_context, str(api_key_id))
         return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
 class DatasetEnableApiApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, dataset_id: UUID, status: str):
-        dataset_id_str = str(dataset_id)
-
-        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
-
-        return {"result": "success"}, 200
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID, status: str):
+        try:
+            application_services().knowledge.datasets.set_api_enabled(
+                request_context, dataset_id=str(dataset_id), status=status
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-base-info")
@@ -998,12 +836,12 @@ class DatasetApiBaseUrlApi(Resource):
     @console_ns.doc("get_dataset_api_base_info")
     @console_ns.doc(description="Get dataset API base information")
     @console_ns.response(200, "API base info retrieved successfully", console_ns.models[ApiBaseUrlResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
-        return {"api_base_url": normalize_api_base_url(base)}
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        base = application_services().knowledge.datasets.api_base_url(
+            request_context, request_base_url=request.host_url.rstrip("/")
+        )
+        return ApiBaseUrlResponse(api_base_url=base).model_dump(mode="json")
 
 
 @console_ns.route("/datasets/retrieval-setting")
@@ -1013,15 +851,10 @@ class DatasetRetrievalSettingApi(Resource):
     @console_ns.response(
         200, "Retrieval settings retrieved successfully", console_ns.models[RetrievalSettingResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        vector_type = dify_config.VECTOR_STORE
-        return dump_response(
-            RetrievalSettingResponse,
-            _get_retrieval_methods_by_vector_type(vector_type, is_mock=False),
-        )
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        result = application_services().knowledge.datasets.retrieval_settings(request_context)
+        return dump_response(RetrievalSettingResponse, result)
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
@@ -1034,14 +867,12 @@ class DatasetRetrievalSettingMockApi(Resource):
         "Mock retrieval settings retrieved successfully",
         console_ns.models[RetrievalSettingResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, vector_type: str):
-        return dump_response(
-            RetrievalSettingResponse,
-            _get_retrieval_methods_by_vector_type(vector_type, is_mock=True),
+    @console_account_admission()
+    def get(self, request_context: RequestContext, vector_type: str):
+        result = application_services().knowledge.datasets.retrieval_settings(
+            request_context, vector_type=vector_type, is_mock=True
         )
+        return dump_response(RetrievalSettingResponse, result)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
@@ -1051,17 +882,15 @@ class DatasetErrorDocs(Resource):
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.response(200, "Error documents retrieved successfully", console_ns.models[ErrorDocsResponse.__name__])
     @console_ns.response(404, "Dataset not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
-
-        return dump_response(ErrorDocsResponse, {"data": results, "total": len(results)}), 200
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.error_documents(
+                request_context, dataset_id=str(dataset_id)
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(ErrorDocsResponse, result), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
@@ -1076,23 +905,15 @@ class DatasetPermissionUserListApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-
-        partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-
-        return dump_response(PartialMemberListResponse, {"data": partial_members_list}), 200
+            result = application_services().knowledge.datasets.partial_members(
+                request_context, dataset_id=str(dataset_id)
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(PartialMemberListResponse, {"data": result}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
@@ -1106,12 +927,12 @@ class DatasetAutoDisableLogApi(Resource):
         console_ns.models[AutoDisableLogsResponse.__name__],
     )
     @console_ns.response(404, "Dataset not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        return dump_response(AutoDisableLogsResponse, DatasetService.get_dataset_auto_disable_logs(dataset_id_str)), 200
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.auto_disable_logs(
+                request_context, dataset_id=str(dataset_id)
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(AutoDisableLogsResponse, result), 200

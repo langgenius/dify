@@ -1,44 +1,34 @@
-# Rule Catalog — Code Quality
+# Code Quality Review
 
-## Conditional class names use utility function
+Use this pack for changed type, styling, or copy contracts. Scope and reporting thresholds come
+from the skill entrypoint; do not turn general style preferences into findings.
 
-IsUrgent: True
-Category: Code Quality
+## Types And Boundaries
 
-### Description
+[Ownership] defines module boundaries, extraction, props, and domain types; [Data] owns generated
+API types. For Dify UI public exports and upstream-derived props, use [Public API authoring].
 
-Ensure conditional CSS is handled via the shared `classNames` instead of custom ternaries, string concatenation, or template strings. Centralizing class logic keeps components consistent and easier to maintain.
+- Identify the actual type information lost by a widened field, DTO mirror, or assertion. Trace
+  consumers before proposing a new abstraction or adapter.
+- Check that moved imports still use the intended public boundary. Distinguish an application
+  bypassing that boundary from the implementation that owns a library integration.
+- Require a real migration or compatibility need for new aliases and forwarding layers. Check
+  whether an existing owner can express the behavior with less state or indirection.
 
-### Suggested Fix
+## Styling And Copy
 
-```ts
-import { cn } from '@/utils/classnames'
-const classNames = cn(isActive ? 'text-primary-600' : 'text-gray-500')
-```
+- Use [Styling] for tokens, class composition, state callbacks, and focus ownership, and [Overlays]
+  for portal/layering changes. Report the violated contract or rendered failure, not the absence
+  of a preferred utility class.
+- Apply [Web requirements] to localized strings and supported locales. Keep keys in the owning
+  feature namespace; aliases are for crossing namespaces. Verify changed keys and interpolation
+  against their consumers rather than reviewing only the English text.
+- Check whether action and recovery copy explains the real next step. A generic label or wording
+  preference alone is not a defect; establish ambiguity or an applicable naming contract.
 
-## Tailwind-first styling
-
-IsUrgent: True
-Category: Code Quality
-
-### Description
-
-Favor Tailwind CSS utility classes instead of adding new `.module.css` files unless a Tailwind combination cannot achieve the required styling. Keeping styles in Tailwind improves consistency and reduces maintenance overhead.
-
-Update this file when adding, editing, or removing Code Quality rules so the catalog remains accurate.
-
-## Classname ordering for easy overrides
-
-### Description
-
-When writing components, always place the incoming `className` prop after the component’s own class values so that downstream consumers can override or extend the styling. This keeps your component’s defaults but still lets external callers change or remove specific styles.
-
-Example:
-
-```tsx
-import { cn } from '@/utils/classnames'
-
-const Button = ({ className }) => {
-  return <div className={cn('bg-primary-600', className)}></div>
-}
-```
+[Data]: ../../how-to-write-component/references/data.md
+[Overlays]: ../../../../packages/dify-ui/docs/overlays.md
+[Ownership]: ../../how-to-write-component/references/ownership.md
+[Public API authoring]: ../../../../packages/dify-ui/docs/authoring.md
+[Styling]: ../../../../packages/dify-ui/docs/styling.md
+[Web requirements]: ../../../../web/AGENTS.md

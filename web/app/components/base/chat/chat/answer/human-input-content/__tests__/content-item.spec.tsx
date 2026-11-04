@@ -1,111 +1,86 @@
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
+import { InputVarType } from '@/app/components/workflow/types'
 import ContentItem from '../content-item'
 
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="mock-markdown">{content}</div>,
-}))
+// Load the real code-split renderer before assertions start their interaction deadlines.
+beforeAll(async () => {
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+})
 
-describe('ContentItem', () => {
-  const mockOnInputChange = vi.fn()
-  const mockFormInputFields: FormInputItem[] = [
-    {
-      type: 'paragraph',
-      output_variable_name: 'user_bio',
-      default: {
-        type: 'constant',
-        value: '',
-        selector: [],
-      },
-    } as FormInputItem,
-  ]
-  const mockInputs = {
-    user_bio: 'Initial bio',
+const fields: ComponentProps<typeof ContentItem>['formInputFields'] = [
+  {
+    type: InputVarType.paragraph,
+    output_variable_name: 'bio',
+    default: { type: 'constant', value: '', selector: [] },
+  },
+  {
+    type: InputVarType.select,
+    output_variable_name: 'decision',
+    option_source: { type: 'constant', value: ['approve', 'reject'], selector: [] },
+  },
+]
+
+it('renders literal Markdown content', async () => {
+  render(
+    <ContentItem
+      content="**Hello** [guide](https://example.com/guide)"
+      formInputFields={fields}
+      inputs={{}}
+      onInputChange={vi.fn()}
+    />,
+  )
+  expect(await screen.findByRole('link', { name: 'guide' })).toHaveAttribute(
+    'href',
+    'https://example.com/guide',
+  )
+  expect(screen.getByText('Hello')).toBeInTheDocument()
+})
+
+it('routes real text and select edits to their named fields without replacing other input values', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const Form = () => {
+    const [inputs, setInputs] = useState({ bio: 'Initial bio', decision: 'approve' })
+    return (
+      <>
+        {fields.map((field) => (
+          <ContentItem
+            key={field.output_variable_name}
+            content={`{{#$output.${field.output_variable_name}#}}`}
+            formInputFields={fields}
+            inputs={inputs}
+            onInputChange={(name, value) => {
+              onChange(name, value)
+              setInputs((previous) => ({ ...previous, [name]: value }))
+            }}
+          />
+        ))}
+      </>
+    )
   }
+  render(<Form />)
+  const bio = screen.getByRole('textbox', { name: 'bio' })
+  await user.clear(bio)
+  await user.type(bio, 'Updated bio')
+  await user.click(screen.getByRole('combobox', { name: 'decision' }))
+  await user.click(await screen.findByRole('option', { name: 'reject' }))
+  expect(onChange).toHaveBeenCalledWith('bio', 'Updated bio')
+  expect(onChange).toHaveBeenLastCalledWith('decision', 'reject')
+  expect(bio).toHaveValue('Updated bio')
+  expect(screen.getByRole('combobox', { name: 'decision' })).toHaveTextContent('reject')
+})
 
-  it('should render Markdown for literal content', () => {
-    render(
-      <ContentItem
-        content="Hello world"
-        formInputFields={[]}
-        inputs={{}}
-        onInputChange={mockOnInputChange}
-      />,
-    )
-
-    expect(screen.getByTestId('mock-markdown')).toHaveTextContent('Hello world')
-    expect(screen.queryByTestId('content-item-textarea')).not.toBeInTheDocument()
-  })
-
-  it('should render Textarea for valid output variable content', () => {
-    render(
-      <ContentItem
-        content="{{#$output.user_bio#}}"
-        formInputFields={mockFormInputFields}
-        inputs={mockInputs}
-        onInputChange={mockOnInputChange}
-      />,
-    )
-
-    const textarea = screen.getByTestId('content-item-textarea')
-    expect(textarea).toBeInTheDocument()
-    expect(textarea).toHaveValue('Initial bio')
-    expect(screen.queryByTestId('mock-markdown')).not.toBeInTheDocument()
-  })
-
-  it('should call onInputChange when textarea value changes', async () => {
-    const user = userEvent.setup()
-    render(
-      <ContentItem
-        content="{{#$output.user_bio#}}"
-        formInputFields={mockFormInputFields}
-        inputs={mockInputs}
-        onInputChange={mockOnInputChange}
-      />,
-    )
-
-    const textarea = screen.getByTestId('content-item-textarea')
-    await user.type(textarea, 'x')
-
-    expect(mockOnInputChange).toHaveBeenCalledWith('user_bio', 'Initial biox')
-  })
-
-  it('should render nothing if field name is valid but not found in formInputFields', () => {
-    const { container } = render(
-      <ContentItem
-        content="{{#$output.unknown_field#}}"
-        formInputFields={mockFormInputFields}
-        inputs={mockInputs}
-        onInputChange={mockOnInputChange}
-      />,
-    )
-
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render nothing if input type is not supported', () => {
-    const { container } = render(
-      <ContentItem
-        content="{{#$output.user_bio#}}"
-        formInputFields={[
-          {
-            type: 'text-input',
-            output_variable_name: 'user_bio',
-            default: {
-              type: 'constant',
-              value: '',
-              selector: [],
-            },
-          } as FormInputItem,
-        ]}
-        inputs={mockInputs}
-        onInputChange={mockOnInputChange}
-      />,
-    )
-
-    expect(container.querySelector('[data-testid="content-item-textarea"]')).not.toBeInTheDocument()
-    expect(container.querySelector('.py-3')?.textContent).toBe('')
-  })
+it('omits placeholders for fields that no longer exist', () => {
+  const { container } = render(
+    <ContentItem
+      content="{{#$output.removed#}}"
+      formInputFields={fields}
+      inputs={{ removed: 'old value' }}
+      onInputChange={vi.fn()}
+    />,
+  )
+  expect(container).toBeEmptyDOMElement()
 })

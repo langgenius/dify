@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * APIBasedExtensionPayload
  */
 export const zApiBasedExtensionPayload = z.object({
@@ -22,6 +38,9 @@ export const zApiBasedExtensionResponse = z.object({
   name: z.string(),
 })
 
+/**
+ * APIBasedExtensionListResponse
+ */
 export const zApiBasedExtensionListResponse = z.array(zApiBasedExtensionResponse)
 
 /**
@@ -37,16 +56,16 @@ export const zPostApiBasedExtensionBody = zApiBasedExtensionPayload
 export const zPostApiBasedExtensionResponse = zApiBasedExtensionResponse
 
 export const zDeleteApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**
  * Extension deleted successfully
  */
-export const zDeleteApiBasedExtensionByIdResponse = z.record(z.string(), z.never())
+export const zDeleteApiBasedExtensionByIdResponse = z.void()
 
 export const zGetApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**
@@ -57,7 +76,7 @@ export const zGetApiBasedExtensionByIdResponse = zApiBasedExtensionResponse
 export const zPostApiBasedExtensionByIdBody = zApiBasedExtensionPayload
 
 export const zPostApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**

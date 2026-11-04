@@ -21,6 +21,8 @@ type AliasData = Omit<IconData, 'body'> & {
 type ImportedCollection = {
   icons?: Record<string, IconData>
   aliases?: Record<string, AliasData>
+  width?: number
+  height?: number
   lastModified?: number
 }
 
@@ -60,11 +62,21 @@ const flattenCollections = (collections: ImportedCollections, prefix: string) =>
     const segment = collectionKey.slice(prefix.length + 1)
     const namePrefix = segment ? `${segment}-` : ''
 
+    const applyCollectionSize = <T extends IconData | AliasData>(iconData: T): T => ({
+      ...iconData,
+      ...(iconData.width === undefined && collection.width !== undefined
+        ? { width: collection.width }
+        : {}),
+      ...(iconData.height === undefined && collection.height !== undefined
+        ? { height: collection.height }
+        : {}),
+    })
+
     for (const [iconName, iconData] of Object.entries(collection.icons ?? {}))
-      icons[`${namePrefix}${iconName}`] = iconData
+      icons[`${namePrefix}${iconName}`] = applyCollectionSize(iconData)
 
     for (const [aliasName, aliasData] of Object.entries(collection.aliases ?? {}))
-      aliases[`${namePrefix}${aliasName}`] = aliasData
+      aliases[`${namePrefix}${aliasName}`] = applyCollectionSize(aliasData)
 
     if (typeof collection.lastModified === 'number')
       lastModified = Math.max(lastModified, collection.lastModified)
@@ -128,17 +140,7 @@ import info from './info.json' with { type: 'json' }
 import metadata from './metadata.json' with { type: 'json' }
 import chars from './chars.json' with { type: 'json' }
 
-export { icons, info, metadata, chars }
-`
-
-const createIndexJs = (): string => `'use strict'
-
-const icons = require('./icons.json')
-const info = require('./info.json')
-const metadata = require('./metadata.json')
-const chars = require('./chars.json')
-
-module.exports = { icons, info, metadata, chars }
+export { chars, icons, info, metadata }
 `
 
 const createIndexTypes = (): string => `export interface IconifyJSON {
@@ -212,7 +214,6 @@ const writeCollectionPackage = async (
   await writeFile(path.resolve(targetDir, 'metadata.json'), '{}\n')
   await writeFile(path.resolve(targetDir, 'chars.json'), '{}\n')
   await writeFile(path.resolve(targetDir, 'index.mjs'), `${createIndexMjs()}\n`)
-  await writeFile(path.resolve(targetDir, 'index.js'), `${createIndexJs()}\n`)
   await writeFile(path.resolve(targetDir, 'index.d.ts'), `${createIndexTypes()}\n`)
 }
 

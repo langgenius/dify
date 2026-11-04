@@ -60,5 +60,12 @@ class AliyunOssStorage(BaseStorage):
     def delete(self, filename: str):
         self.client.delete_object(self.__wrapper_folder_filename(filename))
 
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        prefix = self.__wrapper_folder_filename(path)
+        folder_prefix = self.folder.rstrip("/") + "/" if self.folder else ""
+        keys = (obj.key.removeprefix(folder_prefix) for obj in aliyun_s3.ObjectIterator(self.client, prefix=prefix))
+        return self._filter_scan_keys(keys, files, directories)
+
     def __wrapper_folder_filename(self, filename: str) -> str:
         return posixpath.join(self.folder, filename) if self.folder else filename

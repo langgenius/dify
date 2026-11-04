@@ -9,6 +9,41 @@ export type RuleStructuredOutputPayload = {
   model_config: ModelConfig
 }
 
+export type StructuredOutputGenerateResponse = {
+  error: string
+  output: string
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -28,22 +63,21 @@ export type PostRuleStructuredOutputGenerateData = {
 }
 
 export type PostRuleStructuredOutputGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostRuleStructuredOutputGenerateError
-  = PostRuleStructuredOutputGenerateErrors[keyof PostRuleStructuredOutputGenerateErrors]
+export type PostRuleStructuredOutputGenerateError =
+  PostRuleStructuredOutputGenerateErrors[keyof PostRuleStructuredOutputGenerateErrors]
 
 export type PostRuleStructuredOutputGenerateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: StructuredOutputGenerateResponse
 }
 
-export type PostRuleStructuredOutputGenerateResponse
-  = PostRuleStructuredOutputGenerateResponses[keyof PostRuleStructuredOutputGenerateResponses]
+export type PostRuleStructuredOutputGenerateResponse =
+  PostRuleStructuredOutputGenerateResponses[keyof PostRuleStructuredOutputGenerateResponses]

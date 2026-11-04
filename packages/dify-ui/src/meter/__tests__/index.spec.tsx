@@ -1,20 +1,14 @@
 import { render } from 'vitest-browser-react'
-import {
-  MeterIndicator,
-  MeterLabel,
-  MeterRoot,
-  MeterTrack,
-  MeterValue,
-} from '../index'
+import { Meter, MeterIndicator, MeterLabel, MeterTrack, MeterValue } from '../index'
 
 describe('Meter compound primitives', () => {
   it('exposes role="meter" with ARIA value metadata', async () => {
     const screen = await render(
-      <MeterRoot value={40} aria-label="Quota">
+      <Meter value={40} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const meter = screen.getByLabelText('Quota')
@@ -26,11 +20,11 @@ describe('Meter compound primitives', () => {
 
   it('respects custom min and max', async () => {
     const screen = await render(
-      <MeterRoot value={3} min={1} max={5} aria-label="Quota">
+      <Meter value={3} min={1} max={5} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const meter = screen.getByLabelText('Quota')
@@ -41,73 +35,33 @@ describe('Meter compound primitives', () => {
 
   it('sets indicator width from value/min/max', async () => {
     const screen = await render(
-      <MeterRoot value={42} aria-label="Quota">
+      <Meter value={42} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator data-testid="indicator" />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const indicator = screen.getByTestId('indicator').element() as HTMLElement
     expect(indicator.getAttribute('style')).toContain('width: 42%')
   })
 
-  it('applies tone="error" to the indicator', async () => {
+  it('forwards className to MeterTrack', async () => {
     const screen = await render(
-      <MeterRoot value={95} aria-label="Quota">
-        <MeterTrack>
-          <MeterIndicator tone="error" data-testid="indicator" />
-        </MeterTrack>
-      </MeterRoot>,
-    )
-
-    const indicator = screen.getByTestId('indicator').element() as HTMLElement
-    expect(indicator.className).toContain('bg-components-progress-error-progress')
-  })
-
-  it('applies tone="warning" to the indicator', async () => {
-    const screen = await render(
-      <MeterRoot value={85} aria-label="Quota">
-        <MeterTrack>
-          <MeterIndicator tone="warning" data-testid="indicator" />
-        </MeterTrack>
-      </MeterRoot>,
-    )
-
-    const indicator = screen.getByTestId('indicator').element() as HTMLElement
-    expect(indicator.className).toContain('bg-components-progress-warning-progress')
-  })
-
-  it('defaults to the neutral tone when none is supplied', async () => {
-    const screen = await render(
-      <MeterRoot value={25} aria-label="Quota">
-        <MeterTrack>
-          <MeterIndicator data-testid="indicator" />
-        </MeterTrack>
-      </MeterRoot>,
-    )
-
-    const indicator = screen.getByTestId('indicator').element() as HTMLElement
-    expect(indicator.className).toContain('bg-components-progress-bar-progress-solid')
-  })
-
-  it('forwards className to MeterTrack alongside the themed base classes', async () => {
-    const screen = await render(
-      <MeterRoot value={10} aria-label="Quota">
+      <Meter value={10} aria-label="Quota">
         <MeterTrack className="custom-track" data-testid="track">
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const track = screen.getByTestId('track').element() as HTMLElement
     expect(track.className).toContain('custom-track')
-    expect(track.className).toContain('bg-components-progress-bar-bg')
   })
 
   it('renders MeterLabel and MeterValue inside a compound layout', async () => {
     const screen = await render(
-      <MeterRoot
+      <Meter
         value={0.42}
         min={0}
         max={1}
@@ -119,7 +73,7 @@ describe('Meter compound primitives', () => {
           <MeterIndicator />
         </MeterTrack>
         <MeterValue />
-      </MeterRoot>,
+      </Meter>,
     )
 
     await expect.element(screen.getByText('Score')).toBeInTheDocument()

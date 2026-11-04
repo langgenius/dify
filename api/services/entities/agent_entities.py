@@ -31,17 +31,32 @@ class ComposerSoulLockPayload(BaseModel):
     unlocked_from_version_id: str | None = None
 
 
+class WorkflowAgentComposerQuery(BaseModel):
+    snapshot_id: str | None = Field(default=None, max_length=255)
+
+
 class ComposerSavePayload(BaseModel):
     variant: ComposerVariant
     binding: ComposerBindingPayload | None = None
     soul_lock: ComposerSoulLockPayload = Field(default_factory=ComposerSoulLockPayload)
-    agent_soul: AgentSoulConfig | None = None
+    agent_soul: AgentSoulConfig | None = Field(
+        default=None,
+        description=(
+            "For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest "
+            "server-managed files. An explicit list replaces the files, including an empty list to clear them."
+        ),
+    )
     node_job: WorkflowNodeJobConfig | None = None
     save_strategy: ComposerSaveStrategy
     version_note: str | None = None
     idempotency_key: str | None = None
     client_revision_id: str | None = None
     new_agent_name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    role: str | None = Field(default=None, max_length=255)
+    icon_type: AgentIconType | None = None
+    icon: str | None = Field(default=None, max_length=255)
+    icon_background: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
     def validate_variant_sections(self) -> "ComposerSavePayload":
@@ -58,9 +73,17 @@ class ComposerSavePayload(BaseModel):
         return self
 
 
+class WorkflowComposerCopyFromRosterPayload(BaseModel):
+    source_agent_id: str = Field(min_length=1, max_length=255)
+    source_snapshot_id: str | None = Field(default=None, max_length=255)
+    idempotency_key: str | None = Field(default=None, max_length=255)
+
+
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    mode: Literal["agent"] = "agent"
     description: str = ""
+    role: str = Field(default="", max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
@@ -71,6 +94,7 @@ class RosterAgentCreatePayload(BaseModel):
 class RosterAgentUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
+    role: str | None = Field(default=None, max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
@@ -91,3 +115,5 @@ class ComposerCandidatesResponse(BaseModel):
     allowed_node_job_candidates: dict[str, Any] = Field(default_factory=dict)
     allowed_soul_candidates: dict[str, Any] = Field(default_factory=dict)
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    # True when any candidate list was clipped to the per-list cap (ENG-615 §3.3).
+    truncated: bool = False
