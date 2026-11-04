@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from controllers.common.rbac import DatasetId, RBACPermission
 from controllers.console.datasets import external as controller
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from machinery.context import RequestContext
@@ -16,6 +17,7 @@ from services.knowledge.external.application import (
     ExternalKnowledgeApplicationService,
     ExternalTemplateNotFoundError,
 )
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 ID = UUID(int=1)
@@ -162,3 +164,10 @@ def test_retrieval_response_is_serialized(external):
         controller.ExternalKnowledgeHitTestingApi(), controller.ExternalHitTestingPayload(query="query"), CONTEXT, ID
     )
     assert result == external.hit_testing.return_value
+
+
+def test_external_hit_testing_requires_retrieval_recall_permission() -> None:
+    [check] = rbac_checks(controller.ExternalKnowledgeHitTestingApi.post)
+
+    assert check.scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert isinstance(check.locator, DatasetId)

@@ -302,7 +302,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_RETRIEVAL_RECALL, DatasetId()),))
     @model_validate(ExternalHitTestingPayload)
     def post(self, req_data: ExternalHitTestingPayload, request_context: RequestContext, dataset_id: UUID):
         try:
