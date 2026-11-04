@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
@@ -14,7 +14,7 @@ from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.app_config.entities import AppAdditionalFeatures, SensitiveWordAvoidanceEntity, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.apps.advanced_chat.generate_task_pipeline import (
     AdvancedChatAppGenerateTaskPipeline,
@@ -22,6 +22,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
@@ -56,11 +57,20 @@ from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageReplaceStreamResponse,
+    MessageStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamEvent,
+    StreamResponse,
+    WorkflowPauseStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.extension.extensible import ModuleExtension
+from core.extension.extension import Extension
+from core.moderation.base import ModerationAction, ModerationOutputsResult
+from core.moderation.keywords.keywords import KeywordsModeration
+from core.moderation.output_moderation import OutputModeration
 from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -127,7 +137,7 @@ def _build_message_pipeline(
     return pipeline_module.AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
         workflow=pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
-        queue_manager=SimpleNamespace(graph_runtime_state=None),
+        queue_manager=mock.create_autospec(AppQueueManager, instance=True, graph_runtime_state=None),
         conversation=pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT),
         message=pipeline_module.MessageSnapshot(
             id="message-1",
@@ -241,6 +251,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
     pipeline._get_message = mock.Mock(return_value=message)
     persist_content = mocker.patch.object(pipeline, "_persist_human_input_extra_content")
     pipeline._base_task_pipeline = mock.Mock()
+    pipeline._base_task_pipeline.output_moderation_handler = None
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
     pipeline._message_saved_on_pause = False
 
@@ -1182,3 +1193,285 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
 
         assert list(pipeline._dispatch_event(event)) == ["failed"]
+
+
+def _moderated_pipeline(
+    mocker: MockerFixture, session: Session, *, answer: str = ""
+) -> tuple[AdvancedChatAppGenerateTaskPipeline, Message]:
+    """Use production construction and persistence with isolated database boundaries."""
+    mocker.patch.object(
+        Extension,
+        "_Extension__module_extensions",
+        {"moderation": {"keywords": ModuleExtension(name="keywords", extension_class=KeywordsModeration)}},
+    )
+    entity = _build_generate_entity()
+    entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+        type="keywords",
+        config={
+            "keywords": "badword",
+            "inputs_config": {"enabled": False},
+            "outputs_config": {"enabled": True, "preset_response": "blocked"},
+        },
+    )
+    pipeline = _build_message_pipeline(entity, MessageStatus.PAUSED if answer else MessageStatus.NORMAL, answer)
+    stored = _message(status=MessageStatus.PAUSED if answer else MessageStatus.NORMAL, answer=answer)
+    mocker.patch.object(pipeline, "_get_message", autospec=True, return_value=stored)
+    mocker.patch.object(pipeline, "_database_session", autospec=True, return_value=nullcontext(session))
+    mocker.patch.object(pipeline, "_ensure_graph_runtime_initialized", autospec=True, return_value=None)
+    mocker.patch.object(pipeline, "_emit_message_trace", autospec=True)
+    mocker.patch.object(OutputModeration, "start_thread", autospec=True)
+    return pipeline, stored
+
+
+def test_moderation_default_async_releases_before_final_audit(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=300)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    audit = mocker.spy(KeywordsModeration, "moderation_for_outputs")
+    responses = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="first")))
+    assert [response.answer for response in responses if isinstance(response, MessageStreamResponse)] == ["first"]
+    assert audit.call_count == 0
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=" last")))
+    list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    assert audit.call_count == 1
+    assert audit.call_args.args[1] == "first last"
+    assert stored.answer == "first last"
+
+
+def test_blocking_segments_are_audited_before_delivery_and_remainder_before_end(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    audit = mocker.spy(KeywordsModeration, "moderation_for_outputs")
+    delivered = ""
+    for text in ("ab", "c", "d"):
+        for response in pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=text)):
+            if isinstance(response, MessageStreamResponse):
+                delivered += response.answer
+                assert audit.call_args.args[1].startswith(delivered)
+    responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    assert delivered == "abc"
+    assert [response.answer for response in responses if isinstance(response, MessageStreamResponse)] == ["d"]
+    assert isinstance(responses[-1], MessageEndStreamResponse)
+    assert [call.args[1] for call in audit.call_args_list] == ["abc", "abcd"]
+    assert stored.answer == "abcd"
+
+
+@pytest.mark.parametrize("terminal", ["end", "pause", "stop"])
+@pytest.mark.parametrize("failure", [False, True])
+def test_blocking_terminal_persists_only_released_answer(
+    config_overrides: Callable[..., None],
+    mocker: MockerFixture,
+    unbound_session: Session,
+    terminal: str,
+    failure: bool,
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="ok!")))
+    if failure:
+        mocker.patch.object(
+            KeywordsModeration, "moderation_for_outputs", autospec=True, side_effect=RuntimeError("offline")
+        )
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="badword")))
+    if terminal == "end":
+        responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    elif terminal == "pause":
+        mocker.patch.object(unbound_session, "scalar", autospec=True, return_value=WorkflowExecutionStatus.PAUSED)
+        mocker.patch.object(
+            pipeline._workflow_response_converter, "workflow_pause_to_stream_response", autospec=True, return_value=[]
+        )
+        responses = list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[])))
+    else:
+        runtime = RuntimeState(variable_pool=build_test_variable_pool(), start_at=0, workflow_id="workflow-1")
+        pipeline._workflow_run_id = "run-1"
+        mocker.patch.object(pipeline, "_resolve_graph_runtime_state", autospec=True, return_value=runtime)
+        mocker.patch.object(
+            pipeline._workflow_response_converter,
+            "workflow_finish_to_stream_response",
+            autospec=True,
+            return_value=PingStreamResponse(task_id="task-1"),
+        )
+        responses = list(pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)))
+    assert stored.answer == ("ok!" if failure else "blocked")
+    assert not any(
+        isinstance(response, MessageStreamResponse) and "badword" in response.answer for response in responses
+    )
+
+
+@pytest.mark.parametrize("buffer_size", [3, 300])
+def test_blocking_direct_output_publishes_stop(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session, buffer_size: int
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=buffer_size)
+    pipeline, _ = _moderated_pipeline(mocker, unbound_session)
+    responses = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="badword")))
+    if buffer_size == 300:
+        responses.extend(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    assert [response.answer for response in responses if isinstance(response, MessageReplaceStreamResponse)] == [
+        "blocked"
+    ]
+    publish = pipeline._base_task_pipeline.queue_manager.publish
+    assert isinstance(publish, mock.Mock)
+    calls = publish.call_args_list
+    assert any(
+        isinstance(call.args[0], QueueStopEvent) and call.args[0].stopped_by == QueueStopEvent.StopBy.OUTPUT_MODERATION
+        for call in calls
+    )
+
+
+def test_blocking_override_continues_with_redacted_prefix(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=7)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    original = KeywordsModeration.moderation_for_outputs
+    audited: list[str] = []
+
+    def redact(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        audited.append(text)
+        result = original(provider, text)
+        return result.model_copy(
+            update={"action": ModerationAction.OVERRIDDEN, "text": text.replace("badword", "*******")}
+        )
+
+    mocker.patch.object(KeywordsModeration, "moderation_for_outputs", autospec=True, side_effect=redact)
+    responses: list[StreamResponse] = []
+    for text in ("bad", "word", " tail"):
+        responses.extend(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=text)))
+    responses.extend(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    visible = ""
+    for response in responses:
+        if isinstance(response, MessageStreamResponse):
+            assert "bad" not in response.answer
+            assert "word" not in response.answer
+            visible += response.answer
+        elif isinstance(response, MessageReplaceStreamResponse):
+            visible = response.answer
+    assert visible == stored.answer == "******* tail"
+    assert audited == ["badword", "******* tail"]
+    publish = pipeline._base_task_pipeline.queue_manager.publish
+    assert isinstance(publish, mock.Mock)
+    assert not publish.called
+
+
+@pytest.mark.parametrize("new_text", ["after", ""])
+def test_blocking_resume_retains_and_audits_prefilled_answer_without_replay(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session, new_text: str
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session, answer="before")
+    audit = mocker.spy(KeywordsModeration, "moderation_for_outputs")
+    responses = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=new_text))) if new_text else []
+    responses.extend(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    assert stored.answer == "before" + new_text
+    assert "".join(response.answer for response in responses if isinstance(response, MessageStreamResponse)) == new_text
+    assert all(call.args[1] == "before" + new_text for call in audit.call_args_list)
+
+
+def test_blocking_token_arrival_times_precede_each_audit(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    pipeline, _ = _moderated_pipeline(mocker, unbound_session)
+    clock = mocker.patch.object(pipeline_module.time, "perf_counter", autospec=True, return_value=10.0)
+    original = KeywordsModeration.moderation_for_outputs
+    times: list[tuple[float | None, float | None]] = []
+
+    def audit(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        times.append((pipeline._task_state.first_token_time, pipeline._task_state.last_token_time))
+        clock.return_value = 99.0
+        return original(provider, text)
+
+    mocker.patch.object(KeywordsModeration, "moderation_for_outputs", autospec=True, side_effect=audit)
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="one")))
+    clock.return_value = 20.0
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="two")))
+    assert times == [(10.0, 10.0), (10.0, 20.0)]
+    assert pipeline._task_state.last_token_time == 20.0
+
+
+def test_async_resume_leaves_moderation_buffer_empty(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="async")
+    pipeline, _ = _moderated_pipeline(mocker, unbound_session, answer="before")
+    handler = pipeline._base_task_pipeline.output_moderation_handler
+    assert handler is not None
+    assert handler.buffer == ""
+    assert handler.released_text == ""
+
+
+@pytest.mark.parametrize("response_mode", ["streaming", "blocking"])
+def test_blocking_pause_releases_reviewed_tail_before_pause_event(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session, response_mode: str
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=300)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    pause = WorkflowPauseStreamResponse(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        data=WorkflowPauseStreamResponse.Data(
+            workflow_run_id="run-1",
+            status=WorkflowExecutionStatus.PAUSED,
+            created_at=0,
+            elapsed_time=0.0,
+            total_tokens=0,
+            total_steps=0,
+        ),
+    )
+    mocker.patch.object(unbound_session, "scalar", autospec=True, return_value=WorkflowExecutionStatus.PAUSED)
+    mocker.patch.object(
+        pipeline._workflow_response_converter, "workflow_pause_to_stream_response", autospec=True, return_value=[pause]
+    )
+
+    def stream() -> Generator[StreamResponse]:
+        yield from pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="short answer"))
+        yield from pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[]))
+
+    if response_mode == "blocking":
+        blocking = pipeline._to_blocking_response(stream())
+        assert isinstance(blocking, AdvancedChatPausedBlockingResponse)
+        assert blocking.data.answer == "short answer"
+    else:
+        responses = list(stream())
+        assert [type(response) for response in responses[:2]] == [MessageStreamResponse, WorkflowPauseStreamResponse]
+        assert isinstance(responses[0], MessageStreamResponse)
+        assert responses[0].answer == "short answer"
+        assert stored.answer == "short answer"
+
+
+@pytest.mark.parametrize("terminal", ["pause", "stop"])
+def test_blocking_pause_and_stop_release_approved_short_tail_before_end(
+    config_overrides: Callable[..., None], mocker: MockerFixture, unbound_session: Session, terminal: str
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=300)
+    pipeline, stored = _moderated_pipeline(mocker, unbound_session)
+    audit = mocker.spy(KeywordsModeration, "moderation_for_outputs")
+    assert list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="tail"))) == []
+    assert audit.call_count == 0
+    if terminal == "pause":
+        mocker.patch.object(unbound_session, "scalar", autospec=True, return_value=WorkflowExecutionStatus.PAUSED)
+        mocker.patch.object(
+            pipeline._workflow_response_converter, "workflow_pause_to_stream_response", autospec=True, return_value=[]
+        )
+        responses = list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[])))
+        responses.extend(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+    else:
+        runtime = RuntimeState(variable_pool=build_test_variable_pool(), start_at=0, workflow_id="workflow-1")
+        pipeline._workflow_run_id = "run-1"
+        mocker.patch.object(pipeline, "_resolve_graph_runtime_state", autospec=True, return_value=runtime)
+        mocker.patch.object(
+            pipeline._workflow_response_converter,
+            "workflow_finish_to_stream_response",
+            autospec=True,
+            return_value=PingStreamResponse(task_id="task-1"),
+        )
+        responses = list(pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)))
+    assert stored.answer == "tail"
+    assert [response.answer for response in responses if isinstance(response, MessageStreamResponse)] == ["tail"]
+    assert audit.call_count == 1
+    assert audit.call_args.args[1] == "tail"
+    assert isinstance(responses[-1], MessageEndStreamResponse)

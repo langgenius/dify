@@ -40,11 +40,18 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         application_generate_entity: AppGenerateEntityT,
         queue_manager: AppQueueManager,
         stream: bool,
+        *,
+        initial_answer: str = "",
     ):
+        """Initialize a request, optionally seeded with an already delivered paused answer.
+
+        Blocking moderation retains that prefix for cumulative review without replaying it.
+        Fresh requests use an empty prefix; async delivery behavior is unchanged.
+        """
         self._application_generate_entity = application_generate_entity
         self.queue_manager = queue_manager
         self.start_at = time.perf_counter()
-        self.output_moderation_handler = self._init_output_moderation()
+        self.output_moderation_handler = self._init_output_moderation(initial_answer)
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
@@ -107,21 +114,27 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         """
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
-    def _init_output_moderation(self) -> OutputModeration | None:
-        """
-        Init output moderation.
-        :return:
+    def _init_output_moderation(self, initial_answer: str) -> OutputModeration | None:
+        """Build the enabled rule's handler, seeded with an already delivered prefix.
+
+        The prefix is review context, never pending output. Return None if no rule is set.
         """
         app_config = self._application_generate_entity.app_config
         sensitive_word_avoidance = app_config.sensitive_word_avoidance
 
         if sensitive_word_avoidance:
-            return OutputModeration(
+            handler = OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
+                app_mode=app_config.app_mode,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
                 queue_manager=self.queue_manager,
             )
+            if handler.is_blocking:
+                handler.buffer = initial_answer
+                handler.released_text = initial_answer
+                handler.has_received_text = bool(initial_answer)
+            return handler
         return None
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:

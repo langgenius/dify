@@ -1176,6 +1176,12 @@ class ModerationConfig(BaseSettings):
         description="Size of the buffer for content moderation processing",
         default=300,
     )
+    MODERATION_OUTPUT_MODE: Literal["async", "blocking"] = Field(
+        default="async",
+        description="Output moderation delivery: async replaces text after delivery; blocking audits cumulative text "
+        "before releasing each buffered segment and withholds pending text on moderation failure. "
+        "Blocking applies only to text message events in chat, completion, and advanced-chat apps.",
+    )
 
 
 class ToolConfig(BaseSettings):

@@ -269,9 +269,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 publisher.cancel()
 
     def _process_stream_response(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
-        """
-        Process stream response.
-        :return:
+        """Consume queued events, auditing enabled blocking text before delivery.
+
+        Blocking content holds only released text between chunks and is restored to that
+        text before saving a terminal result. Failed review never releases pending text;
+        direct output publishes a stop event. Agent apps retain async behavior.
         """
         for message in self.queue_manager.listen():
             if publisher:
@@ -294,16 +296,32 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     else:
                         self._handle_stop(event)
 
-                    # handle output moderation
-                    output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                        self._task_state.llm_result.message.get_text_content()
-                    )
-                    if output_moderation_answer:
-                        self._task_state.llm_result.message.content = output_moderation_answer
-                        yield self._message_cycle_manager.message_replace_to_stream_response(
-                            answer=output_moderation_answer
+                    handler = self.output_moderation_handler
+                    if handler and handler.is_blocking:
+                        responses = handler.finish_blocking(
+                            self._message_cycle_manager.message_to_stream_response(
+                                answer=self._task_state.llm_result.message.get_text_content(),
+                                message_id=self._message_id,
+                            )
                         )
-
+                        if responses and handler.should_direct_output():
+                            self.queue_manager.publish(
+                                QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
+                                PublishFrom.TASK_PIPELINE,
+                            )
+                        yield from responses
+                        self._task_state.llm_result.message.content = handler.released_text
+                        self.output_moderation_handler = None
+                    else:
+                        # handle output moderation
+                        output_moderation_answer = self.handle_output_moderation_when_task_finished(
+                            self._task_state.llm_result.message.get_text_content()
+                        )
+                        if output_moderation_answer:
+                            self._task_state.llm_result.message.content = output_moderation_answer
+                            yield self._message_cycle_manager.message_replace_to_stream_response(
+                                answer=output_moderation_answer
+                            )
                     stopped_agent_message: Message | None = None
                     with session_factory.create_session() as session:
                         # A stopped Agent run may persist provider-reported usage after
@@ -363,25 +381,44 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    # handle output moderation chunk
-                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                    if should_direct_answer:
-                        continue
-
-                    current_content = cast(str, self._task_state.llm_result.message.content)
-                    current_content += delta_text
-                    self._task_state.llm_result.message.content = current_content
-
-                    # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
-                    if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
-                        self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
-                            message_id=self._message_id
+                    handler = self.output_moderation_handler
+                    if handler and handler.is_blocking:
+                        if self._precomputed_event_type is None:
+                            self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
+                                message_id=self._message_id
+                            )
+                        responses = handler.moderate_stream(
+                            self._message_cycle_manager.message_to_stream_response(
+                                answer=delta_text, message_id=self._message_id, event_type=self._precomputed_event_type
+                            )
                         )
-                    yield self._message_cycle_manager.message_to_stream_response(
-                        answer=delta_text,
-                        message_id=self._message_id,
-                        event_type=self._precomputed_event_type,
-                    )
+                        if responses and handler.should_direct_output():
+                            self.queue_manager.publish(
+                                QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
+                                PublishFrom.TASK_PIPELINE,
+                            )
+                        yield from responses
+                        self._task_state.llm_result.message.content = handler.released_text
+                    else:
+                        # handle output moderation chunk
+                        should_direct_answer = self._handle_output_moderation_chunk(delta_text)
+                        if should_direct_answer:
+                            continue
+
+                        current_content = cast(str, self._task_state.llm_result.message.content)
+                        current_content += delta_text
+                        self._task_state.llm_result.message.content = current_content
+
+                        # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
+                        if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
+                            self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
+                                message_id=self._message_id
+                            )
+                        yield self._message_cycle_manager.message_to_stream_response(
+                            answer=delta_text,
+                            message_id=self._message_id,
+                            event_type=self._precomputed_event_type,
+                        )
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
                 case QueuePingEvent():
