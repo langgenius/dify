@@ -1,11 +1,13 @@
 import base64
 import hashlib
 from datetime import datetime
+from io import BytesIO
 from unittest.mock import ANY, MagicMock
 
 import pytest
 from botocore.awsrequest import AWSResponse
-from botocore.exceptions import ClientError, EndpointConnectionError
+from botocore.exceptions import ClientError, EndpointConnectionError, IncompleteReadError
+from botocore.response import StreamingBody
 
 from configs.extra.archive_config import ArchiveStorageConfig
 from libs import archive_storage as storage_module
@@ -260,15 +262,17 @@ def test_put_object_raises_on_error(monkeypatch: pytest.MonkeyPatch):
         storage.put_object("key", b"data")
 
 
-def test_get_object_returns_bytes(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("payload", [b"", b"payload"])
+def test_get_object_returns_bytes(monkeypatch: pytest.MonkeyPatch, payload: bytes):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    body = MagicMock()
-    body.read.return_value = b"payload"
+    raw = BytesIO(payload)
+    body = StreamingBody(raw, len(payload))
     client.get_object.return_value = {"Body": body}
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
-    assert storage.get_object("key") == b"payload"
+    assert storage.get_object("key") == payload
+    assert raw.closed
 
 
 @pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
@@ -303,15 +307,88 @@ def test_get_object_network_error_fails_closed(monkeypatch: pytest.MonkeyPatch):
         storage.get_object("key")
 
 
-def test_get_object_stream(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("chunks", [[], [b"a" * 1024, b"b"]])
+def test_get_object_stream(monkeypatch: pytest.MonkeyPatch, chunks: list[bytes]):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    body = MagicMock()
-    body.iter_chunks.return_value = [b"a", b"b"]
+    payload = b"".join(chunks)
+    raw = BytesIO(payload)
+    body = StreamingBody(raw, len(payload))
     client.get_object.return_value = {"Body": body}
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
-    assert list(storage.get_object_stream("key")) == [b"a", b"b"]
+    assert list(storage.get_object_stream("key")) == chunks
+    assert raw.closed
+
+
+def test_get_object_stream_closes_body_when_cancelled(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    raw = BytesIO(b"x" * 2048)
+    body = StreamingBody(raw, 2048)
+    client.get_object.return_value = {"Body": body}
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    download = storage.get_object_stream("key")
+    assert next(download) == b"x" * 1024
+    assert not raw.closed
+    download.close()
+
+    assert raw.closed
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_download_closes_body_after_incomplete_read(monkeypatch: pytest.MonkeyPatch, streaming: bool):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    raw = BytesIO(b"short")
+    body = StreamingBody(raw, 10)
+    client.get_object.return_value = {"Body": body}
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    with pytest.raises(ArchiveStorageError) as exc_info:
+        _ = b"".join(storage.get_object_stream("key")) if streaming else storage.get_object("key")
+
+    assert isinstance(exc_info.value.__cause__, IncompleteReadError)
+    assert raw.closed
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("read_fails", [False, True])
+def test_download_cleanup_preserves_result(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    streaming: bool,
+    read_fails: bool,
+):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+
+    class CloseFailingBytesIO(BytesIO):
+        close_calls = 0
+
+        def close(self) -> None:
+            self.close_calls += 1
+            super().close()
+            raise OSError("close failed")
+
+    raw = CloseFailingBytesIO(b"payload")
+    body = StreamingBody(raw, 8 if read_fails else 7)
+    client.get_object.return_value = {"Body": body}
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    if read_fails:
+        with pytest.raises(ArchiveStorageError) as exc_info:
+            _ = b"".join(storage.get_object_stream("key")) if streaming else storage.get_object("key")
+        assert isinstance(exc_info.value.__cause__, IncompleteReadError)
+        assert exc_info.value.__cause__.kwargs == {"actual_bytes": 7, "expected_bytes": 8}
+    else:
+        result = b"".join(storage.get_object_stream("key")) if streaming else storage.get_object("key")
+        assert result == b"payload"
+
+    assert raw.closed
+    assert raw.close_calls == 1
+    assert "Failed to close stream" in caplog.text
 
 
 @pytest.mark.parametrize("error_code", ["404", "NoSuchKey", "NotFound"])
