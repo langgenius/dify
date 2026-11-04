@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Generator, Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Iterator, Sequence
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Thread
 from typing import cast
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
@@ -25,6 +25,7 @@ from core.app.app_config.entities import (
     EasyUIBasedAppModelConfigFrom,
     ModelConfigEntity,
     PromptTemplateEntity,
+    SensitiveWordAvoidanceEntity,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -60,9 +61,13 @@ from core.app.entities.task_entities import (
     MessageStreamResponse,
     PingStreamResponse,
     StreamEvent,
+    StreamResponse,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.base import ModerationAction, ModerationOutputsResult
+from core.moderation.keywords.keywords import KeywordsModeration
+from core.moderation.output_moderation import OutputModeration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -2575,3 +2580,231 @@ class TestEasyUiMessageEndFilesCases:
             assert len(result.files) == 1
             assert result.files[0]["url"].startswith("https://example.com/fallback-url")
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
+
+
+@pytest.fixture
+def easy_moderation_extensions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.extension.extensible import ExtensionModule, ModuleExtension
+    from extensions.ext_code_based_extension import code_based_extension
+
+    monkeypatch.setattr(
+        code_based_extension,
+        "_Extension__module_extensions",
+        {
+            ExtensionModule.MODERATION.value: {
+                "keywords": ModuleExtension(name="keywords", extension_class=KeywordsModeration)
+            }
+        },
+    )
+    # Control scheduling only: moderation is still performed by the real provider.
+    monkeypatch.setattr(OutputModeration, "start_thread", create_autospec(OutputModeration.start_thread))
+
+
+def _make_moderated_easy_stream(
+    monkeypatch: pytest.MonkeyPatch,
+    parts: list[str],
+    app_mode: AppMode = AppMode.CHAT,
+    *,
+    agent_events: bool = False,
+) -> tuple[EasyUIBasedGenerateTaskPipeline, _FakeQueueManager, Message, Iterator[StreamResponse]]:
+    """Use real moderation construction and message saving with an isolated database boundary."""
+    entity = _make_entity(ChatAppGenerateEntity, app_mode)
+    entity.model_conf = make_model_config(provider="mock", model="mock", mode="chat")
+    entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+        type="keywords",
+        config={"keywords": "badword", "outputs_config": {"enabled": True, "preset_response": "blocked"}},
+    )
+    message = _make_message()
+    conversation = _make_conversation(app_mode)
+    queue = _FakeQueueManager()
+    pipeline = EasyUIBasedGenerateTaskPipeline(
+        application_generate_entity=entity,
+        queue_manager=queue,
+        conversation=conversation,
+        message=message,
+        stream=True,
+    )
+    events: list[AppQueueEvent] = [QueueLLMChunkEvent(chunk=llm_chunk(text)) for text in parts]
+    thought = _agent_thought()
+    if agent_events:
+        events = [
+            QueueAgentMessageEvent(chunk=llm_chunk("Let me check. ")),
+            QueueAgentThoughtEvent(agent_thought_id=thought.id),
+            *events,
+        ]
+    events.append(QueueMessageEndEvent(llm_result=llm_result("".join(parts))))
+    queue.set_events([_queue_message(event) for event in events])
+    session = create_autospec(Session, instance=True)
+    session.scalar.side_effect = [thought, message, conversation] if agent_events else [message, conversation]
+
+    def create_session() -> nullcontext[Session]:
+        return nullcontext(session)
+
+    def send(sender: object, **kwargs: object) -> None:
+        return None
+
+    def get_message_event_type(*, message_id: str) -> StreamEvent:
+        return StreamEvent.MESSAGE
+
+    def message_end() -> MessageEndStreamResponse:
+        return MessageEndStreamResponse(task_id="task", id="msg")
+
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+        create_session,
+    )
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+        create_autospec(send),
+    )
+    monkeypatch.setattr(pipeline._message_cycle_manager, "get_message_event_type", get_message_event_type)
+    monkeypatch.setattr(pipeline, "_message_end_to_stream_response", message_end)
+    return pipeline, queue, message, pipeline._process_stream_response(publisher=None)
+
+
+@pytest.mark.usefixtures("easy_moderation_extensions")
+def test_easy_default_async_delivers_before_review(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=3)
+    audited: list[str] = []
+    original = KeywordsModeration.moderation_for_outputs
+
+    def audit(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        audited.append(text)
+        return original(provider, text)
+
+    monkeypatch.setattr(KeywordsModeration, "moderation_for_outputs", audit)
+    _, _, message, stream = _make_moderated_easy_stream(monkeypatch, ["abc", "d"])
+    first = next(stream)
+    assert isinstance(first, MessageStreamResponse)
+    assert first.answer == "abc"
+    assert audited == []
+    list(stream)
+    assert audited == ["abcd"]
+    assert message.answer == "abcd"
+
+
+@pytest.mark.usefixtures("easy_moderation_extensions")
+def test_easy_blocking_audits_segments_and_tail_before_delivery(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    audited: list[str] = []
+    original = KeywordsModeration.moderation_for_outputs
+
+    def audit(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        audited.append(text)
+        return original(provider, text)
+
+    monkeypatch.setattr(KeywordsModeration, "moderation_for_outputs", audit)
+    pipeline, _, message, stream = _make_moderated_easy_stream(monkeypatch, ["ab", "c", "d"])
+    handler = pipeline.output_moderation_handler
+    delivered = ""
+    responses: list[StreamResponse] = []
+    for response in stream:
+        responses.append(response)
+        if isinstance(response, MessageStreamResponse):
+            delivered += response.answer
+            assert audited
+            assert audited[-1].startswith(delivered)
+    assert delivered == message.answer == "abcd"
+    assert audited == ["abc", "abcd"]
+    assert isinstance(responses[-1], MessageEndStreamResponse)
+    assert isinstance(responses[-2], MessageStreamResponse)
+    assert handler is not None
+    assert handler.thread is None
+
+
+@pytest.mark.usefixtures("easy_moderation_extensions")
+@pytest.mark.parametrize(("buffer_size", "expected_chunks"), [(3, ["bad"]), (300, [])])
+def test_easy_blocking_direct_output_stops_and_persists_only_replacement(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    buffer_size: int,
+    expected_chunks: list[str],
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=buffer_size)
+    _, queue, message, stream = _make_moderated_easy_stream(monkeypatch, ["bad", "word", "tail"])
+    responses = list(stream)
+    assert message.answer == "blocked"
+    assert [item.answer for item in responses if isinstance(item, MessageStreamResponse)] == expected_chunks
+    assert [item.answer for item in responses if isinstance(item, MessageReplaceStreamResponse)] == ["blocked"]
+    stops = [event for event in queue.published_events if isinstance(event, QueueStopEvent)]
+    assert len(stops) == 1
+    assert stops[0].stopped_by == QueueStopEvent.StopBy.OUTPUT_MODERATION
+
+
+@pytest.mark.usefixtures("easy_moderation_extensions")
+def test_easy_blocking_final_failure_persists_only_approved_text(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=3)
+    original = KeywordsModeration.moderation_for_outputs
+
+    def audit(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        if text != "abc":
+            raise RuntimeError("provider unavailable")
+        return original(provider, text)
+
+    monkeypatch.setattr(KeywordsModeration, "moderation_for_outputs", audit)
+    _, _, message, stream = _make_moderated_easy_stream(monkeypatch, ["abc", "d"])
+    responses = list(stream)
+    assert message.answer == "abc"
+    assert [item.answer for item in responses if isinstance(item, MessageStreamResponse)] == ["abc"]
+    assert isinstance(responses[-1], MessageEndStreamResponse)
+    assert any(record.levelname == "WARNING" for record in caplog.records)
+
+
+@pytest.mark.usefixtures("easy_moderation_extensions")
+def test_easy_blocking_override_continues_with_redacted_prefix(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MODERATION_OUTPUT_MODE="blocking", MODERATION_BUFFER_SIZE=7)
+    audited: list[str] = []
+    original = KeywordsModeration.moderation_for_outputs
+
+    def redact(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        audited.append(text)
+        result = original(provider, text)
+        return ModerationOutputsResult(
+            flagged=result.flagged, action=ModerationAction.OVERRIDDEN, text=text.replace("badword", "*******")
+        )
+
+    monkeypatch.setattr(KeywordsModeration, "moderation_for_outputs", redact)
+    _, queue, message, stream = _make_moderated_easy_stream(monkeypatch, ["bad", "word", "tail"])
+    visible = ""
+    for response in stream:
+        if isinstance(response, MessageStreamResponse):
+            assert "bad" not in response.answer
+            assert "word" not in response.answer
+            visible += response.answer
+        elif isinstance(response, MessageReplaceStreamResponse):
+            visible = response.answer
+    assert visible == message.answer == "*******tail"
+    assert audited == ["badword", "*******tail"]
+    assert not any(isinstance(event, QueueStopEvent) for event in queue.published_events)
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.AGENT_CHAT, AppMode.AGENT])
+@pytest.mark.usefixtures("easy_moderation_extensions")
+def test_easy_agent_modes_ignore_blocking_setting(
+    app_mode: AppMode, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=3)
+    audited: list[str] = []
+    original = KeywordsModeration.moderation_for_outputs
+
+    def audit(provider: KeywordsModeration, text: str) -> ModerationOutputsResult:
+        audited.append(text)
+        return original(provider, text)
+
+    monkeypatch.setattr(KeywordsModeration, "moderation_for_outputs", audit)
+    snapshots: list[tuple[list[dict[str, object]], list[str], str]] = []
+    for mode in ("async", "blocking"):
+        config_overrides(MODERATION_OUTPUT_MODE=mode)
+        audited.clear()
+        _, _, message, stream = _make_moderated_easy_stream(monkeypatch, ["bad", "word"], app_mode, agent_events=True)
+        responses = [response.model_dump() for response in stream]
+        snapshots.append((responses, list(audited), message.answer))
+    assert snapshots[1] == snapshots[0]

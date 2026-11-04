@@ -155,10 +155,15 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         dialogue_count: int,
         draft_var_saver_factory: DraftVariableSaverFactory,
     ):
+        """Build a fresh or resumed pipeline from the supplied message snapshot.
+
+        A paused answer seeds blocking review context and released text without replay.
+        """
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             stream=stream,
+            initial_answer=message.answer if message.status == MessageStatus.PAUSED else "",
         )
 
         match user:
@@ -531,9 +536,37 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle text chunk events."""
+        """Consume a text chunk; in blocking mode answer contains only released text.
+
+        Record model arrival before review, withhold pending text on failure, and publish
+        a stop on direct output. Overrides seed further review; TTS receives original text.
+        """
         delta_text = event.text
         if delta_text is None:
+            return
+
+        handler = self._base_task_pipeline.output_moderation_handler
+        if handler and handler.is_blocking:
+            # Measure generation arrival before synchronous moderation adds latency.
+            current_time = time.perf_counter()
+            if self._task_state.first_token_time is None and delta_text.strip():
+                self._task_state.first_token_time = current_time
+                self._task_state.is_streaming_response = True
+            if delta_text.strip():
+                self._task_state.last_token_time = current_time
+            if tts_publisher and queue_message:
+                tts_publisher.publish(queue_message)
+            responses = handler.moderate_stream(
+                self._message_cycle_manager.message_to_stream_response(
+                    answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
+                )
+            )
+            if responses and handler.should_direct_output():
+                self._base_task_pipeline.queue_manager.publish(
+                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
+                )
+            yield from responses
+            self._task_state.answer = handler.released_text
             return
 
         # Handle output moderation chunk
@@ -691,7 +724,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueWorkflowPausedEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle workflow paused events."""
+        """Finalize pending blocking text before persisting a paused message.
+
+        Given initialized workflow state, save only released text even if final review
+        fails. Resumption retains that prefix but does not restore a direct-output lock.
+        """
         validated_state = self._ensure_graph_runtime_initialized()
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
@@ -701,6 +738,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id)
+        # Release reviewed text before pause events; blocking responses return at the pause event.
+        yield from self._finish_blocking_output()
         yield from responses
         resolved_state: RuntimeState | None = None
         try:
@@ -758,7 +797,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         graph_runtime_state: RuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle stop events."""
+        """Finalize blocking text before stop persistence and the terminal response.
+
+        The answer remains released text on review failure; repeated finalization is inert.
+        """
+        yield from self._finish_blocking_output()
         resolved_state = None
         if self._workflow_run_id:
             resolved_state = self._resolve_graph_runtime_state(graph_runtime_state)
@@ -790,6 +833,26 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._message_end_to_stream_response()
 
+    def _finish_blocking_output(self) -> Generator[StreamResponse]:
+        """Finalize enabled blocking moderation before saving or ending this message.
+
+        Repeated terminal handling is safe: the handler only finishes once. Failed review
+        leaves the persisted answer at the already approved prefix, excluding pending text.
+        """
+        handler = self._base_task_pipeline.output_moderation_handler
+        if handler and handler.is_blocking:
+            responses = handler.finish_blocking(
+                self._message_cycle_manager.message_to_stream_response(
+                    answer=self._task_state.answer, message_id=self._message_id
+                )
+            )
+            if responses and handler.should_direct_output():
+                self._base_task_pipeline.queue_manager.publish(
+                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
+                )
+            yield from responses
+            self._task_state.answer = handler.released_text
+
     def _handle_advanced_chat_message_end_event(
         self,
         event: QueueAdvancedChatMessageEndEvent,
@@ -797,18 +860,27 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         graph_runtime_state: RuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle advanced chat message end events."""
+        """With runtime state available, finalize moderation before saving and ending.
+
+        Blocking saves only released text, including replacements; a failed final review
+        discards pending text without a client error. A previously finalized pause is inert.
+        """
         resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
 
-        output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
-            self._task_state.answer
-        )
-        if output_moderation_answer:
-            self._task_state.answer = output_moderation_answer
-            yield self._message_cycle_manager.message_replace_to_stream_response(
-                answer=output_moderation_answer,
-                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+        handler = self._base_task_pipeline.output_moderation_handler
+        if handler and handler.is_blocking:
+            yield from self._finish_blocking_output()
+            self._base_task_pipeline.output_moderation_handler = None
+        else:
+            output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
+                self._task_state.answer
             )
+            if output_moderation_answer:
+                self._task_state.answer = output_moderation_answer
+                yield self._message_cycle_manager.message_replace_to_stream_response(
+                    answer=output_moderation_answer,
+                    reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+                )
 
         # Save message unless it has already been persisted on pause.
         if not self._message_saved_on_pause:
