@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -275,7 +275,8 @@ class PlainTextOutputBackendClient(FakeAgentBackendRunClient):
 
 
 class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
-    def _events(self, run_id: str):
+    @override
+    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         return (
             RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
@@ -299,7 +300,8 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
 
 
 class ThinkingBackendClient(AgentMessageDeltaBackendClient):
-    def _events(self, run_id: str):
+    @override
+    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         started, text, succeeded = super()._events(run_id)
         return (
             started,
@@ -768,7 +770,8 @@ def test_agent_node_separates_thinking_parts(second_start_content: str):
     )
 
     class MultiPartThinkingBackendClient(ThinkingBackendClient):
-        def _events(self, run_id: str):
+        @override
+        def _events(self, run_id: str) -> tuple[RunEvent, ...]:
             return (started, first, text, second, delta, succeeded)
 
     events = list(_node(agent_backend_client=MultiPartThinkingBackendClient())._run())
