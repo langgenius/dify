@@ -138,6 +138,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     return collaborationManager.onJoinFailure(setJoinFailure)
   }, [appId, isCollaborationEnabled])
 
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+    return collaborationManager.onInitialPlainDraftFallback((fallbackAppId) => {
+      if (fallbackAppId === appId) workflowStore.setState({ isCollaborationEnabled: false })
+    })
+  }, [appId, isCollaborationEnabled, workflowStore])
+
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
       const { features, conversation_variables, environment_variables } = payload

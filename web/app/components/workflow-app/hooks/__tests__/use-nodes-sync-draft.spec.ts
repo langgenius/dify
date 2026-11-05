@@ -259,6 +259,27 @@ describe('useNodesSyncDraft', () => {
       )
     })
 
+    it('uses ordinary draft payload for a queued save after collaboration falls back', async () => {
+      const first = createDeferred<{ hash: string; updated_at: number }>()
+      mockSyncWorkflowDraft.mockReturnValueOnce(first.promise)
+      const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+      let pending!: Promise<unknown>
+      await act(async () => {
+        void result.current.doSyncWorkflowDraft()
+        pending = result.current.doSyncWorkflowDraft()
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      await act(async () => {
+        store.setState({ isCollaborationEnabled: false })
+        first.resolve({ hash: 'new', updated_at: 1 })
+        await pending
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+    })
+
     it('saves a full draft when collaboration is disabled', async () => {
       const { result } = renderUseNodesSyncDraft({
         isCollaborationEnabled: false,

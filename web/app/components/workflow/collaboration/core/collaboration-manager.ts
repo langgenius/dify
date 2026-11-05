@@ -205,6 +205,7 @@ export class CollaborationManager {
   private crdtTrusted = false
   private hasEstablishedConnection = false
   private localDraftFallbackActive = false
+  private initialPlainDraftFallback = false
   private rebuildCrdtOnNextConnect = false
   private reconnectedWithFreshDoc = false
   private awaitingSnapshotImport = false
@@ -291,6 +292,16 @@ export class CollaborationManager {
       (body: unknown, status?: number) => {
         if (attempt !== this.joinAttempt || this.getActiveSocket() !== socket) return
         const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
+        if (
+          (message === 'not_entitled' ||
+            status === 503 ||
+            message === 'collaboration_unavailable') &&
+          !this.hasJoinedRoom &&
+          !this.joinStatusReceived
+        ) {
+          this.activateInitialPlainDraftFallback(socket)
+          return
+        }
         if (message === 'draft_outdated') {
           this.cancelJoinAttempt()
           this.rejoinInProgress = false
@@ -831,6 +842,7 @@ export class CollaborationManager {
     preserveConnectIntent = false,
   }: { preserveConnectIntent?: boolean } = {}): void => {
     this.localDraftFallbackActive = false
+    this.initialPlainDraftFallback = false
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -939,6 +951,27 @@ export class CollaborationManager {
     this.pendingInitialSync = false
     webSocketClient.disconnect(appId)
     this.emitGraphReadyState()
+  }
+
+  private activateInitialPlainDraftFallback(socket: Socket): void {
+    if (this.hasJoinedRoom || this.getActiveSocket() !== socket || !this.currentAppId) return
+    const appId = this.currentAppId
+    this.cancelJoinAttempt()
+    this.joinRetryCount = 0
+    this.rejoinInProgress = false
+    this.localDraftFallbackActive = true
+    this.initialPlainDraftFallback = true
+    this.clearInitialSyncRetry()
+    this.pendingInitialSync = false
+    webSocketClient.disconnect(appId)
+    this.eventEmitter.emit('initialPlainDraftFallback', appId)
+    this.emitGraphReadyState()
+  }
+
+  onInitialPlainDraftFallback(callback: (appId: string) => void): () => void {
+    const unsubscribe = this.eventEmitter.on('initialPlainDraftFallback', callback)
+    if (this.initialPlainDraftFallback && this.currentAppId) callback(this.currentAppId)
+    return unsubscribe
   }
 
   private emitGraphReadyState(): void {

@@ -23,7 +23,7 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '@/app/components/workflow/nodes/agent-v2/types'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { toast } from '@/app/notifications'
@@ -52,7 +52,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }),
   )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const collaborationConflictReportedRef = useRef(false)
@@ -88,8 +87,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const { conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
-      workflowStore.getState()
+    const {
+      conversationVariables,
+      syncWorkflowDraftHash,
+      isWorkflowDataLoaded,
+      isCollaborationEnabled,
+    } = workflowStore.getState()
 
     if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
@@ -150,13 +153,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
+  }, [store, featuresStore, workflowStore, appMode, appId])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
     const canPersistOnPageClose =
-      !isCollaborationEnabled ||
+      !workflowStore.getState().isCollaborationEnabled ||
       collaborationManager.canFlushGraphOnPageClose() ||
       collaborationManager.canUseLocalDraftFallback()
     if (!canPersistOnPageClose) return
@@ -164,6 +167,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     // Page-close saves cannot wait for the user's consent to clear the canvas.
+    const isCollaborationEnabled = workflowStore.getState().isCollaborationEnabled
     if (postParams && !isEmptyGraph(postParams.params.graph)) {
       const version = workflowStore.getState().draftSaveVersion + 1
       const isOrdinarySave = !postParams.params._is_collaborative
@@ -177,7 +181,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
       })
     }
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore, t])
+  }, [getPostParams, getNodesReadOnly, workflowStore, t])
 
   const performLocalSync = useCallback(
     async (
@@ -194,7 +198,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const isOrdinarySave =
-        !isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()
+        !workflowStore.getState().isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()
       const version = workflowStore.getState().draftSaveVersion + 1
       workflowStore.setState({
         draftSaveVersion: version,
@@ -212,7 +216,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return (
           isMountedRef.current &&
           !getNodesReadOnly() &&
-          (!isCollaborationEnabled ||
+          (!workflowStore.getState().isCollaborationEnabled ||
             collaborationManager.canUseLocalDraftFallback() ||
             collaborationManager.canPersistLocalGraph()) &&
           currentParams?.url === baseParams.url &&
@@ -303,8 +307,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
               }
             : {}),
         }
+        if (!workflowStore.getState().isCollaborationEnabled) delete body._is_collaborative
 
-        if (!isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
+        if (!workflowStore.getState().isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
           delete body._is_collaborative
           workflowStore.setState({ draftSaveBlocked: true })
         }
@@ -346,15 +351,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [
-      workflowStore,
-      getNodesReadOnly,
-      getPostParams,
-      handleRefreshWorkflowDraft,
-      isCollaborationEnabled,
-      t,
-      appId,
-    ],
+    [workflowStore, getNodesReadOnly, getPostParams, handleRefreshWorkflowDraft, t, appId],
   )
 
   const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
@@ -391,7 +388,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       const shouldRequestLeader =
         !emptyGraph &&
-        isCollaborationEnabled &&
+        workflowStore.getState().isCollaborationEnabled &&
         !collaborationManager.canUseLocalDraftFallback() &&
         collaborationManager.isConnected() &&
         !collaborationManager.getIsLeader() &&
@@ -427,14 +424,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [
-      doSyncWorkflowDraftLocally,
-      getNodesReadOnly,
-      getPostParams,
-      isCollaborationEnabled,
-      workflowStore,
-      appId,
-    ],
+    [doSyncWorkflowDraftLocally, getNodesReadOnly, getPostParams, workflowStore, appId],
   )
 
   return {

@@ -13,15 +13,13 @@ const { createSession, connect, transports, setup, cleanup } = createCollaborati
 beforeEach(setup)
 afterEach(cleanup)
 
-it('retries a rejected first join and ignores its late acknowledgement after joining', async () => {
+it('retries a rejected rejoin and ignores its late acknowledgement after joining', async () => {
   vi.useFakeTimers()
-  const { manager, receive, acknowledge, emit } = await createSession({
-    connected: false,
-    role: 'pending',
-  })
+  const { manager, receive, acknowledge, emit } = await createSession()
   const failures = vi.fn()
   manager.onJoinFailure(failures)
-  receive('connect')
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
   const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
   acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
@@ -37,6 +35,26 @@ it('retries a rejected first join and ignores its late acknowledgement after joi
   expect(manager.canPersistLocalGraph()).toBe(true)
 })
 
+it.each([
+  [403, 'not_entitled'],
+  [503, 'collaboration_unavailable'],
+] as const)(
+  'falls back to an ordinary draft when the first join returns %s',
+  async (status, message) => {
+    const { manager, receive, acknowledge } = await createSession({
+      connected: false,
+      role: 'pending',
+    })
+    const fallback = vi.fn()
+    manager.onInitialPlainDraftFallback(fallback)
+    receive('connect')
+    acknowledge('user_connect', { msg: message }, status)
+    expect(fallback).toHaveBeenCalledOnce()
+    expect(fallback).toHaveBeenCalledWith('app-1')
+    expect(manager.canUseLocalDraftFallback()).toBe(true)
+  },
+)
+
 it('reports an initial permission rejection without retrying or allowing a save', async () => {
   vi.useFakeTimers()
   const { manager, receive, acknowledge, emit } = await createSession({
@@ -44,13 +62,16 @@ it('reports an initial permission rejection without retrying or allowing a save'
     role: 'pending',
   })
   const failures = vi.fn()
+  const fallback = vi.fn()
   manager.onJoinFailure(failures)
+  manager.onInitialPlainDraftFallback(fallback)
   receive('connect')
   acknowledge('user_connect', { msg: 'unauthorized' }, 401)
   await vi.advanceTimersByTimeAsync(60_000)
   expect(failures).toHaveBeenLastCalledWith('denied')
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
   expect(manager.canPersistLocalGraph()).toBe(false)
+  expect(fallback).not.toHaveBeenCalled()
 })
 
 it('recognizes a permission rejection in the first acknowledgement argument', async () => {
@@ -256,14 +277,60 @@ it.each(['status-first', 'ack-first'] as const)(
   },
 )
 
-it('retries when billing responds after the join timeout', async () => {
+it('uses ordinary saving when billing rejects the first join after its timeout', async () => {
   vi.useFakeTimers()
-  const { receive, acknowledge, emit } = await createSession({ connected: false, role: 'pending' })
+  const { manager, receive, acknowledge, emit } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const fallback = vi.fn()
+  manager.onInitialPlainDraftFallback(fallback)
   receive('connect')
   await vi.advanceTimersByTimeAsync(15_000)
+  expect(fallback).not.toHaveBeenCalled()
   acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
   await vi.advanceTimersByTimeAsync(1_000)
-  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+  expect(fallback).toHaveBeenCalledOnce()
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+})
+
+it('backs off repeated billing failures, caps the delay, and resets after joining', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  const { manager, receive, acknowledge, emit } = await createSession()
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  for (const [index, delay] of [750, 1500, 3000, 6000, 12_000, 22_500, 22_500].entries()) {
+    acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(index + 1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(index + 2)
+  }
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1000 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  await vi.advanceTimersByTimeAsync(749)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(9)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(10)
+})
+
+it('reports a non-authorization join error without allowing a save', async () => {
+  const { manager, receive, acknowledge } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  acknowledge('user_connect', { msg: 'unexpected' }, 500)
+  expect(failures).toHaveBeenLastCalledWith('unavailable')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+  expect(manager.canFlushGraphOnPageClose()).toBe(false)
+  expect(manager.canRestoreGraphFromCrdt()).toBe(false)
 })
 
 it('ignores the timed-out join acknowledgement after the socket disconnects', async () => {
@@ -282,10 +349,11 @@ it('ignores the timed-out join acknowledgement after the socket disconnects', as
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 
-it('cancels an initial retry on disconnect and uses the existing join behavior after success', async () => {
+it('cancels a rejoin retry on disconnect and rejoins after reconnecting', async () => {
   vi.useFakeTimers()
-  const { receive, acknowledge, emit } = await createSession({ connected: false, role: 'pending' })
-  receive('connect')
+  const { manager, receive, acknowledge, emit } = await createSession()
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
   receive('disconnect', 'transport close')
   await vi.advanceTimersByTimeAsync(60_000)
@@ -312,8 +380,28 @@ it('ignores an acknowledgement from before a disconnect', async () => {
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 
+it('ignores an old app fallback acknowledgement after switching editors', async () => {
+  const { manager, receive, emit, store } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  receive('connect')
+  const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  const next = createSocket('socket-next', false)
+  transports.set('app-2', next)
+  await connect(manager, 'app-2', store)
+  const fallback = vi.fn()
+  manager.onInitialPlainDraftFallback(fallback)
+  next.receive('connect')
+  if (typeof oldAck !== 'function') throw new Error('Missing join acknowledgement')
+  oldAck({ msg: 'not_entitled' }, 403)
+  expect(fallback).not.toHaveBeenCalled()
+  expect(webSocketClient.disconnect).not.toHaveBeenCalledWith('app-2')
+})
+
 it.each([
   [401, 'unauthorized', 'denied'],
+  [403, 'not_entitled', 'unavailable'],
   [503, 'collaboration_unavailable', 'retrying'],
 ] as const)(
   'handles a %s rejoin acknowledgement after a status event',
@@ -323,13 +411,16 @@ it.each([
       nodes: [createNode('unsaved')],
     })
     const failures = vi.fn()
+    const fallback = vi.fn()
     manager.onJoinFailure(failures)
+    manager.onInitialPlainDraftFallback(fallback)
     receive('disconnect', 'transport close')
     receive('connect')
     receive('status', { isLeader: true })
     acknowledge('user_connect', { msg: message }, status)
     expect(failures).toHaveBeenLastCalledWith(failure)
     expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(fallback).not.toHaveBeenCalled()
     if (status === 503) {
       await vi.advanceTimersByTimeAsync(1_000)
       expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)

@@ -369,6 +369,63 @@ it('keeps the current canvas and blocks saving when the draft is outdated', asyn
   expect(api.fetchDraft).not.toHaveBeenCalled()
 })
 
+it.each([
+  [403, 'not_entitled'],
+  [503, 'collaboration_unavailable'],
+] as const)(
+  'opens ordinary editing and saves the full draft when first join returns %s',
+  async (status, message) => {
+    const user = userEvent.setup()
+    for (const name of [
+      'connect',
+      'disconnect',
+      'isConnected',
+      'getIsLeader',
+      'canPersistLocalGraph',
+      'onGraphReadyChange',
+      'onJoinFailure',
+    ] as const)
+      vi.mocked(collaborationManager[name]).mockRestore()
+
+    const transport = createSocket('socket-app-1', false)
+    let active = true
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockImplementation(() =>
+      active ? transport.socket : null,
+    )
+    vi.spyOn(webSocketClient, 'isConnected').mockImplementation(
+      () => active && transport.socket.connected,
+    )
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {
+      if (!active) return
+      active = false
+      transport.receive('disconnect', 'io client disconnect')
+    })
+
+    await renderMain({ nodes: [], initialStoreState: { showOnboarding: true } })
+    await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
+    act(() => transport.receive('connect'))
+    expect(screen.getByTestId('collaboration-graph-loading')).toBeVisible()
+    act(() => transport.acknowledge('user_connect', { msg: message }, status))
+    await waitFor(() =>
+      expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument(),
+    )
+
+    const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+    await user.click(
+      within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+    )
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalled())
+    const body = api.saveDraft.mock.lastCall?.[0].body
+    expect(body).toMatchObject({
+      graph: { nodes: [{ data: { type: BlockEnum.Start, variables: [] } }], edges: [] },
+      features: expect.any(Object),
+      conversation_variables: expect.any(Array),
+    })
+    expect(body).not.toHaveProperty('_is_collaborative')
+  },
+)
+
 it('shows a retry message and access guidance when the initial join is rejected', async () => {
   await renderMain()
   act(() => {
