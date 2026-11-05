@@ -22,7 +22,6 @@ import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useWorkspaceCollaborationEnabled } from '@/features/system-features/use-collaboration-enabled'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
@@ -375,7 +374,12 @@ export function AppListCatalog(props: AppListCatalogProps) {
   } = props
   const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = systemFeaturesQuery.data
-  const isCollaborationEnabled = useWorkspaceCollaborationEnabled()
+  const { data: isCollaborationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      retry: false,
+      select: (features) => features.workflow_collaboration_enabled,
+    }),
+  )
   const appList = useInfiniteQuery(
     consoleQuery.apps.get.infiniteOptions({
       input: (pageParam) => ({

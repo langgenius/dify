@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
-from enums import DeploymentEdition
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
@@ -127,10 +126,7 @@ class WorkflowCollaborationService:
             )
             return None
 
-        if not dify_config.ENABLE_COLLABORATION_MODE or (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and not FeatureService.get_workspace_plan(str(tenant_id)).is_paid
-        ):
+        if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
             return None
 
         self._ensure_server_heartbeat_started()

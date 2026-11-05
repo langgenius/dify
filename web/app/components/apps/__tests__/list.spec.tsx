@@ -247,7 +247,7 @@ it('waits for both initial requests before announcing results', async () => {
 })
 
 it('queries collaborators only for workflow apps when collaboration is enabled', async () => {
-  await setup('', { systemFeatures: { enable_collaboration_mode: true } })
+  await setup('', { features: { workflow_collaboration_enabled: true } })
   await waitFor(() => expect(api.online).toHaveBeenCalledWith({ body: { app_ids: ['app-2'] } }))
 })
 

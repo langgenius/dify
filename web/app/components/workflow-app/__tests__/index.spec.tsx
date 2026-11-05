@@ -1,16 +1,18 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDetail, seedSystemFeatures } from '@/test/console/query-data'
+import { seedAppDetail, seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -24,6 +26,7 @@ let workflowStore: ReturnType<typeof useWorkflowStore>
 let appDetail: AppDetailWithSite
 
 const fetchDraft = vi.fn()
+const fetchFeatures = vi.fn()
 
 let consoleState: {
   isLoadingCurrentWorkspace: boolean
@@ -47,9 +50,21 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
-const render = (ui: ReactElement) => {
+const render = (
+  ui: ReactElement,
+  options?: {
+    cloud?: boolean
+    plan?: 'sandbox' | 'professional' | 'team'
+    collaboration?: boolean | null
+  },
+) => {
   const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, options?.cloud ? { deployment_edition: 'CLOUD' } : {})
+  if (options?.collaboration !== null)
+    seedFeatures(queryClient, {
+      workflow_collaboration_enabled: options?.collaboration ?? true,
+      ...(options?.plan ? { billing: { subscription: { plan: options.plan } } } : {}),
+    })
   seedAppDetail(queryClient, appDetail)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.triggers.get.queryKey({
@@ -66,9 +81,10 @@ const render = (ui: ReactElement) => {
       })),
     },
   )
-  return renderWithConsoleState(ui, {
-    wrapper: createQueryClientWrapper(queryClient),
-  })
+  return {
+    ...renderWithConsoleState(ui, { wrapper: createQueryClientWrapper(queryClient) }),
+    queryClient,
+  }
 }
 
 vi.mock('@/context/workspace-state', async () => {
@@ -109,6 +125,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => fetchFeatures(),
       'files.upload.get': () => createFileUploadConfigFixture(),
       'apps.byAppId.workflows.defaultWorkflowBlockConfigs.get': () => [],
       'apps.byAppId.workflows.publish.get': () => createWorkflowResponseFixture(),
@@ -132,6 +149,9 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
       <section aria-label="Workflow canvas">
         <WorkflowInitializationProbe />
         <output aria-label="Saved viewport">{JSON.stringify(viewport)}</output>
+        <output aria-label="Collaboration enabled">
+          {String(useStore((state) => state.isCollaborationEnabled))}
+        </output>
       </section>
     )
   },
@@ -173,7 +193,66 @@ describe('WorkflowApp', () => {
     }
     appTriggersState = {}
     searchParamsValue = null
+    fetchFeatures.mockReset()
     mockFetchRunDetail.mockReset().mockResolvedValue({ inputs: null })
+  })
+
+  it.each([
+    ['sandbox', 'false'],
+    ['professional', 'true'],
+    ['team', 'true'],
+  ] as const)('initializes a Cloud %s workspace with collaboration %s', async (plan, expected) => {
+    render(<WorkflowApp />, { cloud: true, plan, collaboration: expected === 'true' })
+    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(expected)
+  })
+
+  it.each([false, true])(
+    'keeps the initial editor mode when workspace capability changes from %s',
+    async (initial) => {
+      const { queryClient } = render(<WorkflowApp />, { cloud: true, collaboration: initial })
+      expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+      act(() => seedFeatures(queryClient, { workflow_collaboration_enabled: !initial }))
+      expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(initial))
+    },
+  )
+
+  it('waits for the Cloud subscription before starting the editor', async () => {
+    let resolveFeatures!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
+    fetchFeatures.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFeatures = resolve
+      }),
+    )
+    fetchDraft.mockClear()
+
+    render(<WorkflowApp />, { cloud: true, collaboration: null })
+    expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+    expect(fetchDraft).not.toHaveBeenCalled()
+
+    await act(async () =>
+      resolveFeatures(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: false })),
+    )
+    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
+  })
+
+  it('blocks the editor when the subscription cannot be loaded and retries in place', async () => {
+    const user = userEvent.setup()
+    fetchFeatures
+      .mockRejectedValueOnce(new Error('billing unavailable'))
+      .mockResolvedValueOnce(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }))
+
+    render(<WorkflowApp />, { cloud: true, collaboration: null })
+    const retry = await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
+    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.message')
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+
+    await user.click(retry)
+    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('true')
+    expect(fetchFeatures).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the canvas gated until the workflow draft arrives', async () => {

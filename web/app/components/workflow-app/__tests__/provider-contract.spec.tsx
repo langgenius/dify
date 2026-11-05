@@ -6,7 +6,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDetail, seedSystemFeatures } from '@/test/console/query-data'
+import { seedAppDetail, seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import WorkflowApp from '../index'
@@ -14,6 +14,7 @@ import WorkflowApp from '../index'
 const render = (ui: ReactElement) => {
   const queryClient = createAccountProfileQueryClient()
   seedSystemFeatures(queryClient)
+  seedFeatures(queryClient, { workflow_collaboration_enabled: true })
   seedAppDetail(
     queryClient,
     createAppDetailFixture({

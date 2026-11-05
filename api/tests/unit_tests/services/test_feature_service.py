@@ -19,6 +19,46 @@ def test_education_feature_is_disabled_by_default() -> None:
     assert FeatureModel().education.enabled is False
 
 
+@pytest.mark.parametrize(
+    ("edition", "plan", "enabled", "expected"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+    ],
+)
+def test_workflow_collaboration_feature_uses_the_loaded_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    enabled: bool,
+    expected: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled)
+    billing_calls: list[str] = []
+
+    def fill_billing(features: FeatureModel, tenant_id: str, exclude_vector_space: bool = False) -> None:
+        billing_calls.append(tenant_id)
+        features.billing.subscription.plan = plan
+
+    def fail_extra_plan_lookup(_tenant_id: str) -> CloudPlan:
+        raise AssertionError("the loaded plan should be reused")
+
+    monkeypatch.setattr(FeatureService, "_fulfill_params_from_billing_api", fill_billing)
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", fail_extra_plan_lookup)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    assert features.workflow_collaboration_enabled is expected
+    assert billing_calls == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+
+
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
 def test_education_is_advertised_only_where_its_endpoints_exist(
     config_overrides: Callable[..., None], edition: DeploymentEdition
