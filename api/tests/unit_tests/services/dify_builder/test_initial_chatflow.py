@@ -91,7 +91,8 @@ def test_configured_drafts_are_never_replaced_as_initial_templates(
     initial_graph["nodes"][index]["data"].update(patch)
     assert not is_initial_chatflow(initial_graph, mode="advanced-chat")
     assert not any(
-        intent.op == "delete_node" for intent in build_intents_for_draft(initial_graph, [], mode="advanced-chat")
+        intent.op == "delete_node"
+        for intent in build_intents_for_draft(initial_graph, [], mode="advanced-chat", built_node_ids=[])
     )
 
 
@@ -257,7 +258,9 @@ def test_approved_build_replaces_the_whole_template_and_remains_revertible(
     assert port.graph["nodes"][1]["data"]["prompt_template"][0]["text"] == "Help with support requests"
     assert [i.args["node_id"] for i in port.applied if i.op == "delete_node"] == ["start", "llm", "answer"]
     assert port.expected_revision == "h0"
-    assert not build_intents_for_draft(port.graph, to_intents(generated), mode="advanced-chat")
+    assert not build_intents_for_draft(
+        port.graph, to_intents(generated), mode="advanced-chat", built_node_ids=fc.built_node_ids
+    )
     reverted = handle_execution(env, Turn(actor=actor, action=Action(kind="undo")), session, result.context)
     assert reverted.next == PcState.BUILD_REVERTED
     assert port.graph == initial_graph
