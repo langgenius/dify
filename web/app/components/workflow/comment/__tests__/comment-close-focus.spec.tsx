@@ -126,11 +126,11 @@ function renderCommentCanvas(comments = [comment]) {
   )
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1', name: 'Alice' })
-  seedSystemFeatures(queryClient, { enable_collaboration_mode: true })
+  seedSystemFeatures(queryClient)
   return renderWorkflowFlowComponent(<CommentCanvas />, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
     initialStoreState: {
-      isCollaborationEnabled: true,
       comments,
       showUserComments: true,
       mentionableUsersCache: { 'app-1': [] },

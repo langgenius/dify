@@ -20,6 +20,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
+    WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
 )
@@ -134,13 +135,17 @@ class TestWorkflowCollaborationService:
                 "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
             ) as get_plan,
         ):
-            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            if allowed:
+                result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                assert result is not None
+            else:
+                with pytest.raises(WorkflowCollaborationNotEntitledError):
+                    service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         if edition == DeploymentEdition.CLOUD and enabled:
             get_plan.assert_called_once_with("t-1")
         else:
             get_plan.assert_not_called()
-        assert (result is not None) is allowed
         assert bool(repository.list_sessions("wf-1")) is allowed
         assert socketio.enter_room.called is allowed
         assert socketio.start_background_task.called is allowed

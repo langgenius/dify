@@ -5,8 +5,9 @@ import type {
   NodePanelPresenceMap,
   OnlineUser,
 } from '../types/collaboration'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
-import { useStore } from '@/app/components/workflow/store'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -37,7 +38,7 @@ export function useCollaboration(
 
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
-  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled || !canEdit) {

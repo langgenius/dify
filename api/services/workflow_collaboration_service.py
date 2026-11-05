@@ -30,6 +30,10 @@ _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
 
 
+class WorkflowCollaborationNotEntitledError(Exception):
+    """The workspace cannot use workflow collaboration."""
+
+
 class WorkflowCollaborationUnavailableError(Exception):
     """The draft or socket is unavailable for a collaboration join."""
 
@@ -115,7 +119,8 @@ class WorkflowCollaborationService:
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        `App.id`. Missing access returns `None`; an ineligible workspace raises
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
         Registration holds the draft row lock shared with full console saves.
         """
         socket_session = self._socketio.get_session(sid)
@@ -135,7 +140,8 @@ class WorkflowCollaborationService:
             return None
 
         if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
-            return None
+            raise WorkflowCollaborationNotEntitledError
+
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
             "username": str(socket_session.get("username", "Unknown")),

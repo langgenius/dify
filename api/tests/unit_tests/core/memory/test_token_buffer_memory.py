@@ -14,7 +14,6 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
-import models.model as model_module
 from core.app.file_access import FileAccessControllerProtocol
 from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -88,7 +87,6 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
     with Session(sqlite_engine, expire_on_commit=False) as session:
         database = Database(engine=sqlite_engine, session=session, statements=statements)
         monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: session))
-        monkeypatch.setattr(model_module, "db", database)
         yield database
     event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 

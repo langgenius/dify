@@ -13,7 +13,10 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationEnabledAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -23,7 +26,7 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '@/app/components/workflow/nodes/agent-v2/types'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { toast } from '@/app/notifications'
@@ -52,7 +55,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }),
   )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const collaborationConflictReportedRef = useRef(false)
@@ -169,7 +172,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const isOrdinarySave = !postParams.params._is_collaborative
       if (isOrdinarySave)
         workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
-      // oxlint-disable-next-line typescript/no-deprecated -- Existing unload transport must report conflicts before the canvas can refresh.
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
         if (isOrdinarySave && response?.ok && workflowStore.getState().draftSaveVersion === version)
           workflowStore.setState({ draftSaveBlocked: false })

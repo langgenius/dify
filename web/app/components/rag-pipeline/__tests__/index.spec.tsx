@@ -1,10 +1,11 @@
 import type { Viewport } from 'reactflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, screen } from '@testing-library/react'
+import { useAtomValue } from 'jotai'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
-import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -39,7 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 function CollaborationModeProbe() {
-  const enabled = useStore((state) => state.isCollaborationEnabled)
+  const enabled = useAtomValue(editorCollaborationEnabledAtom)
   return <output aria-label="Collaboration mode">{enabled ? 'enabled' : 'disabled'}</output>
 }
 
@@ -131,9 +132,10 @@ describe('RagPipeline', () => {
     ).toBeInTheDocument()
     expect(requests.draft).not.toHaveBeenCalled()
   })
-  it('disables collaboration even when enabled for the deployment', async () => {
+  it('disables collaboration even when enabled for the workspace', async () => {
     renderPipeline('pipeline-1', {
-      systemFeatures: { deployment_edition: 'CLOUD', enable_collaboration_mode: true },
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { workflow_collaboration_enabled: true },
     })
     expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
   })

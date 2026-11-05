@@ -147,7 +147,7 @@ it('opens app import but omits that action for snippets', async () => {
 
 it('allows comments but not node editing when editing permission is denied', async () => {
   const { user, store } = setup({
-    initialStoreState: { isCollaborationEnabled: true },
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
     hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit: false } },
   })
   const comment = await screen.findByRole('menuitem', {
