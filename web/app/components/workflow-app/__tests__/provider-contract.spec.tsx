@@ -54,6 +54,18 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => ({ get: () => null }),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }),
+    }),
+  }
+})
+
 vi.mock('../hooks/use-workflow-init', async () => {
   const React = await import('react')
   const { useStore, useWorkflowStore } = await import('@/app/components/workflow/store')

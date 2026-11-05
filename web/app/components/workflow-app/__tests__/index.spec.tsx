@@ -60,11 +60,13 @@ const render = (
 ) => {
   const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
   seedSystemFeatures(queryClient, options?.cloud ? { deployment_edition: 'CLOUD' } : {})
-  if (options?.collaboration !== null)
-    seedFeatures(queryClient, {
+  if (options?.collaboration !== null) {
+    const features = seedFeatures(queryClient, {
       workflow_collaboration_enabled: options?.collaboration ?? true,
       ...(options?.plan ? { billing: { subscription: { plan: options.plan } } } : {}),
     })
+    fetchFeatures.mockResolvedValue(features)
+  }
   seedAppDetail(queryClient, appDetail)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.triggers.get.queryKey({
@@ -212,10 +214,30 @@ describe('WorkflowApp', () => {
     async (initial) => {
       const { queryClient } = render(<WorkflowApp />, { cloud: true, collaboration: initial })
       expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.collaboration.availableAfterReopen'),
+      ).not.toBeInTheDocument()
       act(() => seedFeatures(queryClient, { workflow_collaboration_enabled: !initial }))
       expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(initial))
+      if (!initial)
+        expect(
+          await screen.findByText('workflow.collaboration.availableAfterReopen'),
+        ).toBeInTheDocument()
+      else
+        expect(
+          screen.queryByText('workflow.collaboration.availableAfterReopen'),
+        ).not.toBeInTheDocument()
     },
   )
+
+  it('does not report an upgrade if a collaborative session falls back while the capability stays enabled', async () => {
+    render(<WorkflowApp />, { cloud: true, collaboration: true })
+    await screen.findByRole('region', { name: 'Workflow canvas' })
+    act(() => workflowStore.setState({ isCollaborationEnabled: false }))
+    expect(
+      screen.queryByText('workflow.collaboration.availableAfterReopen'),
+    ).not.toBeInTheDocument()
+  })
 
   it('waits for the Cloud subscription before starting the editor', async () => {
     let resolveFeatures!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
