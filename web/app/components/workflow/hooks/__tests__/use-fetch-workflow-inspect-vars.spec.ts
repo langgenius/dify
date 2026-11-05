@@ -121,6 +121,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
       kind: 'app',
       appId: 'app-1',
       mode: 'workflow',
+      collaborationEnabled: false,
     })
     expect(result.current.getNodes()[0]!.data._runningStatus).toBeUndefined()
     expect(store.getState().nodesWithInspectVars).toEqual([
@@ -206,6 +207,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
       kind: 'app',
       appId: 'flow-id',
       mode: 'workflow',
+      collaborationEnabled: false,
     })
     expect(store.getState().nodesWithInspectVars).toEqual([
       expect.objectContaining({

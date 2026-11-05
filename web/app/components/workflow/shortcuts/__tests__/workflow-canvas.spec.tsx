@@ -114,7 +114,8 @@ function renderCanvas({
     </HotkeysProvider>,
     {
       queryClient,
-      initialStoreState: { canvasReadOnly: readOnly, isCollaborationEnabled: collaborationEnabled },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled },
+      initialStoreState: { canvasReadOnly: readOnly },
       historyStore: { nodes, edges },
       hooksStoreProps: { doSyncWorkflowDraft: sync },
     },

@@ -112,9 +112,7 @@ const baseCommentDetail = (): WorkflowCommentDetail => ({
 const createSeededQueryClient = () => {
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
-  seedSystemFeatures(queryClient, {
-    enable_collaboration_mode: globalFeatureState.enableCollaboration,
-  })
+  seedSystemFeatures(queryClient)
   return queryClient
 }
 
@@ -123,9 +121,11 @@ const useCommentCanvas = () => ({ ...useWorkflowComment(), flow: useReactFlow() 
 const renderWorkflowHook: typeof renderWorkflowFlowHook = (hook, options) =>
   renderWorkflowFlowHook(hook, {
     ...options,
-    initialStoreState: {
-      isCollaborationEnabled: globalFeatureState.enableCollaboration,
-      ...options?.initialStoreState,
+    resource: {
+      kind: 'app',
+      appId: 'app-1',
+      mode: 'workflow',
+      collaborationEnabled: globalFeatureState.enableCollaboration,
     },
     reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 160, zoom: 2 } },
   })

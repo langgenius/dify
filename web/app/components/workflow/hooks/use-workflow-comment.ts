@@ -8,7 +8,10 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorAppIdAtom,
+  editorUsesCollaborationAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
 import { useStore } from '../store'
@@ -71,7 +74,7 @@ export const useWorkflowComment = () => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
+  const isCollaborationEnabled = useAtomValue(editorUsesCollaborationAtom)
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
   const commentFocusToRestoreRef = useRef<string | null>(null)

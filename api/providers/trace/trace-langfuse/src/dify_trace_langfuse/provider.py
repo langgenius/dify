@@ -1,39 +1,33 @@
-"""Langfuse destination over the public ingestion API.
+"""Langfuse destination over its OpenTelemetry endpoint.
 
-Each trace unit becomes ingestion events: the root span is the Langfuse trace
-and every other span an observation (a generation for LLM calls). Langfuse
-upserts by ID, so re-sending a unit after a partial failure is safe.
+Langfuse does not deduplicate re-sent spans, so a unit is retried only when
+none of it was accepted.
 """
 
 import base64
-from collections.abc import Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import override
-from urllib.parse import quote
-from uuid import uuid5
 
 from dify_trace_sdk.errors import (
     EgressError,
     ExportOutcomeUnknownError,
-    ExportRejectedError,
     ExportRetryableError,
     VerificationError,
 )
-from dify_trace_sdk.exporting import export_endpoint, json_value, send_export_request
-from dify_trace_sdk.ids import span_uuid, trace_uuid
-from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
+from dify_trace_sdk.exporting import export_endpoint, json_value
+from dify_trace_sdk.model import Span, SpanKind, Trace
+from dify_trace_sdk.otlp import encode_trace, post_otlp
 from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from pydantic import JsonValue
 
 from dify_trace_langfuse.config import LangfuseConfig
 
+DESTINATION = "Langfuse"
+SERVICE_NAME = "dify"
 VERIFY_TIMEOUT_SECONDS = 10.0
-MAX_BATCH_BYTES = 3_000_000
-"""Stay below Langfuse Cloud's ingestion request limit."""
-
-
-def _iso(value: datetime) -> str:
-    return value.isoformat()
+MAX_REQUEST_BYTES = 3_000_000
+INGESTION_VERSION_HEADER = {"x-langfuse-ingestion-version": "4"}
 
 
 def _messages(value: JsonValue, *, role: str) -> JsonValue:
@@ -50,15 +44,104 @@ def _messages(value: JsonValue, *, role: str) -> JsonValue:
     return value
 
 
+def _json(value: JsonValue) -> str | None:
+    return None if value is None else json_value(value)
+
+
+def _trace_attributes(trace: Trace) -> dict[str, object]:
+    """Repeated on every span so Langfuse can filter observations by them."""
+    return {
+        "langfuse.trace.name": trace.root.name if trace.parent is None else None,
+        "langfuse.user.id": trace.user_id,
+        "langfuse.session.id": trace.session_id,
+    }
+
+
+def _trace_metadata(trace: Trace) -> dict[str, object]:
+    if trace.parent is not None:
+        return {}
+    metadata = {
+        **trace.root.attributes,
+        "dify_trace_id": trace.trace_id,
+        "external_trace_id": trace.external_trace_id,
+    }
+    return {f"langfuse.trace.metadata.{key}": value for key, value in metadata.items()}
+
+
+def _generation_attributes(span: Span) -> dict[str, object]:
+    attributes: dict[str, object] = {"langfuse.observation.model.name": span.model_name}
+    if span.usage is not None:
+        attributes["langfuse.observation.usage_details"] = json_value(
+            {
+                "input": span.usage.prompt_tokens,
+                "output": span.usage.completion_tokens,
+                "total": span.usage.total_tokens,
+            }
+        )
+    if span.cost is not None and span.cost.currency.upper() == "USD":
+        attributes["langfuse.observation.cost_details"] = json_value({"total": span.cost.amount})
+    if span.time_to_first_token is not None:
+        attributes["langfuse.observation.completion_start_time"] = (
+            span.start_time + timedelta(seconds=span.time_to_first_token)
+        ).isoformat()
+    return attributes
+
+
+def _span_attributes(span: Span) -> dict[str, object]:
+    # Other span kinds match Langfuse's type names.
+    attributes: dict[str, object] = {
+        "langfuse.observation.type": "generation" if span.kind is SpanKind.LLM else span.kind.value,
+        "langfuse.observation.input": _json(_messages(span.inputs, role="user")),
+        "langfuse.observation.output": _json(_messages(span.outputs, role="assistant")),
+        "langfuse.observation.metadata.dify_span_kind": span.kind.value,
+        **{f"langfuse.observation.metadata.{key}": value for key, value in span.attributes.items()},
+    }
+    if span.kind is SpanKind.LLM:
+        attributes.update(_generation_attributes(span))
+    return attributes
+
+
+def _export_request(trace: Trace) -> ExportTraceServiceRequest:
+    trace_attributes = _trace_attributes(trace)
+    trace_metadata = _trace_metadata(trace)
+    return encode_trace(
+        trace,
+        resource={"service.name": SERVICE_NAME},
+        attributes=lambda span: {
+            **trace_attributes,
+            **_span_attributes(span),
+            **(trace_metadata if span.span_id == trace.root.span_id else {}),
+        },
+    )
+
+
+def _split(request: ExportTraceServiceRequest) -> list[ExportTraceServiceRequest]:
+    """An oversized span travels alone."""
+    (resource_spans,) = request.resource_spans
+    (scope_spans,) = resource_spans.scope_spans
+    chunks: list[ExportTraceServiceRequest] = []
+    size = 0
+    for span in scope_spans.spans:
+        span_size = span.ByteSize()
+        if not chunks or size + span_size > MAX_REQUEST_BYTES:
+            chunk = ExportTraceServiceRequest()
+            chunk.resource_spans.add(resource=resource_spans.resource).scope_spans.add(scope=scope_spans.scope)
+            chunks.append(chunk)
+            size = 0
+        chunks[-1].resource_spans[0].scope_spans[0].spans.append(span)
+        size += span_size
+    return chunks
+
+
 class LangfuseProvider(TraceProvider[LangfuseConfig]):
     id = "langfuse"
     config_model = LangfuseConfig
     capabilities = ProviderCapabilities(native_cost=True, trace_url=True, span_url=True)
 
     @staticmethod
-    def _headers(config: LangfuseConfig) -> dict[str, str]:
+    def _authorization(config: LangfuseConfig) -> dict[str, str]:
         token = base64.b64encode(f"{config.public_key}:{config.secret_key}".encode()).decode()
-        return {"Authorization": f"Basic {token}", "Accept": "application/json"}
+        return {"Authorization": f"Basic {token}"}
 
     @override
     def verify(self, config: LangfuseConfig) -> LangfuseConfig:
@@ -66,7 +149,7 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
             response = self.egress.request(
                 "GET",
                 f"{config.host.rstrip('/')}/api/public/projects",
-                headers=self._headers(config),
+                headers={**self._authorization(config), "Accept": "application/json"},
                 content=None,
                 timeout=VERIFY_TIMEOUT_SECONDS,
                 sensitive_url=False,
@@ -94,147 +177,21 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
 
     @override
     def send(self, config: LangfuseConfig, trace: Trace) -> SendResult:
-        host = export_endpoint(config.host)
-        trace_key = trace.external_trace_id or str(trace_uuid(trace.trace_id))
-        events = self._events(trace, trace_key)
-        for batch in self._batches(events):
+        url = f"{export_endpoint(config.host)}/api/public/otel/v1/traces"
+        headers = {**self._authorization(config), **INGESTION_VERSION_HEADER}
+        for index, request in enumerate(_split(_export_request(trace))):
             try:
-                response = send_export_request(
-                    self.egress,
-                    "POST",
-                    f"{host}/api/public/ingestion",
-                    destination="Langfuse",
-                    headers={**self._headers(config), "Content-Type": "application/json"},
-                    content=batch,
-                    sensitive_url=False,
-                )
-            except ExportOutcomeUnknownError:
-                raise ExportRetryableError("Langfuse ingestion outcome is unknown; re-sending is idempotent") from None
-            try:
-                body = response.json() if response.content else {}
-            except ValueError:
-                # Something between Dify and Langfuse answered; re-sending is idempotent.
-                raise ExportRetryableError("Langfuse ingestion answered with an unreadable body") from None
-            self._check_results(body)
+                post_otlp(self.egress, url, request, destination=DESTINATION, headers=headers, sensitive_url=False)
+            except ExportRetryableError:
+                if index == 0:
+                    raise
+                raise ExportOutcomeUnknownError(f"{DESTINATION} accepted part of the trace") from None
         trace_url = (
-            f"{self.project_url(config).rstrip('/')}/traces/{quote(trace_key, safe='')}"
+            f"{self.project_url(config).rstrip('/')}/traces/{trace.trace_id}"
             if config.project_key or config.project_url
             else None
         )
         span_urls = (
-            {
-                span.span_id: f"{trace_url}?observation={self._observation_id(trace, span.span_id)}"
-                for span in trace.spans
-            }
-            if trace_url
-            else {}
+            {span.span_id: f"{trace_url}?observation={span.span_id}" for span in trace.spans} if trace_url else {}
         )
-        return SendResult(trace_id=trace_key, trace_url=trace_url, span_urls=span_urls)
-
-    @staticmethod
-    def _observation_id(trace: Trace, span_id: str) -> str:
-        return str(span_uuid(trace.trace_id, span_id))
-
-    def _events(self, trace: Trace, trace_key: str) -> list[dict[str, object]]:
-        events: list[dict[str, object]] = []
-        if trace.parent is None:
-            root = trace.root
-            events.append(
-                self._event(
-                    trace,
-                    "trace-create",
-                    {
-                        "id": trace_key,
-                        "name": root.name,
-                        "timestamp": _iso(root.start_time),
-                        "userId": trace.user_id,
-                        "sessionId": trace.session_id,
-                        "input": _messages(root.inputs, role="user"),
-                        "output": _messages(root.outputs, role="assistant"),
-                        "metadata": {**root.attributes, "dify_trace_id": trace.trace_id},
-                    },
-                )
-            )
-            # The trace itself represents the root; its children are top-level observations.
-            trace_level_span_id = root.span_id
-            observations: Sequence[Span] = trace.spans[1:]
-        else:
-            trace_level_span_id = trace.parent.span_id
-            observations = trace.spans
-        for span in observations:
-            parent = (
-                None
-                if span.parent_span_id == trace_level_span_id or span.parent_span_id is None
-                else self._observation_id(trace, span.parent_span_id)
-            )
-            body: dict[str, object] = {
-                "id": self._observation_id(trace, span.span_id),
-                "traceId": trace_key,
-                "parentObservationId": parent,
-                "name": span.name,
-                "startTime": _iso(span.start_time),
-                "endTime": _iso(span.end_time),
-                "input": _messages(span.inputs, role="user"),
-                "output": _messages(span.outputs, role="assistant"),
-                "metadata": {**span.attributes, "dify_span_kind": span.kind.value},
-                "level": "ERROR" if span.status is SpanStatus.ERROR else "DEFAULT",
-                "statusMessage": span.error,
-            }
-            if span.kind is SpanKind.LLM:
-                body.update(self._generation_fields(span))
-                events.append(self._event(trace, "generation-create", body))
-            else:
-                events.append(self._event(trace, "span-create", body))
-        return events
-
-    @staticmethod
-    def _generation_fields(span: Span) -> dict[str, object]:
-        fields: dict[str, object] = {"model": span.model_name}
-        if span.usage is not None:
-            usage: dict[str, object] = {
-                "input": span.usage.prompt_tokens,
-                "output": span.usage.completion_tokens,
-                "total": span.usage.total_tokens,
-                "unit": "TOKENS",
-            }
-            if span.cost is not None and span.cost.currency.upper() == "USD":
-                usage["totalCost"] = span.cost.amount
-            fields["usage"] = usage
-        if span.time_to_first_token is not None:
-            fields["completionStartTime"] = _iso(span.start_time + timedelta(seconds=span.time_to_first_token))
-        return fields
-
-    @staticmethod
-    def _event(trace: Trace, event_type: str, body: Mapping[str, object]) -> dict[str, object]:
-        # Deterministic event IDs let Langfuse deduplicate a redelivered unit.
-        return {
-            "id": str(uuid5(trace_uuid(trace.trace_id), f"{event_type}:{body['id']}")),
-            "type": event_type,
-            "timestamp": body.get("startTime") or body.get("timestamp"),
-            "body": {key: value for key, value in body.items() if value is not None},
-        }
-
-    @staticmethod
-    def _batches(events: list[dict[str, object]]) -> list[bytes]:
-        batches: list[bytes] = []
-        current: list[bytes] = []
-        size = 0
-        for event in events:
-            encoded = json_value(event).encode()
-            if current and size + len(encoded) > MAX_BATCH_BYTES:
-                batches.append(b'{"batch":[' + b",".join(current) + b"]}")
-                current, size = [], 0
-            current.append(encoded)
-            size += len(encoded) + 1
-        batches.append(b'{"batch":[' + b",".join(current) + b"]}")
-        return batches
-
-    @staticmethod
-    def _check_results(body: object) -> None:
-        errors = body.get("errors") if isinstance(body, dict) else None
-        if not isinstance(errors, list) or not errors:
-            return
-        statuses = [error.get("status") for error in errors if isinstance(error, dict)]
-        if any(isinstance(status, int) and (status == 429 or status >= 500) for status in statuses):
-            raise ExportRetryableError("Langfuse could not ingest every event; re-sending is idempotent")
-        raise ExportRejectedError(f"Langfuse rejected {len(errors)} ingestion events")
+        return SendResult(trace_id=trace.trace_id, trace_url=trace_url, span_urls=span_urls)

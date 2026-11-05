@@ -11,7 +11,7 @@ import Link from '@/next/link'
 type ILikedItemProps = Readonly<{
   appStatus?: boolean
   detail: RelatedAppResponse
-  isMobile: boolean
+  compact: boolean
 }>
 
 const appTypeMap: Partial<Record<RelatedAppResponse['mode'], string>> = {
@@ -22,12 +22,12 @@ const appTypeMap: Partial<Record<RelatedAppResponse['mode'], string>> = {
   workflow: 'Workflow',
 }
 
-const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
+const LikedItem = ({ detail, compact }: ILikedItemProps) => {
   return (
     <Link
       className={cn(
         'group/link-item flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-2 hover:bg-state-base-hover',
-        isMobile && 'justify-center',
+        compact && 'justify-center',
       )}
       href={`/app/${detail?.id}/overview`}
     >
@@ -35,8 +35,8 @@ const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
         <div className={cn('relative size-6 rounded-md')}>
           <AppIcon size="tiny" icon={detail} />
         </div>
-        {!isMobile && (
-          <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>
+        {!compact && (
+          <div className={cn('ms-2 truncate system-sm-medium text-text-primary')}>
             {detail?.name || '--'}
           </div>
         )}
@@ -51,14 +51,14 @@ const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
 
 type Props = Readonly<{
   relatedApps: RelatedAppResponse[]
-  isMobile: boolean
+  compact: boolean
 }>
 
-const LinkedAppsPanel: FC<Props> = ({ relatedApps, isMobile }) => {
+const LinkedAppsPanel: FC<Props> = ({ relatedApps, compact }) => {
   return (
     <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
       {relatedApps.map((item, index) => (
-        <LikedItem key={index} detail={item} isMobile={isMobile} />
+        <LikedItem key={index} detail={item} compact={compact} />
       ))}
     </div>
   )

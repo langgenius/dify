@@ -24,7 +24,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import { useAtomValue } from 'jotai'
+import { useStore as useAtomStore, useAtomValue } from 'jotai'
 import {
   Fragment,
   memo,
@@ -52,7 +52,12 @@ import {
 } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
-import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationEnabledAtom,
+  editorCollaborationFallbackAtom,
+  editorResourceAtom,
+  editorUsesCollaborationAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -138,7 +143,6 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
-  isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
@@ -151,7 +155,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     viewport,
     children,
     onWorkflowDataUpdate,
-    isCollaborationEnabled = false,
     cursors,
     myUserId,
     onlineUsers,
@@ -160,6 +163,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
+    const atomStore = useAtomStore()
     const hooksStore = use(HooksStoreContext)
     if (!hooksStore) throw new Error('Missing HooksStoreContext.Provider in the tree')
     const reactflow = useReactFlow()
@@ -246,17 +250,19 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          if (!isEqual(nodes, importedNodes)) {
-            setNodes(importedNodes)
+          setNodes((currentNodes) =>
+            isEqual(currentNodes, importedNodes) ? currentNodes : importedNodes,
+          )
+          if (!isEqual(reactflow.getNodes(), importedNodes))
             store.getState().setNodes(importedNodes)
-          }
-          if (!isEqual(edges, importedEdges)) {
-            setEdges(importedEdges)
+          setEdges((currentEdges) =>
+            isEqual(currentEdges, importedEdges) ? currentEdges : importedEdges,
+          )
+          if (!isEqual(store.getState().edges, importedEdges))
             store.getState().setEdges(importedEdges)
-          }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [reactflow, setEdges, setNodes, store])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -355,12 +361,21 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       debouncedSyncWorkflowDraft.cancel?.()
 
-      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
+      if (
+        atomStore.get(editorCollaborationFallbackAtom) ||
+        (atomStore.get(editorCollaborationEnabledAtom) &&
+          collaborationManager.canUseLocalDraftFallback())
+      ) {
         syncWorkflowDraftWhenPageClose()
         return
       }
 
-      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+      if (
+        atomStore.get(editorUsesCollaborationAtom) &&
+        hooksStore.getState().accessControl.canEdit &&
+        !collaborationManager.canFlushGraphOnPageClose()
+      )
+        return
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {
@@ -417,18 +432,16 @@ export const Workflow: FC<WorkflowProps> = memo(
         if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
         const refreshVersion = workflowStore.getState().draftSaveVersion
         const canRefresh = () => {
-          const {
-            draftSaveBlocked,
-            draftSaveVersion,
-            isCollaborationEnabled,
-            isCollaborationFallback,
-          } = workflowStore.getState()
+          const { draftSaveBlocked, draftSaveVersion } = workflowStore.getState()
           return (
             !draftSaveBlocked &&
-            !isCollaborationFallback &&
+            !atomStore.get(editorCollaborationFallbackAtom) &&
             draftSaveVersion === refreshVersion &&
             collaborationManager.isConnected() === collaborationConnected &&
-            (!(isCollaborationEnabled && hooksStore.getState().accessControl.canEdit) ||
+            (!(
+              atomStore.get(editorUsesCollaborationAtom) &&
+              hooksStore.getState().accessControl.canEdit
+            ) ||
               (collaborationManager.isConnected() &&
                 collaborationManager.canRestoreGraphFromCrdt()))
           )
@@ -446,7 +459,13 @@ export const Workflow: FC<WorkflowProps> = memo(
           }, 500)
         }
       }
-    }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore, hooksStore])
+    }, [
+      syncWorkflowDraftWhenPageClose,
+      handleRefreshWorkflowDraft,
+      workflowStore,
+      hooksStore,
+      atomStore,
+    ])
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {

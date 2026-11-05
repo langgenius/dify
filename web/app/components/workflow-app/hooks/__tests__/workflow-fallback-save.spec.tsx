@@ -1,4 +1,5 @@
 import { act } from '@testing-library/react'
+import { useSetAtom } from 'jotai'
 import { createElement } from 'react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
@@ -7,6 +8,7 @@ import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/wo
 import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import * as websocketManager from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { editorCollaborationFallbackAtom } from '@/app/components/workflow/editor-resource/state'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
@@ -71,18 +73,22 @@ it('uses guarded full draft saves after the default socket fails before joining'
   const features = createFeaturesStore({})
   const { queryClient } = createConsoleQueryWrapper()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' }))
-  const { result, unmount } = renderWorkflowCanvasHook(() => useNodesSyncDraft(), {
-    queryClient,
-    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    nodes: [node],
-    initialStoreState: {
-      isWorkflowDataLoaded: true,
-      isCollaborationEnabled: true,
-      syncWorkflowDraftHash: 'hash-123',
+  const { result, unmount } = renderWorkflowCanvasHook(
+    () => ({ ...useNodesSyncDraft(), setFallback: useSetAtom(editorCollaborationFallbackAtom) }),
+    {
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
+      nodes: [node],
+      initialStoreState: {
+        isWorkflowDataLoaded: true,
+        syncWorkflowDraftHash: 'hash-123',
+      },
+      wrapper: ({ children }) =>
+        createElement(FeaturesContext.Provider, { value: features }, children),
     },
-    wrapper: ({ children }) =>
-      createElement(FeaturesContext.Provider, { value: features }, children),
-  })
+  )
+
+  act(() => result.current.setFallback(true))
 
   // The server rejects ordinary saves while another collaboration room is active.
   request.mockRejectedValue(

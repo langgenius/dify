@@ -6,10 +6,14 @@ import type {
 } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import type { WorkflowGeneratorEditor } from '@/app/components/workflow/workflow-generator/store'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { cloneDeep } from 'es-toolkit/object'
+import { isEqual } from 'es-toolkit/predicate'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
@@ -18,8 +22,12 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { Workflow } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationFallbackAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -27,6 +35,8 @@ import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -57,9 +67,10 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
+  const setCollaborationFallback = useSetAtom(editorCollaborationFallbackAtom)
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
@@ -142,10 +153,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
     return collaborationManager.onInitialPlainDraftFallback((fallbackAppId) => {
-      if (fallbackAppId === appId)
-        workflowStore.setState({ isCollaborationEnabled: false, isCollaborationFallback: true })
+      if (fallbackAppId === appId) setCollaborationFallback(true)
     })
-  }, [appId, isCollaborationEnabled, workflowStore])
+  }, [appId, isCollaborationEnabled, setCollaborationFallback])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -218,6 +228,56 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+
+    const editor: WorkflowGeneratorEditor = {
+      appId,
+      snapshot: () =>
+        collaborationManager.canUseLocalDraftFallback()
+          ? null
+          : cloneDeep({
+              nodes: collaborationManager.getNodes(),
+              edges: collaborationManager.getEdges(),
+            }),
+      apply: async (graph, expected) => {
+        if (
+          useWorkflowGeneratorStore.getState().editor !== editor ||
+          !collaborationManager.isConnectedTo(appId) ||
+          !collaborationManager.canApplyLocalGraphMutation()
+        )
+          return 'unavailable'
+        if (!isEqual(editor.snapshot(), expected)) return 'changed'
+
+        try {
+          const next = getWorkflowDraftGraphForCanvas(graph)
+          collaborationManager.refreshGraphSynchronously()
+          collaborativeWorkflow.setNodes(initialNodes(next.nodes, next.edges))
+          collaborativeWorkflow.setEdges(initialEdges(next.edges, next.nodes))
+          collaborationManager.refreshGraphSynchronously()
+          if (next.viewport) await reactFlow.setViewport(next.viewport)
+          if (useWorkflowGeneratorStore.getState().editor !== editor) return 'unsaved'
+          return (await doSyncWorkflowDraft()) ? 'saved' : 'unsaved'
+        } catch {
+          return 'unsaved'
+        }
+      },
+    }
+    useWorkflowGeneratorStore.setState({ editor })
+    return () => {
+      if (useWorkflowGeneratorStore.getState().editor === editor)
+        useWorkflowGeneratorStore.setState({ editor: null })
+    }
+  }, [
+    appId,
+    collaborativeWorkflow,
+    doSyncWorkflowDraft,
+    getWorkflowDraftGraphForCanvas,
+    isCollaborationEnabled,
+    reactFlow,
+  ])
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)
@@ -564,7 +624,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             edges={edges}
             viewport={viewport}
             onWorkflowDataUpdate={handleWorkflowDataUpdate}
-            isCollaborationEnabled={isCollaborationEnabled}
             cursors={filteredCursors}
             myUserId={myUserId}
             onlineUsers={onlineUsers}
@@ -577,7 +636,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"
-            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+            className={cn(
+              'absolute inset-0 z-50 flex items-center justify-center',
+              !joinFailure && 'cursor-wait',
+            )}
           >
             <div
               role="status"
@@ -586,7 +648,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             >
               {joinFailure ? (
                 <>
-                  <span role="alert">{joinFailureMessages[joinFailure]}</span>
+                  <span>{joinFailureMessages[joinFailure]}</span>
                   {joinFailure !== 'retrying' && (
                     <Button
                       size="small"

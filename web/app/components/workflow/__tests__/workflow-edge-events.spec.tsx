@@ -8,8 +8,9 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { useSetAtom } from 'jotai'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { createRef, useImperativeHandle } from 'react'
+import { createRef, useEffect, useImperativeHandle } from 'react'
 import { useReactFlow } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
@@ -19,6 +20,7 @@ import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/que
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
+import { editorCollaborationFallbackAtom } from '../editor-resource/state'
 import { fullWorkflowAccessControl } from '../hooks-store'
 import WorkflowWithDefaultContext, { Workflow } from '../index'
 import codeNodeDefault from '../nodes/code/default'
@@ -120,22 +122,30 @@ function GraphApi({ apiRef }: { apiRef: RefObject<ReactFlowInstance | null> }) {
   return null
 }
 
+function SetFallback({ enabled }: { enabled: boolean }) {
+  const setFallback = useSetAtom(editorCollaborationFallbackAtom)
+  useEffect(() => {
+    if (enabled) setFallback(true)
+  }, [enabled, setFallback])
+  return null
+}
+
 function renderSubject({
   initialStoreState,
+  collaborationEnabled = false,
   graphNodes = nodes,
   edges = [],
-  isCollaborationEnabled = false,
+  fallback = false,
   canEdit = true,
 }: {
   initialStoreState?: Partial<Shape>
-  isCollaborationEnabled?: boolean
+  collaborationEnabled?: boolean
+  fallback?: boolean
   canEdit?: boolean
   graphNodes?: WorkflowProps['nodes']
   edges?: WorkflowProps['edges']
 } = {}) {
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: true },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDslVersion(queryClient)
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {
@@ -157,12 +167,8 @@ function renderSubject({
     <NuqsTestingAdapter>
       <WorkflowEventProvider value={{ eventEmitter }}>
         <WorkflowWithDefaultContext nodes={graphNodes} edges={edges}>
-          <Workflow
-            nodes={graphNodes}
-            edges={edges}
-            isCollaborationEnabled={isCollaborationEnabled}
-            {...props}
-          >
+          <Workflow nodes={graphNodes} edges={edges} {...props}>
+            <SetFallback enabled={fallback} />
             <GraphApi apiRef={graph} />
           </Workflow>
         </WorkflowWithDefaultContext>
@@ -171,6 +177,7 @@ function renderSubject({
   )
   const view = renderWorkflowComponent(subject(), {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled },
     initialStoreState,
     hooksStoreProps: {
       accessControl: { ...fullWorkflowAccessControl, canEdit },
@@ -188,7 +195,7 @@ it('refreshes the draft when a read-only user returns to a collaboration-enabled
   const isConnected = vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
   const { refreshDraft, hooksStore, unmount } = renderSubject({
     canEdit: false,
-    initialStoreState: { isCollaborationEnabled: true },
+    collaborationEnabled: true,
   })
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await act(async () => {
@@ -211,7 +218,7 @@ it('does not refresh a disconnected collaborative editor', async () => {
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
   const { refreshDraft, unmount } = renderSubject({
-    initialStoreState: { isCollaborationEnabled: true },
+    collaborationEnabled: true,
   })
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await act(async () => {
@@ -227,7 +234,8 @@ it('does not refresh a canvas in collaboration fallback mode', async () => {
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
   const { refreshDraft, unmount } = renderSubject({
-    initialStoreState: { isCollaborationEnabled: true, isCollaborationFallback: true },
+    collaborationEnabled: true,
+    fallback: true,
   })
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await act(async () => {
@@ -343,7 +351,7 @@ it('cancels the queued debounce and saves exactly once on unmount', async () => 
 
 it('does not save before data loads or merely because collaboration props change', async () => {
   const { store, rerender, subject, saveDraft, saveOnClose, unmount } = renderSubject()
-  rerender(subject({ isCollaborationEnabled: true }))
+  rerender(subject())
   expect(saveDraft).not.toHaveBeenCalled()
   expect(saveOnClose).not.toHaveBeenCalled()
   await act(async () => unmount())
@@ -356,7 +364,7 @@ it('keeps loaded edits unsaved during rerenders, then flushes on actual exit', a
   const { rerender, subject, saveDraft, unmount } = renderSubject({
     initialStoreState: { isWorkflowDataLoaded: true },
   })
-  rerender(subject({ isCollaborationEnabled: true }))
+  rerender(subject())
   expect(saveDraft).not.toHaveBeenCalled()
   await act(async () => unmount())
   expect(saveDraft).toHaveBeenCalledTimes(1)
@@ -384,7 +392,7 @@ it.each([
     vi.mocked(collaborationManager.canFlushGraphOnPageClose).mockReturnValue(canFlush)
     vi.mocked(collaborationManager.canUseLocalDraftFallback).mockReturnValue(fallback)
     const { saveDraft, saveOnClose, unmount } = renderSubject({
-      isCollaborationEnabled: true,
+      collaborationEnabled: true,
       initialStoreState: { isWorkflowDataLoaded: true },
     })
     await act(async () => unmount())
@@ -496,8 +504,8 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
     return { result: 'success' }
   })
   renderSubject({
+    collaborationEnabled: true,
     initialStoreState: {
-      isCollaborationEnabled: true,
       showUserComments: true,
       showResolvedComments: false,
     },
@@ -561,7 +569,7 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     detail.replies = []
     return { result: 'success' }
   })
-  renderSubject({ initialStoreState: { isCollaborationEnabled: true, showUserComments: true } })
+  renderSubject({ collaborationEnabled: true, initialStoreState: { showUserComments: true } })
   await user.click(
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )

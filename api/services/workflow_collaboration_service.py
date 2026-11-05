@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import socket
+import threading
 import time
 import uuid
 from collections.abc import Mapping
@@ -30,7 +31,7 @@ _PROCESS_SERVER_ID_PID: int | None = None
 
 
 class WorkflowCollaborationNotEntitledError(Exception):
-    """The workspace cannot start a new collaboration session."""
+    """The workspace cannot use workflow collaboration."""
 
 
 class WorkflowCollaborationUnavailableError(Exception):
@@ -73,6 +74,7 @@ class WorkflowCollaborationService:
         self._socketio = socketio
         self._server_id_override = server_id
         self._heartbeat_started = False
+        self._heartbeat_start_lock = threading.Lock()
 
     @override
     def __repr__(self) -> str:
@@ -95,12 +97,12 @@ class WorkflowCollaborationService:
             self._socketio.sleep(SERVER_HEARTBEAT_INTERVAL_SECONDS)
 
     def _ensure_server_heartbeat_started(self) -> None:
-        if self._heartbeat_started:
-            return
-
-        self._heartbeat_started = True
-        self._refresh_server_heartbeat()
-        self._socketio.start_background_task(self._server_heartbeat_loop)
+        """Start the worker heartbeat once; failed attempts can be retried by the next join."""
+        with self._heartbeat_start_lock:
+            if not self._heartbeat_started:
+                self._refresh_server_heartbeat()
+                self._socketio.start_background_task(self._server_heartbeat_loop)
+                self._heartbeat_started = True
 
     def save_socket_identity(self, sid: str, user: Account) -> None:
         """Persist the authenticated console user on the raw socket session."""
@@ -121,7 +123,8 @@ class WorkflowCollaborationService:
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Missing identity or access returns `None`; insufficient entitlement raises an error.
+        `App.id`. Missing access returns `None`; an ineligible workspace raises
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
         Registration holds the draft row lock shared with full console saves. A supplied hash for a new session
         must match the saved draft; an established session may rejoin.
         """
@@ -143,6 +146,7 @@ class WorkflowCollaborationService:
 
         if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
             raise WorkflowCollaborationNotEntitledError
+
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
             "username": str(socket_session.get("username", "Unknown")),

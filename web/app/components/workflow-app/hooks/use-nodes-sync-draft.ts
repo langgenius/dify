@@ -7,13 +7,17 @@ import type {
 import { safe } from '@orpc/client'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useAtomValue } from 'jotai'
+import { useStore as useAtomStore, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationFallbackAtom,
+  editorUsesCollaborationAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -43,6 +47,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const { t } = useTranslation(['workflow'] as const)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const atomStore = useAtomStore()
   const featuresStore = useFeaturesStore()
   const appId = useAtomValue(workflowAppIdentityAtom).appId
   const { data: appMode } = useQuery(
@@ -87,12 +92,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const {
-      conversationVariables,
-      syncWorkflowDraftHash,
-      isWorkflowDataLoaded,
-      isCollaborationEnabled,
-    } = workflowStore.getState()
+    const { conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
+      workflowStore.getState()
 
     if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
@@ -148,18 +149,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         features: featuresPayload,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        ...(isCollaborationEnabled && !collaborationManager.canUseLocalDraftFallback()
+        ...(atomStore.get(editorUsesCollaborationAtom) &&
+        !collaborationManager.canUseLocalDraftFallback()
           ? { _is_collaborative: true }
           : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, appMode, appId])
+  }, [store, featuresStore, workflowStore, appMode, appId, atomStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
     const canPersistOnPageClose =
-      !workflowStore.getState().isCollaborationEnabled ||
+      !atomStore.get(editorUsesCollaborationAtom) ||
       collaborationManager.canFlushGraphOnPageClose() ||
       collaborationManager.canUseLocalDraftFallback()
     if (!canPersistOnPageClose) return
@@ -172,7 +174,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const isOrdinarySave = !postParams.params._is_collaborative
       if (isOrdinarySave)
         workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
-      // oxlint-disable-next-line typescript/no-deprecated -- Existing unload transport must report conflicts before the canvas can refresh.
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
         if (isOrdinarySave && response?.ok && workflowStore.getState().draftSaveVersion === version)
           workflowStore.setState({ draftSaveBlocked: false })
@@ -180,7 +181,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
       })
     }
-  }, [getPostParams, getNodesReadOnly, workflowStore, t])
+  }, [getPostParams, getNodesReadOnly, workflowStore, t, atomStore])
 
   const performLocalSync = useCallback(
     async (
@@ -197,7 +198,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const isOrdinarySave =
-        !workflowStore.getState().isCollaborationEnabled ||
+        !atomStore.get(editorUsesCollaborationAtom) ||
         collaborationManager.canUseLocalDraftFallback()
       const version = workflowStore.getState().draftSaveVersion + 1
       workflowStore.setState({
@@ -216,7 +217,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return (
           isMountedRef.current &&
           !getNodesReadOnly() &&
-          (!workflowStore.getState().isCollaborationEnabled ||
+          (!atomStore.get(editorUsesCollaborationAtom) ||
             collaborationManager.canUseLocalDraftFallback() ||
             collaborationManager.canPersistLocalGraph()) &&
           currentParams?.url === baseParams.url &&
@@ -308,7 +309,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             : {}),
         }
         if (
-          !workflowStore.getState().isCollaborationEnabled ||
+          !atomStore.get(editorUsesCollaborationAtom) ||
           collaborationManager.canUseLocalDraftFallback()
         ) {
           delete body._is_collaborative
@@ -331,12 +332,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
               collaborationConflictReportedRef.current = true
             }
             workflowStore.setState({ draftSaveBlocked: true })
-          } else if (
-            isDefined &&
-            error.code === 'draft_workflow_not_sync' &&
-            !notRefreshWhenSyncError
-          )
-            handleRefreshWorkflowDraft(true)
+          } else if (isDefined && error.code === 'draft_workflow_not_sync') {
+            if (atomStore.get(editorCollaborationFallbackAtom)) {
+              workflowStore.setState({ draftSaveBlocked: true })
+              toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+            } else if (!notRefreshWhenSyncError) {
+              handleRefreshWorkflowDraft(true)
+            }
+          }
           callback?.onError?.()
           return null
         }
@@ -352,7 +355,15 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [workflowStore, getNodesReadOnly, getPostParams, handleRefreshWorkflowDraft, t, appId],
+    [
+      workflowStore,
+      getNodesReadOnly,
+      getPostParams,
+      handleRefreshWorkflowDraft,
+      t,
+      appId,
+      atomStore,
+    ],
   )
 
   const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
@@ -389,7 +400,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       const shouldRequestLeader =
         !emptyGraph &&
-        workflowStore.getState().isCollaborationEnabled &&
+        atomStore.get(editorUsesCollaborationAtom) &&
         !collaborationManager.canUseLocalDraftFallback() &&
         collaborationManager.isConnected() &&
         !collaborationManager.getIsLeader() &&
@@ -425,7 +436,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [doSyncWorkflowDraftLocally, getNodesReadOnly, getPostParams, workflowStore, appId],
+    [doSyncWorkflowDraftLocally, getNodesReadOnly, getPostParams, workflowStore, appId, atomStore],
   )
 
   return {

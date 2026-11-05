@@ -3,10 +3,15 @@ import type { ReactElement } from 'react'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode } from 'react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  editorCollaborationEnabledAtom,
+  editorCollaborationFallbackAtom,
+} from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
@@ -53,17 +58,14 @@ let searchParamsValue: string | null = null
 const render = (
   ui: ReactElement,
   options?: {
-    cloud?: boolean
-    plan?: 'sandbox' | 'professional' | 'team'
     collaboration?: boolean | null
   },
 ) => {
   const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
-  seedSystemFeatures(queryClient, options?.cloud ? { deployment_edition: 'CLOUD' } : {})
+  seedSystemFeatures(queryClient)
   if (options?.collaboration !== null) {
     const features = seedFeatures(queryClient, {
       workflow_collaboration_enabled: options?.collaboration ?? true,
-      ...(options?.plan ? { billing: { subscription: { plan: options.plan } } } : {}),
     })
     fetchFeatures.mockResolvedValue(features)
   }
@@ -147,12 +149,16 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     viewport: { x: number; y: number; zoom: number }
   }) {
     workflowStore = useWorkflowStore()
+    const setFallback = useSetAtom(editorCollaborationFallbackAtom)
     return (
       <section aria-label="Workflow canvas">
+        <button type="button" onClick={() => setFallback(true)}>
+          Simulate fallback
+        </button>
         <WorkflowInitializationProbe />
         <output aria-label="Saved viewport">{JSON.stringify(viewport)}</output>
         <output aria-label="Collaboration enabled">
-          {String(useStore((state) => state.isCollaborationEnabled))}
+          {String(useAtomValue(editorCollaborationEnabledAtom))}
         </output>
       </section>
     )
@@ -199,20 +205,19 @@ describe('WorkflowApp', () => {
     mockFetchRunDetail.mockReset().mockResolvedValue({ inputs: null })
   })
 
-  it.each([
-    ['sandbox', 'false'],
-    ['professional', 'true'],
-    ['team', 'true'],
-  ] as const)('initializes a Cloud %s workspace with collaboration %s', async (plan, expected) => {
-    render(<WorkflowApp />, { cloud: true, plan, collaboration: expected === 'true' })
-    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(expected)
-  })
+  it.each([false, true])(
+    'initializes the editor with collaboration capability %s',
+    async (enabled) => {
+      render(<WorkflowApp />, { collaboration: enabled })
+      expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(enabled))
+    },
+  )
 
   it.each([false, true])(
     'keeps the initial editor mode when workspace capability changes from %s',
     async (initial) => {
-      const { queryClient } = render(<WorkflowApp />, { cloud: true, collaboration: initial })
+      const { queryClient } = render(<WorkflowApp />, { collaboration: initial })
       expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
       expect(
         screen.queryByText('workflow.collaboration.availableAfterReopen'),
@@ -231,15 +236,15 @@ describe('WorkflowApp', () => {
   )
 
   it('does not report an upgrade if a collaborative session falls back while the capability stays enabled', async () => {
-    render(<WorkflowApp />, { cloud: true, collaboration: true })
+    render(<WorkflowApp />, { collaboration: true })
     await screen.findByRole('region', { name: 'Workflow canvas' })
-    act(() => workflowStore.setState({ isCollaborationEnabled: false }))
+    await userEvent.click(screen.getByRole('button', { name: 'Simulate fallback' }))
     expect(
       screen.queryByText('workflow.collaboration.availableAfterReopen'),
     ).not.toBeInTheDocument()
   })
 
-  it('waits for the Cloud subscription before starting the editor', async () => {
+  it('waits for workspace capabilities before starting the editor', async () => {
     let resolveFeatures!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
     fetchFeatures.mockReturnValue(
       new Promise((resolve) => {
@@ -248,7 +253,7 @@ describe('WorkflowApp', () => {
     )
     fetchDraft.mockClear()
 
-    render(<WorkflowApp />, { cloud: true, collaboration: null })
+    render(<WorkflowApp />, { collaboration: null })
     expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
     expect(fetchDraft).not.toHaveBeenCalled()
@@ -260,22 +265,55 @@ describe('WorkflowApp', () => {
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
   })
 
-  it('blocks the editor when the subscription cannot be loaded and retries in place', async () => {
+  it('blocks the editor when workspace capabilities cannot be loaded and retries in place', async () => {
     const user = userEvent.setup()
-    fetchFeatures
-      .mockRejectedValueOnce(new Error('billing unavailable'))
-      .mockResolvedValueOnce(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }))
+    let resolveRetry!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
+    fetchFeatures.mockRejectedValueOnce(new Error('billing unavailable')).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRetry = resolve
+      }),
+    )
 
-    render(<WorkflowApp />, { cloud: true, collaboration: null })
-    const retry = await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
-    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.message')
+    render(<WorkflowApp />, { collaboration: null })
+    const retry = await screen.findByRole('button', { name: 'common.operation.retry' })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'workflow.collaboration.capabilityUnavailable',
+    )
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
 
     await user.click(retry)
+    expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+    await act(async () =>
+      resolveRetry(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true })),
+    )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('true')
     expect(fetchFeatures).toHaveBeenCalledTimes(2)
   })
+
+  it.each([false, true])(
+    'keeps the editor session in mode %s when a background capability refresh fails',
+    async (enabled) => {
+      fetchDraft.mockClear()
+      const { queryClient } = render(<WorkflowApp />, { collaboration: enabled })
+      fetchFeatures.mockRejectedValue(new Error('billing unavailable'))
+      const canvas = await screen.findByRole('region', { name: 'Workflow canvas' })
+      await screen.findByRole('status', { name: 'Draft hash' })
+      const draftCalls = fetchDraft.mock.calls.length
+
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+      })
+
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe('error')
+      expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBe(canvas)
+      expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(enabled))
+      expect(screen.getByRole('status', { name: 'Draft hash' })).toHaveTextContent('loaded-draft')
+      expect(fetchDraft).toHaveBeenCalledTimes(draftCalls)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps the canvas gated until the workflow draft arrives', async () => {
     let resolveDraft!: (value: ReturnType<typeof createWorkflowResponseFixture>) => void

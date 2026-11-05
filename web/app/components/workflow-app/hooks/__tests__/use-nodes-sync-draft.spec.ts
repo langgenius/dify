@@ -4,12 +4,14 @@ import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
+import { useSetAtom } from 'jotai'
 import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { editorCollaborationFallbackAtom } from '@/app/components/workflow/editor-resource/state'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
@@ -136,13 +138,13 @@ const renderSyncDraft = <R>(
       kind: 'app',
       appId: 'app-1',
       mode: appMode === 'advanced-chat' ? 'advanced-chat' : 'workflow',
+      collaborationEnabled: isCollaborationEnabled,
     },
     nodes,
     edges,
     transform,
     initialStoreState: {
       isWorkflowDataLoaded: true,
-      isCollaborationEnabled,
       syncWorkflowDraftHash: 'hash-123',
       ...initialStoreState,
     },
@@ -152,7 +154,10 @@ const renderSyncDraft = <R>(
 }
 
 const renderUseNodesSyncDraft = (canvas?: SyncDraftCanvas) =>
-  renderSyncDraft(() => useNodesSyncDraft(), canvas)
+  renderSyncDraft(
+    () => ({ ...useNodesSyncDraft(), setFallback: useSetAtom(editorCollaborationFallbackAtom) }),
+    canvas,
+  )
 
 const startEmptySave = async (
   result: { current: ReturnType<typeof useNodesSyncDraft> },
@@ -262,7 +267,7 @@ describe('useNodesSyncDraft', () => {
     it('uses ordinary draft payload for a queued save after collaboration falls back', async () => {
       const first = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft.mockReturnValueOnce(first.promise)
-      const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
       let pending!: Promise<unknown>
       await act(async () => {
         void result.current.doSyncWorkflowDraft()
@@ -270,7 +275,7 @@ describe('useNodesSyncDraft', () => {
       })
       expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
       await act(async () => {
-        store.setState({ isCollaborationEnabled: false })
+        result.current.setFallback(true)
         first.resolve({ hash: 'new', updated_at: 1 })
         await pending
       })
@@ -1014,6 +1019,25 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('failures and skipped saves', () => {
+    it('keeps the local draft and reports a hash conflict after collaboration falls back', async () => {
+      mockSyncWorkflowDraft.mockRejectedValueOnce(draftNotSyncError())
+      const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+      act(() => result.current.setFallback(true))
+      const callbacks = { onError: vi.fn() }
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+      expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+      expect(store.getState().syncWorkflowDraftHash).toBe('hash-123')
+      expect(store.getState().draftSaveBlocked).toBe(true)
+      expect(callbacks.onError).toHaveBeenCalledOnce()
+    })
+
     it('protects an empty canvas while a normal save is pending and after it receives a conflict', async () => {
       const pending = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)

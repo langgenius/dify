@@ -21,6 +21,7 @@ from services.errors.billing import BillingUpstreamUnavailableError
 from services.workflow_collaboration_service import (
     WorkflowCollaborationDraftOutdatedError,
     WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationUnavailableError,
 )
 
 
@@ -189,6 +190,32 @@ def test_user_connect_distinguishes_access_from_entitlement(
     assert response.packet_type == ACK
     assert response.data == [{"msg": message}, status]
     _assert_single_event(_read_metrics(reader), "user_connect", "rejected")
+
+
+def test_user_connect_distinguishes_plan_rejection_from_missing_access(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server, _, _ = collaboration_server
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+
+    def not_entitled(*_args: object, **_kwargs: object) -> None:
+        raise WorkflowCollaborationNotEntitledError
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", not_entitled)
+    assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "not_entitled"}, 403)
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", lambda *_args, **_kw: None)
+    assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "unauthorized"}, 401)
+
+    def unavailable(*_args: object, **_kwargs: object) -> None:
+        raise WorkflowCollaborationUnavailableError
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", unavailable)
+    assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == (
+        {"msg": "collaboration_unavailable"},
+        503,
+    )
 
 
 def test_user_connect_does_not_hide_unrelated_errors(

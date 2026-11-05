@@ -44,6 +44,12 @@ const mockGenerateWorkflow = vi.fn()
 const mockGenerateWorkflowStream = vi.fn()
 const mockFetchSuggestions = vi.fn().mockResolvedValue({ suggestions: [] })
 const mockFetchWorkflowDraft = vi.fn()
+const mockApplyToCurrentApp = vi.fn()
+
+vi.mock('../apply', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../apply')>()),
+  applyToCurrentApp: (...args: unknown[]) => mockApplyToCurrentApp(...args),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -84,6 +90,7 @@ describe('WorkflowGeneratorModal', () => {
       currentAppMode: null,
       initialInstruction: '',
       autoMode: false,
+      editor: null,
     })
   })
 
@@ -221,6 +228,60 @@ describe('WorkflowGeneratorModal', () => {
   })
 
   describe('Generation result', () => {
+    it.each(['saved', 'unsaved'] as const)(
+      'applies through the collaborative editor when the result is %s',
+      async (result) => {
+        const user = userEvent.setup()
+        const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+        const graph = {
+          nodes: [
+            {
+              id: 'start',
+              type: 'custom',
+              position: { x: 0, y: 0 },
+              data: { type: 'start', title: 'Start' },
+            },
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        }
+        const snapshot = { nodes: [], edges: [] }
+        const apply = vi.fn().mockResolvedValue(result)
+        mockGenerateWorkflowStream.mockImplementation(
+          (_body: unknown, callbacks: GenerateWorkflowStreamCallbacks) =>
+            callbacks.onResult?.({ graph }),
+        )
+        useWorkflowGeneratorStore.setState({
+          currentAppId: 'app-1',
+          currentAppMode: 'workflow',
+          editor: { appId: 'app-1', snapshot: () => snapshot, apply },
+        })
+        render(<WorkflowGeneratorModal />)
+        await user.type(
+          screen.getByRole('textbox', { name: /workflowGenerator\.instruction/i }),
+          'Build a workflow',
+        )
+        const generateButton = screen.getByRole('button', { name: /workflowGenerator\.generate/i })
+        await waitFor(() => expect(generateButton).toBeEnabled())
+        await user.click(generateButton)
+        await user.click(
+          await screen.findByRole('button', { name: /workflowGenerator\.studioApply/i }),
+        )
+        await user.click(screen.getByRole('button', { name: /operation\.confirm/i }))
+
+        await waitFor(() => expect(apply).toHaveBeenCalledWith(graph, snapshot))
+        await waitFor(() => expect(useWorkflowGeneratorStore.getState().isOpen).toBe(false))
+        expect(mockApplyToCurrentApp).not.toHaveBeenCalled()
+        expect(reload).not.toHaveBeenCalled()
+        expect(
+          screen.queryByRole('dialog', {
+            name: /workflowGenerator\.errors\.hash_collision_title/i,
+          }),
+        ).not.toBeInTheDocument()
+        reload.mockRestore()
+      },
+    )
+
     it('should include the current draft graph when refining a workflow', async () => {
       const user = userEvent.setup()
       const currentGraph = {
