@@ -1164,6 +1164,21 @@ Upload a file to use as an input variable when running the app
 | 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/webhooks/{node_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Webhook addresses | **application/json**: [WebhookResponse](#webhookresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
@@ -4591,6 +4606,14 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | access_token | string |  | No |
 | app_base_url | string |  | Yes |
 | url | string |  | No |
+
+#### WebhookResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| webhook_debug_url | string | Feeds the draft's node while the console's variable inspector listens for it; otherwise the request is refused | Yes |
+| webhook_url | string | Runs the published workflow on each request, once the node is published and its trigger is on | Yes |
 
 #### WorkflowDiff
 

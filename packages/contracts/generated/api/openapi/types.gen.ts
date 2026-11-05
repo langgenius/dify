@@ -1296,6 +1296,7 @@ export type OpenApiErrorCode =
   | 'node_type_not_found'
   | 'not_acceptable'
   | 'not_found'
+  | 'not_webhook_trigger'
   | 'plugin_install_forbidden'
   | 'plugin_not_installed'
   | 'plugin_service_unavailable'
@@ -1330,6 +1331,7 @@ export type OpenApiErrorCode =
   | 'webapp_access_requires_ee'
   | 'webapp_access_unavailable'
   | 'webapp_public_access_disabled'
+  | 'webhook_not_found'
 
 export type OpenApiFormSubmitPayload = {
   action: string
@@ -1859,6 +1861,12 @@ export type WebAppToken = {
   access_token?: string | null
   app_base_url: string
   url?: string | null
+}
+
+export type WebhookResponse = {
+  node_id: string
+  webhook_debug_url: string
+  webhook_url: string
 }
 
 export type WorkflowDiff = {
@@ -3641,6 +3649,30 @@ export type PostAppsByAppIdWebappResetResponses = {
 
 export type PostAppsByAppIdWebappResetResponse =
   PostAppsByAppIdWebappResetResponses[keyof PostAppsByAppIdWebappResetResponses]
+
+export type GetAppsByAppIdWebhooksByNodeIdData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webhooks/{node_id}'
+}
+
+export type GetAppsByAppIdWebhooksByNodeIdErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebhooksByNodeIdError =
+  GetAppsByAppIdWebhooksByNodeIdErrors[keyof GetAppsByAppIdWebhooksByNodeIdErrors]
+
+export type GetAppsByAppIdWebhooksByNodeIdResponses = {
+  200: WebhookResponse
+}
+
+export type GetAppsByAppIdWebhooksByNodeIdResponse =
+  GetAppsByAppIdWebhooksByNodeIdResponses[keyof GetAppsByAppIdWebhooksByNodeIdResponses]
 
 export type PostAppsByAppIdWorkflowRunData = {
   body: WorkflowRunPayload
