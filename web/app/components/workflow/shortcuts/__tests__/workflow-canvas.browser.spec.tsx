@@ -170,7 +170,6 @@ async function setup(props: CanvasProps = {}, commentMode = false) {
   await page.viewport(1000, 700)
   const { queryClient } = createConsoleQueryWrapper({
     appDslVersion: '0.6.0',
-    systemFeatures: { enable_collaboration_mode: commentMode },
   })
   // Draft persistence is supplied by the owning editor; graph mutations and history stay real.
   const save = vi.fn(async () => undefined)
@@ -181,6 +180,12 @@ async function setup(props: CanvasProps = {}, commentMode = false) {
     </>,
     {
       queryClient,
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: 'workflow',
+        collaborationEnabled: commentMode,
+      },
       initialStoreState: { controlMode: ControlMode.Hand },
       hooksStoreProps: { doSyncWorkflowDraft: save },
       historyStore: { nodes: props.nodes ?? initialNodes, edges: props.edges ?? [] },
