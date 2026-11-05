@@ -1,10 +1,10 @@
 'use client'
 
 import type { MouseEvent } from 'react'
-import type { MainNavProps } from './types'
 import {
   Drawer,
   DrawerBackdrop,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -15,6 +15,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { gotoAnythingDrawerHandle } from '@/app/components/goto-anything/handles'
 import { usePathname } from '@/next/navigation'
 import { MainNavFooter, MainNavLogo, MainNavPanel } from '.'
 
@@ -26,8 +27,8 @@ function isPlainLinkClick(event: MouseEvent) {
   )
 }
 
-export function MainNavMobileBar({ initialPlatform }: Pick<MainNavProps, 'initialPlatform'>) {
-  const { t } = useTranslation(['common'])
+export function MainNavMobileBar() {
+  const { t } = useTranslation(['common', 'app'])
   const pathname = usePathname()
   const [openedOn, setOpenedOn] = useState<{ pathname: string } | null>(null)
   const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
@@ -40,33 +41,59 @@ export function MainNavMobileBar({ initialPlatform }: Pick<MainNavProps, 'initia
   return (
     <header className="flex shrink-0 items-center justify-between bg-background-body ps-4 pe-2 pt-3 pb-2 md:hidden">
       <MainNavLogo />
-      <Drawer swipeDirection="left" open={open} onOpenChange={setOpen}>
+      <div className="flex items-center gap-1">
         <DrawerTrigger
+          handle={gotoAnythingDrawerHandle}
           render={
-            <IconButton aria-label={menuLabel} size="lg">
-              <span aria-hidden="true" className="i-ri-menu-line size-4" />
+            <IconButton
+              aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+              size="lg"
+            >
+              <span aria-hidden="true" className="i-custom-vender-main-nav-quick-search size-4" />
             </IconButton>
           }
         />
-        <DrawerPortal>
-          <DrawerBackdrop className="fixed" />
-          <DrawerViewport>
-            <DrawerPopup
-              aria-label={menuLabel}
-              className="bg-background-body data-[swipe-direction=left]:w-60"
-            >
-              <DrawerContent
-                onClick={(event) => {
-                  if (isPlainLinkClick(event)) setOpen(false)
-                }}
+        <Drawer swipeDirection="left" open={open} onOpenChange={setOpen}>
+          <DrawerTrigger
+            render={
+              <IconButton aria-label={menuLabel} size="lg">
+                <span aria-hidden="true" className="i-ri-menu-line size-4" />
+              </IconButton>
+            }
+          />
+          <DrawerPortal>
+            <DrawerBackdrop className="fixed" />
+            <DrawerViewport>
+              <DrawerPopup
+                aria-label={menuLabel}
+                className="bg-background-body data-[swipe-direction=left]:w-60"
               >
-                <MainNavPanel initialPlatform={initialPlatform} />
-                <MainNavFooter />
-              </DrawerContent>
-            </DrawerPopup>
-          </DrawerViewport>
-        </DrawerPortal>
-      </Drawer>
+                <DrawerContent
+                  onClick={(event) => {
+                    if (isPlainLinkClick(event)) setOpen(false)
+                  }}
+                >
+                  <MainNavPanel
+                    headerAction={
+                      <DrawerClose
+                        render={
+                          <IconButton
+                            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                            size="lg"
+                          >
+                            <span aria-hidden="true" className="i-ri-close-line size-4" />
+                          </IconButton>
+                        }
+                      />
+                    }
+                  />
+                  <MainNavFooter />
+                </DrawerContent>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
+        </Drawer>
+      </div>
     </header>
   )
 }
