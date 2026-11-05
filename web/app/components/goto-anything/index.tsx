@@ -446,6 +446,7 @@ export function GotoAnything() {
       if (scopeMatch?.scope) {
         setScope(scopeMatch.scope)
         setTerm(rest)
+        focusInput()
         return
       }
       const command = token.startsWith('/') && slashCommandRegistry.findCommand(token.slice(1))
@@ -456,6 +457,7 @@ export function GotoAnything() {
       ) {
         setPage(command.name)
         setTerm(rest)
+        focusInput()
         return
       }
     }
@@ -641,7 +643,8 @@ export function GotoAnything() {
           <HotkeysProvider scope={hotkeyScopeId} exclusive>
             <SearchDialogHotkeys />
             <DialogTitle className="sr-only">{searchTitle}</DialogTitle>
-            <Autocomplete {...autocompleteProps}>
+            {/* A new page or scope is a new list, so its highlight starts at the first option. */}
+            <Autocomplete key={page ?? scope} {...autocompleteProps}>
               <AutocompleteInputGroup
                 size="medium"
                 // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
@@ -701,7 +704,8 @@ export function GotoAnything() {
                 <HotkeysProvider scope={hotkeyScopeId} exclusive>
                   <SearchDialogHotkeys />
                   <DrawerTitle className="sr-only">{searchTitle}</DrawerTitle>
-                  <Autocomplete {...autocompleteProps}>
+                  {/* The scope bar lives inside, so only a page change may remount the list. */}
+                  <Autocomplete key={page ?? 'home'} {...autocompleteProps}>
                     <div className="shrink-0 px-4 pt-2 pb-3">
                       <div
                         aria-hidden

@@ -163,6 +163,31 @@ describe('desktop dialog', () => {
     await expect.element(searchField()).toHaveFocus()
   })
 
+  it('starts a command page with its first option highlighted', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const language = page.getByRole('option', {
+      name: 'app.gotoAnything.actions.languageChangeDesc',
+    })
+    await expect.element(language).toBeInTheDocument()
+    const languageIndex = page
+      .getByRole('option')
+      .elements()
+      .indexOf(language.element() as HTMLElement)
+
+    for (let step = 0; step < languageIndex; step++) await userEvent.keyboard('{ArrowDown}')
+    await expect
+      .poll(() => searchField().element().getAttribute('aria-activedescendant'))
+      .toBe(language.element().id)
+    await userEvent.keyboard('{Enter}')
+
+    const languageField = searchField('app.gotoAnything.actions.languageChangeDesc')
+    await expect.element(languageField).toHaveFocus()
+    await expect
+      .poll(() => languageField.element().getAttribute('aria-activedescendant'))
+      .toBe(page.getByRole('option').first().element().id)
+  })
+
   it('keeps Tab and Shift+Tab inside the dialog', async () => {
     renderPalette()
     await openWithShortcut()

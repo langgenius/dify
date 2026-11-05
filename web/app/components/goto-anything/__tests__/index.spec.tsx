@@ -589,14 +589,19 @@ describe('pending and failed searches', () => {
     const { user } = setup()
     const input = await openSearch()
     await user.type(input, '/theme ')
-    expect(input).toHaveValue('')
+    const pageInput = await screen.findByRole('combobox', {
+      name: 'app.gotoAnything.actions.themeCategoryDesc',
+    })
+    await waitFor(() => expect(pageInput).toHaveFocus())
+    expect(pageInput).toHaveValue('')
     await screen.findByRole('option', { name: darkTheme })
-    await user.type(input, 'unknown')
+    await user.type(pageInput, 'unknown')
     expect(screen.getByRole('option', { name: darkTheme })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
     expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: darkTheme })).not.toBeInTheDocument()
   })
+
   it('announces a complete provider failure', async () => {
     for (const request of [api.apps, api.datasets, api.skills, api.agents, api.marketplace])
       request.mockRejectedValue(new Error('Unavailable'))
