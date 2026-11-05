@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useEvaluationStore } from '../../store'
 import HistoryTab from '../batch-test-panel/history-tab'
+import ConditionsSection from '../conditions-section'
 import EvaluationConfigActions from '../config-actions'
 import EvaluationFrameworkSelector from '../evaluation-framework-selector'
 import JudgeModelSelector from '../judge-model-selector'
@@ -47,7 +48,7 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
           />
         </div>
 
-        <div className="px-6 pt-3 pb-4">
+        <div className="px-6 pt-3 pb-4 xl:max-h-[70%] xl:overflow-y-auto">
           <div className="space-y-3">
             <section>
               <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
@@ -63,6 +64,8 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
             </section>
 
             <PipelineMetricsSection resourceType={resourceType} resourceId={resourceId} />
+
+            <ConditionsSection resourceType={resourceType} resourceId={resourceId} />
 
             <PipelineBatchActions resourceType={resourceType} resourceId={resourceId} />
           </div>

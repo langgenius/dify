@@ -115,7 +115,7 @@ const ConditionMetricSelect = ({
   placeholder,
   onChange,
 }: ConditionMetricSelectProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const groupedMetricOptions = useMemo(() => {
     return groupConditionMetricOptions(metricOptions)
   }, [metricOptions])
@@ -164,7 +164,7 @@ const ConditionOperatorSelect = ({
   operators,
   onChange,
 }: ConditionOperatorSelectProps) => {
-  const { t } = useTranslation('workflowLogic')
+  const { t } = useTranslation(['workflowLogic'])
 
   return (
     <Select
@@ -188,7 +188,7 @@ const ConditionOperatorSelect = ({
 }
 
 const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInputProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
 
   if (!metric || !requiresConditionValue(condition.comparisonOperator)) return null
 
@@ -245,11 +245,11 @@ const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInpu
 }
 
 const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const metricOptions = useMemo(
-    () => buildConditionMetricOptions(resource.metrics),
-    [resource.metrics],
+    () => buildConditionMetricOptions(resource.metrics, resourceType, resourceId),
+    [resource.metrics, resourceType, resourceId],
   )
   const logicalOperator = resource.judgmentConfig.logicalOperator
   const logicalLabels = {
@@ -295,6 +295,8 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
             const allowedOperators = getAllowedOperators(
               resource.metrics,
               condition.variableSelector,
+              resourceType,
+              resourceId,
             )
             const showValue = !!metric && requiresConditionValue(condition.comparisonOperator)
 

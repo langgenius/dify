@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import {
   formatValue,
   getIsItemPassed,
-  getMetricTextClassName,
   getMetricValue,
   getQueryContent,
 } from './pipeline-results-utils'
@@ -19,7 +18,7 @@ type PipelineResultsTableProps = {
 }
 
 const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResultsTableProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
 
   return (
     <div className="overflow-x-auto py-2 xl:min-h-0 xl:flex-1 xl:overflow-auto">
@@ -69,7 +68,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
             ))}
           {!isLoading &&
             items.map((item) => {
-              const isPassed = getIsItemPassed(item, metricColumns)
+              const isPassed = getIsItemPassed(item)
               const actualOutput = item.error ?? item.actual_output
 
               return (
@@ -116,10 +115,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                     return (
                       <td
                         key={column.id}
-                        className={cn(
-                          'h-10 px-3 py-3 align-top system-sm-regular',
-                          getMetricTextClassName(metricValue, column),
-                        )}
+                        className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary"
                       >
                         {formatValue(metricValue)}
                       </td>

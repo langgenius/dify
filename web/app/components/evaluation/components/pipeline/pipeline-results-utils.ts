@@ -10,7 +10,6 @@ const PREFERRED_QUERY_INPUT_KEYS = ['query', 'question', 'input']
 export type MetricColumn = {
   id: string
   label: string
-  threshold?: number
 }
 
 const normalizeMetricKey = (value: string) => value.toLowerCase().replace(/[\s_-]/g, '')
@@ -67,37 +66,6 @@ export const getMetricValue = (metrics: EvaluationRunMetric[], column: MetricCol
   return metric?.value
 }
 
-const getNumericMetricValue = (metrics: EvaluationRunMetric[], column: MetricColumn) => {
-  const value = getMetricValue(metrics, column)
-  if (typeof value === 'number') return value
-
-  if (typeof value === 'string' && value.trim() !== '') {
-    const numericValue = Number(value)
-    return Number.isNaN(numericValue) ? null : numericValue
-  }
-
-  return null
-}
-
-export const getMetricTextClassName = (value: unknown, column: MetricColumn) => {
-  const numericValue =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && value.trim() !== ''
-        ? Number(value)
-        : null
-
-  if (numericValue === null || Number.isNaN(numericValue)) return 'text-text-secondary'
-
-  if (column.threshold === undefined) return 'text-text-secondary'
-
-  if (numericValue >= column.threshold) return 'text-util-colors-green-green-600'
-
-  if (numericValue === 0) return 'text-util-colors-red-red-600'
-
-  return 'text-util-colors-warning-warning-600'
-}
-
 const getJudgmentResult = (judgment: Record<string, unknown>) => {
   for (const key of ['passed', 'pass', 'success', 'result']) {
     const value = judgment[key]
@@ -114,19 +82,12 @@ const getJudgmentResult = (judgment: Record<string, unknown>) => {
   return null
 }
 
-export const getIsItemPassed = (item: EvaluationRunItem, metricColumns: MetricColumn[]) => {
+export const getIsItemPassed = (item: EvaluationRunItem) => {
   if (item.error) return false
 
-  const judgmentResult = getJudgmentResult(item.judgment ?? {})
-  if (judgmentResult !== null) return judgmentResult
-
-  const thresholdColumns = metricColumns.filter((column) => column.threshold !== undefined)
-  if (thresholdColumns.length > 0) {
-    return thresholdColumns.every((column) => {
-      const metricValue = getNumericMetricValue(item.metrics ?? [], column)
-      const threshold = column.threshold
-      return threshold !== undefined && metricValue !== null && metricValue >= threshold
-    })
+  if (Array.isArray(item.judgment?.condition_results) && item.judgment.condition_results.length) {
+    const judgmentResult = getJudgmentResult(item.judgment ?? {})
+    if (judgmentResult !== null) return judgmentResult
   }
 
   return item.overall_score == null ? true : item.overall_score > 0
@@ -139,7 +100,6 @@ export const getMetricColumns = (resource: EvaluationResourceState, items: Evalu
     columns.set(normalizeMetricKey(metric.optionId), {
       id: metric.optionId,
       label: metric.label,
-      threshold: metric.threshold,
     })
   })
 

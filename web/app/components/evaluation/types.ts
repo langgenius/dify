@@ -73,7 +73,6 @@ export type EvaluationMetric = {
   label: string
   description: string
   valueType: ConditionMetricValueType
-  threshold?: number
   nodeInfoList?: NodeInfo[]
   customConfig?: CustomMetricConfig
 }

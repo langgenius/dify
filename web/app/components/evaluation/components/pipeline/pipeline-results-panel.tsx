@@ -13,7 +13,7 @@ import { getMetricColumns, getRunDate } from './pipeline-results-utils'
 const PAGE_SIZE = 100
 
 const PipelineResultsPanel = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const selectedModel = decodeModelSelection(resource.judgeModelId)
   const selectedRunId = resource.selectedRunId
@@ -31,9 +31,6 @@ const PipelineResultsPanel = ({ resourceType, resourceId }: EvaluationResourcePr
   const runDetail = runDetailQuery.data
   const items = runDetail?.items.data ?? []
   const metricColumns = getMetricColumns(resource, items)
-  const thresholdColumns = metricColumns.filter(
-    (column): column is typeof column & { threshold: number } => column.threshold !== undefined,
-  )
   const isEmpty = !selectedRunId || (!runDetailQuery.isLoading && items.length === 0)
 
   if (isEmpty) {
@@ -84,24 +81,6 @@ const PipelineResultsPanel = ({ resourceType, resourceId }: EvaluationResourcePr
                       className="i-ri-robot-2-line h-4 w-4 shrink-0 text-text-accent"
                     />
                     <span className="truncate">{selectedModel.model}</span>
-                  </span>
-                </>
-              )}
-              {thresholdColumns.length > 0 && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="flex min-w-0 flex-wrap items-center gap-1">
-                    {thresholdColumns.map((column) => (
-                      <span
-                        key={column.id}
-                        className="rounded-lg border-[0.5px] border-divider-subtle bg-background-section px-2 py-1 text-text-tertiary"
-                      >
-                        {t(($) => $['results.metricThreshold'], {
-                          metric: column.label,
-                          threshold: column.threshold,
-                        })}
-                      </span>
-                    ))}
                   </span>
                 </>
               )}

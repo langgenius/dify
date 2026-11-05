@@ -15,7 +15,6 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
   const { t } = useTranslation(['evaluation'])
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
-  const updateMetricThreshold = useEvaluationStore((state) => state.updateMetricThreshold)
   const resource = useEvaluationResource(resourceType, resourceId)
   const { data: datasetMetricsData } = useDatasetEvaluationMetrics(
     resourceId,
@@ -71,12 +70,7 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
               key={metric.id}
               metric={metric}
               selected={!!selectedMetric}
-              threshold={selectedMetric?.threshold}
-              disabledCondition
               onToggle={() => handleToggleMetric(metric.id)}
-              onThresholdChange={(value) =>
-                updateMetricThreshold(resourceType, resourceId, selectedMetric?.id ?? '', value)
-              }
             />
           )
         })}
