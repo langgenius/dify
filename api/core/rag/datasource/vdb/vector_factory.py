@@ -195,6 +195,19 @@ class Vector:
             logger.warning("skip %d empty documents before vector embedding", skipped_count)
         return filtered_documents
 
+    @staticmethod
+    def _require_one_embedding_per_text(texts: list, embeddings: list) -> None:
+        """Reject a batch whose embedding count differs from the document count.
+
+        A provider can return fewer vectors than inputs (a dropped over-long input, a
+        truncated batch), and ``create`` pairs them by position, so a short result would
+        write every later document with its neighbour's vector.
+        """
+        if len(embeddings) != len(texts):
+            raise ValueError(
+                f"expect one embedding per document, got {len(embeddings)} embeddings for {len(texts)} documents"
+            )
+
     def create(self, texts: list | None = None, **kwargs):
         if texts:
             texts = self._filter_empty_text_documents(texts)
@@ -260,6 +273,7 @@ class Vector:
                         )
                         real_batch.append(document)
                 batch_embeddings = self._embeddings.embed_multimodal_documents(file_base64_list)
+                self._require_one_embedding_per_text(real_batch, batch_embeddings)
                 logger.info(
                     "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
@@ -277,6 +291,7 @@ class Vector:
                 return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
+        self._require_one_embedding_per_text(documents, embeddings)
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)
 
     def text_exists(self, id: str) -> bool:
