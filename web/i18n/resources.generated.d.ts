@@ -3419,9 +3419,11 @@ export default interface Resources {
     'metrics.builtin.description.toolSelectionCorrectness': 'Measures whether the agent selects tools with capabilities appropriate for the task from the exact tools available at runtime.'
     'metrics.builtin.description.trajectoryQuality': "Measures whether the agent's observable execution path is coherent, efficient, responsive to observations, and able to recover from errors."
     'metrics.collapseNodes': 'Collapse nodes'
+    'metrics.custom.createWorkflow': 'Create workflow'
     'metrics.custom.description': 'Select an evaluation workflow and map your variables before running tests.'
     'metrics.custom.footerDescription': 'Connect your published evaluation workflows'
     'metrics.custom.footerTitle': 'Custom metrics'
+    'metrics.custom.info': 'A custom evaluator uses a published evaluation workflow to process test data. Create and publish one, then select it here, map its inputs, and use its outputs as metrics in judgment conditions.'
     'metrics.custom.limitDescription': 'Only one custom metric can be added.'
     'metrics.custom.mappingTitle': 'Variable Mapping'
     'metrics.custom.mappingWarning': 'Complete the workflow selection and each variable mapping to enable batch tests.'

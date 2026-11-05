@@ -48,4 +48,8 @@ export const appListQueryParsers = {
 
 export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
+export const createWorkflowAppHref = '/apps?category=workflow&create=workflow'
+export const createWorkflowAppQueryParamName = 'create'
+export const createWorkflowAppQueryParser = parseAsStringLiteral(['workflow'] as const)
+
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>
