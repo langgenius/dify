@@ -5,7 +5,9 @@ from core.rag.extractor.extractor_base import BaseExtractor
 
 class _CallsBaseExtractor(BaseExtractor):
     def extract(self) -> object:
-        return super().extract()
+        return BaseExtractor.extract(
+            self,
+        )  # intentional: base must raise NotImplementedError
 
 
 class _ConcreteExtractor(BaseExtractor):

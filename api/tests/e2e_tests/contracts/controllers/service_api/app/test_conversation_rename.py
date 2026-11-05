@@ -287,7 +287,7 @@ def test_auto_name_ignores_manual_name_and_preserves_current_name_on_provider_fa
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and record.exc_info
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

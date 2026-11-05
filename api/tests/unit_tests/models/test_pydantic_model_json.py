@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterator
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
 import pytest
 import sqlalchemy as sa
@@ -171,7 +171,10 @@ def test_bind_processor_does_not_double_encode_model_json() -> None:
 
 
 def test_bind_treats_serialization_warnings_as_errors() -> None:
-    invalid_model = _FrozenStrictPayload.model_construct(name=42, attributes={})
+    invalid_model = _FrozenStrictPayload.model_construct(
+        name=cast(str, 42),  # deliberately mistyped
+        attributes={},
+    )
 
     with pytest.raises(PydanticSerializationError):
         _PAYLOAD_TYPE.process_bind_param(invalid_model, sqlite.dialect())

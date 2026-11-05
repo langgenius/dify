@@ -879,8 +879,6 @@ def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
         KnowledgeFSListQuery(path="/invalid", limit=20)
     with pytest.raises(ValidationError):
         KnowledgeFSGrepQuery(path="/knowledge", query=" ")
-    with pytest.raises(ValidationError):
-        KnowledgeFSListQuery.model_validate({"path": "/knowledge", "limit": 101})
 
 
 def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:

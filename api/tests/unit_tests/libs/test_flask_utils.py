@@ -107,7 +107,7 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
                 with preserve_flask_contexts(login_app, context_vars):
                     from flask_login import current_user
 
-                    if current_user:
+                    if current_user.is_authenticated:
                         result["user_accessible"] = True
                         result["user_id"] = current_user.id
                     else:

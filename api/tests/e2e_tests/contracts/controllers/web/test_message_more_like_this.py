@@ -405,9 +405,7 @@ def test_incomplete_historical_model_reaches_generic_error_without_exposing_conf
     assert response.get_json()["code"] == "internal_server_error"
     assert b"private-model-name" not in response.data
     failures = [
-        record.exc_info[1]
-        for record in caplog.records
-        if record.name == "controllers.web.message" and record.exc_info is not None
+        record.exc_info[1] for record in caplog.records if record.name == "controllers.web.message" and record.exc_info
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], KeyError)

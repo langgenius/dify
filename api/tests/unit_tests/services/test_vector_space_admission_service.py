@@ -3,6 +3,7 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
+from typing import cast
 from unittest.mock import call, patch
 from uuid import uuid4
 
@@ -683,7 +684,10 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
             "services.vector_space_admission_service.BillingService.get_vector_space",
             # Observe-mode validation keeps invalid values raw and reads missing fields as None.
             return_value=billing.VectorSpaceQuota.model_construct(
-                size=quota.get("size"), limit=quota.get("limit"), usage_unknown=quota.get("usage_unknown")
+                # Deliberately raw values: observe-mode keeps them unvalidated.
+                size=cast(float, quota.get("size")),
+                limit=cast(int, quota.get("limit")),
+                usage_unknown=cast("bool | None", quota.get("usage_unknown")),
             ),
         ),
         patch.object(service, "_get_embedding_dimension") as dimension,

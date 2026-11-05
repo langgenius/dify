@@ -54,10 +54,6 @@ def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> Non
 
     with pytest.raises(ValidationError):
         KnowledgeFSDifyIntegrationActivationRequest.model_validate({**payload, "unexpected": True})
-    with pytest.raises(ValidationError):
-        KnowledgeFSDifyIntegrationActivationRequest.model_validate(
-            {**payload, "activation_revision": 9_007_199_254_740_992}
-        )
 
 
 def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(

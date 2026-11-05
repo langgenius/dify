@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Never
+from typing import Literal, Never
 from unittest.mock import patch
 
 from sqlalchemy import inspect
@@ -23,7 +23,7 @@ class _PreviewJobService:
     """Records preview job transitions; ``transition_results`` are consumed in order."""
 
     transition_results: list[bool]
-    job_status: str = "running"
+    job_status: Literal["pending", "running", "completed", "failed", "canceled"] = "running"
     transitions: list[dict[str, object]] = field(default_factory=list)
     stored: list[dict[str, object]] = field(default_factory=list)
     released: list[dict[str, str]] = field(default_factory=list)
@@ -41,7 +41,7 @@ class _PreviewJobService:
 
     def get(self, *, tenant_id: str, account_id: str, job_id: str) -> KnowledgeFSInitialSourcePreviewJobResponse:
         self.lookups.append({"tenant_id": tenant_id, "account_id": account_id, "job_id": job_id})
-        return KnowledgeFSInitialSourcePreviewJobResponse.model_construct(status=self.job_status)
+        return KnowledgeFSInitialSourcePreviewJobResponse.model_construct(job_id=job_id, status=self.job_status)
 
 
 @dataclass

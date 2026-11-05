@@ -988,7 +988,7 @@ class TestTrialAudioCases:
         assert stream.reads == 1
         assert stream.close_calls == 1
         assert harness.usage() is None
-        assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+        assert any(record.exc_info and record.exc_info[1] is failure for record in caplog.records)
 
     @staticmethod
     def test_partial_http_consumption_closes_provider_stream(harness: _TrialAudioHarness) -> None:
@@ -2211,7 +2211,7 @@ class TestTrialGenerationCases:
         assert stream.close_calls == 1
         assert stream.reads == 0
         assert harness.usage() is None
-        assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+        assert any(record.exc_info and record.exc_info[1] is failure for record in caplog.records)
 
     @staticmethod
     def test_later_stream_failure_does_not_refund_trial_usage(harness: _TrialGenerationHarness) -> None:

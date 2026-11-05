@@ -1797,15 +1797,17 @@ class TestWorkflowToolEventDeliveryCases:
                 caller.node_execution_id,
             )
             assert execution.status == "exception"
+            outputs = execution.outputs_dict
+            assert outputs is not None
             if caller_save_fails:
                 assert resolution_calls == []
                 assert execution.error == "Workflow node execution caller is unavailable"
-                assert execution.outputs_dict["error_type"] == "agent_workflow_node_runtime_error"
+                assert outputs["error_type"] == "agent_workflow_node_runtime_error"
             else:
                 # The real workspace store must see the caller synchronously before
                 # the binding resolver reports this deliberately unconfigured Agent.
                 assert execution.error == "Workflow Agent binding not found for node source-agent."
-                assert execution.outputs_dict["error_type"] == "agent_binding_not_found"
+                assert outputs["error_type"] == "agent_binding_not_found"
             run = session.scalars(select(WorkflowRun)).one()
             assert (run.app_id, run.workflow_id, run.status) == ("outer-app", "outer-workflow", "succeeded")
         assert not any(

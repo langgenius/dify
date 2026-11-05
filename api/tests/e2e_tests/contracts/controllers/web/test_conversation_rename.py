@@ -314,7 +314,7 @@ def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and record.exc_info
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

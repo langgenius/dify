@@ -1,10 +1,11 @@
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, patch
 
 from core.app.features.hosting_moderation.hosting_moderation import (
     HostingModerationFeature,
 )
-from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, UserPromptMessage
 
 
 class TestHostingModerationFeature:
@@ -16,9 +17,11 @@ class TestHostingModerationFeature:
         # The middle message bypasses validation on purpose: `content` is not
         # always a string at runtime, and the feature must skip those entries.
         prompt_messages: list[PromptMessage] = [
-            UserPromptMessage(role="user", content="hello"),
-            UserPromptMessage.model_construct(role="user", content=123),
-            UserPromptMessage(role="user", content="world"),
+            UserPromptMessage(role=PromptMessageRole.USER, content="hello"),
+            UserPromptMessage.model_construct(
+                role=PromptMessageRole.USER, content=cast(str, 123)
+            ),  # deliberately non-string content
+            UserPromptMessage(role=PromptMessageRole.USER, content="world"),
         ]
 
         with patch("core.app.features.hosting_moderation.hosting_moderation.moderation.check_moderation") as mock_check:

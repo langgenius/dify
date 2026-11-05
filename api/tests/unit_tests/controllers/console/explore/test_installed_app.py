@@ -772,8 +772,9 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     management.assert_sessions_closed()
     records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
     assert len(records) == 1
-    assert records[0].exc_info is not None
-    assert records[0].exc_info[1] is failure
+    exc_info = records[0].exc_info
+    assert exc_info
+    assert exc_info[1] is failure
     assert management.harness.installed_app.tenant_id in records[0].getMessage()
     assert management.harness.account.id in records[0].getMessage()
     assert "request-1" in records[0].getMessage()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import ClassVar
 
 import pytest
 import sqlalchemy as sa
@@ -214,7 +215,7 @@ def test_slack_stream_connection_acks_only_the_event_committed_by_the_inbox(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -282,7 +283,7 @@ def test_slack_webhook_and_stream_share_identified_callback_deduplication(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs

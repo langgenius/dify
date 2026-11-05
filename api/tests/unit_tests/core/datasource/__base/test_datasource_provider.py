@@ -1,3 +1,4 @@
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -257,7 +258,7 @@ class TestDatasourcePluginProviderController:
         config_other = ProviderConfig.model_construct(
             name="other_def",
             required=False,
-            type="OTHER",
+            type=cast(ProviderConfigType, "OTHER"),  # deliberately unknown type to cover the fallback branch
             default="fallback",
         )
 

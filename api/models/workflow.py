@@ -1147,7 +1147,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         return json.loads(self.outputs) if self.outputs else None
 
     @property
-    def process_data_dict(self):
+    def process_data_dict(self) -> dict[str, Any] | None:
         return json.loads(self.process_data) if self.process_data else None
 
     @property

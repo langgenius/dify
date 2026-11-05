@@ -1,4 +1,4 @@
-from typing import override
+from typing import cast, override
 
 import pytest
 from sqlalchemy.orm import Session
@@ -16,27 +16,31 @@ def _dataset() -> Dataset:
 class _KeywordThatRaises(BaseKeyword):
     @override
     def create(self, texts: list[Document], session: Session, **kwargs: object) -> BaseKeyword:
-        return super().create(texts, session, **kwargs)
+        return BaseKeyword.create(self, texts, session, **kwargs)  # intentional: base must raise NotImplementedError
 
     @override
     def add_texts(self, texts: list[Document], session: Session, **kwargs: object) -> None:
-        return super().add_texts(texts, session, **kwargs)
+        return BaseKeyword.add_texts(self, texts, session, **kwargs)  # intentional: base must raise NotImplementedError
 
     @override
     def text_exists(self, id: str, *, session: Session) -> bool:
-        return super().text_exists(id, session=session)
+        return BaseKeyword.text_exists(self, id, session=session)  # intentional: base must raise NotImplementedError
 
     @override
     def delete_by_ids(self, ids: list[str], session: Session, **kwargs: object) -> None:
-        return super().delete_by_ids(ids, session, **kwargs)
+        return BaseKeyword.delete_by_ids(
+            self, ids, session, **kwargs
+        )  # intentional: base must raise NotImplementedError
 
     @override
     def delete(self, *, session: Session) -> None:
-        return super().delete(session=session)
+        return BaseKeyword.delete(self, session=session)  # intentional: base must raise NotImplementedError
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: object) -> list[Document]:
-        return super().search(query, session=session, **kwargs)
+        return BaseKeyword.search(
+            self, query, session=session, **kwargs
+        )  # intentional: base must raise NotImplementedError
 
 
 class _KeywordForHelpers(BaseKeyword):
@@ -97,7 +101,10 @@ def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Sessio
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
-        Document.model_construct(page_content="without-metadata", metadata=None),
+        Document.model_construct(
+            page_content="without-metadata",
+            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+        ),
     ]
 
     filtered = keyword._filter_duplicate_texts(texts, session=unbound_session)
@@ -111,7 +118,10 @@ def test_get_uuids_returns_only_docs_with_metadata() -> None:
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),
-        Document.model_construct(page_content="doc-3", metadata=None),
+        Document.model_construct(
+            page_content="doc-3",
+            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+        ),
     ]
 
     assert keyword._get_uuids(texts) == ["doc-1", "doc-2"]
