@@ -46,7 +46,7 @@ it.each([true, false])(
   },
 )
 
-it('connects using cookies and joins the requested workflow after connecting', () => {
+it('connects using cookies without joining a workflow', () => {
   const { socket, emit, receive } = createTransport('socket-auth', false)
   ioMock.mockReturnValue(socket)
   const client = createClient()
@@ -58,27 +58,7 @@ it('connects using cookies and joins the requested workflow after connecting', (
   })
   expect(emit).not.toHaveBeenCalled()
   receive('connect')
-  expect(emit).toHaveBeenCalledWith(
-    'user_connect',
-    { workflow_id: 'app-auth' },
-    expect.any(Function),
-  )
-})
-
-it('ignores an acknowledgement from a previous socket session', () => {
-  const { socket, receive, acknowledge } = createTransport('socket-old', false)
-  ioMock.mockReturnValue(socket)
-  const onJoinAck = vi.fn()
-  createClient().connect('app-auth', onJoinAck)
-  receive('connect')
-  const oldAck = vi.mocked(socket.emit).mock.calls.at(-1)?.[2]
-  socket.id = 'socket-new'
-  receive('connect')
-  acknowledge('user_connect', { msg: 'connected' })
-  expect(onJoinAck).toHaveBeenCalledOnce()
-  if (typeof oldAck !== 'function') throw new Error('Missing acknowledgement')
-  oldAck({ msg: 'not_entitled' }, 403)
-  expect(onJoinAck).toHaveBeenCalledOnce()
+  expect(emit).not.toHaveBeenCalled()
 })
 
 it('disconnects a specific app and reports it as unavailable', () => {

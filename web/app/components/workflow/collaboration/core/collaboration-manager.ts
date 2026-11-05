@@ -182,7 +182,6 @@ export class CollaborationManager {
   private joinPending = false
   private hasJoinedRoom = false
   private joinAttempt = 0
-  private connectionJoinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
   private pendingGraphResyncBroadcast = false
@@ -261,23 +260,12 @@ export class CollaborationManager {
     return unsubscribe
   }
 
-  private handleSessionUnauthorized = (): void => {
-    if (
-      this.joinFailure ||
-      this.rejoinInProgress ||
-      (this.joinPending && !this.receivedConnectionStatus)
-    )
-      return
-    if (!this.currentAppId) return
+  private joinWorkflow(socket: Socket): void {
+    if (!this.currentAppId || !socket.connected) return
 
-    const socket = this.getActiveSocket()
-    if (!socket) return
-
-    this.rejoinInProgress = true
     this.joinPending = true
     const attempt = ++this.joinAttempt
     const sid = socket.id
-    console.warn('Collaboration session expired, attempting to rejoin workflow.')
     emitWithAuthGuard(
       socket,
       'user_connect',
@@ -295,6 +283,23 @@ export class CollaborationManager {
         },
       },
     )
+  }
+
+  private handleSessionUnauthorized = (): void => {
+    if (
+      this.joinFailure ||
+      this.rejoinInProgress ||
+      (this.joinPending && !this.receivedConnectionStatus)
+    )
+      return
+    if (!this.currentAppId) return
+
+    const socket = this.getActiveSocket()
+    if (!socket?.connected) return
+
+    this.rejoinInProgress = true
+    console.warn('Collaboration session expired, attempting to rejoin workflow.')
+    this.joinWorkflow(socket)
   }
 
   private sendCollaborationEvent(payload: CollaborationEventPayload): void {
@@ -742,10 +747,7 @@ export class CollaborationManager {
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
-    const socket = webSocketClient.connect(appId, (...args) => {
-      if (this.getActiveSocket() === socket && this.joinAttempt === this.connectionJoinAttempt)
-        this.handleJoinAck(...args)
-    })
+    const socket = webSocketClient.connect(appId)
     this.hasEstablishedConnection = socket.connected
 
     // Setup event listeners BEFORE any other operations
@@ -758,27 +760,7 @@ export class CollaborationManager {
     this.emitGraphReadyState()
 
     // Force user_connect if already connected
-    if (socket.connected) {
-      this.joinPending = true
-      const attempt = ++this.joinAttempt
-      this.connectionJoinAttempt = attempt
-      const sid = socket.id
-      emitWithAuthGuard(
-        socket,
-        'user_connect',
-        { workflow_id: appId },
-        {
-          onAck: (...args) => {
-            if (
-              this.getActiveSocket() === socket &&
-              socket.id === sid &&
-              this.joinAttempt === attempt
-            )
-              this.handleJoinAck(...args)
-          },
-        },
-      )
-    }
+    if (socket.connected) this.joinWorkflow(socket)
 
     return connectionId
   }
@@ -2001,8 +1983,6 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
-      this.joinPending = true
-      this.connectionJoinAttempt = ++this.joinAttempt
       this.receivedConnectionStatus = false
       this.hasEstablishedConnection = true
       if (this.rebuildCrdtOnNextConnect) {
@@ -2012,9 +1992,10 @@ export class CollaborationManager {
         this.awaitingSnapshotImport = false
         this.crdtTrusted = false
       }
+      this.pendingInitialSync = true
+      this.joinWorkflow(socket)
       this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
-      this.pendingInitialSync = true
     })
 
     socket.on('disconnect', (reason) => {
