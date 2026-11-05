@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MainNavMobileBar } from '../mobile-nav'
@@ -14,8 +15,9 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('../index', () => ({
   MainNavLogo: () => <a href="/">Dify</a>,
-  MainNavPanel: () => (
+  MainNavPanel: ({ headerAction }: { headerAction: ReactNode }) => (
     <nav aria-label="Primary">
+      {headerAction}
       {/* Client-side links cancel the native navigation, like next/link does. */}
       <a href="/datasets" onClick={(event) => event.preventDefault()}>
         Knowledge
@@ -68,6 +70,14 @@ it('stays open for new-tab links, modified clicks, and non-link controls', async
   await user.click(within(drawer).getByRole('button', { name: 'Search' }))
 
   expect(screen.getByRole('dialog', { name: menuName })).toBeInTheDocument()
+})
+
+it('closes from the close button in the panel header', async () => {
+  const { drawer, user } = await openMenu()
+
+  await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+
+  await expectClosed()
 })
 
 it('closes when the route changes without a link click', async () => {

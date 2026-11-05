@@ -55,7 +55,7 @@ const MainNavLayout = ({
       {useDetailSidebar && !hideMainNavigation && detailSidebar}
       {showMainNav && (
         <>
-          <MainNavMobileBar initialPlatform={initialPlatform} />
+          <MainNavMobileBar />
           <MainNav className="max-md:hidden" initialPlatform={initialPlatform} />
         </>
       )}

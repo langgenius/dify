@@ -1,6 +1,6 @@
 'use client'
 
-import type { Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -56,7 +56,7 @@ export function MainNavLogo() {
   )
 }
 
-export function MainNavPanel({ initialPlatform }: Pick<MainNavProps, 'initialPlatform'>) {
+export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
   const { t } = useTranslation(['common', 'navigation', 'contacts'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
@@ -120,7 +120,7 @@ export function MainNavPanel({ initialPlatform }: Pick<MainNavProps, 'initialPla
     <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between ps-4 pe-2 pt-3 pb-2">
         <MainNavLogo />
-        <MainNavSearchButton initialPlatform={initialPlatform} />
+        {headerAction}
       </div>
       <div className="p-2">
         <WorkspaceCard />
@@ -187,7 +187,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
         className,
       )}
     >
-      <MainNavPanel initialPlatform={initialPlatform} />
+      <MainNavPanel headerAction={<MainNavSearchButton initialPlatform={initialPlatform} />} />
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
           recoveryAnchorRef={brandingEnabled ? undefined : helpMenuTriggerRef}

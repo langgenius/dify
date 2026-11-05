@@ -122,22 +122,12 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/app-detail-top.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app-sidebar/app-info/app-info-header.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
   "web/app/components/app-sidebar/app-info/export-app-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/app-sidebar/dataset-detail-top.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
     }
@@ -3678,11 +3668,6 @@
       "count": 2
     }
   },
-  "web/app/components/snippets/components/snippet-detail-top.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/snippets/components/snippet-header/run-mode.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -6230,11 +6215,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/navigation.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 9
-    }
-  },
   "web/features/agent-v2/agent-detail/section-surface.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -6455,11 +6435,6 @@
       "count": 6
     }
   },
-  "web/features/new-rag/space/shell.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/features/new-rag/upgrade/knowledge-upgrade-card.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -6513,9 +6488,6 @@
     }
   },
   "web/features/skills/detail/file-tree.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    },
     "no-restricted-globals": {
       "count": 1
     }
