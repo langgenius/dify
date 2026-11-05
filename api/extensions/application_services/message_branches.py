@@ -13,6 +13,7 @@ def resolve_message_history(
     end_user_id: str,
     conversation_id: str | None,
     parent_message_id: str | None,
+    message_history: object = None,
 ) -> MessageHistory:
     """Revalidate queued/resumed selection using persisted app and admitted user.
 
@@ -24,10 +25,18 @@ def resolve_message_history(
 
     branches = application_services().message_branches
     branches.validate_workflow(workflow.graph_dict)
+    context = ServiceApiEndUserContext(
+        tenant_id=app.tenant_id, app_id=app.id, app_mode=app.mode, end_user_id=end_user_id
+    )
+    if message_history is not None:
+        return branches.revalidate(
+            context=context,
+            conversation_id=conversation_id,
+            parent_message_id=parent_message_id,
+            history=MessageHistory.model_validate(message_history),
+        )
     return branches.resolve(
-        context=ServiceApiEndUserContext(
-            tenant_id=app.tenant_id, app_id=app.id, app_mode=app.mode, end_user_id=end_user_id
-        ),
+        context=context,
         conversation_id=conversation_id,
         parent_message_id=parent_message_id,
     )

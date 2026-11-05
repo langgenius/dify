@@ -252,6 +252,8 @@ class AgentRuntimeSupport:
         """
         conversation_id = get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
         if conversation_id is None:
+            if self._message_history is not None:
+                raise ValueError("Selected conversation ID is missing from workflow state.")
             return None
 
         with Session(db.engine, expire_on_commit=False) as session:

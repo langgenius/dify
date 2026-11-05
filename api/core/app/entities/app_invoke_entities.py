@@ -139,6 +139,8 @@ def build_dify_run_context(
 
     `extra_context` can carry user-defined context keys. The reserved `_dify`
     payload is always overwritten by this function to keep one canonical source.
+    Optional message_history is already owner-resolved by admission and remains
+    explicit through graph serialization; None preserves legacy memory lookup.
     """
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(

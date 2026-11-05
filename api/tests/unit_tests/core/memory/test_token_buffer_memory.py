@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any, override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -20,7 +19,6 @@ from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -29,9 +27,6 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessageTool
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from machinery.message_history import MessageHistory
 from models.agent import (
     AgentConfigDraft,
@@ -52,6 +47,7 @@ from models.workflow import (
     WorkflowRunTriggeredFrom,
     WorkflowType,
 )
+from tests.helpers.unit.core.message_branch_model import RecordingBranchModel
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
 
@@ -869,53 +865,19 @@ class TestPreparedHistory:
         assert [len(prompt.files) for prompt in history.prompts] == [1, 0, 1, 0]
 
 
-class RecordingBranchModel(LargeLanguageModel):
-    """In-process provider that records actual ModelInstance invocation messages."""
-
-    recorded: tuple[PromptMessage, ...] = ()
-
-    @override
-    def get_num_tokens(
-        self,
-        model: str,
-        credentials: dict[str, Any],
-        prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool] | None = None,
-    ) -> int:
-        """Count deterministically without provider I/O or modifying the prompts."""
-        return len(prompt_messages)
-
-    @override
-    def invoke(
-        self,
-        model: str,
-        credentials: dict[str, Any],
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: list[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: bool = True,
-        callbacks: list[Callback] | None = None,
-        *,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult:
-        """Capture exactly the supplied history and return a real provider result."""
-        self.recorded = tuple(prompt_messages)
-        return LLMResult(
-            model=model,
-            prompt_messages=prompt_messages,
-            message=AssistantPromptMessage(content="new answer"),
-            usage=LLMUsage.empty_usage(),
-        )
-
-
 @pytest.mark.parametrize("selected_indices", [(), (0,), (0, 1), (0, 3)])
 def test_selected_branch_reaches_model_without_replaced_or_concurrent_descendants(
     sqlite_session_factory: sessionmaker[Session], selected_indices: tuple[int, ...]
 ) -> None:
     """Exact selected prompts reach the model even when another branch finishes later."""
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.ADVANCED_CHAT)
-    conversation = make_conversation(conversation_id=str(uuid4()), app_id=app.id, mode=AppMode.ADVANCED_CHAT, inputs={})
+    conversation = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=app.id,
+        mode=AppMode.ADVANCED_CHAT,
+        inputs={},
+        from_source=ConversationFromSource.API,
+    )
     messages = [
         make_message(
             message_id=str(uuid4()),
@@ -926,6 +888,7 @@ def test_selected_branch_reaches_model_without_replaced_or_concurrent_descendant
             inputs={},
             message={},
             answer_tokens=1,
+            from_source=ConversationFromSource.API,
             created_at=datetime(2026, 1, 1) + timedelta(seconds=i),
         )
         for i in range(5)

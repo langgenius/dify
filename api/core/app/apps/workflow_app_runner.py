@@ -243,7 +243,10 @@ class WorkflowBasedAppRunner:
         message_history: MessageHistory | None = None,
     ) -> Graph:
         """
-        Init graph
+        Initialize a graph with an optional admitted transcript selection.
+
+        The caller must resolve ownership before construction. The selection
+        travels in graph context into every node; None retains legacy memory.
         """
         graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
 

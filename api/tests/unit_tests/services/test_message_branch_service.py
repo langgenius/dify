@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants import UUID_NIL
@@ -29,10 +29,10 @@ class BranchConversation:
     conversation_id: str
     service: MessageBranchService
 
-    def add(self, *, query: str, parent: str | None, index: int = 0) -> str:
+    def add(self, *, query: str, parent: str | None, index: int = 0, message_id: str | None = None) -> str:
         """Persist a complete answer; return its ID after committing."""
         message = make_message(
-            message_id=str(uuid4()),
+            message_id=message_id or str(uuid4()),
             app_id=self.context.app_id,
             conversation_id=self.conversation_id,
             query=query,
@@ -112,6 +112,105 @@ def test_legacy_nil_rows_retain_preceding_history(branch: BranchConversation) ->
     second = branch.add(query="second", parent=UUID_NIL, index=1)
     branch.add(query="newer", parent=UUID_NIL, index=2)
     assert branch.resolve(second).message_ids == (first, second)
+
+
+def test_materialized_legacy_edges_survive_same_second_new_children_and_roots(branch: BranchConversation) -> None:
+    """New reverse-sorted UUIDs cannot create cycles in already admitted history."""
+    first = branch.add(query="legacy", parent=UUID_NIL, message_id="ffffffff-ffff-4fff-8fff-ffffffffffff")
+    history = branch.resolve(first)
+    branch.add(query="edited", parent=first, message_id="00000001-0000-4000-8000-000000000001")
+    branch.add(query="another root", parent=None, message_id="00000002-0000-4000-8000-000000000002")
+    restored = MessageHistory.model_validate_json(history.model_dump_json())
+    assert (
+        branch.service.revalidate(
+            context=branch.context,
+            conversation_id=branch.conversation_id,
+            parent_message_id=first,
+            history=restored,
+        )
+        == history
+    )
+    assert branch.resolve(first) == history
+    with branch.factory() as session:
+        assert session.scalar(select(Message.parent_message_id).where(Message.id == first)) is None
+
+
+@pytest.mark.parametrize("other_parent", [None, UUID_NIL])
+def test_ambiguous_legacy_timestamps_roll_back_all_edges(branch: BranchConversation, other_parent: str | None) -> None:
+    """A shared legacy timestamp is rejected even when the other row is a new root."""
+    first = branch.add(query="first", parent=UUID_NIL, index=-1)
+    middle = branch.add(query="middle", parent=UUID_NIL)
+    branch.add(query="same time", parent=other_parent)
+    with pytest.raises(ValueError, match="ambiguous"):
+        branch.resolve(middle)
+    with branch.factory() as session:
+        rows = session.execute(select(Message.id, Message.parent_message_id).where(Message.id.in_((first, middle))))
+        assert dict(rows.all()) == {first: UUID_NIL, middle: UUID_NIL}
+
+
+def test_mixed_web_and_service_history_is_materialized_without_rewriting_explicit_edges(
+    branch: BranchConversation,
+) -> None:
+    """API-owned conversations may contain browser turns with explicit links."""
+    web_root = branch.add(query="web", parent=None)
+    api_turn = branch.add(query="api", parent=UUID_NIL, index=1)
+    web_child = branch.add(query="web child", parent=api_turn, index=2)
+    assert branch.resolve(web_child).message_ids == (web_root, api_turn, web_child)
+    with branch.factory() as session:
+        assert session.scalar(select(Message.parent_message_id).where(Message.id == api_turn)) == web_root
+
+
+def test_long_legacy_admission_uses_batched_metadata_and_preserves_queries(branch: BranchConversation) -> None:
+    """Five hundred ancestors require a bounded number of SQL round trips."""
+    messages = [
+        make_message(
+            message_id=str(uuid4()),
+            app_id=branch.context.app_id,
+            conversation_id=branch.conversation_id,
+            query=f"query:{i}",
+            answer=f"answer:{i}",
+            inputs={},
+            message={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=branch.context.end_user_id,
+            created_at=datetime(2026, 1, 1) + timedelta(seconds=i),
+        )
+        for i in range(500)
+    ]
+    for message in messages:
+        message.parent_message_id = UUID_NIL
+    with branch.factory.begin() as session:
+        session.add_all(messages)
+    statements: list[str] = []
+
+    def record_sql(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    engine = branch.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", record_sql)
+    try:
+        history = branch.resolve(messages[-1].id)
+        assert len(statements) <= 7
+        statements.clear()
+        branch.service.revalidate(
+            context=branch.context,
+            conversation_id=branch.conversation_id,
+            parent_message_id=messages[-1].id,
+            history=history,
+        )
+        assert len(statements) <= 4
+    finally:
+        event.remove(engine, "before_cursor_execute", record_sql)
+    assert history.message_ids == tuple(message.id for message in messages)
+    with branch.factory() as session:
+        assert session.scalar(select(Message.query).where(Message.id == messages[-1].id)) == "query:499"
 
 
 @pytest.mark.parametrize("field", ["tenant_id", "app_id", "end_user_id"])

@@ -209,6 +209,7 @@ export const zChatRequestPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  parent_message_id: z.uuid().nullish(),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   workflow_id: z.string().nullish(),
@@ -255,6 +256,7 @@ export const zChatRequestPayloadWithUser = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  parent_message_id: z.uuid().nullish(),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   user: z.string(),

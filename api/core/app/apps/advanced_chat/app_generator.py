@@ -83,6 +83,7 @@ class MessageHistoryResolver(Protocol):
         end_user_id: str,
         conversation_id: str | None,
         parent_message_id: str | None,
+        message_history: object = None,
     ) -> MessageHistory:
         """Resolve persisted ownership and history without modifying workflow state."""
         ...
@@ -193,6 +194,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 end_user_id=user.id,
                 conversation_id=args.get("conversation_id"),
                 parent_message_id=args["parent_message_id"],
+                message_history=args.get("message_history"),
             )
 
         extras = {
@@ -775,6 +777,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                         end_user_id=application_generate_entity.user_id,
                         conversation_id=conversation_id,
                         parent_message_id=application_generate_entity.parent_message_id,
+                        message_history=application_generate_entity.message_history,
                     )
                     if history != application_generate_entity.message_history:
                         raise ValueError("Selected message history changed before execution.")

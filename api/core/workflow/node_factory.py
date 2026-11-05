@@ -285,7 +285,11 @@ def fetch_memory(
     Memory-disabled nodes return None. A selected conversation disappearing
     fails closed; construction never substitutes another conversation's history.
     """
-    if not node_data_memory or not conversation_id:
+    if not node_data_memory:
+        return None
+    if not conversation_id:
+        if message_history is not None:
+            raise ValueError("Selected conversation ID is missing from workflow state.")
         return None
 
     # Node construction can happen in graph initialization paths where Flask's

@@ -138,7 +138,9 @@ class ChatRequestPayload(BaseModel):
             "Advanced Chat only: continue after this message in the same conversation. Explicit null starts a new "
             "root in that conversation. Omit to preserve legacy history selection. To edit and regenerate a turn, "
             "resubmit the edited query and its original predecessor (null for the first turn). Old messages remain. "
-            "Conversation variables and external tool effects are not rolled back."
+            "Conversation variables and external tool effects are not rolled back. The selected chain is limited "
+            "to 500 ancestors. Legacy nil parent links are normalized on admission; ambiguous legacy timestamps "
+            "and Dify Agent workspace nodes are rejected."
         ),
     )
     retriever_from: SkipJsonSchema[str] = Field(default="dev")

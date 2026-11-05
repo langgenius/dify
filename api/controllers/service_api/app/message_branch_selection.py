@@ -1,4 +1,4 @@
-"""Translate an explicit HTTP parent into an owner-validated generation argument."""
+"""Translate an explicit HTTP parent into a validated generation argument."""
 
 from uuid import UUID
 
@@ -15,10 +15,10 @@ def select_message_branch(
 ) -> str | None:
     """Validate an explicitly present parent, including null, before enqueueing.
 
-    Context must come from API admission. Return the normalized parent only
-    after scoped resolution succeeds; failures perform no writes. Omitted
+    Context must come from API admission. Validate shape without I/O here;
+    persisted branch admission follows workflow validation. Omitted
     fields must bypass this handler so legacy generation retains its sentinel.
     """
     parent = str(parent_message_id) if parent_message_id is not None else None
-    branches.resolve(context=context, conversation_id=conversation_id, parent_message_id=parent)
+    branches.validate_request(context=context, conversation_id=conversation_id, parent_message_id=parent)
     return parent

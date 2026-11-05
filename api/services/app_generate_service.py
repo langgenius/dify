@@ -183,6 +183,12 @@ class AppGenerateService:
         rate_limit: RateLimit,
         request_id: str,
     ):
+        """Dispatch an admitted app call through its existing generation protocol.
+
+        Explicit Chatflow branches validate the selected workflow before legacy
+        edge admission and carry frozen IDs across queue serialization. A later
+        generation failure does not undo already committed link normalization.
+        """
         effective_mode = (
             AppMode.AGENT_CHAT
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
@@ -250,13 +256,15 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
 
                 if invoke_from == InvokeFrom.SERVICE_API and "parent_message_id" in args:
-                    resolve_message_history(
+                    message_history = resolve_message_history(
                         app=app_model,
                         workflow=workflow,
                         end_user_id=user.id,
                         conversation_id=args.get("conversation_id"),
                         parent_message_id=args["parent_message_id"],
+                        message_history=args.get("message_history"),
                     )
+                    args = {**args, "message_history": message_history.model_dump(mode="json")}
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
