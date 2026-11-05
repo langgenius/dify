@@ -99,7 +99,6 @@ type SyncDraftCanvas = {
   transform?: [number, number, number]
   appMode?: AppMode
   isCollaborationEnabled?: boolean
-  cloudPlan?: 'sandbox' | 'professional' | 'team'
   features?: Features
   initialStoreState?: Partial<Shape>
 }
@@ -123,19 +122,12 @@ const renderSyncDraft = <R>(
     transform,
     appMode = 'workflow',
     isCollaborationEnabled = false,
-    cloudPlan,
     features,
     initialStoreState,
   }: SyncDraftCanvas = {},
 ) => {
   const featuresStore = createFeaturesStore(features ? { features } : undefined)
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: {
-      enable_collaboration_mode: isCollaborationEnabled,
-      deployment_edition: cloudPlan ? 'CLOUD' : 'COMMUNITY',
-    },
-    ...(cloudPlan ? { features: { billing: { subscription: { plan: cloudPlan } } } } : {}),
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
 
   return renderWorkflowCanvasHook(hook, {
@@ -150,7 +142,7 @@ const renderSyncDraft = <R>(
     transform,
     initialStoreState: {
       isWorkflowDataLoaded: true,
-      isCollaborationEnabled: isCollaborationEnabled && cloudPlan !== 'sandbox',
+      isCollaborationEnabled,
       syncWorkflowDraftHash: 'hash-123',
       ...initialStoreState,
     },
@@ -212,10 +204,9 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('payload', () => {
-    it('saves a full draft for a free Cloud workspace even when collaboration is enabled globally', async () => {
+    it('saves a full draft when collaboration is disabled', async () => {
       const { result } = renderUseNodesSyncDraft({
-        isCollaborationEnabled: true,
-        cloudPlan: 'sandbox',
+        isCollaborationEnabled: false,
       })
 
       await act(async () => {
