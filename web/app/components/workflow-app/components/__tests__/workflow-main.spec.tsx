@@ -4,7 +4,7 @@ import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflo
 import type { Node } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -186,6 +186,7 @@ beforeEach(() => {
 afterEach(async () => {
   // Unmount while the collaboration transport spies still represent this session.
   await act(async () => cleanup())
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -344,6 +345,8 @@ it('waits for the first draft hash, then joins without reconnecting when it chan
 })
 
 it('keeps the current canvas and blocks saving when the draft is outdated', async () => {
+  const user = userEvent.setup()
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null)
   const transport = useRealCollaborationTransport()
   const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
   const canvasNodes = store.getState().nodes
@@ -361,9 +364,12 @@ it('keeps the current canvas and blocks saving when the draft is outdated', asyn
   act(() => transport.acknowledge('user_connect', { msg: 'draft_outdated' }, 409))
   expect(screen.getByText('workflow.collaboration.draftOutdated')).toBeVisible()
   expect(store.getState().nodes).toEqual(canvasNodes)
-  expect(
-    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
-  ).not.toBeInTheDocument()
+  const button = screen.getByRole('button', { name: 'workflow.collaboration.openSavedWorkflow' })
+  const originalLocation = window.location.href
+  await user.click(button)
+  expect(open).toHaveBeenCalledWith('/app/app-1/workflow', '_blank', 'noopener,noreferrer')
+  expect(window.location.href).toBe(originalLocation)
+  expect(store.getState().nodes).toEqual(canvasNodes)
   expect(collaborationManager.getNodes()).toEqual([])
   expect(api.saveDraft).not.toHaveBeenCalled()
   expect(api.fetchDraft).not.toHaveBeenCalled()
@@ -426,6 +432,38 @@ it.each([
   },
 )
 
+it('disconnects an expired join before opening a new tab and ignores late join events', async () => {
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+  const transport = useRealCollaborationTransport()
+  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  const canvasNodes = store.getState().nodes
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
+
+  vi.useFakeTimers()
+  act(() => transport.receive('connect'))
+  await act(async () => vi.advanceTimersByTimeAsync(15_000))
+  expect(screen.getByText('workflow.collaboration.joinUnavailable')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'workflow.collaboration.openSavedWorkflow' }))
+
+  expect(webSocketClient.disconnect).toHaveBeenCalledWith('app-1')
+  expect(open).toHaveBeenCalledWith('/app/app-1/workflow', '_blank', 'noopener,noreferrer')
+  expect(vi.mocked(webSocketClient.disconnect).mock.invocationCallOrder.at(-1)).toBeLessThan(
+    open.mock.invocationCallOrder[0]!,
+  )
+
+  act(() => {
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+    transport.receive('connect')
+    transport.receive('disconnect', 'late disconnect')
+  })
+  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  expect(collaborationManager.getIsLeader()).toBe(false)
+  expect(collaborationManager.canPersistLocalGraph()).toBe(false)
+  expect(screen.getByText('workflow.collaboration.joinUnavailable')).toBeVisible()
+  expect(store.getState().nodes).toEqual(canvasNodes)
+})
+
 it('shows a retry message and access guidance when the initial join is rejected', async () => {
   await renderMain()
   act(() => {
@@ -434,25 +472,42 @@ it('shows a retry message and access guidance when the initial join is rejected'
   })
   expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinRetrying')
   expect(
-    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
+    screen.queryByRole('button', { name: 'workflow.collaboration.openSavedWorkflow' }),
   ).not.toBeInTheDocument()
   act(() => events.joinFailure.forEach((handler) => handler('denied')))
-  expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinDenied')
-  expect(screen.getByRole('button', { name: 'common.errorBoundary.reloadPage' })).toBeVisible()
+  expect(
+    within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
+  ).toHaveTextContent('workflow.collaboration.joinDenied')
+  expect(
+    screen.getByRole('button', { name: 'workflow.collaboration.openSavedWorkflow' }),
+  ).toBeVisible()
 })
 
-it('shows an error without a reload button after an established session is rejected', async () => {
-  vi.spyOn(collaborationManager, 'hasJoinedCollaborationRoom').mockReturnValue(true)
-  await renderMain()
-  act(() => {
-    events.ready.forEach((handler) => handler(false))
-    events.joinFailure.forEach((handler) => handler('denied'))
-  })
-  expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinDenied')
-  expect(
-    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
-  ).not.toBeInTheDocument()
-})
+it.each(['denied', 'unavailable'] as const)(
+  'offers the saved workflow in a new tab when the session is %s',
+  async (failure) => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    await renderMain()
+    act(() => {
+      events.ready.forEach((handler) => handler(false))
+      events.joinFailure.forEach((handler) => handler(failure))
+    })
+    const expected =
+      failure === 'denied'
+        ? 'workflow.collaboration.joinDenied'
+        : 'workflow.collaboration.joinUnavailable'
+    expect(
+      within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
+    ).toHaveTextContent(expected)
+    const button = screen.getByRole('button', { name: 'workflow.collaboration.openSavedWorkflow' })
+    const originalLocation = window.location.href
+    await user.click(button)
+    expect(open).toHaveBeenCalledWith('/app/app-1/workflow', '_blank', 'noopener,noreferrer')
+    expect(window.location.href).toBe(originalLocation)
+    expect(screen.getByTestId('collaboration-graph-loading')).toBeVisible()
+  },
+)
 
 // These are incoming collaboration-service events, not callbacks captured from UI components.
 function updateVars(syncWorkflowDraft = false) {

@@ -900,8 +900,14 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
-  hasJoinedCollaborationRoom(): boolean {
-    return this.hasJoinedRoom
+  stopJoiningForSavedWorkflow(): void {
+    const failure = this.joinFailure
+    if (!this.currentAppId || !failure || failure === 'retrying') return
+    this.cancelJoinAttempt()
+    this.joinRetryCount = 0
+    this.rejoinInProgress = false
+    webSocketClient.disconnect(this.currentAppId)
+    this.setJoinFailure(failure)
   }
 
   canUseLocalDraftFallback(): boolean {
@@ -2017,6 +2023,7 @@ export class CollaborationManager {
 
     socket.on('status', (data: { isLeader: boolean }) => {
       try {
+        if (this.getActiveSocket() !== socket) return
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
           return
@@ -2073,6 +2080,7 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
+      if (this.getActiveSocket() !== socket) return
       this.hasEstablishedConnection = true
       const skipDraftHash = this.hasJoinedRoom && this.rebuildCrdtOnNextConnect
       if (this.rebuildCrdtOnNextConnect) {
@@ -2089,6 +2097,7 @@ export class CollaborationManager {
     })
 
     socket.on('disconnect', (reason) => {
+      if (this.getActiveSocket() !== socket) return
       this.clearInitialSyncRetry()
       this.cancelJoinAttempt()
       this.joinRetryCount = 0

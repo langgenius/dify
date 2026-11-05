@@ -461,7 +461,6 @@ it.each(['status-first', 'ack-first'] as const)('completes rejoin when %s', asyn
     acknowledge('user_connect', { msg: 'connected' })
     receive('status', { isLeader: true })
   }
-  expect(manager.hasJoinedCollaborationRoom()).toBe(true)
   expect(manager.canPersistLocalGraph()).toBe(false) // Re-elected leader must reload the HTTP graph first.
   expect(manager.isConnected()).toBe(true)
   const reload = vi.fn<(request: GraphReloadRequest) => void>()

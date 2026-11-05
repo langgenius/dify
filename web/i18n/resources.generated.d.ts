@@ -5813,6 +5813,8 @@ export default interface Resources {
     'collaboration.historyAction.generic': 'A collaborator performed an undo/redo action'
     'collaboration.joinDenied': 'Unable to join collaboration. Check your access and workspace plan, then reopen the editor.'
     'collaboration.joinRetrying': 'Collaboration is temporarily unavailable. Retrying…'
+    'collaboration.joinUnavailable': 'Unable to connect to collaboration. Changes on this canvas may not be saved.'
+    'collaboration.openSavedWorkflow': 'Open saved workflow in new tab'
     'common.accessAPIReference': 'Access API Reference'
     'common.accessPointDescription': 'Configure web app, API, MCP, and triggers'
     'common.addBlock': 'Add Node'

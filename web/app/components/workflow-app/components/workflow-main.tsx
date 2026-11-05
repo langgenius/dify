@@ -32,6 +32,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
+import { basePath } from '@/utils/var'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
@@ -56,7 +57,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation(['workflow', 'common', 'contacts'] as const)
+  const { t } = useTranslation(['workflow'])
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
@@ -546,6 +547,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     fileSettings,
   ])
 
+  const joinFailureMessages: Record<JoinFailure, string> = {
+    denied: t(($) => $['collaboration.joinDenied']),
+    retrying: t(($) => $['collaboration.joinRetrying']),
+    unavailable: t(($) => $['collaboration.joinUnavailable']),
+    draft_outdated: t(($) => $['collaboration.draftOutdated']),
+  }
+
   return (
     <div ref={containerRef} className="relative size-full">
       <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
@@ -577,22 +585,23 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             >
               {joinFailure ? (
                 <>
-                  <span role="alert">
-                    {joinFailure === 'draft_outdated'
-                      ? t(($) => $['collaboration.draftOutdated'], { ns: 'workflow' })
-                      : joinFailure === 'denied'
-                        ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                        : joinFailure === 'retrying'
-                          ? t(($) => $['collaboration.joinRetrying'], { ns: 'workflow' })
-                          : t(($) => $['imPlatform.status.connection_error'], { ns: 'contacts' })}
-                  </span>
-                  {joinFailure !== 'retrying' &&
-                    joinFailure !== 'draft_outdated' &&
-                    !collaborationManager.hasJoinedCollaborationRoom() && (
-                      <Button size="small" onClick={() => window.location.reload()}>
-                        {t(($) => $['errorBoundary.reloadPage'], { ns: 'common' })}
-                      </Button>
-                    )}
+                  <span>{joinFailureMessages[joinFailure]}</span>
+                  {joinFailure !== 'retrying' && (
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={() => {
+                        collaborationManager.stopJoiningForSavedWorkflow()
+                        window.open(
+                          `${basePath}/app/${appId}/workflow`,
+                          '_blank',
+                          'noopener,noreferrer',
+                        )
+                      }}
+                    >
+                      {t(($) => $['collaboration.openSavedWorkflow'])}
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
@@ -600,7 +609,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                     aria-hidden="true"
                     className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
                   />
-                  <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                  <span>{t(($) => $['common.syncingData'])}</span>
                 </>
               )}
             </div>
