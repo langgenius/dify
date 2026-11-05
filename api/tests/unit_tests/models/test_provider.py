@@ -18,6 +18,9 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm import Session, selectinload
 from typing_extensions import TypedDict
 
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -260,58 +263,75 @@ class TestProviderModel:
         # Act & Assert
         assert provider.token_is_set is False
 
-    def test_provider_credential_reads_attached_value(self) -> None:
-        """Test credential accessors read the attached row without database access."""
+    def test_provider_credential_is_loaded_through_callers_session(self, sqlite_session: Session) -> None:
+        """Test credential accessors read the row loaded by the caller's query after the session closes."""
         # Arrange
-        provider = Provider(
-            tenant_id=str(uuid4()),
-            provider_name="openai",
-            credential_id=str(uuid4()),
-        )
         credential = ProviderCredential(
-            tenant_id=provider.tenant_id,
+            tenant_id=str(uuid4()),
             provider_name="openai",
             credential_name="primary",
             encrypted_config='{"api_key": "secret"}',
         )
+        sqlite_session.add(credential)
+        sqlite_session.flush()
+        provider = Provider(tenant_id=credential.tenant_id, provider_name="openai", credential_id=credential.id)
+        sqlite_session.add(provider)
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
 
         # Act
-        provider.attach_credential(credential)
+        loaded = sqlite_session.scalars(
+            select(Provider).where(Provider.id == provider.id).options(selectinload(Provider.credential))
+        ).one()
+        sqlite_session.close()
 
         # Assert
-        assert provider.credential is credential
-        assert provider.credential_name == "primary"
-        assert provider.encrypted_config == '{"api_key": "secret"}'
-        assert provider.token_is_set is True
+        assert loaded.credential_name == "primary"
+        assert loaded.encrypted_config == '{"api_key": "secret"}'
+        assert loaded.token_is_set is True
 
-    def test_provider_credential_missing_row_reads_as_unset(self) -> None:
+    def test_provider_credential_missing_row_reads_as_unset(self, sqlite_session: Session) -> None:
         """Test a credential row deleted before loading reads as unset."""
         # Arrange
-        provider = Provider(
-            tenant_id=str(uuid4()),
-            provider_name="openai",
-            credential_id=str(uuid4()),
-        )
+        provider = Provider(tenant_id=str(uuid4()), provider_name="openai", credential_id=str(uuid4()))
+        sqlite_session.add(provider)
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
 
         # Act
-        provider.attach_credential(None)
+        loaded = sqlite_session.scalars(
+            select(Provider).where(Provider.id == provider.id).options(selectinload(Provider.credential))
+        ).one()
 
         # Assert
-        assert provider.credential is None
-        assert provider.token_is_set is False
+        assert loaded.credential is None
+        assert loaded.token_is_set is False
 
-    def test_provider_credential_raises_when_not_attached(self) -> None:
-        """Test an unloaded credential fails instead of reading as unset."""
+    def test_committed_provider_without_credential_reads_as_unset(self, sqlite_session: Session) -> None:
+        """Test a committed record without credential_id needs no credential load."""
         # Arrange
-        provider = Provider(
-            tenant_id=str(uuid4()),
-            provider_name="openai",
-            credential_id=str(uuid4()),
-        )
+        provider = Provider(tenant_id=str(uuid4()), provider_name="openai", provider_type=ProviderType.SYSTEM)
+        sqlite_session.add(provider)
+
+        # Act
+        sqlite_session.commit()
+
+        # Assert
+        assert provider.credential_name is None
+        assert provider.encrypted_config is None
+
+    def test_provider_credential_is_not_loaded_implicitly(self, sqlite_session: Session) -> None:
+        """Test reading a credential the query did not load fails instead of opening a query."""
+        # Arrange
+        provider = Provider(tenant_id=str(uuid4()), provider_name="openai", credential_id=str(uuid4()))
+        sqlite_session.add(provider)
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
+        loaded = sqlite_session.scalars(select(Provider).where(Provider.id == provider.id)).one()
 
         # Act & Assert
-        with pytest.raises(RuntimeError, match="was not attached"):
-            _ = provider.token_is_set
+        with pytest.raises(InvalidRequestError, match="lazy='raise'"):
+            _ = loaded.token_is_set
 
     def test_provider_is_enabled_false_when_not_valid(self) -> None:
         """Test is_enabled returns False when provider is not valid."""

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -439,50 +440,31 @@ def _get_cached_or_load_records[T: _CacheEntry](
     return records
 
 
-def _load_active_credentials[T: ProviderCredential | ProviderModelCredential](
-    *,
-    session: Any,
-    records: Sequence[Provider | ProviderModel],
-    credential_model_cls: type[T],
-) -> dict[str, T]:
-    """Load the credentials referenced by ``records`` through the caller's session.
+def _load_provider_model_credentials(
+    *, session: Session, provider_models: Sequence[ProviderModel]
+) -> dict[str, ProviderModelCredential]:
+    """Load the credentials referenced by ``provider_models`` through the caller's session.
 
-    Precondition: ``session`` is open and ``credential_model_cls`` matches the record type.
+    Precondition: ``session`` is open.
     Postcondition: the result maps each credential ID that still exists to its row.
     """
-    credential_ids = [record.credential_id for record in records if record.credential_id]
+    credential_ids = [
+        provider_model.credential_id for provider_model in provider_models if provider_model.credential_id
+    ]
     if not credential_ids:
         return {}
 
-    credentials = session.scalars(select(credential_model_cls).where(credential_model_cls.id.in_(credential_ids))).all()
+    credentials = session.scalars(
+        select(ProviderModelCredential).where(ProviderModelCredential.id.in_(credential_ids))
+    ).all()
     return {credential.id: credential for credential in credentials}
-
-
-def _attach_provider_credentials(*, session: Any, providers: Sequence[Provider]) -> None:
-    """Attach active credentials so ``providers`` can be read after ``session`` closes.
-
-    Precondition: ``session`` is open.
-    Postcondition: every provider with a ``credential_id`` has its row attached, or None when the row is missing.
-    """
-    credentials = _load_active_credentials(
-        session=session,
-        records=providers,
-        credential_model_cls=ProviderCredential,
-    )
-    for provider in providers:
-        if provider.credential_id:
-            provider.attach_credential(credentials.get(provider.credential_id))
 
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
         stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
-        credentials = _load_active_credentials(
-            session=session,
-            records=provider_models,
-            credential_model_cls=ProviderModelCredential,
-        )
+        credentials = _load_provider_model_credentials(session=session, provider_models=provider_models)
         return [
             _ProviderModelCacheEntry.from_record(
                 provider_model,
@@ -1003,9 +985,12 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
+            stmt = (
+                select(Provider)
+                .where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
+                .options(selectinload(Provider.credential))
+            )
             providers = list(session.scalars(stmt))
-            _attach_provider_credentials(session=session, providers=providers)
             for provider in providers:
                 # Use provider name with prefix after the data migration
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
@@ -1254,7 +1239,8 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
-                            _attach_provider_credentials(session=db.session, providers=[existed_provider_record])
+                            # Load the credential after the commit above, which expires loaded attributes.
+                            db.session.refresh(existed_provider_record, ["credential"])
                             provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
