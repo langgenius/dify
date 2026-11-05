@@ -78,6 +78,7 @@ class ResolvedTestCredential:
     credential_type: str
     credentials: Mapping[str, Any] = field(repr=False)
     check: TestCredentialCheck
+    checked_at: int | None = None
 
 
 class TestCredentialError(ValueError):

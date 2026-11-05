@@ -91,9 +91,16 @@ class DraftTestCredentialPlanner:
 
 
 class WorkspaceTestCredentialGateway:
-    def __init__(self, *, queries: CredentialQuery, auth: PluginCredentialAuthClient) -> None:
+    def __init__(
+        self,
+        *,
+        queries: CredentialQuery,
+        auth: PluginCredentialAuthClient,
+        invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+    ) -> None:
         self._queries = queries
         self._auth = auth
+        self._invoke_from = invoke_from
 
     def _record(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> ToolCredentialRecord:
         # Never use include_credential_ids: caller-supplied references are not grants.
@@ -124,7 +131,7 @@ class WorkspaceTestCredentialGateway:
                 tool_name=requirement.tool_name,
                 tenant_id=scope.tenant_id,
                 user_id=scope.account_id,
-                invoke_from=InvokeFrom.DEBUGGER,
+                invoke_from=self._invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=record.id,
             )
@@ -155,4 +162,5 @@ class WorkspaceTestCredentialGateway:
             credential_type=record.credential_type.value,
             credentials=dict(tool.runtime.credentials),
             check=TestCredentialCheck(status=result.status, reason_code=result.reason_code, retryable=result.retryable),
+            checked_at=result.checked_at,
         )

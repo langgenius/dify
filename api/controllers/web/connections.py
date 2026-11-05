@@ -1,14 +1,18 @@
 """Web management of personal API-key and OAuth Connections."""
 
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from flask import request
-from pydantic import ConfigDict, Field, JsonValue, RootModel, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, JsonValue, RootModel, ValidationError
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
+from controllers.common.connection_fields import (
+    ConnectionConfigurationResponse,
+    EndUserConnectionListResponse,
+    EndUserConnectionResponse,
+)
 from controllers.common.end_user_connections import (
     ConnectionCheckUnavailableHTTPError,
     ConnectionConfigurationHTTPError,
@@ -29,16 +33,13 @@ from controllers.web.wraps import WebApiResource
 from core.entities.provider_entities import ProviderConfig
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
-from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.contracts import (
     ConnectionInput,
     ConnectionRevisionView,
-    ConnectionSummary,
     ConnectionTargetInput,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
@@ -58,39 +59,6 @@ class ConnectionConfigurationQuery(ConnectionInput):
             "Existing Chatflow Conversation whose choices to read, including an empty set. "
             "Omit for App defaults when initializing a new conversation or plain Workflow."
         ),
-    )
-
-
-class EndUserConnectionResponse(ConnectionSummary, ResponseModel):
-    @field_serializer("account_label")
-    def serialize_account_label(self, value: str | None) -> str | None:
-        """Mask a stored provider identity on output without changing its source.
-
-        Missing or empty identities serialize as null. The same policy applies
-        to standalone, paginated and nested Connection responses.
-        """
-        return mask_account_label(value)
-
-    @field_serializer("created_at", "updated_at", "last_active_at")
-    def serialize_timestamp(self, value: datetime) -> int:
-        return to_utc_timestamp(value)
-
-    @field_serializer("expires_at")
-    def serialize_expiration(self, value: datetime | None) -> int | None:
-        return to_utc_timestamp(value) if value is not None else None
-
-
-class ConnectionConfigurationResponse(ResponseModel):
-    connections: dict[str, EndUserConnectionResponse | None] = Field(
-        description=(
-            "Saved Connection details keyed by authorization node ID, not a readiness result. "
-            "Inaccessible Connection references are returned as null."
-        )
-    )
-    reauthorization_required: bool = Field(
-        description=(
-            "Whether this App user must renew authorization for the current requirements; not credential readiness."
-        )
     )
 
 
@@ -192,12 +160,6 @@ class ConnectionCredentialSchemaResponse(RootModel[list[ProviderConfig]]):
 
 class EndUserConnectionListQuery(ListConnectionsInput):
     limit: int = Field(default=20, ge=1, le=100, strict=False)
-
-
-class EndUserConnectionListResponse(ResponseModel):
-    data: list[EndUserConnectionResponse]
-    has_more: bool
-    next_cursor: str | None
 
 
 register_schema_models(

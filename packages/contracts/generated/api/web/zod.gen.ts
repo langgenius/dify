@@ -458,11 +458,11 @@ export const zEndUserConnectionReauthorizePayload = z.object({
 export const zEndUserConnectionResponse = z.object({
   account_label: z.string().nullable(),
   created_at: z.int(),
-  credential_status: zConnectionCredentialStatus,
+  credential_status: zConnectionCredentialStatus.nullable(),
   credential_type: zConnectionCredentialType,
   expires_at: z.int().nullable(),
   id: z.string(),
-  last_active_at: z.int(),
+  last_active_at: z.int().nullable(),
   name: z.string(),
   provider: z.string(),
   updated_at: z.int(),

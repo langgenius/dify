@@ -115,9 +115,15 @@ class InstalledAppGenerationService:
         return self._runtime.generate(
             app_id=installed_app.app_id,
             account_id=account_id,
-            args=args,
+            args=self._connection_args(installed_app, args),
             streaming=True,
         )
+
+    @staticmethod
+    def _connection_args(installed_app: InstalledAppRef, args: Mapping[str, object]) -> Mapping[str, object]:
+        if "connection_revision" not in args and "connections" not in args:
+            return args
+        return {**args, "_installed_app_id": installed_app.id, "_installed_workspace_id": installed_app.tenant_id}
 
     def _generate(
         self,
@@ -136,6 +142,6 @@ class InstalledAppGenerationService:
         return self._runtime.generate(
             app_id=installed_app.app_id,
             account_id=account_id,
-            args=generation_args,
+            args=self._connection_args(installed_app, generation_args),
             streaming=streaming,
         )

@@ -1,7 +1,5 @@
-import type {
-  ExploreAppMetaResponse,
-  Parameters as InstalledAppParametersResponse,
-} from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { ExploreAppMetaResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { Parameters as InstalledAppParametersResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { GetWebAppAccessModeRes } from '@dify/contracts/enterprise/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'

@@ -232,6 +232,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         saved_message,
         trial,
     )
+    from .explore import connections as installed_app_connections
     from .knowledge_fs import features as knowledge_fs_features
     from .knowledge_fs import resources as knowledge_fs_resources
     from .snippets import snippet_workflow, snippet_workflow_draft_variable
@@ -329,6 +330,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         rag_pipeline_import,
         rag_pipeline_workflow,
         banner,
+        installed_app_connections,
         installed_app,
         parameter,
         recommended_app,
@@ -428,6 +430,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     rag_pipeline_import,
     rag_pipeline_workflow,
     banner,
+    installed_app_connections,
     installed_app,
     parameter,
     recommended_app,
@@ -504,6 +507,7 @@ __all__ = [
     "human_input_form",
     "init_validate",
     "installed_app",
+    "installed_app_connections",
     "knowledge_fs_features",
     "knowledge_fs_resources",
     "load_balancing_config",

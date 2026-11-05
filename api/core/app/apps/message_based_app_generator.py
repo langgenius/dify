@@ -252,7 +252,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if (
                 created_new_conversation
                 and isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
-                and application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}
                 and application_generate_entity.connection_context is not None
             ):
                 initialize_conversation_connections(

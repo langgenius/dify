@@ -10,10 +10,18 @@ import {
   zAppUnavailableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zConnectionConfigurationInvalidError,
+  zConnectionConflictError,
+  zConnectionCredentialsInvalidError,
+  zConnectionNotFoundError,
+  zConnectionReauthorizationRequiredError,
+  zConnectionRequiredError,
+  zConnectionRevisionChangedError,
   zConversationCursorNotFoundError,
   zConversationFirstMessageNotFoundError,
   zConversationNameRequiredError,
   zConversationNotFoundError,
+  zCredentialCheckUnavailableError,
   zInstalledAppNotFoundError,
   zInstalledAppUnavailableError,
   zInvalidCursorError,
@@ -39,6 +47,15 @@ import {
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
+  zGetInstalledAppsByInstalledAppIdConnectionsConfigurationPath,
+  zGetInstalledAppsByInstalledAppIdConnectionsConfigurationQuery,
+  zGetInstalledAppsByInstalledAppIdConnectionsConfigurationResponse,
+  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaPath,
+  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaQuery,
+  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse,
+  zGetInstalledAppsByInstalledAppIdConnectionsPath,
+  zGetInstalledAppsByInstalledAppIdConnectionsQuery,
+  zGetInstalledAppsByInstalledAppIdConnectionsResponse,
   zGetInstalledAppsByInstalledAppIdConversationsPath,
   zGetInstalledAppsByInstalledAppIdConversationsQuery,
   zGetInstalledAppsByInstalledAppIdConversationsResponse,
@@ -80,6 +97,9 @@ import {
   zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse,
   zPostInstalledAppsByInstalledAppIdCompletionMessagesPath,
   zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse,
+  zPostInstalledAppsByInstalledAppIdConnectionsPreflightBody,
+  zPostInstalledAppsByInstalledAppIdConnectionsPreflightPath,
+  zPostInstalledAppsByInstalledAppIdConnectionsPreflightResponse,
   zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody,
   zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath,
   zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse,
@@ -97,6 +117,9 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
+  zPutInstalledAppsByInstalledAppIdConnectionsConfigurationBody,
+  zPutInstalledAppsByInstalledAppIdConnectionsConfigurationPath,
+  zPutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse,
 } from './zod.gen.ts'
 
 export const post = oc
@@ -177,6 +200,17 @@ export const post3 = oc
     access_denied: { status: 403, data: zAccessDeniedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
@@ -248,7 +282,207 @@ export const completionMessages = {
   byTaskId: byTaskId2,
 }
 
+/**
+ * Read this Tenant Member's saved App defaults, or an owned Chatflow conversation's choices, without credential checks. Missing conversation choices do not inherit current App defaults.
+ */
+export const get = oc
+  .route({
+    description:
+      "Read this Tenant Member's saved App defaults, or an owned Chatflow conversation's choices, without credential checks. Missing conversation choices do not inherit current App defaults.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdConnectionsConfiguration',
+    path: '/installed-apps/{installed_app_id}/connections/configuration',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdConnectionsConfigurationPath,
+      query: zGetInstalledAppsByInstalledAppIdConnectionsConfigurationQuery.optional(),
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdConnectionsConfigurationResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+/**
+ * Replace member App defaults or owned conversation choices and confirm the current authorization requirements. An empty map clears choices; this does not modify Workspace credentials.
+ */
+export const put = oc
+  .route({
+    description:
+      'Replace member App defaults or owned conversation choices and confirm the current authorization requirements. An empty map clears choices; this does not modify Workspace credentials.',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putInstalledAppsByInstalledAppIdConnectionsConfiguration',
+    path: '/installed-apps/{installed_app_id}/connections/configuration',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutInstalledAppsByInstalledAppIdConnectionsConfigurationBody,
+      params: zPutInstalledAppsByInstalledAppIdConnectionsConfigurationPath,
+    }),
+  )
+  .output(zPutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+export const configuration = {
+  get,
+  put,
+}
+
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdConnectionsCredentialSchema',
+    path: '/installed-apps/{installed_app_id}/connections/credential-schema',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaPath,
+      query: zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaQuery,
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+export const credentialSchema = {
+  get: get2,
+}
+
+/**
+ * Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.
+ */
 export const post6 = oc
+  .route({
+    description:
+      'Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdConnectionsPreflight',
+    path: '/installed-apps/{installed_app_id}/connections/preflight',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdConnectionsPreflightBody,
+      params: zPostInstalledAppsByInstalledAppIdConnectionsPreflightPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdConnectionsPreflightResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+export const preflight = {
+  post: post6,
+}
+
+/**
+ * List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.
+ */
+export const get3 = oc
+  .route({
+    description:
+      'List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdConnections',
+    path: '/installed-apps/{installed_app_id}/connections',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdConnectionsPath,
+      query: zGetInstalledAppsByInstalledAppIdConnectionsQuery.optional(),
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdConnectionsResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+export const connections = {
+  get: get3,
+  configuration,
+  credentialSchema,
+  preflight,
+}
+
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -277,7 +511,7 @@ export const post6 = oc
   })
 
 export const name = {
-  post: post6,
+  post: post7,
 }
 
 export const patch = oc
@@ -350,7 +584,7 @@ export const byCId = {
   unpin,
 }
 
-export const get = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -374,11 +608,11 @@ export const get = oc
   })
 
 export const conversations = {
-  get,
+  get: get4,
   byCId,
 }
 
-export const post7 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -402,10 +636,10 @@ export const post7 = oc
   })
 
 export const feedbacks = {
-  post: post7,
+  post: post8,
 }
 
-export const get2 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -435,10 +669,10 @@ export const get2 = oc
   })
 
 export const moreLikeThis = {
-  get: get2,
+  get: get5,
 }
 
-export const get3 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -471,7 +705,7 @@ export const get3 = oc
   })
 
 export const suggestedQuestions = {
-  get: get3,
+  get: get6,
 }
 
 export const byMessageId = {
@@ -480,7 +714,7 @@ export const byMessageId = {
   suggestedQuestions,
 }
 
-export const get4 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -505,14 +739,14 @@ export const get4 = oc
   })
 
 export const messages = {
-  get: get4,
+  get: get7,
   byMessageId,
 }
 
 /**
  * Get app meta
  */
-export const get5 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -531,13 +765,13 @@ export const get5 = oc
   })
 
 export const meta = {
-  get: get5,
+  get: get8,
 }
 
 /**
  * Retrieve app parameters
  */
-export const get6 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -556,7 +790,7 @@ export const get6 = oc
   })
 
 export const parameters = {
-  get: get6,
+  get: get9,
 }
 
 export const delete2 = oc
@@ -581,7 +815,7 @@ export const byMessageId2 = {
   delete: delete2,
 }
 
-export const get7 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -603,7 +837,7 @@ export const get7 = oc
     web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
   })
 
-export const post8 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -626,12 +860,12 @@ export const post8 = oc
   })
 
 export const savedMessages = {
-  get: get7,
-  post: post8,
+  get: get10,
+  post: post9,
   byMessageId: byMessageId2,
 }
 
-export const post9 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -663,13 +897,13 @@ export const post9 = oc
   })
 
 export const textToAudio = {
-  post: post9,
+  post: post10,
 }
 
 /**
  * Run workflow
  */
-export const post10 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -688,6 +922,17 @@ export const post10 = oc
   .errors({
     access_denied: { status: 403, data: zAccessDeniedError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -698,13 +943,13 @@ export const post10 = oc
   })
 
 export const run = {
-  post: post10,
+  post: post11,
 }
 
 /**
  * Stop workflow task
  */
-export const post11 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -723,7 +968,7 @@ export const post11 = oc
   })
 
 export const stop3 = {
-  post: post11,
+  post: post12,
 }
 
 export const byTaskId3 = {
@@ -739,7 +984,7 @@ export const workflows = {
   tasks,
 }
 
-export const get8 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -778,11 +1023,12 @@ export const patch3 = oc
   })
 
 export const byInstalledAppId = {
-  get: get8,
+  get: get11,
   patch: patch3,
   audioToText,
   chatMessages,
   completionMessages,
+  connections,
   conversations,
   messages,
   meta,
@@ -792,7 +1038,7 @@ export const byInstalledAppId = {
   workflows,
 }
 
-export const get9 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -808,7 +1054,7 @@ export const get9 = oc
   })
 
 export const installedApps = {
-  get: get9,
+  get: get12,
   byInstalledAppId,
 }
 
