@@ -19,7 +19,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.callbacks.base_callback import Callback
@@ -80,7 +80,9 @@ class ModelInstance:
     ) -> None:
         """Assemble a model with an optional tenant-matched LLM policy.
 
-        None leaves the instance unmoderated. A configured policy is immutable
+        None selects automatic Cloud credit moderation where applicable and
+        leaves other instances unmoderated. Explicit policies supplement rather
+        than replace mandatory hosted moderation. A bound policy is immutable
         through the public invocation API and cannot be bound across tenants or
         to non-LLM capabilities. Invalid bindings fail before credential lookup.
         """
@@ -89,7 +91,7 @@ class ModelInstance:
                 raise ValueError("Moderation policies can only be bound to LLM instances.")
             if moderation.tenant_id != provider_model_bundle.configuration.tenant_id:
                 raise ValueError("Moderation policy tenant does not match the model tenant.")
-        self._moderation = moderation
+        self._moderation = bind_model_moderation_policy(provider_model_bundle, moderation)
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -889,8 +891,9 @@ class ModelManager:
     ) -> None:
         """Bind dependencies and an optional LLM policy for every model assembled by this manager.
 
-        None retains unmoderated assembly. Policy tenant validation occurs when
-        an LLM is constructed; non-LLM models never inherit this policy.
+        None delegates to deployment policy selection during model construction.
+        Explicit policy tenant validation occurs when an LLM is constructed;
+        non-LLM models never inherit this policy.
         """
         self._provider_manager = provider_manager
         self._moderation = moderation
@@ -910,7 +913,8 @@ class ModelManager:
         """Construct a tenant runtime with an optional assembly-bound LLM policy.
 
         A policy from another tenant is rejected before runtime construction.
-        None preserves existing assembly and credit metadata behavior.
+        None permits automatic Cloud credit moderation during model assembly.
+        Credit metadata behavior is unchanged.
         """
         if moderation is not None and moderation.tenant_id != tenant_id:
             raise ValueError("Moderation policy tenant does not match the model tenant.")

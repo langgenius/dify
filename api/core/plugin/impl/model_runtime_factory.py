@@ -17,6 +17,7 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 if TYPE_CHECKING:
+    from core.entities.provider_configuration import ProviderModelBundle
     from core.model_manager import LLMModerationPolicy, ModelManager
     from core.plugin.impl.model_runtime import PluginModelRuntime
     from core.provider_manager import ProviderManager
@@ -29,6 +30,25 @@ _MODEL_CLASS_BY_TYPE: dict[ModelType, type[AIModel]] = {
     ModelType.MODERATION: ModerationModel,
     ModelType.TTS: TTSModel,
 }
+
+
+def bind_model_moderation_policy(
+    bundle: ProviderModelBundle, policy: LLMModerationPolicy | None
+) -> LLMModerationPolicy | None:
+    """Delegate policy composition while keeping application dependencies out of model invocation.
+
+    The composition root supplies mandatory Cloud credit moderation. Ineligible
+    models and non-Cloud deployments retain only an explicitly supplied policy.
+    Binding never invokes a provider or reserves user credits.
+    """
+    from configs import dify_config
+    from enums import DeploymentEdition
+
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return policy
+    from extensions.application_services.moderation import bind_hosted_llm_moderation
+
+    return bind_hosted_llm_moderation(bundle, policy=policy)
 
 
 def create_model_type_instance(
@@ -65,8 +85,9 @@ class PluginModelAssembly:
     ) -> None:
         """Bind runtime identity and an optional LLM policy; reject cross-tenant policies before I/O.
 
-        None retains existing assembly. Every LLM obtained from model_manager
-        inherits the same policy; raw runtime capabilities remain infrastructure.
+        None permits automatic Cloud credit moderation during model construction.
+        Every manager-created LLM inherits the explicit policy when supplied;
+        raw runtime capabilities remain infrastructure.
         """
         if moderation is not None and moderation.tenant_id != tenant_id:
             raise ValueError("Moderation policy tenant does not match the model tenant.")
@@ -125,8 +146,8 @@ def create_plugin_model_assembly(
 ) -> PluginModelAssembly:
     """Create a request-scoped runtime assembly with an optional tenant-matched LLM policy.
 
-    All manager-created LLMs inherit the policy. None preserves existing behavior,
-    and tenant mismatches fail before constructing runtime dependencies.
+    All manager-created LLMs inherit the explicit policy in addition to mandatory
+    Cloud credit moderation. Tenant mismatches fail before runtime construction.
     """
     return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation)
 
@@ -158,6 +179,7 @@ def create_plugin_model_manager(
 ) -> ModelManager:
     """Create a tenant-bound manager whose LLM instances inherit the supplied policy.
 
-    None preserves existing behavior; cross-tenant policies fail before runtime I/O.
+    None permits automatic Cloud credit moderation; cross-tenant explicit
+    policies fail before runtime I/O.
     """
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation).model_manager

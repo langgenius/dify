@@ -8,6 +8,8 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.serving import make_server
 
+from core.app.llm.quota import ModelQuotaReservationState
+from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import (
@@ -23,13 +25,19 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from machinery.context import AppRequestContext
 from models.api_based_extension import APIBasedExtension
 from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_application_service import APIBasedExtensionInput
-from services.moderation_adapters import ExtensionModerationGateway, LLMModerationGuard
+from services.moderation_adapters import ExtensionModerationGateway, HostedOpenAIModerationGateway, LLMModerationGuard
 from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationRule, ModerationService
+from tests.helpers.unit.core.model_moderation_fixtures import (
+    RecordingHostedModerationClient,
+    RecordingQuotaModelInstance,
+    make_moderated_model,
+)
 
 type APIModerationFixture = tuple[
     ModerationService, ModerationRule, AppRequestContext, dict[str, object], list[dict[str, object]]
@@ -237,3 +245,84 @@ def test_api_extension_cannot_be_used_across_tenants(api_moderation: APIModerati
             AppRequestContext(tenant_id=str(uuid4()), app_id="app-1"), rule=rule, text="content", phase="input"
         )
     assert not requests
+
+
+@pytest.mark.parametrize("blocked_phase", ["input", "output", "neither"])
+def test_platform_moderation_never_reserves_additional_user_credits(
+    config_overrides: Callable[..., None], blocked_phase: str
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    client = RecordingHostedModerationClient()
+    plugin_unique_identifier = "langgenius/openai:0.3.0@checksum"
+
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"api_key": "platform-key"},
+            plugin_unique_identifier=plugin_unique_identifier,
+        )
+    )
+    rule = ModerationRule(
+        type="openai_moderation",
+        config={
+            "inputs_config": {"enabled": True, "preset_response": "Input blocked"},
+            "outputs_config": {"enabled": True, "preset_response": "Output blocked"},
+        },
+    )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="test-tenant-id", app_id=""), service=service, rule=rule
+    )
+    instance, provider = make_moderated_model(
+        quota=True, parts=["blocked" if blocked_phase == "output" else "safe"], moderation=guard
+    )
+    assert isinstance(instance, RecordingQuotaModelInstance)
+    prompt = UserPromptMessage(content="a" * 2500 + ("blocked" if blocked_phase == "input" else "safe"))
+
+    if blocked_phase == "neither":
+        result = instance.invoke_llm([prompt], stream=False)
+        assert result.message.content == "safe"
+    else:
+        with pytest.raises(ModerationRejectedError, match="blocked"):
+            instance.invoke_llm([prompt], stream=False)
+
+    assert provider.invocations == (0 if blocked_phase == "input" else 1)
+    assert len(instance.reservations) == (0 if blocked_phase == "input" else 1)
+    if instance.reservations:
+        assert instance.reservations[0].state == ModelQuotaReservationState.COMMITTED
+        assert len(instance.reservations[0].commits) == 1
+    assert len(client.calls) == (1 if blocked_phase == "input" else 2)
+    assert client.calls[0][5] == prompt.content
+    assert all(call[4] == {"api_key": "platform-key"} for call in client.calls)
+    assert all(call[2:4] == ("langgenius/openai", "openai") for call in client.calls)
+    assert all(call[6] == plugin_unique_identifier for call in client.calls)
+
+
+@pytest.mark.parametrize("failure", ["missing_credentials", "provider_error", "invalid_identifier"])
+def test_platform_moderation_fails_closed_without_credential_fallback(failure: str) -> None:
+    client = RecordingHostedModerationClient()
+    if failure == "provider_error":
+        client.error = RuntimeError("moderation unavailable")
+    identifier = (
+        "untrusted/plugin:1.0.0@checksum" if failure == "invalid_identifier" else "langgenius/openai:1.0.0@checksum"
+    )
+    if failure == "invalid_identifier":
+        with pytest.raises(ValueError, match="pinned langgenius/openai"):
+            HostedOpenAIModerationGateway(
+                client=client,
+                credentials={"api_key": "platform-key"},
+                plugin_unique_identifier=identifier,
+            )
+        assert not client.calls
+        return
+    gateway = HostedOpenAIModerationGateway(
+        client=client,
+        credentials=None if failure == "missing_credentials" else {"api_key": "platform-key"},
+        plugin_unique_identifier=identifier,
+    )
+    rule = ModerationRule(
+        type="openai_moderation",
+        config={"inputs_config": {"enabled": True, "preset_response": "Rejected"}},
+    )
+    with pytest.raises(InvokeAuthorizationError if failure == "missing_credentials" else RuntimeError):
+        gateway.check(AppRequestContext(tenant_id="test-tenant-id", app_id=""), rule=rule, text="safe", phase="input")
+    assert len(client.calls) == (1 if failure == "provider_error" else 0)

@@ -31,10 +31,12 @@ class ModerationVerdict:
 
 
 class ModerationGateway(Protocol):
-    """Evaluate content using only the extension/model credentials of the supplied tenant.
+    """Evaluate content in the supplied tenant scope through an explicit credential boundary.
 
-    Implementations validate backend configuration and propagate lookup, transport,
-    and malformed-verdict failures. No persistence transaction spans external I/O.
+    Tenant-backed adapters use only that tenant's extension/model credentials.
+    Platform-funded adapters use platform credentials and never reserve or deduct
+    user credits. All adapters propagate lookup, transport, and malformed-verdict
+    failures. No persistence transaction spans external I/O.
     """
 
     def check(

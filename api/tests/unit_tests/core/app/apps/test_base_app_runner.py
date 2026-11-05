@@ -837,27 +837,6 @@ class TestAppRunner:
         message_file_count = sqlite_session.scalar(select(func.count()).select_from(MessageFile))
         assert message_file_count == 0
 
-    def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
-        queue = _queue_manager()
-        app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(stream=False)
-        direct_output_calls: list[dict[str, object]] = []
-
-        monkeypatch.setattr(
-            "core.app.apps.base_app_runner.HostingModerationFeature.check",
-            lambda self, application_generate_entity, prompt_messages: True,
-        )
-        monkeypatch.setattr(runner, "direct_output", lambda **kwargs: direct_output_calls.append(kwargs))
-
-        result = runner.check_hosting_moderation(
-            application_generate_entity=app_generate_entity,
-            queue_manager=queue,
-            prompt_messages=[],
-        )
-
-        assert result is True
-        assert len(direct_output_calls) == 1
-
     def test_fill_in_inputs_from_external_data_tools(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(

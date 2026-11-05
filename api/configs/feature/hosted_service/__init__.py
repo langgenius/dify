@@ -421,17 +421,10 @@ class HostedZhipuAIConfig(BaseSettings):
 
 
 class HostedModerationConfig(BaseSettings):
-    """
-    Configuration for hosted Moderation service
-    """
+    """Platform moderation plugin pinned by SRE instead of tenant installation."""
 
-    HOSTED_MODERATION_ENABLED: bool = Field(
-        description="Enable hosted Moderation service",
-        default=False,
-    )
-
-    HOSTED_MODERATION_PROVIDERS: str = Field(
-        description="Comma-separated list of moderation providers",
+    HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
+        description="Pinned plugin unique identifier for platform-funded moderation",
         default="",
     )
 

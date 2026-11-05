@@ -11,6 +11,40 @@ than rejection. Backend failures propagate instead of silently approving text.
 Disabled phases perform no moderation I/O. Existing app-level replacement behavior
 is unchanged; strict policies are selected when assembling models.
 
+## Automatic Cloud moderation
+
+Cloud LLMs using a system provider with a current `TRIAL` or `PAID`
+credit-pool quota automatically receive input and output moderation.
+This includes `CREDITS` and legacy `TIMES` quotas, which reserve one credit per call.
+This applies to manager-created models, credential-cache hits, and direct `ModelInstance`
+construction, including exhausted or unlimited credit quotas. Non-Cloud
+deployments and custom-key, non-LLM, or token-based
+quota modes do not construct or inject this automatic policy.
+
+The policy uses `langgenius/openai/openai` / `omni-moderation-latest` with the
+existing hosted OpenAI credentials. SRE must set
+`HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER` to a usable, pinned
+`langgenius/openai:<version>@<checksum>` package. Eligible model assembly fails
+when the setting is absent or malformed; missing credentials and an unavailable
+moderation backend also fail closed, with no fallback to a user's API key.
+
+Moderation dispatches directly to the pinned plugin identifier with platform
+credentials. It performs no tenant provider discovery or plugin-installation
+lookup, so business tenants do not need to install the OpenAI plugin. The plugin
+runtime must already be installed and loaded in plugin daemon; identifier
+dispatch does not bootstrap a missing package. Moderation does not construct a
+tenant model instance or enter `CreditPoolService`, so it neither reserves nor
+deducts user credits. The target LLM retains its normal accounting, including
+charging consumed usage when output is rejected.
+
+The former `HostingModerationFeature` and its
+`HOSTED_MODERATION_ENABLED` / `HOSTED_MODERATION_PROVIDERS` settings have been
+removed. Its random input-fragment check is replaced by the complete,
+output-aware policy above. Unknown legacy environment variables are ignored.
+
+An explicitly supplied policy supplements mandatory Cloud moderation rather
+than disabling it. Both policies must approve content.
+
 ## Model invocation
 
 Obtain the service from the composition root and bind the policy during model
@@ -61,9 +95,10 @@ default-model resolution. It is exposed read-only on the instance, and mismatche
 tenant bindings fail before credential resolution. Non-LLM capabilities do not
 inherit LLM policies, so moderation-model calls do not recursively moderate themselves.
 
-The assembly owner supplies a trusted scope and policy; this does not add global
-configuration or infer a policy from caller-provided request metadata. Raw plugin
-runtime/client interfaces remain infrastructure, not moderated business entry points.
+The assembly owner supplies a trusted scope for explicit policies. Automatic
+selection uses trusted deployment and provider quota configuration, never
+caller-provided request metadata. Raw plugin runtime/client interfaces remain
+infrastructure, not moderated business entry points.
 
 ## Guarantees and trade-offs
 
@@ -86,8 +121,8 @@ runtime/client interfaces remain infrastructure, not moderated business entry po
   model quota; rejected successful outputs do not refund consumed quota.
 - The guard protects returned results, not provider-level observer callbacks.
   Callbacks must not independently publish unmoderated model content.
-- Without an assembly-bound policy, `ModelInstance` and `QuotaManagedModelInstance` retain
-  their existing invocation and streaming behavior.
+- Models outside automatic Cloud moderation retain their existing invocation and
+  streaming behavior unless an explicit policy is supplied.
 
 The API adapter loads tenant-scoped extension records in a short repository
 session, then decrypts credentials and performs HTTP outside that session. It

@@ -1,14 +1,16 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from inspect import signature
 
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_manager import ModelManager, QuotaManagedModelInstance
+from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
 from core.workflow.node_runtime import DifyPreparedPollingLLM
+from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import (
@@ -21,12 +23,15 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import AppRequestContext
+from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
+from services.moderation_adapters import ChainedLLMModerationPolicy, LLMModerationGuard
 from services.moderation_service import ModerationRejectedError, ModerationRule, ModerationService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
     RecordingPollingRuntime,
+    RecordingProviderManager,
     RecordingQuotaModelInstance,
     make_moderated_manager,
     make_moderated_model,
@@ -311,3 +316,101 @@ def test_polling_checks_input_before_submission_and_output_before_delivery(
         assert len(instance.reservations) == 1
         assert instance.reservations[0].commits == [usage]
         assert instance.reservations[0].released
+
+
+@pytest.mark.parametrize(
+    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
+)
+@pytest.mark.parametrize("provider_type", [ProviderType.SYSTEM, ProviderType.CUSTOM])
+@pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID, ProviderQuotaType.FREE])
+@pytest.mark.parametrize("quota_unit", [QuotaUnit.CREDITS, QuotaUnit.TIMES, QuotaUnit.TOKENS])
+def test_automatic_moderation_only_binds_cloud_credit_models(
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    provider_type: ProviderType,
+    quota_type: ProviderQuotaType,
+    quota_unit: QuotaUnit,
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=edition,
+        HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
+    )
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.using_provider_type = provider_type
+    bundle.configuration.system_configuration.current_quota_type = quota_type
+    bundle.configuration.system_configuration.quota_configurations = [
+        QuotaConfiguration(quota_type=quota_type, quota_unit=quota_unit, quota_limit=100, quota_used=0, is_valid=True)
+    ]
+    instance = ModelInstance(bundle, "test-model", credentials={"api_key": "user-key"})
+
+    expected = (
+        edition == DeploymentEdition.CLOUD
+        and provider_type == ProviderType.SYSTEM
+        and quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
+        and quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+    )
+    assert isinstance(instance.moderation, LLMModerationGuard) is expected
+
+
+def test_automatic_moderation_covers_manager_cache_and_cannot_be_replaced(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
+    )
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.using_provider_type = ProviderType.SYSTEM
+    bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.PAID
+    bundle.configuration.system_configuration.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.PAID,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=100,
+            quota_used=0,
+            is_valid=True,
+        )
+    ]
+    manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
+    for _attempt in range(2):
+        instance = manager.get_model_instance("test-tenant-id", "test-provider", ModelType.LLM, "test-model")
+        assert isinstance(instance.moderation, LLMModerationGuard)
+    moderation_model = manager.get_model_instance(
+        "test-tenant-id", "test-provider", ModelType.MODERATION, "omni-moderation-latest"
+    )
+    assert moderation_model.moderation is None
+
+    def allow(_text: str, _phase: str) -> None:
+        return None
+
+    disabled = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
+    explicit = ModelInstance(bundle, "test-model", credentials={}, moderation=disabled)
+    assert isinstance(explicit.moderation, ChainedLLMModerationPolicy)
+
+    bundle.configuration.system_configuration.quota_configurations[0].quota_limit = -1
+    unlimited = ModelInstance(bundle, "test-model", credentials={})
+    assert isinstance(unlimited.moderation, LLMModerationGuard)
+
+
+def test_automatic_moderation_requires_sre_pinned_plugin_identifier(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.using_provider_type = ProviderType.SYSTEM
+    bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
+    bundle.configuration.system_configuration.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.TRIAL,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=100,
+            quota_used=0,
+            is_valid=True,
+        )
+    ]
+
+    with pytest.raises(ValueError, match="HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER"):
+        ModelInstance(bundle, "test-model", credentials={})

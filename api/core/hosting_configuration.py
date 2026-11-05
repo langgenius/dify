@@ -36,18 +36,11 @@ class HostingProvider(BaseModel):
     quotas: list[HostingQuota] = []
 
 
-class HostedModerationConfig(BaseModel):
-    enabled: bool = False
-    providers: list[str] = []
-
-
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
-    moderation_config: HostedModerationConfig | None = None
 
     def __init__(self):
         self.provider_map = {}
-        self.moderation_config = None
 
     def init_app(self, app: Flask):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
@@ -63,8 +56,6 @@ class HostingConfiguration:
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/x/x"] = self.init_xai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/deepseek/deepseek"] = self.init_deepseek()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/tongyi/tongyi"] = self.init_tongyi()
-
-        self.moderation_config = self.init_moderation_config()
 
     @staticmethod
     def init_azure_openai() -> HostingProvider:
@@ -365,20 +356,6 @@ class HostingConfiguration:
             enabled=False,
             quota_unit=quota_unit,
         )
-
-    @staticmethod
-    def init_moderation_config() -> HostedModerationConfig:
-        if dify_config.HOSTED_MODERATION_ENABLED and dify_config.HOSTED_MODERATION_PROVIDERS:
-            providers = dify_config.HOSTED_MODERATION_PROVIDERS.split(",")
-            hosted_providers = []
-            for provider in providers:
-                if "/" not in provider:
-                    provider = f"{DEFAULT_PLUGIN_ID}/{provider}/{provider}"
-                hosted_providers.append(provider)
-
-            return HostedModerationConfig(enabled=True, providers=hosted_providers)
-
-        return HostedModerationConfig(enabled=False)
 
     @staticmethod
     def parse_restrict_models_from_env(env_var: str) -> list[RestrictModel]:

@@ -1,7 +1,10 @@
 """Adapters between legacy moderation capabilities, model invocation, and strict checks."""
 
+from __future__ import annotations
+
 import json
 from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Protocol
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
@@ -15,9 +18,114 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from machinery.context import AppRequestContext
 from services.api_based_extension_application_service import APIBasedExtensionSecretCipher, APIBasedExtensionStore
 from services.moderation_service import ModerationPhase, ModerationRule, ModerationVerdict
+
+if TYPE_CHECKING:
+    from core.model_manager import LLMModerationPolicy
+
+
+class HostedModerationPluginClient(Protocol):
+    """Direct daemon dispatch surface for a pinned hosted moderation plugin."""
+
+    def invoke_moderation(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> bool: ...
+
+
+class HostedOpenAIModerationGateway:
+    """Moderate through a pinned platform plugin without tenant installation or credit accounting."""
+
+    def __init__(
+        self,
+        *,
+        client: HostedModerationPluginClient,
+        credentials: Mapping[str, object] | None,
+        plugin_unique_identifier: str,
+    ) -> None:
+        """Bind the daemon client, platform credentials, and pinned plugin version without external I/O.
+
+        None credentials represent unavailable platform configuration, not user
+        credential fallback. The identifier must belong to the trusted OpenAI
+        plugin, so SRE configuration cannot dispatch arbitrary plugins.
+        """
+        self._client = client
+        self._credentials = dict(credentials) if credentials is not None else None
+        self._plugin_id, separator, package_identity = plugin_unique_identifier.partition(":")
+        version, checksum_separator, checksum = package_identity.partition("@")
+        valid_package = separator and version and checksum_separator and checksum
+        if not valid_package or self._plugin_id != "langgenius/openai":
+            raise ValueError("Hosted moderation requires a pinned langgenius/openai plugin identifier.")
+        self._plugin_unique_identifier = plugin_unique_identifier
+
+    def check(
+        self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+    ) -> ModerationVerdict:
+        """Check complete text through the SRE-pinned hosted OpenAI moderation plugin.
+
+        No tenant provider discovery, installation record, ModelManager,
+        ModelInstance, or credit reservation is used. Missing credentials and
+        daemon/provider failures propagate.
+        """
+        if rule.type != "openai_moderation":
+            raise ValueError("Hosted moderation requires the OpenAI moderation rule.")
+        if self._credentials is None:
+            raise InvokeAuthorizationError("Hosted moderation credentials are not configured.")
+        if not text:
+            return ModerationVerdict(flagged=False, message="")
+        flagged = self._client.invoke_moderation(
+            tenant_id=context.tenant_id,
+            user_id=None,
+            plugin_id=self._plugin_id,
+            provider="openai",
+            model="omni-moderation-latest",
+            credentials=self._credentials,
+            text=text,
+            plugin_unique_identifier=self._plugin_unique_identifier,
+        )
+        return ModerationVerdict(flagged=flagged, message=rule.config[f"{phase}s_config"]["preset_response"])
+
+
+class ChainedLLMModerationPolicy:
+    """Apply mandatory hosted moderation together with an explicitly configured tenant policy."""
+
+    def __init__(self, policies: tuple[LLMModerationPolicy, ...]) -> None:
+        """Bind a nonempty set of policies with the same tenant; reject scope mismatches before I/O."""
+        if not policies or any(policy.tenant_id != policies[0].tenant_id for policy in policies):
+            raise ValueError("Moderation policies must share one tenant scope.")
+        self._policies = policies
+
+    @property
+    def tenant_id(self) -> str:
+        """Return the common immutable tenant scope."""
+        return self._policies[0].tenant_id
+
+    def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        """Require every bound policy to approve inputs before model or quota effects."""
+        for policy in self._policies:
+            policy.check_inputs(prompt_messages)
+
+    def check_result(self, result: LLMResult) -> None:
+        """Require every policy to approve a completed result without modifying it."""
+        for policy in self._policies:
+            policy.check_result(result)
+
+    def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
+        """Apply every output guard before caller delivery, propagating rejection and backend errors."""
+        for policy in self._policies:
+            response = policy.check_output(response)
+        return response
 
 
 class ExtensionModerationGateway:
@@ -113,6 +221,19 @@ def _structured_text(result: LLMStructuredOutput) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+def prompt_text(prompt_messages: Sequence[PromptMessage]) -> str:
+    """Extract all textual model input content without mutating transport payloads."""
+    return "\n".join(_message_text(message) for message in prompt_messages)
+
+
+def result_text(result: LLMResult) -> str:
+    """Extract output message, tool arguments, and any native structured payload."""
+    parts = [_message_text(result.message)]
+    if isinstance(result, LLMStructuredOutput) and result.structured_output is not None:
+        parts.append(_structured_text(result))
+    return "\n".join(parts)
+
+
 class LLMModerationGuard:
     """Check complete model inputs and outputs before exposing a result to the caller.
 
@@ -140,15 +261,12 @@ class LLMModerationGuard:
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
         """Approve complete prompt text and tool arguments or raise before model and quota effects."""
         if self._check_input:
-            self._check("\n".join(_message_text(message) for message in prompt_messages), "input")
+            self._check(prompt_text(prompt_messages), "input")
 
     def check_result(self, result: LLMResult) -> None:
         """Approve completion and native structured payloads without mutation; disabled checks perform no I/O."""
         if self._check_output:
-            parts = [_message_text(result.message)]
-            if isinstance(result, LLMStructuredOutput) and result.structured_output is not None:
-                parts.append(_structured_text(result))
-            self._check("\n".join(parts), "output")
+            self._check(result_text(result), "output")
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
         """Return the original approved result or a guarded stream, propagating all failures.

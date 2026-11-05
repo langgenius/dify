@@ -23,7 +23,6 @@ from core.app.entities.queue_entities import (
     QueueMessageFileEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -484,35 +483,6 @@ class AppRunner:
             message_id=message_id,
             trace_scope=app_generate_entity.trace_scope,
         )
-
-    def check_hosting_moderation(
-        self,
-        application_generate_entity: EasyUIBasedAppGenerateEntity,
-        queue_manager: AppQueueManager,
-        prompt_messages: list[PromptMessage],
-    ) -> bool:
-        """
-        Check hosting moderation
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param prompt_messages: prompt messages
-        :return:
-        """
-        hosting_moderation_feature = HostingModerationFeature()
-        moderation_result = hosting_moderation_feature.check(
-            application_generate_entity=application_generate_entity, prompt_messages=prompt_messages
-        )
-
-        if moderation_result:
-            self.direct_output(
-                queue_manager=queue_manager,
-                app_generate_entity=application_generate_entity,
-                prompt_messages=prompt_messages,
-                text="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
-                stream=application_generate_entity.stream,
-            )
-
-        return moderation_result
 
     def fill_in_inputs_from_external_data_tools(
         self,

@@ -226,3 +226,38 @@ class RecordingPollingRuntime(PluginModelRuntime):
     ) -> LLMPollingResult:
         self.checks += 1
         return self.terminal
+
+
+class RecordingHostedModerationClient(PluginModelClient):
+    """Record direct identifier dispatch without tenant provider discovery or daemon I/O."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, str, str, dict[str, Any], str, str | None]] = []
+        self.error: Exception | None = None
+
+    @override
+    def invoke_moderation(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        plugin_unique_identifier: str | None = None,
+    ) -> bool:
+        self.calls.append(
+            (
+                tenant_id,
+                user_id or "",
+                plugin_id,
+                provider,
+                dict(credentials),
+                text,
+                plugin_unique_identifier,
+            )
+        )
+        if self.error is not None:
+            raise self.error
+        return "blocked" in text
