@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
@@ -27,7 +28,7 @@ class TestDataSourceContentPreviewApi:
             "credential_id": "cred-1",
         }
 
-    def test_post_success(self, app: Flask) -> None:
+    def test_post_success(self, app: Flask, unbound_session: Session) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -48,11 +49,12 @@ class TestDataSourceContentPreviewApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
                 return_value=service_instance,
-            ),
+            ) as service_cls,
         ):
             req_data = DatasourceContentPreviewPayload.model_validate(payload)
-            response, status = method(api, req_data, account, pipeline, node_id)
+            response, status = method(api, req_data, unbound_session, account, pipeline, node_id)
 
+        service_cls.assert_called_once_with(unbound_session)
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
             node_id=node_id,
@@ -66,7 +68,7 @@ class TestDataSourceContentPreviewApi:
         assert status == 200
         assert response == preview_result
 
-    def test_post_invalid_payload(self, app: Flask) -> None:
+    def test_post_invalid_payload(self, app: Flask, unbound_session: Session) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -83,9 +85,16 @@ class TestDataSourceContentPreviewApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError, match=r"datasource_type\n\s+Field required"):
-                method(api, DatasourceContentPreviewPayload.model_validate(payload), account, pipeline, "node-1")
+                method(
+                    api,
+                    DatasourceContentPreviewPayload.model_validate(payload),
+                    unbound_session,
+                    account,
+                    pipeline,
+                    "node-1",
+                )
 
-    def test_post_without_credential_id(self, app: Flask) -> None:
+    def test_post_without_credential_id(self, app: Flask, unbound_session: Session) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -110,7 +119,7 @@ class TestDataSourceContentPreviewApi:
             ),
         ):
             req_data = DatasourceContentPreviewPayload.model_validate(payload)
-            response, status = method(api, req_data, account, pipeline, "node-1")
+            response, status = method(api, req_data, unbound_session, account, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()
         assert status == 200
