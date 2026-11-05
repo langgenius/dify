@@ -111,9 +111,12 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                 if line.startswith("data:"):
                     line = line[5:].strip()
-                    data = json.loads(line)
-                    if data["type"] == "result" and download:
-                        data["data"] = self.download_result(data["data"])
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if data.get("type") == "result" and download:
+                        data["data"] = self.download_result(data.get("data"))
                     yield data
         finally:
             response.close()
@@ -145,7 +148,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         if media_type == "text/event-stream":
             return self.process_eventstream(response)
 
-        raise Exception(f"Unknown response type: {content_type}")
+        raise ValueError(f"Unknown response type: {content_type}")
 
     def get_crawl_requests_list(self, page: int | None = None, page_size: int | None = None):
         query_params = {"page": page or 1, "page_size": page_size or 10}
