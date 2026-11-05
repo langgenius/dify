@@ -274,11 +274,59 @@ const zTriggerOauthClientChangedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTriggerSubscriptionLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_limit_reached'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zTriggerSubscriptionNameConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_name_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zTriggerSubscriptionProviderError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_provider_error'),
+      status: z.literal(502),
+    }),
+  ))()
+
 const zTriggerOauthProviderError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('trigger_oauth_provider_error'),
       status: z.literal(502),
+    }),
+  ))()
+
+const zTriggerSubscriptionInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zTriggerSubscriptionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zTriggerSubscriptionChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_changed'),
+      status: z.literal(409),
     }),
   ))()
 
@@ -525,9 +573,34 @@ export const post84Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
 }
 
+export const post85Errors = {
+  trigger_subscription_limit_reached: { status: 400, data: zTriggerSubscriptionLimitReachedError },
+  trigger_subscription_name_conflict: { status: 409, data: zTriggerSubscriptionNameConflictError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
 export const get131Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
   trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+}
+
+export const post89Errors = {
+  trigger_subscription_invalid: { status: 400, data: zTriggerSubscriptionInvalidError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
+export const post90Errors = {
+  trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
+export const post91Errors = {
+  trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+  trigger_subscription_name_conflict: { status: 409, data: zTriggerSubscriptionNameConflictError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
 }
 
 export const post92Errors = {
