@@ -71,13 +71,19 @@ def holds_one_request_url(body: str) -> bool:
     return body.count(EmailDeliveryConfig.URL_PLACEHOLDER) == 1
 
 
-def _body_validator(body: str) -> str:
-    """The body unchanged; a ValueError naming the placeholder and the count found otherwise."""
-    if not holds_one_request_url(body):
-        raise ValueError(
+class RequestUrlCountError(ValueError):
+    """A message body without the Request URL placeholder exactly once, naming it and the count found."""
+
+    def __init__(self, body: str) -> None:
+        super().__init__(
             f"The message body must contain the Request URL {EmailDeliveryConfig.URL_PLACEHOLDER} exactly once, "
             f"found {body.count(EmailDeliveryConfig.URL_PLACEHOLDER)}: it becomes the link to the form"
         )
+
+
+def _body_validator(body: str) -> str:
+    if not holds_one_request_url(body):
+        raise RequestUrlCountError(body)
     return body
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from typing import Final
 
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
@@ -14,7 +15,11 @@ from core.human_input_v2.im_integration.adapters.entities import MessageSendingE
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import AccountId, IMBindingId, TenantId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
-from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData, MessageTemplateConfig
+from core.workflow.nodes.human_input_v2.entities import (
+    HumanInputNodeData,
+    MessageTemplateConfig,
+    RequestUrlCountError,
+)
 from graphon.runtime import VariablePool
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
@@ -35,6 +40,20 @@ from services.human_input_v2.email_credential_codec import load_email_credential
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService, HumanInputTestFormError
 from services.human_input_v2.im_credential_codec import IMCredentialError
 from services.human_input_v2.resend_channel import ResendProviderGateway
+
+_INVALID_NODE: Final = "A Human Input v2 node with a valid message template is required."
+
+
+def _validation_message(error: ValidationError) -> str:
+    """The body validator's own message when the Request URL count is what failed, else the generic one."""
+    body_errors = [
+        detail["ctx"]["error"]
+        for detail in error.errors()
+        if isinstance(detail.get("ctx", {}).get("error"), RequestUrlCountError)
+    ]
+    if body_errors:
+        return str(body_errors[0])
+    return _INVALID_NODE
 
 
 class MessageTemplateTestError(Exception):
@@ -135,10 +154,10 @@ class MessageTemplateTestService:
             try:
                 node_config = workflow.get_node_config_by_id(node_id)
                 node = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
-            except (NodeNotFoundError, WorkflowDataError, ValidationError):
-                raise MessageTemplateTestError(
-                    "A Human Input v2 node with a valid message template is required."
-                ) from None
+            except (NodeNotFoundError, WorkflowDataError):
+                raise MessageTemplateTestError(_INVALID_NODE) from None
+            except ValidationError as exc:
+                raise MessageTemplateTestError(_validation_message(exc)) from None
             pool = VariablePool.from_bootstrap(environment_variables=workflow.environment_variables)
 
         template = node.message_template
