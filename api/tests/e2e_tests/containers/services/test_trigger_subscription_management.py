@@ -26,6 +26,7 @@ from extensions.ext_redis import redis_client
 from models.account import TenantAccountRole
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_service import TriggerSubscriptionLeaseLostError, TriggerSubscriptionService
 from tests.e2e_tests.containers.services import test_trigger_subscription_builder
@@ -265,6 +266,7 @@ def test_committed_changes_succeed_when_redis_cache_invalidation_is_unavailable(
                 subscriptions=TriggerSubscriptionRepository(session_factory=harness.session_factory),
                 providers=PluginTriggerSubscriptionGateway(),
                 locks=RedisTriggerSubscriptionLocks(redis=redis_client),
+                codec=ProviderTriggerSubscriptionCodec(),
                 invalidate_cache=invalidate_cache,
             )
             harness.app.extensions["application_services"] = replace(

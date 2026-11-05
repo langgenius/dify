@@ -14,6 +14,7 @@ from core.trigger.entities.entities import Subscription, UnsubscribeResult
 from models.enums import PermissionEnum
 from models.provider_ids import TriggerProviderID
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 from services.trigger.subscription_service import (
     TriggerSubscriptionLeaseLostError,
@@ -155,7 +156,11 @@ def test_concurrent_mutations_wait_for_provider_and_reload_committed_snapshot(
     repository.create(subscription=snapshot, max_count=10)
     locks, provider = _Locks(), _Provider()
     service = TriggerSubscriptionService(
-        subscriptions=repository, providers=provider, locks=locks, invalidate_cache=lambda **_: None
+        subscriptions=repository,
+        providers=provider,
+        locks=locks,
+        codec=ProviderTriggerSubscriptionCodec(),
+        invalidate_cache=lambda **_: None,
     )
 
     def update(event: str) -> None:
@@ -213,7 +218,11 @@ def test_lost_lease_stops_further_effects_and_preserves_database(
     else:
         provider.after_unsubscribe = locks.lease.lost.set
     service = TriggerSubscriptionService(
-        subscriptions=repository, providers=provider, locks=locks, invalidate_cache=lambda **_: None
+        subscriptions=repository,
+        providers=provider,
+        locks=locks,
+        codec=ProviderTriggerSubscriptionCodec(),
+        invalidate_cache=lambda **_: None,
     )
 
     def mutate() -> None:

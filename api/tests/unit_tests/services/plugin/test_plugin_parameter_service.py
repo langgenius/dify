@@ -28,6 +28,7 @@ from models.tools import BuiltinToolProvider
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from services.plugin.plugin_parameter_service import PluginParameterService
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -61,6 +62,7 @@ def builders(sqlite_session_factory: sessionmaker[Session]) -> Iterator[TriggerS
             subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
             providers=PluginTriggerSubscriptionGateway(),
             locks=RedisTriggerSubscriptionLocks(redis=redis),
+            codec=ProviderTriggerSubscriptionCodec(),
             invalidate_cache=delete_cache_for_subscription,
         )
         yield TriggerSubscriptionBuilderService(
