@@ -5810,6 +5810,8 @@ export default interface Resources {
     'chatVariable.tips': 'Tips'
     'chatVariable.updatedAt': 'Updated at '
     'collaboration.historyAction.generic': 'A collaborator performed an undo/redo action'
+    'collaboration.joinDenied': 'Unable to join collaboration. Check your access and workspace plan, then reopen the editor.'
+    'collaboration.joinRetrying': 'Collaboration is temporarily unavailable. Retrying…'
     'common.accessAPIReference': 'Access API Reference'
     'common.accessPointDescription': 'Configure web app, API, MCP, and triggers'
     'common.addBlock': 'Add Node'

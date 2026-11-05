@@ -110,6 +110,8 @@
   "chatVariable.tips": "Sfaturi",
   "chatVariable.updatedAt": "Actualizat la ",
   "collaboration.historyAction.generic": "Un colaborator a efectuat anulare/refacere",
+  "collaboration.joinDenied": "Nu te poți alătura colaborării. Verifică accesul și abonamentul spațiului de lucru, apoi redeschide editorul.",
+  "collaboration.joinRetrying": "Colaborarea este temporar indisponibilă. Se reîncearcă…",
   "common.accessAPIReference": "Accesează referința API",
   "common.accessPointDescription": "Configurează aplicația web, API, MCP și declanșatoarele",
   "common.addBlock": "Adaugă nod",

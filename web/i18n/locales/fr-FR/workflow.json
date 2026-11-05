@@ -110,6 +110,8 @@
   "chatVariable.tips": "Conseils",
   "chatVariable.updatedAt": "Mis à jour le ",
   "collaboration.historyAction.generic": "Un collaborateur a effectué une annulation/une réexécution",
+  "collaboration.joinDenied": "Impossible de rejoindre la collaboration. Vérifiez vos droits d’accès et l’offre de l’espace de travail, puis rouvrez l’éditeur.",
+  "collaboration.joinRetrying": "La collaboration est temporairement indisponible. Nouvelle tentative…",
   "common.accessAPIReference": "Accéder à la référence API",
   "common.accessPointDescription": "Configurer l’application web, l’API, MCP et les déclencheurs",
   "common.addBlock": "Ajouter un nœud",

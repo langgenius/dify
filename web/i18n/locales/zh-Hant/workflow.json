@@ -110,6 +110,8 @@
   "chatVariable.tips": "提示",
   "chatVariable.updatedAt": "更新於 ",
   "collaboration.historyAction.generic": "協作者執行了復原/重做操作",
+  "collaboration.joinDenied": "無法加入協作。請檢查存取權限和工作區方案，然後重新開啟編輯器。",
+  "collaboration.joinRetrying": "協作暫時無法使用，正在重試…",
   "common.accessAPIReference": "訪問 API",
   "common.accessPointDescription": "設定 Web 應用、API、MCP 和觸發器",
   "common.addBlock": "新增節點",

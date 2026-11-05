@@ -110,6 +110,8 @@
   "chatVariable.tips": "เคล็ดลับ",
   "chatVariable.updatedAt": "อัพเดทเมื่อ",
   "collaboration.historyAction.generic": "ผู้ร่วมงานได้ทำการยกเลิก/ทำซ้ำ",
+  "collaboration.joinDenied": "ไม่สามารถเข้าร่วมการแก้ไขร่วมกันได้ โปรดตรวจสอบสิทธิ์การเข้าถึงและแพ็กเกจพื้นที่ทำงาน แล้วเปิดตัวแก้ไขอีกครั้ง",
+  "collaboration.joinRetrying": "การแก้ไขร่วมกันไม่พร้อมใช้งานชั่วคราว กำลังลองอีกครั้ง…",
   "common.accessAPIReference": "การอ้างอิง API การเข้าถึง",
   "common.accessPointDescription": "กำหนดค่าเว็บแอป, API, MCP และทริกเกอร์",
   "common.addBlock": "เพิ่มโนด",

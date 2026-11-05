@@ -1,9 +1,13 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
+import type {
+  CollaborationUpdate,
+  JoinFailure,
+} from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -52,7 +56,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation(['workflow'] as const)
+  const { t } = useTranslation(['workflow', 'common', 'contacts'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
@@ -64,6 +68,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     appId: null as string | null,
     isReady: false,
   })
+  const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null)
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
@@ -126,6 +131,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     return collaborationManager.onGraphReadyChange((isReady) => {
       setCollaborationGraphState({ appId, isReady })
     })
+  }, [appId, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+    return collaborationManager.onJoinFailure(setJoinFailure)
   }, [appId, isCollaborationEnabled])
 
   const handleWorkflowDataUpdate = useCallback(
@@ -558,11 +568,31 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
               aria-live="polite"
               className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
             >
-              <span
-                aria-hidden="true"
-                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
-              />
-              <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+              {joinFailure ? (
+                <>
+                  <span role="alert">
+                    {joinFailure === 'denied'
+                      ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
+                      : joinFailure === 'retrying'
+                        ? t(($) => $['collaboration.joinRetrying'], { ns: 'workflow' })
+                        : t(($) => $['imPlatform.status.connection_error'], { ns: 'contacts' })}
+                  </span>
+                  {joinFailure !== 'retrying' &&
+                    !collaborationManager.hasJoinedCollaborationRoom() && (
+                      <Button size="small" onClick={() => window.location.reload()}>
+                        {t(($) => $['errorBoundary.reloadPage'], { ns: 'common' })}
+                      </Button>
+                    )}
+                </>
+              ) : (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                  />
+                  <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                </>
+              )}
             </div>
           </div>
         )}

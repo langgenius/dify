@@ -110,6 +110,8 @@
   "chatVariable.tips": "نصائح",
   "chatVariable.updatedAt": "تم التحديث في ",
   "collaboration.historyAction.generic": "قام متعاون بعملية تراجع/إعادة",
+  "collaboration.joinDenied": "تعذّر الانضمام إلى التعاون. تحقّق من صلاحية الوصول وخطة مساحة العمل، ثم أعد فتح المحرّر.",
+  "collaboration.joinRetrying": "التعاون غير متاح مؤقتًا. جارٍ إعادة المحاولة…",
   "common.accessAPIReference": "الوصول إلى مرجع API",
   "common.accessPointDescription": "تهيئة تطبيق الويب وواجهة API وMCP والمشغلات",
   "common.addBlock": "إضافة عقدة",

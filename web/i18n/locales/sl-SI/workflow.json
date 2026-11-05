@@ -110,6 +110,8 @@
   "chatVariable.tips": "Nasveti",
   "chatVariable.updatedAt": "Posodobljeno ob",
   "collaboration.historyAction.generic": "Sodelavec je izvedel razveljavitev/ponovitev",
+  "collaboration.joinDenied": "Pridružitev sodelovanju ni uspela. Preverite dostop in paket delovnega prostora ter znova odprite urejevalnik.",
+  "collaboration.joinRetrying": "Sodelovanje začasno ni na voljo. Ponovni poskus…",
   "common.accessAPIReference": "Dostop do referenčnega API-ja",
   "common.accessPointDescription": "Nastavi spletno aplikacijo, API, MCP in sprožilce",
   "common.addBlock": "Dodaj vozlišče",

@@ -110,6 +110,8 @@
   "chatVariable.tips": "Consejos",
   "chatVariable.updatedAt": "Actualizado el ",
   "collaboration.historyAction.generic": "Un colaborador realizó deshacer/rehacer",
+  "collaboration.joinDenied": "No se pudo iniciar la colaboración. Comprueba tus permisos y el plan del espacio de trabajo, y vuelve a abrir el editor.",
+  "collaboration.joinRetrying": "La colaboración no está disponible temporalmente. Reintentando…",
   "common.accessAPIReference": "Acceder a la referencia de la API",
   "common.accessPointDescription": "Configurar la aplicación web, la API, MCP y los activadores",
   "common.addBlock": "Agregar nodo",

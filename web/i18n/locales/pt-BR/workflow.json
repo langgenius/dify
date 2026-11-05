@@ -110,6 +110,8 @@
   "chatVariable.tips": "Dicas",
   "chatVariable.updatedAt": "Atualizado em ",
   "collaboration.historyAction.generic": "Um colaborador realizou desfazer/refazer",
+  "collaboration.joinDenied": "Não foi possível entrar na colaboração. Verifique seu acesso e o plano do espaço de trabalho e abra o editor novamente.",
+  "collaboration.joinRetrying": "A colaboração está temporariamente indisponível. Tentando novamente…",
   "common.accessAPIReference": "Acessar referência da API",
   "common.accessPointDescription": "Configurar aplicativo web, API, MCP e gatilhos",
   "common.addBlock": "Adicionar Nó",

@@ -110,6 +110,8 @@
   "chatVariable.tips": "Tips",
   "chatVariable.updatedAt": "Updated at ",
   "collaboration.historyAction.generic": "Een medewerker heeft een ongedaan maken/opnieuw uitvoeren-actie uitgevoerd",
+  "collaboration.joinDenied": "Deelname aan de samenwerking is niet gelukt. Controleer je toegangsrechten en het abonnement van de werkruimte en open de editor opnieuw.",
+  "collaboration.joinRetrying": "Samenwerking is tijdelijk niet beschikbaar. Opnieuw proberen…",
   "common.accessAPIReference": "Access API Reference",
   "common.accessPointDescription": "Webapp, API, MCP en triggers configureren",
   "common.addBlock": "Add Node",

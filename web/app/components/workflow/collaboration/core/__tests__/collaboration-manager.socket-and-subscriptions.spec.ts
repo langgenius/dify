@@ -13,6 +13,284 @@ const { createSession, connect, transports, setup, cleanup } = createCollaborati
 beforeEach(setup)
 afterEach(cleanup)
 
+it('retries a rejected first join and ignores its late acknowledgement after joining', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge, emit } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  expect(failures).toHaveBeenLastCalledWith('retrying')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+  await vi.advanceTimersByTimeAsync(1_000)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  if (typeof oldAck !== 'function') throw new Error('Missing join acknowledgement')
+  oldAck({ msg: 'unauthorized' }, 401)
+  expect(failures).toHaveBeenLastCalledWith(null)
+  expect(manager.canPersistLocalGraph()).toBe(true)
+})
+
+it('reports an initial permission rejection without retrying or allowing a save', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge, emit } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  acknowledge('user_connect', { msg: 'unauthorized' }, 401)
+  await vi.advanceTimersByTimeAsync(60_000)
+  expect(failures).toHaveBeenLastCalledWith('denied')
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('recognizes a permission rejection in the first acknowledgement argument', async () => {
+  const { manager, receive, acknowledge } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  acknowledge('user_connect', 401)
+  expect(failures).toHaveBeenLastCalledWith('denied')
+})
+
+it('notifies subscribers when disconnect clears a join failure', async () => {
+  const { manager, receive, acknowledge, connectionId } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  acknowledge('user_connect', { msg: 'unauthorized' }, 401)
+  expect(failures).toHaveBeenLastCalledWith('denied')
+  manager.disconnect(connectionId)
+  expect(failures).toHaveBeenLastCalledWith(null)
+})
+
+it('does not apply leader status after a join is rejected', async () => {
+  const { manager, receive, acknowledge } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const leader = vi.fn()
+  manager.onLeaderChange(leader)
+  receive('connect')
+  acknowledge('user_connect', { msg: 'unauthorized' }, 401)
+  receive('status', { isLeader: true })
+  expect(manager.getIsLeader()).toBe(false)
+  expect(leader).not.toHaveBeenCalled()
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('reports an unanswered first join without sending a duplicate', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, emit } = await createSession({ connected: false, role: 'pending' })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  await vi.advanceTimersByTimeAsync(14_999)
+  expect(failures).toHaveBeenLastCalledWith(null)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(failures).toHaveBeenLastCalledWith('unavailable')
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it.each(['status-first', 'ack-first'] as const)(
+  'accepts a late successful join when %s after a timeout',
+  async (order) => {
+    vi.useFakeTimers()
+    const { manager, receive, acknowledge } = await createSession({
+      connected: false,
+      role: 'pending',
+    })
+    const failures = vi.fn()
+    manager.onJoinFailure(failures)
+    receive('connect')
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(failures).toHaveBeenLastCalledWith('unavailable')
+    if (order === 'status-first') {
+      receive('status', { isLeader: true })
+      acknowledge('user_connect', { msg: 'connected' })
+    } else {
+      acknowledge('user_connect', { msg: 'connected' })
+      receive('status', { isLeader: true })
+    }
+    expect(failures).toHaveBeenLastCalledWith(null)
+    expect(manager.canPersistLocalGraph()).toBe(true)
+  },
+)
+
+it('retries when billing responds after the join timeout', async () => {
+  vi.useFakeTimers()
+  const { receive, acknowledge, emit } = await createSession({ connected: false, role: 'pending' })
+  receive('connect')
+  await vi.advanceTimersByTimeAsync(15_000)
+  acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  await vi.advanceTimersByTimeAsync(1_000)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+})
+
+it('ignores the timed-out join acknowledgement after the socket disconnects', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, emit } = await createSession({ connected: false, role: 'pending' })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  await vi.advanceTimersByTimeAsync(15_000)
+  receive('disconnect', 'transport close')
+  receive('connect')
+  if (typeof oldAck !== 'function') throw new Error('Missing join acknowledgement')
+  oldAck({ msg: 'connected' })
+  expect(failures).toHaveBeenLastCalledWith(null)
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('cancels an initial retry on disconnect and uses the existing join behavior after success', async () => {
+  vi.useFakeTimers()
+  const { receive, acknowledge, emit } = await createSession({ connected: false, role: 'pending' })
+  receive('connect')
+  acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  receive('disconnect', 'transport close')
+  await vi.advanceTimersByTimeAsync(60_000)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  receive('connect')
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  receive('disconnect', 'transport close')
+  receive('connect')
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(3)
+})
+
+it('ignores an acknowledgement from before a disconnect', async () => {
+  const { manager, receive, emit } = await createSession({ connected: false, role: 'pending' })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  receive('disconnect', 'transport close')
+  receive('connect')
+  if (typeof oldAck !== 'function') throw new Error('Missing join acknowledgement')
+  oldAck({ msg: 'unauthorized' }, 401)
+  expect(failures).toHaveBeenLastCalledWith(null)
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it.each([
+  [401, 'unauthorized', 'denied'],
+  [503, 'collaboration_unavailable', 'retrying'],
+] as const)(
+  'handles a %s rejoin acknowledgement after a status event',
+  async (status, message, failure) => {
+    vi.useFakeTimers()
+    const { manager, receive, acknowledge, emit } = await createSession({
+      nodes: [createNode('unsaved')],
+    })
+    const failures = vi.fn()
+    manager.onJoinFailure(failures)
+    receive('disconnect', 'transport close')
+    receive('connect')
+    receive('status', { isLeader: true })
+    acknowledge('user_connect', { msg: message }, status)
+    expect(failures).toHaveBeenLastCalledWith(failure)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    if (status === 503) {
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+      receive('status', { isLeader: true })
+      acknowledge('user_connect', { msg: 'connected' })
+      expect(failures).toHaveBeenLastCalledWith(null)
+    } else {
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+    }
+  },
+)
+
+it('times out when a successful rejoin acknowledgement is not followed by status', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge, emit } = await createSession()
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('disconnect', 'transport close')
+  receive('connect')
+  acknowledge('user_connect', { msg: 'connected' })
+  await vi.advanceTimersByTimeAsync(60_000)
+  expect(failures).toHaveBeenLastCalledWith('unavailable')
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it.each(['status-first', 'ack-first'] as const)('completes rejoin when %s', async (order) => {
+  const { manager, receive, acknowledge, state } = await createSession()
+  receive('disconnect', 'transport close')
+  receive('connect')
+  if (order === 'status-first') {
+    receive('status', { isLeader: true })
+    acknowledge('user_connect', { msg: 'connected' })
+  } else {
+    acknowledge('user_connect', { msg: 'connected' })
+    receive('status', { isLeader: true })
+  }
+  expect(manager.hasJoinedCollaborationRoom()).toBe(true)
+  expect(manager.canPersistLocalGraph()).toBe(false) // Re-elected leader must reload the HTTP graph first.
+  expect(manager.isConnected()).toBe(true)
+  const reload = vi.fn<(request: GraphReloadRequest) => void>()
+  manager.onGraphReloadRequired(reload)
+  state.setNodes([createNode('latest')])
+  expect(manager.replaceGraphFromReactFlow(reload.mock.calls[0]![0])).toBe(true)
+  expect(manager.canPersistLocalGraph()).toBe(true)
+})
+
+it.each(['status-first', 'ack-first'] as const)(
+  'restores follower synchronization when %s',
+  async (order) => {
+    const remote = await createSession({ appId: 'follower-peer', nodes: [createNode('latest')] })
+    const { manager, receive, acknowledge } = await createSession()
+    receive('disconnect', 'transport close')
+    receive('connect')
+    if (order === 'status-first') {
+      receive('status', { isLeader: false })
+      acknowledge('user_connect', { msg: 'connected' })
+    } else {
+      acknowledge('user_connect', { msg: 'connected' })
+      receive('status', { isLeader: false })
+    }
+    receive('graph_update', remote.snapshot())
+    expect(manager.getNodes()[0]?.id).toBe('latest')
+    expect(manager.canPersistLocalGraph()).toBe(true)
+  },
+)
+
+it('retries a rejoin triggered by an unauthorized collaboration event', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge, emit } = await createSession()
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1000 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  manager.emitCursorMove({ x: 2, y: 3, userId: 'user-1', timestamp: 1001 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  await vi.advanceTimersByTimeAsync(1_000)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  expect(manager.canPersistLocalGraph()).toBe(true)
+})
+
 it('allows local draft fallback only before the first connection', async () => {
   const { manager, receive } = await createSession({ connected: false, role: 'pending' })
   expect(manager.canUseLocalDraftFallback()).toBe(true)
@@ -160,8 +438,10 @@ it('allows a hidden page-close flush only for the sole trusted leader session', 
   expect(manager.canFlushGraphOnPageClose()).toBe(true)
 })
 
-it('deduplicates rejoin attempts and disconnects after an unauthorized rejoin', async () => {
+it('deduplicates rejoin attempts and protects the graph after an unauthorized rejoin', async () => {
   const { manager, acknowledge, emit } = await createSession()
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
   const cursor = { x: 1, y: 2, userId: 'user-1', timestamp: 1000 }
   manager.emitCursorMove(cursor)
   acknowledge('mouse_move', { msg: 'unauthorized' })
@@ -169,8 +449,8 @@ it('deduplicates rejoin attempts and disconnects after an unauthorized rejoin', 
   acknowledge('mouse_move', { msg: 'unauthorized' })
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
   acknowledge('user_connect', { msg: 'unauthorized' })
-  expect(webSocketClient.disconnect).toHaveBeenCalledWith('app-1')
-  expect(manager.isConnected()).toBe(false)
+  expect(failures).toHaveBeenLastCalledWith('denied')
+  expect(webSocketClient.disconnect).not.toHaveBeenCalled()
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 
@@ -344,7 +624,7 @@ it('shares workflow connections and ignores old releases after switching workflo
 })
 
 it('reloads a re-elected leader from the authoritative graph before broadcasting', async () => {
-  const { manager, receive, update, emit, state } = await createSession({
+  const { manager, receive, acknowledge, update, emit, state } = await createSession({
     nodes: [createNode('stale')],
   })
   receive('disconnect', 'transport close')
@@ -352,6 +632,7 @@ it('reloads a re-elected leader from the authoritative graph before broadcasting
   receive('connect')
   expect(manager.getNodes()).toEqual([])
   receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
   const reload = vi.fn<(request: GraphReloadRequest) => void>()
   manager.onGraphReloadRequired(reload)
   expect(reload).toHaveBeenCalledOnce()
@@ -386,8 +667,13 @@ it('keeps a promoted follower blocked until an authoritative snapshot or reload 
 it('retries follower resync until a snapshot arrives and then stops', async () => {
   vi.useFakeTimers()
   const remote = await createSession({ appId: 'remote', nodes: [createNode('snapshot')] })
-  const { manager, receive, messages } = await createSession({ role: 'pending' })
+  const { manager, receive, acknowledge, messages } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  receive('connect')
   receive('status', { isLeader: false })
+  acknowledge('user_connect', { msg: 'connected' })
   expect(messages('graph_resync_request')).toHaveLength(1)
   await vi.advanceTimersByTimeAsync(1000)
   expect(messages('graph_resync_request')).toHaveLength(2)
@@ -400,10 +686,13 @@ it('retries follower resync until a snapshot arrives and then stops', async () =
 
 it('lets the requested snapshot win over an outstanding HTTP reload after promotion', async () => {
   const remote = await createSession({ appId: 'remote', nodes: [createNode('latest', 'Latest')] })
-  const { manager, receive, state } = await createSession({ nodes: [createNode('stale')] })
+  const { manager, receive, acknowledge, state } = await createSession({
+    nodes: [createNode('stale')],
+  })
   receive('disconnect', 'transport close')
   receive('connect')
   receive('status', { isLeader: false })
+  acknowledge('user_connect', { msg: 'connected' })
   const reload = vi.fn<(request: GraphReloadRequest) => void>()
   manager.onGraphReloadRequired(reload)
   receive('status', { isLeader: true })
@@ -419,16 +708,19 @@ it('lets the requested snapshot win over an outstanding HTTP reload after promot
 })
 
 it('rejects an old HTTP reload token after another reconnect', async () => {
-  const { manager, receive } = await createSession()
+  const { manager, receive, acknowledge } = await createSession()
   const reload = vi.fn<(request: GraphReloadRequest) => void>()
   manager.onGraphReloadRequired(reload)
-  for (let i = 0; i < 2; i++) {
-    receive('disconnect', 'transport close')
-    receive('connect')
-    receive('status', { isLeader: true })
-  }
-  const first = reload.mock.calls[0]![0]
-  const second = reload.mock.calls[1]![0]
+  receive('disconnect', 'transport close')
+  receive('connect')
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  const first = reload.mock.calls.at(-1)![0]
+  receive('disconnect', 'transport close')
+  receive('connect')
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  const second = reload.mock.calls.at(-1)![0]
   expect(manager.replaceGraphFromReactFlow(first)).toBe(false)
   expect(manager.isGraphReloadCurrent(second)).toBe(true)
 })

@@ -110,6 +110,8 @@
   "chatVariable.tips": "Tipps",
   "chatVariable.updatedAt": "Aktualisiert am ",
   "collaboration.historyAction.generic": "Ein Mitbearbeiter hat Rückgängig/Wiederholen ausgeführt",
+  "collaboration.joinDenied": "Die Verbindung zur Zusammenarbeit konnte nicht hergestellt werden. Prüfe deine Zugriffsrechte und den Tarif des Arbeitsbereichs und öffne den Editor erneut.",
+  "collaboration.joinRetrying": "Die Zusammenarbeit ist vorübergehend nicht verfügbar. Erneuter Versuch…",
   "common.accessAPIReference": "API-Referenz aufrufen",
   "common.accessPointDescription": "Web-App, API, MCP und Trigger konfigurieren",
   "common.addBlock": "Knoten hinzufügen",

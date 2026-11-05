@@ -8,6 +8,7 @@ import type {
   CollaborationUpdate,
   CursorPosition,
   GraphReloadRequest,
+  JoinFailure,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
@@ -21,7 +22,12 @@ import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { EventEmitter } from './event-emitter'
-import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
+import {
+  emitWithAuthGuard,
+  isDefaultSocketUrl,
+  isUnauthorizedAck,
+  webSocketClient,
+} from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
@@ -135,6 +141,9 @@ const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
 const WORKFLOW_SYNC_REQUEST_TIMEOUT = 20_000
 const GRAPH_RESYNC_RETRY_BASE_DELAY = 1000
 const GRAPH_RESYNC_RETRY_MAX_DELAY = 10_000
+const JOIN_TIMEOUT = 15_000
+const JOIN_RETRY_BASE_DELAY = 1000
+const JOIN_RETRY_MAX_DELAY = 30_000
 
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> =>
@@ -178,6 +187,14 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
+  private joinAttempt = 0
+  private joinRetryCount = 0
+  private joinTimer: ReturnType<typeof setTimeout> | null = null
+  private joinPending = false
+  private joinFailure: JoinFailure | null = null
+  private hasJoinedRoom = false
+  private joinAcknowledged = false
+  private joinStatusReceived = false
   private pendingGraphImportEmit = false
   private pendingGraphResyncBroadcast = false
   private graphViewActive: boolean | null = null
@@ -218,30 +235,86 @@ export class CollaborationManager {
     return webSocketClient.getSocket(this.currentAppId)
   }
 
+  private cancelJoinAttempt(): void {
+    this.joinAttempt += 1
+    if (this.joinTimer) clearTimeout(this.joinTimer)
+    this.joinTimer = null
+    this.joinPending = false
+    this.joinAcknowledged = false
+    this.joinStatusReceived = false
+  }
+
+  private completeJoinIfReady(): void {
+    if (!this.joinAcknowledged || !this.joinStatusReceived) return
+    this.cancelJoinAttempt()
+    this.joinRetryCount = 0
+    this.rejoinInProgress = false
+    this.hasJoinedRoom = true
+    this.setJoinFailure(null)
+    if (this.graphReloadRequired) this.emitGraphReloadRequired()
+  }
+
+  private setJoinFailure(failure: JoinFailure | null): void {
+    this.joinFailure = failure
+    this.eventEmitter.emit('joinFailure', failure)
+    this.emitGraphReadyState()
+  }
+
+  private joinWorkflow(socket: Socket): void {
+    if (!this.currentAppId || !socket.connected) return
+    this.cancelJoinAttempt()
+    const attempt = this.joinAttempt
+    this.joinPending = true
+    this.joinTimer = setTimeout(() => {
+      if (attempt !== this.joinAttempt) return
+      this.joinTimer = null
+      this.rejoinInProgress = false
+      this.setJoinFailure('unavailable')
+    }, JOIN_TIMEOUT)
+    this.emitGraphReadyState()
+    socket.emit(
+      'user_connect',
+      { workflow_id: this.currentAppId },
+      (body: unknown, status?: number) => {
+        if (attempt !== this.joinAttempt || this.getActiveSocket() !== socket) return
+        const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
+        if (status === 503 || message === 'collaboration_unavailable') {
+          this.cancelJoinAttempt()
+          this.setJoinFailure('retrying')
+          const delay = Math.min(
+            JOIN_RETRY_BASE_DELAY * 2 ** this.joinRetryCount,
+            JOIN_RETRY_MAX_DELAY,
+          )
+          this.joinRetryCount += 1
+          this.joinTimer = setTimeout(
+            () => this.joinWorkflow(socket),
+            delay * (0.5 + Math.random() * 0.5),
+          )
+        } else if (isUnauthorizedAck(body, status)) {
+          this.cancelJoinAttempt()
+          this.rejoinInProgress = false
+          this.setJoinFailure('denied')
+        } else if (typeof status === 'number' && status >= 400) {
+          this.cancelJoinAttempt()
+          this.rejoinInProgress = false
+          this.setJoinFailure('unavailable')
+        } else if (message === 'connected') {
+          this.joinAcknowledged = true
+          this.completeJoinIfReady()
+        }
+      },
+    )
+  }
+
   private handleSessionUnauthorized = (): void => {
-    if (this.rejoinInProgress) return
+    if (this.rejoinInProgress || this.joinTimer || this.joinFailure) return
     if (!this.currentAppId) return
 
     const socket = this.getActiveSocket()
     if (!socket) return
 
     this.rejoinInProgress = true
-    console.warn('Collaboration session expired, attempting to rejoin workflow.')
-    emitWithAuthGuard(
-      socket,
-      'user_connect',
-      { workflow_id: this.currentAppId },
-      {
-        onAck: () => {
-          this.rejoinInProgress = false
-        },
-        onUnauthorized: () => {
-          this.rejoinInProgress = false
-          console.error('Rejoin failed due to authorization error, forcing disconnect.')
-          this.forceDisconnect()
-        },
-      },
-    )
+    this.joinWorkflow(socket)
   }
 
   private sendCollaborationEvent(payload: CollaborationEventPayload): void {
@@ -702,13 +775,7 @@ export class CollaborationManager {
     this.emitGraphReadyState()
 
     // Force user_connect if already connected
-    if (socket.connected)
-      emitWithAuthGuard(
-        socket,
-        'user_connect',
-        { workflow_id: appId },
-        { onUnauthorized: this.handleSessionUnauthorized },
-      )
+    if (socket.connected) this.joinWorkflow(socket)
 
     return connectionId
   }
@@ -735,6 +802,10 @@ export class CollaborationManager {
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
+    this.cancelJoinAttempt()
+    this.joinRetryCount = 0
+    this.setJoinFailure(null)
+    this.hasJoinedRoom = false
     this.detachVisibilityListener()
     this.graphViewActive = null
     this.graphViewSequence = 0
@@ -783,6 +854,10 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
+  hasJoinedCollaborationRoom(): boolean {
+    return this.hasJoinedRoom
+  }
+
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
     return (
@@ -801,10 +876,17 @@ export class CollaborationManager {
   }
 
   canRestoreGraphFromCrdt(): boolean {
-    return this.crdtTrusted && !this.graphReloadRequired && this.doc !== null
+    return (
+      !this.joinTimer &&
+      !this.joinFailure &&
+      this.crdtTrusted &&
+      !this.graphReloadRequired &&
+      this.doc !== null
+    )
   }
 
   canPersistLocalGraph(): boolean {
+    if (this.joinTimer || this.joinFailure) return false
     if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
@@ -840,7 +922,14 @@ export class CollaborationManager {
   }
 
   canFlushGraphOnPageClose(): boolean {
-    if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
+    if (
+      this.joinTimer ||
+      this.joinFailure ||
+      !this.crdtTrusted ||
+      this.graphReloadRequired ||
+      !this.isLeader
+    )
+      return false
     if (this.graphViewActive !== false) return true
 
     const socketId = this.getActiveSocket()?.id
@@ -873,6 +962,8 @@ export class CollaborationManager {
 
   isGraphReloadCurrent(request: GraphReloadRequest): boolean {
     return (
+      !this.joinTimer &&
+      !this.joinFailure &&
       this.isLeader &&
       this.graphReloadRequired &&
       !this.crdtTrusted &&
@@ -1076,6 +1167,12 @@ export class CollaborationManager {
 
   onStateChange(callback: (state: Partial<CollaborationState>) => void): () => void {
     return this.eventEmitter.on('stateChange', callback)
+  }
+
+  onJoinFailure(callback: (failure: JoinFailure | null) => void): () => void {
+    const unsubscribe = this.eventEmitter.on('joinFailure', callback)
+    callback(this.joinFailure)
+    return unsubscribe
   }
 
   onCursorUpdate(callback: (cursors: Record<string, CursorPosition>) => void): () => void {
@@ -1876,6 +1973,13 @@ export class CollaborationManager {
           return
         }
 
+        if (this.joinFailure && !this.joinPending) return
+
+        if (this.joinPending) {
+          this.joinStatusReceived = true
+          this.completeJoinIfReady()
+        }
+
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
@@ -1921,6 +2025,7 @@ export class CollaborationManager {
 
     socket.on('connect', () => {
       this.hasEstablishedConnection = true
+      this.joinWorkflow(socket)
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
         this.rebuildCrdtOnNextConnect = false
@@ -1935,6 +2040,9 @@ export class CollaborationManager {
 
     socket.on('disconnect', (reason) => {
       this.clearInitialSyncRetry()
+      this.cancelJoinAttempt()
+      this.joinRetryCount = 0
+      this.setJoinFailure(null)
       this.cursors = {}
       this.onlineUsers = []
       this.isLeader = false

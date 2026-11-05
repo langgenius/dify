@@ -110,6 +110,8 @@
   "chatVariable.tips": "İpuçları",
   "chatVariable.updatedAt": "Güncellenme zamanı: ",
   "collaboration.historyAction.generic": "Bir işbirlikçi geri alma/yeniden yapma gerçekleştirdi",
+  "collaboration.joinDenied": "Ortak düzenlemeye katılamadınız. Erişim izninizi ve çalışma alanı planını kontrol edip düzenleyiciyi yeniden açın.",
+  "collaboration.joinRetrying": "Ortak düzenleme geçici olarak kullanılamıyor. Yeniden deneniyor…",
   "common.accessAPIReference": "API Referansına Eriş",
   "common.accessPointDescription": "Web uygulamasını, API'yi, MCP'yi ve tetikleyicileri yapılandır",
   "common.addBlock": "Düğüm Ekle",

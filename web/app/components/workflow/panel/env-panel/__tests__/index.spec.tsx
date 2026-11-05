@@ -182,6 +182,7 @@ async function connectCollaboration(role: 'leader' | 'follower') {
   const connectionId = await collaborationManager.connect('app-1')
   collaborationConnections.push({ connectionId, manager: collaborationManager })
   transport.receive('status', { isLeader: role === 'leader' })
+  transport.acknowledge('user_connect', { msg: 'connected' })
   transport.emit.mockClear()
   return transport
 }
@@ -207,6 +208,7 @@ async function createRemoteCollaboration(nodes: Node[]) {
   const connectionId = await manager.connect(appId, reactFlowStore)
   collaborationConnections.push({ connectionId, manager })
   transport.receive('status', { isLeader: true })
+  transport.acknowledge('user_connect', { msg: 'connected' })
   transport.emit.mockClear()
   return { manager, nodes: () => remoteNodes, ...transport }
 }
@@ -831,6 +833,7 @@ describe('EnvPanel container', () => {
     })
     await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
     local.receive('status', { isLeader: false })
+    local.acknowledge('user_connect', { msg: 'connected' })
     local.receive('graph_update', remote.snapshot())
     await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
     local.emit.mockClear()
@@ -898,6 +901,7 @@ describe('EnvPanel container', () => {
     })
     await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
     local.receive('status', { isLeader: false })
+    local.acknowledge('user_connect', { msg: 'connected' })
     local.receive('graph_update', remote.snapshot())
     await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
 

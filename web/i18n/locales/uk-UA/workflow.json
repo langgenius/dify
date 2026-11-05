@@ -110,6 +110,8 @@
   "chatVariable.tips": "Поради",
   "chatVariable.updatedAt": "Оновлено ",
   "collaboration.historyAction.generic": "Співавтор виконав скасування/повторення",
+  "collaboration.joinDenied": "Не вдалося приєднатися до спільного редагування. Перевірте доступ і тариф робочого простору, а потім відкрийте редактор знову.",
+  "collaboration.joinRetrying": "Спільне редагування тимчасово недоступне. Повторна спроба…",
   "common.accessAPIReference": "Доступ до довідника API",
   "common.accessPointDescription": "Налаштувати вебзастосунок, API, MCP і тригери",
   "common.addBlock": "Додати вузол",

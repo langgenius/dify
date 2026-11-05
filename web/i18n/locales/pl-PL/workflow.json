@@ -110,6 +110,8 @@
   "chatVariable.tips": "Wskazówki",
   "chatVariable.updatedAt": "Zaktualizowano ",
   "collaboration.historyAction.generic": "Współpracownik wykonał cofnięcie/ponowienie",
+  "collaboration.joinDenied": "Nie można dołączyć do współpracy. Sprawdź dostęp i plan obszaru roboczego, a następnie otwórz edytor ponownie.",
+  "collaboration.joinRetrying": "Współpraca jest tymczasowo niedostępna. Ponawianie próby…",
   "common.accessAPIReference": "Uzyskaj dostęp do dokumentacji API",
   "common.accessPointDescription": "Skonfiguruj aplikację internetową, API, MCP i wyzwalacze",
   "common.addBlock": "Dodaj węzeł",

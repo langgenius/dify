@@ -110,6 +110,8 @@
   "chatVariable.tips": "सुझाव",
   "chatVariable.updatedAt": "अपडेट किया गया ",
   "collaboration.historyAction.generic": "एक सहयोगी ने Undo/Redo किया",
+  "collaboration.joinDenied": "सहयोग से जुड़ना संभव नहीं हुआ। अपनी पहुँच और कार्यक्षेत्र का प्लान जाँचें, फिर संपादक दोबारा खोलें।",
+  "collaboration.joinRetrying": "सहयोग अस्थायी रूप से उपलब्ध नहीं है। दोबारा प्रयास किया जा रहा है…",
   "common.accessAPIReference": "एपीआई संदर्भ तक पहुंचें",
   "common.accessPointDescription": "वेब ऐप, API, MCP और ट्रिगर कॉन्फ़िगर करें",
   "common.addBlock": "नोड जोड़ें",

@@ -46,7 +46,7 @@ it.each([true, false])(
   },
 )
 
-it('connects using cookies and joins the requested workflow after connecting', () => {
+it('connects using cookies and leaves the room join to the collaboration manager', () => {
   const { socket, emit, receive } = createTransport('socket-auth', false)
   ioMock.mockReturnValue(socket)
   const client = createClient()
@@ -58,11 +58,7 @@ it('connects using cookies and joins the requested workflow after connecting', (
   })
   expect(emit).not.toHaveBeenCalled()
   receive('connect')
-  expect(emit).toHaveBeenCalledWith(
-    'user_connect',
-    { workflow_id: 'app-auth' },
-    expect.any(Function),
-  )
+  expect(emit).not.toHaveBeenCalled()
 })
 
 it('disconnects a specific app and reports it as unavailable', () => {

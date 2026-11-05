@@ -59,7 +59,10 @@ export const createCollaborationTestEnvironment = () => {
     }
     const store = { getState: () => state }
     const connectionId = await connect(manager, appId, store)
-    if (role !== 'pending') transport.receive('status', { isLeader: role === 'leader' })
+    if (role !== 'pending') {
+      transport.receive('status', { isLeader: role === 'leader' })
+      if (connected) transport.acknowledge('user_connect', { msg: 'connected' })
+    }
     transport.emit.mockClear()
     return { manager, store, state, connectionId, ...transport }
   }

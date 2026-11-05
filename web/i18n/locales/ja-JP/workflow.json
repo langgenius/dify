@@ -110,6 +110,8 @@
   "chatVariable.tips": "ヒント",
   "chatVariable.updatedAt": "最終更新：",
   "collaboration.historyAction.generic": "共同編集者が元に戻す/やり直しを実行しました",
+  "collaboration.joinDenied": "共同編集に参加できません。アクセス権とワークスペースのプランを確認し、エディターを開き直してください。",
+  "collaboration.joinRetrying": "共同編集を一時的に利用できません。再試行しています…",
   "common.accessAPIReference": "API リファレンス",
   "common.accessPointDescription": "Web アプリ、API、MCP、トリガーを設定",
   "common.addBlock": "ブロックを追加",

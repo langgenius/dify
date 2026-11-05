@@ -110,6 +110,8 @@
   "chatVariable.tips": "Советы",
   "chatVariable.updatedAt": "Обновлено в ",
   "collaboration.historyAction.generic": "Участник выполнил отмену/повтор",
+  "collaboration.joinDenied": "Не удалось присоединиться к совместному редактированию. Проверьте права доступа и тариф рабочего пространства, затем откройте редактор снова.",
+  "collaboration.joinRetrying": "Совместное редактирование временно недоступно. Повторная попытка…",
   "common.accessAPIReference": "Доступ к справочнику API",
   "common.accessPointDescription": "Настроить веб-приложение, API, MCP и триггеры",
   "common.addBlock": "Добавить узел",

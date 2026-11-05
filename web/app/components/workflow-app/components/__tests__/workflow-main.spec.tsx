@@ -89,6 +89,7 @@ const events = {
   users: new Set<Parameters<Manager['onOnlineUsersUpdate']>[0]>(),
   cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
   ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
+  joinFailure: new Set<Parameters<Manager['onJoinFailure']>[0]>(),
 }
 const initialNodes = [
   createStartNode({ id: 'start', data: { title: 'Workflow entry', variables: [] } }),
@@ -158,6 +159,13 @@ beforeEach(() => {
     handler(true)
     return () => {
       events.ready.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onJoinFailure').mockImplementation((handler) => {
+    events.joinFailure.add(handler)
+    handler(null)
+    return () => {
+      events.joinFailure.delete(handler)
     }
   })
   api.fetchDraft.mockReset().mockResolvedValue(draft())
@@ -279,6 +287,34 @@ it('shows synchronization status until the collaborative graph is ready', async 
     events.ready.forEach((handler) => handler(true))
   })
   expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
+})
+
+it('shows a retry message and access guidance when the initial join is rejected', async () => {
+  await renderMain()
+  act(() => {
+    events.ready.forEach((handler) => handler(false))
+    events.joinFailure.forEach((handler) => handler('retrying'))
+  })
+  expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinRetrying')
+  expect(
+    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
+  ).not.toBeInTheDocument()
+  act(() => events.joinFailure.forEach((handler) => handler('denied')))
+  expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinDenied')
+  expect(screen.getByRole('button', { name: 'common.errorBoundary.reloadPage' })).toBeVisible()
+})
+
+it('shows an error without a reload button after an established session is rejected', async () => {
+  vi.spyOn(collaborationManager, 'hasJoinedCollaborationRoom').mockReturnValue(true)
+  await renderMain()
+  act(() => {
+    events.ready.forEach((handler) => handler(false))
+    events.joinFailure.forEach((handler) => handler('denied'))
+  })
+  expect(screen.getByRole('alert')).toHaveTextContent('workflow.collaboration.joinDenied')
+  expect(
+    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
+  ).not.toBeInTheDocument()
 })
 
 // These are incoming collaboration-service events, not callbacks captured from UI components.

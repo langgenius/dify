@@ -110,6 +110,8 @@
   "chatVariable.tips": "Suggerimenti",
   "chatVariable.updatedAt": "Aggiornato il ",
   "collaboration.historyAction.generic": "Un collaboratore ha eseguito annulla/ripristina",
+  "collaboration.joinDenied": "Impossibile partecipare alla collaborazione. Controlla i permessi di accesso e il piano dell’area di lavoro, quindi riapri l’editor.",
+  "collaboration.joinRetrying": "La collaborazione è temporaneamente non disponibile. Nuovo tentativo in corso…",
   "common.accessAPIReference": "Accedi alla Riferimento API",
   "common.accessPointDescription": "Configura app web, API, MCP e trigger",
   "common.addBlock": "Aggiungi nodo",
