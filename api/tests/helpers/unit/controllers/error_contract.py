@@ -13,7 +13,7 @@ any code. On APIs that do not document business errors
 
 import sys
 from collections.abc import Iterator, Mapping
-from typing import cast
+from typing import cast, override
 from weakref import WeakKeyDictionary, WeakSet
 
 from flask import Flask, Response, current_app, request
@@ -74,15 +74,46 @@ def _documents_business_errors(api: ExternalApi) -> bool:
     return any(api is surface for surface in _module_apis(_DOCUMENTED_APIS))
 
 
+# Flask-RESTX types ``Api.models`` as ``dict``, so the fallback mapping must be one.
+class _BorrowedModels(dict[str, object]):  # noqa: FURB189
+    """An API's own models whose lookups by name fall back to the real surfaces' models.
+
+    Swagger resolves models only through ``in`` and ``[]``, while document finalization
+    iterates every registered model. Iterating only the API's own models keeps a test API's
+    document to the borrowed models its operations reference, instead of every surface model.
+    """
+
+    def __init__(self, own: Mapping[str, object], fallbacks: tuple[Mapping[str, object], ...]) -> None:
+        super().__init__(own)
+        self._fallbacks = fallbacks
+
+    @override
+    def __contains__(self, key: object, /) -> bool:
+        return super().__contains__(key) or any(key in fallback for fallback in self._fallbacks)
+
+    def __missing__(self, key: str) -> object:
+        found = [fallback[key] for fallback in self._fallbacks if key in fallback]
+        if not found:
+            raise KeyError(key)
+        return found[0]
+
+
 def _document(api: ExternalApi) -> dict[str, object]:
+    """The OpenAPI document of ``api``, built once per API and cached.
+
+    Test apps often mount a few resources on a fresh ExternalApi without the namespace that
+    registers their models; those models are borrowed from the real surfaces for the build,
+    without being copied into ``api.models``. ``api.models`` is the same mapping afterwards,
+    whether the build succeeds or raises.
+    """
     if api not in _documents:
-        # Test apps often mount a few resources on a fresh ExternalApi without the namespace
-        # that registers their models; borrow those from the real surfaces so the document builds.
-        for surface in _module_apis():
-            if surface is not api:
-                for name, model in surface.models.items():
-                    api.models.setdefault(name, model)
-        _documents[api] = cast(dict[str, object], Swagger(api).as_dict())
+        surfaces = tuple(surface.models for surface in _module_apis() if surface is not api)
+        own_models = api.models
+        api.models = _BorrowedModels(own_models, surfaces)
+        try:
+            _documents[api] = cast(dict[str, object], Swagger(api).as_dict())
+        finally:
+            api.models = own_models
     return _documents[api]
 
 

@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Згенерувати кілька текстів одночасно, а потім редагувати та продовжити генерацію",
   "feature.moreLikeThis.tip": "Використання цієї функції призведе до додаткових витрат токенів",
   "feature.moreLikeThis.title": "Більше такого",
+  "feature.showThoughts.description": "Показувати міркування моделі в розмовах.",
+  "feature.showThoughts.title": "Показувати міркування",
   "feature.speechToText.description": "Після увімкнення ви можете використовувати голосовий ввід.",
   "feature.speechToText.title": "Мовлення в текст",
   "feature.suggestedQuestionsAfterAnswer.description": "Налаштування пропозицій наступних запитань може надати користувачам кращий чат.",

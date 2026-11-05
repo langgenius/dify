@@ -2,9 +2,12 @@
 name = "dify-trace-weave"
 version = "0.0.1"
 dependencies = [
-    "weave==0.52.36",
+    "dify-trace-sdk",
 ]
 description = "Dify ops tracing provider (Weave)."
+
+[project.entry-points."dify.trace_providers"]
+weave = "dify_trace_weave.provider:WeaveProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

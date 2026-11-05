@@ -10,7 +10,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes import BuiltinNodeTypes
 
 
-def test_build_system_variables_normalizes_workflow_execution_id():
+def test_build_system_variables_normalizes_workflow_execution_id() -> None:
     system_variables = build_system_variables(
         user_id="user-id",
         workflow_execution_id="run-id",
@@ -27,7 +27,7 @@ def test_build_system_variables_normalizes_workflow_execution_id():
     }
 
 
-def test_build_system_variables_preserves_explicit_workflow_run_id():
+def test_build_system_variables_preserves_explicit_workflow_run_id() -> None:
     system_variables = build_system_variables(
         workflow_run_id="explicit-run-id",
         workflow_execution_id="ignored-run-id",
@@ -38,7 +38,7 @@ def test_build_system_variables_preserves_explicit_workflow_run_id():
     assert system_values["files"] == []
 
 
-def test_build_system_variables_preserves_file_values():
+def test_build_system_variables_preserves_file_values() -> None:
     file = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -56,7 +56,7 @@ def test_build_system_variables_preserves_file_values():
     assert system_values["files"] == [file]
 
 
-def test_default_system_variables_generates_workflow_run_id():
+def test_default_system_variables_generates_workflow_run_id() -> None:
     system_variables = default_system_variables()
     system_values = system_variables_to_mapping(system_variables)
 
@@ -65,7 +65,7 @@ def test_default_system_variables_generates_workflow_run_id():
     assert system_values["files"] == []
 
 
-def test_get_node_creation_preload_selectors_requires_conversation_for_memory_nodes():
+def test_get_node_creation_preload_selectors_requires_conversation_for_memory_nodes() -> None:
     selectors = get_node_creation_preload_selectors(
         node_type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
         node_data=SimpleNamespace(memory=object()),
@@ -74,7 +74,7 @@ def test_get_node_creation_preload_selectors_requires_conversation_for_memory_no
     assert selectors == (("sys", "conversation_id"),)
 
 
-def test_get_node_creation_preload_selectors_skips_non_memory_nodes():
+def test_get_node_creation_preload_selectors_skips_non_memory_nodes() -> None:
     selectors = get_node_creation_preload_selectors(
         node_type=BuiltinNodeTypes.START,
         node_data=SimpleNamespace(memory=None),
