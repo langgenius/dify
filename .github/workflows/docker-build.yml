@@ -13,6 +13,9 @@ on:
       - dify-agent/README.md
       - dify-agent/src/**
       - web/Dockerfile
+      - web/docker/entrypoint.sh
+      - web/docker/test_hostname.py
+      - .github/workflows/docker-build.yml
       - dify-agent-runtime/docker/Dockerfile
       - dify-agent-runtime/go.mod
       - dify-agent-runtime/go.sum
@@ -64,6 +67,10 @@ jobs:
             context: '{{defaultContext}}:dify-agent-runtime'
             file: 'docker/Dockerfile'
     steps:
+      - name: Check out Web smoke test
+        if: matrix.service_name == 'web-amd64'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Set up Depot CLI
         uses: depot/setup-action@91bc8495a33ebfc504ffc89e5674379ccf23c29c # v1.7.2
 
@@ -72,10 +79,18 @@ jobs:
         with:
           project: ${{ vars.DEPOT_PROJECT_ID }}
           push: false
+          load: ${{ matrix.service_name == 'web-amd64' }}
+          tags: dify-build-test:${{ matrix.service_name }}
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           build-contexts: ${{ matrix.build_contexts }}
           platforms: ${{ matrix.platform }}
+
+      - name: Smoke-test Web image hostnames
+        if: matrix.service_name == 'web-amd64'
+        run: |
+          docker pull python:3.13-slim
+          python web/docker/test_hostname.py --image dify-build-test:web-amd64
 
   build-docker-fork:
     if: github.event.pull_request.head.repo.full_name != github.repository
@@ -95,6 +110,10 @@ jobs:
             context: '{{defaultContext}}:dify-agent-runtime'
             file: 'docker/Dockerfile'
     steps:
+      - name: Check out Web smoke test
+        if: matrix.service_name == 'web-amd64'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -102,7 +121,15 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           push: false
+          load: ${{ matrix.service_name == 'web-amd64' }}
+          tags: dify-build-test:${{ matrix.service_name }}
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           build-contexts: ${{ matrix.build_contexts }}
           platforms: linux/amd64
+
+      - name: Smoke-test Web image hostnames
+        if: matrix.service_name == 'web-amd64'
+        run: |
+          docker pull python:3.13-slim
+          python web/docker/test_hostname.py --image dify-build-test:web-amd64
