@@ -10,14 +10,14 @@ import {
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { noop, useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationDialog from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -29,7 +29,6 @@ const CSV_HEADER_QA_CN = ['问题', '答案']
 type Props = Readonly<{
   appId: string
   onAdded: () => void
-  controlUpdateList: number
 }>
 
 type OperationsMenuProps = {
@@ -124,24 +123,15 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   )
 }
 
-const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
+const HeaderOptions: FC<Props> = ({ appId, onAdded }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
-  const [list, setList] = useState<Annotation[]>([])
-
-  const fetchList = React.useCallback(async () => {
-    const { data } = await consoleClient.apps.byAppId.annotations.export.get({
-      params: { app_id: appId },
-    })
-    setList(data)
-  }, [appId])
-
-  useEffect(() => {
-    fetchList()
-  }, [fetchList])
-  useEffect(() => {
-    if (controlUpdateList) fetchList()
-  }, [controlUpdateList, fetchList])
+  const { data: annotations } = useQuery(
+    consoleQuery.apps.byAppId.annotations.export.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
+  const list = annotations?.data ?? []
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -160,18 +150,12 @@ const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
     setShowClearConfirm(true)
   }, [])
   const handleExportJsonl = React.useCallback(() => {
-    downloadAnnotationJsonl(list, locale)
-  }, [list, locale])
+    downloadAnnotationJsonl(annotations?.data ?? [], locale)
+  }, [annotations, locale])
 
   return (
     <div className="flex space-x-2">
-      <AddAnnotationDialog
-        appId={appId}
-        onAdded={() => {
-          onAdded()
-          void fetchList().catch(noop)
-        }}
-      />
+      <AddAnnotationDialog appId={appId} onAdded={onAdded} />
       <Menu modal={false}>
         <MenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}

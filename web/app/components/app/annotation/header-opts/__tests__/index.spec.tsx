@@ -37,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.export.get': (input) => mockedFetchAnnotations(input),
       'apps.byAppId.annotations.post': (input) => addAnnotation(input),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -75,7 +76,6 @@ const renderComponent = (
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
     onAdded: vi.fn(),
-    controlUpdateList: 0,
     ...props,
   }
 
@@ -377,13 +377,14 @@ describe('HeaderOptions', () => {
     consoleSpy.mockRestore()
   })
 
-  it('should refetch annotations when controlUpdateList changes', async () => {
-    const view = renderComponent({ controlUpdateList: 0 })
+  it('should load the export for the current app when appId changes', async () => {
+    const view = renderComponent()
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
 
-    view.rerender(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} controlUpdateList={1} />)
+    view.rerender(<HeaderOptions appId="another-app" onAdded={vi.fn()} />)
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
+    expect(mockedFetchAnnotations).toHaveBeenLastCalledWith({ params: { app_id: 'another-app' } })
   })
 })

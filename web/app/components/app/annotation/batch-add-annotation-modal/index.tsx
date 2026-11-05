@@ -10,7 +10,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -40,6 +40,7 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
+  const queryClient = useQueryClient()
   const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
@@ -78,6 +79,14 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
       if (res.job_status === ProcessStatus.ERROR)
         toast.error(`${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.apps.byAppId.annotations.key({
+              input: { params: { app_id: appId } },
+            }),
+          }),
+          queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+        ])
         toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()

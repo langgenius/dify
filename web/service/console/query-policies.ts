@@ -1117,6 +1117,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
         byAppId: {
           annotations: {
+            delete: {
+              mutationOptions: {
+                // Deletion commits before index-task publishing; even an error may follow a write.
+                onSettled: (_data, _error, variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    }),
+                    context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+                  ])
+                },
+              },
+            },
             byAnnotationId: {
               post: {
                 mutationOptions: {
