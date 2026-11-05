@@ -54,6 +54,10 @@ Each `*.browser.spec.{ts,tsx}` must make its behavioral contract and browser evi
 
 Browser input is real and nothing waits between keys. Split a `userEvent.keyboard` sequence wherever a later key depends on state an earlier key produces, such as an opened menu or moved focus, and await that state with `expect.element` before continuing.
 
+For external file drops, use the browser provider's native file payload with a local fixture. A `File` added to a page-authored drag source can arrive as text instead. Await and hit-test the target before dispatching native drag events at its actual coordinates.
+
+When media source retention is the contract, check the native `src` or `<source src>` as well as `currentSrc`. The latter can still describe the previously decoded resource after a replacement source has been assigned, allowing a broken session boundary to pass.
+
 When file-input click/reset behavior is the contract, exercise the native click separately and await the cleared input value before uploading again. File-upload helpers can assign files without invoking the click handler; repeated uploads alone do not prove same-file reselection.
 
 For controls revealed by hover or focus, move the pointer outside the hover owner before proving keyboard disclosure. Browser Mode's `toBeVisible` accepts `opacity: 0`; pair native focus and activation with an actual opacity assertion when visible disclosure is the contract.
@@ -158,6 +162,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 ## Provenance
 
+- [#45604], `icon-picker/image-input` and `file-uploader-in-chat-input/file-item`: use native external-file payloads for drop ownership; a media source-switch mutation survived `currentSrc` alone and failed when the requested source was also checked.
+
 - [#45553], `chat-with-history/sidebar/item`: removing keyboard opacity disclosure survived a visibility-only assertion. Keep the pointer off the row and verify the focused control is actually opaque.
 
 - [#45517], `new-rag/upgrade/knowledge-upgrade-dialog`: Browser Mode must exclude a retired model with a partial-text matcher; negated whole-text equality would also accept a longer label containing that model.
@@ -182,6 +188,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [#45513]: https://github.com/langgenius/dify/pull/45513
 [#45517]: https://github.com/langgenius/dify/pull/45517
 [#45553]: https://github.com/langgenius/dify/pull/45553
+[#45604]: https://github.com/langgenius/dify/pull/45604
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
