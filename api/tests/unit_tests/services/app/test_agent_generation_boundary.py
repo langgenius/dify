@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from typing import Literal, TypedDict, override
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceEvent
 from flask import Flask
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -22,6 +24,7 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.app.entities.task_entities import ChatbotAppBlockingResponse
+from extensions.tracing import bind_tracing
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent import AgentConfigDraft
@@ -36,6 +39,7 @@ from services.app.generation.adapters.agent_app import AgentAppGenerator
 from services.app.generation.adapters.agent_runner import AgentAppRunner
 from services.tools.provider_queries import ToolProviders
 from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 from tests.unit_tests.repositories.agent.test_app_execution_repository import seed_agent
 
 
@@ -60,10 +64,22 @@ class BackendCall(TypedDict):
     query: str
 
 
+class TraceRecorder:
+    """Record events from a real request scope without external delivery."""
+
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
 @dataclass
 class Backend(AgentAppRunner):
     assert_released: Callable[[], None]
+    failure: Exception | None
     calls: list[BackendCall] = field(default_factory=list)
+    trace_scopes: list[TraceScope | None] = field(default_factory=list)
 
     @override
     def run(
@@ -94,6 +110,8 @@ class Backend(AgentAppRunner):
                 "query": query,
             }
         )
+        if self.failure is not None:
+            raise self.failure
 
 
 class BoundaryGenerator(AgentAppGenerator):
@@ -113,6 +131,7 @@ class BoundaryGenerator(AgentAppGenerator):
         queue_manager: AppQueueManager,
     ) -> tuple[bool, str, AnnotationReply | None]:
         self.backend.assert_released()
+        self.backend.trace_scopes.append(application_generate_entity.trace_scope)
         return False, application_generate_entity.query, None
 
     @override
@@ -141,6 +160,7 @@ class BoundaryGenerator(AgentAppGenerator):
 
 @pytest.mark.usefixtures("unbound_session_factory")
 @pytest.mark.parametrize("draft_type", [None, "debug_build"])
+@pytest.mark.parametrize("worker_fails", [False, True])
 def test_generate_closes_config_and_message_transactions(
     agent_sessions: sessionmaker[Session],
     app: Flask,
@@ -150,6 +170,7 @@ def test_generate_closes_config_and_message_transactions(
     workflow_queries: WorkflowToolQueries,
     monkeypatch: pytest.MonkeyPatch,
     draft_type: Literal["debug_build"] | None,
+    worker_fails: bool,
 ) -> None:
     """Keep global factories unbound; neither input preparation nor backend waiting may hold a read transaction."""
     sessions = agent_sessions
@@ -181,10 +202,17 @@ def test_generate_closes_config_and_message_transactions(
         records=app_records,
         workflow_queries=workflow_queries,
     )
-    backend = Backend(assert_released)
+    backend = Backend(assert_released, RuntimeError("agent backend unavailable") if worker_fails else None)
     generator.backend = backend
+    recorder = TraceRecorder()
+    hooks = RecordingTracingHooks(None)
+    monkeypatch.setattr(app, "extensions", dict(app.extensions))
+    bind_tracing(
+        app,
+        scopes=kernel_trace_scopes(recorder, policies=NoTracingPolicies(), enterprise_enabled=True),
+        hooks=hooks,
+    )
     monkeypatch.setattr(agent_app.ModelConfigConverter, "convert", convert_model)
-    monkeypatch.setattr(agent_app, "TraceQueueManager", lambda *_args: None)
     monkeypatch.setattr(agent_app.threading, "Thread", InlineThread)
     monkeypatch.setattr(agent_app.AgentAppGenerateResponseConverter, "convert", lambda **kwargs: kwargs["response"])
 
@@ -202,6 +230,16 @@ def test_generate_closes_config_and_message_transactions(
             assert session.get(AgentConfigDraft, first["agent_config_snapshot_id"]) is not None
     assert first["session_scope_snapshot_id"] == first["agent_config_snapshot_id"]
     assert first["query"] == "original question"
+    [trace_scope] = backend.trace_scopes
+    assert trace_scope is not None
+    assert (trace_scope.emitter, trace_scope.tenant_id, trace_scope.app_id, trace_scope.user_id) == (
+        recorder,
+        "tenant",
+        "app",
+        "account",
+    )
+    assert recorder.events == []
     assert_released()
     with sessions() as session:
-        assert len(session.scalars(select(Message)).all()) == 1
+        message = session.scalars(select(Message)).one()
+        assert hooks.terminals == ([("app", message.id, "failed")] if worker_fails else [])

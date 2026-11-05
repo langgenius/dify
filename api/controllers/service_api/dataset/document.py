@@ -79,6 +79,7 @@ from models.dataset import Dataset, Document
 from models.enums import DocumentCreatedFrom
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
+    get_dataset_doc_form,
     get_document_hit_count,
     get_document_process_rule,
     get_document_segment_count,
@@ -415,6 +416,9 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
     if not dataset:
         raise ValueError("Dataset does not exist.")
 
+    if "doc_form" not in payload.model_fields_set:
+        args["doc_form"] = get_dataset_doc_form(dataset, session=session) or "text_model"
+
     if not dataset.indexing_technique and not args.get("indexing_technique"):
         raise ValueError("indexing_technique is required.")
 
@@ -483,6 +487,8 @@ def _update_document_by_text(
     if not dataset:
         raise ValueError("Dataset does not exist.")
 
+    if "doc_form" not in payload.model_fields_set:
+        args["doc_form"] = get_dataset_doc_form(dataset, session=session) or "text_model"
     retrieval_model = payload.retrieval_model
     if (
         retrieval_model
@@ -794,7 +800,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         if "data" in request.form:
             args = json.loads(request.form["data"])
         if "doc_form" not in args:
-            args["doc_form"] = dataset.chunk_structure or "text_model"
+            args["doc_form"] = get_dataset_doc_form(dataset, session=session) or "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
 
@@ -895,7 +901,7 @@ def _update_document_by_file(
     if "data" in request.form:
         args = json.loads(request.form["data"])
     if "doc_form" not in args:
-        args["doc_form"] = dataset.chunk_structure or "text_model"
+        args["doc_form"] = get_dataset_doc_form(dataset, session=session) or "text_model"
     if "doc_language" not in args:
         args["doc_language"] = "English"
 

@@ -180,7 +180,7 @@ function Session() {
     timeZone,
     minuteStep = 1,
   } = useContext()
-  const { close, canEdit } = usePickerContext()
+  const { close, canEdit, readOnly } = usePickerContext()
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
   const unavailable = Boolean(
     isTimeUnavailable?.(draft) || Number(draft.slice(3)) % minuteStep !== 0,
@@ -198,37 +198,39 @@ function Session() {
         )
       }
       footer={
-        <React.Fragment>
-          <Button
-            size="small"
-            variant="ghost-accent"
-            onClick={() => {
-              setDraft(currentTime(timeZone, minuteStep))
-              requestScroll()
-            }}
-          >
-            {labels.now}
-          </Button>
-          <Button
-            variant="primary"
-            className="min-w-16"
-            size="small"
-            disabled={unavailable}
-            aria-describedby={unavailable ? errorId : undefined}
-            onClick={(event) => {
-              if (
-                canEdit() &&
-                commit(
-                  draft,
-                  createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+        !readOnly && (
+          <React.Fragment>
+            <Button
+              size="small"
+              variant="ghost-accent"
+              onClick={() => {
+                setDraft(currentTime(timeZone, minuteStep))
+                requestScroll()
+              }}
+            >
+              {labels.now}
+            </Button>
+            <Button
+              variant="primary"
+              className="min-w-16"
+              size="small"
+              disabled={unavailable}
+              aria-describedby={unavailable ? errorId : undefined}
+              onClick={(event) => {
+                if (
+                  canEdit() &&
+                  commit(
+                    draft,
+                    createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+                  )
                 )
-              )
-                close()
-            }}
-          >
-            {labels.apply}
-          </Button>
-        </React.Fragment>
+                  close()
+              }}
+            >
+              {labels.apply}
+            </Button>
+          </React.Fragment>
+        )
       }
     >
       <TimePanel
@@ -236,6 +238,7 @@ function Session() {
         scrollRequest={scrollRequest}
         value={draft}
         onValueChange={setDraft}
+        readOnly={readOnly}
         labels={labels}
         locale={locale}
         hourCycle={hourCycle}

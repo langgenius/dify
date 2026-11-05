@@ -29,7 +29,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       }}
       disablePointerDismissal
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="w-150 max-w-150">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-150">
         <DialogHeader>
           <div className="mb-2 h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
             <span

@@ -24,7 +24,7 @@ const view = (node: Node) => (
 )
 function renderNode(node: Node, parents: Node[] = []) {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: false, enable_marketplace: false },
+    systemFeatures: { enable_marketplace: false },
     workspacePermissionKeys: ['plugin.install'],
   })
   seedAppDslVersion(queryClient)

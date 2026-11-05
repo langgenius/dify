@@ -3,6 +3,7 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest, OpenDeploymentDialog } from '../types'
 import type { OpenUndeployDialog, UndeployHandler } from './types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -186,28 +187,19 @@ export const EnvironmentTable = memo(
           </div>
 
           {latestVersionIsError && (
-            <div
-              role="alert"
-              className="flex shrink-0 items-center gap-2 rounded-xl border border-state-destructive-border bg-state-destructive-hover-alt p-3"
-            >
-              <span
-                aria-hidden
-                className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive"
-              />
-              <p className="grow system-sm-medium text-text-destructive">
-                {t(($) => $['studio.latestVersionLoadFailed'])}
-              </p>
-              <Button
-                size="small"
-                variant="secondary"
-                loading={latestVersionIsRetrying}
-                onClick={() => void refetchLatestVersion()}
-                className="gap-1 px-2"
-              >
-                <span aria-hidden className="i-ri-reset-left-line size-3" />
-                <span>{tCommon(($) => $['operation.retry'])}</span>
-              </Button>
-            </div>
+            <Alert type="error" className="shrink-0">
+              <AlertTitle>{t(($) => $['studio.latestVersionLoadFailed'])}</AlertTitle>
+              <AlertActions>
+                <Button
+                  size="small"
+                  loading={latestVersionIsRetrying}
+                  onClick={() => void refetchLatestVersion()}
+                >
+                  <span aria-hidden className="i-ri-reset-left-line size-3" />
+                  <span>{tCommon(($) => $['operation.retry'])}</span>
+                </Button>
+              </AlertActions>
+            </Alert>
           )}
 
           <div
