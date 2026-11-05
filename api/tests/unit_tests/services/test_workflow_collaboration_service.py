@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Generator, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from threading import Event
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -237,6 +239,85 @@ class TestWorkflowCollaborationService:
         socketio.start_background_task.assert_not_called()
         socketio.enter_room.assert_not_called()
         socketio.emit.assert_not_called()
+
+    @pytest.mark.parametrize("failure", ["heartbeat", "background_task"])
+    def test_join_retries_heartbeat_startup_after_failure(
+        self,
+        real_service: ServiceFixture,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        failure: str,
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        if failure == "heartbeat":
+            refresh_heartbeat = repository.refresh_server_heartbeat
+            attempts = 0
+
+            def fail_once(server_id: str) -> None:
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise RuntimeError("heartbeat failed")
+                refresh_heartbeat(server_id)
+
+            monkeypatch.setattr(repository, "refresh_server_heartbeat", fail_once)
+        else:
+            socketio.start_background_task.side_effect = [RuntimeError("background task failed"), None]
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            with pytest.raises(RuntimeError, match="failed"):
+                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            assert repository.get_session_sids("wf-1") == []
+
+            assert service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session) is not None
+
+        assert repository.has_active_sessions("wf-1")
+        assert repository.server_heartbeat_exists("server-1")
+        assert socketio.start_background_task.call_count == (2 if failure == "background_task" else 1)
+
+    def test_concurrent_heartbeat_start_waits_for_a_failed_attempt(self, real_service: ServiceFixture) -> None:
+        service, repository, socketio = real_service
+        refresh_heartbeat = repository.refresh_server_heartbeat
+        first_started, second_started, release_first = Event(), Event(), Event()
+        attempts = 0
+
+        def refresh(server_id: str) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                first_started.set()
+                assert release_first.wait(5)
+                raise RuntimeError("heartbeat failed")
+            refresh_heartbeat(server_id)
+
+        def start_second() -> None:
+            second_started.set()
+            service._ensure_server_heartbeat_started()
+
+        with patch.object(repository, "refresh_server_heartbeat", side_effect=refresh):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                first = executor.submit(service._ensure_server_heartbeat_started)
+                assert first_started.wait(5)
+                second = executor.submit(start_second)
+                assert second_started.wait(5)
+                try:
+                    with pytest.raises(TimeoutError):
+                        second.result(timeout=0.2)
+                finally:
+                    release_first.set()
+
+                with pytest.raises(RuntimeError, match="heartbeat failed"):
+                    first.result(timeout=5)
+                second.result(timeout=5)
+
+        assert repository.server_heartbeat_exists("server-1")
+        socketio.start_background_task.assert_called_once()
 
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session

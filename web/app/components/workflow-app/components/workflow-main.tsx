@@ -6,9 +6,12 @@ import type {
 } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import type { WorkflowGeneratorEditor } from '@/app/components/workflow/workflow-generator/store'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { cloneDeep } from 'es-toolkit/object'
+import { isEqual } from 'es-toolkit/predicate'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +23,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -27,6 +31,8 @@ import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -209,6 +215,56 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+
+    const editor: WorkflowGeneratorEditor = {
+      appId,
+      snapshot: () =>
+        collaborationManager.canUseLocalDraftFallback()
+          ? null
+          : cloneDeep({
+              nodes: collaborationManager.getNodes(),
+              edges: collaborationManager.getEdges(),
+            }),
+      apply: async (graph, expected) => {
+        if (
+          useWorkflowGeneratorStore.getState().editor !== editor ||
+          !collaborationManager.isConnectedTo(appId) ||
+          !collaborationManager.canApplyLocalGraphMutation()
+        )
+          return 'unavailable'
+        if (!isEqual(editor.snapshot(), expected)) return 'changed'
+
+        try {
+          const next = getWorkflowDraftGraphForCanvas(graph)
+          collaborationManager.refreshGraphSynchronously()
+          collaborativeWorkflow.setNodes(initialNodes(next.nodes, next.edges))
+          collaborativeWorkflow.setEdges(initialEdges(next.edges, next.nodes))
+          collaborationManager.refreshGraphSynchronously()
+          if (next.viewport) await reactFlow.setViewport(next.viewport)
+          if (useWorkflowGeneratorStore.getState().editor !== editor) return 'unsaved'
+          return (await doSyncWorkflowDraft()) ? 'saved' : 'unsaved'
+        } catch {
+          return 'unsaved'
+        }
+      },
+    }
+    useWorkflowGeneratorStore.setState({ editor })
+    return () => {
+      if (useWorkflowGeneratorStore.getState().editor === editor)
+        useWorkflowGeneratorStore.setState({ editor: null })
+    }
+  }, [
+    appId,
+    collaborativeWorkflow,
+    doSyncWorkflowDraft,
+    getWorkflowDraftGraphForCanvas,
+    isCollaborationEnabled,
+    reactFlow,
+  ])
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)

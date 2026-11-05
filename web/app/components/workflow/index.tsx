@@ -243,17 +243,19 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          if (!isEqual(nodes, importedNodes)) {
-            setNodes(importedNodes)
+          setNodes((currentNodes) =>
+            isEqual(currentNodes, importedNodes) ? currentNodes : importedNodes,
+          )
+          if (!isEqual(reactflow.getNodes(), importedNodes))
             store.getState().setNodes(importedNodes)
-          }
-          if (!isEqual(edges, importedEdges)) {
-            setEdges(importedEdges)
+          setEdges((currentEdges) =>
+            isEqual(currentEdges, importedEdges) ? currentEdges : importedEdges,
+          )
+          if (!isEqual(store.getState().edges, importedEdges))
             store.getState().setEdges(importedEdges)
-          }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [reactflow, setEdges, setNodes, store])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {

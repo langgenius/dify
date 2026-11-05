@@ -20,6 +20,7 @@ import { webSocketClient } from '@/app/components/workflow/collaboration/core/we
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -285,6 +286,8 @@ function useRealCollaborationTransport() {
     'isConnected',
     'getIsLeader',
     'canPersistLocalGraph',
+    'refreshGraphSynchronously',
+    'onSyncRequest',
     'onGraphReadyChange',
     'onJoinFailure',
   ] as const)
@@ -306,6 +309,270 @@ function useRealCollaborationTransport() {
   })
   return transport
 }
+
+it('does not apply a generated graph before the room join is acknowledged', async () => {
+  const transport = useRealCollaborationTransport()
+  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.receive('status', { isLeader: true })
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+
+  expect(
+    await editor.apply(
+      {
+        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      snapshot,
+    ),
+  ).toBe('unavailable')
+  expect(collaborationManager.getNodes().map((node) => node.id)).not.toContain('generated')
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it.each(['leader', 'follower'] as const)(
+  'applies a generated graph through the %s collaboration save path',
+  async (role) => {
+    const transport = useRealCollaborationTransport()
+    await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+    await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+    act(() => {
+      transport.receive('connect')
+      transport.acknowledge('user_connect', { msg: 'connected' })
+      // A follower must first have received a trusted graph snapshot. An established
+      // leader that loses leadership has the same trusted state without mocking Loro.
+      transport.receive('status', { isLeader: true })
+      if (role === 'follower') transport.receive('status', { isLeader: false })
+    })
+    const editor = useWorkflowGeneratorStore.getState().editor
+    if (!editor) throw new Error('Missing workflow editor')
+    const snapshot = editor.snapshot()
+    if (!snapshot) throw new Error('Missing collaboration graph')
+    const graph = {
+      nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    }
+
+    let applied: Promise<string>
+    await act(async () => {
+      applied = editor.apply(graph, snapshot)
+      if (role === 'follower') {
+        await waitFor(() => expect(transport.messages('sync_request')).toHaveLength(1))
+        transport.acknowledge(
+          'sync_request',
+          { success: true, hash: 'saved-hash', updatedAt: 2 },
+          200,
+        )
+      }
+      expect(await applied).toBe('saved')
+    })
+
+    expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
+    if (role === 'leader')
+      expect(api.saveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            _is_collaborative: true,
+            graph: expect.objectContaining({
+              nodes: [expect.objectContaining({ id: 'generated' })],
+            }),
+          }),
+        }),
+        expect.anything(),
+      )
+    else {
+      expect(transport.messages('sync_request')[0]?.[1]).toMatchObject({
+        data: { graphSnapshot: expect.any(Uint8Array) },
+      })
+      const { LoroDoc } = await import('loro-crdt')
+      const saved = new LoroDoc()
+      saved.import(transport.messages('sync_request')[0]![1].data.graphSnapshot)
+      expect([...saved.getMap('nodes').keys()]).toEqual(['generated'])
+    }
+  },
+)
+
+it('applies against the CRDT even if a remote node has not rendered yet', async () => {
+  const transport = useRealCollaborationTransport()
+  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+    const current = collaborationManager.getNodes()
+    // A CRDT update can precede the animation frame that renders it in ReactFlow.
+    collaborationManager.setNodes(current, [
+      ...current,
+      createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
+    ])
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+  const graph = {
+    nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+    edges: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+  }
+  await act(async () => expect(await editor.apply(graph, snapshot)).toBe('saved'))
+  expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
+})
+
+it('keeps the latest of two graph imports in the controlled canvas', async () => {
+  const transport = useRealCollaborationTransport()
+  const subscribe = collaborationManager.onGraphImport.bind(collaborationManager)
+  let importGraph: Parameters<typeof collaborationManager.onGraphImport>[0] | undefined
+  vi.spyOn(collaborationManager, 'onGraphImport').mockImplementation((handler) => {
+    importGraph = handler
+    return subscribe(handler)
+  })
+  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+  })
+  await waitFor(() => expect(view.container.querySelector('[data-id="start"]')).toBeInTheDocument())
+  if (!importGraph) throw new Error('Missing graph import handler')
+  act(() => {
+    importGraph?.({
+      nodes: [
+        ...initialNodes,
+        createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
+      ],
+      edges: [],
+    })
+    importGraph?.({ nodes: initialNodes, edges: [] })
+  })
+  expect(view.container.querySelector('[data-id="start"]')).toBeInTheDocument()
+  expect(view.container.querySelector('[data-id="remote"]')).not.toBeInTheDocument()
+})
+
+it('does not replace a collaborator edit made while overwrite confirmation is open', async () => {
+  const transport = useRealCollaborationTransport()
+  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+  act(() => {
+    const current = collaborationManager.getNodes()
+    collaborationManager.setNodes(current, [
+      ...current,
+      createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
+    ])
+  })
+  expect(
+    await editor.apply(
+      {
+        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      snapshot,
+    ),
+  ).toBe('changed')
+  expect(collaborationManager.getNodes().map((node) => node.id)).toContain('remote')
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('leaves the generated graph in the editor when collaborative saving fails', async () => {
+  const transport = useRealCollaborationTransport()
+  api.saveDraft.mockRejectedValueOnce(new Error('save failed'))
+  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+  await act(async () => {
+    expect(
+      await editor.apply(
+        {
+          nodes: [
+            createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } }),
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        snapshot,
+      ),
+    ).toBe('unsaved')
+  })
+  expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
+})
+
+it('does not save through an editor after it unmounts', async () => {
+  const transport = useRealCollaborationTransport()
+  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+  act(() => view.unmount())
+  expect(
+    await editor.apply(
+      {
+        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      snapshot,
+    ),
+  ).toBe('unavailable')
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('does not save through an editor unmounted while applying a generated graph', async () => {
+  const transport = useRealCollaborationTransport()
+  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'connected' })
+    transport.receive('status', { isLeader: true })
+  })
+  const editor = useWorkflowGeneratorStore.getState().editor
+  const snapshot = editor?.snapshot()
+  if (!editor || !snapshot) throw new Error('Missing workflow editor')
+  let result: Promise<string>
+  await act(async () => {
+    result = editor.apply(
+      {
+        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      snapshot,
+    )
+    view.unmount()
+    expect(await result).toBe('unsaved')
+  })
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
 
 it('shows synchronization status until the collaborative graph is ready', async () => {
   await renderMain()

@@ -8,6 +8,7 @@ import type {
 } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
+import type { WorkflowGeneratorEditor } from './store'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, ModelModeType } from '@/types/app'
@@ -247,6 +248,17 @@ function WorkflowGeneratorModal() {
   // a generic "apply failed" toast leaves them stuck and confused.
   const [isShowHashCollision, { setTrue: showHashCollision, setFalse: hideHashCollision }] =
     useBoolean(false)
+  const applyTargetRef = useRef<{
+    editor: WorkflowGeneratorEditor
+    snapshot: NonNullable<ReturnType<WorkflowGeneratorEditor['snapshot']>>
+  } | null>(null)
+
+  const handleShowConfirmOverwrite = useCallback(() => {
+    const editor = useWorkflowGeneratorStore.getState().editor
+    const snapshot = editor?.appId === currentAppId ? editor.snapshot() : null
+    applyTargetRef.current = editor && snapshot ? { editor, snapshot } : null
+    showConfirmOverwrite()
+  }, [currentAppId, showConfirmOverwrite])
 
   // Holds the AbortController of the in-flight ``/workflow-generate`` request
   // so we can cancel it on (a) modal close, (b) a second Generate click
@@ -288,7 +300,7 @@ function WorkflowGeneratorModal() {
     // The cleanup function reads refs only, so it's stable; we intentionally
     // exclude ``abortInFlight`` from deps to avoid re-running this effect on
     // every render.
-    // oxlint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps -- run only when the modal unmounts
   }, [])
 
   // Note: the modal is mounted lazily by ``mount.tsx`` which unmounts it when
@@ -525,6 +537,42 @@ function WorkflowGeneratorModal() {
     hideConfirmOverwrite()
     setApplyingTrue()
     try {
+      const target = applyTargetRef.current
+      if (target) {
+        if (
+          useWorkflowGeneratorStore.getState().editor !== target.editor ||
+          target.editor.appId !== currentAppId
+        ) {
+          toast.error(t(($) => $['workflowGenerator.applyFailed'], { ns: 'workflowGenerator' }))
+          return
+        }
+        const result = await target.editor.apply(current.graph as GeneratedGraph, target.snapshot)
+        const currentStore = useWorkflowGeneratorStore.getState()
+        if (
+          currentStore.editor !== target.editor ||
+          currentStore.currentAppId !== target.editor.appId
+        )
+          return
+        if (result === 'unsaved') {
+          toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+          closeGenerator()
+          return
+        }
+        if (result === 'changed') {
+          toast.error(
+            t(($) => $['workflowGenerator.errors.hash_collision_title'], {
+              ns: 'workflowGenerator',
+            }),
+          )
+          return
+        }
+        if (result === 'unavailable') {
+          toast.error(t(($) => $['workflowGenerator.applyFailed'], { ns: 'workflowGenerator' }))
+          return
+        }
+        closeGenerator()
+        return
+      }
       await applyToCurrentApp({
         appId: currentAppId,
         appMode: currentAppMode ?? undefined,
@@ -603,7 +651,7 @@ function WorkflowGeneratorModal() {
       >
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-e md:border-b-0 lg:w-142.5">
             <div className="mb-5">
               <DialogTitle>
                 {isRefine
@@ -772,7 +820,7 @@ function WorkflowGeneratorModal() {
                     <Button
                       size="small"
                       variant="primary"
-                      onClick={showConfirmOverwrite}
+                      onClick={handleShowConfirmOverwrite}
                       disabled={isApplying}
                     >
                       {t(($) => $['workflowGenerator.studioApply'], { ns: 'workflowGenerator' })}
