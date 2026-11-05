@@ -22,6 +22,7 @@ export type FeatureModel = {
   model_load_balancing_enabled: boolean
   trigger_event: Quota
   webapp_copyright_enabled: boolean
+  workflow_collaboration_enabled: boolean
   workspace_members: LicenseLimitationModel
 }
 

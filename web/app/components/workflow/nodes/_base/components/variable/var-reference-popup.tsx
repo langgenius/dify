@@ -44,7 +44,7 @@ const VarReferencePopup: FC<Props> = ({
       {(!vars || vars.length === 0) && popupFor ? (
         popupFor === 'toAssigned' ? (
           <ListEmpty
-            title={t(($) => $['variableReference.noAvailableVars'], { ns: 'workflow' }) || ''}
+            title={t(($) => $['variableReference.noAvailableVars'], { ns: 'workflow' })}
             description={
               <div className="system-xs-regular text-text-tertiary">
                 {t(($) => $['variableReference.noVarsForOperation'], { ns: 'workflow' })}
@@ -53,7 +53,7 @@ const VarReferencePopup: FC<Props> = ({
           />
         ) : (
           <ListEmpty
-            title={t(($) => $['variableReference.noAssignedVars'], { ns: 'workflow' }) || ''}
+            title={t(($) => $['variableReference.noAssignedVars'], { ns: 'workflow' })}
             description={
               <div className="system-xs-regular text-text-tertiary">
                 {t(($) => $['variableReference.assignedVarsDescription'], { ns: 'workflow' })}

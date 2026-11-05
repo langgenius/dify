@@ -61,7 +61,9 @@ def _controller(
         credentials_schema=[],
     )
     return WorkflowToolProviderController(
-        draft_variable_saver=lambda: create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True),
+        draft_variable_saver=lambda _app_id, _account: create_autospec(
+            DraftVariableSaverFactory, instance=True, spec_set=True
+        ),
         entity=entity,
         provider_id=provider_id,
         queries=workflow_queries,
@@ -118,7 +120,9 @@ def _workflow_tool(
     app = _app(tenant_id=tenant_id)
     workflow = _workflow(app)
     return WorkflowTool(
-        draft_variable_saver=lambda: create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True),
+        draft_variable_saver=lambda _app_id, _account: create_autospec(
+            DraftVariableSaverFactory, instance=True, spec_set=True
+        ),
         workflow_as_tool_id="provider-1",
         entity=ToolEntity(
             identity=ToolIdentity(
@@ -260,7 +264,9 @@ def test_from_db_builds_controller(database_session: Session, *, workflow_querie
     ):
         built = WorkflowToolProviderController.from_db(
             db_provider,
-            draft_variable_saver=lambda: create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True),
+            draft_variable_saver=lambda _app_id, _account: create_autospec(
+                DraftVariableSaverFactory, instance=True, spec_set=True
+            ),
             queries=workflow_queries,
         )
 

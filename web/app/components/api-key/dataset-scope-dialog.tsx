@@ -33,7 +33,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -163,7 +163,7 @@ function DatasetScopeContent({
 }: Omit<DatasetScopeDialogProps, 'open' | 'finalFocus' | 'onOpenChange'>) {
   const { t } = useTranslation(['appApi', 'common'])
   const scopeId = useId()
-  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+  const { data: knowledgeFsEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_knowledge_fs,
     }),
