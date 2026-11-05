@@ -13,7 +13,7 @@ Check in order:
 ## Rules
 
 - Do not render a different component tree per breakpoint. Crossing the breakpoint remounts the subtree and drops focus and local state, and zooming a desktop browser crosses it as well. When narrow screens need an overlay, keep one copy of the content and add the overlay only for narrow screens.
-- Derive from the query during render, as [component state] and [Effects] require for any value. A `useState` initial value taken from the query is fixed at the hydration default, so it does not work either. When the narrow and wide surfaces each need open state, keep one state per surface and choose between them by the query.
+- Derive from the query during render, as [component state] and [Effects] require for any value. A `useState` initial value taken from the query is fixed at first mount, which during hydration is the wide default, so it does not work either. When the narrow and wide surfaces each need open state, keep one state per surface and choose between them by the query.
 - Name the result after the breakpoint or the surface, such as `isBelowSm` or `isCompact`, not after a device. Width tells how much space there is, not what device the user has.
 - A value read once inside an event handler or an effect can call `window.matchMedia` directly. A value used for rendering goes through `useMediaQuery`.
 - On the server and during hydration the hook returns `false`, so the first render is the wide layout. Anything that must look different on narrow screens from the first paint belongs in CSS.
