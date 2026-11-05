@@ -41,6 +41,7 @@ class CommittedMessageRecorder:
 @pytest.mark.parametrize("mode", [AppMode.AGENT_CHAT, AppMode.AGENT])
 @pytest.mark.parametrize("terminal", ["end", "error", "stop"])
 @pytest.mark.parametrize("commit_fails", [False, True])
+@pytest.mark.usefixtures("agent_runtime_app")
 def test_trace_follows_commit_and_agent_stop_remains_intent(
     agent_generate_entity: AgentChatAppGenerateEntity,
     agent_queue_manager: MessageBasedAppQueueManager,
