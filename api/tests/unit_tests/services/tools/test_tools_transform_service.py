@@ -1,20 +1,26 @@
 """Test cases for MCP tool transformation functionality."""
 
+import json
 from unittest.mock import Mock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
     ToolParameter,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
 )
-from models.tools import MCPToolProvider
+from models.account import Account
+from models.tools import ApiToolProvider, MCPToolProvider
+from repositories.tools.provider_repository import ToolProviderRepository
+from services.tools.api.contracts import ApiToolProviderRecord
 from services.tools.provider_queries import MCPProviderRecord
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
@@ -441,6 +447,30 @@ def _parameter(
         type=ToolParameter.ToolParameterType.STRING,
         form=form,
     )
+
+
+def _api_provider(session: Session, auth_type: str) -> ApiToolProviderRecord:
+    """Persist an API provider and load its author/configuration through the scoped repository."""
+    user = Account(name="Test User", email="user@example.com")
+    session.add(user)
+    session.flush()
+    provider = ApiToolProvider(
+        name="Test API Provider",
+        icon='{"background": "#000", "content": "A"}',
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id=user.id,
+        tenant_id="00000000-0000-0000-0000-000000000002",
+        description="Test API tool provider",
+        tools_str="[]",
+        credentials_str=json.dumps({"auth_type": auth_type}),
+    )
+    session.add(provider)
+    session.commit()
+    repository = ToolProviderRepository(sessionmaker(session.get_bind(), expire_on_commit=False))
+    record = repository.get(tenant_id=provider.tenant_id, provider_id=provider.id)
+    assert record is not None
+    return record
 
 
 class TestToolTransformService:
@@ -896,3 +926,22 @@ class TestConvertMcpSchemaToParameter:
     def test_missing_description_defaults_empty(self):
         schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
         assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
+
+
+@pytest.mark.parametrize(
+    ("auth_type", "credential_names"),
+    [
+        ("api_key_header", ["auth_type", "api_key_header", "api_key_value", "api_key_header_prefix"]),
+        ("api_key_query", ["auth_type", "api_key_query_param", "api_key_value"]),
+        ("api_key", ["auth_type", "api_key_header", "api_key_value", "api_key_header_prefix"]),
+        ("something_else", ["auth_type"]),
+    ],
+)
+def test_api_provider_to_controller_preserves_author_and_auth_schema(
+    sqlite_session: Session, auth_type: str, credential_names: list[str]
+) -> None:
+    """Transform the persisted provider's detached record without losing author or legacy auth mapping."""
+    record = _api_provider(sqlite_session, auth_type)
+    controller = ToolTransformService.api_provider_to_controller(record)
+    assert controller.entity.identity.author == "Test User"
+    assert [item.name for item in controller.entity.credentials_schema] == credential_names

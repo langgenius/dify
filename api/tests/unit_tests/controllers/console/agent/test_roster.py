@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -1378,13 +1378,9 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
 
 
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, workflow_application: ApplicationServices
 ) -> None:
-    @dataclass
-    class _AppServices:
-        workflow_variables: object = field(default_factory=object)
-
-    monkeypatch.setattr(composer_controller, "application_services", _AppServices)
+    monkeypatch.setattr(composer_controller, "application_services", lambda: workflow_application)
     app_model = _app_detail_obj(id="app-1")
     payload = {
         "variant": ComposerVariant.WORKFLOW.value,

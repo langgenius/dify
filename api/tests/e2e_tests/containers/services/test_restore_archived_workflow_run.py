@@ -17,13 +17,13 @@ from services.retention.workflow_run.restore_archived_workflow_run import Workfl
 class TestWorkflowRunRestore:
     """Tests for the WorkflowRunRestore class."""
 
-    def test_restore_initialization(self):
+    def test_restore_initialization(self) -> None:
         """Restore service should respect dry_run flag."""
         restore = WorkflowRunRestore(dry_run=True)
 
         assert restore.dry_run is True
 
-    def test_convert_datetime_fields(self):
+    def test_convert_datetime_fields(self) -> None:
         """ISO datetime strings should be converted to datetime objects."""
         record = {
             "id": "test-id",
@@ -40,7 +40,7 @@ class TestWorkflowRunRestore:
         assert result["created_at"].month == 1
         assert result["name"] == "test"
 
-    def test_restore_table_records_returns_rowcount(self, db_session_with_containers: Session):
+    def test_restore_table_records_returns_rowcount(self, db_session_with_containers: Session) -> None:
         """Restore should return inserted rowcount."""
         restore = WorkflowRunRestore()
         record_id = str(uuid4())
@@ -66,7 +66,7 @@ class TestWorkflowRunRestore:
         restored_pause = db_session_with_containers.scalar(select(WorkflowPause).where(WorkflowPause.id == record_id))
         assert restored_pause is not None
 
-    def test_restore_table_records_unknown_table(self, db_session_with_containers: Session):
+    def test_restore_table_records_unknown_table(self, db_session_with_containers: Session) -> None:
         """Unknown table names should be ignored gracefully."""
         restore = WorkflowRunRestore()
 

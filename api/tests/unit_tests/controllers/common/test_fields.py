@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import pytest
+
 from controllers.common.fields import Parameters, Site
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.model import IconType
@@ -11,6 +13,22 @@ def test_parameters_model_round_trip() -> None:
     model = Parameters.model_validate(parameters)
 
     assert model.model_dump(mode="json") == parameters
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_parameters_serializes_show_thoughts(enabled: bool) -> None:
+    parameters = get_parameters_from_feature_dict(
+        features_dict={"show_thoughts": {"enabled": enabled}}, user_input_form=[]
+    )
+
+    assert Parameters.model_validate(parameters).model_dump(mode="json")["show_thoughts"] == {"enabled": enabled}
+
+
+def test_parameters_defaults_show_thoughts_for_legacy_payload() -> None:
+    parameters = dict(get_parameters_from_feature_dict(features_dict={}, user_input_form=[]))
+    parameters.pop("show_thoughts")
+
+    assert Parameters.model_validate(parameters).model_dump(mode="json")["show_thoughts"] == {"enabled": False}
 
 
 def test_site_icon_url_uses_signed_url_for_image_icon() -> None:

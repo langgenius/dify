@@ -598,6 +598,14 @@ def _tool_error_text(*, tool_name: str, error: DifyPluginToolClientError) -> str
     return f"tool invoke error: {error}"
 
 
+def _normalized_json_part(text: str) -> str:
+    """Render one part as canonical JSON so formatting differences do not hide duplicates."""
+    try:
+        return json.dumps(json.loads(text), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    except (ValueError, RecursionError):
+        return text
+
+
 def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeMessage]) -> str:
     """Convert daemon stream messages into the plain-text tool observation.
 
@@ -638,8 +646,8 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
             parts.append(str(response.message))
 
     if json_parts:
-        existing_parts = set(parts)
-        parts.extend(part for part in json_parts if part not in existing_parts)
+        existing_parts = {_normalized_json_part(part) for part in parts}
+        parts.extend(part for part in json_parts if _normalized_json_part(part) not in existing_parts)
     return "".join(parts)
 
 

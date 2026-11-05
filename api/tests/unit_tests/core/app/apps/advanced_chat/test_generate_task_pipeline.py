@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -75,6 +79,29 @@ from services.workflow.execution.adapters.chatflow import generate_task_pipeline
 from services.workflow.execution.adapters.chatflow.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _TraceRecorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="session-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None,
+            session_id="trace-session-1",
+            parent_workflow_run_id=None,
+            parent_node_execution_id=None,
+        ),
+    )
 
 
 @dataclass
@@ -224,16 +251,6 @@ def message_case(app_records, message_store, *, tool_providers) -> MessageCase:
     return MessageCase(pipeline, message_store)
 
 
-def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
-    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline.__new__(
-        pipeline_module.AdvancedChatAppGenerateTaskPipeline
-    )
-    pipeline._workflow_run_id = "run-1"
-    pipeline._message_id = "message-1"
-    pipeline._workflow_tenant_id = "tenant-1"
-    return pipeline
-
-
 def test_process_passes_message_id_to_conversation_name_generation(message_case, monkeypatch):
     pipeline = message_case.pipeline
     calls = []
@@ -375,26 +392,60 @@ def test_message_writes_check_owner_chain(message_case, field):
 
 
 def test_trace_is_enqueued_after_message_commit(message_case):
+    """The completed-message trace retains correlation and follows the durable write."""
     pipeline = message_case.pipeline
-    traces = []
+    traces: list[TraceEvent] = []
 
     class TraceRecorder:
-        def add_trace_task(self, task):
+        def emit(self, event: TraceEvent) -> None:
             assert message_case.message().answer == "done"
-            traces.append(task)
+            traces.append(event)
 
-    pipeline._application_generate_entity.trace_manager = TraceRecorder()
+    pipeline._application_generate_entity.trace_scope = _trace_scope(TraceRecorder())
     pipeline._task_state.answer = "done"
     pipeline._save_message()
     assert traces == []
     pipeline._emit_message_trace()
     assert len(traces) == 1
-    assert traces[0].message_id == "message-1"
-    assert traces[0].kwargs["trace_session_id"] == "trace-1"
+    event = traces[0]
+    assert event.payload == MessageCompleted(message_id="message-1", conversation_id="conversation-1")
+    assert event.correlation.session_id == "trace-session-1"
+    assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-1", "app-1", "session-1")
 
 
-def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None:
-    pipeline = _build_pipeline()
+def test_save_message_does_not_emit_trace(message_case) -> None:
+    """_save_message must not emit a trace; emitting is the terminal caller's responsibility.
+
+    This keeps intermediate saves (e.g. on pause) from duplicating message, token, and TTFT metrics
+    when the message is later resumed.
+    """
+    recorder = _TraceRecorder()
+    pipeline = message_case.pipeline
+    pipeline._application_generate_entity.trace_scope = _trace_scope(recorder)
+
+    pipeline._save_message()
+
+    assert message_case.message().status == MessageStatus.NORMAL
+    assert recorder.events == []
+
+
+def test_emit_message_trace_skips_without_trace_scope(message_case) -> None:
+    pipeline = message_case.pipeline
+
+    pipeline._emit_message_trace()
+
+
+def _build_pipeline() -> AdvancedChatAppGenerateTaskPipeline:
+    """Build a fully initialized adapter for the shared event-routing tests."""
+    pipeline = _make_pipeline()
+    pipeline._workflow_run_id = "run-1"
+    pipeline._message_id = "message-1"
+    pipeline._workflow_tenant_id = "tenant-1"
+    return pipeline
+
+
+def test_workflow_succeeded_emits_message_end_before_workflow_finished(message_case) -> None:
+    pipeline = message_case.pipeline
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_id = "workflow-1"
     pipeline._ensure_workflow_initialized = mock.Mock()
@@ -415,8 +466,8 @@ def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None
     assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
 
 
-def test_workflow_partial_success_emits_message_end_before_workflow_finished() -> None:
-    pipeline = _build_pipeline()
+def test_workflow_partial_success_emits_message_end_before_workflow_finished(message_case) -> None:
+    pipeline = message_case.pipeline
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_id = "workflow-1"
     pipeline._ensure_workflow_initialized = mock.Mock()
@@ -437,8 +488,8 @@ def test_workflow_partial_success_emits_message_end_before_workflow_finished() -
     assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
 
 
-def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
-    pipeline = _build_pipeline()
+def test_process_stream_response_breaks_after_workflow_succeeded(message_case) -> None:
+    pipeline = message_case.pipeline
     succeeded_event = QueueWorkflowSucceededEvent(outputs={})
     ping_event = QueuePingEvent()
     queue_messages = [
@@ -458,12 +509,12 @@ def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event, trace_manager=None)
+    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event)
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
-def test_process_stream_response_breaks_after_workflow_partial_success() -> None:
-    pipeline = _build_pipeline()
+def test_process_stream_response_breaks_after_workflow_partial_success(message_case) -> None:
+    pipeline = message_case.pipeline
     partial_event = QueueWorkflowPartialSuccessEvent(exceptions_count=1, outputs={})
     ping_event = QueuePingEvent()
     queue_messages = [
@@ -483,12 +534,49 @@ def test_process_stream_response_breaks_after_workflow_partial_success() -> None
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event, trace_manager=None)
+    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event)
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
 class _DummyToolProviders:
     pass
+
+
+class _TimelineTraceRecorder:
+    """Record trace events on a timeline shared with the commits they must follow."""
+
+    def __init__(self, timeline: list[str]) -> None:
+        self._timeline = timeline
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self._timeline.append("trace")
+
+
+def _timeline_trace_scope(recorder: _TimelineTraceRecorder) -> TraceScope:
+    """Bind trace observations to the persisted MessageCase owner."""
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+@contextmanager
+def _recording_commits(timeline: list[str]) -> Generator[None]:
+    def record_commit(_session: Session) -> None:
+        timeline.append("commit")
+
+    event.listen(Session, "after_commit", record_commit)
+    try:
+        yield
+    finally:
+        event.remove(Session, "after_commit", record_commit)
 
 
 def _make_pipeline(app_records=None):
@@ -510,7 +598,7 @@ def _make_pipeline(app_records=None):
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
-        trace_manager=None,
+        trace_scope=None,
         workflow_run_id="run-id",
     )
 
@@ -1151,6 +1239,81 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["replace", "end"]
         assert saved == ["saved"]
+
+    @pytest.mark.parametrize(
+        ("saved_on_pause", "expected_timeline", "expected_payloads"),
+        [
+            (
+                False,
+                ["save", "commit", "trace"],
+                [MessageCompleted(message_id="message-1", conversation_id="conversation-1")],
+            ),
+            # The resumed run saves and reports the message instead.
+            (True, [], []),
+        ],
+    )
+    def test_handle_message_end_event_reports_message_after_commit(
+        self,
+        message_case: MessageCase,
+        saved_on_pause: bool,
+        expected_timeline: list[str],
+        expected_payloads: list[MessageCompleted],
+    ) -> None:
+        """Given persisted chat rows, report completion only after the real repository commits."""
+        timeline: list[str] = []
+        recorder = _TimelineTraceRecorder(timeline)
+        pipeline = message_case.pipeline
+        pipeline._application_generate_entity.trace_scope = _timeline_trace_scope(recorder)
+        pipeline._message_saved_on_pause = saved_on_pause
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+        )
+        save_message = pipeline._save_message
+
+        def save(**kwargs):
+            """Record entry while retaining the repository transaction and its failures."""
+            timeline.append("save")
+            save_message(**kwargs)
+
+        pipeline._save_message = save
+
+        with _recording_commits(timeline):
+            responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == expected_timeline
+        assert [event.payload for event in recorder.events] == expected_payloads
+
+    def test_handle_stop_event_reports_moderated_message_after_commit(self, message_case: MessageCase) -> None:
+        """Given persisted chat rows, a moderation stop commits before emitting its trace."""
+        timeline: list[str] = []
+        recorder = _TimelineTraceRecorder(timeline)
+        pipeline = message_case.pipeline
+        pipeline._workflow_run_id = None
+        pipeline._application_generate_entity.trace_scope = _timeline_trace_scope(recorder)
+        save_message = pipeline._save_message
+
+        def save(**kwargs):
+            """Record entry while retaining the repository transaction and its failures."""
+            timeline.append("save")
+            save_message(**kwargs)
+
+        pipeline._save_message = save
+
+        with _recording_commits(timeline):
+            responses = list(
+                pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION))
+            )
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == ["save", "commit", "trace"]
+        assert [event.payload for event in recorder.events] == [
+            MessageCompleted(message_id="message-1", conversation_id="conversation-1")
+        ]
 
     def test_dispatch_event_handles_node_exception(self):
         pipeline = _make_pipeline()

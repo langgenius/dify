@@ -1,14 +1,25 @@
-import re
-from pathlib import Path
+import pytest
 
-_ENTRYPOINT_PATH = Path(__file__).resolve().parents[2] / "docker" / "entrypoint.sh"
-_DEFAULT_QUEUE_ASSIGNMENT = re.compile(r'^\s*DEFAULT_QUEUES="(?P<queues>[^"$]+)"$', re.MULTILINE)
-_IM_CONTACT_SYNC_QUEUE = "human_input_contact_sync"
+from tests.helpers.unit.worker_entrypoint import worker_configuration
 
 
-def test_default_worker_queue_sets_consume_im_contact_sync_tasks() -> None:
-    entrypoint = _ENTRYPOINT_PATH.read_text()
-    default_queue_sets = [match.group("queues").split(",") for match in _DEFAULT_QUEUE_ASSIGNMENT.finditer(entrypoint)]
+@pytest.mark.parametrize("edition", ["COMMUNITY", "ENTERPRISE", "CLOUD"])
+def test_default_worker_queue_sets_consume_im_contact_sync_tasks(edition: str) -> None:
+    selected = worker_configuration({"DEPLOYMENT_EDITION": edition})
+    assert selected.returncode == 0, selected.stderr
+    assert "human_input_contact_sync" in selected.stdout.splitlines()[-1].split(",")
 
-    assert len(default_queue_sets) == 2
-    assert all(_IM_CONTACT_SYNC_QUEUE in queues for queues in default_queue_sets)
+
+@pytest.mark.parametrize("edition", ["COMMUNITY", "ENTERPRISE", "CLOUD"])
+@pytest.mark.parametrize("queue", [None, "ops_trace", "tracing-upgrade"])
+def test_default_worker_consumes_configured_trace_queue_without_legacy_queue(edition: str, queue: str | None) -> None:
+    environment = {"DEPLOYMENT_EDITION": edition}
+    if queue is not None:
+        environment["OPS_TRACE_QUEUE"] = queue
+    selected = worker_configuration(environment)
+    assert selected.returncode == 0, selected.stderr
+    queues = selected.stdout.splitlines()[-1].split(",")
+    expected = queue or "ops_trace_v2"
+    assert expected in queues
+    if expected != "ops_trace":
+        assert "ops_trace" not in queues

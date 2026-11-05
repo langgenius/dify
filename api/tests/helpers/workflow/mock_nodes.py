@@ -107,6 +107,9 @@ class MockNodeMixin:
             kwargs.setdefault("runtime_support", MagicMock())
             kwargs.setdefault("message_transformer", MagicMock())
 
+        if isinstance(self, KnowledgeRetrievalNode):
+            kwargs.setdefault("retrieval", MagicMock())
+
         super().__init__(
             node_id=node_id,
             data=data,

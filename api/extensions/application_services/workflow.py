@@ -6,12 +6,12 @@ from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
+from dify_trace_sdk.emitter import TraceScope
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
 from extensions.ext_redis import RedisClientWrapper
@@ -95,13 +95,18 @@ class _SessionBoundAgentToolInvoker(AgentToolInvoker):
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
         *,
         records: MessageFileWriter,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
+        """Invoke the tool in an owned session and forward its optional trace scope.
+
+        Message files commit through the supplied writer before trace emission;
+        invocation failures preserve the ToolEngine error contract.
+        """
         with self._sessions() as session:
             return ToolEngine.agent_invoke(
                 session=session,
@@ -112,7 +117,7 @@ class _SessionBoundAgentToolInvoker(AgentToolInvoker):
                 message=message,
                 invoke_from=invoke_from,
                 agent_tool_callback=agent_tool_callback,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 conversation_id=conversation_id,
                 app_id=app_id,
                 message_id=message_id,

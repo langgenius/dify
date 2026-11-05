@@ -268,6 +268,7 @@
   "tracing.config": "कॉन्फ़िगर करें",
   "tracing.configProvider.clientId": "OAuth क्लाइंट आईडी",
   "tracing.configProvider.clientSecret": "OAuth क्लाइंट सीक्रेट",
+  "tracing.configProvider.configuredSecretPlaceholder": "कॉन्फ़िगर किया गया। सहेजा गया मान बनाए रखने के लिए इसे खाली छोड़ें।",
   "tracing.configProvider.databricksHost": "डेटाब्रिक्स वर्कस्पेस यूआरएल",
   "tracing.configProvider.experimentId": "प्रयोग आईडी",
   "tracing.configProvider.password": "पासवर्ड",

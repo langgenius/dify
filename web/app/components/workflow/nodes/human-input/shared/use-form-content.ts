@@ -8,10 +8,8 @@ const useHumanInputFormContent = <T extends HumanInputSharedNodeType>(id: string
   const [editorKey, setEditorKey] = useState(0)
   const { inputs, setInputs } = useNodeCrud<T>(id, payload)
   const { handleOutVarRenameChange } = useWorkflow()
-  // Existing Lexical blocks retain callbacks, so edits must read the latest node data.
   const inputsRef = useRef(inputs)
 
-  // Refresh before FormContent's passive effect persists newly inserted fields.
   useLayoutEffect(() => {
     inputsRef.current = inputs
   }, [inputs])

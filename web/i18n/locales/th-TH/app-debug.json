@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "สร้างข้อความหลายข้อความพร้อมกัน จากนั้นแก้ไขและสร้างต่อไป",
   "feature.moreLikeThis.tip": "การใช้คุณสมบัตินี้จะมีค่าใช้จ่ายโทเค็นเพิ่มเติม",
   "feature.moreLikeThis.title": "เพิ่มเติมเช่นนี้",
+  "feature.showThoughts.description": "แสดงเนื้อหาการคิดของโมเดลในการสนทนา",
+  "feature.showThoughts.title": "แสดงกระบวนการคิด",
   "feature.speechToText.description": "สามารถใช้การป้อนข้อมูลด้วยเสียงในการแชทได้",
   "feature.speechToText.title": "คําพูดเป็นข้อความ",
   "feature.suggestedQuestionsAfterAnswer.description": "การตั้งค่าคําแนะนําคําถามถัดไปจะช่วยให้ผู้ใช้แชทได้ดีขึ้น",

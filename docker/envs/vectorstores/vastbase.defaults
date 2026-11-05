@@ -1,0 +1,10 @@
+# Defaults for Vastbase. Copy this file to vastbase.env to customize its client connection.
+# docker/.env takes precedence. Keep credentials aligned with the server's VB_* settings.
+
+VASTBASE_PASSWORD=${VASTBASE_PASSWORD-Difyai123456}
+VASTBASE_DATABASE=${VASTBASE_DATABASE-dify}
+# VASTBASE_MIN_CONNECTION=1
+# VASTBASE_MAX_CONNECTION=5
+VASTBASE_HOST=${VASTBASE_HOST-vastbase}
+VASTBASE_PORT=${VASTBASE_PORT-5432}
+VASTBASE_USER=${VASTBASE_USER-dify}

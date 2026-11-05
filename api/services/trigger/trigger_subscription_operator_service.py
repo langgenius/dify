@@ -38,28 +38,3 @@ class TriggerSubscriptionOperatorService:
                 )
             ).all()
             return list(subscribers)
-
-    @classmethod
-    def delete_plugin_trigger_by_subscription(cls, tenant_id: str, subscription_id: str, *, session: Session) -> None:
-        """Delete a plugin trigger by tenant_id and subscription_id within an existing session
-
-        Args:
-            session: Database session
-            tenant_id: The tenant ID
-            subscription_id: The subscription ID
-
-        Raises:
-            NotFound: If plugin trigger not found
-        """
-        # Find plugin trigger using indexed columns
-        plugin_trigger = session.scalar(
-            select(WorkflowPluginTrigger).where(
-                WorkflowPluginTrigger.tenant_id == tenant_id,
-                WorkflowPluginTrigger.subscription_id == subscription_id,
-            )
-        )
-
-        if not plugin_trigger:
-            return
-
-        session.delete(plugin_trigger)
