@@ -15,7 +15,7 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -47,10 +47,10 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
   }
 
   return (
-    <div className="flex items-center py-2 pr-2 pl-1">
+    <div className="flex items-center py-2 ps-1 pe-2">
       <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })} className="flex-1">
         <BreadcrumbList className="gap-px">
-          <BreadcrumbItem className="shrink-0 gap-0 rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
+          <BreadcrumbItem className="shrink-0 gap-0 rounded-lg py-2 ps-0.5 pe-1.5 transition-colors hover:bg-background-default-hover">
             <IconButton
               size="xs"
               aria-label={t(($) => $['operation.back'], { ns: 'common' })}
