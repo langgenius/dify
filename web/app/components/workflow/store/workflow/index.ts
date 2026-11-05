@@ -69,7 +69,7 @@ type CreateWorkflowStoreParams = {
 }
 
 export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
-  const { injectWorkflowStoreSliceFn } = params
+  const { injectWorkflowStoreSliceFn } = params || {}
 
   return createStore<Shape>()(
     temporal<Shape, [], [], WorkflowHistoryTemporalState>(
