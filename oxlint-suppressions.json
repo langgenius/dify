@@ -3423,11 +3423,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-page/plugins-panel-results.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-tags-filter/compact-trigger.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -6396,11 +6391,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/roster/components/agent-roster-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/features/agent-v2/roster/components/agent-workflow-references-menu.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6719,11 +6709,6 @@
   "web/features/skills/detail/version-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 13
-    }
-  },
-  "web/features/skills/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/features/tag-management/components/tag-filter.tsx": {

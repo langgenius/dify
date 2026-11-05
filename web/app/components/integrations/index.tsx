@@ -19,13 +19,6 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { Suspense, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -422,34 +415,27 @@ export default function IntegrationsPage({
             </Suspense>
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-            <ScrollAreaViewport
-              aria-label={scrollAreaLabel}
-              className="overscroll-contain"
-              role={scrollAreaLabel ? 'region' : undefined}
-            >
-              <ScrollAreaContent className="min-h-full">
-                <Suspense key={section} fallback={null}>
-                  <IntegrationSectionRenderer
-                    section={section}
-                    title={integrationHeader?.title ?? activeItem?.label}
-                    description={headerDescriptionWithLink}
-                    providerSearchText={providerSearchText}
-                    onProviderSearchTextChange={setProviderSearchText}
-                    onSwitchToMarketplace={handleSwitchToMarketplace}
-                    canInstallPlugin={canInstallPlugin}
-                    canDeletePlugin={canDeletePlugin}
-                    isInstallPermissionLoading={isReferenceSettingLoading}
-                    canUpdatePlugin={canUpdatePlugin}
-                    pluginCategoryToolbarAction={pluginSettingAction}
-                  />
-                </Suspense>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
+          <div
+            aria-label={scrollAreaLabel}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            role={scrollAreaLabel ? 'region' : undefined}
+          >
+            <Suspense key={section} fallback={null}>
+              <IntegrationSectionRenderer
+                section={section}
+                title={integrationHeader?.title ?? activeItem?.label}
+                description={headerDescriptionWithLink}
+                providerSearchText={providerSearchText}
+                onProviderSearchTextChange={setProviderSearchText}
+                onSwitchToMarketplace={handleSwitchToMarketplace}
+                canInstallPlugin={canInstallPlugin}
+                canDeletePlugin={canDeletePlugin}
+                isInstallPermissionLoading={isReferenceSettingLoading}
+                canUpdatePlugin={canUpdatePlugin}
+                pluginCategoryToolbarAction={pluginSettingAction}
+              />
+            </Suspense>
+          </div>
         )}
       </section>
     </div>
