@@ -1761,6 +1761,7 @@ export const zOpenApiErrorCode = z.enum([
   'node_type_not_found',
   'not_acceptable',
   'not_found',
+  'not_webhook_trigger',
   'plugin_install_forbidden',
   'plugin_not_installed',
   'plugin_service_unavailable',
@@ -1795,6 +1796,7 @@ export const zOpenApiErrorCode = z.enum([
   'webapp_access_requires_ee',
   'webapp_access_unavailable',
   'webapp_public_access_disabled',
+  'webhook_not_found',
 ])
 
 /**
@@ -2624,6 +2626,15 @@ export const zWebAppToken = z.object({
   access_token: z.string().nullish(),
   app_base_url: z.string(),
   url: z.string().nullish(),
+})
+
+/**
+ * WebhookResponse
+ */
+export const zWebhookResponse = z.object({
+  node_id: z.string(),
+  webhook_debug_url: z.string(),
+  webhook_url: z.string(),
 })
 
 /**
@@ -3591,6 +3602,16 @@ export const zPostAppsByAppIdWebappResetPath = z.object({
  * New URL token
  */
 export const zPostAppsByAppIdWebappResetResponse = zWebAppToken
+
+export const zGetAppsByAppIdWebhooksByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+})
+
+/**
+ * Webhook addresses
+ */
+export const zGetAppsByAppIdWebhooksByNodeIdResponse = zWebhookResponse
 
 export const zPostAppsByAppIdWorkflowRunBody = zWorkflowRunPayload
 
