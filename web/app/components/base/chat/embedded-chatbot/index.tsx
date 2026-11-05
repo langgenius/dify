@@ -1,6 +1,7 @@
 'use client'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
@@ -10,7 +11,6 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { AppSourceType } from '@/service/share'
 import { EmbeddedChatbotContext, useEmbeddedChatbotContext } from './context'
 import { useEmbeddedChatbot } from './hooks'
@@ -98,7 +98,7 @@ const Chatbot = () => {
 }
 
 const EmbeddedChatbotWrapper = () => {
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,

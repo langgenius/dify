@@ -21,6 +21,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -28,7 +29,6 @@ import utc from 'dayjs/plugin/utc'
 import { parseAsString, useQueryState } from 'nuqs'
 import { Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsMobile } from '@/hooks/use-media-query'
 import useTimestamp from '@/hooks/use-timestamp'
 import { ConversationDetail } from './conversation-detail'
 import EmptyElement from './empty-element'
@@ -122,7 +122,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   )
 
   const popupRef = useRef<HTMLDivElement>(null)
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const isChatMode = appDetail.mode !== 'completion'
   const isChatflow = appDetail.mode === 'advanced-chat'

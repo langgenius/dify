@@ -6,6 +6,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { Collection } from '@/app/components/tools/types'
 import type { ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
@@ -27,7 +28,6 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
 import { useGetTryAppDataSets } from '@/service/use-try-app'
@@ -330,7 +330,7 @@ const normalizeAgentTool = (
 }
 
 const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
     consoleQuery.workspaces.current.toolProviders.get.queryOptions({

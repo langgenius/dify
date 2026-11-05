@@ -3,10 +3,10 @@ import type { InstalledAppResponse } from '@dify/contracts/api/console/installed
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from './context'
@@ -130,7 +130,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   isNewAgent = false,
   renderAgentContent,
 }) => {
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,

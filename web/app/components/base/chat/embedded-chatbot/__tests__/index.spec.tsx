@@ -2,9 +2,9 @@ import type { ReactElement, RefObject } from 'react'
 import type { ChatConfig } from '../../types'
 import type { Theme } from '../theme/theme'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { screen } from '@testing-library/react'
 import { vi } from 'vite-plus/test'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
@@ -21,8 +21,8 @@ vi.mock('../hooks', () => ({
   useEmbeddedChatbot: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-media-query', () => ({
-  useIsMobile: vi.fn(),
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: vi.fn(),
 }))
 
 vi.mock('../chat-wrapper', () => ({
@@ -116,7 +116,7 @@ describe('EmbeddedChatbot index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBrandingWorkspaceLogo = ''
-    vi.mocked(useIsMobile).mockReturnValue(true)
+    vi.mocked(useMediaQuery).mockReturnValue(true)
     vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn())
   })
 
@@ -254,7 +254,7 @@ describe('EmbeddedChatbot index', () => {
     })
 
     it('should not show powered by section on desktop', () => {
-      vi.mocked(useIsMobile).mockReturnValue(false)
+      vi.mocked(useMediaQuery).mockReturnValue(false)
       vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({ appData: null }))
 
       render(<EmbeddedChatbot />)

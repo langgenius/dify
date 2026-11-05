@@ -24,6 +24,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -37,7 +38,6 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -72,7 +72,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const { data: currentUserId } = useSuspenseQuery({

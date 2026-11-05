@@ -1,13 +1,13 @@
 'use client'
 
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { usePathname } from '@/next/navigation'
 import DatasetDetailSection from './dataset-detail-section'
 import { DatasetDetailTop } from './dataset-detail-top'
 
 export function DatasetDetailSidebar() {
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
   const pathname = usePathname()
 
   return (

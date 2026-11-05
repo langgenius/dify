@@ -4,6 +4,7 @@ import type { FC, MouseEvent } from 'react'
 import type { StepTwoProps } from './types'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,6 @@ import {
 } from '@/app/components/datasets/dataset-fields'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { LanguagesSupported } from '@/i18n/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
@@ -68,7 +68,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const { t } = useTranslation(['datasetCreation'])
   const locale = useLocale()
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)

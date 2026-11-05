@@ -6,6 +6,7 @@ import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -18,7 +19,6 @@ import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useIsBelowDesktop } from '@/hooks/use-media-query'
 import { AppSourceType } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -39,7 +39,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
-  const isPC = !useIsBelowDesktop()
+  const isPC = !useMediaQuery('(width < 48rem)', {})
 
   const [inputs, doSetInputs] = useState<Record<string, InputValueTypes>>({})
   const inputsRef = useRef<Record<string, InputValueTypes>>(inputs)

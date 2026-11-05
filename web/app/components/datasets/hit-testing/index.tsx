@@ -21,6 +21,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { keepPreviousData, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -35,7 +36,6 @@ import docStyle from '@/app/components/datasets/documents/detail/completed/style
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useIsMobile } from '@/hooks/use-media-query'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
@@ -55,7 +55,7 @@ type Props = Readonly<{
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
 
-  const isMobile = useIsMobile()
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<

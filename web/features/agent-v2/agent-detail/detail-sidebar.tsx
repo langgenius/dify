@@ -1,11 +1,11 @@
 'use client'
 
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import { useIsBelowDesktop } from '@/hooks/use-media-query'
 import { AgentDetailSection, AgentDetailTop } from './navigation'
 
 export function AgentDetailSidebar() {
-  const isBelowDesktop = useIsBelowDesktop()
+  const isBelowDesktop = useMediaQuery('(width < 48rem)', {})
 
   return (
     <DetailSidebarFrame
