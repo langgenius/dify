@@ -1,0 +1,237 @@
+'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useSearchParams } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
+import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { basePath } from '@/utils/var'
+
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
+
+const ChangePasswordForm = () => {
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+  const isTokenMissing = !token
+
+  const { data: verifyTokenRes, refetch: revalidateToken } = useVerifyForgotPasswordToken(token)
+
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const isVerifyingToken = !isTokenMissing && !verifyTokenRes
+  const isTokenInvalid = isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)
+  const documentTitle = isVerifyingToken
+    ? t(($) => $.loading, { ns: 'common' })
+    : isTokenInvalid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : showSuccess
+        ? t(($) => $.passwordChangedTip, { ns: 'login' })
+        : t(($) => $.changePassword, { ns: 'login' })
+  useDocumentTitle(documentTitle)
+
+  const handleChangePassword = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isSubmitting) return
+      const resetToken = verifyTokenRes?.token ?? ''
+
+      setIsSubmitting(true)
+      try {
+        await consoleClient.forgotPassword.resets.post({
+          body: {
+            token: resetToken,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+          },
+        })
+        setShowSuccess(true)
+      } catch {
+        await revalidateToken()
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isSubmitting, revalidateToken, verifyTokenRes?.token],
+  )
+
+  return (
+    <>
+      {isVerifyingToken && <LoadingPlaceholder />}
+      {isTokenInvalid && (
+        <div className="flex flex-col">
+          <div className="mx-auto w-full">
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
+              🤷‍♂️
+            </div>
+            <h1 className="text-[32px] font-bold text-text-primary">
+              {t(($) => $.invalid, { ns: 'login' })}
+            </h1>
+          </div>
+          <div className="mx-auto mt-6 w-full">
+            <a
+              href="https://dify.ai"
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+            >
+              {t(($) => $.explore, { ns: 'login' })}
+            </a>
+          </div>
+        </div>
+      )}
+      {verifyTokenRes && verifyTokenRes.is_valid && !showSuccess && (
+        <div className="flex flex-col">
+          <div className="mx-auto w-full">
+            <h1 className="text-[32px] font-bold text-text-primary">
+              {t(($) => $.changePassword, { ns: 'login' })}
+            </h1>
+            <p className="mt-1 text-sm text-text-secondary">
+              {t(($) => $.changePasswordTip, { ns: 'login' })}
+            </p>
+          </div>
+
+          <div className="mx-auto mt-6 w-full">
+            <Form<PasswordFormValues>
+              actionsRef={formActionsRef}
+              className="relative"
+              onFormSubmit={(formValues) => {
+                void handleChangePassword(formValues)
+              }}
+            >
+              <Field
+                name="password"
+                validate={(value) => {
+                  const passwordValue = String(value)
+                  if (!passwordValue.trim())
+                    return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                  return validPassword.test(passwordValue)
+                    ? null
+                    : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>
+                  {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    onValueChange={() => {
+                      if (confirmPasswordRef.current?.value)
+                        formActionsRef.current?.validate('confirmPassword')
+                    }}
+                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
+                <FieldValidity>
+                  {({ validity }) =>
+                    validity.valid !== false ? (
+                      <FieldDescription>
+                        {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                      </FieldDescription>
+                    ) : null
+                  }
+                </FieldValidity>
+                <FieldValidity>
+                  {({ validity }) => (
+                    <FieldError>
+                      {t(
+                        ($) =>
+                          $[
+                            validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'
+                          ],
+                        { ns: 'login' },
+                      )}
+                    </FieldError>
+                  )}
+                </FieldValidity>
+              </Field>
+              <Field
+                name="confirmPassword"
+                validate={(value, formValues) => {
+                  const confirmationValue = String(value)
+                  return !confirmationValue || confirmationValue === formValues.password
+                    ? null
+                    : t(($) => $['account.notEqual'], { ns: 'accountSettings' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    ref={confirmPasswordRef}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
+                <FieldError>
+                  {t(($) => $['account.notEqual'], { ns: 'accountSettings' })}
+                </FieldError>
+              </Field>
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full text-sm!"
+                loading={isSubmitting}
+              >
+                {t(($) => $['operation.reset'], { ns: 'common' })}
+              </Button>
+            </Form>
+          </div>
+        </div>
+      )}
+      {verifyTokenRes && verifyTokenRes.is_valid && showSuccess && (
+        <div className="flex flex-col">
+          <div className="mx-auto w-full">
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
+              <span
+                className="i-heroicons-check-circle-solid size-10 text-text-success"
+                aria-hidden="true"
+              />
+            </div>
+            <h1 className="text-[32px] font-bold text-text-primary">
+              {t(($) => $.passwordChangedTip, { ns: 'login' })}
+            </h1>
+          </div>
+          <div className="mx-auto mt-6 w-full">
+            <a
+              href={`${basePath}/signin`}
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
+            >
+              {t(($) => $.passwordChanged, { ns: 'login' })}
+            </a>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default ChangePasswordForm
