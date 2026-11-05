@@ -281,6 +281,38 @@ class TestWorkflowRunServiceCases:
             )
             mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)
 
+        @pytest.mark.parametrize("tool_traces", [False, True])
+        def test_trace_assembly_uses_a_session_from_the_injected_factory(
+            self,
+            service_dependencies: tuple[MagicMock, MagicMock],
+            monkeypatch: pytest.MonkeyPatch,
+            tool_traces: bool,
+        ) -> None:
+            node_executions, workflow_runs = service_dependencies
+            workflow_runs.get_workflow_run_by_id.return_value = _workflow_run()
+            session = MagicMock(spec=Session)
+            session_factory = MagicMock(spec=sessionmaker)
+            session_factory.return_value.__enter__.return_value = session
+            service = WorkflowRunService(
+                workflow_runs=workflow_runs,
+                node_executions=node_executions,
+                session_factory=session_factory,
+            )
+            mock_assemble = MagicMock(return_value=[])
+            monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
+            context = _workflow_run_service_request_context()
+
+            if tool_traces:
+                service.get_workflow_tool_node_executions(
+                    context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
+                )
+            else:
+                service.get_workflow_run_node_executions(context, app_id="app-1", run_id="run-1")
+
+            session_factory.assert_called_once_with()
+            mock_assemble.assert_called_once_with(ANY, node_executions, session=session)
+            session_factory.return_value.__exit__.assert_called_once()
+
 
 """Tests for Console workflow pause details."""
 
