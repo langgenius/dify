@@ -68,7 +68,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
 
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] =
     useBoolean(false)
 
@@ -413,7 +413,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     featuresData,
     isAgent,
     isAdvancedMode,
-    isMobile,
+    isBelowSm,
     isShowDebugPanel,
     isShowHistoryModal,
     isShowSelectDataSet,

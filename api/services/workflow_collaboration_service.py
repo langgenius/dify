@@ -18,6 +18,7 @@ from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.enterprise.rbac_service import RBACService
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,10 @@ SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
 SYNC_REQUEST_TIMEOUT_SECONDS = 15
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
+
+
+class WorkflowCollaborationNotEntitledError(Exception):
+    """The workspace cannot use workflow collaboration."""
 
 
 def _get_process_server_id() -> str:
@@ -104,10 +109,11 @@ class WorkflowCollaborationService:
         self, workflow_id: str, sid: str, *, session: Session
     ) -> tuple[str, bool] | None:
         """
-        Join a collaboration room only after validating the socket session and tenant-scoped app access.
+        Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        `App.id`. Missing access returns `None`; an ineligible workspace raises
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -124,6 +130,9 @@ class WorkflowCollaborationService:
                 sid,
             )
             return None
+
+        if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
+            raise WorkflowCollaborationNotEntitledError
 
         self._ensure_server_heartbeat_started()
 

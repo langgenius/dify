@@ -274,6 +274,14 @@ const zTriggerOauthClientChangedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTriggerOauthProviderError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_provider_error'),
+      status: z.literal(502),
+    }),
+  ))()
+
 const zFilenameNotExistsError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -515,6 +523,11 @@ export const get127Errors = {
 export const post84Errors = {
   trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+}
+
+export const get131Errors = {
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+  trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
 }
 
 export const post92Errors = {

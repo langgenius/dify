@@ -47,7 +47,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     handleDeleteConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
-    isMobile,
+    isBelowSm,
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
@@ -94,14 +94,14 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           'rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg shadow-lg',
       )}
     >
-      <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
+      <div className={cn('flex shrink-0 items-center gap-3 p-3 pe-2')}>
         <div className="shrink-0">
           <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
         </div>
-        {!isMobile && isSidebarCollapsed && (
+        {!isBelowSm && isSidebarCollapsed && (
           <IconButton
             aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
             size="lg"
@@ -110,7 +110,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
             <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
           </IconButton>
         )}
-        {!isMobile && !isSidebarCollapsed && (
+        {!isBelowSm && !isSidebarCollapsed && (
           <IconButton
             ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}

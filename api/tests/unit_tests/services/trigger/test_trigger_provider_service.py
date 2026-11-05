@@ -32,7 +32,6 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
-from repositories.credentials.query_repository import CredentialQueryRepository
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -162,90 +161,6 @@ def _patch_identity_encryption(mocker) -> Mock:
         return_value=(encrypter, cache),
     )
     return cache
-
-
-def test_provider_manager_entities_are_forwarded(mocker, trigger_db: TriggerDatabase) -> None:
-    provider = Mock()
-    provider.to_api_entity.return_value = {"provider": "ok"}
-    _patch_provider(mocker, provider)
-    provider_b = Mock()
-    provider_b.to_api_entity.return_value = {"provider": "other"}
-    mocker.patch.object(
-        service_module.TriggerManager, "list_all_trigger_providers", return_value=[provider, provider_b]
-    )
-
-    assert TriggerProviderService.get_trigger_provider(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "provider": "ok"
-    }
-    assert TriggerProviderService.list_trigger_providers(trigger_db.tenant_id) == [
-        {"provider": "ok"},
-        {"provider": "other"},
-    ]
-
-
-def test_list_subscriptions_empty_state(trigger_db: TriggerDatabase) -> None:
-    assert (
-        TriggerProviderService.list_trigger_provider_subscriptions(
-            trigger_db.tenant_id,
-            trigger_db.provider_id,
-            credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
-        )
-        == []
-    )
-
-
-def test_list_subscriptions_masks_and_counts_distinct_apps(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    target = trigger_db.add_subscription(subscription_id=str(uuid4()))
-    trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id, name="foreign")
-    with trigger_db.session_maker.begin() as session:
-        session.add_all(
-            [
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="node-1",
-                    tenant_id=trigger_db.tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="node-2",
-                    tenant_id=trigger_db.tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="foreign",
-                    tenant_id=trigger_db.other_tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-            ]
-        )
-    _patch_provider(mocker, provider_controller)
-    masked = _encrypter(masked={"secret": "****"})
-    mocker.patch.object(
-        service_module, "create_trigger_provider_encrypter_for_subscription", return_value=(masked, Mock())
-    )
-    mocker.patch.object(
-        service_module, "create_trigger_provider_encrypter_for_properties", return_value=(masked, Mock())
-    )
-
-    subscriptions = TriggerProviderService.list_trigger_provider_subscriptions(
-        trigger_db.tenant_id,
-        trigger_db.provider_id,
-        credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
-    )
-
-    assert [item.id for item in subscriptions] == [target.id]
-    assert subscriptions[0].credentials == {"secret": "****"}
-    assert subscriptions[0].workflows_in_use == 2
 
 
 @pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])

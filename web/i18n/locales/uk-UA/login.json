@@ -25,6 +25,7 @@
   "enterYourName": "Будь ласка, введіть своє ім'я користувача",
   "error.emailEmpty": "Адреса електронної пошти обов'язкова",
   "error.emailInValid": "Введіть дійсну адресу електронної пошти",
+  "error.initPasswordIncorrect": "Неправильний пароль ініціалізації.",
   "error.invalidEmailOrPassword": "Невірний електронний лист або пароль.",
   "error.invalidSSOProtocol": "Недійсний протокол SSO",
   "error.nameEmpty": "Ім'я обов'язкове",

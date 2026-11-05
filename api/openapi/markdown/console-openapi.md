@@ -11395,7 +11395,7 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
-**Handle OAuth callback for trigger provider**
+**Complete the cookie-bound flow without requiring a Console login**
 
 #### Parameters
 
@@ -11408,6 +11408,9 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[TriggerOauthContextInvalidError](#triggeroauthcontextinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
@@ -18633,6 +18636,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
@@ -26324,6 +26329,7 @@ Effective feature availability and limits for the current workspace.
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -35565,7 +35571,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -36529,6 +36534,22 @@ The stored trigger OAuth client configuration is invalid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
+
+#### TriggerOauthContextInvalidError
+
+The trigger OAuth context is missing, expired or invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthContextInvalidError |  | The trigger OAuth context is missing, expired or invalid. |  |
+
+#### TriggerOauthProviderError
+
+The trigger provider could not complete OAuth authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthProviderError |  | The trigger provider could not complete OAuth authorization. |  |
 
 #### TriggerProviderApiEntity
 
