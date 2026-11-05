@@ -1,10 +1,10 @@
 'use client'
 
 import type { MouseEvent } from 'react'
-import type { MainNavProps } from './types'
 import {
   Drawer,
   DrawerBackdrop,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -26,7 +26,7 @@ function isPlainLinkClick(event: MouseEvent) {
   )
 }
 
-export function MainNavMobileBar({ initialPlatform }: Pick<MainNavProps, 'initialPlatform'>) {
+export function MainNavMobileBar() {
   const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const [openedOn, setOpenedOn] = useState<{ pathname: string } | null>(null)
@@ -60,7 +60,20 @@ export function MainNavMobileBar({ initialPlatform }: Pick<MainNavProps, 'initia
                   if (isPlainLinkClick(event)) setOpen(false)
                 }}
               >
-                <MainNavPanel initialPlatform={initialPlatform} />
+                <MainNavPanel
+                  headerAction={
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="lg"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
+                    />
+                  }
+                />
                 <MainNavFooter />
               </DrawerContent>
             </DrawerPopup>
