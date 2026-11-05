@@ -35,7 +35,7 @@ from core.dify_builder.state import PcState
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort
-from services.dify_builder.application.runner import Runner, StepResult
+from services.dify_builder.application.runner import Handler, Runner, StepResult
 from tests.unit_tests.core.dify_builder.fakes import (
     ContextOverrides,
     FakeBuildDifyPort,
@@ -612,6 +612,7 @@ def test_plan_approval_passes_trusted_text_matching_user_supplied_trusted_text_f
     class _RecordingAgent(PlaceholderAgent):
         def __init__(self) -> None:
             self.build_nodes_calls: list[str] = []
+            self.approved_phases: list[bool] = []
 
         @override
         def build_nodes(
@@ -620,9 +621,11 @@ def test_plan_approval_passes_trusted_text_matching_user_supplied_trusted_text_f
             resource_ids: list[str] | None = None,
             *,
             trusted_text: str = "",
+            plan_approved: bool = False,
             reply_language: str | None = None,
         ) -> BuildNodesResult:
             self.build_nodes_calls.append(trusted_text)
+            self.approved_phases.append(plan_approved)
             return super().build_nodes(plan_items, resource_ids)
 
     agent = _RecordingAgent()
@@ -638,6 +641,7 @@ def test_plan_approval_passes_trusted_text_matching_user_supplied_trusted_text_f
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
     handle_plan_approval(env, turn, session, fc)
 
+    assert agent.approved_phases == [True]
     assert len(agent.build_nodes_calls) == 1
     trusted_text = agent.build_nodes_calls[0]
     assert fc.goal_text in trusted_text
@@ -678,9 +682,10 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas(monkeypatch: 
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
-        del plan_items, resource_ids, trusted_text, reply_language
+        del plan_items, resource_ids, trusted_text, plan_approved, reply_language
         return BuildNodesResult(intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared")
 
     monkeypatch.setattr(env.agent, "build_nodes", build_nodes)
@@ -726,9 +731,10 @@ def test_plan_approval_records_diagnostics_in_backend_logs(
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
-        del plan_items, resource_ids, trusted_text, reply_language
+        del plan_items, resource_ids, trusted_text, plan_approved, reply_language
         return BuildNodesResult(
             intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
         )
@@ -764,9 +770,10 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build(monkeypa
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
-        del plan_items, resource_ids, trusted_text, reply_language
+        del plan_items, resource_ids, trusted_text, plan_approved, reply_language
         return BuildNodesResult(
             intents=[
                 MutationIntent(
@@ -821,9 +828,10 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
-        del plan_items, resource_ids, trusted_text, reply_language
+        del plan_items, resource_ids, trusted_text, plan_approved, reply_language
         return BuildNodesResult(
             intents=[
                 MutationIntent(
@@ -1560,7 +1568,9 @@ def test_full_build_flow_goal_to_complete() -> None:
     # 2) submit_requirements -> build.resource_recommendation directly (the
     # decision-free find_resources gate at build.initial_plan is gone --
     # handle_goal_analysis tail-calls the shared discovery helper itself)
-    reqs_action = Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=out.version)
+    reqs_action = Action(
+        kind="submit_requirements", payload=dict(repo.get_session(s.id)[1].requirements), base_version=out.version
+    )
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
@@ -1637,7 +1647,9 @@ def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm() -> N
 
     goal_action = Action(kind="start_build", base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
-    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    reqs_action = Action(
+        kind="submit_requirements", payload=dict(repo.get_session(s.id)[1].requirements), base_version=out.version
+    )
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
@@ -1680,7 +1692,9 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish() -> None:
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
-    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    reqs_action = Action(
+        kind="submit_requirements", payload=dict(repo.get_session(s.id)[1].requirements), base_version=out.version
+    )
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
@@ -1718,7 +1732,9 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent() -> None:
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
-    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    reqs_action = Action(
+        kind="submit_requirements", payload=dict(repo.get_session(s.id)[1].requirements), base_version=out.version
+    )
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
     confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
@@ -2217,7 +2233,15 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent() -> N
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
     out = runner.advance(
-        s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
+        s.id,
+        Turn(
+            action=Action(
+                kind="submit_requirements",
+                payload=dict(repo.get_session(s.id)[1].requirements),
+                base_version=out.version,
+            ),
+            actor=_actor(),
+        ),
     )
     confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     out = runner.advance(
@@ -2898,6 +2922,7 @@ def _stub_agent_building(intents: list[MutationIntent]) -> StubAgent:
             resource_ids: list[str] | None = None,
             *,
             trusted_text: str = "",
+            plan_approved: bool = False,
             reply_language: str | None = None,
         ) -> BuildNodesResult:
             return BuildNodesResult(intents=list(intents))
@@ -3403,3 +3428,208 @@ def test_failed_inventory_is_not_reported_as_no_matching_resources() -> None:
     res = handle_initial_plan(env, turn, *repo.get_session(s.id))
     card = next(i for i in res.items if i.kind == "resource_select")
     assert card.payload["description"]["id"] == "resources.catalogueUnavailable"
+
+
+@pytest.mark.parametrize("entry", ["capability", "requirements", "resources", "reverted"])
+def test_later_planner_questions_return_to_requirements_without_writes(
+    monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
+    from services.dify_builder.application import handlers_build
+    from services.dify_builder.plan import BuildClarification
+
+    clarification = BuildClarification(
+        fields=[
+            {
+                "key": "missing_rate",
+                "label": "Missing rate",
+                "type": "select",
+                "options": ["Reject", "Skip"],
+                "required": True,
+            }
+        ],
+        values={"missing_rate": "Reject"},
+    )
+    env, _ = _new_env(dify=FakeBuildDifyPort(), agent=NativeFlowAgent())
+    monkeypatch.setattr(env.agent, "analyze_goal", lambda *_a, **_kw: {"fields": [], "values": {"currency": "USD"}})
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: clarification)
+    monkeypatch.setattr(env.agent, "reconcile_resource_plan", lambda *_a, **_kw: clarification)
+    monkeypatch.setattr(env.agent, "build_nodes", lambda *_a, **_kw: pytest.fail("clarification must not generate"))
+    fc = DifyBuilderContext(
+        goal_text="Settle orders after approval",
+        requirements={"currency": "USD"},
+        confirmed_requirement_keys=["currency"],
+        plan_items=["Previous plan"],
+        resource_selection={"resource_ids": ["model:chosen"]},
+    )
+    handlers: dict[str, tuple[Handler, str, Inputs]] = {
+        "capability": (handlers_build.handle_capability_check, "", {}),
+        "requirements": (handlers_build.handle_goal_analysis, "submit_requirements", {}),
+        "resources": (
+            handlers_build.handle_resource_recommendation,
+            "confirm_resources",
+            {"resource_ids": ["model:chosen"]},
+        ),
+        "reverted": (handlers_build.handle_reverted, "re_fix", {}),
+    }
+    handler, kind, payload = handlers[entry]
+    result = handler(env, Turn(action=Action(kind=kind, payload=payload), actor=_actor()), _session(), fc)
+
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert fc.goal_text == "Settle orders after approval"
+    assert fc.requirements == {"currency": "USD", "missing_rate": "Reject"}
+    assert fc.confirmed_requirement_keys == ([] if entry == "capability" else ["currency"])
+    assert fc.resource_selection["resource_ids"] == ["model:chosen"]
+    assert fc.plan_items == ["Previous plan"]
+    assert fc.built_node_ids == []
+    form = next(item.payload for item in result.items if item.kind == "form")
+    assert form["values"]["missing_rate"] == "Reject"
+    assert form["fields"][0]["required"] is True
+    assert form["frozen"] is False
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"policy": ""}, {"policy": "  "}, {"policy": "unknown"}, {"policy": []}, {"policy": {"x": "Reject"}}],
+)
+def test_invalid_requirement_submission_keeps_default_unconfirmed(
+    monkeypatch: pytest.MonkeyPatch, payload: Inputs
+) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+
+    env, _ = _new_env()
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: pytest.fail("invalid answers must not plan"))
+    fc = DifyBuilderContext(
+        goal_text="Settle orders",
+        requirements={"currency": "USD", "policy": "Reject"},
+        confirmed_requirement_keys=["currency"],
+        form_fields=[
+            {
+                "key": "policy",
+                "label": "Missing rate",
+                "type": "select",
+                "options": ["Reject", "Skip"],
+                "required": True,
+            }
+        ],
+    )
+    result = handle_goal_analysis(
+        env, Turn(action=Action(kind="submit_requirements", payload=payload), actor=_actor()), _session(), fc
+    )
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert fc.requirements == {"currency": "USD", "policy": "Reject"}
+    assert fc.confirmed_requirement_keys == ["currency"]
+
+
+@pytest.mark.parametrize("answer", ["Reject", "Skip"])
+def test_submitted_recommendation_or_edit_replans_preserving_prior_answers(
+    monkeypatch: pytest.MonkeyPatch, answer: str
+) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis, handle_plan_approval
+    from services.dify_builder.plan import WorkflowPlan
+
+    env, _ = _new_env(dify=FakeBuildDifyPort(), agent=NativeFlowAgent())
+    calls: list[Inputs] = []
+
+    def plan(requirements: Inputs, *, goal_text: str, reply_language: str | None = None) -> WorkflowPlan:
+        assert goal_text == "Settle orders"
+        assert reply_language is None
+        calls.append(dict(requirements))
+        return WorkflowPlan("Settlement", "Orders", "Totals", ["code node settles confirmed rules"])
+
+    monkeypatch.setattr(env.agent, "propose_plan_v1", plan)
+    monkeypatch.setattr(env.agent, "build_nodes", lambda *_a, **_kw: pytest.fail("fresh approval required"))
+    fc = DifyBuilderContext(
+        goal_text="Settle orders",
+        requirements={"currency": "USD", "policy": "Reject"},
+        confirmed_requirement_keys=["currency"],
+        form_fields=[
+            {
+                "key": "policy",
+                "label": "Missing rate",
+                "type": "select",
+                "options": ["Reject", "Skip"],
+                "required": True,
+            }
+        ],
+        resource_selection={"resource_ids": ["model:chosen"]},
+    )
+    result = handle_goal_analysis(
+        env, Turn(action=Action(kind="submit_requirements", payload={"policy": answer}), actor=_actor()), _session(), fc
+    )
+    assert result.next == PcState.BUILD_INITIAL_PLAN
+    assert calls == [{"currency": "USD", "policy": answer}]
+    assert fc.confirmed_requirement_keys == ["currency", "policy"]
+    assert fc.resource_selection["resource_ids"] == ["model:chosen"]
+    assert fc.plan_items == ["code node settles confirmed rules"]
+    assert fc.built_node_ids == []
+    assert handle_plan_approval(env, Turn(actor=_actor()), _session(), fc).next == PcState.BUILD_PLAN_APPROVAL
+
+
+def test_omitted_optional_input_remains_unconfirmed_and_preserves_its_value() -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+
+    env, _ = _new_env()
+    fc = DifyBuilderContext(
+        goal_text="Settle orders",
+        requirements={"policy": "Reject"},
+        confirmed_requirement_keys=[],
+        form_fields=[{"key": "policy", "label": "Missing rate", "type": "text"}],
+    )
+    result = handle_goal_analysis(
+        env, Turn(action=Action(kind="submit_requirements", payload={}), actor=_actor()), _session(), fc
+    )
+    assert result.next == PcState.BUILD_INITIAL_PLAN
+    assert fc.confirmed_requirement_keys == []
+    assert fc.requirements == {"policy": "Reject"}
+
+
+@pytest.mark.parametrize(("field_type", "value"), [("number", 0), ("number", 10**400), ("bool", False)])
+def test_scalar_requirement_submission_preserves_zero_false_and_unbounded_integers(
+    field_type: str, value: object
+) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+
+    env, _ = _new_env()
+    fc = DifyBuilderContext(
+        goal_text="Use the confirmed business limit",
+        requirements={},
+        confirmed_requirement_keys=[],
+        form_fields=[{"key": "limit", "label": "Limit", "type": field_type, "required": True}],
+    )
+    result = handle_goal_analysis(
+        env,
+        Turn(action=Action(kind="submit_requirements", payload={"limit": value}), actor=_actor()),
+        _session(),
+        fc,
+    )
+    assert result.next == PcState.BUILD_INITIAL_PLAN
+    assert fc.requirements == {"limit": value}
+    assert fc.confirmed_requirement_keys == ["limit"]
+
+
+@pytest.mark.parametrize(
+    ("field_type", "value"),
+    [("number", float("inf")), ("number", float("nan")), ("number", True), ("bool", "true"), ("text", ["answer"])],
+)
+def test_wrong_scalar_requirement_types_cannot_replan(
+    monkeypatch: pytest.MonkeyPatch, field_type: str, value: object
+) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+
+    env, _ = _new_env()
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: pytest.fail("invalid scalar must not plan"))
+    fc = DifyBuilderContext(
+        goal_text="Use the confirmed business limit",
+        requirements={},
+        confirmed_requirement_keys=[],
+        form_fields=[{"key": "limit", "label": "Limit", "type": field_type, "required": True}],
+    )
+    result = handle_goal_analysis(
+        env,
+        Turn(action=Action(kind="submit_requirements", payload={"limit": value}), actor=_actor()),
+        _session(),
+        fc,
+    )
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert fc.requirements == {}
+    assert fc.confirmed_requirement_keys == []

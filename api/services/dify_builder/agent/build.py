@@ -37,9 +37,10 @@ from services.dify_builder.native_constant_output_contract import (
 )
 from services.dify_builder.plan import (
     PLAN_PRESENTATION_INSTRUCTION,
+    BuildClarification,
     ResourceDiscovery,
     WorkflowPlan,
-    parse_plan_response,
+    parse_build_plan_response,
 )
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -74,8 +75,10 @@ def analyze_goal(
         "Do not expose already fixed thresholds as configurable inputs. Preserve explicitly "
         "requested technical choices and all fixed thresholds, operators, units, outputs, and constraints "
         "verbatim in values without requiring clarification fields for them. Do not invent new requirements "
-        "or reopen decisions already stated in the goal. For each necessary field, provide a sensible default "
-        "only when it does not invent an unanswered business decision. "
+        "or reopen decisions already stated in the goal. Mark necessary business questions required=true. "
+        "For each necessary field, provide a sensible default "
+        "as an explicit recommendation visible and editable before submission. A recommendation is not "
+        "a confirmed answer or consent to external calls. Explain the recommended choice in the field hint. "
         "The user already typed the goal and you are given it below, so never propose a "
         'field that restates it -- no "requirement description", "goal" or "what do you want" field. '
         "Every field must ask for something the goal does not already say. "
@@ -639,8 +642,8 @@ def propose_plan_v1(
     previous_plan: WorkflowPlan | None = None,
     selected_resource_ids: Sequence[str] = (),
     selected_resource_facts: Sequence[str] = (),
-) -> WorkflowPlan | None:
-    """Return an intact plan or None, with at most one schema correction.
+) -> WorkflowPlan | BuildClarification | None:
+    """Return a ready plan, required business questions, or None after bounded correction.
 
     The service-only source default supports direct callers during sequential
     adapter migration; runtime adapters must pass the original goal explicitly.
@@ -681,6 +684,17 @@ def propose_plan_v1(
         f"{CODE_FAILURE_POLICY_RULES}{TOOL_OUTPUT_SEMANTICS_RULES}\n\n"
         f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
         f"{PLAN_PRESENTATION_INSTRUCTION}"
+        "\nBefore returning a plan, identify necessary unanswered business decisions. If any remain, "
+        'return ONLY {"kind":"clarification","fields":[{"key":"...","label":"...",'
+        '"type":"select","options":["..."],"required":true,"hint":"Recommended: ..."}],'
+        '"values":{"key":"recommended choice"}} instead of a plan. Use 1-6 necessary questions and '
+        "scalar text, textarea, select, bool or number controls. Offer reasonable recommended defaults visibly "
+        "in values and explain the recommendation in the hint; users can edit or accept them with one submission. "
+        "Recommendations are not confirmed answers or external-call consent until explicit submission. "
+        "Never invent credentials, endpoints, accounts or resource identities. Ask only unanswered business "
+        "decisions; do not reopen fixed goals or confirmed answers or ask implementation choices. "
+        "A ready plan must implement the confirmed rules, never carry unresolved questions as caveats, "
+        "deferred decisions or an intentionally failing waiting-for-approval placeholder."
     )
     system = _topology_directive(mode) + "\n\n" + system
     system += _KNOWLEDGE_DISCOVERY_RULES
@@ -705,7 +719,9 @@ def propose_plan_v1(
             "Remove outdated no-resource fallbacks when the confirmed resource covers the requested action. "
             "Do not merely append an id to a contradictory fallback. Use only confirmed external resources. "
             "Selecting an extra resource does not require inventing an action: mark it unused with a reason. "
-            "In the SAME JSON reply include resource_resolution: {preserves_requirements: true, "
+            "If business questions remain, return the clarification variant instead; resource_resolution belongs "
+            "only to a ready plan. In the SAME JSON reply for a ready plan include "
+            "resource_resolution: {preserves_requirements: true, "
             '"bindings": [{"resource_id": "exact confirmed id", "status": "used", '
             '"step_index": 0, "step_kind": "resource_action", "action": "concrete task performed"}, '
             '{"resource_id": "another confirmed id", "status": "unused", "reason": "why not needed"}]}. '
@@ -739,7 +755,18 @@ def propose_plan_v1(
             trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
-            result = parse_plan_response(data)
+            result = parse_build_plan_response(data)
+            if isinstance(result, BuildClarification):
+                safe_fields, safe_values = _remove_secret_questions(result.fields, result.values)
+                safe_values = _scrub_invented_defaults(safe_values, _cognition_source(goal_text, requirements))
+                # Use the analyst's sanitizer and form normalization, but never
+                # turn a removed/invalid question into an approvable plan.
+                safe_fields = form_schema.reconcile_form_fields(
+                    safe_fields, {key: value for key, value in safe_values.items() if value != ""}
+                )
+                return parse_build_plan_response(
+                    {"kind": "clarification", "fields": safe_fields, "values": safe_values}
+                )
             if previous_plan is not None:
                 result.used_resource_ids = _resolved_plan_resources(data, result, selected_resource_ids)
             return result
@@ -1258,8 +1285,8 @@ def reconcile_resource_plan(
     requirements: dict[str, Any],
     mode: str = "workflow",
     reply_language: str | None = None,
-) -> WorkflowPlan | None:
-    """Replace abstract assumptions after selection, using one bounded proposal.
+) -> WorkflowPlan | BuildClarification | None:
+    """Return a reconciled plan, further business questions, or no usable outcome.
 
     Native identity/publication/access checks precede cognition. Model prose
     never grants authority: the exact selections are checked again on apply.
@@ -1679,6 +1706,7 @@ def build_nodes(
     resource_ids: Sequence[str] = (),
     *,
     trusted_text: str = "",
+    plan_approved: bool = False,
     account_id: str | None = None,
     mode: str = "workflow",
     reply_language: str | None = None,
@@ -1691,7 +1719,10 @@ def build_nodes(
     checked separately to sanitize generated references and append a visible
     setup reminder. Native execution/publication performs its own fresh check. A
     generated candidate naming any other built-in/plugin tool is refused like
-    any other invalid candidate, whatever the generator returned.
+    any other invalid candidate, whatever the generator returned. Only the
+    approval handler supplies plan_approved=True; direct callers retain neutral
+    phase context. This flag conveys completed plan approval, never execution
+    permission, and does not alter the trusted source used for grounding.
     """
     diagnostics: list[dict[str, Any]] = []
     try:
@@ -1707,6 +1738,15 @@ def build_nodes(
             else []
         )
         base_instruction = f"{_topology_directive(graph_mode)}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        if plan_approved:
+            base_instruction += (
+                "\n\nSERVER-OWNED BUILD PHASE: plan approval has already occurred for the current displayed plan "
+                "and submitted business answers. Implement these rules now. Original business constraints remain "
+                "authoritative; historical instructions to wait for plan/rule approval have been satisfied by "
+                "this approval. Do not generate intentionally failing awaiting-approval or unfinished placeholder "
+                "implementations. Preserve normal input-validation and runtime exceptions for actual invalid "
+                "inputs or operational failures. This phase context grants no external-call authorization."
+            )
         if agent_refs:
             from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
 
