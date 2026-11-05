@@ -35,7 +35,11 @@ const api = vi.hoisted(() => ({
   refresh: vi.fn(),
   setLocale: vi.fn<(locale: string) => Promise<void>>(),
   agentEnabled: true,
+  atLeastMd: true,
   pathname: '/',
+}))
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: (query: string) => query === '(width >= 48rem)' && api.atLeastMd,
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -176,6 +180,7 @@ beforeEach(() => {
   api.refresh.mockReset()
   api.setLocale.mockReset().mockResolvedValue(undefined)
   api.agentEnabled = true
+  api.atLeastMd = true
   api.pathname = '/'
 })
 afterEach(() => {
@@ -254,6 +259,22 @@ describe('search shortcut ownership', () => {
       ).not.toBeInTheDocument(),
     )
     expect(await openSearch()).toHaveValue('')
+  })
+
+  it('opens a bottom sheet without the mode footer on narrow screens', async () => {
+    api.atLeastMd = false
+    const { user } = setup()
+    await openSearch()
+
+    const sheet = screen.getByRole('dialog', { name: 'app.gotoAnything.searchTitle' })
+    expect(sheet).toHaveAttribute('data-swipe-direction', 'down')
+    expect(within(sheet).getByRole('gridcell', { name: /\/models/ })).toBeInTheDocument()
+    expect(
+      within(sheet).queryByRole('button', { name: 'app.gotoAnything.groups.commands' }),
+    ).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(sheet).not.toBeInTheDocument())
   })
 
   it('leaves shortcuts in unrelated editable controls to their owner', async () => {

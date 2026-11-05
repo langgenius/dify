@@ -1,16 +1,32 @@
 'use client'
 
-import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
+import type {
+  AutocompleteChangeEventDetails,
+  AutocompleteFlatProps,
+  AutocompleteInputProps,
+} from '@langgenius/dify-ui/autocomplete'
 import type { Plugin } from '../plugins/types'
 import type { ActionItem, SearchResult } from './actions/types'
 import type { GotoAnythingOption } from './command-options'
 import {
   Autocomplete,
+  AutocompleteClear,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerClose,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+  DrawerVirtualKeyboardProvider,
+} from '@langgenius/dify-ui/drawer'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollArea,
@@ -19,6 +35,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { formatForDisplay, HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
@@ -47,7 +64,7 @@ import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
-import { gotoAnythingDialogHandle } from './handles'
+import { gotoAnythingDialogHandle, gotoAnythingDrawerHandle } from './handles'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
 import { CommandGrid, ResultList } from './results'
 
@@ -160,6 +177,9 @@ export function GotoAnything() {
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const [searchQuery, setSearchQuery] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
+  if (isAtLeastMd && drawerOpen) setDrawerOpen(false)
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchHintId = useId()
@@ -320,12 +340,15 @@ export function GotoAnything() {
     GOTO_ANYTHING_HOTKEY,
     (event) => {
       if (event.defaultPrevented) return
-      if (!gotoAnythingDialogHandle.isOpen && isEditableShortcutTarget(event.target)) return
+      const isOpen = gotoAnythingDialogHandle.isOpen || drawerOpen
+      if (!isOpen && isEditableShortcutTarget(event.target)) return
 
       event.preventDefault()
       event.stopPropagation()
 
-      if (!gotoAnythingDialogHandle.isOpen) gotoAnythingDialogHandle.open(null)
+      if (isOpen) return
+      if (isAtLeastMd) gotoAnythingDialogHandle.open(null)
+      else setDrawerOpen(true)
     },
     {
       ignoreInputs: false,
@@ -340,7 +363,7 @@ export function GotoAnything() {
       if (handler?.isAvailable?.(commandContext) === false) return
       if (handler?.mode === 'direct') {
         void slashCommandRegistry.execute(handler.name, {}, commandContext)
-        gotoAnythingDialogHandle.close()
+        closeSearch()
         return
       }
     }
@@ -354,8 +377,13 @@ export function GotoAnything() {
     queueMicrotask(() => inputRef.current?.focus())
   }
 
-  function handleNavigate(result: SearchResult) {
+  function closeSearch() {
     gotoAnythingDialogHandle.close()
+    setDrawerOpen(false)
+  }
+
+  function handleNavigate(result: SearchResult) {
+    closeSearch()
 
     switch (result.type) {
       case 'command':
@@ -441,6 +469,97 @@ export function GotoAnything() {
   else if (isError) emptyStateVariant = 'error'
   else if (autocompleteResultCount === 0) emptyStateVariant = 'no-results'
 
+  const decoration = (
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
+      />
+    </>
+  )
+  const searchTitle = t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
+  const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
+  const autocompleteProps = {
+    items: visibleOptions,
+    value: searchQuery,
+    onValueChange: handleAutocompleteValueChange,
+    itemToStringValue: optionToInputValue,
+    filter: null,
+    grid: isCommandsMode,
+    open: true,
+    inline: true,
+    autoHighlight: 'always',
+    keepHighlight: true,
+    loopFocus: true,
+  } satisfies AutocompleteFlatProps<GotoAnythingOption>
+  const searchInputProps = {
+    ref: inputRef,
+    'aria-label': searchTitle,
+    placeholder: t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' }),
+    'aria-describedby': searchHintId,
+  } satisfies AutocompleteInputProps
+  const searchAnnouncements = (
+    <>
+      <p id={searchHintId} className="sr-only">
+        {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
+      </p>
+      <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
+    </>
+  )
+  const searchResultsContent = (
+    <ScrollAreaContent className="min-h-full w-full max-w-full" style={{ minWidth: '100%' }}>
+      {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
+
+      {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
+
+      {emptyStateVariant === 'no-results' && isCommandsMode && (
+        <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+          <div>
+            <div className="text-sm font-medium text-text-tertiary">
+              {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
+            </div>
+            <div className="mt-1 text-xs text-text-quaternary">
+              {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emptyStateVariant === 'no-results' && !isCommandsMode && (
+        <EmptyState variant={emptyStateVariant} searchMode={searchMode} actions={actions} />
+      )}
+
+      {isCommandsMode ? (
+        <CommandGrid
+          groups={optionGroups}
+          label={isHome ? searchTitle : optionGroups[0]!.label}
+          onSelect={selectOption}
+        />
+      ) : (
+        <ResultList
+          groups={[
+            {
+              id: 'commands',
+              label: getGroupLabel('command'),
+              items: optionSuggestions,
+            },
+            ...Object.entries(groupedResults).map(([type, items]) => ({
+              id: type,
+              label: getGroupLabel(type),
+              items,
+            })),
+          ]}
+          label={searchTitle}
+          onSelect={selectOption}
+        />
+      )}
+    </ScrollAreaContent>
+  )
+
   return (
     <>
       <Dialog
@@ -454,30 +573,9 @@ export function GotoAnything() {
         >
           <HotkeysProvider scope={hotkeyScopeId} exclusive>
             <SearchDialogHotkeys />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
-            />
-            <DialogTitle className="sr-only">
-              {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-            </DialogTitle>
-            <Autocomplete<GotoAnythingOption>
-              items={visibleOptions}
-              value={searchQuery}
-              onValueChange={handleAutocompleteValueChange}
-              itemToStringValue={optionToInputValue}
-              filter={null}
-              grid={isCommandsMode}
-              open
-              inline
-              autoHighlight="always"
-              keepHighlight
-              loopFocus
-            >
+            {decoration}
+            <DialogTitle className="sr-only">{searchTitle}</DialogTitle>
+            <Autocomplete {...autocompleteProps}>
               <AutocompleteInputGroup
                 size="medium"
                 // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
@@ -485,14 +583,7 @@ export function GotoAnything() {
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <AutocompleteInput
-                    ref={inputRef}
-                    size="medium"
-                    aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
-                    aria-describedby={searchHintId}
-                    className="px-0"
-                  />
+                  <AutocompleteInput {...searchInputProps} size="medium" className="px-0" />
                 </div>
                 <KbdGroup className="hidden sm:flex">
                   {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -500,11 +591,7 @@ export function GotoAnything() {
                   ))}
                 </KbdGroup>
               </AutocompleteInputGroup>
-              <p id={searchHintId} className="sr-only">
-                {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
-              </p>
-
-              <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
+              {searchAnnouncements}
 
               <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
                 <ScrollAreaViewport
@@ -512,64 +599,7 @@ export function GotoAnything() {
                   aria-busy={isLoading || undefined}
                   className="scroll-pt-10 scroll-pb-1 overscroll-contain"
                 >
-                  <ScrollAreaContent
-                    className="min-h-full w-full max-w-full"
-                    style={{ minWidth: '100%' }}
-                  >
-                    {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
-
-                    {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
-
-                    {emptyStateVariant === 'no-results' && isCommandsMode && (
-                      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-                        <div>
-                          <div className="text-sm font-medium text-text-tertiary">
-                            {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
-                          </div>
-                          <div className="mt-1 text-xs text-text-quaternary">
-                            {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {emptyStateVariant === 'no-results' && !isCommandsMode && (
-                      <EmptyState
-                        variant={emptyStateVariant}
-                        searchMode={searchMode}
-                        actions={actions}
-                      />
-                    )}
-
-                    {isCommandsMode ? (
-                      <CommandGrid
-                        groups={optionGroups}
-                        label={
-                          isHome
-                            ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
-                            : optionGroups[0]!.label
-                        }
-                        onSelect={selectOption}
-                      />
-                    ) : (
-                      <ResultList
-                        groups={[
-                          {
-                            id: 'commands',
-                            label: getGroupLabel('command'),
-                            items: optionSuggestions,
-                          },
-                          ...Object.entries(groupedResults).map(([type, items]) => ({
-                            id: type,
-                            label: getGroupLabel(type),
-                            items,
-                          })),
-                        ]}
-                        label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                        onSelect={selectOption}
-                      />
-                    )}
-                  </ScrollAreaContent>
+                  {searchResultsContent}
                 </ScrollAreaViewport>
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
@@ -584,11 +614,82 @@ export function GotoAnything() {
               />
             </Autocomplete>
             <DialogClose tabIndex={-1} className="sr-only">
-              {t(($) => $['operation.close'], { ns: 'common' })}
+              {closeLabel}
             </DialogClose>
           </HotkeysProvider>
         </DialogContent>
       </Dialog>
+
+      <Drawer
+        handle={gotoAnythingDrawerHandle}
+        swipeDirection="down"
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
+        <DrawerVirtualKeyboardProvider>
+          <DrawerPortal>
+            <DrawerBackdrop className="fixed bg-background-overlay-alt" />
+            <DrawerViewport>
+              <DrawerPopup initialFocus={inputRef} className="h-[calc(100dvh-2rem)]">
+                <HotkeysProvider scope={hotkeyScopeId} exclusive>
+                  <SearchDialogHotkeys />
+                  {decoration}
+                  <DrawerTitle className="sr-only">{searchTitle}</DrawerTitle>
+                  <Autocomplete {...autocompleteProps}>
+                    <div className="shrink-0 px-4 pt-2 pb-3">
+                      <div
+                        aria-hidden
+                        className="mx-auto mb-3 h-1 w-9 rounded-full bg-divider-deep"
+                      />
+                      <AutocompleteInputGroup
+                        size="medium"
+                        // oxlint-disable-next-line shadcn/no-restyle -- The sheet's search field is its header, so it is taller than a form input and keeps the ring off while the active descendant shows navigation.
+                        className="h-10 gap-2 rounded-[10px] px-3 has-[input:focus]:ring-0"
+                      >
+                        <span
+                          aria-hidden
+                          className="i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                        />
+                        <AutocompleteInput
+                          {...searchInputProps}
+                          size="medium"
+                          enterKeyHint="go"
+                          className="px-0 text-base"
+                        />
+                        {searchQuery && (
+                          <AutocompleteClear
+                            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                          />
+                        )}
+                      </AutocompleteInputGroup>
+                    </div>
+                    {searchAnnouncements}
+
+                    <DrawerContent className="overflow-hidden border-t border-divider-subtle">
+                      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+                        <ScrollAreaViewport
+                          tabIndex={-1}
+                          aria-busy={isLoading || undefined}
+                          className="scroll-pt-10 overscroll-contain pb-[calc(env(safe-area-inset-bottom)+var(--drawer-keyboard-inset,0px))]"
+                        >
+                          {searchResultsContent}
+                        </ScrollAreaViewport>
+                        <ScrollAreaScrollbar>
+                          <ScrollAreaThumb />
+                        </ScrollAreaScrollbar>
+                      </ScrollArea>
+                    </DrawerContent>
+                  </Autocomplete>
+                  <DrawerClose tabIndex={-1} className="sr-only">
+                    {closeLabel}
+                  </DrawerClose>
+                </HotkeysProvider>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
+        </DrawerVirtualKeyboardProvider>
+      </Drawer>
 
       {activePlugin && canInstallPlugin && (
         <PluginInstallPermissionProvider
