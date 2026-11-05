@@ -201,6 +201,7 @@
   "common.processData": "डेटा प्रोसेस करें",
   "common.publish": "प्रकाशित करें",
   "common.publishAsEvaluationWorkflow": "मूल्यांकन वर्कफ़्लो के रूप में प्रकाशित करें",
+  "common.evaluationWorkflowDescription": "प्रकाशित या परिवर्तित करने के बाद, इस वर्कफ़्लो को मूल्यांकन पृष्ठ पर कस्टम मूल्यांकनकर्ता के रूप में इस्तेमाल किया जा सकता है। मूल्यांकन के दौरान यह मैप किए गए परीक्षण डेटा को प्राप्त करता है; चुने गए आउटपुट ऐसे मेट्रिक बनते हैं जिन्हें निर्णय शर्तों में उपयोग किया जा सकता है।",
   "common.publishToMarketplace": "Marketplace पर प्रकाशित करें",
   "common.publishToMarketplaceDescription": "इस ऐप को समुदाय के साथ साझा करें",
   "common.publishToMarketplaceFailed": "Marketplace पर प्रकाशित करने में विफल",

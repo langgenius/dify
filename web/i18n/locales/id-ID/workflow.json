@@ -201,6 +201,7 @@
   "common.processData": "Proses Data",
   "common.publish": "Menerbitkan",
   "common.publishAsEvaluationWorkflow": "Terbitkan sebagai alur kerja evaluasi",
+  "common.evaluationWorkflowDescription": "Setelah diterbitkan atau dialihkan, alur kerja ini dapat digunakan sebagai evaluator khusus di halaman evaluasi. Saat evaluasi, alur ini menerima data uji yang telah dipetakan; keluaran yang dipilih menjadi metrik yang dapat digunakan dalam kondisi penilaian.",
   "common.publishToMarketplace": "Publikasikan ke Marketplace",
   "common.publishToMarketplaceDescription": "Bagikan aplikasi ini dengan komunitas",
   "common.publishToMarketplaceFailed": "Gagal mempublikasikan ke Marketplace",

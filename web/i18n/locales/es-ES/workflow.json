@@ -201,6 +201,7 @@
   "common.processData": "Procesar datos",
   "common.publish": "Publicar",
   "common.publishAsEvaluationWorkflow": "Publicar como flujo de evaluación",
+  "common.evaluationWorkflowDescription": "Después de publicarlo o convertirlo, este flujo de trabajo puede usarse como evaluador personalizado en la página de evaluación. Durante la evaluación recibe los datos de prueba asignados; las salidas seleccionadas se convierten en métricas que pueden usarse en las condiciones de evaluación.",
   "common.publishToMarketplace": "Publicar en Marketplace",
   "common.publishToMarketplaceDescription": "Compartir esta aplicación con la comunidad",
   "common.publishToMarketplaceFailed": "Error al publicar en Marketplace",

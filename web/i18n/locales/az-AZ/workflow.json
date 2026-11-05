@@ -201,6 +201,7 @@
   "common.processData": "Verilənləri emal et",
   "common.publish": "Dərc et",
   "common.publishAsEvaluationWorkflow": "Qiymətləndirmə iş axını kimi dərc et",
+  "common.evaluationWorkflowDescription": "Bu iş axını dərc edildikdən və ya qiymətləndirmə iş axınına çevrildikdən sonra qiymətləndirmə səhifəsində fərdi qiymətləndirici kimi istifadə oluna bilər. Qiymətləndirmə zamanı uyğunlaşdırılmış test məlumatlarını qəbul edir; seçilmiş çıxışlar qərar şərtlərində istifadə edilə bilən metrikalara çevrilir.",
   "common.publishToMarketplace": "Mağazada dərc et",
   "common.publishToMarketplaceDescription": "Bu tətbiqi şablon kimi siyahıya əlavə edin",
   "common.publishToMarketplaceFailed": "Mağazada dərc etmək alınmadı",

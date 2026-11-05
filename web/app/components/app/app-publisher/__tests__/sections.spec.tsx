@@ -575,19 +575,19 @@ describe('app-publisher sections', () => {
 
   it.each([
     {
-      expectedLabel: /common\.publishAsEvaluationWorkflow\b/,
+      expectedLabel: /^workflow\.common\.publishAsEvaluationWorkflow$/,
       publishedAt: undefined,
       workflowKind: 'standard' as const,
       expectedTarget: undefined,
     },
     {
-      expectedLabel: /common\.switchToEvaluationWorkflow\b/,
+      expectedLabel: /^workflow\.common\.switchToEvaluationWorkflow$/,
       publishedAt: Date.now(),
       workflowKind: 'standard' as const,
       expectedTarget: 'evaluation' as const,
     },
     {
-      expectedLabel: /common\.switchToStandardWorkflow\b/,
+      expectedLabel: /^workflow\.common\.switchToStandardWorkflow$/,
       publishedAt: Date.now(),
       workflowKind: 'evaluation' as const,
       expectedTarget: 'standard' as const,
@@ -617,6 +617,17 @@ describe('app-publisher sections', () => {
           onPublishEvaluation={onPublishEvaluation}
         />,
       )
+
+      if (expectedTarget !== 'standard') {
+        await user.click(screen.getByRole('button', { name: /^common\.operation\.viewDetails:/ }))
+        expect(await screen.findByText(/common\.evaluationWorkflowDescription/)).toBeInTheDocument()
+        expect(onConvertWorkflowKind).not.toHaveBeenCalled()
+        expect(onPublishEvaluation).not.toHaveBeenCalled()
+      } else {
+        expect(
+          screen.queryByRole('button', { name: /^common\.operation\.viewDetails:/ }),
+        ).not.toBeInTheDocument()
+      }
 
       await user.click(screen.getByRole('button', { name: expectedLabel }))
 

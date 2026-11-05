@@ -201,6 +201,7 @@
   "common.processData": "معالجة البيانات",
   "common.publish": "نشر",
   "common.publishAsEvaluationWorkflow": "النشر كسير عمل تقييم",
+  "common.evaluationWorkflowDescription": "بعد نشر سير العمل هذا أو تحويله إلى سير عمل تقييم، يمكن استخدامه كمقيّم مخصص في صفحة التقييم. أثناء التقييم، يستقبل بيانات الاختبار المربوطة بالمتغيرات، وتصبح المخرجات المحددة مقاييس يمكن استخدامها في شروط الحكم.",
   "common.publishToMarketplace": "نشر على Marketplace",
   "common.publishToMarketplaceDescription": "شارك هذا التطبيق مع المجتمع",
   "common.publishToMarketplaceFailed": "فشل النشر على Marketplace",

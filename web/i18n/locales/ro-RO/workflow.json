@@ -201,6 +201,7 @@
   "common.processData": "Procesează date",
   "common.publish": "Publică",
   "common.publishAsEvaluationWorkflow": "Publică drept flux de evaluare",
+  "common.evaluationWorkflowDescription": "După publicare sau comutare, acest flux de lucru poate fi folosit ca evaluator personalizat în pagina de evaluare. În timpul evaluării, primește datele de test mapate; ieșirile selectate devin metrici ce pot fi folosite în condițiile de evaluare.",
   "common.publishToMarketplace": "Publicați pe Marketplace",
   "common.publishToMarketplaceDescription": "Distribuie această aplicație comunității",
   "common.publishToMarketplaceFailed": "Eroare la publicarea pe Marketplace",

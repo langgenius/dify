@@ -2,6 +2,7 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import type { AppPublisherProps } from '../types'
 import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '../suggested-action'
@@ -85,6 +86,8 @@ export function PublisherActionsSection({
     : isEvaluationWorkflow
       ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
       : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
+  const showEvaluationWorkflowInfo = !hasPublishedVersion || !isEvaluationWorkflow
+  const evaluationWorkflowInfoLabel = `${t(($) => $['operation.viewDetails'])}: ${evaluationWorkflowActionLabel}`
 
   const handleEvaluationWorkflowAction = () => {
     if (workflowKindChangePending || isPublishing || published) return
@@ -98,22 +101,42 @@ export function PublisherActionsSection({
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
       {showEvaluationWorkflowAction && (
         <>
-          <SuggestedAction
-            disabled={workflowKindChangePending || isPublishing || published}
-            endIcon={
-              workflowKindChangePending ? (
-                <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
-              ) : (
-                <span aria-hidden className="i-ri-arrow-right-s-line size-3.5" />
-              )
-            }
-            icon={
-              <span className={isEvaluationWorkflow ? 'i-ri-node-tree size-4' : 'i-ri-flask-line size-4'} />
-            }
-            onClick={handleEvaluationWorkflowAction}
-          >
-            {evaluationWorkflowActionLabel}
-          </SuggestedAction>
+          <div className="relative">
+            <SuggestedAction
+              disabled={workflowKindChangePending || isPublishing || published}
+              endIcon={
+                <span className="flex items-center gap-1">
+                  {showEvaluationWorkflowInfo && <span aria-hidden className="size-4" />}
+                  {workflowKindChangePending ? (
+                    <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
+                  ) : (
+                    <span aria-hidden className="i-ri-arrow-right-s-line size-3.5" />
+                  )}
+                </span>
+              }
+              icon={
+                <span
+                  className={
+                    isEvaluationWorkflow ? 'i-ri-node-tree size-4' : 'i-ri-flask-line size-4'
+                  }
+                />
+              }
+              onClick={handleEvaluationWorkflowAction}
+            >
+              {evaluationWorkflowActionLabel}
+            </SuggestedAction>
+            {showEvaluationWorkflowInfo && (
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={evaluationWorkflowInfoLabel}
+                  className="absolute end-5.5 top-1/2 -translate-y-1/2"
+                />
+                <InfotipContent aria-label={evaluationWorkflowInfoLabel} className="max-w-72">
+                  {t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
+                </InfotipContent>
+              </Infotip>
+            )}
+          </div>
           <div aria-hidden className="m-1 h-px bg-divider-subtle" />
         </>
       )}
