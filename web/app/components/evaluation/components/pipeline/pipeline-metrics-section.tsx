@@ -55,12 +55,12 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
   }
 
   return (
-    <section>
+    <section className="max-w-[700px] py-4">
       <InlineSectionHeader
         title={t(($) => $['metrics.title'])}
         tooltip={t(($) => $['metrics.description'])}
       />
-      <div className="mt-1 space-y-0.5">
+      <div className="mt-1 space-y-1">
         <UnsupportedMetricsWarning resourceType={resourceType} resourceId={resourceId} />
         {availableBuiltinMetrics.map((metric) => {
           const selectedMetric = builtinMetricMap.get(metric.id)

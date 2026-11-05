@@ -2,8 +2,7 @@
 
 import type { EvaluationResourceProps } from './types'
 import { useEffect } from 'react'
-import NonPipelineEvaluation from './components/layout/non-pipeline-evaluation'
-import PipelineEvaluation from './components/layout/pipeline-evaluation'
+import EvaluationLayout from './components/layout/evaluation-layout'
 import { useEvaluationConfigQuery } from './queries'
 import { useEvaluationStore } from './store'
 
@@ -22,11 +21,7 @@ const Evaluation = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     hydrateResource(resourceType, resourceId, config)
   }, [config, hydrateResource, resourceId, resourceType])
 
-  if (resourceType === 'datasets') {
-    return <PipelineEvaluation resourceType={resourceType} resourceId={resourceId} />
-  }
-
-  return <NonPipelineEvaluation resourceType={resourceType} resourceId={resourceId} />
+  return <EvaluationLayout resourceType={resourceType} resourceId={resourceId} />
 }
 
 export default Evaluation

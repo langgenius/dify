@@ -17,6 +17,7 @@ import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationActions, useEvaluationLogsQuery } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
+import PipelineResultsDialog from '../pipeline/pipeline-results-dialog'
 
 const PAGE_SIZE = 16
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
@@ -45,6 +46,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
   )
   const [page, setPage] = useState(0)
+  const [previewRunId, setPreviewRunId] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const resource = useEvaluationResource(resourceType, resourceId)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
   const logsQuery = useEvaluationLogsQuery(
@@ -74,11 +77,19 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
 
   useEffect(() => {
-    if (resource.selectedRunId) return
+    if (resourceType === 'datasets' || resource.selectedRunId) return
 
     const firstRunId = records[0]?.id
     if (firstRunId) setSelectedRunId(resourceType, resourceId, firstRunId)
   }, [records, resource.selectedRunId, resourceId, resourceType, setSelectedRunId])
+
+  const handleSelectRun = (runId: string) => {
+    setSelectedRunId(resourceType, resourceId, runId)
+    if (resourceType === 'datasets') {
+      setPreviewRunId(runId)
+      setPreviewOpen(true)
+    }
+  }
 
   const handleCancel = async (record: EvaluationRunResponse) => {
     try {
@@ -145,10 +156,24 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                     'cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover',
                     record.id === resource.selectedRunId && 'bg-background-default-subtle',
                   )}
-                  onClick={() => setSelectedRunId(resourceType, resourceId, record.id)}
+                  onClick={() => handleSelectRun(record.id)}
                 >
                   <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">
-                    {formatCreatedAt(record.created_at, formatTime)}
+                    {resourceType === 'datasets' ? (
+                      <button
+                        type="button"
+                        aria-label={`${t(($) => $['results.title'])} ${formatCreatedAt(record.created_at, formatTime)}`}
+                        className="max-w-full truncate rounded-sm text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleSelectRun(record.id)
+                        }}
+                      >
+                        {formatCreatedAt(record.created_at, formatTime)}
+                      </button>
+                    ) : (
+                      formatCreatedAt(record.created_at, formatTime)
+                    )}
                   </td>
                   <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">
                     {memberNameById.get(record.created_by) ?? record.created_by}
@@ -248,6 +273,15 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
           page={page + 1}
           totalPages={Math.ceil(total / PAGE_SIZE)}
           onPageChange={(nextPage) => setPage(nextPage - 1)}
+        />
+      )}
+      {resourceType === 'datasets' && (
+        <PipelineResultsDialog
+          resourceType={resourceType}
+          resourceId={resourceId}
+          runId={previewRunId}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
         />
       )}
     </div>

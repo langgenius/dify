@@ -1,6 +1,6 @@
 'use client'
 
-import type { NonPipelineEvaluationResourceProps } from '../../types'
+import type { EvaluationResourceProps } from '../../types'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import BatchTestPanel from '../batch-test-panel'
@@ -9,12 +9,10 @@ import EvaluationConfigActions from '../config-actions'
 import EvaluationFrameworkSelector from '../evaluation-framework-selector'
 import JudgeModelSelector from '../judge-model-selector'
 import MetricSection from '../metric-section'
+import PipelineMetricsSection from '../pipeline/pipeline-metrics-section'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
 
-const NonPipelineEvaluation = ({
-  resourceType,
-  resourceId,
-}: NonPipelineEvaluationResourceProps) => {
+const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const { t } = useTranslation(['evaluation'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
@@ -55,17 +53,21 @@ const NonPipelineEvaluation = ({
             </div>
           </section>
           <div className="max-w-[700px] border-b border-divider-subtle" />
-          <MetricSection resourceType={resourceType} resourceId={resourceId} />
+          {resourceType === 'datasets' ? (
+            <PipelineMetricsSection resourceType={resourceType} resourceId={resourceId} />
+          ) : (
+            <MetricSection resourceType={resourceType} resourceId={resourceId} />
+          )}
           <div className="max-w-[700px] border-b border-divider-subtle" />
           <ConditionsSection resourceType={resourceType} resourceId={resourceId} />
         </div>
       </div>
 
-      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-t-0 xl:border-l">
+      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-s xl:border-t-0">
         <BatchTestPanel resourceType={resourceType} resourceId={resourceId} />
       </div>
     </div>
   )
 }
 
-export default NonPipelineEvaluation
+export default EvaluationLayout
