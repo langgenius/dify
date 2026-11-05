@@ -34,6 +34,12 @@ const expectRequest = async (
 }
 
 const validConfigs = {
+  otel: {
+    endpoint: 'https://collector.example/v1/traces',
+    headers: '{"Authorization":"Bearer token"}',
+    service_name: 'dify',
+    resource_attributes: '{"deployment.environment.name":"production"}',
+  },
   arize: {
     api_key: 'arize-api-key',
     space_id: 'space-id',
@@ -95,6 +101,7 @@ const validConfigs = {
 
 // The fields each provider's backend config declares with `secret()`, by input label.
 const secretLabels = {
+  otel: { headers: 'app.tracing.otel.headers' },
   arize: { api_key: 'API Key', space_id: 'Space ID' },
   phoenix: { api_key: 'API Key' },
   langsmith: { api_key: 'API Key' },
@@ -142,6 +149,11 @@ const invalidConfigCases: Array<{
   values: TraceConfigPayload['tracing_config']
   missingField: string
 }> = [
+  {
+    provider: 'otel',
+    values: { ...validConfigs.otel, endpoint: '' },
+    missingField: 'Endpoint',
+  },
   {
     provider: 'arize',
     values: { ...validConfigs.arize, api_key: '' },
@@ -298,6 +310,108 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Saving', () => {
+    it('creates an OpenTelemetry destination with the default service name and optional headers', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({ type: 'otel' })
+      expect(screen.getByRole('textbox', { name: 'app.tracing.otel.serviceName' })).toHaveValue(
+        'dify',
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'Endpoint' }),
+        'http://localhost:4318/v1/traces',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: 'otel',
+        activate: true,
+        tracing_config: {
+          endpoint: 'http://localhost:4318/v1/traces',
+          service_name: 'dify',
+          resource_attributes: '',
+        },
+      })
+    })
+
+    it('clears OpenTelemetry headers only when an empty JSON object is entered', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: 'otel',
+        config: savedConfig('otel', validConfigs.otel),
+      })
+      await user.click(screen.getByRole('textbox', { name: 'app.tracing.otel.headers' }))
+      await user.paste('{}')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: 'otel',
+        tracing_config: { ...withoutSecrets('otel', validConfigs.otel), headers: '{}' },
+      })
+    })
+
+    it('submits OpenTelemetry headers and resource attributes as JSON strings', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({ type: 'otel' })
+      await user.type(screen.getByRole('textbox', { name: 'Endpoint' }), validConfigs.otel.endpoint)
+      await user.click(screen.getByRole('textbox', { name: 'app.tracing.otel.headers' }))
+      await user.paste(validConfigs.otel.headers)
+      await user.click(screen.getByRole('textbox', { name: 'app.tracing.otel.resourceAttributes' }))
+      await user.paste(validConfigs.otel.resource_attributes)
+      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: 'otel',
+        activate: true,
+        tracing_config: validConfigs.otel,
+      })
+    })
+
+    it('does not promise to preserve saved headers after an OpenTelemetry destination changes', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: 'otel',
+        config: savedConfig('otel', validConfigs.otel),
+      })
+      const headers = screen.getByRole('textbox', { name: 'app.tracing.otel.headers' })
+      expect(headers).toHaveAttribute('placeholder', configuredSecretPlaceholder)
+      const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
+      await user.clear(endpoint)
+      await user.type(endpoint, 'https://new-collector.example/v1/traces')
+
+      expect(headers).not.toHaveAttribute('placeholder', configuredSecretPlaceholder)
+      expect(headers).not.toBeRequired()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: 'otel',
+        tracing_config: {
+          ...withoutSecrets('otel', validConfigs.otel),
+          endpoint: 'https://new-collector.example/v1/traces',
+        },
+      })
+    })
+
+    it('treats a trailing slash change on a full OTLP path as a new destination', async () => {
+      const user = userEvent.setup()
+      renderProviderConfigModal({
+        type: 'otel',
+        config: savedConfig('otel', {
+          ...validConfigs.otel,
+          endpoint: 'https://collector.example/custom/',
+        }),
+      })
+      const headers = screen.getByRole('textbox', { name: 'app.tracing.otel.headers' })
+      expect(headers).toHaveAttribute('placeholder', configuredSecretPlaceholder)
+      const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
+      await user.clear(endpoint)
+      await user.type(endpoint, 'https://collector.example/custom')
+      expect(headers).not.toHaveAttribute('placeholder', configuredSecretPlaceholder)
+    })
+
     it('creates an anonymous Phoenix destination without a key', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: 'phoenix' })
@@ -363,6 +477,7 @@ describe('ProviderConfigModal', () => {
         }
 
         const edits = {
+          otel: ['app.tracing.otel.serviceName', 'service_name', 'new-service'],
           arize: ['app.tracing.configProvider.project', 'project', 'new-project'],
           phoenix: ['app.tracing.configProvider.project', 'project', 'new-project'],
           langsmith: ['app.tracing.configProvider.project', 'project', 'new-project'],

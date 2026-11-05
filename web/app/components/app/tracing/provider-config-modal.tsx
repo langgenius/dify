@@ -51,9 +51,9 @@ type ProviderConfigModalProps = {
 
 const I18N_PREFIX = 'tracing.configProvider'
 
-/** A destination as the API compares it: trimmed, without trailing slashes. */
-function comparableDestination(value: string | null) {
-  return value === null ? null : value.trim().replace(/\/+$/, '')
+/** Full ingest paths preserve their trailing slash; base URLs keep legacy equivalence. */
+function comparableDestination(value: string | null, exact: boolean) {
+  return value === null ? null : exact ? value.trim() : value.trim().replace(/\/+$/, '')
 }
 
 export function ProviderConfigModal({
@@ -104,8 +104,11 @@ export function ProviderConfigModal({
   const destinationChanged = fields.some(
     (field) =>
       field.destination &&
-      comparableDestination(submittedValue(field.name, destinationDrafts[field.name] ?? '')) !==
-        comparableDestination(savedValues?.[field.name] ?? null),
+      comparableDestination(
+        submittedValue(field.name, destinationDrafts[field.name] ?? ''),
+        field.exactDestination ?? false,
+      ) !==
+        comparableDestination(savedValues?.[field.name] ?? null, field.exactDestination ?? false),
   )
   const isEdit = !!config
   const saveError = createConfig.error ?? updateConfig.error
@@ -197,7 +200,9 @@ export function ProviderConfigModal({
                     pattern={field.pattern}
                     maxLength={field.maxLength}
                     required={required}
-                    defaultValue={field.secret ? '' : (savedValues?.[field.name] ?? '')}
+                    defaultValue={
+                      field.secret ? '' : (savedValues?.[field.name] ?? field.defaultValue ?? '')
+                    }
                     onValueChange={
                       field.destination
                         ? (value) =>

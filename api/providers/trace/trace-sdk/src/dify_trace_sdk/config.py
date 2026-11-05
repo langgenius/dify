@@ -17,6 +17,7 @@ from pydantic_core import PydanticUndefined
 _SECRET = "x-dify-secret"
 _DERIVED = "x-dify-derived"
 _DESTINATION = "x-dify-destination"
+_EXACT_DESTINATION = "x-dify-exact-destination"
 
 
 def secret(*, default: Any = PydanticUndefined) -> Any:
@@ -29,9 +30,13 @@ def derived() -> Any:
     return Field(default=None, json_schema_extra={_DERIVED: True})
 
 
-def destination(*, default: Any = PydanticUndefined) -> Any:
-    """Declare a field naming where secrets are sent; changing it requires entering the secrets again."""
-    return Field(default=default, json_schema_extra={_DESTINATION: True})
+def destination(*, default: Any = PydanticUndefined, exact: bool = False) -> Any:
+    """Declare where secrets are sent; changing it requires entering the secrets again.
+
+    Set exact for complete ingestion URLs whose trailing slash can select a
+    different route. Existing base-URL providers retain their slash equivalence.
+    """
+    return Field(default=default, json_schema_extra={_DESTINATION: True, _EXACT_DESTINATION: exact})
 
 
 def _flag(field: FieldInfo, name: str) -> bool:
@@ -66,6 +71,11 @@ class ProviderConfig(BaseModel):
     @classmethod
     def destination_fields(cls) -> frozenset[str]:
         return frozenset(name for name, field in cls.model_fields.items() if _flag(field, _DESTINATION))
+
+    @classmethod
+    def exact_destination_fields(cls) -> frozenset[str]:
+        """Full URL fields compared after trimming whitespace only, preserving path boundaries."""
+        return frozenset(name for name, field in cls.model_fields.items() if _flag(field, _EXACT_DESTINATION))
 
     @classmethod
     def form_fields(cls) -> tuple[FormField, ...]:
