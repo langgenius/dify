@@ -138,6 +138,30 @@ const zUnsupportedAudioTypeError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConnectionConfigurationInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_configuration_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zConnectionCredentialsInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_credentials_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zConnectionRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_required'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zNotChatAppError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -146,11 +170,43 @@ const zNotChatAppError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConnectionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConnectionConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zConnectionReauthorizationRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_reauthorization_required'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zRateLimitError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('rate_limit_error'),
       status: z.literal(429),
+    }),
+  ))()
+
+const zCredentialCheckUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('credential_check_unavailable'),
+      status: z.literal(503),
     }),
   ))()
 
@@ -250,6 +306,20 @@ const zNotWorkflowAppError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConnectionRevisionChangeDetails = /* @__PURE__ */ (() =>
+  z.object({
+    connection_revision: z.uuid().nullable(),
+  }))()
+
+const zConnectionRevisionChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('connection_revision_changed'),
+      details: zConnectionRevisionChangeDetails.optional(),
+      status: z.literal(409),
+    }),
+  ))()
+
 export const postErrors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -278,6 +348,17 @@ export const post3Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },
@@ -306,7 +387,75 @@ export const post5Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
+export const getErrors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
+export const putErrors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
 export const post6Errors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
+export const get2Errors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
+export const post7Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   conversation_first_message_not_found: {
     status: 404,
@@ -343,7 +492,7 @@ export const delete_Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const getErrors = {
+export const get3Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -351,7 +500,7 @@ export const getErrors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const post7Errors = {
+export const post8Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
@@ -359,7 +508,7 @@ export const post7Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get2Errors = {
+export const get4Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -373,7 +522,7 @@ export const get2Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get3Errors = {
+export const get5Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
@@ -391,7 +540,7 @@ export const get3Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get4Errors = {
+export const get6Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   conversation_not_found: { status: 404, data: zConversationNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -400,14 +549,14 @@ export const get4Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get5Errors = {
+export const get7Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get6Errors = {
+export const get8Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -421,14 +570,7 @@ export const delete2Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get7Errors = {
-  access_denied: { status: 403, data: zAccessDeniedError },
-  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
-  not_completion_app: { status: 400, data: zNotCompletionAppError },
-  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
-}
-
-export const post8Errors = {
+export const get9Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
@@ -436,6 +578,13 @@ export const post8Errors = {
 }
 
 export const post9Errors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  not_completion_app: { status: 400, data: zNotCompletionAppError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
+export const post10Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -448,9 +597,20 @@ export const post9Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const post10Errors = {
+export const post11Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_required: { status: 400, data: zConnectionRequiredError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -460,14 +620,14 @@ export const post10Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const post11Errors = {
+export const post12Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   not_workflow_app: { status: 400, data: zNotWorkflowAppError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get8Errors = {
+export const get10Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   installed_app_unavailable: { status: 404, data: zInstalledAppUnavailableError },
@@ -480,7 +640,7 @@ export const patch3Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get9Errors = {
+export const get11Errors = {
   invalid_cursor: { status: 400, data: zInvalidCursorError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }

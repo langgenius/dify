@@ -26,7 +26,10 @@ from extensions.otel import AppGenerateHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
-from services.end_user_connection_execution_adapters import prepare_web_connection_execution
+from services.end_user_connection_execution_adapters import (
+    prepare_installed_connection_execution,
+    prepare_web_connection_execution,
+)
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -270,7 +273,9 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.ADVANCED_CHAT:
-                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
+                workflow_id = (
+                    None if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE} else args.get("workflow_id")
+                )
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if invoke_from == InvokeFrom.DEBUGGER:
                     if not isinstance(user, Account):
@@ -285,13 +290,22 @@ class AppGenerateService:
                 connection_context = (
                     prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
                     if invoke_from == InvokeFrom.WEB_APP
+                    else prepare_installed_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.EXPLORE
                     else None
                 )
-                if invoke_from == InvokeFrom.WEB_APP:
+                if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}:
                     args = {
                         key: value
                         for key, value in args.items()
-                        if key not in {"workflow_id", "connection_revision", "connections"}
+                        if key
+                        not in {
+                            "workflow_id",
+                            "connection_revision",
+                            "connections",
+                            "_installed_app_id",
+                            "_installed_workspace_id",
+                        }
                     }
 
                 if streaming:
@@ -350,7 +364,9 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.WORKFLOW:
-                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
+                workflow_id = (
+                    None if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE} else args.get("workflow_id")
+                )
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if invoke_from == InvokeFrom.DEBUGGER:
                     if not isinstance(user, Account):
@@ -366,13 +382,22 @@ class AppGenerateService:
                 connection_context = (
                     prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
                     if invoke_from == InvokeFrom.WEB_APP
+                    else prepare_installed_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.EXPLORE
                     else None
                 )
-                if invoke_from == InvokeFrom.WEB_APP:
+                if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}:
                     args = {
                         key: value
                         for key, value in args.items()
-                        if key not in {"workflow_id", "connection_revision", "connections"}
+                        if key
+                        not in {
+                            "workflow_id",
+                            "connection_revision",
+                            "connections",
+                            "_installed_app_id",
+                            "_installed_workspace_id",
+                        }
                     }
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):

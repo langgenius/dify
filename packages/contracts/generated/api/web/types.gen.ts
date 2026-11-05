@@ -488,11 +488,11 @@ export type EndUserConnectionReauthorizePayload = {
 export type EndUserConnectionResponse = {
   account_label: string | null
   created_at: number
-  credential_status: ConnectionCredentialStatus
+  credential_status: ConnectionCredentialStatus | null
   credential_type: ConnectionCredentialType
   expires_at: number | null
   id: string
-  last_active_at: number
+  last_active_at: number | null
   name: string
   provider: string
   updated_at: number

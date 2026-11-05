@@ -5,11 +5,17 @@ from dataclasses import dataclass
 from flask import current_app
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.plugin.auth import PluginCredentialAuthClient
+from core.app.entities.app_invoke_entities import InvokeFrom
+from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.installed_app_connection_repository import SQLAlchemyInstalledConnectionRepository
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from services.app_definition_query_service import AppDefinitionQueryService
 from services.conversation_service import ConversationService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_connections import InstalledAppConnectionService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
@@ -17,6 +23,7 @@ from services.installed_app_message_adapters import InstalledAppMessageRuntime, 
 from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
 from services.webapp_access_query_service import WebAppAccessQueryService
+from services.workflow_test_credential_adapters import WorkspaceTestCredentialGateway
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +33,7 @@ class InstalledAppServices:
     generation: InstalledAppGenerationService
     conversations: InstalledAppConversationService
     messages: InstalledAppMessageService
+    connections: InstalledAppConnectionService
 
 
 def _generate_installed_app_conversation_name(
@@ -46,6 +54,7 @@ def build_installed_app_services(
     webapp_access: WebAppAccessQueryService,
     get_workspace_role: WorkspaceRoleLookup,
     webapp_auth_enabled: bool,
+    app_definitions: AppDefinitionQueryService,
 ) -> InstalledAppServices:
     installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     access = InstalledAppAccessService(
@@ -56,6 +65,16 @@ def build_installed_app_services(
     )
     message_runtime = InstalledAppMessageRuntime(session_factory=database_client)
     return InstalledAppServices(
+        connections=InstalledAppConnectionService(
+            store=SQLAlchemyInstalledConnectionRepository(session_factory=database_client),
+            access=access,
+            definitions=app_definitions,
+            credentials=WorkspaceTestCredentialGateway(
+                queries=CredentialQueryRepository(session_factory=database_client),
+                auth=PluginCredentialAuthClient(),
+                invoke_from=InvokeFrom.EXPLORE,
+            ),
+        ),
         access=access,
         management=InstalledAppService(
             installed_apps=installed_apps,

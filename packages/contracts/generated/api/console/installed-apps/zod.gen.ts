@@ -236,6 +236,8 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
  * ChatMessageExplorePayload
  */
 export const zChatMessageExplorePayload = z.object({
+  connection_revision: z.uuid().nullish(),
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -243,6 +245,42 @@ export const zChatMessageExplorePayload = z.object({
   query: z.string(),
   retriever_from: z.string().optional().default('explore_app'),
 })
+
+/**
+ * ConnectionConfigurationInvalidError
+ *
+ * The connection is not compatible with this tool configuration.
+ */
+export const zConnectionConfigurationInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_configuration_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionCredentialsInvalidError
+ *
+ * Invalid credentials for this provider.
+ */
+export const zConnectionCredentialsInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_credentials_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionRequiredError
+ *
+ * Select a connection for every required tool before running.
+ */
+export const zConnectionRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_required'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * NotChatAppError
@@ -257,6 +295,42 @@ export const zNotChatAppError = zErrorResponse.and(
 )
 
 /**
+ * ConnectionNotFoundError
+ *
+ * Connection not found.
+ */
+export const zConnectionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConnectionConflictError
+ *
+ * Connection changed during the operation.
+ */
+export const zConnectionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ConnectionReauthorizationRequiredError
+ *
+ * The OAuth client changed or is unavailable. Start authorization again.
+ */
+export const zConnectionReauthorizationRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_reauthorization_required'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * RateLimitError
  *
  * Rate Limit Error
@@ -265,6 +339,18 @@ export const zRateLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('rate_limit_error'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * CredentialCheckUnavailableError
+ *
+ * Credential validation is temporarily unavailable.
+ */
+export const zCredentialCheckUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('credential_check_unavailable'),
+    status: z.literal(503),
   }),
 )
 
@@ -297,6 +383,24 @@ export const zNotCompletionAppError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * InstalledConnectionConfigurationPayload
+ */
+export const zInstalledConnectionConfigurationPayload = z.object({
+  connection_revision: z.uuid(),
+  connections: z.record(z.string(), z.uuid().nullable()),
+  conversation_id: z.uuid().nullish(),
+})
+
+/**
+ * InstalledConnectionPreflightPayload
+ */
+export const zInstalledConnectionPreflightPayload = z.object({
+  connection_revision: z.uuid(),
+  connections: z.record(z.string(), z.uuid().nullable()),
+  conversation_id: z.uuid().nullish(),
+})
 
 /**
  * ConversationCursorNotFoundError
@@ -488,9 +592,11 @@ export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
 )
 
 /**
- * WorkflowRunPayload
+ * InstalledAppWorkflowRunPayload
  */
-export const zWorkflowRunPayload = z.object({
+export const zInstalledAppWorkflowRunPayload = z.object({
+  connection_revision: z.uuid().nullish(),
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(
       z.union([
@@ -540,6 +646,26 @@ export const zNotWorkflowAppError = zErrorResponse.and(
   }),
 )
 
+/**
+ * ConnectionRevisionChangeDetails
+ */
+export const zConnectionRevisionChangeDetails = z.object({
+  connection_revision: z.uuid().nullable(),
+})
+
+/**
+ * ConnectionRevisionChangedError
+ *
+ * The connection requirements changed. Refresh and confirm again.
+ */
+export const zConnectionRevisionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_revision_changed'),
+    details: zConnectionRevisionChangeDetails.optional(),
+    status: z.literal(409),
+  }),
+)
+
 export const zAnyJsonValue = z.unknown()
 
 /**
@@ -576,12 +702,133 @@ export const zSystemParameters = z.object({
 })
 
 /**
- * Parameters
+ * IconType
  */
-export const zParameters = z.object({
+export const zIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponse = z.object({
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponse = z.object({
+  app: zInstalledAppInfoResponse,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullable(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponse = z.object({
+  has_more: z.boolean(),
+  installed_apps: z.array(zInstalledAppResponse),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConnectionCredentialStatus
+ *
+ * Last known credential lifecycle state, not readiness for a particular node.
+ *
+ * Keep the existing storage values. App-specific Client mismatches and unbinding
+ * must never be written back as a global credential state change.
+ */
+export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reconnect_required'])
+
+/**
+ * ConnectionCredentialType
+ */
+export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
+
+/**
+ * EndUserConnectionResponse
+ */
+export const zEndUserConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  created_at: z.int(),
+  credential_status: zConnectionCredentialStatus.nullable(),
+  credential_type: zConnectionCredentialType,
+  expires_at: z.int().nullable(),
+  id: z.string(),
+  last_active_at: z.int().nullable(),
+  name: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * EndUserConnectionListResponse
+ */
+export const zEndUserConnectionListResponse = z.object({
+  data: z.array(zEndUserConnectionResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConnectionConfigurationResponse
+ */
+export const zConnectionConfigurationResponse = z.object({
+  connections: z.record(z.string(), zEndUserConnectionResponse.nullable()),
+  reauthorization_required: z.boolean(),
+})
+
+/**
+ * WebAppConnectionRequirement
+ */
+export const zWebAppConnectionRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  icon: z.string(),
+  icon_dark: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+  provider_label: z.string(),
+  purpose: z.string(),
+  title: z.string(),
+})
+
+/**
+ * InstalledAppParametersResponse
+ */
+export const zInstalledAppParametersResponse = z.object({
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
+  connection_requirements: z.array(zWebAppConnectionRequirement),
+  connection_revision: z.string().nullable(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -603,6 +850,7 @@ export const zParameters = z.object({
     enabled: z.boolean().optional(),
   }),
   opening_statement: z.string().nullish(),
+  requires_end_user_connections: z.boolean(),
   retriever_resource: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -918,58 +1166,54 @@ export const zParameters = z.object({
 })
 
 /**
- * IconType
+ * CredentialCheckResult
  */
-export const zIconType = z.enum(['emoji', 'image', 'link'])
+export const zCredentialCheckResult = z.object({
+  checked_at: z.int(),
+  reason_code: z
+    .enum([
+      'credential_expired',
+      'credential_invalid',
+      'credential_revoked',
+      'provider_network_error',
+      'provider_rate_limited',
+      'provider_timeout',
+      'provider_unavailable',
+    ])
+    .nullable(),
+  retryable: z.boolean(),
+  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+})
 
 /**
- * AppMode
+ * NodeConnectionStatus
+ *
+ * The current selection's effective status for one published Tool node.
  */
-export const zAppMode = z.enum([
-  'advanced-chat',
-  'agent',
-  'agent-chat',
-  'channel',
-  'chat',
-  'completion',
-  'rag-pipeline',
-  'workflow',
+export const zNodeConnectionStatus = z.enum([
+  'connected',
+  'disconnected',
+  'invalid',
+  'reconnect_required',
 ])
 
 /**
- * InstalledAppInfoResponse
+ * ConnectionPreflightStatus
  */
-export const zInstalledAppInfoResponse = z.object({
-  description: z.string(),
-  icon: z.string().nullable(),
-  icon_background: z.string().nullable(),
-  icon_type: zIconType.nullable(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  mode: zAppMode,
-  name: z.string(),
-  use_icon_as_answer_icon: z.boolean(),
+export const zConnectionPreflightStatus = z.object({
+  check: zCredentialCheckResult.nullable(),
+  connection_id: z.string().nullable(),
+  node_id: z.string(),
+  status: zNodeConnectionStatus.nullable(),
 })
 
 /**
- * InstalledAppResponse
+ * InstalledConnectionPreflightResponse
  */
-export const zInstalledAppResponse = z.object({
-  app: zInstalledAppInfoResponse,
-  app_owner_tenant_id: z.string(),
-  editable: z.boolean(),
-  id: z.string(),
-  is_pinned: z.boolean(),
-  last_used_at: z.int().nullable(),
-})
-
-/**
- * InstalledAppListResponse
- */
-export const zInstalledAppListResponse = z.object({
-  has_more: z.boolean(),
-  installed_apps: z.array(zInstalledAppResponse),
-  next_cursor: z.string().nullable(),
+export const zInstalledConnectionPreflightResponse = z.object({
+  connection_revision: z.string(),
+  connections: z.array(zConnectionPreflightStatus),
+  ready: z.boolean().readonly(),
 })
 
 /**
@@ -1289,6 +1533,14 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
 })
 
 /**
+ * InstalledConnectionPreflightResponse
+ */
+export const zInstalledConnectionPreflightResponseWritable = z.object({
+  connection_revision: z.string(),
+  connections: z.array(zConnectionPreflightStatus),
+})
+
+/**
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponseWritable = z.object({
@@ -1453,6 +1705,61 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPat
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse =
   zSimpleResultResponse
 
+export const zGetInstalledAppsByInstalledAppIdConnectionsPath = z.object({
+  installed_app_id: z.uuid(),
+})
+
+export const zGetInstalledAppsByInstalledAppIdConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Visible Workspace Connections
+ */
+export const zGetInstalledAppsByInstalledAppIdConnectionsResponse = zEndUserConnectionListResponse
+
+export const zGetInstalledAppsByInstalledAppIdConnectionsConfigurationPath = z.object({
+  installed_app_id: z.uuid(),
+})
+
+export const zGetInstalledAppsByInstalledAppIdConnectionsConfigurationQuery = z.object({
+  conversation_id: z.uuid().optional(),
+})
+
+/**
+ * Saved member choices
+ */
+export const zGetInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
+  zConnectionConfigurationResponse
+
+export const zPutInstalledAppsByInstalledAppIdConnectionsConfigurationBody =
+  zInstalledConnectionConfigurationPayload
+
+export const zPutInstalledAppsByInstalledAppIdConnectionsConfigurationPath = z.object({
+  installed_app_id: z.uuid(),
+})
+
+/**
+ * Member choices saved
+ */
+export const zPutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
+  zConnectionConfigurationResponse
+
+export const zPostInstalledAppsByInstalledAppIdConnectionsPreflightBody =
+  zInstalledConnectionPreflightPayload
+
+export const zPostInstalledAppsByInstalledAppIdConnectionsPreflightPath = z.object({
+  installed_app_id: z.uuid(),
+})
+
+/**
+ * Connection readiness
+ */
+export const zPostInstalledAppsByInstalledAppIdConnectionsPreflightResponse =
+  zInstalledConnectionPreflightResponse
+
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
   installed_app_id: z.uuid(),
 })
@@ -1586,7 +1893,7 @@ export const zGetInstalledAppsByInstalledAppIdParametersPath = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdParametersResponse = zParameters
+export const zGetInstalledAppsByInstalledAppIdParametersResponse = zInstalledAppParametersResponse
 
 export const zGetInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
   installed_app_id: z.uuid(),
@@ -1637,7 +1944,7 @@ export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = z.custom<Bl
   (value) => value instanceof Blob || value instanceof File,
 )
 
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
+export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zInstalledAppWorkflowRunPayload
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
   installed_app_id: z.uuid(),

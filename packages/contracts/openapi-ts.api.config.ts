@@ -63,6 +63,7 @@ const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const strictZodSchemaNames = new Set([
   'AccountProfilePatchPayload',
   'Parameters',
+  'InstalledAppParametersResponse',
   'AppTextInputPayload',
   'AppSelectInputPayload',
   'AppParagraphInputPayload',

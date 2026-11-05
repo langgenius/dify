@@ -618,6 +618,7 @@ def build_application_services(
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
     installed_apps = build_installed_app_services(
+        app_definitions=app_definitions,
         database_client=database_client,
         webapp_access=webapp_access,
         get_workspace_role=workspace_repository.get_account_role,

@@ -4,7 +4,7 @@ from http import HTTPStatus
 from flask import Response
 from flask_restx import Resource
 
-from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.controller_schemas import WorkflowRunPayload as BaseWorkflowRunPayload
 from controllers.common.errors import InternalServerError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
@@ -15,6 +15,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.explore.connections import installed_connection_errors
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
@@ -33,13 +34,20 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.execution import ConnectionRunInput
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotWorkflowError
 
 logger = logging.getLogger(__name__)
 
-register_schema_model(console_ns, WorkflowRunPayload)
+
+class InstalledAppWorkflowRunPayload(BaseWorkflowRunPayload, ConnectionRunInput):
+    pass
+
+
+register_schema_model(console_ns, InstalledAppWorkflowRunPayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -53,14 +61,15 @@ class InstalledAppWorkflowRunApi(Resource):
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
     )
-    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
+    @console_ns.expect(console_ns.models[InstalledAppWorkflowRunPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
-    @model_validate(WorkflowRunPayload)
+    @model_validate(InstalledAppWorkflowRunPayload)
+    @installed_connection_errors
     def post(
         self,
-        req_data: WorkflowRunPayload,
+        req_data: InstalledAppWorkflowRunPayload,
         request_context: RequestContext,
         installed_app: InstalledAppRef,
     ) -> Response:
@@ -71,11 +80,13 @@ class InstalledAppWorkflowRunApi(Resource):
             response = application_services().installed_apps.generation.generate_workflow(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
-                args=req_data.model_dump(exclude_none=True),
+                args=req_data.model_dump(mode="json", exclude_none=True),
             )
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except ConnectionError:
+            raise
         except (AppDefinitionUnavailableError, InstalledAppNotWorkflowError):
             raise NotWorkflowAppError() from None
         except AccountNotFoundError:

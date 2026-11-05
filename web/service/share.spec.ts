@@ -1,4 +1,4 @@
-import type { Parameters as AppParameters } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { Parameters as AppParameters } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { createHttpError } from './http-error'
@@ -356,6 +356,13 @@ it.each([
 ])('loads $source parameters through the shared typed UI adapter', async ({ source, prefix }) => {
   const numberDefaults = [0, 42, -7.123456, '12.5']
   const parameters: AppParameters = {
+    ...(source === AppSourceType.installedApp
+      ? {
+          connection_revision: null,
+          requires_end_user_connections: false,
+          connection_requirements: [],
+        }
+      : {}),
     opening_statement: null,
     suggested_questions: ['Next question'],
     suggested_questions_after_answer: { enabled: false },

@@ -8,6 +8,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 import services
+from controllers.common.end_user_connections import ConnectionConfigurationHTTPError
 from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -20,6 +21,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.explore.connections import installed_connection_errors
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
@@ -40,6 +42,8 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.execution import ConnectionRunInput
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
@@ -55,7 +59,7 @@ class CompletionMessageExplorePayload(BaseModel):
     retriever_from: str = Field(default="explore_app")
 
 
-class ChatMessageExplorePayload(BaseModel):
+class ChatMessageExplorePayload(ConnectionRunInput):
     inputs: dict[str, Any]
     query: str
     files: list[dict[str, Any]] | None = Field(default=None)
@@ -190,6 +194,7 @@ class ChatApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(ChatMessageExplorePayload)
+    @installed_connection_errors
     def post(
         self,
         req_data: ChatMessageExplorePayload,
@@ -197,16 +202,29 @@ class ChatApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
+            if installed_app.app_mode != "advanced-chat" and (
+                req_data.connection_revision is not None or req_data.connections is not None
+            ):
+                raise ConnectionConfigurationHTTPError()
             response = application_services().installed_apps.generation.generate_chat(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
-                args=req_data.model_dump(exclude_none=True),
+                args=req_data.model_dump(mode="json", exclude_none=True)
+                | (
+                    {"connections": None}
+                    if "connections" in req_data.model_fields_set and req_data.connections is None
+                    else {}
+                ),
             )
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
+        except ConnectionError:
+            raise
+        except ConnectionConfigurationHTTPError:
+            raise
         except InstalledAppNotChatError:
             raise NotChatAppError() from None
         except InstalledAppNotFoundError:

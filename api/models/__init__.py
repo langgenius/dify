@@ -69,6 +69,7 @@ from .enums import (
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
+from .installed_app_connection import InstalledAppConnectionConfiguration
 from .knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSApiCredential,
@@ -298,6 +299,7 @@ __all__ = [
     "HumanInputFormUploadToken",
     "IconType",
     "InstalledApp",
+    "InstalledAppConnectionConfiguration",
     "InvitationCode",
     "KnowledgeFSApiCredential",
     "KnowledgeFSApiCredentialStatus",
