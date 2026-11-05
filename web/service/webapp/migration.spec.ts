@@ -80,6 +80,43 @@ describe('Web App migration', () => {
     expect(target.searchParams.get('redirect_url')).toBe(returnUrl)
   })
 
+  it('excludes empty passports while keeping connections-only and conversations-only candidates', async () => {
+    for (const code of ['empty', 'connections', 'conversations'])
+      setWebAppPassport({ kind: 'default', code }, `passport-${code}`, 'anonymous')
+    migrationClient.postClaimablePassports.mockResolvedValue({
+      data: [
+        {
+          index: 0,
+          app_code: 'empty',
+          app_name: 'Empty',
+          connection_count: 0,
+          conversation_count: 0,
+        },
+        {
+          index: 1,
+          app_code: 'connections',
+          app_name: 'Connections',
+          connection_count: 1,
+          conversation_count: 0,
+        },
+        {
+          index: 2,
+          app_code: 'conversations',
+          app_name: 'Conversations',
+          connection_count: 0,
+          conversation_count: 1,
+        },
+      ],
+    })
+
+    const candidates = await loadWebAppMigrationCandidates()
+
+    expect(candidates.map(({ app_code }) => app_code)).toEqual(['connections', 'conversations'])
+    expect(candidates[0].credential.passport).toBe('passport-connections')
+    expect(candidates[1].credential.passport).toBe('passport-conversations')
+    expect(getAnonymousWebAppPassport({ kind: 'default', code: 'empty' })).toBe('passport-empty')
+  })
+
   it('keeps failed anonymous Passports for retry and removes only successfully claimed local Passports', async () => {
     const appA = { kind: 'default', code: 'app-a' } as const
     const appB = { kind: 'default', code: 'app-b' } as const

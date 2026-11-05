@@ -37,7 +37,8 @@ export async function loadWebAppMigrationCandidates(signal?: AbortSignal) {
     )
     for (const item of response.data) {
       const credential = batch[item.index]
-      if (credential) candidates.push({ ...item, credential })
+      if (credential && (item.connection_count > 0 || item.conversation_count > 0))
+        candidates.push({ ...item, credential })
     }
   }
   return candidates
