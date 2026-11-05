@@ -51,7 +51,7 @@ const InitPasswordPopup = () => {
   ) : (
     <div>
       {!validated && (
-        <div className="mx-12 block min-w-28">
+        <div className="block min-w-28 sm:mx-12">
           <div className="mb-4">
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
               {pageTitle}

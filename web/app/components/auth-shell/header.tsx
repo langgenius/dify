@@ -21,7 +21,7 @@ const Header = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <header className="flex w-full items-center justify-between p-6">
+    <header className="flex w-full items-center justify-between gap-3 p-4 sm:p-6">
       {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
         <img
           src={systemFeatures.branding.login_page_logo}
@@ -31,7 +31,7 @@ const Header = () => {
       ) : (
         <DifyLogo alt="Dify" size="large" />
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1">
         <LocaleMenu
           value={locale}
           items={languages.filter((item) => item.supported)}
@@ -40,8 +40,10 @@ const Header = () => {
             router.refresh()
           }}
         />
-        <Separator decorative orientation="vertical" className="mx-0 ms-2 h-4" />
-        <ThemeSelector />
+        <div className="flex shrink-0 items-center gap-1">
+          <Separator decorative orientation="vertical" className="mx-0 ms-2 h-4" />
+          <ThemeSelector />
+        </div>
       </div>
     </header>
   )

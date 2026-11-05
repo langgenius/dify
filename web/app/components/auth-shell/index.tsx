@@ -17,20 +17,22 @@ export function AuthShell({ children, header = true, wide = false }: AuthShellPr
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <div className="flex min-h-screen w-full justify-center bg-background-default-burn p-6">
-      <div className="flex w-full min-w-0 flex-col items-center rounded-2xl border border-effects-highlight bg-background-default-subtle">
+    <div className="flex min-h-dvh w-full justify-center bg-background-default-subtle px-[max(env(safe-area-inset-left),env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] in-data-viewport-frame:min-h-full in-data-viewport-frame:pb-0 sm:bg-background-default-burn sm:px-[max(--spacing(6),env(safe-area-inset-left),env(safe-area-inset-right))] sm:pt-[max(--spacing(6),env(safe-area-inset-top))] sm:pb-[max(--spacing(6),env(safe-area-inset-bottom))] in-data-viewport-frame:sm:pb-6">
+      <div className="flex w-full min-w-0 flex-col items-center bg-background-default-subtle sm:rounded-2xl sm:border sm:border-effects-highlight">
         {header && <Header />}
-        <main className="flex w-full grow flex-col items-center justify-center px-6 md:px-27">
+        <main className="flex w-full grow flex-col items-center justify-center px-4 sm:px-6 md:px-27">
           <div
             className={
-              wide ? 'flex justify-center md:w-110 lg:w-150' : 'flex w-full flex-col md:w-100'
+              wide
+                ? 'flex w-full justify-center md:w-110 lg:w-150'
+                : 'flex w-full flex-col md:w-100'
             }
           >
             {children}
           </div>
         </main>
         {!systemFeatures.branding.enabled && (
-          <footer className="px-8 py-6 system-xs-regular text-text-tertiary">
+          <footer className="px-4 py-6 system-xs-regular text-text-tertiary sm:px-8">
             © {copyrightYear} LangGenius, Inc. All rights reserved.
           </footer>
         )}
