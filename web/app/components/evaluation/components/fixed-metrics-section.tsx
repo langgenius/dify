@@ -1,7 +1,6 @@
 'use client'
 
 import type { MetricOption } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetEvaluationMetrics, useDefaultEvaluationMetrics } from '../queries'
@@ -21,7 +20,6 @@ type FixedMetricsSectionProps = {
 const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionProps) => {
   const { t } = useTranslation(['evaluation'])
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
-  const addCustomMetric = useEvaluationStore((state) => state.addCustomMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const resource = useEvaluationResource(resourceType, resourceId)
   const { data: datasetMetricsData } = useDatasetEvaluationMetrics(
@@ -136,25 +134,13 @@ const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionPr
             />
           )
         })}
-        {resourceType === 'agents' && (
+        {resourceType === 'agents' && customMetric && (
           <div className="pt-2">
-            {customMetric ? (
-              <CustomMetricCard
-                resourceType={resourceType}
-                resourceId={resourceId}
-                metric={customMetric}
-              />
-            ) : (
-              <Button
-                variant="ghost-accent"
-                className="rounded-md px-3 py-2"
-                aria-label={`${t(($) => $['metrics.add'])}: ${t(($) => $['metrics.custom.title'])}`}
-                onClick={() => addCustomMetric(resourceType, resourceId)}
-              >
-                <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-                {t(($) => $['metrics.custom.title'])}
-              </Button>
-            )}
+            <CustomMetricCard
+              resourceType={resourceType}
+              resourceId={resourceId}
+              metric={customMetric}
+            />
           </div>
         )}
       </div>

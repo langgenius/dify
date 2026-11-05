@@ -46,6 +46,7 @@ describe('agent evaluation metrics', () => {
     expect(screen.getByRole('checkbox', { name: /Trajectory Quality/ })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /Tool Selection Correctness/ })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /Tool Argument Correctness/ })).toBeInTheDocument()
+    expect(screen.queryByText('evaluation.metrics.custom.title')).not.toBeInTheDocument()
     const addCondition = screen.getByRole('button', { name: 'evaluation.conditions.addCondition' })
     expect(addCondition).toBeDisabled()
 
