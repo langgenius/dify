@@ -142,7 +142,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isBelowMd ? (resultExisted ? 'h-[calc(100%-64px)]' : '') : 'w-150 max-w-[50%]',
+        !isBelowMd ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
         isInstalledApp && 'rounded-s-2xl',
       )}
     >
@@ -150,7 +150,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         className={cn(
           'shrink-0 border-b border-divider-subtle bg-components-panel-bg',
           showWorkflowLayout ? 'relative flex flex-col gap-4 overflow-hidden' : 'space-y-4',
-          isBelowMd ? 'p-4 pb-0' : 'p-8 pb-0',
+          !isBelowMd ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
         {!isInstalledApp && <MyAppsLink className="w-full shrink-0 ps-0" />}
@@ -158,7 +158,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           <div className="flex flex-col gap-3">
             <AppIcon
               fallback={{ content: '🤖', background: appDefaultIconBackground }}
-              size={isBelowMd ? 'small' : 'large'}
+              size={!isBelowMd ? 'large' : 'small'}
               icon={siteInfo}
             />
             <div className="space-y-2">
@@ -178,7 +178,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             <div className="flex items-center gap-3">
               <AppIcon
                 fallback={{ content: '🤖', background: appDefaultIconBackground }}
-                size={isBelowMd ? 'small' : 'large'}
+                size={!isBelowMd ? 'large' : 'small'}
                 icon={siteInfo}
               />
               <div className="grow truncate system-md-semibold text-text-secondary">
@@ -257,7 +257,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             {!isWorkflow && (
               <TabsPanel value="saved">
                 <SavedItems
-                  className={cn(isBelowMd ? 'mt-4' : 'mt-6')}
+                  className={cn(!isBelowMd ? 'mt-6' : 'mt-4')}
                   isShowTextToSpeech={textToSpeechConfig?.enabled}
                   list={savedMessages}
                   onRemove={onRemoveSavedMessage}

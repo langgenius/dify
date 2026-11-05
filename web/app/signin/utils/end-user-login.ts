@@ -1,5 +1,6 @@
 import { zGetLoginQuery } from '@dify/contracts/api/console/login/zod.gen'
 import { parseWebAppAddress } from '@/service/webapp-address'
+import { basePath } from '@/utils/var'
 
 type LoginSearchParams = Pick<URLSearchParams, 'get'>
 
@@ -18,16 +19,49 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams) {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
     if (url.username || url.password) return null
     const appCode = searchParams.get('app_code') || parseWebAppAddress(url.pathname)?.code
+    const challenge = searchParams.get('code_challenge')
+    if (appCode || challenge) {
+      if (!appCode || !challenge) return null
+    } else if (!getPersonalPortalUrl(redirectUrl)) {
+      return null
+    }
     const input = zGetLoginQuery.safeParse({
       mode: 'end_user',
-      app_code: appCode,
+      app_code: appCode ?? undefined,
       redirect_url: redirectUrl,
-      code_challenge: searchParams.get('code_challenge'),
+      code_challenge: challenge ?? undefined,
     })
     return input.success ? input.data : null
   } catch {
     return null
   }
+}
+
+function getPersonalPortalUrl(raw: string) {
+  if (/[\u0000-\u0020\u007F\\]/.test(raw) || raw.startsWith('//')) return null
+  try {
+    const url = new URL(raw, globalThis.location.origin)
+    if (url.origin !== globalThis.location.origin || url.username || url.password) return null
+    const prefix = basePath.replace(/\/$/, '')
+    if (!url.pathname.startsWith(`${prefix}/`)) return null
+    const route = url.pathname.slice(prefix.length + 1)
+    if (!/^(?:my-apps|connections(?:\/(?:[\w.~-]|%[0-9A-Fa-f]{2})+)?)$/.test(route)) return null
+    if (['.', '..'].includes(decodeURIComponent(route.split('/').at(-1)!))) return null
+    return url
+  } catch {
+    return null
+  }
+}
+
+export function getEndUserAccountRedirectUrl(
+  raw: string | null | undefined,
+  context: ReturnType<typeof getEndUserLoginContext>,
+) {
+  if (!raw || !context?.redirect_url) return null
+  if (context.app_code) return getAccountLoginCallbackUrl(raw, context.redirect_url)
+  const target = getPersonalPortalUrl(raw)
+  const expected = getPersonalPortalUrl(context.redirect_url)
+  return target && expected && target.href === expected.href ? target.href : null
 }
 
 /** Preserve the End User return context across external login redirects. */

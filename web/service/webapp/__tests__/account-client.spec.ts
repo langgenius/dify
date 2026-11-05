@@ -20,6 +20,14 @@ import { webAppClient, webAppQuery } from '../index'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 
+const deployment = vi.hoisted(() => ({ basePath: '' }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
+}))
+
 const appId = '11111111-1111-4111-8111-111111111111'
 const connectionKey = '22222222-2222-4222-8222-222222222222'
 const apps: ConsumerAppsResponse = {
@@ -88,6 +96,7 @@ describe('generated account Web App client', () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
+    deployment.basePath = ''
     localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/my-apps')
@@ -127,7 +136,16 @@ describe('generated account Web App client', () => {
     expectAccountRequest(...fetch.mock.calls[0]!, '/account/profile', 'GET')
   })
 
-  it('leaves a missing account session to the My apps owner without legacy login recovery', async () => {
+  it.each([
+    { label: 'apps', request: () => webAppClient.me.apps.get() },
+    { label: 'profile', request: () => webAppClient.account.profile.get() },
+    {
+      label: 'favorite',
+      request: () => webAppClient.me.apps.byAppId.favorite.put({ params: { app_id: appId } }),
+    },
+  ])('redirects unauthorized $label to personal sign-in', async ({ request }) => {
+    window.history.replaceState({}, '', '/my-apps?view=starred&q=hello%20world#apps')
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(
@@ -137,12 +155,66 @@ describe('generated account Web App client', () => {
         ),
       )
 
-    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+    await expect(request()).rejects.toMatchObject({ status: 401 })
 
     expect(fetch).toHaveBeenCalledOnce()
-    expectAccountRequest(...fetch.mock.calls[0]!, '/me/apps', 'GET')
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-    expect(window.location.pathname).toBe('/my-apps')
+    expect(replace).toHaveBeenCalledOnce()
+    const signin = new URL(replace.mock.calls[0]![0])
+    expect(signin.pathname).toBe('/signin')
+    expect(signin.searchParams.get('is_end_user')).toBe('1')
+    expect(signin.searchParams.get('redirect_url')).toBe(
+      '/my-apps?view=starred&q=hello%20world#apps',
+    )
+    expect(signin.searchParams.has('app_code')).toBe(false)
+    expect(signin.searchParams.has('code_challenge')).toBe(false)
+  })
+
+  it.each([403, 500])('does not redirect account errors with status %s', async (status) => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status }))
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status })
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('preserves the base path and normalizes a trailing slash for the portal API', async () => {
+    deployment.basePath = '/console'
+    window.history.replaceState({}, '', '/console/my-apps/?view=starred#apps')
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+    const signin = new URL(replace.mock.calls[0]![0])
+    expect(signin.pathname).toBe('/console/signin')
+    expect(signin.searchParams.get('redirect_url')).toBe('/console/my-apps?view=starred#apps')
+    expect(signin.searchParams.get('is_end_user')).toBe('1')
+  })
+
+  it.each(['/signin', '/chat/shared-code'])(
+    'does not redirect account 401s on %s',
+    async (pathname) => {
+      window.history.replaceState({}, '', pathname)
+      captureAppAccessScope()
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+      await expect(webAppClient.account.profile.get()).rejects.toMatchObject({ status: 401 })
+      expect(replace).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not redirect a stale unauthorized response after an account switch', async () => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    let finish!: (response: Response) => void
+    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        finish = resolve
+      }),
+    )
+    const result = webAppClient.me.apps.get().catch((error: unknown) => error)
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    startWebAppAccountSession()
+    finish(new Response(null, { status: 401 }))
+    expect(await result).toMatchObject({ name: 'AbortError' })
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('loads My connections without leaking stored credentials from a previously visited App', async () => {

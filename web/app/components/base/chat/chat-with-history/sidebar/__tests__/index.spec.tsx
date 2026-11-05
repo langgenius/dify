@@ -53,6 +53,12 @@ const appData = {
 } as ChatWithHistoryContextValue['appData']
 
 beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (new URL(url).pathname === '/api/account/profile')
+      return Response.json({ name: 'Test Account', avatar: null, avatar_url: null })
+    throw new Error(`Unexpected request: ${url}`)
+  })
   vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
   vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
     data: pinned ? pinnedConversations : conversations,
@@ -65,6 +71,7 @@ beforeEach(() => {
   vi.mocked(delConversation).mockResolvedValue(undefined)
 })
 afterEach(() => {
+  vi.restoreAllMocks()
   localStorage.removeItem(CONVERSATION_ID_INFO)
   sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   localStorage.removeItem('webappSidebarCollapse')
@@ -132,30 +139,22 @@ async function operate(
 
 describe('Conversation sidebar', () => {
   it.each([false, true])(
-    'places My apps before application information in the mobile=%s sidebar',
+    'places My apps before application information in the narrow=%s sidebar',
     async (isBelowSm) => {
-      const profile = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-        const url = input instanceof Request ? input.url : String(input)
-        if (!url.endsWith('/api/account/profile')) throw new Error(`Unexpected request: ${url}`)
-        return Response.json({ name: 'Alice', avatar: null, avatar_url: null })
-      })
-      try {
-        renderChatHistory(
-          <WebAppEntryContext value={chatConnectionEntry}>
-            <Sidebar />
-          </WebAppEntryContext>,
-          { sidebarCollapsed: false, ownerProps: { isBelowSm } },
-        )
-        await screen.findByRole('button', { name: 'Alice' })
-        const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
-        expect(navigation).toHaveAttribute('href', '/my-apps')
-        expect(
-          navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy()
-      } finally {
-        profile.mockRestore()
-      }
+      renderChatHistory(
+        <WebAppEntryContext value={chatConnectionEntry}>
+          <Sidebar />
+        </WebAppEntryContext>,
+        { sidebarCollapsed: false, ownerProps: { isBelowSm } },
+      )
+
+      const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
+      expect(navigation).toHaveAttribute('href', '/my-apps')
+      expect(
+        navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(await screen.findByRole('button', { name: 'Test Account' })).toBeVisible()
     },
   )
 

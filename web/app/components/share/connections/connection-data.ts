@@ -82,10 +82,7 @@ export function getConnectionData({
             ? (connection.account_label ?? connection.name)
             : connection.name,
         method: methods[connection.credential_type],
-        status:
-          connection.credential_status === null
-            ? undefined
-            : statuses[connection.credential_status],
+        status: connection.credential_status ? statuses[connection.credential_status] : undefined,
       })),
     }
   })

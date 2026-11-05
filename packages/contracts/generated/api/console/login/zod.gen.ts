@@ -171,10 +171,13 @@ export const zLoginPayload = z.object({
 })
 
 export const zGetLoginQuery = z.object({
-  app_code: z.string().min(1),
-  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  app_code: z.string().min(1).optional(),
+  code_challenge: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/)
+    .optional(),
   mode: z.string().optional().default('end_user'),
-  redirect_url: z.string().min(1),
+  redirect_url: z.string().min(1).optional(),
 })
 
 /**

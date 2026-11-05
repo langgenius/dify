@@ -133,6 +133,7 @@ describe('Webapp connection data', () => {
           name: 'Personal API key',
           credential_status: 'invalid',
         }),
+        connection({ id: 'workspace-connection', credential_status: null }),
       ],
       allConnectionsLoaded: true,
     })
@@ -142,6 +143,12 @@ describe('Webapp connection data', () => {
       { id: 'connection-one', name: 'research@example.com', method: 'oauth', status: 'active' },
       { id: 'expired-oauth', name: 'Research account', method: 'oauth', status: 'expired' },
       { id: 'invalid-key', name: 'Personal API key', method: 'api-key', status: 'invalid' },
+      {
+        id: 'workspace-connection',
+        name: 'research@example.com',
+        method: 'oauth',
+        status: undefined,
+      },
     ])
   })
 
