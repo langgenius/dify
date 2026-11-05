@@ -227,6 +227,8 @@ Get account avatar url
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/personal-access-token-resources
+**List account-visible candidates for the validated search, type, and cursor**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -234,6 +236,7 @@ Get account avatar url
 | cursor | query |  | No | integer |
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
+| resource_type | query | Resource type to filter by before pagination | No | string, <br>**Available values:** "app", "dataset" |
 
 #### Responses
 

@@ -838,18 +838,27 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     assert client.get(f"{base}/{form_tokens[0]}", headers=headers).status_code == 403
 
 
-def test_resource_candidate_cursor_visits_each_app_once(
+@pytest.mark.parametrize("kind", ["app", "dataset"])
+def test_resource_candidate_cursor_visits_each_matching_type_once(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
+    kind: str,
 ) -> None:
+    from tests.helpers.unit.model_factories import make_dataset
+
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
-    apps = [make_app(app_id=str(uuid4()), tenant_id=workspace.id, name=name) for name in ("A", "B", "C")]
+    apps = [make_app(app_id=str(uuid4()), tenant_id=workspace.id, name=name) for name in ("A", "C", "E")]
+    datasets = [
+        make_dataset(dataset_id=str(uuid4()), tenant_id=workspace.id, name=name, maintainer=account.id)
+        for name in ("B", "D", "F")
+    ]
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
                 workspace,
                 *apps,
+                *datasets,
                 TenantAccountJoin(
                     current=True,
                     tenant_id=workspace.id,
@@ -859,11 +868,15 @@ def test_resource_candidate_cursor_visits_each_app_once(
             ]
         )
     url = "/console/api/account/personal-access-token-resources"
-    first = client.get(url, query_string={"limit": 2}).get_json()
-    assert [row["resource_id"] for row in first["data"]] == [apps[0].id, apps[1].id]
+    query = {"limit": 2, "resource_type": kind}
+    expected = apps if kind == "app" else datasets
+    first = client.get(url, query_string=query).get_json()
+    assert [(row["resource_type"], row["resource_id"]) for row in first["data"]] == [
+        (kind, resource.id) for resource in expected[:2]
+    ]
     assert first["has_more"] is True
-    second = client.get(url, query_string={"limit": 2, "cursor": first["next_cursor"]}).get_json()
-    assert [row["resource_id"] for row in second["data"]] == [apps[2].id]
+    second = client.get(url, query_string={**query, "cursor": first["next_cursor"]}).get_json()
+    assert [(row["resource_type"], row["resource_id"]) for row in second["data"]] == [(kind, expected[2].id)]
     assert second["has_more"] is False
     assert second["next_cursor"] is None
 

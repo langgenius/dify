@@ -16,6 +16,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { noop } from 'es-toolkit/function'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
   legacyWorkflowVersionHistoryKey,
@@ -1081,10 +1082,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           post: {
             mutationOptions: {
-              onSuccess: async (_data, _variables, _onMutateResult, context) => {
-                await context.client.invalidateQueries({
-                  queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-                })
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client
+                  .invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                  .catch(noop)
               },
             },
           },

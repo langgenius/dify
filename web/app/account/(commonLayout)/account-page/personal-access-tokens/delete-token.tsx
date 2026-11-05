@@ -33,12 +33,14 @@ export default function DeleteToken({
         <span aria-hidden="true" className="i-ri-close-line size-4" />
       </IconButton>
       <div className="flex flex-col gap-6 p-6">
-        <AlertDialogTitle>
-          {t(($) => $['personalAccessToken.deleteTitle'], {
-            name: token.name,
-            suffix: token.secret_last_four,
-          })}
-        </AlertDialogTitle>
+        <div className="pe-8">
+          <AlertDialogTitle>
+            {t(($) => $['personalAccessToken.deleteTitle'], {
+              name: token.name,
+              suffix: token.secret_last_four,
+            })}
+          </AlertDialogTitle>
+        </div>
         <AlertDialogDescription>
           {t(($) => $['personalAccessToken.deleteDescription'])}
         </AlertDialogDescription>
@@ -54,7 +56,7 @@ export default function DeleteToken({
           <AlertDialogConfirmButton
             loading={mutation.isPending}
             onClick={() =>
-              mutation.mutate({ params: { token_id: token.id } }, { onSuccess: () => onClose() })
+              mutation.mutate({ params: { token_id: token.id } }, { onSuccess: onClose })
             }
           >
             {t(($) => $['operation.delete'], { ns: 'common' })}

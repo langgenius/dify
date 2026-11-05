@@ -1,7 +1,7 @@
 import type { PersonalAccessTokenResourceResponse } from '@dify/contracts/api/console/account/types.gen'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
-import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -10,8 +10,12 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import TreeBranchLine from '@/app/components/base/tree-branch-line'
 import { consoleQuery } from '@/service/console'
+import PickerList from './picker-list'
 
-type ResourceFilter = 'all' | 'app' | 'dataset'
+type ResourceType = 'app' | 'dataset'
+
+const resourceKey = (resource: PersonalAccessTokenResourceResponse) =>
+  `${resource.resource_type}:${resource.resource_id}`
 
 export default function ResourcePicker({
   selected,
@@ -22,44 +26,49 @@ export default function ResourcePicker({
 }) {
   const { t } = useTranslation(['accountSettings', 'common', 'dataset'])
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<ResourceFilter>('all')
+  const [resourceType, setResourceType] = useState<ResourceType>(() =>
+    selected.length > 0 && selected.every((resource) => resource.resource_type === 'dataset')
+      ? 'dataset'
+      : 'app',
+  )
   const [collapsedApps, setCollapsedApps] = useState<Set<string>>(() => new Set())
   const keyword = useDebounce(search.trim(), { wait: 200 })
   const query = useInfiniteQuery(
     consoleQuery.account.personalAccessTokenResources.get.infiniteOptions({
       context: { silent: true },
       initialPageParam: 0,
-      input: (cursor) => ({ query: { cursor, limit: 20, keyword } }),
+      input: (cursor) => ({ query: { cursor, limit: 20, keyword, resource_type: resourceType } }),
       getNextPageParam: (page) => page.next_cursor ?? undefined,
     }),
   )
-  const candidates = new Map(
-    selected
-      .filter((resource) =>
-        [resource.display_name, resource.workspace_name, resource.resource_id].some((value) =>
-          value.toLowerCase().includes(keyword.toLowerCase()),
-        ),
+  const selectedKeys = new Set(selected.map(resourceKey))
+  const datasetCount = selected.filter((resource) => resource.resource_type === 'dataset').length
+  const normalizedKeyword = keyword.toLowerCase()
+  const candidates = new Map<string, PersonalAccessTokenResourceResponse>()
+  for (const resource of selected) {
+    const type = resource.resource_type === 'dataset' ? 'dataset' : 'app'
+    if (
+      type === resourceType &&
+      [resource.display_name, resource.workspace_name, resource.resource_id].some((value) =>
+        value.toLowerCase().includes(normalizedKeyword),
       )
-      .map((resource) => [`${resource.resource_type}:${resource.resource_id}`, resource]),
-  )
+    )
+      candidates.set(resourceKey(resource), resource)
+  }
   for (const page of query.data?.pages ?? []) {
-    for (const resource of page.data) {
-      candidates.set(`${resource.resource_type}:${resource.resource_id}`, resource)
-      for (const runner of resource.app_deployments ?? [])
-        candidates.set(`${runner.resource_type}:${runner.resource_id}`, runner)
-    }
+    for (const resource of page.data) candidates.set(resourceKey(resource), resource)
   }
 
   const values = Array.from(candidates.values())
   const apps = values.filter((resource) => resource.resource_type === 'app')
   const datasets = values.filter((resource) => resource.resource_type === 'dataset')
-  const orphanedRunners = values.filter(
-    (resource) => resource.resource_type === 'app_deployment' && !resource.parent_app_id,
+  const nestedDeploymentIds = new Set(
+    apps.flatMap((app) => (app.app_deployments ?? []).map((runner) => runner.resource_id)),
   )
-  const visibleApps = filter === 'dataset' ? [] : apps
-  const visibleDatasets = filter === 'app' ? [] : datasets
-  const visibleOrphanedRunners = filter === 'dataset' ? [] : orphanedRunners
-  const visibleCount = visibleApps.length + visibleDatasets.length + visibleOrphanedRunners.length
+  const standaloneDeployments = values.filter(
+    (resource) =>
+      resource.resource_type === 'app_deployment' && !nestedDeploymentIds.has(resource.resource_id),
+  )
   const isExpanded = (appId: string) => !collapsedApps.has(appId)
 
   const renderResource = (
@@ -68,14 +77,11 @@ export default function ResourcePicker({
     displayName = resource.display_name,
     lastNested = false,
   ) => {
-    const checked = selected.some(
-      (item) =>
-        item.resource_type === resource.resource_type && item.resource_id === resource.resource_id,
-    )
+    const checked = selectedKeys.has(resourceKey(resource))
     return (
       <div
-        key={`${resource.resource_type}:${resource.resource_id}`}
-        className={`relative flex min-h-10 items-center py-1.5 ${nested ? 'gap-0' : 'gap-3'}`}
+        key={resourceKey(resource)}
+        className={`relative flex items-center gap-3 py-1.5 ${nested ? 'min-h-13 ps-6' : 'min-h-10'}`}
       >
         {nested && <TreeBranchLine last={lastNested} />}
         {!nested && (
@@ -121,6 +127,7 @@ export default function ResourcePicker({
           </span>
         )}
         <Checkbox
+          data-pat-picker-item=""
           checked={checked}
           disabled={!resource.available && !checked}
           aria-label={displayName}
@@ -130,84 +137,118 @@ export default function ResourcePicker({
     )
   }
 
-  const filters: { value: ResourceFilter; label: string }[] = [
-    { value: 'all', label: t(($) => $['resourceAccessToken.tabAllTypes']) },
-    { value: 'app', label: t(($) => $['resourceAccessToken.tabApps']) },
-    { value: 'dataset', label: t(($) => $['resourceAccessToken.tabKnowledgeBases']) },
-  ]
+  const tabs = [
+    {
+      value: 'app',
+      label: t(($) => $['resourceAccessToken.tabApps']),
+      count: selected.length - datasetCount,
+    },
+    {
+      value: 'dataset',
+      label: t(($) => $['resourceAccessToken.tabKnowledgeBases']),
+      count: datasetCount,
+    },
+  ] satisfies { value: ResourceType; label: string; count: number }[]
 
   return (
     <div className="contents">
       <SearchInput
+        className="mt-2 sm:mt-0"
         value={search}
         onValueChange={setSearch}
         placeholder={t(($) => $['personalAccessToken.searchResources'])}
       />
-      <div className="col-span-2 mt-2 flex flex-wrap items-center gap-1">
-        <div
-          role="group"
+      <Tabs
+        className="col-span-full mt-2 min-w-0"
+        value={resourceType}
+        onValueChange={setResourceType}
+      >
+        <TabsList
           aria-label={t(($) => $['resourceAccessToken.resources'])}
-          className="flex gap-1"
+          className="flex-wrap gap-1"
         >
-          {filters.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              aria-pressed={filter === item.value}
-              onClick={() => setFilter(item.value)}
-              className={`rounded-lg px-3 py-1.5 system-xs-medium ${filter === item.value ? 'bg-state-base-hover text-text-primary' : 'text-text-tertiary hover:bg-state-base-hover'}`}
+          {tabs.map(({ value, label, count }) => (
+            <TabsTab
+              key={value}
+              value={value}
+              className="gap-1.5 rounded-lg border-b-0 px-3 py-1.5 system-xs-medium hover:bg-state-base-hover data-active:bg-state-base-hover"
             >
-              {item.label}
-            </button>
+              {label}
+              <span
+                aria-hidden="true"
+                className="min-w-4 rounded border border-divider-deep px-1 text-center system-2xs-medium text-text-tertiary tabular-nums"
+              >
+                {count}
+              </span>
+              <span className="sr-only">
+                {t(($) => $['dynamicSelect.selected'], { ns: 'common', count })}
+              </span>
+            </TabsTab>
           ))}
-        </div>
-      </div>
-
-      <div className="col-span-2 max-h-64 overflow-y-auto rounded-lg border border-components-panel-border px-4 py-2">
-        {visibleApps.length > 0 && (
-          <section aria-label={t(($) => $['resourceAccessToken.appsSection'])}>
-            <p className="mb-1 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['resourceAccessToken.appsSection'])}
-            </p>
+        </TabsList>
+        <TabsPanel key={resourceType} value={resourceType} tabIndex={-1}>
+          <PickerList
+            query={query}
+            keyword={keyword}
+            hasVisibleItems={candidates.size > 0}
+            labels={{
+              loading: t(($) => $['resourceAccessToken.loadingResources']),
+              loadError: t(($) => $['resourceAccessToken.couldNotLoadResources']),
+              empty: keyword
+                ? t(($) => $['resourceAccessToken.noResourceSearchResults'])
+                : t(($) => $['resourceAccessToken.noResourcesAvailable']),
+              emptyHint: keyword
+                ? undefined
+                : t(($) => $['resourceAccessToken.resourcesWillAppearHere']),
+              loadMore: t(($) => $['personalAccessToken.loadMoreResources']),
+            }}
+          >
             <div className="-mx-4 divide-y divide-divider-subtle">
-              {visibleApps.map((app) => (
-                <div key={`app:${app.resource_id}`} className="px-4 py-2 first:pt-0 last:pb-0">
-                  <div className="flex min-h-10 items-center gap-3 py-1.5">
-                    <Avatar size="xs">
-                      <AvatarFallback>{app.display_name.slice(0, 1)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <button
-                              type="button"
-                              aria-expanded={isExpanded(app.resource_id)}
-                              onClick={() =>
-                                setCollapsedApps((current) => {
-                                  const next = new Set(current)
-                                  if (next.has(app.resource_id)) next.delete(app.resource_id)
-                                  else next.add(app.resource_id)
-                                  return next
-                                })
-                              }
-                              className="inline-block max-w-full min-w-0 truncate rounded text-start system-sm-medium text-text-secondary focus-visible:outline-2"
-                            />
+              {apps.map((app) => (
+                <div key={resourceKey(app)} className="px-4 py-2 first:pt-0 last:pb-0">
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          data-pat-picker-item=""
+                          aria-expanded={isExpanded(app.resource_id)}
+                          onClick={() =>
+                            setCollapsedApps((current) => {
+                              const next = new Set(current)
+                              if (next.has(app.resource_id)) next.delete(app.resource_id)
+                              else next.add(app.resource_id)
+                              return next
+                            })
                           }
-                        >
+                          className="flex min-h-10 w-full items-center gap-3 rounded py-1.5 text-start focus-visible:outline-2"
+                        />
+                      }
+                    >
+                      <Avatar size="xs" render={<span />} aria-hidden="true">
+                        <AvatarFallback render={<span />}>
+                          {app.display_name.slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate system-sm-medium text-text-secondary">
                           {app.display_name}
-                        </TooltipTrigger>
-                        <TooltipContent>ID: {app.resource_id}</TooltipContent>
-                      </Tooltip>
-                      <p className="truncate system-xs-regular text-text-tertiary">
-                        {t(($) => $['personalAccessToken.workspace'])}: {app.workspace_name}
-                      </p>
-                    </div>
-                    <span
-                      aria-hidden="true"
-                      className={`ms-auto i-ri-arrow-${isExpanded(app.resource_id) ? 'down' : 'right'}-s-line size-4 text-text-tertiary`}
-                    />
-                  </div>
+                        </span>
+                        <span className="block truncate system-xs-regular text-text-tertiary">
+                          {t(($) => $['personalAccessToken.workspace'])}: {app.workspace_name}
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`ms-auto size-4 shrink-0 text-text-tertiary ${
+                          isExpanded(app.resource_id)
+                            ? 'i-ri-arrow-down-s-line'
+                            : 'i-ri-arrow-right-s-line [&:dir(rtl)]:-scale-x-100'
+                        }`}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>ID: {app.resource_id}</TooltipContent>
+                  </Tooltip>
                   {isExpanded(app.resource_id) && (
                     <div className="ms-3">
                       {renderResource(
@@ -230,101 +271,16 @@ export default function ResourcePicker({
                   )}
                 </div>
               ))}
-            </div>
-          </section>
-        )}
-
-        {visibleDatasets.length > 0 && (
-          <section
-            aria-label={t(($) => $['resourceAccessToken.knowledgeBasesSection'])}
-            className={
-              visibleApps.length > 0 ? '-mx-4 mt-2 border-t border-divider-subtle px-4 pt-2' : ''
-            }
-          >
-            <p className="mb-1 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['resourceAccessToken.knowledgeBasesSection'])}
-            </p>
-            <div className="-mx-4 divide-y divide-divider-subtle">
-              {visibleDatasets.map((dataset) => (
-                <div
-                  key={`dataset:${dataset.resource_id}`}
-                  className="px-4 py-1.5 first:pt-0 last:pb-0"
-                >
+              {datasets.map((dataset) => (
+                <div key={resourceKey(dataset)} className="px-4 py-1.5 first:pt-0 last:pb-0">
                   {renderResource(dataset)}
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        {visibleOrphanedRunners.map((runner) => renderResource(runner))}
-        {query.isPending && (
-          <div
-            className="flex min-h-40 flex-col items-center justify-center gap-1 text-center"
-            aria-busy="true"
-          >
-            <p className="system-xs-regular text-text-tertiary">
-              {t(($) => $['resourceAccessToken.loadingResources'])}
-            </p>
-            <p className="system-xs-regular text-text-tertiary">
-              {t(($) => $['resourceAccessToken.selectionPreservedLoading'])}
-            </p>
-            <div className="mt-1 w-full max-w-68 space-y-1.5" aria-hidden="true">
-              <div className="h-1.5 rounded-full bg-background-section" />
-              <div className="h-1.5 rounded-full bg-background-section" />
-              <div className="h-1.5 rounded-full bg-background-section" />
-            </div>
-          </div>
-        )}
-        {query.isError && (
-          <div
-            role="alert"
-            className="flex min-h-40 flex-col items-center justify-center gap-1 text-center"
-          >
-            <p className="system-xs-regular text-text-tertiary">
-              {t(($) => $['resourceAccessToken.couldNotLoadResources'])}
-            </p>
-            <p className="system-xs-regular text-text-tertiary">
-              {t(($) => $['resourceAccessToken.selectionPreservedError'])}
-            </p>
-            <button
-              type="button"
-              className="mt-1 system-xs-medium text-text-accent hover:underline focus-visible:outline-2"
-              onClick={() => {
-                if (query.isError) void query.refetch()
-              }}
-            >
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </button>
-          </div>
-        )}
-        {!query.isPending && !query.isError && visibleCount === 0 && (
-          <div className="flex min-h-40 flex-col items-center justify-center gap-1 text-center">
-            <p className="system-xs-regular text-text-tertiary">
-              {keyword
-                ? t(($) => $['resourceAccessToken.noResourceSearchResults'])
-                : t(($) => $['resourceAccessToken.noResourcesAvailable'])}
-            </p>
-            {!keyword && (
-              <p className="system-xs-regular text-text-tertiary">
-                {t(($) => $['resourceAccessToken.resourcesWillAppearHere'])}
-              </p>
-            )}
-          </div>
-        )}
-        {query.hasNextPage && (
-          <div className="pt-2">
-            <Button
-              loading={query.isFetchingNextPage}
-              onClick={() => {
-                if (query.hasNextPage) void query.fetchNextPage()
-              }}
-            >
-              {t(($) => $['resourceAccessToken.loadMore'])}
-            </Button>
-          </div>
-        )}
-      </div>
+            {standaloneDeployments.map((runner) => renderResource(runner))}
+          </PickerList>
+        </TabsPanel>
+      </Tabs>
     </div>
   )
 }
