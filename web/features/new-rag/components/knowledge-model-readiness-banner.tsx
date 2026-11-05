@@ -1,17 +1,14 @@
 'use client'
 
 import type { KnowledgeModelCapability } from '../routes'
-import { Button } from '@langgenius/dify-ui/button'
+import { Alert, AlertActions, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { newKnowledgeSettingsReturnPath } from '../routes'
-import {
-  knowledgeModelReadinessActionClassName,
-  KnowledgeModelReadinessNotice,
-} from './knowledge-model-readiness-notice'
 
 export function KnowledgeModelReadinessBanner({
   capability,
@@ -52,25 +49,23 @@ export function KnowledgeModelReadinessBanner({
       : t(($) => $['overview.attention.modelReadiness.profilesMissing'])
 
   return (
-    <KnowledgeModelReadinessNotice
-      action={
-        query.isError ? (
+    <Alert type={isFailure ? 'error' : 'warning'} className={className}>
+      <AlertTitle>{title}</AlertTitle>
+      {description && <AlertDescription>{description}</AlertDescription>}
+      <AlertActions>
+        {query.isError ? (
           <Button size="small" onClick={() => void query.refetch()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         ) : (
           <Link
-            className={knowledgeModelReadinessActionClassName}
+            className={buttonVariants({ size: 'small' })}
             href={newKnowledgeSettingsReturnPath(knowledgeSpaceId, { capability, returnTo })}
           >
             {t(($) => $['overview.attention.action.configureModels'], { ns: 'knowledgeSpace' })}
           </Link>
-        )
-      }
-      className={className}
-      description={description}
-      title={title}
-      tone={isFailure ? 'destructive' : 'warning'}
-    />
+        )}
+      </AlertActions>
+    </Alert>
   )
 }

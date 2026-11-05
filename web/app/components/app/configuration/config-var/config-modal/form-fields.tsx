@@ -6,6 +6,7 @@ import type { ConfigModalValidationError } from './utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
@@ -35,7 +36,7 @@ import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import { jsonConfigPlaceHolder } from './config'
-import Field from './field'
+import ConfigField from './field'
 import TypeSelector from './type-select'
 import { CHECKBOX_DEFAULT_FALSE_VALUE, CHECKBOX_DEFAULT_TRUE_VALUE, TEXT_MAX_LENGTH } from './utils'
 
@@ -112,40 +113,40 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         />
       </div>
 
-      <Field
-        htmlFor={`${fieldId}-variable`}
-        title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
-        errorMessage={getError('variable')}
-        errorId={errorId}
-      >
+      <Field name="variable" invalid={!!getError('variable')}>
+        <label
+          htmlFor={`${fieldId}-variable`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-variable`}
-          name="variable"
-          {...getErrorProps('variable')}
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
+        <FieldError match={!!getError('variable')}>{getError('variable')}</FieldError>
       </Field>
-      <Field
-        htmlFor={`${fieldId}-label`}
-        title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
-        errorMessage={getError('label')}
-        errorId={errorId}
-      >
+      <Field name="label" invalid={!!getError('label')}>
+        <label
+          htmlFor={`${fieldId}-label`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-label`}
-          name="label"
-          {...getErrorProps('label')}
           value={label as string}
           onValueChange={(value) => onPayloadChange('label')(value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
+        <FieldError match={!!getError('label')}>{getError('label')}</FieldError>
       </Field>
 
       {isStringInput && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-max-length`}
           title={t(($) => $['variableConfig.maxLength'], { ns: 'appDebug' })}
         >
@@ -156,11 +157,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             value={maxLength}
             onChange={onPayloadChange('max_length')}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.textInput && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -171,11 +172,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.paragraph && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -185,11 +186,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.number && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -207,7 +208,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               />
             </NumberFieldGroup>
           </NumberField>
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.checkbox && (
@@ -252,7 +253,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {type === InputVarType.select && (
         <>
-          <Field
+          <ConfigField
             title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}
             errorMessage={getError('options')}
             errorId={errorId}
@@ -263,7 +264,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               errorMessage={getError('options')}
               errorId={errorId}
             />
-          </Field>
+          </ConfigField>
           {options && options.length > 0 && (
             <div>
               <Select<string>
@@ -328,7 +329,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 : undefined
             }
           />
-          <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+          <ConfigField title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
             <FileUploaderInAttachmentWrapper
               value={
                 (type === InputVarType.singleFile
@@ -353,12 +354,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />
-          </Field>
+          </ConfigField>
         </>
       )}
 
       {type === InputVarType.jsonObject && (
-        <Field
+        <ConfigField
           title={t(($) => $['variableConfig.jsonSchema'], { ns: 'appDebug' })}
           titleId={`${fieldId}-json-schema`}
           isOptional
@@ -381,7 +382,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
             />
           </div>
-        </Field>
+        </ConfigField>
       )}
 
       <label className="mt-5! flex h-6 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">

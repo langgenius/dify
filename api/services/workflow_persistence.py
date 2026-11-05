@@ -9,12 +9,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, override
 
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import WorkflowRunCompleted
+
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
-from core.helper.trace_id_helper import ParentTraceContext
-from core.ops.base_trace_instance import application_tracing_hooks
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
@@ -22,6 +20,8 @@ from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from extensions.tracing import application_tracing_hooks
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
     EngineEvent,
@@ -47,7 +47,7 @@ from graphon.enums import (
     WorkflowType,
 )
 from graphon.node_events import NodeRunResult
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from repositories.entities.workflow_execution import WorkflowExecution
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
@@ -77,14 +77,14 @@ class WorkflowPersistenceLayer(Layer):
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
-        self._trace_manager = trace_manager
+        self._trace_scope = trace_scope
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
@@ -129,6 +129,8 @@ class WorkflowPersistenceLayer(Layer):
                 workflow_node_execution_repository=self._workflow_node_execution_repository.for_workflow_tool(
                     source.app_id
                 ),
+                # Hidden tool nodes belong to the caller's run, whose trace already covers them.
+                trace_scope=None,
             )
             tool_layer.set_node_run_indices(self._node_run_indices)
             tool_layer.set_node_execution_history(node_executions)
@@ -242,7 +244,7 @@ class WorkflowPersistenceLayer(Layer):
         if execution.status in (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.STOPPED):
             self._fail_running_node_executions(error_message=execution.error_message or "")
         self._workflow_execution_repository.save_synchronously(execution)
-        self._enqueue_trace_task(execution)
+        self._emit_workflow_trace(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     # ------------------------------------------------------------------
@@ -420,8 +422,8 @@ class WorkflowPersistenceLayer(Layer):
             error=event.node_run_result.error or event.error,
             elapsed_time=max((finished_at - event.start_at).total_seconds(), 0.0),
             execution_metadata={key.value: value for key, value in event.node_run_result.metadata.items()},
-            created_at=int(event.start_at.timestamp()),
-            finished_at=int(finished_at.timestamp()),
+            created_at=to_utc_timestamp(event.start_at),
+            finished_at=to_utc_timestamp(finished_at),
         )
         history.append(attempt.model_dump(mode="json"))
         process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = history
@@ -517,32 +519,17 @@ class WorkflowPersistenceLayer(Layer):
                 unfinished.append(execution)
         self._workflow_node_execution_repository.save_many(unfinished)
 
-    def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
-        if not self._trace_manager:
+    def _emit_workflow_trace(self, execution: WorkflowExecution) -> None:
+        if self._trace_scope is None:
             return
-
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
-        external_trace_id = None
-        trace_session_id = None
-        parent_trace_context = None
-        if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
-            extras = self._application_generate_entity.extras
-            external_trace_id = extras.get("external_trace_id")
-            trace_session_id = extras.get("trace_session_id")
-            parent_trace_context = extras.get("parent_trace_context")
-            if isinstance(parent_trace_context, ParentTraceContext):
-                parent_trace_context = parent_trace_context.model_dump(exclude_none=True)
-
-        trace_task = TraceTask(
-            TraceTaskName.WORKFLOW_TRACE,
-            workflow_execution=execution,
-            conversation_id=conversation_id,
-            user_id=self._trace_manager.user_id,
-            external_trace_id=external_trace_id,
-            trace_session_id=trace_session_id,
-            parent_trace_context=parent_trace_context,
+        self._trace_scope.emit(
+            WorkflowRunCompleted(
+                workflow_run_id=execution.id_,
+                conversation_id=conversation_id if isinstance(conversation_id, str) and conversation_id else None,
+                total_tokens=execution.total_tokens,
+            )
         )
-        self._trace_manager.add_trace_task(trace_task)
 
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.runtime_state

@@ -21,6 +21,7 @@ from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
+    KnowledgeFSUpgradeModelsUnavailableHTTPError,
 )
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
@@ -49,6 +50,7 @@ from models.enums import PermissionEnum as DatasetPermissionEnum
 from models.model import AppMode, IconType
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeModelsUnavailableError,
     KnowledgeFSUpgradeNotFoundError,
     upgrade_job_response,
 )
@@ -76,7 +78,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUpgradeDiscoveryResponse,
     KnowledgeFSUpgradeJobListResponse,
     KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradePreparationResponse,
     KnowledgeFSUpgradeRetryResponse,
+    KnowledgeFSUpgradeStartPayload,
 )
 
 _DATASET_EDIT_ROLES = frozenset(
@@ -122,6 +126,8 @@ def _upgrade_errors() -> Generator[None]:
         raise NotFound(str(error) or None) from error
     except KnowledgeFSUpgradeConflictError as error:
         raise Conflict(str(error)) from error
+    except KnowledgeFSUpgradeModelsUnavailableError as error:
+        raise KnowledgeFSUpgradeModelsUnavailableHTTPError(error.issues) from error
 
 
 def _knowledge_fs_upgrade_idempotency_key() -> str:
@@ -386,6 +392,7 @@ register_schema_models(
     IndexingEstimatePayload,
     ConsoleDatasetListQuery,
     DatasetApiKeyCreatePayload,
+    KnowledgeFSUpgradeStartPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -403,6 +410,7 @@ register_response_schema_models(
     KnowledgeFSUpgradeJobResponse,
     KnowledgeFSUpgradeRetryResponse,
     KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradePreparationResponse,
     KnowledgeFSUpgradeJobListResponse,
 )
 
@@ -526,15 +534,17 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
     @console_ns.response(
         200,
         "Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base",
-        console_ns.models[KnowledgeFSUpgradeDiscoveryResponse.__name__],
+        console_ns.models[KnowledgeFSUpgradePreparationResponse.__name__],
     )
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID):
         with _upgrade_errors():
             discovery = application_services().knowledge.upgrades.discovery(request_context, dataset_id=str(dataset_id))
-        return dump_response(KnowledgeFSUpgradeDiscoveryResponse, discovery)
+        return dump_response(KnowledgeFSUpgradePreparationResponse, discovery)
 
+    @error_responses(KnowledgeFSUpgradeModelsUnavailableHTTPError)
     @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.expect(console_ns.models[KnowledgeFSUpgradeStartPayload.__name__])
     @console_ns.response(
         202,
         "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
@@ -545,12 +555,17 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     def post(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            payload = KnowledgeFSUpgradeStartPayload.model_validate(request.get_json() if request.is_json else {})
+        except ValidationError as error:
+            raise BadRequest("Invalid upgrade model selection") from error
         upgrades = application_services().knowledge.upgrades
         with _upgrade_errors():
             job = upgrades.start(
                 request_context,
                 dataset_id=str(dataset_id),
                 idempotency_key=_knowledge_fs_upgrade_idempotency_key(),
+                models=payload.models,
             )
         return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job)), 202
 
