@@ -108,7 +108,31 @@ def test_fetch_info_falls_back_to_get(remote_file_service: RemoteFileService) ->
 
     assert result.content_type == "application/octet-stream"
     assert result.content_length is None
-    assert make_request.call_args_list == [call("HEAD", url=REMOTE_URL), call("GET", url=REMOTE_URL, timeout=3)]
+    assert make_request.call_args_list == [
+        call("HEAD", url=REMOTE_URL),
+        call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
+    ]
+
+
+def test_fetch_info_follows_redirect_on_get_fallback(remote_file_service: RemoteFileService) -> None:
+    head_response = _response("HEAD", httpx.codes.FOUND)
+    get_response = _response(
+        "GET",
+        httpx.codes.OK,
+        headers={"Content-Type": "application/pdf", "Content-Length": "42"},
+    )
+
+    def fake_request(method: str, **kwargs: object) -> httpx.Response:
+        if method == "HEAD":
+            return head_response
+        assert kwargs.get("follow_redirects") is True, "GET fallback must follow redirects"
+        return get_response
+
+    with patch("services.remote_file_service.remote_fetcher.make_request", side_effect=fake_request):
+        result = remote_file_service.fetch_info(url=REMOTE_URL)
+
+    assert result.content_type == "application/pdf"
+    assert result.content_length == 42
 
 
 @pytest.mark.parametrize(
