@@ -19,6 +19,7 @@ import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/que
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import WorkflowWithDefaultContext, { Workflow } from '../index'
 import codeNodeDefault from '../nodes/code/default'
 import { BlockEnum } from '../types'
@@ -124,9 +125,11 @@ function renderSubject({
   graphNodes = nodes,
   edges = [],
   isCollaborationEnabled = false,
+  canEdit = true,
 }: {
   initialStoreState?: Partial<Shape>
   isCollaborationEnabled?: boolean
+  canEdit?: boolean
   graphNodes?: WorkflowProps['nodes']
   edges?: WorkflowProps['edges']
 } = {}) {
@@ -170,6 +173,7 @@ function renderSubject({
     queryClient,
     initialStoreState,
     hooksStoreProps: {
+      accessControl: { ...fullWorkflowAccessControl, canEdit },
       doSyncWorkflowDraft: saveDraft,
       syncWorkflowDraftWhenPageClose: saveOnClose,
       handleRefreshWorkflowDraft: refreshDraft,
@@ -177,6 +181,62 @@ function renderSubject({
   })
   return { ...view, eventEmitter, saveDraft, saveOnClose, refreshDraft, subject, graph }
 }
+
+it('refreshes the draft when a read-only user returns to a collaboration-enabled workflow', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  const isConnected = vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
+  const { refreshDraft, hooksStore, unmount } = renderSubject({
+    canEdit: false,
+    initialStoreState: { isCollaborationEnabled: true },
+  })
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).toHaveBeenCalledOnce()
+  expect(refreshDraft).toHaveBeenCalledWith(false, { shouldApply: expect.any(Function) })
+  expect(refreshDraft.mock.calls[0]?.[1]?.shouldApply?.()).toBe(true)
+  act(() => hooksStore?.getState().refreshAll({ accessControl: fullWorkflowAccessControl }))
+  expect(refreshDraft.mock.calls[0]?.[1]?.shouldApply?.()).toBe(false)
+  vi.spyOn(collaborationManager, 'canRestoreGraphFromCrdt').mockReturnValue(true)
+  isConnected.mockReturnValue(true)
+  expect(refreshDraft.mock.calls[0]?.[1]?.shouldApply?.()).toBe(false)
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
+
+it('does not refresh a disconnected collaborative editor', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
+  const { refreshDraft, unmount } = renderSubject({
+    initialStoreState: { isCollaborationEnabled: true },
+  })
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
+
+it('does not refresh a canvas in collaboration fallback mode', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
+  const { refreshDraft, unmount } = renderSubject({
+    initialStoreState: { isCollaborationEnabled: true, isCollaborationFallback: true },
+  })
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
 
 it('does not replace a canvas when a draft save has failed', async () => {
   vi.useFakeTimers()

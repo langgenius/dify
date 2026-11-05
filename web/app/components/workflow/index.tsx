@@ -29,6 +29,7 @@ import {
   Fragment,
   memo,
   Suspense,
+  use,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -71,7 +72,7 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider } from './hooks-store'
+import { HooksStoreContext, HooksStoreContextProvider } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -159,6 +160,8 @@ export const Workflow: FC<WorkflowProps> = memo(
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
+    const hooksStore = use(HooksStoreContext)
+    if (!hooksStore) throw new Error('Missing HooksStoreContext.Provider in the tree')
     const reactflow = useReactFlow()
     const store = useStoreApi()
     const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
@@ -424,7 +427,8 @@ export const Workflow: FC<WorkflowProps> = memo(
             !draftSaveBlocked &&
             !isCollaborationFallback &&
             draftSaveVersion === refreshVersion &&
-            (!isCollaborationEnabled ||
+            collaborationManager.isConnected() === collaborationConnected &&
+            (!(isCollaborationEnabled && hooksStore.getState().accessControl.canEdit) ||
               (collaborationManager.isConnected() &&
                 collaborationManager.canRestoreGraphFromCrdt()))
           )
@@ -442,7 +446,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           }, 500)
         }
       }
-    }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
+    }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore, hooksStore])
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
