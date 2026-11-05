@@ -29,6 +29,10 @@ _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
 
 
+class WorkflowCollaborationNotEntitledError(Exception):
+    """The workspace cannot start a new collaboration session."""
+
+
 class WorkflowCollaborationUnavailableError(Exception):
     """The draft or socket is unavailable for a collaboration join."""
 
@@ -138,7 +142,7 @@ class WorkflowCollaborationService:
             return None
 
         if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
-            return None
+            raise WorkflowCollaborationNotEntitledError
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
             "username": str(socket_session.get("username", "Unknown")),

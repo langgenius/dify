@@ -18,7 +18,7 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.workflow_collaboration_service import WorkflowCollaborationDraftOutdatedError
+from services.workflow_collaboration_service import WorkflowCollaborationDraftOutdatedError, WorkflowCollaborationNotEntitledError
 
 
 @pytest.fixture
@@ -155,6 +155,36 @@ def test_user_connect_returns_ack_when_draft_is_outdated(
     response = Packet(encoded_packet=transport.queue.get_nowait().data)
     assert response.packet_type == ACK
     assert response.data == [{"msg": "draft_outdated"}, 409]
+    _assert_single_event(_read_metrics(reader), "user_connect", "rejected")
+
+
+@pytest.mark.parametrize(
+    ("entitlement_denied", "message", "status"), [(False, "unauthorized", 401), (True, "not_entitled", 403)]
+)
+def test_user_connect_distinguishes_access_from_entitlement(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+    entitlement_denied: bool,
+    message: str,
+    status: int,
+) -> None:
+    server, _, reader = collaboration_server
+    eio_sid = "join-denied"
+    transport = Socket(server.eio, eio_sid)
+    server.eio.sockets[eio_sid] = transport
+    sid = server.manager.connect(eio_sid, "/")
+
+    def reject_join(*_args: object, **_kwargs: object) -> None:
+        if entitlement_denied:
+            raise WorkflowCollaborationNotEntitledError
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", reject_join)
+    server._handle_event_internal(server, sid, eio_sid, ["user_connect", {"workflow_id": "wf-1"}], "/", 42)
+
+    response = Packet(encoded_packet=transport.queue.get_nowait().data)
+    assert response.packet_type == ACK
+    assert response.data == [{"msg": message}, status]
     _assert_single_event(_read_metrics(reader), "user_connect", "rejected")
 
 

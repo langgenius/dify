@@ -21,6 +21,7 @@ from services.workflow_collaboration_service import (
     WorkflowCollaborationDraftOutdatedError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
+    WorkflowCollaborationNotEntitledError,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app
@@ -198,7 +199,12 @@ class TestWorkflowCollaborationService:
                 "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
             ) as get_plan,
         ):
-            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            if allowed:
+                result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            else:
+                with pytest.raises(WorkflowCollaborationNotEntitledError):
+                    service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                result = None
 
         if edition == DeploymentEdition.CLOUD and enabled:
             get_plan.assert_called_once_with("t-1")
