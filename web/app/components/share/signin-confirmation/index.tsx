@@ -43,7 +43,9 @@ export default function SignInConfirmation({
   actionError,
 }: SignInConfirmationProps) {
   const { t } = useTranslation(['login'])
-  const [choice, setChoice] = useState<MigrationDataChoice | null>(supportsMigration ? 'add' : null)
+  const [choice, setChoice] = useState<MigrationDataChoice | null>(
+    supportsMigration ? 'add' : 'continue',
+  )
   const id = useId()
   const busy = isSubmitting || isSwitchingAccount
   const addOption = {
@@ -181,7 +183,7 @@ export default function SignInConfirmation({
               disabled={isSubmitting}
               loading={isSwitchingAccount}
               onClick={onSwitchAccount}
-              className="h-auto min-h-6 w-full py-1 whitespace-normal text-text-accent"
+              className="h-auto min-h-6 w-full py-1 whitespace-normal text-text-accent hover:bg-transparent"
             >
               {t(($) => $['history.useDifferentAccount'], { ns: 'login' })}
             </Button>

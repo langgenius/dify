@@ -10,9 +10,9 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/me
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import { reportClientError } from '@/service/client-error'
 import ApiKeyDialog from './api-key-dialog'
+import ConnectionSelectTrigger from './connection-select-trigger'
 import { getServiceConnectionStatus } from './connection-status'
 import RemoveConnectionDialog from './remove-connection-dialog'
 
@@ -203,7 +203,20 @@ export default function ServiceConnectionSelector({
       >
         <PopoverTrigger
           ref={triggerRef}
-          render={<Button variant="ghost" focusableWhenDisabled />}
+          render={
+            <ConnectionSelectTrigger
+              connectionName={
+                selectedConnection?.name ??
+                t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
+              }
+              nameId={selectedNameId}
+              methodLabel={
+                isApiKey ? t(($) => $['connections.setup.apiKey'], { ns: 'share' }) : undefined
+              }
+              methodId={methodId}
+              warning={hasWarning}
+            />
+          }
           disabled={disabled}
           aria-labelledby={labelledBy}
           aria-describedby={
@@ -211,46 +224,7 @@ export default function ServiceConnectionSelector({
               ? `${describedBy} ${selectedNameId} ${methodId}`
               : `${describedBy} ${selectedNameId}`
           }
-          className={cn(
-            'flex h-8 w-40 max-w-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-            'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-            isApiKey && 'w-50',
-            isApiKey && disabled && 'opacity-45',
-            hasWarning &&
-              'bg-state-warning-hover inset-ring-1 inset-ring-text-warning hover:bg-state-warning-hover data-popup-open:bg-state-warning-hover',
-          )}
-        >
-          {hasWarning && (
-            <span
-              className="i-ri-alert-fill size-4 shrink-0 text-text-warning"
-              aria-hidden="true"
-            />
-          )}
-          <span
-            id={selectedNameId}
-            className={cn('min-w-0 flex-1 truncate text-start', !isApiKey && 'px-1')}
-          >
-            {selectedConnection?.name ??
-              t(($) => $['connections.setup.selectConnection'], { ns: 'share' })}
-          </span>
-          {isApiKey && (
-            <span id={methodId} className="shrink-0">
-              <Badge
-                as="span"
-                size="xs"
-                variant="dimm"
-                uppercase={false}
-                className="min-w-4.5 px-1.25 py-0.75 text-[10px] leading-3 font-medium"
-              >
-                {t(($) => $['connections.setup.apiKey'], { ns: 'share' })}
-              </Badge>
-            </span>
-          )}
-          <span
-            className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary"
-            aria-hidden="true"
-          />
-        </PopoverTrigger>
+        />
         <PopoverContent
           finalFocus={() => (skipReturnFocusRef.current ? false : triggerRef.current)}
           side="bottom"

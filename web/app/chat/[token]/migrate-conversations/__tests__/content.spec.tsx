@@ -333,13 +333,10 @@ it('does not load migration candidates for unsupported Apps and keeps the curren
   expect(screen.getByText('login.history.unsupportedDescription')).toBeInTheDocument()
   expect(screen.queryByRole('radio', { name: 'login.history.add' })).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'login.history.notNow' })).not.toBeInTheDocument()
-  expect(
-    screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' }),
-  ).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' })).toBeChecked()
   expect(screen.getByRole('radio', { name: 'login.history.delete' })).not.toBeChecked()
   expect(webAppClient.migration.claimablePassports.post).not.toHaveBeenCalled()
 
-  await user.click(screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' }))
   await user.click(screen.getByRole('button', { name: 'login.history.continue' }))
 
   await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/chat/current-app'))
@@ -379,7 +376,7 @@ it('deletes only the current unsupported App passport without loading or claimin
   expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
 })
 
-it('switches accounts only after logout succeeds, preserving anonymous data and the return URL', async ({
+it('requests Console account switching only after WebApp logout succeeds, preserving anonymous data and the return URL', async ({
   onTestFinished,
 }) => {
   const user = userEvent.setup()
@@ -415,7 +412,9 @@ it('switches accounts only after logout succeeds, preserving anonymous data and 
       'https://accounts.example/signin',
       '/chat/current-app?conversationId=existing-chat',
     )
-    expect(assign).toHaveBeenCalledWith('https://accounts.example/signin?code_challenge=challenge')
+    expect(assign).toHaveBeenCalledWith(
+      'https://accounts.example/signin?code_challenge=challenge&switch_account=1',
+    )
   })
   expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
 })

@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import { InstalledConnectionControls } from '@/app/components/explore/installed-app/connections'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import MyAppsLink from '@/app/components/share/my-apps-link'
@@ -159,6 +160,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
           )}
         </div>
         <div className="flex items-center gap-1">
+          <InstalledConnectionControls isResponding={isResponding} />
           <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
           {currentConversationId && (
             <Tooltip>

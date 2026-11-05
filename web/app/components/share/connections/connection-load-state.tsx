@@ -19,6 +19,7 @@ export default function ConnectionLoadState({
   loadingMore,
 }: ConnectionLoadStateProps) {
   const { t } = useTranslation(['common'])
+  if (!loading && !error && !onRetry && !onLoadMore) return null
   return (
     <div className="space-y-2">
       {loading && (

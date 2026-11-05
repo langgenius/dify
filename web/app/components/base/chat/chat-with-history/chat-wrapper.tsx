@@ -13,6 +13,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
+import { InstalledConnectionSetup } from '@/app/components/explore/installed-app/connections'
+import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -35,7 +37,9 @@ import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
   const { t } = useTranslation(['share'])
-  const connections = useOptionalWebAppConnections()
+  const webAppConnections = useOptionalWebAppConnections()
+  const installedConnections = useOptionalInstalledAppConnections()
+  const connections = webAppConnections ?? installedConnections
   const [connectionSetupComplete, setConnectionSetupComplete] = useState(false)
   const {
     appParams,
@@ -65,7 +69,7 @@ const ChatWrapper = () => {
     renderAgentContent,
   } = useChatWithHistoryContext()
 
-  const connectionsReady = isInstalledApp || (connections?.canRun ?? true)
+  const connectionsReady = connections?.canRun ?? true
   const connectionsReadyRef = useRef(connectionsReady)
   useEffect(() => {
     connectionsReadyRef.current = connectionsReady
@@ -466,10 +470,16 @@ const ChatWrapper = () => {
     return (
       <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
         {descriptionNode}
-        <WebAppConnectionSetup
-          className="mx-auto w-full max-w-150"
-          onStart={() => setConnectionSetupComplete(true)}
-        />
+        {installedConnections ? (
+          <div className="mx-auto w-full max-w-150">
+            <InstalledConnectionSetup onStart={() => setConnectionSetupComplete(true)} />
+          </div>
+        ) : (
+          <WebAppConnectionSetup
+            className="mx-auto w-full max-w-150"
+            onStart={() => setConnectionSetupComplete(true)}
+          />
+        )}
       </div>
     )
 

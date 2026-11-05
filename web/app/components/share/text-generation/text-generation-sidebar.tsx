@@ -14,6 +14,10 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import {
+  InstalledConnectionControls,
+  InstalledConnectionSetup,
+} from '@/app/components/explore/installed-app/connections'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
@@ -84,7 +88,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
 }) => {
   const { t } = useTranslation(['share'])
   const entry = useWebAppEntry()
-  const showWorkflowLayout = isWorkflow && !isInstalledApp && entry && 'account' in entry
+  const showAccountFooter = !isInstalledApp && entry && 'account' in entry
+  const showWorkflowLayout = isWorkflow && showAccountFooter
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -128,13 +133,20 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
     </div>
   )
 
-  const connectionSetup = isConfiguringConnections && onStartUsingApp && (
-    <WebAppConnectionSetup
-      onStart={onStartUsingApp}
-      previewSize={showWorkflowLayout ? 'medium' : 'small'}
-      className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
-    />
-  )
+  const connectionSetup =
+    isConfiguringConnections &&
+    onStartUsingApp &&
+    (isInstalledApp ? (
+      <div className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}>
+        <InstalledConnectionSetup onStart={onStartUsingApp} />
+      </div>
+    ) : (
+      <WebAppConnectionSetup
+        onStart={onStartUsingApp}
+        previewSize={showWorkflowLayout ? 'medium' : 'small'}
+        className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
+      />
+    ))
 
   return (
     <Tabs
@@ -166,9 +178,12 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                 <h1 className="min-w-0 grow system-xl-semibold wrap-anywhere text-text-primary">
                   {siteInfo.title}
                 </h1>
-                {!isConfiguringConnections && (
-                  <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
-                )}
+                {!isConfiguringConnections &&
+                  (isInstalledApp ? (
+                    <InstalledConnectionControls isResponding={isResponding} />
+                  ) : (
+                    <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
+                  ))}
               </div>
               {description}
             </div>
@@ -184,8 +199,17 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               <div className="grow truncate system-md-semibold text-text-secondary">
                 {siteInfo.title}
               </div>
-              <WebAppConnectionControls isResponding={isResponding} />
-              <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
+              {isInstalledApp ? (
+                <InstalledConnectionControls isResponding={isResponding} />
+              ) : (
+                <WebAppConnectionControls
+                  isResponding={isResponding}
+                  showSignIn={!showAccountFooter}
+                />
+              )}
+              {!showAccountFooter && (
+                <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
+              )}
             </div>
             {description}
           </>
@@ -268,11 +292,11 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           </>
         )}
       </div>
-      {(showWorkflowLayout || !customConfig?.remove_webapp_brand) && (
+      {(showAccountFooter || !customConfig?.remove_webapp_brand) && (
         <div
           className={cn(
             'flex shrink-0 items-center bg-components-panel-bg py-3',
-            showWorkflowLayout
+            showAccountFooter
               ? 'justify-between gap-3 px-6'
               : !isBelowMd
                 ? 'gap-1.5 px-8'
@@ -280,7 +304,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          {showWorkflowLayout &&
+          {showAccountFooter &&
             (entry.showSignIn ? (
               <SignIn className="system-sm-medium" />
             ) : (
@@ -292,7 +316,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               />
             ))}
           {!customConfig?.remove_webapp_brand && (
-            <div className={cn('flex items-center gap-1.5', showWorkflowLayout && 'px-2')}>
+            <div className={cn('flex items-center gap-1.5', showAccountFooter && 'px-2')}>
               <div className="system-2xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['chat.poweredBy'], { ns: 'share' })}
               </div>

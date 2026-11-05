@@ -112,8 +112,10 @@ describe('Web App migration', () => {
     const candidates = await loadWebAppMigrationCandidates()
 
     expect(candidates.map(({ app_code }) => app_code)).toEqual(['connections', 'conversations'])
-    expect(candidates[0].credential.passport).toBe('passport-connections')
-    expect(candidates[1].credential.passport).toBe('passport-conversations')
+    expect(candidates.map(({ credential }) => credential.passport)).toEqual([
+      'passport-connections',
+      'passport-conversations',
+    ])
     expect(getAnonymousWebAppPassport({ kind: 'default', code: 'empty' })).toBe('passport-empty')
   })
 
