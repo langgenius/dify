@@ -579,7 +579,13 @@ def _recording_commits(timeline: list[str]) -> Generator[None]:
         event.remove(Session, "after_commit", record_commit)
 
 
-def _make_pipeline(app_records=None):
+def _make_pipeline(app_records: AppGenerationRepository | None = None) -> AdvancedChatAppGenerateTaskPipeline:
+    """Build an event-only pipeline; persistence tests supply a bound repository.
+
+    Default repositories have no database bind, so unexpected storage access
+    fails instead of silently succeeding through a mock.
+    """
+    sessions = sessionmaker[Session]()
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
         app_id="app",
@@ -614,8 +620,8 @@ def _make_pipeline(app_records=None):
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
 
     pipeline = AdvancedChatAppGenerateTaskPipeline(
-        contexts=mock.MagicMock(),
-        chat_records=app_records or mock.MagicMock(),
+        contexts=WorkflowRuntimeContextRepository(sessions),
+        chat_records=app_records if app_records is not None else AppGenerationRepository(sessions),
         application_generate_entity=application_generate_entity,
         workflow=workflow,
         queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
@@ -811,14 +817,18 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert isinstance(responses[0], PingStreamResponse)
 
-    def test_handle_error_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_error_event(self, runtime_app_records, sqlite_session: Session):
+        pipeline = _make_pipeline(runtime_app_records)
+        message = _persist_message(sqlite_session)
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
         responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("boom"))))
 
         assert isinstance(responses[0], ValueError)
+        sqlite_session.refresh(message)
+        assert message.status == MessageStatus.ERROR
+        assert message.error == "boom"
 
     def test_handle_workflow_started_event_sets_run_id(self, runtime_app_records, sqlite_session: Session):
         pipeline = _make_pipeline(runtime_app_records)
@@ -996,8 +1006,9 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_loop_next_event(loop_next)) == ["loop_next"]
         assert list(pipeline._handle_loop_completed_event(loop_done)) == ["loop_done"]
 
-    def test_workflow_finish_handlers(self):
-        pipeline = _make_pipeline()
+    def test_workflow_finish_handlers(self, runtime_app_records, sqlite_session: Session):
+        pipeline = _make_pipeline(runtime_app_records)
+        message = _persist_message(sqlite_session)
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
@@ -1035,6 +1046,9 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[], outputs={}))) == [
             "pause"
         ]
+        sqlite_session.refresh(message)
+        assert message.status == MessageStatus.ERROR
+        assert message.error == "boom"
 
     def test_node_failure_handlers(self):
         pipeline = _make_pipeline()
