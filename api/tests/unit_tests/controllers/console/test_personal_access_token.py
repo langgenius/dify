@@ -1,6 +1,6 @@
 """PAT behavior through HTTP, with real services and SQLite persistence."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask.testing import FlaskClient
+from pydantic import JsonValue
 from sqlalchemy import delete
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,9 +23,12 @@ from extensions.ext_redis import RedisClientWrapper
 from libs import rate_limit
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
-from models.account import TenantAccountJoin, TenantAccountRole
+from models import App
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
+
+type RunnerCatalog = tuple[Tenant, list[App], str, list[str], dict[str, dict[str, JsonValue] | Exception], list[str]]
 
 BASE = "/console/api/account/personal-access-tokens"
 
@@ -316,7 +320,7 @@ def test_pat_can_be_limited_to_one_owned_app(
                 ),
             ]
         )
-    payload = {
+    payload: dict[str, JsonValue] = {
         "name": "one-app",
         "resource_scope": {
             "mode": "selected",
@@ -876,7 +880,10 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     domain.transport.response = {"allowed": True}
     domain.transport.responses["/rbac/my-permissions"] = {"app": {"default_permission_keys": ["app.acl.preview"]}}
-    domain.transport.responses["/rbac/apps/whitelist/resources"] = {"unrestricted": True, "resource_ids": []}
+    domain.transport.responses["/rbac/apps/whitelist/resources"] = {
+        "unrestricted": True,
+        "resource_ids": list[JsonValue](),
+    }
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
     app = make_app(app_id=str(uuid4()), tenant_id=workspace.id)
@@ -932,7 +939,10 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     )
     assert client.get(BASE).get_json()["data"][0]["status"] == "active"
     # List visibility, independently, controls candidate selection and saved status.
-    domain.transport.responses["/rbac/apps/whitelist/resources"] = {"unrestricted": False, "resource_ids": []}
+    domain.transport.responses["/rbac/apps/whitelist/resources"] = {
+        "unrestricted": False,
+        "resource_ids": list[JsonValue](),
+    }
     assert client.get("/console/api/account/personal-access-token-resources").get_json()["data"] == []
     listing = client.get("/openapi/v1/apps", query_string={"workspace_id": workspace.id}, headers=headers)
     assert listing.get_json()["data"] == []
@@ -942,7 +952,10 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     detail = client.get(f"{BASE}/{token['id']}").get_json()
     assert detail["resources"][0]["available"] is False
     domain.transport.response = {"allowed": True}
-    domain.transport.responses["/rbac/apps/whitelist/resources"] = {"unrestricted": True, "resource_ids": []}
+    domain.transport.responses["/rbac/apps/whitelist/resources"] = {
+        "unrestricted": True,
+        "resource_ids": list[JsonValue](),
+    }
     assert client.post(url, json={}, headers=headers).status_code == 422
     assert client.get(BASE).get_json()["data"][0]["status"] == "active"
 
@@ -1418,13 +1431,13 @@ def test_pat_business_audit_attributes_success_and_denial_without_secrets(
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 412
     records = [record for record in caplog.records if record.__dict__.get("event") == "pat.request.openapi"]
     assert len(records) == 2
-    assert [record.outcome for record in records] == ["succeeded", "denied"]
-    assert [record.http_status for record in records] == [200, 412]
+    assert [record.__dict__["outcome"] for record in records] == ["succeeded", "denied"]
+    assert [record.__dict__["http_status"] for record in records] == [200, 412]
     for record in records:
-        assert record.token_id == created["id"]
-        assert record.account_id == client.application.config["TEST_BROWSER_ACCOUNT"].id
-        assert record.target_route == "/openapi/v1/workspaces"
-        assert record.operation
+        assert record.__dict__["token_id"] == created["id"]
+        assert record.__dict__["account_id"] == client.application.config["TEST_BROWSER_ACCOUNT"].id
+        assert record.__dict__["target_route"] == "/openapi/v1/workspaces"
+        assert record.__dict__["operation"]
         assert secret not in str(record.__dict__)
         assert "Authorization" not in str(record.__dict__)
 
@@ -1444,8 +1457,8 @@ def test_pat_business_audit_includes_query_workspace_target(
     assert response.status_code == 404
     records = [record for record in caplog.records if record.__dict__.get("event") == "pat.request.openapi"]
     assert len(records) == 1
-    assert records[0].target_ids == {"workspace_id": workspace_id}
-    assert records[0].http_status == response.status_code
+    assert records[0].__dict__["target_ids"] == {"workspace_id": workspace_id}
+    assert records[0].__dict__["http_status"] == response.status_code
 
 
 def test_knowledge_configuration_survives_api_disable_and_retains_deleted_reference(
@@ -1638,7 +1651,9 @@ def test_api_disabled_app_configuration_stays_active_but_does_not_admit_calls(
 
 
 @pytest.fixture
-def runner_catalog(client: FlaskClient, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch):
+def runner_catalog(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> RunnerCatalog:
     from services.enterprise.base import EnterpriseRequest
 
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
@@ -1659,7 +1674,7 @@ def runner_catalog(client: FlaskClient, sqlite_session_factory: sessionmaker[Ses
                 ),
             ]
         )
-    responses = {
+    responses: dict[str, dict[str, JsonValue] | Exception] = {
         app.id: {
             "environment_deployments": [
                 {
@@ -1672,16 +1687,17 @@ def runner_catalog(client: FlaskClient, sqlite_session_factory: sessionmaker[Ses
         }
         for app, deployment_id in zip(apps, deployment_ids, strict=True)
     }
-    calls = []
+    calls: list[str] = []
 
-    def send(method, endpoint, **kwargs):
+    def send(method: str, endpoint: str, *, extra_headers: Mapping[str, str] | None = None) -> dict[str, JsonValue]:
         if endpoint == "/info":
             return {}
         assert method == "GET"
         assert endpoint.startswith("/console/api/enterprise/app-deploy/apps/")
         assert endpoint.endswith("/workflows/environment-deployments")
-        assert kwargs["extra_headers"]["Authorization"].startswith("Bearer ")
-        assert kwargs["extra_headers"]["X-CSRF-Token"]
+        assert extra_headers is not None
+        assert extra_headers["Authorization"].startswith("Bearer ")
+        assert extra_headers["X-CSRF-Token"]
         app_id = endpoint.split("/apps/")[1].split("/")[0]
         calls.append(app_id)
         response = responses[app_id]
@@ -1695,7 +1711,7 @@ def runner_catalog(client: FlaskClient, sqlite_session_factory: sessionmaker[Ses
     return workspace, apps, environment_id, deployment_ids, responses, calls
 
 
-def _runner_payload(*ids: str):
+def _runner_payload(*ids: str) -> dict[str, JsonValue]:
     return {
         "name": "Runner grants",
         "resource_scope": {
@@ -1706,7 +1722,9 @@ def _runner_payload(*ids: str):
     }
 
 
-def test_runner_uses_distinct_deployment_ids_and_ignores_runtime_and_api_switches(client, runner_catalog):
+def test_runner_uses_distinct_deployment_ids_and_ignores_runtime_and_api_switches(
+    client: FlaskClient, runner_catalog: RunnerCatalog
+) -> None:
     _, _, environment_id, ids, _, _ = runner_catalog
     candidates = client.get("/console/api/account/personal-access-token-resources")
     assert candidates.status_code == 200, candidates.get_json()
@@ -1727,7 +1745,9 @@ def test_runner_uses_distinct_deployment_ids_and_ignores_runtime_and_api_switche
 
 
 @pytest.mark.parametrize("missing", ["permission", "not_returned"])
-def test_runner_revocation_retains_snapshot_and_cannot_be_readded(client, runner_catalog, missing):
+def test_runner_revocation_retains_snapshot_and_cannot_be_readded(
+    client: FlaskClient, runner_catalog: RunnerCatalog, missing: str
+) -> None:
     from services.errors.enterprise import EnterpriseAPIForbiddenError
 
     _, apps, _, ids, responses, _ = runner_catalog
@@ -1743,7 +1763,9 @@ def test_runner_revocation_retains_snapshot_and_cannot_be_readded(client, runner
     assert client.post(BASE, json=_runner_payload(ids[0])).status_code == 403
 
 
-def test_runner_workspace_switch_preserves_grant_without_access_issue(client, runner_catalog, sqlite_session_factory):
+def test_runner_workspace_switch_preserves_grant_without_access_issue(
+    client: FlaskClient, runner_catalog: RunnerCatalog, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     from sqlalchemy import update
 
     _, _, _, ids, _, calls = runner_catalog
@@ -1760,7 +1782,9 @@ def test_runner_workspace_switch_preserves_grant_without_access_issue(client, ru
 
 
 @pytest.mark.parametrize("failure", ["outage", "old_contract"])
-def test_runner_catalog_failure_is_not_reported_as_revocation(client, runner_catalog, failure):
+def test_runner_catalog_failure_is_not_reported_as_revocation(
+    client: FlaskClient, runner_catalog: RunnerCatalog, failure: str
+) -> None:
     from services.errors.enterprise import EnterpriseAPIError
 
     _, apps, _, ids, responses, _ = runner_catalog
@@ -1776,9 +1800,17 @@ def test_runner_catalog_failure_is_not_reported_as_revocation(client, runner_cat
     assert client.get("/console/api/account/personal-access-token-resources").status_code == 503
 
 
-def test_runner_scope_does_not_authorize_an_app_with_the_same_id(client, runner_catalog):
+def test_runner_scope_does_not_authorize_an_app_with_the_same_id(
+    client: FlaskClient, runner_catalog: RunnerCatalog
+) -> None:
     _, apps, _, _, responses, _ = runner_catalog
-    responses[apps[0].id]["environment_deployments"][0]["deployment_id"] = apps[0].id
+    response = responses[apps[0].id]
+    assert isinstance(response, dict)
+    deployments = response["environment_deployments"]
+    assert isinstance(deployments, list)
+    deployment = deployments[0]
+    assert isinstance(deployment, dict)
+    deployment["deployment_id"] = apps[0].id
     created = client.post(BASE, json=_runner_payload(apps[0].id))
     assert created.status_code == 201, created.get_json()
     secret = created.get_json()["secret"]
@@ -1789,7 +1821,9 @@ def test_runner_scope_does_not_authorize_an_app_with_the_same_id(client, runner_
     assert client.post(f"/openapi/v1/apps/{apps[0].id}/chat:run", json={}, headers=headers).status_code == 403
 
 
-def test_runner_removed_reference_cannot_be_added_back_after_revocation(client, runner_catalog):
+def test_runner_removed_reference_cannot_be_added_back_after_revocation(
+    client: FlaskClient, runner_catalog: RunnerCatalog
+) -> None:
     _, apps, _, ids, responses, _ = runner_catalog
     token = client.post(BASE, json=_runner_payload(ids[0])).get_json()
     responses[apps[0].id] = {"environment_deployments": []}
@@ -1808,7 +1842,9 @@ def test_runner_removed_reference_cannot_be_added_back_after_revocation(client, 
     assert readd.status_code == 403
 
 
-def test_runner_list_translates_catalog_outage_to_service_unavailable(client, runner_catalog):
+def test_runner_list_translates_catalog_outage_to_service_unavailable(
+    client: FlaskClient, runner_catalog: RunnerCatalog
+) -> None:
     from services.errors.enterprise import EnterpriseAPIError
 
     _, apps, _, ids, responses, _ = runner_catalog
@@ -1817,7 +1853,9 @@ def test_runner_list_translates_catalog_outage_to_service_unavailable(client, ru
     assert client.get(BASE).status_code == 503
 
 
-def test_runner_failed_edit_preserves_name_scopes_and_version(client, runner_catalog):
+def test_runner_failed_edit_preserves_name_scopes_and_version(
+    client: FlaskClient, runner_catalog: RunnerCatalog
+) -> None:
     from services.errors.enterprise import EnterpriseAPIError
 
     _, apps, _, ids, responses, _ = runner_catalog
@@ -1842,15 +1880,19 @@ def test_runner_failed_edit_preserves_name_scopes_and_version(client, runner_cat
     assert retry.status_code == 200, retry.get_json()
 
 
-def test_runner_create_uses_validated_catalog_without_a_post_commit_remote_read(client, runner_catalog, monkeypatch):
+def test_runner_create_uses_validated_catalog_without_a_post_commit_remote_read(
+    client: FlaskClient, runner_catalog: RunnerCatalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.enterprise.base import EnterpriseRequest
     from services.errors.enterprise import EnterpriseAPIError
 
     _, apps, _, ids, responses, calls = runner_catalog
     send = EnterpriseRequest.send_request
 
-    def fail_after_first_catalog(method, endpoint, **kwargs):
-        result = send(method, endpoint, **kwargs)
+    def fail_after_first_catalog(
+        method: str, endpoint: str, *, extra_headers: Mapping[str, str] | None = None
+    ) -> object:
+        result = send(method, endpoint, extra_headers=extra_headers)
         if len(calls) == len(apps):
             responses[apps[0].id] = EnterpriseAPIError("Unavailable", status_code=503)
         return result
@@ -2053,7 +2095,7 @@ def test_configuration_lists_and_selected_references_continue_past_first_source_
 
 
 def test_mixed_app_dataset_and_runner_selections_are_saved_and_edited_independently(
-    client: FlaskClient, sqlite_session_factory: sessionmaker[Session], runner_catalog: tuple
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session], runner_catalog: RunnerCatalog
 ) -> None:
     from tests.helpers.unit.model_factories import make_dataset
 
