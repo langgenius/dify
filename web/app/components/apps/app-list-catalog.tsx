@@ -73,6 +73,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     onFetchNextPage: () => Promise<unknown>
     starredApps: AppPartial[]
     systemFeatures: GetSystemFeaturesResponse
+    isCollaborationEnabled: boolean
   }>
 
 function CatalogSkeleton() {
@@ -98,6 +99,7 @@ function AppListCatalogContent({
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
+  isCollaborationEnabled,
   onCreateBlank,
   onCreateLearnDify,
   onCreateTemplate,
@@ -137,7 +139,7 @@ function AppListCatalogContent({
 
   const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
     appIds: workflowOnlineUserAppIds,
-    enabled: systemFeatures.enable_collaboration_mode,
+    enabled: isCollaborationEnabled,
   })
 
   const hasResolvedFirstPage = appListPages.length > 0
@@ -372,6 +374,12 @@ export function AppListCatalog(props: AppListCatalogProps) {
   } = props
   const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = systemFeaturesQuery.data
+  const { data: isCollaborationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      retry: false,
+      select: (features) => features.workflow_collaboration_enabled,
+    }),
+  )
   const appList = useInfiniteQuery(
     consoleQuery.apps.get.infiniteOptions({
       input: (pageParam) => ({
@@ -383,7 +391,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
-      refetchInterval: systemFeatures?.enable_collaboration_mode ? 10000 : false,
+      refetchInterval: isCollaborationEnabled ? 10000 : false,
     }),
   )
   const starredAppList = useQuery(
@@ -421,6 +429,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}
+      isCollaborationEnabled={isCollaborationEnabled}
       onCreateBlank={onCreateBlank}
       onCreateLearnDify={onCreateLearnDify}
       onCreateTemplate={onCreateTemplate}

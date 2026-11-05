@@ -1,7 +1,9 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { act, screen, waitFor } from '@testing-library/react'
+import { useAtomValue } from 'jotai'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -33,11 +35,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+function CollaborationModeProbe() {
+  const enabled = useAtomValue(editorCollaborationEnabledAtom)
+  return <output aria-label="Collaboration mode">{enabled ? 'enabled' : 'disabled'}</output>
+}
+
 // SnippetMain owns editing and publishing; this page owns fetching and choosing the initial graph.
 vi.mock('../components/snippet-main', () => ({
   default: ({ hasPublishedWorkflow }: { hasPublishedWorkflow: boolean }) => (
     <>
       <WorkflowInitializationProbe />
+      <CollaborationModeProbe />
       <output aria-label="Published workflow">{String(hasPublishedWorkflow)}</output>
     </>
   ),
@@ -122,6 +130,20 @@ describe('SnippetPage', () => {
         { params: { snippet_id: 'snippet-1' } },
         expect.anything(),
       )
+    },
+  )
+
+  it.each(['sandbox', 'team'] as const)(
+    'disables collaboration for the %s workspace plan',
+    async (plan) => {
+      renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />, {
+        systemFeatures: { deployment_edition: 'CLOUD' },
+        features: {
+          billing: { subscription: { plan } },
+          workflow_collaboration_enabled: plan === 'team',
+        },
+      })
+      expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
     },
   )
 
