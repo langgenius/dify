@@ -72,14 +72,7 @@ describe('question-classifier class switching', () => {
         { id: '2', name: '', label: 'CLASS 2' },
       ])
 
-      return (
-        <ClassList
-          nodeId="node-1"
-          list={list}
-          onChange={setList}
-          filterVar={() => true}
-        />
-      )
+      return <ClassList nodeId="node-1" list={list} onChange={setList} filterVar={() => true} />
     }
 
     renderClassList(<Harness />)
@@ -112,14 +105,7 @@ describe('question-classifier class switching', () => {
         { id: '2', name: '', label: 'CLASS 2' },
       ])
 
-      return (
-        <ClassList
-          nodeId="node-1"
-          list={list}
-          onChange={setList}
-          filterVar={() => true}
-        />
-      )
+      return <ClassList nodeId="node-1" list={list} onChange={setList} filterVar={() => true} />
     }
 
     renderClassList(<Harness />)

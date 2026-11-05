@@ -347,7 +347,9 @@ const Editor: FC<Props> = ({
                 )}
                 onClick={(e) => {
                   if (readOnly) return
-                  const editable = e.currentTarget.querySelector<HTMLElement>('[contenteditable="true"]')
+                  const editable = e.currentTarget.querySelector<HTMLElement>(
+                    '[contenteditable="true"]',
+                  )
                   if (editable && document.activeElement !== editable) {
                     editable.focus()
                   }
