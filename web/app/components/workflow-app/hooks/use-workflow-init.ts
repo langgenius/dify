@@ -120,7 +120,7 @@ export const useWorkflowInit = () => {
         conversationVariables: initialData.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
-      setSyncWorkflowDraftHash(initialData.hash)
+      setSyncWorkflowDraftHash(initialData.hash, res.graph)
       setIsLoading(false)
     } catch (error: unknown) {
       if (error instanceof ORPCError) {
@@ -152,7 +152,7 @@ export const useWorkflowInit = () => {
               conversationVariables: [],
               isWorkflowDataLoaded: true,
             })
-            setSyncWorkflowDraftHash(initialData.hash)
+            setSyncWorkflowDraftHash(initialData.hash, initialGraph)
             setIsLoading(false)
             return
           }
@@ -174,7 +174,7 @@ export const useWorkflowInit = () => {
             )
             .then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash)
+              setSyncWorkflowDraftHash(res.hash, initialGraph)
               handleGetInitialWorkflowData()
             })
         }

@@ -1,13 +1,15 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createExternalAPI } from '@/service/datasets'
+import { renderWithConfigurationModals as render } from '@/test/configuration-modals'
 import ExternalAPIPanel from '../index'
 
-const { getApis, openModal } = vi.hoisted(() => ({ getApis: vi.fn(), openModal: vi.fn() }))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowExternalKnowledgeAPIModal: openModal }),
+const { getApis } = vi.hoisted(() => ({ getApis: vi.fn() }))
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  createExternalAPI: vi.fn(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -40,7 +42,10 @@ const response: ExternalKnowledgeApiListResponse = {
 }
 
 describe('ExternalAPIPanel', () => {
-  beforeEach(() => getApis.mockResolvedValue(response))
+  beforeEach(() => {
+    getApis.mockResolvedValue(response)
+    vi.mocked(createExternalAPI).mockResolvedValue(response.data[0]!)
+  })
 
   it('replaces loading with API cards and allows the panel to close', async () => {
     const user = userEvent.setup()
@@ -78,14 +83,21 @@ describe('ExternalAPIPanel', () => {
     getApis.mockResolvedValueOnce({ ...response, data: [], total: 0 })
     render(<ExternalAPIPanel canManageExternalKnowledgeApi onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'dataset.createExternalAPI' }))
-    expect(openModal).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: { name: '', settings: { endpoint: '', api_key: '' } },
-        datasetBindings: [],
-        isEditMode: false,
-      }),
-    )
-    await act(async () => openModal.mock.calls[0]![0].onSaveCallback())
+    const dialog = await screen.findByRole('dialog', { name: 'dataset.createExternalAPI' })
+    expect(within(dialog).getByLabelText(/Name/)).toHaveValue('')
+    expect(within(dialog).getByLabelText(/API Endpoint/)).toHaveValue('')
+    expect(within(dialog).getByLabelText(/API Key/)).toHaveValue('')
+    await user.type(within(dialog).getByLabelText(/Name/), 'Product knowledge')
+    await user.type(within(dialog).getByLabelText(/API Endpoint/), 'https://knowledge.example.com')
+    await user.type(within(dialog).getByLabelText(/API Key/), 'secret-key')
+    await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(createExternalAPI).toHaveBeenCalledWith({
+      body: {
+        name: 'Product knowledge',
+        settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
+      },
+    })
     expect(await screen.findByText('Product knowledge')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /common.operation.edit Product knowledge/ }),

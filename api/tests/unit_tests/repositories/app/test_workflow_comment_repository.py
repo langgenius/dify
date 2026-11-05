@@ -25,8 +25,8 @@ from services.app.workflow_comment_service import (
     WorkflowCommentReplyNotFoundError,
     WorkflowCommentService,
 )
-from tests.unit_tests.model_factories import make_account, make_app
-from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
+from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "11111111-1111-1111-1111-111111111112"

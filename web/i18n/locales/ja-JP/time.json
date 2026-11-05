@@ -2,6 +2,7 @@
   "dateFormats.compact": "YYYY/MM/DD HH:mm",
   "dateFormats.withSeconds": "YYYY/MM/DD hh:mm:ss A",
   "operation.cancel": "キャンセル",
+  "operation.close": "閉じる",
   "operation.now": "今",
   "operation.ok": "はい",
   "operation.pickDate": "日付を選択",

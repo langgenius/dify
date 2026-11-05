@@ -1,175 +1,666 @@
+import json
+import logging
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from pytest_mock import MockerFixture
 
+from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
-@pytest.fixture
-def proxy(mocker: MockerFixture):
-    """Create a RagPipelineTaskProxy with mocked dependencies."""
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
-    entity = Mock()
-    entity.model_dump.return_value = {"doc": "data"}
-    return RagPipelineTaskProxy(
-        dataset_tenant_id="tenant-1",
-        user_id="user-1",
-        rag_pipeline_invoke_entities=[entity],
-    )
+class TestRagPipelineTaskProxyCases:
+    @staticmethod
+    @pytest.fixture
+    def proxy(mocker: MockerFixture):
+        """Create a RagPipelineTaskProxy with mocked dependencies."""
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
+        entity = Mock()
+        entity.model_dump.return_value = {"doc": "data"}
+        return RagPipelineTaskProxy(
+            dataset_tenant_id="tenant-1",
+            user_id="user-1",
+            rag_pipeline_invoke_entities=[entity],
+        )
 
+    # --- delay ---
 
-# --- delay ---
+    @staticmethod
+    def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixture) -> None:
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
+        proxy = RagPipelineTaskProxy(
+            dataset_tenant_id="tenant-1",
+            user_id="user-1",
+            rag_pipeline_invoke_entities=[],
+        )
+        dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
+        proxy.delay()
 
-def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixture) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
-    proxy = RagPipelineTaskProxy(
-        dataset_tenant_id="tenant-1",
-        user_id="user-1",
-        rag_pipeline_invoke_entities=[],
-    )
-    dispatch_mock = mocker.patch.object(proxy, "_dispatch")
+        dispatch_mock.assert_not_called()
 
-    proxy.delay()
+    @staticmethod
+    def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy) -> None:
+        dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
-    dispatch_mock.assert_not_called()
+        proxy.delay()
 
+        dispatch_mock.assert_called_once()
 
-def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy) -> None:
-    dispatch_mock = mocker.patch.object(proxy, "_dispatch")
+    # --- _dispatch ---
 
-    proxy.delay()
+    @staticmethod
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixture, proxy) -> None:
+        upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
+        send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
-    dispatch_mock.assert_called_once()
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.SANDBOX)))
+        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
 
-
-# --- _dispatch ---
-
-
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixture, proxy) -> None:
-    upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
-    send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
-
-    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.SANDBOX)))
-    mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
-
-    proxy._dispatch()
-
-    upload_mock.assert_called_once()
-    send_mock.assert_called_once_with("file-1")
-
-
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerFixture, proxy) -> None:
-    upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
-    send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
-
-    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL)))
-    mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
-
-    proxy._dispatch()
-
-    upload_mock.assert_called_once()
-    send_mock.assert_called_once_with("file-1")
-
-
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, proxy) -> None:
-    upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
-    send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
-
-    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
-    mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
-
-    proxy._dispatch()
-
-    upload_mock.assert_called_once()
-    send_mock.assert_called_once_with("file-1")
-
-
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy) -> None:
-    mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
-
-    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
-    mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
-
-    with pytest.raises(ValueError, match="upload_file_id is empty"):
         proxy._dispatch()
 
+        upload_mock.assert_called_once()
+        send_mock.assert_called_once_with("file-1")
 
-# --- _send_to_direct_queue ---
+    @staticmethod
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerFixture, proxy) -> None:
+        upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
+        send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
+
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL)))
+        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+
+        proxy._dispatch()
+
+        upload_mock.assert_called_once()
+        send_mock.assert_called_once_with("file-1")
+
+    @staticmethod
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, proxy) -> None:
+        upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
+        send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
+
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
+        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+
+        proxy._dispatch()
+
+        upload_mock.assert_called_once()
+        send_mock.assert_called_once_with("file-1")
+
+    @staticmethod
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy) -> None:
+        mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
+
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
+        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+
+        with pytest.raises(ValueError, match="upload_file_id is empty"):
+            proxy._dispatch()
+
+    # --- _send_to_direct_queue ---
+
+    @staticmethod
+    def test_send_to_direct_queue_calls_task_func_delay(mocker: MockerFixture, proxy) -> None:
+        task_func = Mock()
+
+        proxy._send_to_direct_queue("file-1", task_func)
+
+        task_func.delay.assert_called_once_with(
+            rag_pipeline_invoke_entities_file_id="file-1",
+            tenant_id="tenant-1",
+        )
+
+    # --- _send_to_tenant_queue ---
+
+    @staticmethod
+    def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker: MockerFixture, proxy) -> None:
+        proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+        task_func = Mock()
+
+        proxy._send_to_tenant_queue("file-1", task_func)
+
+        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with(["file-1"])
+        task_func.delay.assert_not_called()
+
+    @staticmethod
+    def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFixture, proxy) -> None:
+        proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+        task_func = Mock()
+
+        proxy._send_to_tenant_queue("file-1", task_func)
+
+        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        task_func.delay.assert_called_once_with(
+            rag_pipeline_invoke_entities_file_id="file-1",
+            tenant_id="tenant-1",
+        )
+
+    # --- _upload_invoke_entities ---
+
+    @staticmethod
+    def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
+        upload_file = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="rag-pipeline.json",
+            name="rag-pipeline.json",
+            size=1,
+            extension="json",
+            mime_type="application/json",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-1",
+            created_at=datetime(2025, 1, 1),
+            used=True,
+        )
+        upload_file.id = "uploaded-file-1"
+        file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        file_service_cls.return_value.upload_text.return_value = upload_file
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
+
+        result = proxy._upload_invoke_entities()
+
+        assert result == "uploaded-file-1"
+        file_service_cls.return_value.upload_text.assert_called_once()
 
 
-def test_send_to_direct_queue_calls_task_func_delay(mocker: MockerFixture, proxy) -> None:
-    task_func = Mock()
+class RagPipelineTaskProxyTestDataFactory:
+    """Factory class for creating test data and mock objects for RagPipelineTaskProxy tests."""
 
-    proxy._send_to_direct_queue("file-1", task_func)
+    @staticmethod
+    def create_mock_features(plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
+        """Create mock features with billing configuration."""
+        features = Mock()
+        features.billing = Mock()
+        features.billing.subscription = Mock()
+        features.billing.subscription.plan = plan
+        return features
 
-    task_func.delay.assert_called_once_with(
-        rag_pipeline_invoke_entities_file_id="file-1",
-        tenant_id="tenant-1",
-    )
+    @staticmethod
+    def create_rag_pipeline_invoke_entity(
+        pipeline_id: str = "pipeline-123",
+        user_id: str = "user-456",
+        tenant_id: str = "tenant-789",
+        workflow_id: str = "workflow-101",
+        streaming: bool = True,
+        workflow_execution_id: str | None = None,
+        workflow_thread_pool_id: str | None = None,
+    ) -> RagPipelineInvokeEntity:
+        """Create RagPipelineInvokeEntity instance for testing."""
+        return RagPipelineInvokeEntity(
+            pipeline_id=pipeline_id,
+            application_generate_entity={"key": "value"},
+            user_id=user_id,
+            tenant_id=tenant_id,
+            workflow_id=workflow_id,
+            streaming=streaming,
+            workflow_execution_id=workflow_execution_id,
+            workflow_thread_pool_id=workflow_thread_pool_id,
+        )
+
+    @staticmethod
+    def create_rag_pipeline_task_proxy(
+        dataset_tenant_id: str = "tenant-123",
+        user_id: str = "user-456",
+        rag_pipeline_invoke_entities: list[RagPipelineInvokeEntity] | None = None,
+    ) -> RagPipelineTaskProxy:
+        """Create RagPipelineTaskProxy instance for testing."""
+        if rag_pipeline_invoke_entities is None:
+            rag_pipeline_invoke_entities = [RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity()]
+        return RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
+
+    @staticmethod
+    def create_upload_file(file_id: str = "file-123") -> UploadFile:
+        """Create a transient upload file returned by the mocked storage service."""
+        upload_file = UploadFile(
+            tenant_id="tenant-123",
+            storage_type=StorageType.LOCAL,
+            key="rag-pipeline.json",
+            name="rag-pipeline.json",
+            size=1,
+            extension="json",
+            mime_type="application/json",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-456",
+            created_at=datetime(2025, 1, 1),
+            used=True,
+        )
+        upload_file.id = file_id
+        return upload_file
 
 
-# --- _send_to_tenant_queue ---
+class TestRagPipelineTaskProxyCasesServices:
+    class TestRagPipelineTaskProxy:
+        """Test cases for RagPipelineTaskProxy class."""
 
+        def test_initialization(self):
+            """Test RagPipelineTaskProxy initialization."""
+            # Arrange
+            dataset_tenant_id = "tenant-123"
+            user_id = "user-456"
+            rag_pipeline_invoke_entities = [RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity()]
 
-def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker: MockerFixture, proxy) -> None:
-    proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
-    task_func = Mock()
+            # Act
+            proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
-    proxy._send_to_tenant_queue("file-1", task_func)
+            # Assert
+            assert proxy._dataset_tenant_id == dataset_tenant_id
+            assert proxy._user_id == user_id
+            assert proxy._rag_pipeline_invoke_entities == rag_pipeline_invoke_entities
+            assert isinstance(proxy._tenant_isolated_task_queue, TenantIsolatedTaskQueue)
+            assert proxy._tenant_isolated_task_queue._tenant_id == dataset_tenant_id
+            assert proxy._tenant_isolated_task_queue._unique_key == "pipeline"
 
-    proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with(["file-1"])
-    task_func.delay.assert_not_called()
+        def test_initialization_with_empty_entities(self):
+            """Test initialization with empty rag_pipeline_invoke_entities."""
+            # Arrange
+            dataset_tenant_id = "tenant-123"
+            user_id = "user-456"
+            rag_pipeline_invoke_entities = []
 
+            # Act
+            proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
-def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFixture, proxy) -> None:
-    proxy._tenant_isolated_task_queue.get_task_key.return_value = None
-    task_func = Mock()
+            # Assert
+            assert proxy._dataset_tenant_id == dataset_tenant_id
+            assert proxy._user_id == user_id
+            assert proxy._rag_pipeline_invoke_entities == []
 
-    proxy._send_to_tenant_queue("file-1", task_func)
+        def test_initialization_with_multiple_entities(self):
+            """Test initialization with multiple rag_pipeline_invoke_entities."""
+            # Arrange
+            dataset_tenant_id = "tenant-123"
+            user_id = "user-456"
+            rag_pipeline_invoke_entities = [
+                RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity(pipeline_id="pipeline-1"),
+                RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity(pipeline_id="pipeline-2"),
+                RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity(pipeline_id="pipeline-3"),
+            ]
 
-    proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
-    task_func.delay.assert_called_once_with(
-        rag_pipeline_invoke_entities_file_id="file-1",
-        tenant_id="tenant-1",
-    )
+            # Act
+            proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
+            # Assert
+            assert len(proxy._rag_pipeline_invoke_entities) == 3
+            assert proxy._rag_pipeline_invoke_entities[0].pipeline_id == "pipeline-1"
+            assert proxy._rag_pipeline_invoke_entities[1].pipeline_id == "pipeline-2"
+            assert proxy._rag_pipeline_invoke_entities[2].pipeline_id == "pipeline-3"
 
-# --- _upload_invoke_entities ---
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        def test_features_property(self, mock_feature_service: MagicMock):
+            """Test cached_property features."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features()
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
 
+            # Act
+            features1 = proxy.features
+            features2 = proxy.features  # Second call should use cached property
 
-def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key="rag-pipeline.json",
-        name="rag-pipeline.json",
-        size=1,
-        extension="json",
-        mime_type="application/json",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-1",
-        created_at=datetime(2025, 1, 1),
-        used=True,
-    )
-    upload_file.id = "uploaded-file-1"
-    file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-    file_service_cls.return_value.upload_text.return_value = upload_file
-    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
+            # Assert
+            assert features1 == mock_features
+            assert features2 == mock_features
+            assert features1 is features2  # Should be the same instance due to caching
+            mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
-    result = proxy._upload_invoke_entities()
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_upload_invoke_entities(self, mock_db: MagicMock, mock_file_service_class: MagicMock):
+            """Test _upload_invoke_entities method."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = upload_file
 
-    assert result == "uploaded-file-1"
-    file_service_cls.return_value.upload_text.assert_called_once()
+            # Act
+            result = proxy._upload_invoke_entities()
+
+            # Assert
+            assert result == "file-123"
+            mock_file_service_class.assert_called_once_with(mock_db.engine)
+
+            # Verify upload_text was called with correct parameters
+            mock_file_service.upload_text.assert_called_once()
+            call_args = mock_file_service.upload_text.call_args
+            json_text, name, user_id, tenant_id = call_args[0]
+
+            assert name == "rag_pipeline_invoke_entities.json"
+            assert user_id == "user-456"
+            assert tenant_id == "tenant-123"
+
+            # Verify JSON content
+            parsed_json = json.loads(json_text)
+            assert len(parsed_json) == 1
+            assert parsed_json[0]["pipeline_id"] == "pipeline-123"
+
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_upload_invoke_entities_with_multiple_entities(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock
+        ):
+            """Test _upload_invoke_entities method with multiple entities."""
+            # Arrange
+            entities = [
+                RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity(pipeline_id="pipeline-1"),
+                RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity(pipeline_id="pipeline-2"),
+            ]
+            proxy = RagPipelineTaskProxy("tenant-123", "user-456", entities)
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-456")
+            mock_file_service.upload_text.return_value = upload_file
+
+            # Act
+            result = proxy._upload_invoke_entities()
+
+            # Assert
+            assert result == "file-456"
+
+            # Verify JSON content contains both entities
+            call_args = mock_file_service.upload_text.call_args
+            json_text = call_args[0][0]
+            parsed_json = json.loads(json_text)
+            assert len(parsed_json) == 2
+            assert parsed_json[0]["pipeline_id"] == "pipeline-1"
+            assert parsed_json[1]["pipeline_id"] == "pipeline-2"
+
+        def test_send_to_direct_queue(self, tenant_queue_commands: MagicMock):
+            """Test _send_to_direct_queue method."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            upload_file_id = "file-123"
+            mock_task = Mock()
+
+            # Act
+            proxy._send_to_direct_queue(upload_file_id, mock_task)
+
+            # If sent to direct queue, tenant_isolated_task_queue should not be called
+            assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
+
+            # Celery should be called directly
+            mock_task.delay.assert_called_once_with(
+                rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
+            )
+
+        def test_send_to_tenant_queue_with_existing_task_key(self, tenant_queue_commands: MagicMock):
+            """Test _send_to_tenant_queue when task key exists."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            tenant_queue_commands.return_value = "task_key"
+            upload_file_id = "file-123"
+            mock_task = Mock()
+
+            # Act
+            proxy._send_to_tenant_queue(upload_file_id, mock_task)
+
+            # If task key exists, should push tasks to the queue
+            tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", upload_file_id)
+            # Celery should not be called directly
+            mock_task.delay.assert_not_called()
+
+        def test_send_to_tenant_queue_without_task_key(self, tenant_queue_commands: MagicMock):
+            """Test _send_to_tenant_queue when no task key exists."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            tenant_queue_commands.return_value = None
+            upload_file_id = "file-123"
+            mock_task = Mock()
+
+            # Act
+            proxy._send_to_tenant_queue(upload_file_id, mock_task)
+
+            # If no task key, should set task waiting time key first
+            tenant_queue_commands.assert_has_calls(
+                [
+                    call("GET", "tenant_pipeline_task:tenant-123", keys=["tenant_pipeline_task:tenant-123"]),
+                    call("SETEX", "tenant_pipeline_task:tenant-123", 3600, 1),
+                ]
+            )
+            mock_task.delay.assert_called_once_with(
+                rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
+            )
+
+            # The first task should be sent to celery directly, so push tasks should not be called
+            assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
+
+        def test_send_to_default_tenant_queue(self):
+            """Test _send_to_default_tenant_queue method."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_tenant_queue = Mock()
+            upload_file_id = "file-123"
+
+            # Act
+            proxy._send_to_default_tenant_queue(upload_file_id)
+
+            # Assert
+            proxy._send_to_tenant_queue.assert_called_once()
+            sent_file_id, task = proxy._send_to_tenant_queue.call_args.args
+            assert sent_file_id == upload_file_id
+            assert task.task == "tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task"
+            assert task.options["queue"] == "pipeline"
+
+        def test_send_to_priority_tenant_queue(self):
+            """Test _send_to_priority_tenant_queue method."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_tenant_queue = Mock()
+            upload_file_id = "file-123"
+
+            # Act
+            proxy._send_to_priority_tenant_queue(upload_file_id)
+
+            # Assert
+            proxy._send_to_tenant_queue.assert_called_once()
+            sent_file_id, task = proxy._send_to_tenant_queue.call_args.args
+            assert sent_file_id == upload_file_id
+            assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+            assert task.options["queue"] == "priority_pipeline"
+
+        def test_send_to_priority_direct_queue(self):
+            """Test _send_to_priority_direct_queue method."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_direct_queue = Mock()
+            upload_file_id = "file-123"
+
+            # Act
+            proxy._send_to_priority_direct_queue(upload_file_id)
+
+            # Assert
+            proxy._send_to_direct_queue.assert_called_once()
+            sent_file_id, task = proxy._send_to_direct_queue.call_args.args
+            assert sent_file_id == upload_file_id
+            assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+            assert task.options["queue"] == "priority_pipeline"
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_with_cloud_sandbox_plan(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
+        ):
+            """Test _dispatch method in Cloud with Sandbox plan."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_default_tenant_queue = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy._dispatch()
+
+            # If billing is enabled with sandbox plan, should send to default tenant queue
+            proxy._send_to_default_tenant_queue.assert_called_once_with("file-123")
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_with_cloud_paid_plan(self, mock_db, mock_file_service_class, mock_feature_service):
+            """Test _dispatch method in Cloud with a paid plan."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_priority_tenant_queue = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy._dispatch()
+
+            # If billing is enabled with non-sandbox plan, should send to priority tenant queue
+            proxy._send_to_priority_tenant_queue.assert_called_once_with("file-123")
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_outside_cloud(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
+        ):
+            """Test _dispatch method outside Cloud."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features()
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_priority_direct_queue = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy._dispatch()
+
+            # If billing is disabled, for example: self-hosted or enterprise, should send to priority direct queue
+            proxy._send_to_priority_direct_queue.assert_called_once_with("file-123")
+
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_with_empty_upload_file_id(self, mock_db: MagicMock, mock_file_service_class: MagicMock):
+            """Test _dispatch method when upload_file_id is empty."""
+            # Arrange
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("")
+            mock_file_service.upload_text.return_value = upload_file
+
+            # Act & Assert
+            with pytest.raises(ValueError, match="upload_file_id is empty"):
+                proxy._dispatch()
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_edge_case_empty_plan(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
+        ):
+            """Test _dispatch method with empty plan string."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan="")
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_priority_tenant_queue = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy._dispatch()
+
+            # Assert
+            proxy._send_to_priority_tenant_queue.assert_called_once_with("file-123")
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_dispatch_edge_case_none_plan(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
+        ):
+            """Test _dispatch method with None plan."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=None)
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._send_to_priority_tenant_queue = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy._dispatch()
+
+            # Assert
+            proxy._send_to_priority_tenant_queue.assert_called_once_with("file-123")
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        def test_delay_method(
+            self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
+        ):
+            """Test delay method integration."""
+            # Arrange
+            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
+            mock_feature_service.get_features.return_value = mock_features
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
+            proxy._dispatch = Mock()
+
+            mock_file_service = Mock()
+            mock_file_service_class.return_value = mock_file_service
+            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service.upload_text.return_value = mock_upload_file
+
+            # Act
+            proxy.delay()
+
+            # Assert
+            proxy._dispatch.assert_called_once()
+
+        def test_delay_method_with_empty_entities(self, caplog: pytest.LogCaptureFixture):
+            """Test delay method with empty rag_pipeline_invoke_entities."""
+            # Arrange
+            proxy = RagPipelineTaskProxy("tenant-123", "user-456", [])
+
+            # Act
+            with caplog.at_level(logging.WARNING, logger="services.rag_pipeline.rag_pipeline_task_proxy"):
+                proxy.delay()
+
+            # Assert
+            assert "Received empty rag pipeline invoke entities, no tasks delivered: tenant-123 user-456" in caplog.text

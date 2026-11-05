@@ -263,7 +263,7 @@ const FeaturesTrigger = () => {
           onPublish,
           onToggle: onPublisherToggle,
           workflowToolAvailable: lastPublishedHasUserInput,
-          crossAxisOffset: 4,
+          alignOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,

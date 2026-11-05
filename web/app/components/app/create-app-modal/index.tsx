@@ -90,7 +90,9 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const { mutateAsync: createApp } = useMutation(
+    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
+  )
   const creatingRef = useRef(false)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -320,7 +322,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                       aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                      placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                     />
                   </Field>
                 </div>
@@ -349,7 +351,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 <Textarea
                   id={descriptionInputId}
                   className="resize-none"
-                  placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
+                  placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' })}
                   value={description}
                   onValueChange={(value) => setDescription(value)}
                 />

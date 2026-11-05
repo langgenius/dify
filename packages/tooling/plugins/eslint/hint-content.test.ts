@@ -259,12 +259,12 @@ it('keeps focus styling owned by scroll areas, buttons and visible input surface
     import { Input } from '@langgenius/dify-ui/input'
     import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
     import { Textarea } from '@langgenius/dify-ui/textarea'
-    import { DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+    import { MenuTrigger } from '@langgenius/dify-ui/menu'
     const examples = <>
       <ScrollArea className="rounded-lg ring-2" />
       <Viewport className="focus-visible:ring-2 dark:focus-visible:ring-red-500! outline-hidden focus-visible:inset-ring-2" />
       <Button className="focus-visible:ring-0 focus-visible:inset-ring-0" />
-      <DropdownMenuTrigger render={<IconButton aria-label="Open" />} className="focus-visible:outline-2" />
+      <MenuTrigger render={<IconButton aria-label="Open" />} className="focus-visible:outline-2" />
       <Input className="focus:ring-0" />
       <InputGroup className="has-[>input:focus]:ring-2" />
       <InputGroupInput className="focus-visible:ring-2" />

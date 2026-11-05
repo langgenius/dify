@@ -11,10 +11,12 @@ import DataSourceNode from './data-source/node'
 import DocExtractorNode from './document-extractor/node'
 import EndNode from './end/node'
 import HttpNode from './http/node'
-import HumanInputNode from './human-input/node'
+import { WorkflowHumanInputNode } from './human-input-router'
+import { HumanInputV2Node } from './human-input-v2/node'
 import IfElseNode from './if-else/node'
 import IterationNode from './iteration/node'
 import KnowledgeBaseNode from './knowledge-base/node'
+import KnowledgeRetrievalV2Node from './knowledge-retrieval-v2/node'
 import KnowledgeRetrievalNode from './knowledge-retrieval/node'
 import ListFilterNode from './list-operator/node'
 import LLMNode from './llm/node'
@@ -47,6 +49,7 @@ export const NodeComponentMap = {
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
+  [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Node,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
   [BlockEnum.IfElse]: IfElseNode,
   [BlockEnum.Code]: CodeNode,
@@ -65,7 +68,8 @@ export const NodeComponentMap = {
   [BlockEnum.AgentV2]: AgentV2Node,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
-  [BlockEnum.HumanInput]: HumanInputNode,
+  [BlockEnum.HumanInput]: WorkflowHumanInputNode,
+  [BlockEnum.HumanInputV2]: HumanInputV2Node,
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,

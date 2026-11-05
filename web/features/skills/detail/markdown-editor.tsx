@@ -316,7 +316,7 @@ function useSkillMarkdownComponents(onOpenReference?: (path: string) => void) {
             className="inline-flex cursor-pointer flex-col items-start px-0.5 py-px align-baseline outline-hidden focus-visible:rounded-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={() => onOpenReference?.(referencePath)}
           >
-            <span className="inline-flex min-w-4.5 items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs">
+            <span className="inline-flex min-w-4.5 items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px ps-px pe-1 text-text-accent shadow-xs">
               <span className="inline-flex min-w-0 items-center gap-0.5">
                 <span className="inline-flex shrink-0 items-center justify-center p-px">
                   <span
@@ -388,7 +388,7 @@ export function MarkdownModeSwitch({
   const { t } = useTranslation(['skill'])
 
   return (
-    <div className="absolute top-3 right-2 z-10 flex h-8 items-center rounded-md bg-components-segmented-control-bg-normal p-0.5">
+    <div className="absolute inset-e-2 top-3 z-10 flex h-8 items-center rounded-md bg-components-segmented-control-bg-normal p-0.5">
       <button
         type="button"
         aria-label={t(($) => $['skillManagement.detail.markdownLiveMode'])}
@@ -473,7 +473,7 @@ export function ReferenceFilesPicker({
         {currentDirectory && (
           <button
             type="button"
-            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={onBack}
           >
             <span
@@ -494,7 +494,7 @@ export function ReferenceFilesPicker({
                 key={referenceFile.path}
                 type="button"
                 className={cn(
-                  'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                   selected && 'bg-state-base-hover',
                 )}
                 onMouseEnter={() => onSelectIndex(index)}
@@ -684,11 +684,11 @@ export function MarkdownSourceEditor({
     <div className="relative h-full overflow-hidden bg-background-default">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-10 overflow-hidden bg-background-default pt-1.5 text-right font-mono text-[13px]/[22px] text-text-quaternary"
+        className="pointer-events-none absolute inset-y-0 inset-s-0 w-10 overflow-hidden bg-background-default pt-1.5 text-end font-mono text-[13px]/[22px] text-text-quaternary"
       >
         <div style={{ transform: `translateY(${-scrollTop}px)` }}>
           {Array.from({ length: lineCount }, (_, index) => (
-            <div key={index} className="h-5.5 pr-2">
+            <div key={index} className="h-5.5 pe-2">
               {String(index + 1).padStart(2, '0')}
             </div>
           ))}
@@ -702,7 +702,7 @@ export function MarkdownSourceEditor({
         wrap="off"
         spellCheck={false}
         className={cn(
-          'h-full w-full resize-none bg-transparent py-1.5 pr-20 pl-10 text-[14px]/[22px] text-text-primary outline-hidden read-only:text-text-secondary',
+          'h-full w-full resize-none bg-transparent py-1.5 ps-10 pe-20 text-[14px]/[22px] text-text-primary outline-hidden read-only:text-text-secondary',
           styles.sourceTextarea,
         )}
         onBlur={() => setFocused(false)}
@@ -723,7 +723,7 @@ export function MarkdownSourceEditor({
       {showPlaceholder && (
         <EditorPlaceholder
           text={placeholder}
-          className="absolute left-10 text-[14px]/[22px]"
+          className="absolute inset-s-10 text-[14px]/[22px]"
           style={{ top: 6 + currentLine.lineIndex * 22 - scrollTop }}
         />
       )}
@@ -1105,14 +1105,14 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="min-w-full border-separate border-spacing-0 border-t border-l border-divider-subtle text-left">
+        <table className="min-w-full border-separate border-spacing-0 border-s border-t border-divider-subtle text-start">
           <thead className="sticky top-0 z-10 bg-background-section">
             <tr>
               {headers.map((header, index) => (
                 <th
                   key={columnKeys[index]}
                   scope="col"
-                  className="h-7 max-w-72 min-w-32 border-r border-b border-divider-subtle px-2 py-1 system-xs-medium text-text-secondary"
+                  className="h-7 max-w-72 min-w-32 border-e border-b border-divider-subtle px-2 py-1 text-start system-xs-medium text-text-secondary"
                 >
                   <span className="block truncate" title={header || undefined}>
                     {header || `#${index + 1}`}
@@ -1130,7 +1130,7 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
                   return (
                     <td
                       key={columnKey}
-                      className="h-7 max-w-72 min-w-32 border-r border-b border-divider-subtle px-2 py-1 align-top system-xs-regular text-text-secondary"
+                      className="h-7 max-w-72 min-w-32 border-e border-b border-divider-subtle px-2 py-1 align-top system-xs-regular text-text-secondary"
                     >
                       <span
                         className="block wrap-break-word whitespace-pre-wrap"
