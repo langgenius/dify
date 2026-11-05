@@ -36,11 +36,8 @@ def quota_engine(request: pytest.FixtureRequest) -> Iterator[Engine]:
     with container:
         engine = create_engine(container.get_connection_url(), pool_size=10, max_overflow=0)
         tables = [
-            Tenant.__table__,
-            App.__table__,
-            EndUser.__table__,
-            UploadFile.__table__,
-            UploadQuotaReservation.__table__,
+            TypeBase.metadata.tables[model.__tablename__]
+            for model in (Tenant, App, EndUser, UploadFile, UploadQuotaReservation)
         ]
         TypeBase.metadata.create_all(engine, tables=tables)
         try:

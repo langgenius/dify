@@ -88,7 +88,7 @@ class UploadStore(Protocol):
     """Tenant-scoped persistence; each operation owns one short transaction.
 
     Reserve and finalize serialize on a workspace-row write lock. Admission
-    atomically counts persisted end-user rows (including historical role
+    atomically counts user-upload-purpose end-user rows (including historical role
     spellings) plus reservations and inserts one reservation within the limits.
     Finalize inserts metadata and removes the reservation atomically under the
     same lock, or returns an identical already-committed upload. Unknown outcomes
@@ -103,7 +103,7 @@ class UploadStore(Protocol):
         """Commit metadata exactly once; a reserved write needs matching durable metadata."""
         ...
 
-    def pending(self, *, tenant_id: str, limit: int) -> Sequence[PendingUpload]:
+    def pending(self, *, tenant_id: str, limit: int, reservation_id: str | None = None) -> Sequence[PendingUpload]:
         """Return a bounded snapshot for one workspace, not sessions or ORM objects."""
         ...
 
@@ -190,11 +190,11 @@ class EndUserUploadService:
         self._objects.save(upload.key, content)
         return self._uploads.finalize(upload, reserved=self._settings.limits.enabled)
 
-    def pending(self, *, tenant_id: str, limit: int) -> Sequence[PendingUpload]:
-        """Return at most 1000 reservations for an explicitly selected workspace."""
+    def pending(self, *, tenant_id: str, limit: int, reservation_id: str | None = None) -> Sequence[PendingUpload]:
+        """Read a bounded workspace batch or one explicit ID; None selects the oldest batch."""
         if not 1 <= limit <= 1000:
             raise ValueError("limit must be between 1 and 1000")
-        return self._uploads.pending(tenant_id=tenant_id, limit=limit)
+        return self._uploads.pending(tenant_id=tenant_id, limit=limit, reservation_id=reservation_id)
 
     def recover(
         self,

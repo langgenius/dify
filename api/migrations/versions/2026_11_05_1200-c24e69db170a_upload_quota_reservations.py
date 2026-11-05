@@ -17,7 +17,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Add portable reservation metadata without backfilling or deleting uploads."""
+    """Add reservations and classify existing offloads; require drained upload writers."""
+    op.add_column("upload_files", sa.Column("purpose", sa.String(32), nullable=False, server_default="upload"))
+    uploads = sa.table("upload_files", sa.column("id"), sa.column("tenant_id"), sa.column("purpose"))
+    offloads = sa.table(
+        "workflow_node_execution_offload", sa.column("file_id"), sa.column("tenant_id"), sa.column("app_id")
+    )
+    apps = sa.table("apps", sa.column("id"), sa.column("tenant_id"))
+    op.execute(
+        uploads.update()
+        .where(
+            sa.exists(
+                sa.select(1)
+                .select_from(offloads.join(apps, apps.c.id == offloads.c.app_id))
+                .where(
+                    offloads.c.file_id == uploads.c.id,
+                    offloads.c.tenant_id == uploads.c.tenant_id,
+                    apps.c.tenant_id == uploads.c.tenant_id,
+                )
+            )
+        )
+        .values(purpose="workflow_offload")
+    )
     op.create_table(
         "upload_quota_reservations",
         sa.Column("id", StringUUID(), primary_key=True, nullable=False),
@@ -36,7 +57,7 @@ def upgrade() -> None:
     op.create_index(
         "upload_quota_reservation_tenant_idx", "upload_quota_reservations", ["tenant_id", "created_at", "id"]
     )
-    op.create_index("upload_file_tenant_role_size_idx", "upload_files", ["tenant_id", "created_by_role", "size"])
+    op.create_index("upload_file_quota_usage_idx", "upload_files", ["tenant_id", "created_by_role", "purpose", "size"])
     op.drop_index("upload_file_tenant_idx", table_name="upload_files")
 
 
@@ -47,6 +68,7 @@ def downgrade() -> None:
         if count:
             raise RuntimeError("Recover all upload quota reservations with upload writers stopped before downgrading")
     op.create_index("upload_file_tenant_idx", "upload_files", ["tenant_id"])
-    op.drop_index("upload_file_tenant_role_size_idx", table_name="upload_files")
+    op.drop_index("upload_file_quota_usage_idx", table_name="upload_files")
     op.drop_index("upload_quota_reservation_tenant_idx", table_name="upload_quota_reservations")
     op.drop_table("upload_quota_reservations")
+    op.drop_column("upload_files", "purpose")

@@ -295,3 +295,37 @@ def test_recovery_mismatch_or_backend_change_keeps_capacity(harness: Harness) ->
     )
     assert harness.counts() == (0, 1)
     assert harness.objects.values == {pending.key: b"bad"}
+
+
+def test_recovery_by_id_reaches_later_reservations(harness: Harness) -> None:
+    """Unresolved entries at the head of a bounded batch cannot starve a later valid object."""
+    service = harness.service(max_files=5)
+    harness.objects.failure = "before"
+    for _ in range(2):
+        with pytest.raises(OSError, match="storage unavailable"):
+            upload(service, harness.actor)
+    harness.objects.failure = "after"
+    with pytest.raises(OSError, match="acknowledgement lost"):
+        upload(service, harness.actor)
+    stored_key = next(iter(harness.objects.values))
+    later_id = stored_key.rsplit("/", 1)[1].split(".")[0]
+    selected = service.pending(tenant_id="tenant-a", limit=1, reservation_id=later_id)
+    assert len(selected) == 1
+    assert service.pending(tenant_id="tenant-b", limit=1, reservation_id=later_id) == []
+    assert service.recover(selected[0], apply=True, release_missing=False, writers_stopped=False) == "finalized"
+    assert harness.counts() == (1, 2)
+
+
+def test_internal_offload_does_not_consume_user_upload_quota(harness: Harness) -> None:
+    """Persistent purpose keeps accounting stable even when offload references are removed."""
+    from models.enums import UploadFilePurpose
+
+    internal = upload(harness.service(), harness.actor)
+    with harness.sessions.begin() as session:
+        session.execute(
+            update(UploadFile).where(UploadFile.id == internal.id).values(purpose=UploadFilePurpose.WORKFLOW_OFFLOAD)
+        )
+    upload(harness.service(max_files=1, max_bytes=4), harness.actor)
+    with pytest.raises(WorkspaceUploadQuotaExceededError):
+        upload(harness.service(max_files=1, max_bytes=4), harness.actor)
+    assert harness.counts() == (2, 0)

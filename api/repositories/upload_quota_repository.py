@@ -3,11 +3,12 @@
 from dataclasses import asdict
 
 import sqlalchemy as sa
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.storage.storage_type import StorageType
 from models.account import Tenant
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import App, EndUser, UploadFile
 from models.upload_quota import UploadQuotaReservation
 from services.end_user_upload_service import (
@@ -53,6 +54,7 @@ class UploadQuotaRepository:
     def _lock(session: Session, tenant_id: str) -> None:
         """Lock one existing workspace without changing its ID or update timestamp."""
         result = session.execute(sa.update(Tenant).where(Tenant.id == tenant_id).values(updated_at=Tenant.updated_at))
+        assert isinstance(result, CursorResult)
         if result.rowcount != 1:
             raise UploadOwnerNotFoundError("Upload workspace not found")
 
@@ -79,6 +81,7 @@ class UploadQuotaRepository:
             count, size = session.execute(
                 sa.select(sa.func.count(), sa.func.coalesce(sa.func.sum(UploadFile.size), 0)).where(
                     UploadFile.tenant_id == upload.tenant_id,
+                    UploadFile.purpose == UploadFilePurpose.UPLOAD,
                     sa.type_coerce(UploadFile.created_by_role, sa.String).in_(("end_user", "end-user")),
                 )
             ).one()
@@ -102,7 +105,7 @@ class UploadQuotaRepository:
                 sa.select(UploadFile).where(UploadFile.tenant_id == upload.tenant_id, UploadFile.id == upload.id)
             )
             if existing is not None:
-                if _record(existing) != upload:
+                if existing.purpose != UploadFilePurpose.UPLOAD or _record(existing) != upload:
                     raise ValueError("Committed upload does not match the reservation")
                 return upload
             if reserved:
@@ -133,7 +136,7 @@ class UploadQuotaRepository:
             session.add(row)
         return upload
 
-    def pending(self, *, tenant_id: str, limit: int) -> list[PendingUpload]:
+    def pending(self, *, tenant_id: str, limit: int, reservation_id: str | None = None) -> list[PendingUpload]:
         """Materialize a bounded, tenant-scoped snapshot for operator recovery."""
         with self._sessions() as session:
             return [
@@ -141,6 +144,7 @@ class UploadQuotaRepository:
                 for row in session.scalars(
                     sa.select(UploadQuotaReservation)
                     .where(UploadQuotaReservation.tenant_id == tenant_id)
+                    .where(UploadQuotaReservation.id == reservation_id if reservation_id is not None else sa.true())
                     .order_by(UploadQuotaReservation.created_at, UploadQuotaReservation.id)
                     .limit(limit)
                 )
