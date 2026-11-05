@@ -7,13 +7,17 @@ from collections.abc import Generator, Iterable, Mapping
 from enum import StrEnum
 from typing import Any, Final, override
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, HTTPException
 
 from constants.oauth_bearer import Scope, SubjectType
-from controllers.common.human_input import stringify_form_default_values
+from controllers.common.human_input import (
+    stringify_form_default_values,
+    v2_form_definition_response,
+    viewer_ip_address,
+)
 from controllers.common.human_input_v2_errors import legacy_form_http_error
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -44,8 +48,7 @@ from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
-from factories.human_input_v2_form_presentation import build_form_presentation
-from libs.helper import extract_remote_ip, to_timestamp
+from libs.helper import to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
 from repositories.human_input_v2.form_repository import Form as V2Form
@@ -112,10 +115,6 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
         raise HumanInputFormNotFound()
 
 
-def _remote_ip() -> str | None:
-    return extract_remote_ip(request) or None
-
-
 class _V2FormCaller(ABC):
     """How one subject kind reads and answers a v2 form, as the recipient its run made of it."""
 
@@ -142,7 +141,7 @@ class _AccountV2Caller(_V2FormCaller):
         return service.get_console_form(
             account_id=AccountId(ctx.account.id),
             form_token=form_token,
-            ip_address=_remote_ip(),
+            ip_address=viewer_ip_address(),
             app_id=ctx.app.id,
         )
 
@@ -166,7 +165,7 @@ class _EndUserV2Caller(_V2FormCaller):
 
     @override
     def get(self, service: HumanInputSubmissionService, ctx: Context, form_token: str) -> V2Form:
-        return service.get_web_app_form(actor=self._actor(ctx), form_token=form_token, ip_address=_remote_ip())
+        return service.get_web_app_form(actor=self._actor(ctx), form_token=form_token, ip_address=viewer_ip_address())
 
     @override
     def submit(
@@ -199,18 +198,6 @@ def _v2_form_error(error: HumanInputFormError) -> HTTPException:
 
 def _v2_service() -> HumanInputSubmissionService:
     return HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
-
-
-def _jsonify_v2_form_definition(form: V2Form) -> Response:
-    presentation = build_form_presentation(form.resolved_form)
-    response = HumanInputFormDefinitionResponse(
-        form_content=presentation.form_content,
-        inputs=[field.model_dump(mode="json") for field in presentation.inputs],
-        resolved_default_values=presentation.resolved_default_values,
-        user_actions=[action.model_dump(mode="json") for action in presentation.user_actions],
-        expiration_time=to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
-    )
-    return Response(response.model_dump_json(), mimetype="application/json")
 
 
 def _follow_hint(app_id: str, workflow_run_id: str | None) -> FormSubmitResponse:
@@ -263,7 +250,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
                 v2_form = _V2_FORM_CALLERS[ctx.subject.subject_type].get(_v2_service(), ctx, form_token)
             except HumanInputFormError as error:
                 raise _v2_form_error(error) from error
-            return _jsonify_v2_form_definition(v2_form)
+            return v2_form_definition_response(v2_form, HumanInputFormDefinitionResponse)
 
         _ensure_form_belongs_to_app(form, ctx.app)
         service.ensure_form_active(form)
