@@ -943,14 +943,7 @@ export class CollaborationManager {
     // collaboration session has existed, that graph may be stale and must recover through CRDT.
     if (!isDefaultSocketUrl() || this.localDraftFallbackActive || this.hasEstablishedConnection)
       return
-    if (this.getActiveSocket() !== socket || !this.currentAppId) return
-
-    const appId = this.currentAppId
-    this.localDraftFallbackActive = true
-    this.clearInitialSyncRetry()
-    this.pendingInitialSync = false
-    webSocketClient.disconnect(appId)
-    this.emitGraphReadyState()
+    this.activateInitialPlainDraftFallback(socket)
   }
 
   private activateInitialPlainDraftFallback(socket: Socket): void {

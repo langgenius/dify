@@ -541,13 +541,17 @@ it.each([true, false])(
       role: 'pending',
     })
     const ready = vi.fn()
+    const fallback = vi.fn()
     manager.onGraphReadyChange(ready)
+    manager.onInitialPlainDraftFallback(fallback)
     expect(manager.canPersistLocalGraph()).toBe(false)
     receive('connect_error', new Error('connect failed'))
     expect(manager.canApplyLocalGraphMutation()).toBe(defaultUrl)
     expect(manager.canPersistLocalGraph()).toBe(defaultUrl)
     expect(ready).toHaveBeenLastCalledWith(defaultUrl)
     if (defaultUrl) {
+      expect(fallback).toHaveBeenCalledOnce()
+      expect(fallback).toHaveBeenCalledWith('app-1')
       expect(webSocketClient.disconnect).toHaveBeenCalledWith('app-1')
       const secondConnection = await connect(manager, 'app-1', store)
       expect(webSocketClient.connect).toHaveBeenCalledTimes(1)
@@ -555,6 +559,7 @@ it.each([true, false])(
       manager.disconnect(secondConnection)
       expect(manager.canPersistLocalGraph()).toBe(false)
     } else {
+      expect(fallback).not.toHaveBeenCalled()
       expect(webSocketClient.disconnect).not.toHaveBeenCalled()
     }
   },

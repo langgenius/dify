@@ -307,7 +307,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
               }
             : {}),
         }
-        if (!workflowStore.getState().isCollaborationEnabled) delete body._is_collaborative
+        if (
+          !workflowStore.getState().isCollaborationEnabled ||
+          collaborationManager.canUseLocalDraftFallback()
+        )
+          delete body._is_collaborative
 
         if (!workflowStore.getState().isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
           delete body._is_collaborative
