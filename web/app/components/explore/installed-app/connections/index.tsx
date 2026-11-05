@@ -16,10 +16,9 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginAuth } from '@/app/components/plugins/plugin-auth/hooks/use-plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
-import WorkspaceConnectionSelector from '@/app/components/plugins/plugin-auth/workspace-auth/workspace-connection-selector'
+import WorkspaceConnectionItem from '@/app/components/plugins/plugin-auth/workspace-auth/workspace-connection-item'
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
-import ConnectionServiceItem from '@/app/components/share/connections/connection-service-item'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { consoleQuery } from '@/service/console'
 import {
@@ -36,7 +35,6 @@ function InstalledConnectionRow({
   disabled: boolean
   showMissingConnectionWarning: boolean
 }) {
-  const { t } = useTranslation(['plugin', 'share'])
   const state = useInstalledAppConnections()
   const { data: tools } = useQuery(
     consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
@@ -56,11 +54,6 @@ function InstalledConnectionRow({
   const preflight = state.preflight?.connections.find(
     (connection) => connection.node_id === requirement.node_id,
   )
-  const hasWarning =
-    (!selectedId && showMissingConnectionWarning) ||
-    (preflight &&
-      preflight.status !== 'connected' &&
-      (!!selectedId || showMissingConnectionWarning))
   const availableIds = new Set(
     state.credentials
       .filter((credential) => credential.provider === requirement.provider)
@@ -68,52 +61,37 @@ function InstalledConnectionRow({
   )
 
   return (
-    <ConnectionServiceItem
+    <WorkspaceConnectionItem
       name={requirement.provider_label}
       description={requirement.purpose}
       icon={{ icon_type: 'link', icon: requirement.icon }}
       iconDark={
         requirement.icon_dark ? { icon_type: 'link', icon: requirement.icon_dark } : undefined
       }
-      warning={
-        hasWarning ? (
-          <span role="status">
-            {!selectedId || preflight?.status === 'disconnected'
-              ? t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
-              : preflight?.status === 'reconnect_required'
-                ? t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
-                : t(($) => $['auth.unavailable'], { ns: 'plugin' })}
-          </span>
-        ) : undefined
-      }
-      renderControls={() => (
-        <WorkspaceConnectionSelector
-          pluginPayload={pluginPayload}
-          authorization={{
-            ...authorization,
-            credentials: authorization.credentials.filter(
-              (credential) =>
-                availableIds.has(credential.id) &&
-                !!credential.credential_type &&
-                requirement.allowed_credential_types.includes(credential.credential_type),
-            ),
-            canOAuth:
-              !!authorization.canOAuth && requirement.allowed_credential_types.includes('oauth2'),
-            canApiKey:
-              !!authorization.canApiKey && requirement.allowed_credential_types.includes('api-key'),
-            invalidPluginCredentialInfo: () => {
-              authorization.invalidPluginCredentialInfo()
-              state.retry()
-            },
-          }}
-          disabled={disabled}
-          useWorkspaceDefault={false}
-          credentialId={selectedId ?? undefined}
-          providerName={requirement.provider_label}
-          placeholder={t(($) => $['connections.setup.selectConnection'], { ns: 'share' })}
-          onAuthorizationItemClick={(id) => state.onSelect(requirement.node_id, id)}
-        />
-      )}
+      status={preflight?.status}
+      showMissingConnectionWarning={showMissingConnectionWarning}
+      pluginPayload={pluginPayload}
+      authorization={{
+        ...authorization,
+        credentials: authorization.credentials.filter(
+          (credential) =>
+            availableIds.has(credential.id) &&
+            !!credential.credential_type &&
+            requirement.allowed_credential_types.includes(credential.credential_type),
+        ),
+        canOAuth:
+          !!authorization.canOAuth && requirement.allowed_credential_types.includes('oauth2'),
+        canApiKey:
+          !!authorization.canApiKey && requirement.allowed_credential_types.includes('api-key'),
+        invalidPluginCredentialInfo: () => {
+          authorization.invalidPluginCredentialInfo()
+          state.retry()
+        },
+      }}
+      disabled={disabled}
+      useWorkspaceDefault={false}
+      credentialId={selectedId ?? undefined}
+      onAuthorizationItemClick={(id) => state.onSelect(requirement.node_id, id)}
     />
   )
 }

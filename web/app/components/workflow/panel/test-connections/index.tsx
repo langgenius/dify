@@ -17,10 +17,9 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginAuth } from '@/app/components/plugins/plugin-auth/hooks/use-plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
-import WorkspaceConnectionSelector from '@/app/components/plugins/plugin-auth/workspace-auth/workspace-connection-selector'
+import WorkspaceConnectionItem from '@/app/components/plugins/plugin-auth/workspace-auth/workspace-connection-item'
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
-import ConnectionServiceItem from '@/app/components/share/connections/connection-service-item'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useGetLanguage } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
@@ -39,7 +38,6 @@ function TestConnectionRow({
   onSelect: (nodeId: string, credentialId: string) => void
   showMissingConnectionWarning?: boolean
 }) {
-  const { t } = useTranslation(['plugin', 'share'])
   const language = useGetLanguage()
   const { data: tools } = useQuery(
     consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
@@ -57,15 +55,10 @@ function TestConnectionRow({
   }
   const authorization = usePluginAuth(pluginPayload, true)
   const allowed = node.data.end_user_auth?.allowed_credential_types ?? []
-  const hasWarning =
-    (!node.data.test_credential_id && showMissingConnectionWarning) ||
-    (state &&
-      state.status !== 'connected' &&
-      (!!node.data.test_credential_id || showMissingConnectionWarning))
   const icon = collection?.icon ?? node.data.provider_icon
 
   return (
-    <ConnectionServiceItem
+    <WorkspaceConnectionItem
       name={name}
       description={node.data.title}
       icon={
@@ -73,43 +66,26 @@ function TestConnectionRow({
           ? { icon_type: 'link', icon }
           : { icon_type: 'emoji', icon: icon?.content, icon_background: icon?.background }
       }
-      warning={
-        hasWarning ? (
-          <span role="status">
-            {!node.data.test_credential_id || state?.status === 'disconnected'
-              ? t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
-              : state?.status === 'reconnect_required'
-                ? t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
-                : t(($) => $['auth.unavailable'], { ns: 'plugin' })}
-          </span>
-        ) : undefined
-      }
-      renderControls={() => (
-        <WorkspaceConnectionSelector
-          pluginPayload={pluginPayload}
-          authorization={{
-            ...authorization,
-            credentials: authorization.credentials
-              .filter(
-                (credential) =>
-                  !!credential.credential_type && allowed.includes(credential.credential_type),
-              )
-              .map((credential) =>
-                credential.from_other_member
-                  ? { ...credential, not_allowed_to_use: true }
-                  : credential,
-              ),
-            canOAuth: !!authorization.canOAuth && allowed.includes('oauth2'),
-            canApiKey: !!authorization.canApiKey && allowed.includes('api-key'),
-          }}
-          useWorkspaceDefault={false}
-          disabled={disabled}
-          credentialId={node.data.test_credential_id ?? undefined}
-          placeholder={t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
-          providerName={name}
-          onAuthorizationItemClick={(id) => onSelect(node.id, id)}
-        />
-      )}
+      status={state?.status}
+      showMissingConnectionWarning={showMissingConnectionWarning}
+      pluginPayload={pluginPayload}
+      authorization={{
+        ...authorization,
+        credentials: authorization.credentials
+          .filter(
+            (credential) =>
+              !!credential.credential_type && allowed.includes(credential.credential_type),
+          )
+          .map((credential) =>
+            credential.from_other_member ? { ...credential, not_allowed_to_use: true } : credential,
+          ),
+        canOAuth: !!authorization.canOAuth && allowed.includes('oauth2'),
+        canApiKey: !!authorization.canApiKey && allowed.includes('api-key'),
+      }}
+      useWorkspaceDefault={false}
+      disabled={disabled}
+      credentialId={node.data.test_credential_id ?? undefined}
+      onAuthorizationItemClick={(id) => onSelect(node.id, id)}
     />
   )
 }

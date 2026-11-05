@@ -14,6 +14,8 @@ import ConnectionActions, { ConnectionActionsTrigger } from './connection-action
 import ConnectionPicker from './connection-picker'
 
 export type ConnectionSelectorDataSource = {
+  variant?: 'card' | 'inline'
+  warning?: boolean
   credentials: Credential[]
   selectedCredential?: Credential
   // UI status supplied explicitly by the source, separate from visibility and query errors.
@@ -118,6 +120,8 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
     <>
       {credentials.length || dataSource.emptyState === 'picker' ? (
         <ConnectionPicker
+          variant={dataSource.variant}
+          warning={dataSource.warning}
           open={open && !dataSource.disabled}
           onOpenChange={(nextOpen) => setOpen(nextOpen && !dataSource.disabled)}
           disabled={dataSource.disabled}
