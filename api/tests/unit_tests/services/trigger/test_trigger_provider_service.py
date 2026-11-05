@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants import HIDDEN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
+from core.trigger.entities.entities import UnsubscribeResult
 from models.base import TypeBase
 from models.provider_ids import TriggerProviderID
 from models.trigger import (
@@ -654,7 +655,7 @@ def test_rebuild_subscription_preserves_id_endpoint_and_updates_state(
     _patch_lock(mocker)
     _patch_identity_encryption(mocker)
     mocker.patch.object(
-        service_module.TriggerManager, "unsubscribe_trigger", return_value=SimpleNamespace(success=True)
+        service_module.TriggerManager, "unsubscribe_trigger", return_value=UnsubscribeResult(success=True)
     )
     mocker.patch.object(
         service_module.TriggerManager,

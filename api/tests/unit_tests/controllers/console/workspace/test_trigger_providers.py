@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -21,6 +21,8 @@ from controllers.console.workspace.trigger_providers import (
 )
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.account import Account
+from models.provider_ids import TriggerProviderID
+from models.trigger import TriggerSubscription
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 """Unit tests for controllers.console.workspace.trigger_providers endpoints."""
@@ -38,9 +40,17 @@ class TestTriggerProviderApisCases:
             api = TriggerSubscriptionUpdateApi()
             method = unwrap(api.post)
 
-            sub = MagicMock()
-            sub.provider_id = "github"
-            sub.credential_type = CredentialType.UNAUTHORIZED
+            sub = TriggerSubscription(
+                name="subscription",
+                tenant_id="t1",
+                user_id="u1",
+                provider_id="langgenius/github/github",
+                endpoint_id="endpoint",
+                credential_type=CredentialType.UNAUTHORIZED,
+                credentials={},
+                parameters={},
+                properties={},
+            )
 
             with (
                 app.test_request_context("/", json={"name": "x"}),
@@ -50,7 +60,7 @@ class TestTriggerProviderApisCases:
                 ),
                 patch(
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.update_trigger_subscription"
-                ),
+                ) as update,
             ):
                 assert method(
                     api,
@@ -58,6 +68,7 @@ class TestTriggerProviderApisCases:
                     "t1",
                     "s1",
                 ) == {"result": "success"}
+            update.assert_called_once_with(tenant_id="t1", subscription_id="s1", name="x", properties=None)
 
         def test_update_not_found(self, app: Flask) -> None:
             api = TriggerSubscriptionUpdateApi()
@@ -77,11 +88,17 @@ class TestTriggerProviderApisCases:
             api = TriggerSubscriptionUpdateApi()
             method = unwrap(api.post)
 
-            sub = MagicMock()
-            sub.provider_id = "github"
-            sub.credential_type = CredentialType.OAUTH2
-            sub.credentials = {"token": "old"}
-            sub.parameters = {"repo": "demo"}
+            sub = TriggerSubscription(
+                name="subscription",
+                tenant_id="t1",
+                user_id="u1",
+                provider_id="langgenius/github/github",
+                endpoint_id="endpoint",
+                credential_type=CredentialType.OAUTH2,
+                credentials={"token": "old"},
+                parameters={"repo": "demo"},
+                properties={},
+            )
 
             with (
                 app.test_request_context("/", json={"credentials": {}}),
@@ -91,7 +108,7 @@ class TestTriggerProviderApisCases:
                 ),
                 patch(
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.rebuild_trigger_subscription"
-                ),
+                ) as rebuild,
             ):
                 assert method(
                     api,
@@ -99,6 +116,18 @@ class TestTriggerProviderApisCases:
                     "t1",
                     "s1",
                 ) == {"result": "success"}
+            rebuild.assert_called_once()
+            assert rebuild.call_args.args == ()
+            kwargs = rebuild.call_args.kwargs
+            assert isinstance(kwargs["provider_id"], TriggerProviderID)
+            assert {**kwargs, "provider_id": str(kwargs["provider_id"])} == {
+                "tenant_id": "t1",
+                "name": None,
+                "provider_id": "langgenius/github/github",
+                "subscription_id": "s1",
+                "credentials": {"token": "old"},
+                "parameters": {"repo": "demo"},
+            }
 
     class TestTriggerSubscriptionVerifyApi:
         def test_verify_success(self, app: Flask) -> None:

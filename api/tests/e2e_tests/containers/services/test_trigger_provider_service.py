@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -36,10 +37,7 @@ class TestTriggerProviderService:
             mock_trigger_manager.get_trigger_provider.return_value = mock_provider_controller
 
             # Mock redis lock
-            mock_lock = MagicMock()
-            mock_lock.__enter__ = MagicMock(return_value=None)
-            mock_lock.__exit__ = MagicMock(return_value=None)
-            mock_redis_client.lock.return_value = mock_lock
+            mock_redis_client.lock.return_value = nullcontext()
 
             # Setup account feature service mock
             mock_account_feature_service.is_registration_allowed.return_value = True
