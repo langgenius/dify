@@ -245,7 +245,7 @@ export function GotoAnything() {
     agentsAvailable &&
     (!debouncedAction || debouncedAction.key === '@agents')
   const appSearchQuery = useQuery(
-    appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app', {
+    appSearchQueryOptions(debouncedSearchTerm, {
       enabled: appSearchEnabled,
       placeholderData: keepPreviousData,
     }),
@@ -342,7 +342,9 @@ export function GotoAnything() {
   const hasUnavailableServices = failedRemoteQueries.length > 0
   const queryError = failedRemoteQueries[0]?.error
   const error = queryError instanceof Error ? queryError : null
-  const remoteSearchResults = currentRemoteQueries.flatMap((query) => query.data ?? [])
+  const remoteSearchResults = currentRemoteQueries.flatMap<SearchResult>(
+    (query) => query.data ?? [],
+  )
   const searchResults = [...localSearchResults, ...remoteSearchResults]
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)

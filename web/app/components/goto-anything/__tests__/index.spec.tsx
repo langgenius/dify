@@ -555,26 +555,14 @@ describe('resource search', () => {
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/dataset-1/hitTesting')
   })
 
-  it.each(['chat', 'workflow'] as const)(
-    'offers %s app sections only in scoped search',
-    async (mode) => {
-      api.apps.mockResolvedValue(page([{ ...app(), mode }]))
-      const { user } = setup()
-      const input = await openSearch()
-      await user.type(input, 'research')
-      await screen.findByRole('option', { name: /Research app/ })
-      expect(screen.queryByRole('option', { name: /Research app \/ Logs/ })).not.toBeInTheDocument()
-      await user.clear(input)
-      await user.type(input, '@app research')
-      expect(
-        await screen.findByRole('option', {
-          name: new RegExp(`Research app / ${mode === 'workflow' ? 'Workflow' : 'Configuration'}`),
-        }),
-      ).toBeInTheDocument()
-      await user.click(screen.getByRole('option', { name: /Research app \/ Logs/ }))
-      expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/logs')
-    },
-  )
+  it('shows only the apps themselves when the search is scoped to apps', async () => {
+    api.apps.mockResolvedValue(page([{ ...app(), mode: 'workflow' }]))
+    const { user } = setup()
+    await user.type(await openSearch(), '@app research')
+    await user.click(await screen.findByRole('option', { name: /Research app/ }))
+    expect(screen.queryByRole('option', { name: /Research app \// })).not.toBeInTheDocument()
+    expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/workflow')
+  })
 
   it('navigates the highlighted resource with the keyboard', async () => {
     api.apps.mockResolvedValue(page([app('Unique keyboard result')]))
