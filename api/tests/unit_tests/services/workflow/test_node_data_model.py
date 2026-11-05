@@ -1,5 +1,8 @@
 import json
 
+import pytest
+
+from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from graphon.enums import BuiltinNodeTypes
@@ -83,7 +86,7 @@ _HUMAN_INPUT_V2_DATA: dict[str, object] = {
     "version": "2",
     "title": "Ask",
     "recipients_spec": [{"type": "initiator"}],
-    "message_template": {"subject": "Review", "body": "Please review"},
+    "message_template": {"subject": "Review", "body": "Please review {{#url#}}"},
     "debug_mode": {"enabled": False, "channels": []},
     "user_actions": [{"id": "approve", "title": "Approve"}],
 }
@@ -116,3 +119,21 @@ def test_human_input_v2_node_missing_a_v2_field_is_reported_at_that_field() -> N
     assert [(issue.code, issue.loc) for issue in issues] == [
         (IssueCode.NODE_DATA_INVALID, ("nodes", "ask", "data", "message_template"))
     ]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param("Please review", id="no request url"),
+        pytest.param("Open {{#url#}} or {{#url#}}", id="two request urls"),
+    ],
+)
+def test_human_input_v2_body_needs_exactly_one_request_url(body: str) -> None:
+    data = {**_HUMAN_INPUT_V2_DATA, "message_template": {"subject": "Review", "body": body}}
+
+    issues = check_graph(_v2_graph(data), mode=AppMode.WORKFLOW)
+
+    assert [(issue.code, issue.loc) for issue in issues] == [
+        (IssueCode.NODE_DATA_INVALID, ("nodes", "ask", "data", "message_template", "body"))
+    ]
+    assert EmailDeliveryConfig.URL_PLACEHOLDER in issues[0].message

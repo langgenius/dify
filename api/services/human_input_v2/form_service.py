@@ -34,6 +34,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     Initiator,
     OnetimeEmail,
     RecipientConfig,
+    holds_one_request_url,
 )
 from core.workflow.nodes.human_input_v2.form_compiler import MissingResolvedInputError, compile_resolved_form
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
@@ -322,12 +323,11 @@ class HumanInputFormService:
     def _resolve_message_template(
         node_data: HumanInputNodeData, variable_pool: ReadOnlyVariablePool
     ) -> ResolvedMessageTemplate:
+        # The node data model already holds the stored body to one Request URL; a variable value may add another.
         template = node_data.message_template
-        if template.body.count(EmailDeliveryConfig.URL_PLACEHOLDER) != 1:
-            raise ValueError("Message body must contain exactly one Request URL")
         subject = EmailDeliveryConfig.sanitize_subject(convert_template(variable_pool, template.subject).text)
         body = convert_template(variable_pool, template.body).text
-        if body.count(EmailDeliveryConfig.URL_PLACEHOLDER) != 1:
+        if not holds_one_request_url(body):
             raise ValueError("Resolved message body must retain exactly one Request URL")
         return ResolvedMessageTemplate(subject, body)
 

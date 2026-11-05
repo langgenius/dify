@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, field_validator
 
 from core.human_input_v2.entities import DebugChannel
+from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input.entities import (
     FormInputConfig,
     TimeoutUnit,
@@ -65,9 +66,26 @@ RecipientConfig = Annotated[
 ]
 
 
+def holds_one_request_url(body: str) -> bool:
+    """Whether the body carries the Request URL placeholder exactly once, as every delivery needs."""
+    return body.count(EmailDeliveryConfig.URL_PLACEHOLDER) == 1
+
+
+def _body_validator(body: str) -> str:
+    """The body unchanged; a ValueError naming the placeholder and the count found otherwise."""
+    if not holds_one_request_url(body):
+        raise ValueError(
+            f"The message body must contain the Request URL {EmailDeliveryConfig.URL_PLACEHOLDER} exactly once, "
+            f"found {body.count(EmailDeliveryConfig.URL_PLACEHOLDER)}: it becomes the link to the form"
+        )
+    return body
+
+
 class MessageTemplateConfig(BaseModel):
+    """The message every recipient gets; its body holds the Request URL exactly once, the link to the form."""
+
     subject: str
-    body: str
+    body: Annotated[str, AfterValidator(_body_validator)]
 
 
 class DebugModeConfig(BaseModel):

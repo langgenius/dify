@@ -639,7 +639,7 @@ def test_other_workspace_draft_is_inaccessible(context: _Context) -> None:
 
 
 def test_input_values_are_not_interpreted_as_template_tokens(context: _Context) -> None:
-    context.template("Review", "{{#start.value#}}")
+    context.template("Review", "{{#start.value#}} {{#url#}}")
     context.send(**{"#start.value#": "Literal {{#url#}} and {{#env.secret#}}"})
     html = context.gateway.send_message.call_args.kwargs["html"]
     assert "{{#url#}}" in html
@@ -647,7 +647,7 @@ def test_input_values_are_not_interpreted_as_template_tokens(context: _Context) 
 
 
 def test_environment_variables_use_saved_values_and_ignore_request_overrides(context: _Context) -> None:
-    context.template("{{#env.name#}}", "{{#start.count#}} / {{#start.tags#}}")
+    context.template("{{#env.name#}}", "{{#start.count#}} / {{#start.tags#}} {{#url#}}")
     with context.sessions.begin() as session:
         session.query(Workflow).one().environment_variables = [StringVariable(name="name", value="Saved")]
     inputs: dict[str, JsonValue] = {"#env.name#": "Override", "#start.count#": 3, "#start.tags#": ["A", "B"]}
@@ -690,10 +690,18 @@ def test_workspace_override_is_used_instead_of_default_binding(context: _Context
         assert delivery.target_snapshot.im_binding_id == override.id
 
 
-@pytest.mark.parametrize(("subject", "body"), [(" ", "Body"), ("Subject", "\n"), ("<b></b>", "Body")])
-def test_blank_rendered_template_is_rejected(context: _Context, subject: str, body: str) -> None:
-    context.template(subject, body)
+@pytest.mark.parametrize("subject", [" ", "<b></b>"])
+def test_blank_rendered_subject_is_rejected(context: _Context, subject: str) -> None:
+    context.template(subject, "Body {{#url#}}")
     with pytest.raises(MessageTemplateTestError, match="must not be blank"):
+        context.send()
+    context.gateway.send_message.assert_not_called()
+
+
+@pytest.mark.parametrize("body", ["\n", "Body", "{{#url#}} {{#url#}}"])
+def test_body_without_exactly_one_request_url_is_refused_before_sending(context: _Context, body: str) -> None:
+    context.template("Review", body)
+    with pytest.raises(MessageTemplateTestError, match="valid message template"):
         context.send()
     context.gateway.send_message.assert_not_called()
 
@@ -708,7 +716,7 @@ def test_invalid_im_credentials_are_reported_without_attempting_send(context: _C
 
 
 def test_email_body_empty_after_html_sanitization_is_rejected(context: _Context) -> None:
-    context.template("Review", "<b></b>")
+    context.template("Review", '<a href="{{#url#}}"></a>')
     with pytest.raises(MessageTemplateTestError, match="body"):
         context.send()
     context.gateway.send_message.assert_not_called()
