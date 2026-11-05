@@ -89,15 +89,13 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
             accountAuthenticated ? (
               <Button
                 variant="ghost"
-                className="h-auto max-w-full gap-0 rounded-full p-0.5 data-popup-open:bg-state-base-hover"
+                className="h-auto max-w-full min-w-0 gap-0 rounded-full p-0.5 data-popup-open:bg-state-base-hover"
               >
                 <Avatar size="sm" className="rounded-full" aria-hidden="true">
                   <AvatarImage keepMounted src={accountProfile?.avatar_url ?? undefined} alt="" />
-                  <AvatarFallback className="rounded-full border-[0.5px] border-divider-regular bg-components-panel-bg">
-                    {getAvatarInitial(accountProfile?.name)}
-                  </AvatarFallback>
+                  <AvatarFallback>{getAvatarInitial(accountProfile?.name)}</AvatarFallback>
                 </Avatar>
-                <span className="min-w-0 px-2 system-sm-medium text-text-secondary">
+                <span className="min-w-0 truncate px-2 system-sm-medium text-text-secondary">
                   {accountName}
                 </span>
               </Button>
