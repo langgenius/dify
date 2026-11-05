@@ -1558,15 +1558,16 @@ jobs:
               'test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operations': 1,
               'test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums': 1,
               'test_generate_specs_include_command_oriented_knowledge_fs_contract': 1,
-              'test_generate_specs_include_console_contract_shapes_for_schema_migration': 1,
               'test_generate_specs_is_idempotent': 1,
               'test_generate_specs_match_live_openapi_payloads': 1,
               'test_generate_specs_writes_all_openapi_files': 1,
               'test_generate_specs_writes_get_operations_without_request_bodies': 1,
               'test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults': 1,
-              'test_generate_specs_writes_service_api_reference_descriptions': 1,
               'test_generate_specs_writes_unique_operation_ids': 1,
               'test_generate_specs_writes_web_file_upload_error_codes': 1,
+              'test_generate_specs_produce_valid_openapi_contracts': 1,
+              'test_generated_request_contracts_accept_and_reject_payloads': 1,
+              'test_schema_contract_rejects_invalid_nested_schemas': 4,
               'test_standalone_inline_model_name_includes_list_constraints': 1,
               'test_system_features_specs_exclude_backend_only_fields': 1}})
           # Code physical cases land in modules other lanes already declared above, so they are
