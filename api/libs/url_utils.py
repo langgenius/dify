@@ -2,8 +2,17 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 def normalize_api_base_url(base_url: str) -> str:
-    """Normalize a base URL to always end with /v1, avoiding double /v1 suffixes."""
-    return base_url.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"
+    """Normalize the path of a base URL to always end with /v1, avoiding double /v1 suffixes.
+
+    Only the path is rewritten. The scheme, host, query string and fragment are kept
+    where they belong, and surrounding whitespace is ignored, so a URL that carries a
+    query or fragment never gets the suffix glued onto it.
+    """
+    parts = urlsplit(base_url.strip())
+    path = parts.path.rstrip("/")
+    if path.endswith("/v1"):
+        path = path.removesuffix("/v1").rstrip("/")
+    return urlunsplit(parts._replace(path=f"{path}/v1"))
 
 
 def github_blob_to_raw_url(url: str) -> str:
