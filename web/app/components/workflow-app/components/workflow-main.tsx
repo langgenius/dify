@@ -5,6 +5,7 @@ import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-s
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -560,7 +561,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"
-            className={`absolute inset-0 z-50 flex items-center justify-center ${joinFailure ? '' : 'cursor-wait'}`}
+            className={cn(
+              'absolute inset-0 z-50 flex items-center justify-center',
+              !joinFailure && 'cursor-wait',
+            )}
           >
             <div
               role="status"
