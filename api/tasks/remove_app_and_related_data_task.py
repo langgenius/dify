@@ -44,6 +44,7 @@ from models import (
 )
 from models.account_webapp import AccountWebApp
 from models.agent import WorkflowAgentNodeBinding
+from models.installed_app_connection import InstalledAppConnectionConfiguration
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.web import PinnedConversation, SavedMessage
@@ -128,6 +129,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
         _delete_account_webapps(tenant_id, app_id)
+        _delete_installed_app_connections(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
@@ -259,6 +261,25 @@ def _delete_account_webapps(tenant_id: str, app_id: str) -> None:
         {"tenant_id": tenant_id, "app_id": app_id},
         delete_state,
         "personal WebApp",
+    )
+
+
+def _delete_installed_app_connections(tenant_id: str, app_id: str) -> None:
+    def delete_state(session: Session, state_id: str) -> None:
+        session.execute(
+            delete(InstalledAppConnectionConfiguration).where(
+                InstalledAppConnectionConfiguration.id == state_id,
+                InstalledAppConnectionConfiguration.tenant_id == tenant_id,
+                InstalledAppConnectionConfiguration.app_id == app_id,
+            )
+        )
+
+    _delete_records(
+        "select id from installed_app_connection_configurations "
+        "where tenant_id=:tenant_id and app_id=:app_id limit 1000",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        delete_state,
+        "installed App member Connection",
     )
 
 

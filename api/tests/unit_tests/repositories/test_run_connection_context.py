@@ -2,7 +2,6 @@ import importlib.util
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, cast
 from uuid import uuid4
 
 import pytest
@@ -11,7 +10,10 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.orm import Session, sessionmaker
 
-from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
+from context.connection_execution import (
+    ConnectionExecutionContext,
+    ExecutionConnectionSelection,
+)
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution as LegacyExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
@@ -166,13 +168,6 @@ def test_celery_serialization_preserves_references_and_rejects_replacement(execu
         _update_workflow_run_from_execution(run, changed)
 
 
-class ContextMigration(Protocol):
-    op: Operations
-
-    def upgrade(self) -> None: ...
-    def downgrade(self) -> None: ...
-
-
 def test_nullable_context_migration_preserves_existing_runs() -> None:
     path = (
         Path(__file__).resolve().parents[3]
@@ -183,12 +178,13 @@ def test_nullable_context_migration_preserves_existing_runs() -> None:
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    migration = cast(ContextMigration, module)
+
+    migration = module
     engine = sa.create_engine("sqlite://")
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE workflow_runs (id TEXT PRIMARY KEY, graph TEXT)")
         connection.exec_driver_sql("INSERT INTO workflow_runs VALUES ('legacy', '{}')")
-        migration.op = Operations(MigrationContext.configure(connection))
+        migration.__dict__["op"] = Operations(MigrationContext.configure(connection))
         migration.upgrade()
         assert connection.exec_driver_sql("SELECT connection_context FROM workflow_runs").scalar() is None
         migration.downgrade()

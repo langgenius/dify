@@ -1,4 +1,4 @@
-import type { Parameters as AppParameters } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { Parameters as AppParameters } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'

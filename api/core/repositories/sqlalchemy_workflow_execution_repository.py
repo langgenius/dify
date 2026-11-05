@@ -158,6 +158,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                 app_id=self._app_id,
                 workflow_id=domain_model.workflow_id,
                 end_user_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.END_USER else None,
+                account_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.ACCOUNT else None,
             )
         db_model.triggered_from = self._triggered_from
 

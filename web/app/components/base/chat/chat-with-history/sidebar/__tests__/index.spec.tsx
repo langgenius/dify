@@ -133,20 +133,29 @@ async function operate(
 describe('Conversation sidebar', () => {
   it.each([false, true])(
     'places My apps before application information in the mobile=%s sidebar',
-    (isMobile) => {
-      renderChatHistory(
-        <WebAppEntryContext value={chatConnectionEntry}>
-          <Sidebar />
-        </WebAppEntryContext>,
-        { sidebarCollapsed: false, ownerProps: { isMobile } },
-      )
-
-      const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
-      expect(navigation).toHaveAttribute('href', '/my-apps')
-      expect(
-        navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
+    async (isBelowSm) => {
+      const profile = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const url = input instanceof Request ? input.url : String(input)
+        if (!url.endsWith('/api/account/profile')) throw new Error(`Unexpected request: ${url}`)
+        return Response.json({ name: 'Alice', avatar: null, avatar_url: null })
+      })
+      try {
+        renderChatHistory(
+          <WebAppEntryContext value={chatConnectionEntry}>
+            <Sidebar />
+          </WebAppEntryContext>,
+          { sidebarCollapsed: false, ownerProps: { isBelowSm } },
+        )
+        await screen.findByRole('button', { name: 'Alice' })
+        const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
+        expect(navigation).toHaveAttribute('href', '/my-apps')
+        expect(
+          navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy()
+      } finally {
+        profile.mockRestore()
+      }
     },
   )
 
@@ -269,7 +278,7 @@ describe('Conversation sidebar', () => {
   })
 
   it('keeps desktop collapse actions out of the mobile sidebar', () => {
-    renderSidebar({ ownerProps: { isMobile: true } })
+    renderSidebar({ ownerProps: { isBelowSm: true } })
     expect(
       screen.queryByRole('button', { name: /layout.sidebar.(expand|collapse)Sidebar/ }),
     ).not.toBeInTheDocument()

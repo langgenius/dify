@@ -17,7 +17,7 @@ import { useEmbeddedChatbotContext } from '../context'
 import { CssTransform } from '../theme/utils'
 
 type IHeaderProps = {
-  isMobile?: boolean
+  isBelowSm?: boolean
   allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
@@ -25,7 +25,7 @@ type IHeaderProps = {
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
-  isMobile,
+  isBelowSm,
   allowResetChat,
   customerIcon,
   title,
@@ -89,7 +89,7 @@ const Header: FC<IHeaderProps> = ({
     )
   }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
 
-  if (!isMobile) {
+  if (!isBelowSm) {
     return (
       <div className="flex h-14 shrink-0 items-center justify-end p-3">
         <div className="flex items-center gap-1">

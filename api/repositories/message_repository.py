@@ -328,6 +328,7 @@ class MessageRepository:
                     source="console" if isinstance(actor, MessageAccount) else "api",
                     account_id=account_id,
                     end_user_id=end_user_id,
+                    check_conversation=True,
                     lock=(
                         dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
                         and not isinstance(actor, MessageAccount)
@@ -639,11 +640,14 @@ class MessageRepository:
         account_id: str | None,
         end_user_id: str | None,
         lock: bool = False,
+        check_conversation: bool = False,
     ) -> Message | None:
         """Read browser Chatflow history by conversation owner, preserving other actors' sender checks.
 
         The caller supplies a validated actor scope. An optional conversation lock
         fences mutations against migration; an unavailable message returns None.
+        Feedback callers also require a live owned conversation. Generation reads
+        validate the conversation separately to preserve their existing errors.
         """
         ownership = and_(
             Message.from_source == source,
@@ -667,6 +671,8 @@ class MessageRepository:
                 and_(~migratable, ownership),
             )
         statement = select(Message).where(Message.id == message_id, Message.app_id == app_id, ownership)
+        if check_conversation:
+            statement = statement.where(message_actor_scope(app_id, account_id=account_id, end_user_id=end_user_id))
         if lock:
             statement = (
                 statement.join(Conversation, Conversation.id == Message.conversation_id)

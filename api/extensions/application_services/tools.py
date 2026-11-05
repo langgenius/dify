@@ -17,7 +17,7 @@ from services.credentials.tool_runtime_adapters import ProviderToolCredentialRun
 
 def resolve_tool_credentials(
     *, controller: BuiltinToolProviderController, provider_id: str, workspace_id: str, credential_id: str | None
-) -> tuple[Mapping[str, object], CredentialType]:
+) -> tuple[Mapping[str, object], CredentialType, str]:
     if isinstance(controller, PluginToolProviderController):
         provider = ToolProviderID(provider_id)
         providers = (str(provider), provider.provider_name)

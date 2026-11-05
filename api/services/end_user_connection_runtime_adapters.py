@@ -96,6 +96,32 @@ def get_tool_runtime(
                     credential_id=resolved_test.credential_id,
                 )
             )
+        elif run_context.invoke_from == InvokeFrom.EXPLORE and run_context.user_from == UserFrom.ACCOUNT:
+            from extensions.ext_application_services import application_services
+
+            context = run_context.connection_context
+            if context is None or context.workspace is None or context.workflow_id != workflow_id:
+                raise ConnectionIdentityError()
+            if context.tenant_id != run_context.tenant_id or context.app_id != run_context.app_id:
+                raise ConnectionIdentityError()
+            resolved_workspace = application_services().installed_apps.connections.resolve(
+                context, account_id=run_context.user_id, node_id=node_id, graph=graph
+            )
+            provider = ToolManager.get_builtin_provider(spec.provider_id, run_context.tenant_id)
+            definition = provider.get_tool(spec.tool_name)
+            if definition is None:
+                raise ConnectionConfigurationError()
+            tool = definition.fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=run_context.tenant_id,
+                    user_id=run_context.user_id,
+                    invoke_from=run_context.invoke_from,
+                    tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                    credentials=dict(resolved_workspace.credentials),
+                    credential_type=CredentialType(resolved_workspace.credential_type),
+                    credential_id=resolved_workspace.credential_id,
+                )
+            )
         else:
             context = run_context.connection_context
             if context is None:
@@ -107,6 +133,7 @@ def get_tool_runtime(
                 or context.app_id != run_context.app_id
                 or context.end_user_id != run_context.user_id
                 or context.workflow_id != workflow_id
+                or context.workspace is not None
             ):
                 raise ConnectionIdentityError()
             identity = WebConnectionContext(context.tenant_id, context.app_id, context.end_user_id, context.account_id)

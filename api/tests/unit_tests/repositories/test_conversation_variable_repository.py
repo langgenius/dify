@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import Engine, event, inspect, select
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import ClauseElement
 
 from configs import dify_config
 from factories import variable_factory
@@ -130,7 +131,8 @@ def test_variable_write_locks_conversation_against_migration(
     statements: list[str] = []
 
     def record(state: ORMExecuteState) -> None:
-        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+        if isinstance(state.statement, ClauseElement):
+            statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
 
     event.listen(sqlite_session_factory, "do_orm_execute", record)
     try:

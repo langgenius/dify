@@ -53,7 +53,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     handleDeleteConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
-    isMobile,
+    isBelowSm,
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
@@ -108,7 +108,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
         </div>
-        {!isMobile && isSidebarCollapsed && (
+        {!isBelowSm && isSidebarCollapsed && (
           <IconButton
             aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
             size="lg"
@@ -117,7 +117,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
             <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
           </IconButton>
         )}
-        {!isMobile && !isSidebarCollapsed && (
+        {!isBelowSm && !isSidebarCollapsed && (
           <IconButton
             ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}

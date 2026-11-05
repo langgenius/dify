@@ -82,7 +82,7 @@ const baseProps: ComponentProps<typeof TextGenerationSidebar> = {
   inputs: { name: 'Alice' },
   inputsRef: { current: { name: 'Alice' } },
   isInstalledApp: false,
-  isPC: true,
+  isBelowMd: false,
   isWorkflow: false,
   onBatchSend: vi.fn(),
   onInputsChange: vi.fn(),

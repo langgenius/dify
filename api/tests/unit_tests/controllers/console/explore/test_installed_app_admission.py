@@ -449,8 +449,9 @@ class _AppDefinitions:
     app_id: str
     parameters: dict[str, object]
 
-    def get_parameters(self, app_id: str) -> dict[str, object]:
+    def get_web_parameters(self, app_id: str, tenant_id: str) -> dict[str, object]:
         assert app_id == self.app_id
+        assert tenant_id
         return self.parameters
 
     def get_tool_icons(self, app_id: str) -> dict[str, str]:
@@ -496,6 +497,7 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
             )
         }
     )
+    parameters.update(connection_revision=None, requires_end_user_connections=False, connection_requirements=[])
     store = _SavedMessageStore()
     handler_services = _HandlerServices(
         saved_messages=SavedMessageService(saved_messages=store),

@@ -10,6 +10,7 @@ from sqlalchemy import Engine, event, inspect, select, text, update
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import ClauseElement
 
 from configs import dify_config
 from core.agent.workspace import AgentWorkspaceNotFoundError
@@ -2076,7 +2077,8 @@ def test_end_user_history_writes_lock_current_ownership_for_migration(
     statements: list[str] = []
 
     def record(state: ORMExecuteState) -> None:
-        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+        if isinstance(state.statement, ClauseElement):
+            statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
 
     event.listen(sqlite_session_factory, "do_orm_execute", record)
     try:

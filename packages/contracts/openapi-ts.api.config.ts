@@ -38,6 +38,7 @@ type ApiJob = {
 const strictZodSchemaNames = new Set([
   'AccountProfilePatchPayload',
   'Parameters',
+  'InstalledAppParametersResponse',
   'AppTextInputPayload',
   'AppSelectInputPayload',
   'AppParagraphInputPayload',

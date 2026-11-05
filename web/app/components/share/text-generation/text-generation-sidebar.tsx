@@ -36,7 +36,7 @@ type TextGenerationSidebarProps = {
   inputs: Record<string, InputValueTypes>
   inputsRef: RefObject<Record<string, InputValueTypes>>
   isInstalledApp: boolean
-  isPC: boolean
+  isBelowMd: boolean
   isWorkflow: boolean
   onBatchSend: (data: string[][]) => void
   onInputsChange: (inputs: Record<string, InputValueTypes>) => void
@@ -65,7 +65,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   inputs,
   inputsRef,
   isInstalledApp,
-  isPC,
+  isBelowMd,
   isWorkflow,
   onBatchSend,
   onInputsChange,
@@ -142,7 +142,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
+        isBelowMd ? (resultExisted ? 'h-[calc(100%-64px)]' : '') : 'w-150 max-w-[50%]',
         isInstalledApp && 'rounded-s-2xl',
       )}
     >
@@ -150,7 +150,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         className={cn(
           'shrink-0 border-b border-divider-subtle bg-components-panel-bg',
           showWorkflowLayout ? 'relative flex flex-col gap-4 overflow-hidden' : 'space-y-4',
-          isPC ? 'p-8 pb-0' : 'p-4 pb-0',
+          isBelowMd ? 'p-4 pb-0' : 'p-8 pb-0',
         )}
       >
         {!isInstalledApp && <MyAppsLink className="w-full shrink-0 ps-0" />}
@@ -158,7 +158,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           <div className="flex flex-col gap-3">
             <AppIcon
               fallback={{ content: '🤖', background: appDefaultIconBackground }}
-              size={isPC ? 'large' : 'small'}
+              size={isBelowMd ? 'small' : 'large'}
               icon={siteInfo}
             />
             <div className="space-y-2">
@@ -178,7 +178,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             <div className="flex items-center gap-3">
               <AppIcon
                 fallback={{ content: '🤖', background: appDefaultIconBackground }}
-                size={isPC ? 'large' : 'small'}
+                size={isBelowMd ? 'small' : 'large'}
                 icon={siteInfo}
               />
               <div className="grow truncate system-md-semibold text-text-secondary">
@@ -217,8 +217,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       <div
         className={cn(
           'h-0 grow overflow-y-auto bg-components-panel-bg',
-          isPC ? 'px-8' : 'px-4',
-          !isPC &&
+          isBelowMd ? 'px-4' : 'px-8',
+          isBelowMd &&
             resultExisted &&
             customConfig?.remove_webapp_brand &&
             'rounded-b-2xl border-b-[0.5px] border-divider-regular',
@@ -257,7 +257,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             {!isWorkflow && (
               <TabsPanel value="saved">
                 <SavedItems
-                  className={cn(isPC ? 'mt-6' : 'mt-4')}
+                  className={cn(isBelowMd ? 'mt-4' : 'mt-6')}
                   isShowTextToSpeech={textToSpeechConfig?.enabled}
                   list={savedMessages}
                   onRemove={onRemoveSavedMessage}
@@ -274,10 +274,10 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             'flex shrink-0 items-center bg-components-panel-bg py-3',
             showWorkflowLayout
               ? 'justify-between gap-3 px-6'
-              : isPC
+              : !isBelowMd
                 ? 'gap-1.5 px-8'
                 : 'gap-1.5 px-4',
-            !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+            isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
           {showWorkflowLayout &&

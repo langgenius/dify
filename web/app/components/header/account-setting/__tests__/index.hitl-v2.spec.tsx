@@ -4,7 +4,6 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -59,15 +58,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/features/contacts/im-platform/account-setting-page', () => ({
   ContactsImPlatformAccountSettingPage: () => <div data-testid="contacts-im-platform-page" />,
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
-  default: vi.fn(),
 }))
 
 vi.mock('next-themes', () => ({
@@ -275,7 +265,6 @@ describe('AccountSetting', () => {
     mockConfig.getFeatures.mockImplementation(() => new Promise(() => {}))
     canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
 
   describe('Rendering', () => {

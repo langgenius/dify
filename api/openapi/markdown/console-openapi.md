@@ -7914,11 +7914,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
@@ -7981,6 +7982,106 @@ Request body:
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections
+List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Visible Workspace Connections | **application/json**: [EndUserConnectionListResponse](#enduserconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections/configuration
+Read this Tenant Member's saved App defaults, or an owned Chatflow conversation's choices, without credential checks. Missing conversation choices do not inherit current App defaults.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | query |  | No | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved member choices | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /installed-apps/{installed_app_id}/connections/configuration
+Replace member App defaults or owned conversation choices and confirm the current authorization requirements. An empty map clears choices; this does not modify Workspace credentials.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionConfigurationPayload](#installedconnectionconfigurationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Member choices saved | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /installed-apps/{installed_app_id}/connections/preflight
+Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionPreflightPayload](#installedconnectionpreflightpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection readiness | **application/json**: [InstalledConnectionPreflightResponse](#installedconnectionpreflightresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/conversations
@@ -8204,7 +8305,7 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [InstalledAppParametersResponse](#installedappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8311,18 +8412,19 @@ Request body:
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [InstalledAppWorkflowRunPayload](#installedappworkflowrunpayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
@@ -23328,6 +23430,8 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | conversation_id | string |  | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
@@ -23720,6 +23824,62 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
 
+#### ConnectionConfigurationInvalidError
+
+The connection is not compatible with this tool configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
+
+#### ConnectionConfigurationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
+
+#### ConnectionConflictError
+
+Connection changed during the operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialStatus
+
+Last known credential lifecycle state, not readiness for a particular node.
+
+Keep the existing storage values. App-specific Client mismatches and unbinding
+must never be written back as a global credential state change.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialStatus | string | Last known credential lifecycle state, not readiness for a particular node.  Keep the existing storage values. App-specific Client mismatches and unbinding must never be written back as a global credential state change. |  |
+
+#### ConnectionCredentialType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialType | string |  |  |
+
+#### ConnectionCredentialsInvalidError
+
+Invalid credentials for this provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsInvalidError |  | Invalid credentials for this provider. |  |
+
+#### ConnectionNotFoundError
+
+Connection not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionNotFoundError |  | Connection not found. |  |
+
 #### ConnectionOauthFailedError
 
 OAuth authorization could not be completed. Start authorization again.
@@ -23727,6 +23887,45 @@ OAuth authorization could not be completed. Start authorization again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
+
+#### ConnectionPreflightStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+
+#### ConnectionReauthorizationRequiredError
+
+The OAuth client changed or is unavailable. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
+
+#### ConnectionRequiredError
+
+Select a connection for every required tool before running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRequiredError |  | Select a connection for every required tool before running. |  |
+
+#### ConnectionRevisionChangeDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string |  | Yes |
+
+#### ConnectionRevisionChangedError
+
+The connection requirements changed. Refresh and confirm again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
 
 #### ConsoleDatasetListQuery
 
@@ -24159,6 +24358,23 @@ Payload for creating a new snippet.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CreatorUserRole | string |  |  |
+
+#### CredentialCheckResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checked_at | integer |  | Yes |
+| reason_code | string, <br>**Available values:** "credential_expired", "credential_invalid", "credential_revoked", "provider_network_error", "provider_rate_limited", "provider_timeout", "provider_unavailable" |  | Yes |
+| retryable | boolean |  | Yes |
+| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### CredentialCheckUnavailableError
+
+Credential validation is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
 
 #### CredentialConfiguration
 
@@ -25911,6 +26127,29 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | EmptyObjectResponse | object |  |  |
 
+#### EndUserConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### EndUserConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| created_at | integer |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| last_active_at | integer |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+| updated_at | integer |  | Yes |
+
 #### Endpoint
 
 | Name | Type | Description | Required |
@@ -27423,6 +27662,27 @@ The app was not found in this workspace.
 | ---- | ---- | ----------- | -------- |
 | InstalledAppNotFoundError |  | The app was not found in this workspace. |  |
 
+#### InstalledAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Web App-compatible tool requirements. Installed App choices reference visible Workspace credentials. | Yes |
+| connection_revision | string | Opaque published authorization contract, as in Web App parameters. | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether the published App requires explicit member Connection choices. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
+
 #### InstalledAppResponse
 
 | Name | Type | Description | Required |
@@ -27448,6 +27708,15 @@ The app is not available in this app library.
 | ---- | ---- | ----------- | -------- |
 | is_pinned | boolean |  | No |
 
+#### InstalledAppWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
+
 #### InstalledAppsListQuery
 
 | Name | Type | Description | Required |
@@ -27456,6 +27725,30 @@ The app is not available in this app library.
 | cursor | string | Opaque cursor returned by the previous page | No |
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
 | name | string | App name to search for | No |
+
+#### InstalledConnectionConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Connection contract revision evaluated by this preflight. | Yes |
+| connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
+| ready | boolean |  | Yes |
 
 #### InstantMessageChannelRecipient
 
@@ -31730,6 +32023,14 @@ Please upload your file.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
+
+#### NodeConnectionStatus
+
+The current selection's effective status for one published Tool node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeConnectionStatus | string | The current selection's effective status for one published Tool node. |  |
 
 #### NodeDataMigrationBlocker
 
@@ -37077,6 +37378,21 @@ The app access service is unavailable. Try again later.
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
+#### WebAppConnectionRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| icon | string | Plugin icon URL, using the Integrations asset endpoint. | Yes |
+| icon_dark | string | Dark plugin icon URL; null when the plugin has no dark icon. | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
+| provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+
 #### WebLoginUnavailableError
 
 Web App login is temporarily unavailable. Please retry.
@@ -38180,13 +38496,6 @@ Workflow run not found.
 | data | [ [WorkflowRunForListResponse](#workflowrunforlistresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
-
-#### WorkflowRunPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
-| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
 #### WorkflowRunRequest
 

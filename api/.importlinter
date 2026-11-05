@@ -1437,7 +1437,6 @@ forbidden_modules =
     models
     sqlalchemy
 allow_indirect_imports = True
-
 [importlinter:contract:tracing-application-boundary]
 name = Trace pipeline and Agent trace collection services and contracts are framework and persistence neutral
 type = forbidden

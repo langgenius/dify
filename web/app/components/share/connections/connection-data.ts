@@ -60,7 +60,8 @@ export function getConnectionData({
           ? configured.id
           : null
     // Retain expired selections so the UI can explain why they need attention.
-    const selectedConnectionId = selectedId && candidates.has(selectedId) ? selectedId : null
+    const selectedConnectionId =
+      selectedId != null && candidates.has(selectedId) ? selectedId : null
     selections.push([requirement.node_id, selectedConnectionId])
 
     return {
@@ -81,7 +82,10 @@ export function getConnectionData({
             ? (connection.account_label ?? connection.name)
             : connection.name,
         method: methods[connection.credential_type],
-        status: statuses[connection.credential_status],
+        status:
+          connection.credential_status === null
+            ? undefined
+            : statuses[connection.credential_status],
       })),
     }
   })

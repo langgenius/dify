@@ -108,6 +108,8 @@ class ConnectionSummary(BaseModel):
     account_label retains the provider identity and must be masked by transport
     serialization; API-key Connections have no account label.
     credential_status is intrinsic lifecycle state, not the node's effective status.
+    Workspace-backed projections have no persisted lifecycle or activity state;
+    credential_status and last_active_at are null instead of implying readiness.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -116,12 +118,12 @@ class ConnectionSummary(BaseModel):
     name: str
     provider: str
     credential_type: ConnectionCredentialType
-    credential_status: ConnectionCredentialStatus
+    credential_status: ConnectionCredentialStatus | None
     account_label: str | None
     expires_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    last_active_at: datetime
+    last_active_at: datetime | None
 
 
 class ConnectionPage(BaseModel):

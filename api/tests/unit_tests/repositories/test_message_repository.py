@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import Connection, event, inspect, update
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import ClauseElement
 
 from configs import dify_config
 from extensions.storage.storage_type import StorageType
@@ -1100,10 +1101,26 @@ def test_migrated_message_access_uses_current_conversation_owner(
     statements: list[str] = []
 
     def record(state: ORMExecuteState) -> None:
-        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+        if isinstance(state.statement, ClauseElement):
+            statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
 
     event.listen(sqlite_session_factory, "do_orm_execute", record)
     try:
+        if not uses_migrated_message_ownership:
+            for actor_id in (owner.id, guest.id):
+                with pytest.raises(MessageNotExistsError):
+                    repository.set_feedback(
+                        app_id=installation.app_id,
+                        app_owner_tenant_id=installation.app_owner_tenant_id,
+                        actor=MessageEndUser(actor_id),
+                        message_id=message.id,
+                        rating=FeedbackRating.LIKE,
+                        content="Rejected",
+                        app_wide=False,
+                        installed_app=None,
+                    )
+            assert not any("FOR UPDATE OF conversations" in statement for statement in statements)
+            return
         actor = MessageEndUser(owner.id if uses_migrated_message_ownership else guest.id)
         feedback = repository.set_feedback(
             app_id=installation.app_id,

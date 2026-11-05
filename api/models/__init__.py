@@ -89,6 +89,7 @@ from .human_input_v2 import (
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
+from .installed_app_connection import InstalledAppConnectionConfiguration
 from .knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSApiCredential,
@@ -336,6 +337,7 @@ __all__ = [
     "IMSyncIdentitySnapshot",
     "IconType",
     "InstalledApp",
+    "InstalledAppConnectionConfiguration",
     "InvitationCode",
     "KnowledgeFSApiCredential",
     "KnowledgeFSApiCredentialStatus",
