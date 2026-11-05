@@ -96,6 +96,7 @@ __all__ = [
     "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
     "old_metadata_migration",
+    "recover_upload_quota",
     "remove_orphaned_files_on_storage",
     "reset_email",
     "reset_encrypt_key_pair",
@@ -108,3 +109,5 @@ __all__ = [
     "upgrade_db",
     "vdb_migrate",
 ]
+
+from .upload_quota import recover_upload_quota

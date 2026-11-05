@@ -87,7 +87,7 @@ class FileApi(Resource):
             raise FilenameNotExistsError()
 
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
