@@ -346,7 +346,7 @@ def test_an_unused_extra_selection_does_not_force_an_invented_action(monkeypatch
     result = build.reconcile_resource_plan(
         object(), "tenant", ABSTRACT, [SELECTED, extra], account_id="actor", goal_text=GOAL, requirements=REQUIREMENTS
     )
-    assert result is not None
+    assert isinstance(result, WorkflowPlan)
     assert result.used_resource_ids == [SELECTED]
     assert extra not in "\n".join(result.items)
     agent = ReconciliationAgent(result)

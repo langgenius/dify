@@ -2044,6 +2044,7 @@ def test_build_plan_adjustment_preserves_context_and_requires_another_approval(p
             resource_ids: list[str] | None = None,
             *,
             trusted_text: str = "",
+            plan_approved: bool = False,
             reply_language: str | None = None,
         ) -> BuildNodesResult:
             raise AssertionError("adjusting or replanning must not generate a workflow before approval")
