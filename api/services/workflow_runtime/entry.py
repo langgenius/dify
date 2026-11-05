@@ -37,6 +37,7 @@ from core.workflow.workflow_tool_container_handler import (
     WorkflowToolEventListenerFactory,
     WorkflowToolNestedContainerHandler,
 )
+from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from graphon.engine import Engine
@@ -56,8 +57,11 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from libs.workflow_template_values import template_value_selectors
+from models.agent_config_entities import AgentSoulConfig
 from models.workflow import Workflow
 from services.workflow_node_variables import add_node_input_to_variable_pool, load_additional_node_variables
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingResolver
 from services.workflow_runtime.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -235,7 +239,13 @@ class WorkflowEntry:
         execution_driver: WorkflowRunDriver | None,
     ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
         """
-        Single step run workflow node
+        Single step run workflow node.
+
+        Preconditions: The workflow owns the requested node and its Agent binding.
+        Postconditions: Preload node references, including manual Agent knowledge
+        filters, into the supplied pool before constructing the node. Value-free
+        filter operators do not introduce variable dependencies. Legacy Agent
+        nodes do not resolve an Agent Soul binding.
         :param workflow: Workflow instance
         :param node_id: node id
         :param user_id: user id
@@ -297,6 +307,29 @@ class WorkflowEntry:
             )
         except NotImplementedError:
             variable_mapping = {}
+        if is_dify_agent_node_data(node_config_data):
+            # Agent Soul lives in its owned snapshot, outside graph node data.
+            # Single-step execution must also load references used only by its
+            # retrieval filters, which are absent from the task prompt.
+            bundle = WorkflowAgentBindingResolver().resolve(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_id=workflow.id,
+                node_id=node_id,
+            )
+            agent_soul = AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict)
+            variable_mapping = {
+                **variable_mapping,
+                **{
+                    f"{node_id}.metadata_filter.{'.'.join(selector)}": selector
+                    for knowledge_set in agent_soul.knowledge.sets
+                    if knowledge_set.metadata_filtering.mode == "manual"
+                    and knowledge_set.metadata_filtering.conditions is not None
+                    for condition in knowledge_set.metadata_filtering.conditions.conditions
+                    if condition.comparison_operator not in ("empty", "not empty")
+                    for selector in template_value_selectors(condition.value)
+                },
+            }
         variable_mapping = inject_default_system_variable_mappings(
             node_id=node_id,
             node_type=node_type,

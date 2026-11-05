@@ -73,7 +73,7 @@ const DraftEditor = () => {
 
 const renderDraftEditor = () => {
   const queryClient = createConsoleQueryClient()
-  seedSystemFeatures(queryClient, { enable_collaboration_mode: false })
+  seedSystemFeatures(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),

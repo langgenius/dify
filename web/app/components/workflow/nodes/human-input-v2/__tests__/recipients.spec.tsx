@@ -361,6 +361,7 @@ describe('recipient selection through generated queries', () => {
       screen.queryByText('workflow.nodes.humanInputV2.error.recipientInvalid'),
     ).not.toBeInTheDocument()
     await act(async () => fail(new Error('offline')))
+    // React Query notifies observers on a later macrotask, which act() does not wait for.
     const failedChip = await screen.findByLabelText(
       'workflow.nodes.humanInputV2.recipients.loadError',
     )

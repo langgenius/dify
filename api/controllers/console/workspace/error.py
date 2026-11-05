@@ -3,6 +3,30 @@ from http import HTTPStatus
 from libs.exception import BaseHTTPException
 
 
+class TriggerOAuthContextInvalidError(BaseHTTPException):
+    error_code = "trigger_oauth_context_invalid"
+    code = HTTPStatus.FORBIDDEN
+    description = "The trigger OAuth context is missing, expired or invalid."
+
+
+class TriggerOAuthProviderRequestError(BaseHTTPException):
+    error_code = "trigger_oauth_provider_error"
+    code = HTTPStatus.BAD_GATEWAY
+    description = "The trigger provider could not complete OAuth authorization."
+
+
+class TriggerOAuthClientConfigInvalidError(BaseHTTPException):
+    error_code = "trigger_oauth_client_config_invalid"
+    code = HTTPStatus.INTERNAL_SERVER_ERROR
+    description = "The stored trigger OAuth client configuration is invalid."
+
+
+class TriggerOAuthClientChangedError(BaseHTTPException):
+    error_code = "trigger_oauth_client_changed"
+    code = HTTPStatus.CONFLICT
+    description = "The trigger OAuth client configuration changed. Reload it before saving again."
+
+
 class CurrentWorkspaceArchivedError(BaseHTTPException):
     error_code = "current_workspace_archived"
     description = "The current workspace has been archived."

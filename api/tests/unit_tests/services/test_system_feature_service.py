@@ -26,6 +26,15 @@ def test_get_system_features_excludes_app_dsl_version() -> None:
 
 
 @pytest.mark.parametrize("enabled", [False, True])
+def test_get_system_features_excludes_collaboration_deployment_flag(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(ENABLE_COLLABORATION_MODE=enabled)
+
+    assert "enable_collaboration_mode" not in SystemFeatureService.get_public_system_features().model_dump()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
 def test_get_system_features_reads_enable_change_email(
     config_overrides: Callable[..., None],
     enabled: bool,

@@ -1,17 +1,10 @@
-import json
 import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import Any, TypedDict
 
-from services.credentials.query import CredentialQuery
-from services.plugin.dispatch_identity import PluginOAuthClientConfig
-
-if TYPE_CHECKING:
-    from models.account import Account
-
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -22,10 +15,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import decrypt_system_params
-from core.trigger.entities.api_entities import (
-    TriggerProviderApiEntity,
-    TriggerProviderSubscriptionApiEntity,
-)
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -43,6 +32,7 @@ from models.trigger import (
     TriggerOAuthTenantClient,
     TriggerSubscription,
 )
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -58,67 +48,6 @@ class TriggerProviderService:
     # Trigger provider
     ##########################
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
-
-    @classmethod
-    def get_trigger_provider(cls, tenant_id: str, provider: TriggerProviderID) -> TriggerProviderApiEntity:
-        """Get info for a trigger provider"""
-        return TriggerManager.get_trigger_provider(tenant_id, provider).to_api_entity()
-
-    @classmethod
-    def list_trigger_providers(cls, tenant_id: str) -> list[TriggerProviderApiEntity]:
-        """List all trigger providers for the current tenant"""
-        return [provider.to_api_entity() for provider in TriggerManager.list_all_trigger_providers(tenant_id)]
-
-    @classmethod
-    def list_trigger_provider_subscriptions(
-        cls,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        user: "Account | None" = None,
-        *,
-        credential_query: CredentialQuery,
-    ) -> list[TriggerProviderSubscriptionApiEntity]:
-        """List all trigger subscriptions for the current tenant, filtered by visibility."""
-        subscriptions = [
-            TriggerProviderSubscriptionApiEntity(
-                id=row.id,
-                name=row.name,
-                provider=row.provider,
-                credential_type=row.credential_type,
-                credentials=dict(row.credentials),
-                endpoint=generate_plugin_trigger_endpoint_url(row.endpoint_id),
-                parameters=dict(row.parameters),
-                properties=dict(row.properties),
-                workflows_in_use=row.workflows_in_use,
-            )
-            for row in credential_query.list_trigger_subscriptions(
-                workspace_id=tenant_id, provider=str(provider_id), actor_id=user.id if user else None
-            )
-        ]
-        if not subscriptions:
-            return []
-
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-        for subscription in subscriptions:
-            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.credentials = dict(
-                credential_encrypter.mask_credentials(dict(credential_encrypter.decrypt(subscription.credentials)))
-            )
-            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.properties = dict(
-                properties_encrypter.mask_credentials(dict(properties_encrypter.decrypt(subscription.properties)))
-            )
-            subscription.parameters = dict(subscription.parameters)
-
-        return subscriptions
 
     @classmethod
     def add_trigger_subscription(
@@ -602,6 +531,9 @@ class TriggerProviderService:
         :param tenant_id: Tenant ID
         :param provider_id: Provider identifier
         :return: OAuth client configuration or None
+
+        TODO: Remove this legacy resolver when subscription token refresh uses
+        the injected TriggerOAuthClientService already shared by the OAuth APIs.
         """
         if provider_controller is None:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -653,178 +585,6 @@ class TriggerProviderService:
                 if oauth_params is not None
                 else None
             )
-
-    @classmethod
-    def is_oauth_system_client_exists(cls, tenant_id: str, provider_id: TriggerProviderID) -> bool:
-        """
-        Check if system OAuth client exists for a trigger provider.
-        """
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
-        is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
-        if not is_verified:
-            return False
-        with Session(db.engine, expire_on_commit=False) as session:
-            system_client = session.scalar(
-                select(TriggerOAuthSystemClient)
-                .where(
-                    TriggerOAuthSystemClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthSystemClient.provider == provider_id.provider_name,
-                )
-                .limit(1)
-            )
-            return system_client is not None
-
-    @classmethod
-    def save_custom_oauth_client_params(
-        cls,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        client_params: Mapping[str, Any] | None = None,
-        enabled: bool | None = None,
-    ) -> Mapping[str, Any]:
-        """
-        Save or update custom OAuth client parameters for a trigger provider.
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider identifier
-        :param client_params: OAuth client parameters (client_id, client_secret, etc.)
-        :param enabled: Enable/disable the custom OAuth client
-        :return: Success response
-        """
-        if client_params is None and enabled is None:
-            return {"result": "success"}
-
-        # Get provider controller to access schema
-        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id=tenant_id, provider_id=provider_id
-        )
-
-        with sessionmaker(bind=db.engine).begin() as session:
-            # Find existing custom client params
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                )
-                .limit(1)
-            )
-
-            # Create new record if doesn't exist
-            if custom_client is None:
-                custom_client = TriggerOAuthTenantClient(
-                    tenant_id=tenant_id,
-                    plugin_id=provider_id.plugin_id,
-                    provider=provider_id.provider_name,
-                )
-                session.add(custom_client)
-
-            # Update client params if provided
-            if client_params is None:
-                custom_client.encrypted_oauth_params = json.dumps({})
-            else:
-                encrypter, cache = create_provider_encrypter(
-                    tenant_id=tenant_id,
-                    config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-                    cache=NoOpProviderCredentialCache(),
-                )
-
-                # Handle hidden values
-                original_params = encrypter.decrypt(dict(custom_client.oauth_params))
-                new_params: dict[str, Any] = {
-                    key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
-                    for key, value in client_params.items()
-                }
-                custom_client.encrypted_oauth_params = json.dumps(encrypter.encrypt(new_params))
-                cache.delete()
-
-            # Update enabled status if provided
-            if enabled is not None:
-                custom_client.enabled = enabled
-
-        return {"result": "success"}
-
-    @classmethod
-    def get_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any]:
-        """
-        Get custom OAuth client parameters for a trigger provider.
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider identifier
-        :return: Masked OAuth client parameters
-        """
-        with Session(db.engine) as session:
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                )
-                .limit(1)
-            )
-
-            if custom_client is None:
-                return {}
-
-            # Get provider controller to access schema
-            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-                tenant_id=tenant_id, provider_id=provider_id
-            )
-
-            # Create encrypter to decrypt and mask values
-            encrypter, _ = create_provider_encrypter(
-                tenant_id=tenant_id,
-                config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-                cache=NoOpProviderCredentialCache(),
-            )
-
-            return encrypter.mask_plugin_credentials(encrypter.decrypt(dict(custom_client.oauth_params)))
-
-    @classmethod
-    def delete_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any]:
-        """
-        Delete custom OAuth client parameters for a trigger provider.
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider identifier
-        :return: Success response
-        """
-        with sessionmaker(bind=db.engine).begin() as session:
-            session.execute(
-                delete(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                )
-                .execution_options(synchronize_session=False)
-            )
-
-        return {"result": "success"}
-
-    @classmethod
-    def is_oauth_custom_client_enabled(cls, tenant_id: str, provider_id: TriggerProviderID) -> bool:
-        """
-        Check if custom OAuth client is enabled for a trigger provider.
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider identifier
-        :return: True if enabled, False otherwise
-        """
-        with Session(db.engine, expire_on_commit=False) as session:
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                    TriggerOAuthTenantClient.enabled.is_(True),
-                )
-                .limit(1)
-            )
-            return custom_client is not None
 
     @classmethod
     def get_subscription_by_endpoint(cls, endpoint_id: str) -> TriggerSubscription | None:

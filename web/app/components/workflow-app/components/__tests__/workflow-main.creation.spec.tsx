@@ -97,6 +97,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     createServerDraftUpdate: vi.fn(),
     onServerDraftRequest: () => () => {},
     onServerDraftApplied: () => () => {},
+    onJoinFailure: () => () => {},
     onGraphReadyChange: (listener: (ready: boolean) => void) => {
       mocks.graphReadyListener = listener
       // Before the collaboration connection starts, graph editing is still allowed.
@@ -163,7 +164,14 @@ function CreatedAppNavigation() {
   const setPendingCreation = useSetAtom(difyBuilderPendingCreationAtom)
   const [created, setCreated] = useState(false)
   return created ? (
-    <EditorResourceScope resource={{ kind: 'app', appId: 'created-app', mode: 'workflow' }}>
+    <EditorResourceScope
+      resource={{
+        kind: 'app',
+        appId: 'created-app',
+        mode: 'workflow',
+        collaborationEnabled: mocks.collaborative,
+      }}
+    >
       <WorkflowMain nodes={[]} edges={[]} />
     </EditorResourceScope>
   ) : (
@@ -264,7 +272,6 @@ describe('Workflow creation with App Builder', () => {
         queryClient: createCreationQueryClient(),
         accountProfile: { id: 'user-1' },
         features: { dify_builder_enabled: true },
-        systemFeatures: { enable_collaboration_mode: true },
         workspacePermissionKeys: ['app.create_and_management'],
       },
     )
@@ -308,7 +315,6 @@ describe('Workflow creation with App Builder', () => {
       queryClient: createCreationQueryClient(),
       accountProfile: { id: 'user-1' },
       features: { dify_builder_enabled: true },
-      systemFeatures: { enable_collaboration_mode: false },
       workspacePermissionKeys: ['app.create_and_management'],
     })
 

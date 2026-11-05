@@ -409,7 +409,12 @@ describe('useWorkflowRefreshDraft', () => {
       .mockResolvedValueOnce(draftResponse)
       .mockResolvedValueOnce({ ...draftResponse, hash: 'newer-hash' })
     const atoms = createStore()
-    atoms.set(editorResourceAtom, { kind: 'app', appId: 'app-1', mode: 'workflow' })
+    atoms.set(editorResourceAtom, {
+      kind: 'app',
+      appId: 'app-1',
+      mode: 'workflow',
+      collaborationEnabled: true,
+    })
     atoms.set(
       difyBuilderSessionViewAtom,
       createSessionView({ phase: 'modify', run_status: 'waiting_input', canvas_read_only: false }),

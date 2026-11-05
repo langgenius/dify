@@ -5,6 +5,7 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -43,9 +44,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({}),
       'apps.get': api.apps,
       'apps.post': api.create,
-      'features.get': async () => ({ dify_builder_enabled: false, apps: { size: 0, limit: 0 } }),
       'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,
       'apps.workflows.onlineUsers.post': api.online,
@@ -151,7 +152,6 @@ async function setup(
       systemFeatures: {
         rbac_enabled: true,
         enable_learn_app: false,
-        enable_collaboration_mode: false,
       },
       ...options,
     })
@@ -257,7 +257,7 @@ it('waits for both initial requests before announcing results', async () => {
 })
 
 it('queries collaborators only for workflow apps when collaboration is enabled', async () => {
-  await setup('', { systemFeatures: { enable_collaboration_mode: true } })
+  await setup('', { features: { workflow_collaboration_enabled: true } })
   await waitFor(() => expect(api.online).toHaveBeenCalledWith({ body: { app_ids: ['app-2'] } }))
 })
 

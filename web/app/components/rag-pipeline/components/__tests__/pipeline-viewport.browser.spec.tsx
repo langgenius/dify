@@ -115,7 +115,6 @@ function Fixture() {
   )
   const [queryClient] = useState(() => {
     const query = createConsoleQueryWrapper({
-      systemFeatures: { enable_collaboration_mode: false },
       appDslVersion: '0.6.0',
     }).queryClient
     for (const toolsQuery of [
