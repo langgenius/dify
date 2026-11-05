@@ -62,6 +62,10 @@ When file-input click/reset behavior is the contract, exercise the native click 
 
 For controls revealed by hover or focus, move the pointer outside the hover owner before proving keyboard disclosure. Browser Mode's `toBeVisible` accepts `opacity: 0`; pair native focus and activation with an actual opacity assertion when visible disclosure is the contract.
 
+When pointer reachability is the contract, verify native hit testing with an ordinary interaction or the target coordinates. Markup state such as `hidden` or `aria-hidden` does not prove removal from hit testing when author CSS can override layout; never use a forced click to cross an unexpected overlay.
+
+For custom media controls, fullscreen the element that owns both the media and those controls. A fullscreen test must verify the actual `document.fullscreenElement` and that the visible exit control remains actionable; a mocked Fullscreen API call does not prove ownership.
+
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
 ## Assert Behavior, Not Implementation
@@ -162,6 +166,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 ## Provenance
 
+- [#45653], `audio-gallery/AudioPlayer` and `video-gallery/VideoPlayer`: native hit testing exposed a hidden overlay intercepting pointer input, while the real Fullscreen API exposed sibling controls left outside the fullscreen element.
+
 - [#45604], `icon-picker/image-input` and `file-uploader-in-chat-input/file-item`: use native external-file payloads for drop ownership; a media source-switch mutation survived `currentSrc` alone and failed when the requested source was also checked.
 
 - [#45553], `chat-with-history/sidebar/item`: removing keyboard opacity disclosure survived a visibility-only assertion. Keep the pointer off the row and verify the focused control is actually opaque.
@@ -189,6 +195,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [#45517]: https://github.com/langgenius/dify/pull/45517
 [#45553]: https://github.com/langgenius/dify/pull/45553
 [#45604]: https://github.com/langgenius/dify/pull/45604
+[#45653]: https://github.com/langgenius/dify/pull/45653
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
