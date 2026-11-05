@@ -84,7 +84,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
 }) => {
   const { t } = useTranslation(['share'])
   const entry = useWebAppEntry()
-  const showWorkflowLayout = isWorkflow && !isInstalledApp && entry && 'account' in entry
+  const showAccountFooter = !isInstalledApp && entry && 'account' in entry
+  const showWorkflowLayout = isWorkflow && showAccountFooter
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -184,8 +185,13 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               <div className="grow truncate system-md-semibold text-text-secondary">
                 {siteInfo.title}
               </div>
-              <WebAppConnectionControls isResponding={isResponding} />
-              <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
+              <WebAppConnectionControls
+                isResponding={isResponding}
+                showSignIn={!showAccountFooter}
+              />
+              {!showAccountFooter && (
+                <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
+              )}
             </div>
             {description}
           </>
@@ -268,11 +274,11 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           </>
         )}
       </div>
-      {(showWorkflowLayout || !customConfig?.remove_webapp_brand) && (
+      {(showAccountFooter || !customConfig?.remove_webapp_brand) && (
         <div
           className={cn(
             'flex shrink-0 items-center bg-components-panel-bg py-3',
-            showWorkflowLayout
+            showAccountFooter
               ? 'justify-between gap-3 px-6'
               : !isBelowMd
                 ? 'gap-1.5 px-8'
@@ -280,7 +286,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          {showWorkflowLayout &&
+          {showAccountFooter &&
             (entry.showSignIn ? (
               <SignIn className="system-sm-medium" />
             ) : (
@@ -292,7 +298,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               />
             ))}
           {!customConfig?.remove_webapp_brand && (
-            <div className={cn('flex items-center gap-1.5', showWorkflowLayout && 'px-2')}>
+            <div className={cn('flex items-center gap-1.5', showAccountFooter && 'px-2')}>
               <div className="system-2xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['chat.poweredBy'], { ns: 'share' })}
               </div>

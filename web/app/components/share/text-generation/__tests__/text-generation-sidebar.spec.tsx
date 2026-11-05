@@ -301,10 +301,16 @@ describe('TextGenerationSidebar', () => {
     expect(onStartUsingApp).toHaveBeenCalledOnce()
   })
 
-  it.each([false, true])(
-    'keeps the workflow account menu after run content when branding is removed: %s',
-    (removeBrand) => {
+  it.each([
+    { isWorkflow: false, removeBrand: false },
+    { isWorkflow: true, removeBrand: false },
+    { isWorkflow: false, removeBrand: true },
+    { isWorkflow: true, removeBrand: true },
+  ])(
+    'keeps the Webapp account menu after run content regardless of branding: %o',
+    ({ isWorkflow, removeBrand }) => {
       renderWorkflow({
+        isWorkflow,
         customConfig: { remove_webapp_brand: removeBrand, replace_webapp_logo: '' },
       })
 
@@ -320,31 +326,41 @@ describe('TextGenerationSidebar', () => {
     },
   )
 
-  it.each([
-    { isWorkflow: false, isInstalledApp: false },
-    { isWorkflow: true, isInstalledApp: true },
-  ])('keeps the account menu before run content for legacy surfaces: %o', (surface) => {
-    renderWorkflow(surface)
+  it.each([false, true])(
+    'keeps the account menu before run content for installed apps, workflow=%s',
+    (isWorkflow) => {
+      renderWorkflow({ isWorkflow, isInstalledApp: true })
 
-    const accountMenu = screen.getByRole('button', { name: 'Account menu' })
-    expect(
-      accountMenu.compareDocumentPosition(
-        screen.getByRole('button', { name: 'share.generation.run' }),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-  })
+      const accountMenu = screen.getByRole('button', { name: 'Account menu' })
+      expect(
+        accountMenu.compareDocumentPosition(
+          screen.getByRole('button', { name: 'share.generation.run' }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    },
+  )
 
-  it('offers one anonymous sign-in action after workflow content', () => {
-    renderWorkflow({}, createAnonymousEntry())
+  it.each([false, true])(
+    'offers one anonymous sign-in action after Webapp content without branding, workflow=%s',
+    (isWorkflow) => {
+      renderWorkflow(
+        {
+          isWorkflow,
+          customConfig: { remove_webapp_brand: true, replace_webapp_logo: '' },
+        },
+        createAnonymousEntry(),
+      )
 
-    const signIn = screen.getByRole('button', { name: 'share.auth.signIn' })
-    expect(signIn).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'share.generation.run' }).compareDocumentPosition(signIn) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Account menu' })).not.toBeInTheDocument()
-  })
+      const signIn = screen.getByRole('button', { name: 'share.auth.signIn' })
+      expect(signIn).toBeVisible()
+      expect(
+        screen
+          .getByRole('button', { name: 'share.generation.run' })
+          .compareDocumentPosition(signIn) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Account menu' })).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps anonymous workflow tabs and footer sign-in available during required connection setup without variables', () => {
     renderWorkflow(
