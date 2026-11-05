@@ -151,7 +151,7 @@ export function removeAnonymousWebAppPassport(candidate: { key: string; passport
   if (!candidate.key.startsWith(PASSPORT_LOCAL_STORAGE_NAME(''))) return
   // oxlint-disable-next-line no-restricted-globals -- A concurrent tab may have replaced this anonymous Passport while migration was running.
   if (localStorage.getItem(candidate.key) === candidate.passport)
-    // oxlint-disable-next-line no-restricted-globals -- Only a successfully migrated snapshot can be removed.
+    // oxlint-disable-next-line no-restricted-globals -- Remove only the selected anonymous Passport snapshot.
     localStorage.removeItem(candidate.key)
 }
 

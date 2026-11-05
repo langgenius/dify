@@ -12,13 +12,12 @@ const app: ComponentProps<typeof SignInConfirmation>['app'] = {
   icon_url: null,
 }
 
-it('requires a history choice and submits only the currently selected action', async () => {
+it('selects adding earlier data by default and submits the selected action', async () => {
   const user = userEvent.setup()
   const onConfirm = vi.fn()
   render(
     <SignInConfirmation
       accountName="Reader"
-      conversationCount={3}
       app={app}
       continueHref="/chat/current-app"
       onConfirm={onConfirm}
@@ -27,28 +26,24 @@ it('requires a history choice and submits only the currently selected action', a
 
   const addOption = screen.getByRole('radio', { name: 'login.history.add' })
   const deleteOption = screen.getByRole('radio', { name: 'login.history.delete' })
-  expect(addOption).not.toBeChecked()
-  expect(deleteOption).not.toBeChecked()
-  expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeDisabled()
-
-  await user.click(screen.getByText('login.history.add'))
   expect(addOption).toBeChecked()
   expect(deleteOption).not.toBeChecked()
   expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'login.history.addAndContinue' }))
+  expect(onConfirm).toHaveBeenCalledExactlyOnceWith('add')
 
   await user.click(screen.getByText('login.history.delete'))
   expect(deleteOption).toBeChecked()
   expect(addOption).not.toBeChecked()
   const deleteButton = screen.getByRole('button', { name: 'login.history.deleteAndContinue' })
   expect(deleteButton).toBeEnabled()
-  expect(onConfirm).not.toHaveBeenCalled()
 
   await user.click(deleteButton)
-  expect(onConfirm).toHaveBeenCalledExactlyOnceWith('delete')
+  expect(onConfirm).toHaveBeenLastCalledWith('delete')
 
   await user.click(screen.getByText('login.history.add'))
   await user.click(screen.getByRole('button', { name: 'login.history.addAndContinue' }))
-  expect(onConfirm).toHaveBeenCalledTimes(2)
+  expect(onConfirm).toHaveBeenCalledTimes(3)
   expect(onConfirm).toHaveBeenLastCalledWith('add')
 })
 
@@ -60,7 +55,6 @@ it.each([null, 'add', 'delete'] as const)(
     render(
       <SignInConfirmation
         accountName="Reader"
-        conversationCount={3}
         app={app}
         continueHref="/chat/current-app?conversationId=existing-chat"
         onConfirm={onConfirm}
@@ -75,3 +69,37 @@ it.each([null, 'add', 'delete'] as const)(
     expect(onConfirm).not.toHaveBeenCalled()
   },
 )
+
+it('explains unsupported migrations and requires an explicit continue or delete action', async () => {
+  const user = userEvent.setup()
+  const onConfirm = vi.fn()
+  render(
+    <SignInConfirmation
+      accountName="Reader"
+      supportsMigration={false}
+      app={app}
+      continueHref="/chat/current-app"
+      onConfirm={onConfirm}
+    />,
+  )
+
+  expect(screen.getByText('login.history.unsupportedTitle')).toBeInTheDocument()
+  expect(screen.getByText('login.history.unsupportedDescription')).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: 'login.history.add' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'login.history.notNow' })).not.toBeInTheDocument()
+  const continueOption = screen.getByRole('radio', {
+    name: 'login.history.continueWithoutAdding',
+  })
+  const deleteOption = screen.getByRole('radio', { name: 'login.history.delete' })
+  expect(continueOption).not.toBeChecked()
+  expect(deleteOption).not.toBeChecked()
+  expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeDisabled()
+
+  await user.click(continueOption)
+  await user.click(screen.getByRole('button', { name: 'login.history.continue' }))
+  expect(onConfirm).toHaveBeenCalledExactlyOnceWith('continue')
+
+  await user.click(deleteOption)
+  await user.click(screen.getByRole('button', { name: 'login.history.deleteAndContinue' }))
+  expect(onConfirm).toHaveBeenLastCalledWith('delete')
+})
