@@ -21,6 +21,7 @@ from services.end_user_connection_oauth_adapters import (
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions, PluginConnectionRevisions
 from services.end_user_connection_runtime_adapters import get_tool_runtime
+from services.end_user_connections.cleanup import ConnectionCleanupService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
@@ -29,6 +30,7 @@ from services.end_user_connections.runtime import ConnectionRuntimeService
 from services.end_user_connections.selections import ConnectionSelectionService
 
 __all__ = [
+    "build_end_user_connection_cleanup",
     "build_end_user_connection_oauth",
     "build_end_user_connection_preflight",
     "build_end_user_connection_runtime",
@@ -37,6 +39,11 @@ __all__ = [
     "get_tool_runtime",
     "initialize_conversation_connections",
 ]
+
+
+def build_end_user_connection_cleanup(*, database_client: sessionmaker[Session]) -> ConnectionCleanupService:
+    """Build deletion cleanup with the configured database factory and no external gateways."""
+    return ConnectionCleanupService(store=EndUserConnectionRepository(session_factory=database_client))
 
 
 def build_end_user_connection_selections(*, database_client: sessionmaker[Session]) -> ConnectionSelectionService:
