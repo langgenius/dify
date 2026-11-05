@@ -20,6 +20,10 @@ from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
     TriggerOAuthClientManageApi,
+    TriggerProviderIconApi,
+    TriggerProviderInfoApi,
+    TriggerProviderListApi,
+    TriggerSubscriptionListApi,
 )
 from controllers.console.wraps import _is_setup_completed
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
@@ -215,6 +219,12 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
+        api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
+        api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
+        api.add_resource(
+            TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list"
+        )
         api.add_resource(
             TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
         )

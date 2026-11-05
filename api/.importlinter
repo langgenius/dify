@@ -1434,6 +1434,8 @@ type = forbidden
 source_modules =
     services.trigger.oauth_client_service
     services.trigger.oauth_service
+    services.trigger.provider_query
+    services.trigger.subscription_query_service
 forbidden_modules =
     controllers
     extensions

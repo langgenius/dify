@@ -13,6 +13,7 @@ from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepos
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.credentials.query import CredentialQuery
 from services.file_service import FileService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
@@ -21,6 +22,9 @@ from services.trigger.oauth_gateway import (
     TriggerOAuthBuilderGateway,
 )
 from services.trigger.oauth_service import TriggerOAuthService
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.provider_query import TriggerProviderQuery
+from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -56,6 +60,8 @@ class WorkspaceServices:
     invitations: WorkspaceInvitationService
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
+    trigger_providers: TriggerProviderQuery
+    trigger_subscriptions: TriggerSubscriptionQueryService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -93,11 +99,13 @@ def build_workspace_services(
     provisioning: WorkspaceProvisioningService,
     registration: InvitedAccountRegistration,
     invitation_tokens: RedisInvitationTokenStore,
+    credentials: CredentialQuery,
 ) -> WorkspaceServices:
-    trigger_providers = PluginTriggerOAuthGateway(oauth=OAuthHandler())
+    trigger_providers = PluginTriggerProviderQuery()
+    trigger_oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler())
     trigger_oauth_clients = TriggerOAuthClientService(
         clients=TriggerOAuthClientRepository(session_factory=database_client),
-        providers=trigger_providers,
+        providers=trigger_oauth_provider,
     )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -131,10 +139,12 @@ def build_workspace_services(
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
+        trigger_providers=trigger_providers,
+        trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
         trigger_oauth_clients=trigger_oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=trigger_oauth_clients,
-            providers=trigger_providers,
+            providers=trigger_oauth_provider,
             contexts=OAuthProxyContextGateway(),
             builders=TriggerOAuthBuilderGateway(),
         ),
