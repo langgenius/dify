@@ -211,14 +211,14 @@ def load_segment_read_batch(segments: Sequence[DocumentSegment], *, session: Ses
     return SegmentReadBatch(child_chunks=child_chunks, attachments=attachments)
 
 
-def get_segment_content_file_ids(
-    segment: DocumentSegment, *, upload_ids: set[str], tool_ids: set[str], session: Session
+def get_accessible_content_file_ids(
+    tenant_id: str, *, upload_ids: set[str], tool_ids: set[str], session: Session
 ) -> tuple[set[str], set[str]]:
     access = DatabaseFileAccessController()
     uploads = (
         session.scalars(
             access.apply_upload_file_filters(
-                select(UploadFile).where(UploadFile.id.in_(upload_ids), UploadFile.tenant_id == segment.tenant_id)
+                select(UploadFile).where(UploadFile.id.in_(upload_ids), UploadFile.tenant_id == tenant_id)
             )
         ).all()
         if upload_ids
@@ -227,7 +227,7 @@ def get_segment_content_file_ids(
     tools = (
         session.scalars(
             access.apply_tool_file_filters(
-                select(ToolFile).where(ToolFile.id.in_(tool_ids), ToolFile.tenant_id == segment.tenant_id)
+                select(ToolFile).where(ToolFile.id.in_(tool_ids), ToolFile.tenant_id == tenant_id)
             )
         ).all()
         if tool_ids

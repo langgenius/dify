@@ -15,7 +15,7 @@ from configs import dify_config
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from models.dataset import AttachmentItem, DocumentSegment
 from models.model import UploadFile
-from repositories.knowledge.dataset_read_repository import get_segment_attachment_files, get_segment_content_file_ids
+from repositories.knowledge.dataset_read_repository import get_accessible_content_file_ids, get_segment_attachment_files
 
 # Consume the entire old query string and replace matches in source order.
 _FILE_ID = r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}"
@@ -36,22 +36,14 @@ def _sign_upload_file_uri(upload_file_id: str, *, preview_kind: Literal["image",
     return f"/files/{upload_file_id}/{preview_kind}-preview?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
 
 
-def sign_segment_content(segment: DocumentSegment, *, session: Session) -> str:
-    """Refresh links only after checking persisted file ownership.
-
-    The segment must come from an authorized knowledge read. File queries also
-    enforce its tenant and the current execution's file-access scope. Inaccessible
-    references lose their old signature and never receive a new one.
-    """
-    matches = list(_FILE_LINK.finditer(segment.content))
-    if not matches:
-        return segment.content
+def _content_file_ids(content: str) -> tuple[set[str], set[str]]:
+    matches = list(_FILE_LINK.finditer(content))
     upload_ids = {match["upload"].lower() for match in matches if match["upload"]}
     tool_ids = {match["tool"].lower() for match in matches if match["tool"]}
-    allowed_uploads, allowed_tools = get_segment_content_file_ids(
-        segment, upload_ids=upload_ids, tool_ids=tool_ids, session=session
-    )
+    return upload_ids, tool_ids
 
+
+def _sign_content(content: str, allowed_uploads: set[str], allowed_tools: set[str]) -> str:
     def replace(match: re.Match[str]) -> str:
         if upload_id := match["upload"]:
             upload_id = upload_id.lower()
@@ -65,7 +57,50 @@ def sign_segment_content(segment: DocumentSegment, *, session: Session) -> str:
             return match.group().split("?", 1)[0]
         return sign_tool_file_uri(tool_id, "." + match["extension"])
 
-    return _FILE_LINK.sub(replace, segment.content)
+    return _FILE_LINK.sub(replace, content)
+
+
+def sign_segment_content(segment: DocumentSegment, *, session: Session) -> str:
+    """Refresh links only after checking persisted file ownership.
+
+    The segment must come from an authorized knowledge read. File queries also
+    enforce its tenant and the current execution's file-access scope. Inaccessible
+    references lose their old signature and never receive a new one.
+    """
+    upload_ids, tool_ids = _content_file_ids(segment.content)
+    if not upload_ids and not tool_ids:
+        return segment.content
+    allowed_uploads, allowed_tools = get_accessible_content_file_ids(
+        segment.tenant_id, upload_ids=upload_ids, tool_ids=tool_ids, session=session
+    )
+
+    return _sign_content(segment.content, allowed_uploads, allowed_tools)
+
+
+def sign_segment_contents(segments: Sequence[DocumentSegment], *, session: Session) -> dict[str, str]:
+    """Sign a page of segment contents with one file lookup per tenant."""
+    segment_file_ids: dict[str, tuple[set[str], set[str]]] = {}
+    tenant_file_ids: dict[str, tuple[set[str], set[str]]] = {}
+    for segment in segments:
+        upload_ids, tool_ids = _content_file_ids(segment.content)
+        if not upload_ids and not tool_ids:
+            continue
+        segment_file_ids[segment.id] = (upload_ids, tool_ids)
+        tenant_uploads, tenant_tools = tenant_file_ids.setdefault(segment.tenant_id, (set(), set()))
+        tenant_uploads |= upload_ids
+        tenant_tools |= tool_ids
+    allowed: dict[str, tuple[set[str], set[str]]] = {
+        tenant_id: get_accessible_content_file_ids(tenant_id, upload_ids=upload_ids, tool_ids=tool_ids, session=session)
+        for tenant_id, (upload_ids, tool_ids) in tenant_file_ids.items()
+    }
+    signed: dict[str, str] = {}
+    for segment in segments:
+        if segment.id not in segment_file_ids:
+            signed[segment.id] = segment.content
+            continue
+        allowed_uploads, allowed_tools = allowed[segment.tenant_id]
+        signed[segment.id] = _sign_content(segment.content, allowed_uploads, allowed_tools)
+    return signed
 
 
 def format_segment_attachments(files: Sequence[UploadFile]) -> list[AttachmentItem]:
