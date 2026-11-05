@@ -17,7 +17,7 @@ it('requires a history choice and submits only the currently selected action', a
   const onConfirm = vi.fn()
   render(
     <SignInConfirmation
-      email="reader@example.com"
+      accountName="Reader"
       conversationCount={3}
       app={app}
       continueHref="/chat/current-app"
@@ -59,7 +59,7 @@ it.each([null, 'add', 'delete'] as const)(
     const onConfirm = vi.fn()
     render(
       <SignInConfirmation
-        email="reader@example.com"
+        accountName="Reader"
         conversationCount={3}
         app={app}
         continueHref="/chat/current-app?conversationId=existing-chat"

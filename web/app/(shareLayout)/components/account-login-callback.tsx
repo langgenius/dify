@@ -11,6 +11,7 @@ import {
   completeWebAppAccountLogin,
   resolveWebAppAccountReturn,
 } from '@/service/webapp/login'
+import { getWebAppMigrationTarget } from '@/service/webapp/migration'
 import { basePath } from '@/utils/var'
 
 export default function AccountLoginCallback() {
@@ -20,7 +21,7 @@ export default function AccountLoginCallback() {
   const code = params.get('login_code')
   const { mutate, isError } = useMutation({
     mutationFn: () => completeWebAppAccountLogin(redirect, code || ''),
-    onSuccess: (target) => window.location.replace(target),
+    onSuccess: (target) => window.location.replace(getWebAppMigrationTarget(target)),
   })
   useEffect(() => {
     mutate()
