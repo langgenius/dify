@@ -10,12 +10,17 @@ import logging
 from collections.abc import Sequence
 from typing import Annotated
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.human_input import (
+    HumanInputFormSubmitPayload,
+    stringify_form_default_values,
+    v2_form_definition_response,
+    viewer_ip_address,
+)
 from controllers.common.human_input_v2_errors import legacy_form_http_error
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -27,12 +32,10 @@ from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
-from factories.human_input_v2_form_presentation import build_form_presentation
 from fields.base import ResponseModel
 from libs.external_api import error_responses
-from libs.helper import extract_remote_ip, to_timestamp
+from libs.helper import to_timestamp
 from models.model import App, EndUser
-from repositories.human_input_v2.form_repository import Form as V2Form
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -97,18 +100,6 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
         raise NotFound("Form not found")
 
 
-def _jsonify_v2_form_definition(form: V2Form) -> Response:
-    presentation = build_form_presentation(form.resolved_form)
-    response = HumanInputFormDefinitionResponse(
-        form_content=presentation.form_content,
-        inputs=presentation.inputs,
-        resolved_default_values=presentation.resolved_default_values,
-        user_actions=presentation.user_actions,
-        expiration_time=to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
-    )
-    return Response(response.model_dump_json(), mimetype="application/json")
-
-
 @service_api_ns.route("/form/human_input/<string:form_token>")
 class WorkflowHumanInputFormApi(Resource):
     @error_responses(FormExpiredError, FormSubmittedError)
@@ -155,13 +146,13 @@ class WorkflowHumanInputFormApi(Resource):
                 v2_form = v2_service.get_service_api_form(
                     actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),
                     form_token=form_token,
-                    ip_address=extract_remote_ip(request) or None,
+                    ip_address=viewer_ip_address(),
                 )
             except HumanInputFormError as error:
                 # Keep the existing Service API errors instead of leaking Web App v2's
                 # 409/410 statuses or its transport-specific error codes.
                 raise legacy_form_http_error(error, not_found=NotFound("Form not found")) from error
-            return _jsonify_v2_form_definition(v2_form)
+            return v2_form_definition_response(v2_form, HumanInputFormDefinitionResponse)
 
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_service_api(form)
