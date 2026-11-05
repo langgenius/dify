@@ -14,6 +14,7 @@ const DrawerPortal = BaseDrawer.Portal
 const DrawerTitle = BaseDrawer.Title
 const DrawerDescription = BaseDrawer.Description
 const DrawerClose = BaseDrawer.Close
+const DrawerVirtualKeyboardProvider = BaseDrawer.VirtualKeyboardProvider
 const createDrawerHandle = BaseDrawer.createHandle
 
 type DrawerActions = BaseDrawer.Root.Actions
@@ -43,6 +44,7 @@ type DrawerPortalProps = BaseDrawer.Portal.Props
 type DrawerTitleProps = BaseDrawer.Title.Props
 type DrawerDescriptionProps = BaseDrawer.Description.Props
 type DrawerCloseProps = BaseDrawer.Close.Props
+type DrawerVirtualKeyboardProviderProps = BaseDrawer.VirtualKeyboardProvider.Props
 
 type DrawerBackdropProps = BaseDrawer.Backdrop.Props
 
@@ -134,6 +136,7 @@ export {
   DrawerTitle,
   DrawerTrigger,
   DrawerViewport,
+  DrawerVirtualKeyboardProvider,
 }
 
 export type {
@@ -158,4 +161,5 @@ export type {
   DrawerTitleProps,
   DrawerTriggerProps,
   DrawerViewportProps,
+  DrawerVirtualKeyboardProviderProps,
 }
