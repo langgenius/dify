@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from core.app.apps.execution_coordinator import send_abort_command
-from graphon.engine.command import AbortCommand, PauseCommand, RedisChannel
+from graphon.engine.command import AbortCommand, Command, PauseCommand, RedisChannel
 from services.workflow.execution.adapters.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
@@ -15,16 +15,16 @@ from services.workflow.execution.adapters.workflow.command_channels import (
 
 
 class _CommandChannelStub:
-    def __init__(self, commands=None) -> None:
+    def __init__(self, commands: list[Command] | None = None) -> None:
         self.commands = list(commands or [])
-        self.sent = []
+        self.sent: list[Command] = []
 
-    def fetch_commands(self):
+    def fetch_commands(self) -> list[Command]:
         commands = self.commands
         self.commands = []
         return commands
 
-    def send_command(self, command) -> None:
+    def send_command(self, command: Command) -> None:
         self.sent.append(command)
 
 

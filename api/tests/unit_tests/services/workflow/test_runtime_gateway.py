@@ -1171,7 +1171,6 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
 ) -> None:
     from core.app.apps import base_app_queue_manager
     from core.app.features.rate_limiting.rate_limit import RateLimit
-    from core.ops.ops_trace_manager import TraceQueueManager
     from services.workflow.execution.adapters.response_stream import WorkflowEventStream
     from services.workflow.execution.adapters.workflow import app_generator as generator_module
     from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
@@ -1279,8 +1278,6 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
         yield from ()
 
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    trace_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
-    monkeypatch.setattr(generator_module, "TraceQueueManager", lambda **_kwargs: trace_manager)
     monkeypatch.setattr(generator_module, "WorkflowAppRunner", GraphRunner)
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", empty_response)
     monkeypatch.setattr(task_module, "_publish_streaming_response", lambda response, *_args, **_kwargs: list(response))

@@ -12,7 +12,7 @@ import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-comp
 import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -22,13 +22,13 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
   comparisonOperatorNotRequireValue,
   getOperators,
+  VARIABLE_REGEX,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
 import {
   ComparisonOperator,
@@ -44,9 +44,11 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { consoleQuery } from '@/service/console'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { AgentMetadataFilter } from './metadata-filter'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type Props = {
+  workflowNodeId?: string
   item: AgentKnowledgeRetrievalItem
   onChange: (patch: Partial<AgentKnowledgeRetrievalItem>) => void
   errors?: KnowledgeValidationResult['byId'][string]
@@ -93,6 +95,12 @@ const isMetadataConditionCompatible = (
   if (!getOperators(type).some((operator) => operator === condition.comparison_operator))
     return false
   if (comparisonOperatorNotRequireValue(condition.comparison_operator)) return true
+  if (
+    type === MetadataFilteringVariableType.number &&
+    typeof condition.value === 'string' &&
+    condition.value.match(VARIABLE_REGEX)?.[0] === condition.value
+  )
+    return true
   if (type === MetadataFilteringVariableType.number || type === MetadataFilteringVariableType.time)
     return typeof condition.value === 'number' && Number.isFinite(condition.value)
   if (
@@ -145,6 +153,7 @@ const createMetadataCondition = ({
 })
 
 function ClassicSettingsFields({
+  workflowNodeId,
   item,
   onChange,
   errors,
@@ -214,34 +223,36 @@ function ClassicSettingsFields({
   )
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
-      <div className="flex flex-col gap-1 py-2">
-        <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
-          {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+      <div className="flex flex-col gap-2 py-2">
+        <div className="flex flex-col gap-1">
+          <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+          </div>
+          <RadioGroup<KnowledgeRetrievalQueryMode>
+            aria-labelledby={queryModeLabelId}
+            className="w-full gap-2"
+            value={queryMode}
+            onValueChange={(nextMode) => {
+              if (nextMode) onChange({ queryMode: nextMode })
+            }}
+          >
+            {queryModeOptions.map((mode) => (
+              <RadioItem<KnowledgeRetrievalQueryMode>
+                key={mode}
+                value={mode}
+                nativeButton
+                render={<button type="button" className={optionCardClassName} />}
+              >
+                <span className="min-w-0 truncate">
+                  {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
+                </span>
+              </RadioItem>
+            ))}
+          </RadioGroup>
         </div>
-        <RadioGroup<KnowledgeRetrievalQueryMode>
-          aria-labelledby={queryModeLabelId}
-          className="w-full gap-2"
-          value={queryMode}
-          onValueChange={(nextMode) => {
-            if (nextMode) onChange({ queryMode: nextMode })
-          }}
-        >
-          {queryModeOptions.map((mode) => (
-            <RadioItem<KnowledgeRetrievalQueryMode>
-              key={mode}
-              value={mode}
-              nativeButton
-              render={<button type="button" className={optionCardClassName} />}
-            >
-              <span className="min-w-0 truncate">
-                {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
-              </span>
-            </RadioItem>
-          ))}
-        </RadioGroup>
         {queryMode === 'custom' ? (
           <>
-            <FormField className="pt-1">
+            <Field invalid={Boolean(queryError)}>
               <FieldLabel>
                 {t(
                   ($) =>
@@ -253,7 +264,6 @@ function ClassicSettingsFields({
                   ($) =>
                     $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'],
                 )}
-                aria-invalid={queryError ? true : undefined}
                 className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
                 placeholder={t(
                   ($) =>
@@ -262,27 +272,24 @@ function ClassicSettingsFields({
                 value={customQuery}
                 onValueChange={(nextQuery) => onChange({ customQuery: nextQuery })}
               />
-            </FormField>
-            <p className="system-xs-regular text-text-tertiary">
-              {t(
-                ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
-              )}
-            </p>
-            {queryError && (
-              <p role="alert" className="system-xs-regular text-text-destructive">
-                {queryError}
-              </p>
-            )}
+              <FieldDescription>
+                {t(
+                  ($) =>
+                    $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
+                )}
+              </FieldDescription>
+              <FieldError match={Boolean(queryError)}>{queryError}</FieldError>
+            </Field>
           </>
         ) : (
-          <p className="pt-1 system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription'])}
           </p>
         )}
       </div>
 
       <div className="py-2">
-        <Field
+        <WorkflowField
           title={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
           required
           operations={
@@ -370,13 +377,14 @@ function ClassicSettingsFields({
               </div>
             )}
           </>
-        </Field>
+        </WorkflowField>
       </div>
 
       {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}
       <div className="-mx-4 py-2">
         {/* Keep saved conditions until an explicit edit; catalog loading must not prune them. */}
-        <MetadataFilter
+        <AgentMetadataFilter
+          workflowNodeId={workflowNodeId}
           metadataList={metadataList}
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={metadataFilteringConditions}
@@ -439,7 +447,7 @@ function ClassicSettingsFields({
 }
 
 /** Only mounted inside the shared binding dialog's advanced settings. */
-export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
+export function ClassicKnowledgeSettings({ item, onChange, errors, workflowNodeId }: Props) {
   const { t } = useTranslation(['common'])
   const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
@@ -517,6 +525,7 @@ export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
     )
   return (
     <ClassicSettingsFields
+      workflowNodeId={workflowNodeId}
       item={item}
       onChange={onChange}
       errors={errors}

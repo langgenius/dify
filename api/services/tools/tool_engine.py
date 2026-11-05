@@ -7,13 +7,14 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any
 
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, json_safe
 from sqlalchemy.orm import Session
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -32,6 +33,7 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from graphon.file import FileTransferMethod, FileType
+from libs.datetime_utils import utc_now
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message
 from services.app.generation.ports import MessageFileWriter
@@ -55,7 +57,7 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -64,6 +66,16 @@ class ToolEngine:
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
+
+        Preconditions: ``session`` is owned by the caller for this invocation;
+        ``trace_scope`` is the invocation's scope, or ``None`` when nothing
+        consumes its events.
+        Postconditions: Return the observation, committed message file IDs,
+        and invocation meta. Only a completed tool call emits one
+        ``ToolInvoked`` event, after ``records`` commits its message files and
+        carrying the meta's tool config, error, and time cost. A raised tool or
+        engine error is returned as an error observation and meta and emits no
+        event; tracing failures never fail the tool call.
         """
         # check if arguments is a string
         if isinstance(tool_parameters, str):
@@ -85,6 +97,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
+            started_at = utc_now()
             messages = ToolEngine._invoke(
                 session=session,
                 tool=tool,
@@ -136,9 +149,21 @@ class ToolEngine:
                 tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=plain_text,
-                message_id=message.id,
-                trace_manager=trace_manager,
             )
+            if trace_scope is not None:
+                trace_scope.emit(
+                    ToolInvoked(
+                        message_id=message.id,
+                        tool_name=tool.entity.identity.name,
+                        tool_inputs={key: json_safe(value) for key, value in tool_parameters.items()},
+                        tool_outputs=plain_text,
+                        tool_config={key: json_safe(value) for key, value in (meta.tool_config or {}).items()},
+                        error=meta.error,
+                        time_cost=meta.time_cost,
+                        started_at=started_at,
+                        ended_at=utc_now(),
+                    )
+                )
 
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta
@@ -276,8 +301,7 @@ class ToolEngine:
                 parts.append(ToolEngine._text_message_url(response.message))
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 parts.append(
-                    f"result link: {ToolEngine._text_message_url(response.message)}."
-                    + " please tell user to check it."
+                    f"result link: {ToolEngine._text_message_url(response.message)}." + " please tell user to check it."
                 )
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 parts.append(

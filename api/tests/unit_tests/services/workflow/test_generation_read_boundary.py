@@ -1,7 +1,6 @@
 """Generation must release request reads before waiting for a worker's response."""
 
 import json
-from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
@@ -10,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from core.app.apps import base_app_queue_manager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.ops.ops_trace_manager import TraceQueueManager
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
@@ -70,19 +68,12 @@ def test_blocking_generation_detaches_request_inputs_before_waiting(
     sqlite_session.refresh(application)
     assert sqlite_session.in_transaction()
 
-    trace_queue_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
     if mode == AppMode.ADVANCED_CHAT:
         generator = chatflow_module.AdvancedChatAppGenerator
         converter = chatflow_module.AdvancedChatAppGenerateResponseConverter
-        monkeypatch.setattr(
-            chatflow_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
-        )
     else:
         generator = workflow_module.WorkflowAppGenerator
         converter = workflow_module.WorkflowAppGenerateResponseConverter
-        monkeypatch.setattr(
-            workflow_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
-        )
     monkeypatch.setattr("services.app_generate_service.RateLimit", _DummyRateLimit)
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(generator, "_generate_worker", staticmethod(lambda **_kwargs: None))

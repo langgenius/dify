@@ -158,7 +158,14 @@ def _install_backend_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 def executed_statements(sqlite_engine: Engine) -> Iterator[list[str]]:
     statements: list[str] = []
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
@@ -472,7 +479,7 @@ def test_load_or_create_persists_binding_on_node_execution(
         "existing": "value",
         "workflow_agent_binding_id": "workflow-binding-1",
     }
-    assert "agent_workspace_binding_id" not in persisted_execution.process_data_dict
+    assert "agent_workspace_binding_id" not in persisted_execution.process_data_dict  # pyrefly: ignore[not-iterable]
     persisted_binding = sqlite_session.get(AgentWorkspaceBinding, stored.binding_id)
     assert persisted_binding is not None
     assert persisted_binding.base_home_snapshot_id == home_snapshot_id
@@ -551,7 +558,7 @@ def test_load_existing_pointer_rejects_missing_workflow_identity(sqlite_session:
 
 
 def test_load_existing_pointer_reuses_matching_workflow_identity(sqlite_session: Session) -> None:
-    original_process_data = {
+    original_process_data: dict[str, object] = {
         "existing": "value",
         "workflow_agent_binding_id": "workflow-binding-1",
     }
@@ -564,7 +571,7 @@ def test_load_existing_pointer_reuses_matching_workflow_identity(sqlite_session:
     sqlite_session.expire(execution)
     assert stored.binding_id == "binding-1"
     assert execution.process_data_dict == original_process_data
-    assert "agent_workspace_binding_id" not in execution.process_data_dict
+    assert "agent_workspace_binding_id" not in execution.process_data_dict  # pyrefly: ignore[not-iterable]
     assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 1
 
 
