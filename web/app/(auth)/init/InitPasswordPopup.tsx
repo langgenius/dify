@@ -1,78 +1,93 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useEffect, useState } from 'react'
+import { ORPCError } from '@orpc/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
-import { basePath } from '@/utils/var'
+import { consoleQuery } from '@/service/console'
+
+type InitPasswordFormValues = {
+  password: string
+}
+
+const isIncorrectPasswordError = (error: Error | null) =>
+  error instanceof ORPCError && error.code === 'init_validate_failed'
 
 const InitPasswordPopup = () => {
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [validated, setValidated] = useState(false)
   const router = useRouter()
-
-  const { t } = useTranslation(['login'])
+  const queryClient = useQueryClient()
+  const { t } = useTranslation(['login', 'common'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const handleValidation = async () => {
-    setLoading(true)
-    try {
-      const response = await consoleClient.init.post(
-        { body: { password } },
-        { context: { silent: true } },
-      )
-      if (response.result === 'success') {
-        setValidated(true)
-        router.push('/install') // or render setup form
-      } else {
-        throw new Error('Validation failed')
-      }
-    } catch (e: any) {
-      toast.error(e.message)
-      setLoading(false)
-    }
+  const initStatus = useQuery(consoleQuery.init.get.queryOptions({ retry: false }))
+  const isInitFinished = initStatus.data?.status === 'finished'
+  const validatePassword = useMutation(
+    consoleQuery.init.post.mutationOptions({ context: { silent: true } }),
+  )
+  const isSubmitting = validatePassword.isPending || validatePassword.isSuccess
+  const fieldErrors = useMemo(
+    () =>
+      isIncorrectPasswordError(validatePassword.error)
+        ? { password: t(($) => $['error.initPasswordIncorrect'], { ns: 'login' }) }
+        : undefined,
+    [validatePassword.error, t],
+  )
+  const hasFormError = validatePassword.isError && !fieldErrors
+
+  const handleSubmit = ({ password }: InitPasswordFormValues) => {
+    if (isSubmitting) return
+    validatePassword.mutate(
+      { body: { password } },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
+          router.replace('/install')
+        },
+      },
+    )
   }
 
+  const wasFinishedOnArrival = isInitFinished && !validatePassword.isSuccess
   useEffect(() => {
-    consoleClient.init.get().then((res) => {
-      if (res.status === 'finished') window.location.href = `${basePath}/install`
-      else setLoading(false)
-    })
-  }, [])
+    if (wasFinishedOnArrival) router.replace('/install')
+  }, [wasFinishedOnArrival, router])
 
-  return loading ? (
-    <LoadingPlaceholder />
-  ) : (
-    <div>
-      {!validated && (
-        <div className="block min-w-28 sm:mx-12">
-          <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
-              {pageTitle}
-            </label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="off"
-              className="mt-1"
-              value={password}
-              onValueChange={setPassword}
-            />
-          </div>
-          <div className="flex flex-row flex-wrap justify-stretch p-0">
-            <Button variant="primary" onClick={handleValidation} className="min-w-28 basis-full">
-              {t(($) => $.validate, { ns: 'login' })}
-            </Button>
-          </div>
-        </div>
+  return (
+    <Form<InitPasswordFormValues>
+      className="block min-w-28 sm:mx-12"
+      errors={fieldErrors}
+      onFormSubmit={handleSubmit}
+    >
+      <Field
+        name="password"
+        validate={(value) => (value ? null : t(($) => $['error.passwordEmpty'], { ns: 'login' }))}
+        className="mb-4"
+      >
+        <FieldLabel>{pageTitle}</FieldLabel>
+        <Input
+          type="password"
+          autoComplete="off"
+          onValueChange={() => {
+            if (validatePassword.isError) validatePassword.reset()
+          }}
+        />
+        <FieldError />
+      </Field>
+      {hasFormError && (
+        <p role="alert" className="mb-4 system-sm-regular text-text-destructive">
+          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
       )}
-    </div>
+      <Button type="submit" variant="primary" loading={isSubmitting} className="w-full">
+        {t(($) => $.validate, { ns: 'login' })}
+      </Button>
+    </Form>
   )
 }
 
