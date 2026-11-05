@@ -69,7 +69,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     appId: null as string | null,
     isReady: false,
   })
-  const [joinFailure, setJoinFailure] = useState<JoinFailure>(null)
+  const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null)
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 

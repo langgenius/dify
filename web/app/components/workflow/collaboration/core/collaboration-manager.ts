@@ -184,7 +184,7 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
-  private joinFailure: JoinFailure = null
+  private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
   private joinAttempt = 0
@@ -251,7 +251,7 @@ export class CollaborationManager {
     this.emitGraphReadyState()
   }
 
-  onJoinFailure(callback: (failure: JoinFailure) => void): () => void {
+  onJoinFailure(callback: (failure: JoinFailure | null) => void): () => void {
     const unsubscribe = this.eventEmitter.on('joinFailure', callback)
     callback(this.joinFailure)
     return unsubscribe
