@@ -104,7 +104,7 @@ it('uses guarded full draft saves after the default socket fails before joining'
     }),
   )
   expect(request.mock.lastCall?.[0].body).not.toHaveProperty('_is_collaborative')
-  expect(toast.error).toHaveBeenCalledWith('workflow.collaboration.draftSaveBlocked')
+  expect(toast.error).toHaveBeenCalledWith('workflow.common.draftSaveFailed')
 
   act(() => result.current.syncWorkflowDraftWhenPageClose())
   expect(keepalive).toHaveBeenCalledOnce()

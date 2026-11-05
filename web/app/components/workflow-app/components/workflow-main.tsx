@@ -585,7 +585,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             >
               {joinFailure ? (
                 <>
-                  <span>{joinFailureMessages[joinFailure]}</span>
+                  <span role="alert">{joinFailureMessages[joinFailure]}</span>
                   {joinFailure !== 'retrying' && (
                     <Button
                       size="small"

@@ -167,7 +167,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     // Page-close saves cannot wait for the user's consent to clear the canvas.
-    const isCollaborationEnabled = workflowStore.getState().isCollaborationEnabled
     if (postParams && !isEmptyGraph(postParams.params.graph)) {
       const version = workflowStore.getState().draftSaveVersion + 1
       const isOrdinarySave = !postParams.params._is_collaborative
@@ -198,7 +197,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const isOrdinarySave =
-        !workflowStore.getState().isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()
+        !workflowStore.getState().isCollaborationEnabled ||
+        collaborationManager.canUseLocalDraftFallback()
       const version = workflowStore.getState().draftSaveVersion + 1
       workflowStore.setState({
         draftSaveVersion: version,
@@ -310,10 +310,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         if (
           !workflowStore.getState().isCollaborationEnabled ||
           collaborationManager.canUseLocalDraftFallback()
-        )
-          delete body._is_collaborative
-
-        if (!workflowStore.getState().isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
+        ) {
           delete body._is_collaborative
           workflowStore.setState({ draftSaveBlocked: true })
         }
