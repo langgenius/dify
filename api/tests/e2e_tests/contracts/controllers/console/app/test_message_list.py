@@ -13,7 +13,6 @@ from werkzeug.test import TestResponse
 
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.console.app.message import AgentChatMessageListApi, AgentMessageApi, ChatMessageListApi, MessageApi
-from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from enums.account import TenantAccountRole
 from graphon.file import FileTransferMethod, FileType
 from libs.external_api import ExternalApi
@@ -24,6 +23,7 @@ from models.agent import Agent, AgentScope
 from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
+from models.human_input_entities import FormDefinition, UserActionConfig
 from models.model import (
     App,
     AppAnnotationHitHistory,

@@ -55,18 +55,10 @@ from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormDefinition,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.storage.storage_type import StorageType
 from graphon.engine.layer import Layer
 from graphon.engine.ready_queue import StartTask
@@ -105,6 +97,14 @@ from models import Account, UploadFile
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    UserActionConfig,
+)
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType

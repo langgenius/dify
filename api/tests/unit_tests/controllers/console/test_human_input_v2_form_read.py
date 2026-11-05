@@ -13,14 +13,13 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.human_input_v2 import form as controller
-from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import ContactId, TenantId
 from core.tools.signature import sign_tool_file, verify_tool_file_signature
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Contact
 from dify_app import DifyApp
 from enums import DeploymentEdition
+from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_login import DifyLoginManager
 from graphon.variables.segments import StringSegment
 from libs.external_api import ExternalApi

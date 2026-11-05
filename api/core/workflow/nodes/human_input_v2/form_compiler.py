@@ -16,7 +16,11 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
-from core.workflow.nodes.human_input.entities import (
+from enums.human_input import ValueSourceType
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
+from models.human_input_entities import (
     OUTPUT_VARIABLE_PATTERN,
     FileInputConfig,
     FileListInputConfig,
@@ -26,10 +30,6 @@ from core.workflow.nodes.human_input.entities import (
     StringListSource,
     StringSource,
 )
-from core.workflow.nodes.human_input.enums import ValueSourceType
-from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
-from graphon.variables.segments import Segment
-from graphon.variables.template_resolution import convert_template
 
 from .entities import HumanInputNodeData
 

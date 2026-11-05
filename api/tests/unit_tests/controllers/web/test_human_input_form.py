@@ -17,17 +17,11 @@ import controllers.web.human_input_form as human_input_module
 from controllers.common.errors import NotFoundError
 from controllers.web.error import WebFormRateLimitExceededError
 from core.repositories.human_input_repository import HumanInputFormRecord
-from core.workflow.nodes.human_input.entities import (
-    FormDefinition,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType, ValueSourceType
 from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
-from models.human_input import RecipientType
+from models.human_input_entities import FormDefinition, ParagraphInputConfig, SelectInputConfig, StringListSource
 from models.model import App, AppMode, IconType, Site
 from services.entities.feature_entities import FeatureModel
 from services.human_input_service import Form, FormExpiredError

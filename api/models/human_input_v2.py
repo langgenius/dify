@@ -52,11 +52,11 @@ from core.human_input_v2.im_integration.change_log import (
 )
 from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH
 from core.human_input_v2.resolved_form import ResolvedForm
-from core.workflow.nodes.human_input.enums import (
+from core.workflow.nodes.human_input_v2.entities import RecipientConfig
+from enums.human_input import (
     HumanInputFormKind,
     HumanInputFormStatus,
 )
-from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials as _ChannelEncryptedCredentials

@@ -24,7 +24,7 @@ from core.human_input_v2.im_integration.adapters.message_locator import MessageL
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now

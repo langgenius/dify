@@ -13,25 +13,25 @@ from core.entities.execution_extra_content import (
 from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason, human_input_container_selector
-from core.workflow.nodes.human_input.entities import (
-    FormDefinition,
-    FormInputConfig,
-    HumanInputNodeData,
-    SelectInputConfig,
-    StringListSource,
-)
-from core.workflow.nodes.human_input.enums import (
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import SessionBinding
+from enums.human_input import (
     ButtonStyle,
     HumanInputFormKind,
     HumanInputFormStatus,
     TimeoutUnit,
     ValueSourceType,
 )
-from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime import RuntimeState, VariablePool
 from models.human_input import HumanInputForm
+from models.human_input_entities import (
+    FormDefinition,
+    FormInputConfig,
+    HumanInputNodeData,
+    SelectInputConfig,
+    StringListSource,
+)
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 

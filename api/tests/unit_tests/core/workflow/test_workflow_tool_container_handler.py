@@ -50,7 +50,6 @@ from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_tool_container_handler import (
@@ -138,6 +137,7 @@ from graphon.variables.segments import ArrayFileSegment
 from graphon.variables.types import SegmentType
 from models import Account, ToolFile, UploadFile, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer

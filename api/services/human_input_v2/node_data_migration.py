@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.human_input_v2.shared import TenantId
-from core.workflow.human_input_adapter import EmailDeliveryMethod, MemberRecipient
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
@@ -18,6 +16,8 @@ from core.workflow.nodes.human_input_v2.migration import (
     NodeMigrationConversion,
     convert_legacy_human_input_node_data,
 )
+from models.human_input_delivery import EmailDeliveryMethod, MemberRecipient
+from models.human_input_entities import HumanInputNodeDataFull
 
 
 class WorkspaceMemberEmailLookup(Protocol):

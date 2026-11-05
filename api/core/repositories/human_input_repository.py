@@ -8,7 +8,35 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
-from core.workflow.human_input_adapter import (
+from core.workflow.human_input_adapter import is_human_input_webapp_enabled
+from enums.human_input import DeliveryMethodType, HumanInputFormKind, HumanInputFormStatus, RecipientType
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+from models.account import Account, TenantAccountJoin
+from models.human_input import (
+    BackstageRecipientPayload,
+    ConsoleDeliveryPayload,
+    ConsoleRecipientPayload,
+    EmailExternalRecipientPayload,
+    EmailMemberRecipientPayload,
+    HumanInputDelivery,
+    HumanInputForm,
+    HumanInputFormRecipient,
+    InstantMessageRecipientPayload,
+    StandaloneWebAppRecipientPayload,
+)
+from models.human_input_contracts import (
+    FormCreateParams,
+    FormNotFoundError,
+    HumanInputFormRecipientEntity,
+)
+from models.human_input_contracts import (
+    HumanInputFormEntity as SharedHumanInputFormEntity,
+)
+from models.human_input_contracts import (
+    HumanInputFormRepository as SharedHumanInputFormRepository,
+)
+from models.human_input_delivery import (
     BoundRecipient,
     DeliveryChannelConfig,
     EmailDeliveryMethod,
@@ -19,27 +47,8 @@ from core.workflow.human_input_adapter import (
     InstantMessageDeliveryMethod,
     InstantMessageUserRecipient,
     InteractiveSurfaceDeliveryMethod,
-    is_human_input_webapp_enabled,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
-from models.account import Account, TenantAccountJoin
-from models.human_input import (
-    BackstageRecipientPayload,
-    ConsoleDeliveryPayload,
-    ConsoleRecipientPayload,
-    DeliveryMethodType,
-    EmailExternalRecipientPayload,
-    EmailMemberRecipientPayload,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    InstantMessageRecipientPayload,
-    RecipientType,
-    StandaloneWebAppRecipientPayload,
-)
+from models.human_input_entities import FormDefinition, HumanInputNodeData
 from repositories.human_input_errors import FormAlreadyHandledError
 
 
@@ -55,68 +64,18 @@ class _WorkspaceMemberInfo:
     email: str
 
 
-class FormNotFoundError(Exception):
-    pass
-
-
-@dataclasses.dataclass
-class FormCreateParams:
-    workflow_execution_id: str | None
-    node_id: str
-    form_config: HumanInputNodeData
-    rendered_content: str
-    delivery_methods: Sequence[DeliveryChannelConfig]
-    display_in_ui: bool
-    resolved_default_values: Mapping[str, Any]
-    form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
-    # Chatflow forms also belong to a conversation.
-    conversation_id: str | None = None
-    form_id: str | None = None
-
-
-class HumanInputFormRecipientEntity(Protocol):
-    @property
-    def id(self) -> str: ...
-
-    @property
-    def token(self) -> str: ...
-
-
-class HumanInputFormEntity(Protocol):
-    @property
-    def id(self) -> str: ...
+class HumanInputFormEntity(SharedHumanInputFormEntity, Protocol):
+    """Legacy form view with the submission token used by core callers."""
 
     @property
     def submission_token(self) -> str | None: ...
 
-    @property
-    def recipients(self) -> list[HumanInputFormRecipientEntity]: ...
 
-    @property
-    def rendered_content(self) -> str: ...
-
-    @property
-    def selected_action_id(self) -> str | None: ...
-
-    @property
-    def created_at(self) -> datetime: ...
-
-    @property
-    def submitted_data(self) -> Mapping[str, Any] | None: ...
-
-    @property
-    def submitted(self) -> bool: ...
-
-    @property
-    def status(self) -> HumanInputFormStatus: ...
-
-    @property
-    def expiration_time(self) -> datetime: ...
-
-
-class HumanInputFormRepository(Protocol):
+class HumanInputFormRepository(SharedHumanInputFormRepository, Protocol):
+    @override
     def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None: ...
 
+    @override
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity: ...
 
     def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:

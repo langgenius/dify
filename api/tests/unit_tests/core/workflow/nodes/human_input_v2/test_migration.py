@@ -1,13 +1,13 @@
 import pytest
 
 from core.human_input_v2.shared.values import NormalizedEmail
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.migration import (
     MemberEmailSnapshot,
     ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from graphon.enums import BuiltinNodeTypes
+from models.human_input_entities import HumanInputNodeDataFull
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"

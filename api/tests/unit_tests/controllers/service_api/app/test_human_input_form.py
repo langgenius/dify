@@ -16,8 +16,8 @@ from werkzeug.exceptions import NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
+from enums.human_input import RecipientType
 from models.enums import EndUserType
-from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
 
 

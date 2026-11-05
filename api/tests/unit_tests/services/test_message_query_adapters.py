@@ -19,11 +19,10 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.helper import encrypter, http_client_pooling
-from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
 from core.tools.signature import verify_tool_file_signature
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import ButtonStyle, HumanInputFormStatus
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType

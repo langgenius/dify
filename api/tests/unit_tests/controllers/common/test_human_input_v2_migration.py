@@ -4,7 +4,13 @@ from uuid import UUID
 import pytest
 
 from controllers.common import human_input_v2_migration as migration_boundary
-from core.workflow.human_input_adapter import EmailDeliveryMethod, MemberRecipient, WebAppDeliveryMethod
+from models.human_input_delivery import (
+    EmailDeliveryMethod,
+    MemberRecipient,
+)
+from models.human_input_delivery import (
+    InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod,
+)
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"

@@ -5,10 +5,6 @@ class InvalidConfigError(Exception):
     pass
 
 
-class InvalidSubmittedDataError(Exception):
-    pass
-
-
 class InvalidTransferMethodError(InvalidConfigError):
     transfer_method: FileTransferMethod
 

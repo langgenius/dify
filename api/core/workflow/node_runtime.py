@@ -39,12 +39,8 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormInputConfig,
-    HumanInputNodeData,
-)
+from core.workflow.human_input_adapter import is_human_input_webapp_enabled, parse_human_input_delivery_methods
+from enums.human_input import DeliveryMethodType
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
@@ -77,18 +73,11 @@ from graphon.nodes.tool_runtime_entities import (
 )
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
+from models.human_input_delivery import BoundRecipient, DeliveryChannelConfig, EmailDeliveryMethod, EmailRecipients
+from models.human_input_entities import FileInputConfig, FileListInputConfig, FormInputConfig, HumanInputNodeData
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .human_input_adapter import (
-    BoundRecipient,
-    DeliveryChannelConfig,
-    DeliveryMethodType,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    is_human_input_webapp_enabled,
-    parse_human_input_delivery_methods,
-)
 from .system_variables import SystemVariableKey, get_system_text
 from .workflow_tool_container_types import WorkflowToolContainerPayload
 

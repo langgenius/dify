@@ -24,8 +24,6 @@ from core.db.session_factory import session_factory as default_session_factory
 from core.helper import encrypter
 from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, TenantId
-from core.workflow.human_input_adapter import EmailDeliveryConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, TimeoutUnit
 from core.workflow.nodes.human_input_v2.entities import (
     AllWorkspaceContacts,
     Contact,
@@ -38,6 +36,7 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.form_compiler import MissingResolvedInputError, compile_resolved_form
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, TimeoutUnit
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
@@ -45,6 +44,7 @@ from graphon.variable_loader import VariableLoader, load_into_variable_pool
 from graphon.variables.segments import StringSegment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import naive_utc_now
+from models.human_input_delivery import EmailDeliveryConfig
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import RecipientId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from enums.human_input import HumanInputFormKind
 from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import HumanInputForm
 from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure

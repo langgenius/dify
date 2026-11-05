@@ -14,7 +14,7 @@ from core.app.file_access import DatabaseFileAccessController
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId, WorkspaceScope
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
 from factories.human_input_v2_form_presentation import refresh_form_file_urls
 from graphon.enums import WorkflowExecutionStatus
