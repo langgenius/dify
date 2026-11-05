@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from collections.abc import Iterable
 from dataclasses import replace
 from http import HTTPStatus
 from io import BytesIO
 from types import SimpleNamespace
+from typing import Final
 from unittest.mock import Mock
 
 import pytest
@@ -40,11 +42,11 @@ from controllers.openapi.app_run import (
     CompletionRunApi,
     _translate_service_errors,
 )
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from controllers.openapi.human_input_form import FormVersion
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.errors.error import AppInvokeQuotaExceededError
 from core.workflow.nodes.human_input import UserActionConfig
@@ -419,7 +421,9 @@ def _hint_input(events: list[str]) -> dict[str, object]:
 
 
 def test_reply_hints_keep_the_app_target() -> None:
-    events = list(app_run._reply_layer(_message_end_events(), "run.console_app.chat", _TEST_APP_ID))
+    events = list(
+        app_run._reply_layer(_message_end_events(), "run.console_app.chat", _layer_ctx(TokenType.OAUTH_ACCOUNT))
+    )
     assert _hint_input(events) == {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}}
 
 
@@ -454,22 +458,39 @@ def _hinted_tokens(events: list[str]) -> list[str]:
     return [hint["input"]["form_token"] for hint in hints]
 
 
-def test_draft_runs_hint_the_form_submit_op_for_a_v2_form_only() -> None:
-    """A v1 form in a draft run carries a console token the submit op refuses; a v2 form's
-    token is the initiator's own delivery, which the submit op takes for that account."""
-    draft_routes = [route for route in app_run._RUN_ROUTES if route.invoke_from == InvokeFrom.DEBUGGER]
-    assert draft_routes
-    for route in draft_routes:
-        events = _paused_events()
+def _layer_ctx(token_type: TokenType) -> Context:
+    ctx = Context(_subject(token_type), Session(), {"app_id": _TEST_APP_ID})
+    ctx._app = _make_app()
+    return ctx
+
+
+_GRAPH_ROUTES: Final = tuple(route for route in app_run._RUN_ROUTES if app_run._form_layer in route.hints)
+
+
+def test_every_graph_route_draft_or_published_hints_paused_forms() -> None:
+    assert {route.op for route in _GRAPH_ROUTES} == {
+        "run.console_app.workflow",
+        "run.console_app.advanced_chat",
+        "test.console_app.workflow",
+        "test.console_app.advanced_chat",
+    }
+    assert all(route.summary.endswith(app_run._DRAFT_FORM_NOTE) for route in _GRAPH_ROUTES if route.draft)
+
+
+@pytest.mark.parametrize(
+    ("token_type", "hinted"),
+    [
+        (TokenType.OAUTH_ACCOUNT, ["token-v2"]),
+        (TokenType.OAUTH_EXTERNAL_SSO, ["token-v2"]),
+        (TokenType.RESOURCE_ACCESS, []),
+    ],
+)
+def test_a_paused_run_hints_its_form_only_to_a_caller_the_submit_op_admits(
+    token_type: TokenType, hinted: list[str]
+) -> None:
+    """The v1 token has no form in the store, so only the v2 one can be answered at all."""
+    for route in _GRAPH_ROUTES:
+        events: Iterable[str] = _paused_events()
         for layer in route.hints:
-            events = list(layer(events, route.op, _TEST_APP_ID))
-        assert _hinted_tokens(events) == ["token-v2"]
-        assert route.summary.endswith(app_run._DRAFT_FORM_NOTE)
-
-
-def test_published_graph_runs_hint_the_form_submit_op_for_either_form_version() -> None:
-    graph_routes = [route for route in app_run._RUN_ROUTES if not route.draft and app_run._form_layer in route.hints]
-    assert {route.op for route in graph_routes} == {"run.console_app.workflow", "run.console_app.advanced_chat"}
-    for route in graph_routes:
-        events = list(app_run._form_layer(_paused_events(), route.op, _TEST_APP_ID))
-        assert _hinted_tokens(events) == ["token-v1", "token-v2"]
+            events = layer(events, route.op, _layer_ctx(token_type))
+        assert _hinted_tokens(list(events)) == hinted

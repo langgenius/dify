@@ -203,6 +203,12 @@ def op_of(view: Any) -> str:
     return view.__spec__.catalog.op
 
 
+def requirements_of(view: Any) -> tuple[Requirement, ...]:
+    """The requirements a route declared on ``endpoint``; a hint that must hold for its caller reads them here."""
+
+    return view.__spec__.requirements
+
+
 def endpoint(
     *,
     op: str,
