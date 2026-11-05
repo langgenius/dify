@@ -2,7 +2,7 @@
 
 import type { EnvVarValueSource } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { LLMEnvironmentVariableValue } from '@/app/components/workflow/types'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 
 export type EnvironmentVariableSelection = {
   customValue: string | LLMEnvironmentVariableValue
@@ -15,7 +15,7 @@ export type DeploymentConfigurationValues = {
 }
 
 export type DeploymentConfigurationValuesController = {
-  credentials: DeploymentConfigurationValues['credentials']
+  getCredential: (key: string) => string | undefined
   getEnvironmentVariableSelection: (
     workflowId: string,
     key: string,
@@ -38,7 +38,7 @@ export function useDeploymentConfigurationValues() {
     credentials: {},
     environmentVariables: {},
   })
-  const [credentials, setCredentials] = useState<DeploymentConfigurationValues['credentials']>({})
+  const getCredential = useCallback((key: string) => valuesRef.current.credentials[key], [])
 
   const getEnvironmentVariableSelection = useCallback(
     (workflowId: string, key: string) =>
@@ -50,15 +50,13 @@ export function useDeploymentConfigurationValues() {
     const current = valuesRef.current
     if (current.credentials[key] === value) return
 
-    const nextCredentials = {
-      ...current.credentials,
-      [key]: value,
-    }
     valuesRef.current = {
       ...current,
-      credentials: nextCredentials,
+      credentials: {
+        ...current.credentials,
+        [key]: value,
+      },
     }
-    setCredentials(nextCredentials)
   }, [])
   const setEnvironmentVariableSelection = useCallback(
     (workflowId: string, key: string, value: EnvironmentVariableSelection) => {
@@ -75,7 +73,7 @@ export function useDeploymentConfigurationValues() {
   )
 
   return {
-    credentials,
+    getCredential,
     getEnvironmentVariableSelection,
     getValues,
     setCredential,

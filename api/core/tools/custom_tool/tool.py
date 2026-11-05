@@ -308,6 +308,12 @@ class ApiTool(Tool):
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
     ):
+        """Convert a body value using the first supported anyOf option, without side effects.
+
+        Number options preserve fractional exponent values. Conversions raising ValueError
+        try the remaining options; exhaustion returns the input unchanged. A depleted
+        recursion budget raises before conversion.
+        """
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -317,7 +323,7 @@ class ApiTool(Tool):
                     if option["type"] == "integer" or option["type"] == "int":
                         return int(value)
                     elif option["type"] == "number":
-                        if "." in str(value):
+                        if "." in str(value) or "e" in str(value).lower():
                             return float(value)
                         else:
                             return int(value)
@@ -343,13 +349,19 @@ class ApiTool(Tool):
         return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
 
     def _convert_body_property_type(self, property: dict[str, Any], value: Any):
+        """Convert a body value according to its OpenAPI property, without side effects.
+
+        Number properties accept decimal and exponent representations while integer
+        representations keep their exact value. Conversions raising ValueError return
+        the original input; anyOf properties retain their existing option-order behavior.
+        """
         try:
             if "type" in property:
                 if property["type"] == "integer" or property["type"] == "int":
                     return int(value)
                 elif property["type"] == "number":
-                    # check if it is a float
-                    if "." in str(value):
+                    # Decimal points and exponents both denote floating-point representations.
+                    if "." in str(value) or "e" in str(value).lower():
                         return float(value)
                     else:
                         return int(value)

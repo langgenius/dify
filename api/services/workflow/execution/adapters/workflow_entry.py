@@ -29,6 +29,7 @@ from core.workflow.system_variables import (
     preload_node_creation_variables,
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories.workflow_input import map_user_inputs_to_variable_pool
 from graphon.engine import Engine
@@ -48,7 +49,9 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from libs.workflow_template_values import template_value_selectors
 from models import Account
+from models.agent_config_entities import AgentSoulConfig
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from services.human_input.ports import HumanInputFormReader
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
@@ -257,7 +260,13 @@ class WorkflowEntry:
         workflow_runtime: WorkflowRuntime | None = None,
     ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
         """
-        Single step run workflow node
+        Single step run workflow node.
+
+        The workflow and injected resolver must own the requested node and binding.
+        Preload node references, including manual Agent knowledge filters, into
+        the supplied pool before constructing the node. Value-free operators
+        introduce no dependencies. Missing Agent resolvers fail explicitly;
+        legacy Agent nodes do not resolve a Soul binding.
         :param workflow: immutable workflow definition
         :param node_id: node id
         :param user_id: user id
@@ -320,6 +329,29 @@ class WorkflowEntry:
             )
         except NotImplementedError:
             variable_mapping = {}
+        if is_dify_agent_node_data(node_config_data):
+            if agent_binding_resolver is None:
+                raise ValueError("Dify Agent nodes require an injected binding resolver")
+            # Soul filters live in the owned snapshot rather than graph node data.
+            bundle = agent_binding_resolver.resolve(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_id=workflow.id,
+                node_id=node_id,
+            )
+            agent_soul = AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict)
+            variable_mapping = {
+                **variable_mapping,
+                **{
+                    f"{node_id}.metadata_filter.{'.'.join(selector)}": selector
+                    for knowledge_set in agent_soul.knowledge.sets
+                    if knowledge_set.metadata_filtering.mode == "manual"
+                    and knowledge_set.metadata_filtering.conditions is not None
+                    for condition in knowledge_set.metadata_filtering.conditions.conditions
+                    if condition.comparison_operator not in ("empty", "not empty")
+                    for selector in template_value_selectors(condition.value)
+                },
+            }
         variable_mapping = inject_default_system_variable_mappings(
             node_id=node_id,
             node_type=node_type,

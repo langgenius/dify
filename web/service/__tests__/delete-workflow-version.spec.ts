@@ -10,7 +10,12 @@ vi.mock('@/service/base', () => ({ request }))
 
 const cases = [
   {
-    resource: { kind: 'app', appId: 'owner', mode: 'workflow' } satisfies EditorResource,
+    resource: {
+      kind: 'app',
+      collaborationEnabled: false,
+      appId: 'owner',
+      mode: 'workflow',
+    } satisfies EditorResource,
     path: '/apps/owner/workflows/version-1',
     key: (id: string) =>
       consoleQuery.apps.byAppId.workflows.get.key({ input: { params: { app_id: id } } }),

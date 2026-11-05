@@ -233,7 +233,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             {t(($) => $['env.modal.name'], { ns: 'workflow' })}
           </FieldLabel>
           <Input
-            placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
+            placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' })}
             value={name}
             onChange={handleVarNameChange}
             onBlur={(e) => checkVariableName(e.target.value)}
@@ -262,7 +262,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             <Textarea
               className="h-20 p-2"
               value={typeof value === 'string' || typeof value === 'number' ? value : ''}
-              placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
+              placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' })}
               onValueChange={(value) => setValue(value)}
             />
           ) : (
@@ -287,7 +287,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
           <Textarea
             className="h-20 p-2"
             value={description}
-            placeholder={t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
+            placeholder={t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' })}
             onValueChange={(value) => setDescription(value)}
           />
         </Field>
