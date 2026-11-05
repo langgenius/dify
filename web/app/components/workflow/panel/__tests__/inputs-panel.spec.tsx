@@ -1,6 +1,7 @@
 import type { Shape as HooksStoreShape } from '../../hooks-store/store'
 import type { RunFile } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
@@ -298,6 +299,70 @@ describe('InputsPanel', () => {
       })
 
       expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
+    })
+  })
+
+  describe('File input defaults', () => {
+    const defaultFile: FileEntity = {
+      id: 'default-file',
+      name: 'default.txt',
+      size: 10,
+      type: 'text/plain',
+      progress: 100,
+      transferMethod: TransferMethod.local_file,
+      supportFileType: 'document',
+      uploadedId: 'default-upload',
+    }
+
+    it.each([false, true])('should submit the configured file default and preserve clear semantics (required: %s)', async (required) => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.singleFile,
+                variable: 'file',
+                label: 'File',
+                required,
+                default: defaultFile,
+                allowed_file_types: ['document'],
+                allowed_file_upload_methods: [TransferMethod.remote_url],
+              },
+            ],
+          },
+        }),
+        {
+          hooksStoreProps: createHooksStoreProps({
+            handleRun,
+            configsMap: { flowId: 'flow-1', flowType: FlowType.appFlow, fileSettings: { enabled: false } },
+          }),
+        },
+      )
+      const runButton = screen.getByRole('button', { name: 'workflow.singleRun.startRun' })
+
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(expect.objectContaining({
+        inputs: {
+          file: {
+            type: 'document',
+            transfer_method: TransferMethod.local_file,
+            url: '',
+            upload_file_id: 'default-upload',
+          },
+        },
+      }))
+
+      const fileItemButtons = screen.getByTitle('default.txt').parentElement!.parentElement!.querySelectorAll('button')
+      await user.click(fileItemButtons[fileItemButtons.length - 1])
+      expect(screen.queryByText('default.txt')).not.toBeInTheDocument()
+      handleRun.mockClear()
+      await user.click(runButton)
+
+      // The cleared value reaches validation as missing; only optional inputs become an explicit ''.
+      expect(mockCheckInputsForm).toHaveBeenLastCalledWith({ file: null }, expect.any(Array))
+      expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { file: required ? null : '' } }))
     })
   })
 })

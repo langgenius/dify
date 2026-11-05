@@ -1,4 +1,5 @@
 import type { FileEntity } from '../../types'
+import type { FileUploaderInAttachmentRef } from '../index'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TransferMethod } from '@/types/app'
@@ -6,10 +7,12 @@ import FileUploaderInAttachmentWrapper from '../index'
 
 const mockHandleRemoveFile = vi.fn()
 const mockHandleReUploadFile = vi.fn()
+const mockHandleClearFiles = vi.fn()
 vi.mock('../../hooks', () => ({
   useFile: () => ({
     handleRemoveFile: mockHandleRemoveFile,
     handleReUploadFile: mockHandleReUploadFile,
+    handleClearFiles: mockHandleClearFiles,
   }),
 }))
 
@@ -203,5 +206,21 @@ describe('FileUploaderInAttachmentWrapper', () => {
     fireEvent.click(replayBtn!)
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
+  })
+
+  it('should clear files through the forwarded ref', () => {
+    const ref: { current: FileUploaderInAttachmentRef | null } = { current: null }
+    render(
+      <FileUploaderInAttachmentWrapper
+        ref={ref}
+        value={[createFile()]}
+        onChange={vi.fn()}
+        fileConfig={createFileConfig()}
+      />,
+    )
+
+    ref.current!.clear()
+
+    expect(mockHandleClearFiles).toHaveBeenCalledOnce()
   })
 })

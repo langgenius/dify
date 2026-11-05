@@ -4,6 +4,7 @@ import type {
   Viewport,
   XYPosition,
 } from 'reactflow'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -219,7 +220,7 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string | number
+  default?: string | number | boolean | FileEntity | FileEntity[]
   required: boolean
   hint?: string
   options?: string[]

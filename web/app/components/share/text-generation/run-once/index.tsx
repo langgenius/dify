@@ -1,5 +1,6 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileUploaderInAttachmentRef } from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
@@ -9,7 +10,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -52,6 +53,12 @@ const RunOnce: FC<IRunOnceProps> = ({
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const [isInitialized, setIsInitialized] = useState(false)
+  const fileUploadersRef = useRef(new Map<string, FileUploaderInAttachmentRef>())
+
+  const handleInputsChange = useCallback((newInputs: Record<string, any>) => {
+    onInputsChange(newInputs)
+    inputsRef.current = newInputs
+  }, [onInputsChange, inputsRef])
 
   const onClear = () => {
     const newInputs: Record<string, InputValueTypes> = {}
@@ -62,10 +69,15 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = ''
       else if (item.type === 'checkbox')
         newInputs[item.key] = false
+      else if (item.type === 'file' && item.required === false)
+        newInputs[item.key] = ''
+      else if (item.type === 'file-list')
+        newInputs[item.key] = []
       else
         newInputs[item.key] = undefined
     })
-    onInputsChange(newInputs)
+    fileUploadersRef.current.forEach(uploader => uploader.clear())
+    handleInputsChange(newInputs)
   }
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -81,11 +93,6 @@ const RunOnce: FC<IRunOnceProps> = ({
     runControl?.onStop?.()
   }, [isRunning, runControl])
 
-  const handleInputsChange = useCallback((newInputs: Record<string, any>) => {
-    onInputsChange(newInputs)
-    inputsRef.current = newInputs
-  }, [onInputsChange, inputsRef])
-
   useEffect(() => {
     if (isInitialized)
       return
@@ -100,9 +107,9 @@ const RunOnce: FC<IRunOnceProps> = ({
       else if (item.type === 'checkbox')
         newInputs[item.key] = item.default || false
       else if (item.type === 'file')
-        newInputs[item.key] = undefined
+        newInputs[item.key] = item.default && typeof item.default === 'object' && !Array.isArray(item.default) ? item.default : undefined
       else if (item.type === 'file-list')
-        newInputs[item.key] = []
+        newInputs[item.key] = Array.isArray(item.default) ? item.default : []
       else
         newInputs[item.key] = undefined
     })
@@ -170,10 +177,19 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
+                        ref={(uploader) => {
+                          if (uploader)
+                            fileUploadersRef.current.set(item.key, uploader)
+                          else
+                            fileUploadersRef.current.delete(item.key)
+                        }}
                         value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
                           ? [inputs[item.key] as FileEntity]
                           : []}
-                        onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
+                        onChange={(files) => {
+                          const value = files[0] ?? (item.required === false ? '' : undefined)
+                          handleInputsChange({ ...inputsRef.current, [item.key]: value })
+                        }}
                         fileConfig={{
                           ...item.config,
                           fileUploadConfig: (visionConfig as any).fileUploadConfig,
@@ -182,6 +198,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
+                        ref={(uploader) => {
+                          if (uploader)
+                            fileUploadersRef.current.set(item.key, uploader)
+                          else
+                            fileUploadersRef.current.delete(item.key)
+                        }}
                         value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{

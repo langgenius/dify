@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import {
@@ -6,6 +7,7 @@ import {
 } from '@remixicon/react'
 import {
   useCallback,
+  useImperativeHandle,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -25,11 +27,16 @@ type Option = {
   label: string
   icon: React.JSX.Element
 }
+export type FileUploaderInAttachmentRef = {
+  clear: () => void
+}
 type FileUploaderInAttachmentProps = {
+  ref?: Ref<FileUploaderInAttachmentRef>
   isDisabled?: boolean
   fileConfig: FileUpload
 }
 const FileUploaderInAttachment = ({
+  ref,
   isDisabled,
   fileConfig,
 }: FileUploaderInAttachmentProps) => {
@@ -38,7 +45,9 @@ const FileUploaderInAttachment = ({
   const {
     handleRemoveFile,
     handleReUploadFile,
+    handleClearFiles,
   } = useFile(fileConfig)
+  useImperativeHandle(ref, () => ({ clear: handleClearFiles }), [handleClearFiles])
   const options = [
     {
       value: TransferMethod.local_file,
@@ -117,12 +126,14 @@ const FileUploaderInAttachment = ({
 }
 
 export type FileUploaderInAttachmentWrapperProps = {
+  ref?: Ref<FileUploaderInAttachmentRef>
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
   isDisabled?: boolean
 }
 const FileUploaderInAttachmentWrapper = ({
+  ref,
   value,
   onChange,
   fileConfig,
@@ -133,7 +144,7 @@ const FileUploaderInAttachmentWrapper = ({
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInAttachment isDisabled={isDisabled} fileConfig={fileConfig} />
+      <FileUploaderInAttachment ref={ref} isDisabled={isDisabled} fileConfig={fileConfig} />
     </FileContextProvider>
   )
 }
