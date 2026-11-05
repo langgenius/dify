@@ -31125,7 +31125,7 @@ The message was not found for this account and app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| body | string |  | Yes |
+| body | string | Must hold the Request URL placeholder {{#url#}} exactly once: it becomes the link to the form | Yes |
 | subject | string |  | Yes |
 
 #### MessageTemplateTestRequest
