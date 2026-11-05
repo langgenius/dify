@@ -134,7 +134,7 @@ def initialize(
         invoke_from=InvokeFrom.WEB_APP,
         stream=False,
         extras={},
-        trace_manager=None,
+        trace_scope=None,
     )
     if isinstance(entity, ConversationAppGenerateEntity):
         entity.parent_message_id = "parent-message"
@@ -264,7 +264,7 @@ def test_initialization_worker_read_and_completion_use_injected_database(
         observed.append(saved.id)
 
     monkeypatch.setattr(message_pipeline.message_was_created, "send", completed)
-    pipeline._save_message()
+    pipeline._save_message(preserve_existing_usage=False, agent_stop_requested=False)
     assert observed == [identity.message_id]
     assert pipeline._message_end_to_stream_response().files == []
     assert checked_out_connections(engine) == 0

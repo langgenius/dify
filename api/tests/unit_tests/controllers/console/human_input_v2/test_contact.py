@@ -50,21 +50,32 @@ def current_account(sqlite_session_factory: sessionmaker[Session]) -> Account:
     return account
 
 
-@pytest.fixture(params=[False, True], ids=["legacy-roles", "rbac"])
-def client(current_account: Account, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", request.param)
+@pytest.fixture(scope="module")
+def console_app() -> Flask:
+    """One app with the whole console blueprint, which takes a few hundred milliseconds to register.
 
+    Each request logs in the account the running test stored under ``extensions["test_login_user"]``.
+    """
     app = Flask(__name__)
     LoginManager().init_app(app)
     app.register_blueprint(console_bp)
 
     @app.before_request
     def authenticate() -> None:
-        g._login_user = current_account
+        g._login_user = app.extensions["test_login_user"]
 
-    return app.test_client()
+    return app
+
+
+@pytest.fixture(params=[False, True], ids=["legacy-roles", "rbac"])
+def client(
+    console_app: Flask, current_account: Account, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> FlaskClient:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", request.param)
+    monkeypatch.setitem(console_app.extensions, "test_login_user", current_account)
+    return console_app.test_client()
 
 
 @pytest.mark.parametrize(
@@ -143,7 +154,14 @@ def test_editing_roles_can_select_contacts(
     options = client.get(f"{_BASE_URL}/contact-options")
     assert options.status_code == 200
     assert options.get_json()["data"] == [
-        {"id": contact_id, "type": "external", "name": "Reviewer", "email": "contact@example.com", "avatar_url": None}
+        {
+            "id": contact_id,
+            "type": "external",
+            "name": "Reviewer",
+            "email": "contact@example.com",
+            "avatar_url": None,
+            "im_providers": [],
+        }
     ]
 
     resolved = client.get(f"{_BASE_URL}/contact-options/batch", query_string={"contact_ids": contact_id})

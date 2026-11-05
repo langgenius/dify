@@ -118,7 +118,7 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
         else onOpenChange?.(nextOpen, details)
       }}
     >
-      <DialogContent initialFocus={nameInputRef} className="w-150 max-w-150">
+      <DialogContent initialFocus={nameInputRef} className="w-150">
         <SwitchAppSession
           nameInputRef={nameInputRef}
           sourceApp={sourceApp}
@@ -251,7 +251,7 @@ function SwitchAppSession({
                 required
                 readOnly={isPending}
                 defaultValue={`${sourceApp.name}(copy)`}
-                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                 className="h-10 grow"
               />
               <FieldError className="col-span-2" />
@@ -272,7 +272,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

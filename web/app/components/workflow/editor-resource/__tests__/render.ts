@@ -1,6 +1,6 @@
 import type { RenderHookOptions, RenderOptions } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
-import type { EditorResource } from '../resource'
+import type { TestEditorResource } from './fixture-resource'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { useQueryClient } from '@tanstack/react-query'
 import { createElement } from 'react'
@@ -10,8 +10,9 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render, renderHook } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { EditorResourceScope } from '../provider'
+import { editorResourceForTest } from './fixture-resource'
 
-type ResourceOption = { resource?: EditorResource }
+type ResourceOption = { resource?: TestEditorResource }
 
 function createWrapper({
   resource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -31,7 +32,7 @@ function createWrapper({
     return createElement(
       QueryClientTestProvider,
       { queryClient: client },
-      createElement(EditorResourceScope, { resource, children }),
+      createElement(EditorResourceScope, { resource: editorResourceForTest(resource), children }),
     )
   }
   function EditorWrapper({ children }: { children: ReactNode }) {

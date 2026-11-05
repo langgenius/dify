@@ -300,6 +300,7 @@ class SnippetService:
 
         with self._session_scope() as session:
             session.add(snippet)
+            session.flush()
             self._commit_if_owned(session)
 
         return snippet

@@ -281,6 +281,52 @@ class TestCachedEmbeddingCases:
 
             assert any(record.levelno == logging.WARNING for record in caplog.records)
 
+        def test_multimodal_nan_vector_does_not_shift_the_files_after_it(
+            self,
+            mock_model_instance: Mock,
+            embedding_session: Session,
+            caplog: pytest.LogCaptureFixture,
+        ) -> None:
+            """A dropped multimodal vector must not be handed to the next file."""
+            cache_embedding = CacheEmbedding(mock_model_instance)
+            documents = [{"file_id": "alpha"}, {"file_id": "beta"}, {"file_id": "gamma"}]
+
+            alpha_vector = np.zeros(4)
+            alpha_vector[0] = 1.0
+            gamma_vector = np.zeros(4)
+            gamma_vector[2] = 1.0
+            nan_vector = np.full(4, np.nan)
+
+            usage = EmbeddingUsage(
+                tokens=30,
+                total_tokens=30,
+                unit_price=Decimal("0.0001"),
+                price_unit=Decimal(1000),
+                total_price=Decimal("0.000003"),
+                currency="USD",
+                latency=0.5,
+            )
+            mock_model_instance.invoke_multimodal_embedding.return_value = EmbeddingResult(
+                model="vision-embedding-model",
+                embeddings=[alpha_vector, nan_vector, gamma_vector],
+                usage=usage,
+            )
+
+            with caplog.at_level(logging.WARNING, logger="core.rag.embedding.cached_embedding"):
+                result = cache_embedding.embed_multimodal_documents(documents)
+
+            assert result[0] == pytest.approx(alpha_vector.tolist())
+            assert result[1] is None
+            assert result[2] == pytest.approx(gamma_vector.tolist())
+
+            stored: dict[str, list[float]] = {
+                row.hash: row.get_embedding() for row in embedding_session.scalars(select(Embedding)).all()
+            }
+            assert stored == {
+                "alpha": pytest.approx(alpha_vector.tolist()),
+                "gamma": pytest.approx(gamma_vector.tolist()),
+            }
+
         def test_embed_multimodal_documents_large_batch(
             self, mock_model_instance: Mock, embedding_session: Session
         ) -> None:
@@ -794,6 +840,70 @@ class TestEmbeddingServiceCases:
             assert result == [None]
             assert "Normalized embedding is nan" in caplog.text
             assert sqlite_embedding_session.scalar(select(Embedding)) is None
+
+        def test_nan_vector_does_not_shift_the_vectors_after_it(
+            self,
+            sqlite_embedding_session: Session,
+            model_instance: Mock,
+            caplog: pytest.LogCaptureFixture,
+        ) -> None:
+            """A dropped vector must not be handed to the next text in the batch."""
+            alpha_vector = np.array([1.0, 0.0, 0.0, 0.0])
+            gamma_vector = np.array([0.0, 0.0, 1.0, 0.0])
+            nan_vector = np.array([np.nan, np.nan, np.nan, np.nan])
+            model_instance.invoke_text_embedding.return_value = _result(alpha_vector, nan_vector, gamma_vector)
+
+            with caplog.at_level("WARNING", logger="core.rag.embedding.cached_embedding"):
+                result = CacheEmbedding(model_instance).embed_documents(["alpha", "beta", "gamma"])
+
+            assert result[0] == pytest.approx(alpha_vector.tolist())
+            assert result[1] is None
+            assert result[2] == pytest.approx(gamma_vector.tolist())
+
+            stored: dict[str, list[float]] = {
+                row.hash: row.get_embedding() for row in sqlite_embedding_session.scalars(select(Embedding)).all()
+            }
+            assert stored == {
+                helper.generate_text_hash("alpha"): pytest.approx(alpha_vector.tolist()),
+                helper.generate_text_hash("gamma"): pytest.approx(gamma_vector.tolist()),
+            }
+
+        def test_nan_vector_does_not_shift_later_provider_batches(
+            self,
+            sqlite_embedding_session: Session,
+            model_instance: Mock,
+            caplog: pytest.LogCaptureFixture,
+        ) -> None:
+            """A vector dropped in one provider batch must not shift the next batch.
+
+            MAX_CHUNKS is 10 in the fixture, so 12 texts span two provider calls.
+            """
+            documents = [f"doc{i:02d}" for i in range(12)]
+            first_batch = [np.eye(4)[i % 4] for i in range(10)]
+            second_batch = [np.eye(4)[(i + 1) % 4] for i in range(2)]
+            # drop a vector in the middle of the first batch
+            first_batch[5] = np.full(4, np.nan)
+
+            model_instance.invoke_text_embedding.side_effect = [
+                _result(*first_batch),
+                _result(*second_batch),
+            ]
+
+            with caplog.at_level("WARNING", logger="core.rag.embedding.cached_embedding"):
+                result = CacheEmbedding(model_instance).embed_documents(documents)
+
+            assert result[5] is None
+            for index in (0, 4, 6, 9):
+                assert result[index] == pytest.approx(first_batch[index].tolist()), f"text doc{index:02d}"
+            for offset, index in enumerate((10, 11)):
+                assert result[index] == pytest.approx(second_batch[offset].tolist()), f"text {documents[index]}"
+
+            stored: dict[str, list[float]] = {
+                row.hash: row.get_embedding() for row in sqlite_embedding_session.scalars(select(Embedding)).all()
+            }
+            assert len(stored) == 11
+            assert helper.generate_text_hash(documents[5]) not in stored
+            assert stored[helper.generate_text_hash(documents[11])] == pytest.approx(second_batch[1].tolist())
 
         def test_duplicate_text_is_cached_once(self, sqlite_embedding_session: Session, model_instance: Mock) -> None:
             model_instance.invoke_text_embedding.return_value = _result(_vector(), _vector())

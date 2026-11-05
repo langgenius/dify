@@ -42,7 +42,7 @@ class TestToolCommonService:
         workflow_queries: WorkflowToolQueries,
         tool_providers: ToolProviders,
     ) -> None:
-        providers: list[MagicMock] = []
+        providers: list[object] = []
         mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers(
@@ -64,7 +64,7 @@ class TestToolCommonService:
         workflow_queries: WorkflowToolQueries,
         tool_providers: ToolProviders,
     ) -> None:
-        providers: list[MagicMock] = []
+        providers: list[object] = []
         mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers(

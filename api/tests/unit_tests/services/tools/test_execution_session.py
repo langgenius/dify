@@ -107,6 +107,7 @@ def test_agent_invoke_forwards_the_same_session_to_tool() -> None:
             message=make_message(message_id="message-1", conversation_id="conversation-1"),
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=DifyAgentCallbackHandler(),
+            trace_scope=None,
             records=records,
         )
 
