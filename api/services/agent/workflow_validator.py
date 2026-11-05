@@ -3,14 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-
 from core.agent.workflow_references import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
 from core.workflow.graph_topology import WorkflowGraphTopology
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+from domain.workflow.agent_node import is_dify_agent_node_data
 from enums.agent import WorkflowAgentBindingType
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import AgentStatus

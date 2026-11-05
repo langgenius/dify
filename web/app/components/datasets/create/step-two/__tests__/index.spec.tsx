@@ -23,6 +23,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import StepTwo from '../index'
 
 const api = vi.hoisted(() => ({
@@ -169,7 +170,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   act(() => toast.dismiss())
-  vi.unstubAllGlobals()
+  resetViewportWidth()
 })
 
 it('keeps the chunk mode and preview while editing its delimiter with an arrow key', async () => {
@@ -188,7 +189,7 @@ it('keeps the chunk mode and preview while editing its delimiter with an arrow k
 })
 
 it('opens the mobile preview with fetched chunks and restores its trigger after closing', async () => {
-  vi.stubGlobal('innerWidth', 480)
+  setViewportWidth(480)
   const { user } = await setup()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   const trigger = screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' })

@@ -310,6 +310,12 @@ class QdrantVector(BaseVector):
 
     @override
     def delete_by_ids(self, ids: list[str]):
+        """Delete document IDs within this dataset's group, preserving all other points.
+
+        Accepts an empty ID list. A successful call removes only matching IDs owned
+        by this group. Remote collection-not-found responses are ignored; other
+        client errors propagate.
+        """
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
@@ -319,6 +325,10 @@ class QdrantVector(BaseVector):
                     models.FieldCondition(
                         key="metadata.doc_id",
                         match=models.MatchAny(any=ids),
+                    ),
+                    models.FieldCondition(
+                        key="group_id",
+                        match=models.MatchValue(value=self._group_id),
                     ),
                 ],
             )
