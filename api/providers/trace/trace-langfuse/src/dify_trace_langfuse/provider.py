@@ -1,14 +1,7 @@
 """Langfuse destination over its OpenTelemetry endpoint.
 
-Langfuse v4 accepts trace data only as OTLP spans; its legacy ingestion API
-rejects trace and observation events. Spans keep the trace's OpenTelemetry
-IDs, which Langfuse uses as its trace and observation IDs, so a unit with an
-external parent joins the tree that was sent separately.
-
-Langfuse answers a 2xx only after it accepted every span of a request, with
-a body of its own rather than an OTLP acknowledgment. It does not deduplicate
-a re-sent span, so a unit is sent again only when none of it can have been
-accepted.
+Langfuse does not deduplicate re-sent spans, so a unit is retried only when
+none of it was accepted.
 """
 
 import base64
@@ -34,9 +27,7 @@ DESTINATION = "Langfuse"
 SERVICE_NAME = "dify"
 VERIFY_TIMEOUT_SECONDS = 10.0
 MAX_REQUEST_BYTES = 3_000_000
-"""The request size the legacy ingestion API accepted; Langfuse does not publish an OTLP limit for its Cloud."""
 INGESTION_VERSION_HEADER = {"x-langfuse-ingestion-version": "4"}
-"""Without it, Langfuse can delay OTLP data by up to ten minutes."""
 
 
 def _messages(value: JsonValue, *, role: str) -> JsonValue:
@@ -58,7 +49,7 @@ def _json(value: JsonValue) -> str | None:
 
 
 def _trace_attributes(trace: Trace) -> dict[str, object]:
-    """Trace fields repeated on every span, because Langfuse v4 filters observations rather than traces."""
+    """Repeated on every span so Langfuse can filter observations by them."""
     return {
         "langfuse.trace.name": trace.root.name if trace.parent is None else None,
         "langfuse.user.id": trace.user_id,
@@ -67,7 +58,6 @@ def _trace_attributes(trace: Trace) -> dict[str, object]:
 
 
 def _trace_metadata(trace: Trace) -> dict[str, object]:
-    """Trace metadata for the root span, where Langfuse reads it; a unit joining another trace has none."""
     if trace.parent is not None:
         return {}
     metadata = {
@@ -98,7 +88,7 @@ def _generation_attributes(span: Span) -> dict[str, object]:
 
 
 def _span_attributes(span: Span) -> dict[str, object]:
-    # Langfuse's other observation types share the SDK's span kind names.
+    # Other span kinds match Langfuse's type names.
     attributes: dict[str, object] = {
         "langfuse.observation.type": "generation" if span.kind is SpanKind.LLM else span.kind.value,
         "langfuse.observation.input": _json(_messages(span.inputs, role="user")),
@@ -126,7 +116,7 @@ def _export_request(trace: Trace) -> ExportTraceServiceRequest:
 
 
 def _split(request: ExportTraceServiceRequest) -> list[ExportTraceServiceRequest]:
-    """Split one encoded unit into requests below ``MAX_REQUEST_BYTES``; a larger span travels alone."""
+    """An oversized span travels alone."""
     (resource_spans,) = request.resource_spans
     (scope_spans,) = resource_spans.scope_spans
     chunks: list[ExportTraceServiceRequest] = []
