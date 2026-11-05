@@ -630,10 +630,13 @@ def account_record(account: Account | None) -> dict[str, str] | None:
 
 
 def workflow_record(workflow: Workflow, session: Session) -> WorkflowRecord:
-    # This projection is only used for display. Decode ordinary variables, but
-    # never unwrap persisted secrets just to mask them again in the response.
+    """Project workflow display data using the caller's session.
+
+    Preserve serialized variables; mask secrets without decrypting them.
+    Invalid variable mappings propagate the factory's validation errors.
+    """
     environment = json.loads(workflow._environment_variables or "{}") if workflow.tenant_id else {}
-    environment_variables = [
+    environment_variables: list[VariableBase] = [
         variable_factory.build_environment_variable_from_mapping(
             {**value, "value": full_mask_token()} if value.get("value_type") == SegmentType.SECRET else value
         )
