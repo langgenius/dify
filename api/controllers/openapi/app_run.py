@@ -59,7 +59,7 @@ from controllers.openapi.auth.requirements import (
     account_app_guards,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
-from controllers.openapi.human_input_form import DRAFT_RUN_FORMS, PUBLISHED_RUN_FORMS, with_form_hints
+from controllers.openapi.human_input_form import with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -153,8 +153,8 @@ _RUN_GUARDS: Final = (
     CheckAppAccess(),
 )
 _DRAFT_FORM_NOTE: Final = (
-    "Of its human-input pauses, only a v2 node that lists the initiator as a recipient, "
-    "with debug mode off, can be resumed over openapi."
+    "Its stream hints the form submit op only for a pause on a v2 human-input node that lists "
+    "the initiator as a recipient, with debug mode off."
 )
 STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
@@ -222,19 +222,15 @@ def with_reply_hints(events: Iterable[str], *, op: str, target: Mapping[str, str
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-HintLayer = Callable[[Iterable[str], str, str], Generator[str]]
+HintLayer = Callable[[Iterable[str], str, Context], Iterable[str]]
 
 
-def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
-    return with_reply_hints(events, op=op, target={"app_id": app_id})
+def _reply_layer(events: Iterable[str], op: str, ctx: Context) -> Iterable[str]:
+    return with_reply_hints(events, op=op, target={"app_id": ctx.app.id})
 
 
-def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
-    return with_form_hints(events, app_id=app_id, forms=PUBLISHED_RUN_FORMS)
-
-
-def _draft_form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
-    return with_form_hints(events, app_id=app_id, forms=DRAFT_RUN_FORMS)
+def _form_layer(events: Iterable[str], op: str, ctx: Context) -> Iterable[str]:
+    return with_form_hints(events, app_id=ctx.app.id, subject=ctx.subject)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -387,7 +383,7 @@ _RUN_ROUTES: Final = (
         summary="Test-run the draft of a workflow app; streams workflow events. " + _DRAFT_FORM_NOTE,
         payload=DraftWorkflowRunPayload,
         modes=(AppMode.WORKFLOW,),
-        hints=(_draft_form_layer,),
+        hints=(_form_layer,),
         examples=(
             Example(title="Test the draft with one input", input={"app_id": "<app_id>", "inputs": {"topic": "test"}}),
             Example(
@@ -404,7 +400,7 @@ _RUN_ROUTES: Final = (
         summary="Test-run the draft of an advanced-chat app; streams message and workflow events. " + _DRAFT_FORM_NOTE,
         payload=ChatRunPayload,
         modes=(AppMode.ADVANCED_CHAT,),
-        hints=(_reply_layer, _draft_form_layer),
+        hints=(_reply_layer, _form_layer),
         examples=(
             Example(title="Test the draft with one message", input={"app_id": "<app_id>", "query": "hello"}),
             Example(
@@ -441,7 +437,7 @@ def _run_api(route: _RunRoute) -> type[Resource]:
             _require_mode(ctx.app, *route.modes)
         events = stream(ctx, generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
-            events = layer(events, route.op, ctx.app.id)
+            events = layer(events, route.op, ctx)
         return respond(ctx, events)
 
     resource = type(route.resource, (Resource,), {"post": post, "__module__": __name__})

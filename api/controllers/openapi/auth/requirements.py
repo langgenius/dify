@@ -73,9 +73,12 @@ class CheckSubject(Requirement):
     def __init__(self, *, allowed: Sequence[type[Subject]]) -> None:
         self.allowed = tuple(allowed)
 
+    def admits(self, subject: Subject) -> bool:
+        return isinstance(subject, self.allowed)
+
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if isinstance(subject, self.allowed):
+        if self.admits(subject):
             return
         emit_wrong_surface(
             subject_type=subject.subject_type.value,

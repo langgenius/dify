@@ -22,6 +22,7 @@ import pytest
 from flask import Flask
 from jsonschema import Draft202012Validator
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import build_catalog
 from controllers.openapi._contract import op_of
@@ -29,10 +30,10 @@ from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurface
 from controllers.openapi._models import FormSubmitResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject, Subject
 from controllers.openapi.human_input_form import (
-    PUBLISHED_RUN_FORMS,
     CheckFormSurface,
+    FormVersion,
     OpenApiWorkflowHumanInputFormApi,
     OpenApiWorkflowHumanInputFormSubmitApi,
     with_form_hints,
@@ -40,6 +41,7 @@ from controllers.openapi.human_input_form import (
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConfig
+from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
@@ -291,11 +293,26 @@ class TestCheckFormSurface:
         self._run(monkeypatch, foreign if form == "foreign" else None)
 
 
+def _account_subject() -> AccountSubject:
+    return AccountSubject(
+        AuthContext(
+            token_type=TokenType.OAUTH_ACCOUNT,
+            subject_email=None,
+            subject_issuer=None,
+            account_id=uuid.uuid4(),
+            client_id=None,
+            token_id=uuid.uuid4(),
+            expires_at=None,
+        )
+    )
+
+
 def _paused(*, form_token: str | None, inputs: list, actions: list) -> dict:
     response = HumanInputRequiredResponse(
         task_id="t1",
         workflow_run_id="r1",
         data=HumanInputRequiredResponse.Data(
+            form_version=FormVersion.V2.value,
             form_id="f1",
             node_id="n1",
             node_title="Review",
@@ -316,7 +333,7 @@ class TestFormHints:
             inputs=[ParagraphInputConfig(output_variable_name="comment")],
             actions=[UserActionConfig(id="approve", title="批准"), UserActionConfig(id="reject", title="")],
         )
-        [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1", forms=PUBLISHED_RUN_FORMS))
+        [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1", subject=_account_subject()))
         body = json.loads(out[len("data: ") :])
         op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
         assert op == "submit.run.form"

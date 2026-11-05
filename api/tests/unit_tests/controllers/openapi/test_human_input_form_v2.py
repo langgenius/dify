@@ -29,10 +29,8 @@ from controllers.openapi._models import (
     OpenApiFormSubmitPayload,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject, subject_from_auth
 from controllers.openapi.human_input_form import (
-    DRAFT_RUN_FORMS,
-    PUBLISHED_RUN_FORMS,
     CheckFormSurface,
     FormVersion,
     OpenApiWorkflowHumanInputFormApi,
@@ -47,10 +45,12 @@ from extensions.ext_database import db
 from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import EndUserType
+from models.human_input import RecipientType
 from models.human_input_v2 import HumanInputForm
 from models.model import App, AppMode, EndUser
 from services.human_input_service import FormSubmittedError
 from services.human_input_v2.form_service import AccountInitiator
+from tests.helpers.unit.services.human_input_v1_forms import persist_v1_form_token
 from tests.helpers.unit.services.human_input_v2_approvals import Context as V2Context
 
 pytest_plugins = ("tests.helpers.unit.services.human_input_v2_approvals",)
@@ -312,20 +312,49 @@ def _paused(*, form_version: FormVersion, form_token: str | None) -> str:
     return f"data: {json.dumps(response.model_dump(mode='json'))}\n\n"
 
 
-def _hints(event: str, forms: frozenset[FormVersion], app_id: str) -> list[Hint]:
-    [out] = list(with_form_hints(iter([event]), app_id=app_id, forms=forms))
+def _hints(event: str, subject: Subject, app_id: str = "a1") -> list[Hint]:
+    [out] = list(with_form_hints(iter([event]), app_id=app_id, subject=subject))
     return [Hint.model_validate(hint) for hint in json.loads(out[len("data: ") :]).get("hints", [])]
 
 
+def _subject(token_type: TokenType) -> Subject:
+    account_id = str(uuid.uuid4()) if token_type is TokenType.OAUTH_ACCOUNT else None
+    return subject_from_auth(_auth(token_type, account_id=account_id))
+
+
 class TestPauseHints:
-    @pytest.mark.parametrize("form_version", list(FormVersion))
-    def test_a_published_run_hints_submit_for_either_form_version(self, form_version: FormVersion) -> None:
-        [hint] = _hints(_paused(form_version=form_version, form_token="ft-1"), PUBLISHED_RUN_FORMS, "a1")
+    @pytest.mark.parametrize("token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO])
+    def test_a_v2_pause_hints_submit_for_a_caller_the_submit_op_admits(self, token_type: TokenType) -> None:
+        [hint] = _hints(_paused(form_version=FormVersion.V2, form_token="ft-1"), _subject(token_type))
         assert hint.op == op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
 
-    def test_a_draft_run_hints_submit_for_a_v2_form_only(self) -> None:
-        assert _hints(_paused(form_version=FormVersion.V2, form_token="ft-1"), DRAFT_RUN_FORMS, "a1") != []
-        assert _hints(_paused(form_version=FormVersion.V1, form_token="ft-1"), DRAFT_RUN_FORMS, "a1") == []
+    def test_a_resource_access_run_that_pauses_gets_no_form_hint(self, sqlite_session: Session) -> None:
+        """Run ops admit a resource-access token; the submit op does not, so it would answer 403."""
+        resource_access = _subject(TokenType.RESOURCE_ACCESS)
+        web_app_token = persist_v1_form_token(sqlite_session, RecipientType.STANDALONE_WEB_APP)
+
+        assert _hints(_paused(form_version=FormVersion.V2, form_token="ft-1"), resource_access) == []
+        assert _hints(_paused(form_version=FormVersion.V1, form_token=web_app_token), resource_access) == []
+
+    @pytest.mark.parametrize(
+        ("recipient_type", "hinted"),
+        [
+            (RecipientType.STANDALONE_WEB_APP, True),
+            (RecipientType.CONSOLE, False),
+            (RecipientType.BACKSTAGE, False),
+        ],
+    )
+    def test_a_v1_pause_hints_submit_only_for_a_token_the_surface_check_accepts(
+        self, sqlite_session: Session, recipient_type: RecipientType, hinted: bool
+    ) -> None:
+        """A draft run, or a replay without a snapshot, carries the token chosen for the console."""
+        token = persist_v1_form_token(sqlite_session, recipient_type)
+        hints = _hints(_paused(form_version=FormVersion.V1, form_token=token), _subject(TokenType.OAUTH_ACCOUNT))
+        assert bool(hints) is hinted
+
+    def test_a_v1_token_the_store_lacks_gets_no_hint(self) -> None:
+        event = _paused(form_version=FormVersion.V1, form_token=_UNKNOWN_TOKEN)
+        assert _hints(event, _subject(TokenType.OAUTH_ACCOUNT)) == []
 
     @pytest.mark.usefixtures("v1_store")
     @pytest.mark.usefixtures("resumes")
@@ -338,10 +367,11 @@ class TestPauseHints:
     ) -> None:
         form_id, token = console_approval
         app_id = context.execution.app_id
-        [hint] = _hints(_paused(form_version=FormVersion.V2, form_token=token), DRAFT_RUN_FORMS, app_id)
+        caller = _account(context)
+        [hint] = _hints(_paused(form_version=FormVersion.V2, form_token=token), caller.subject, app_id)
         assert hint.input["form_token"] == token
 
-        ctx = _ctx(context, session, _account(context), form_token=token)
+        ctx = _ctx(context, session, caller, form_token=token)
         api = OpenApiWorkflowHumanInputFormSubmitApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_id}/human-input-forms/{token}:submit"):
             api.post.__handler__(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from enum import StrEnum
 from typing import Any, Final, override
 
@@ -21,7 +21,7 @@ from controllers.common.human_input import (
 from controllers.common.human_input_v2_errors import legacy_form_http_error
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Example, Kind, endpoint, op_of, requirements_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import attach_stream_hints
@@ -52,7 +52,7 @@ from libs.helper import to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
 from repositories.human_input_v2.form_repository import Form as V2Form
-from services.human_input_service import FormNotFoundError, HumanInputService
+from services.human_input_service import Form, FormNotFoundError, HumanInputService
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputSubmissionService,
@@ -69,16 +69,22 @@ class FormVersion(StrEnum):
     V2 = "2"
 
 
-PUBLISHED_RUN_FORMS: Final = frozenset(FormVersion)
-# A draft run's v1 form carries its console or backstage token, which `CheckFormSurface` refuses.
-DRAFT_RUN_FORMS: Final = frozenset({FormVersion.V2})
+def _v1_form(form_token: str) -> Form | None:
+    # `HumanInputService` takes an engine or a maker, never a `Session`, so this
+    # read is a separate transaction from the caller's.
+    return HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
+
+
+def _on_openapi(form: Form) -> bool:
+    return is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI)
 
 
 class CheckFormSurface(Requirement):
-    """`/openapi/v1` is allowed only the recipient types `human_input_policy` lists
-    for it, so a console-bound form is refused before any handler body runs. It
-    lives here rather than in `auth/requirements.py` so the auth layer never has
-    to import this feature's domain.
+    """For a v1 form, `/openapi/v1` is allowed only the recipient types
+    `human_input_policy` lists for it, so a console-bound form is refused before
+    any handler body runs. A v2 form has no recipient type; its own lookup
+    authorizes the caller. It lives here rather than in `auth/requirements.py` so
+    the auth layer never has to import this feature's domain.
 
     A form the caller could not have found anyway — missing, or belonging to
     another app — is left to the handler's own 404: answering 403 here would tell
@@ -89,12 +95,10 @@ class CheckFormSurface(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         form_token = ctx.view_args[PathParam.FORM_TOKEN]
         app = load_app(ctx)
-        # `HumanInputService` takes an engine or a maker, never a `Session`, so this
-        # read is a separate transaction from the handler's — as it was before the move.
-        form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
+        form = _v1_form(form_token)
         if form is None or form.app_id != app.id or form.tenant_id != app.tenant_id:
             return
-        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
+        if not _on_openapi(form):
             raise RecipientSurfaceMismatch()
 
 
@@ -344,16 +348,33 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         return merge_files(body.inputs, body.files, ctx.caller)
 
 
-def form_hints(
-    *, op: str, app_id: str, response: HumanInputRequiredResponse, forms: frozenset[FormVersion]
-) -> list[Hint]:
-    """One hint per action button of a paused form whose version is in `forms`, its `inputs`
+def _v1_token_on_openapi(form_token: str) -> bool:
+    form = _v1_form(form_token)
+    if form is None:
+        return False
+    return _on_openapi(form)
+
+
+def _v2_token_on_openapi(_form_token: str) -> bool:
+    # A v2 event carries only the initiator's own delivery token, and the run's caller is its initiator.
+    return True
+
+
+# Whether submit.run.form can answer a paused form's token, by the store that owns the form.
+_TOKEN_ON_OPENAPI: Final[Mapping[FormVersion, Callable[[str], bool]]] = {
+    FormVersion.V1: _v1_token_on_openapi,
+    FormVersion.V2: _v2_token_on_openapi,
+}
+
+
+def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
+    """One hint per action button of a paused form the submit route can answer, its `inputs`
     blanked to the form's fields."""
 
     data = response.data
     if not data.form_token:
         return []
-    if FormVersion(data.form_version) not in forms:
+    if not _TOKEN_ON_OPENAPI[FormVersion(data.form_version)](data.form_token):
         return []
     fields = [field.model_dump(mode="json") for field in data.inputs]
     blank = {field.output_variable_name: None for field in data.inputs}
@@ -368,13 +389,21 @@ def form_hints(
     ]
 
 
-def with_form_hints(events: Iterable[str], *, app_id: str, forms: frozenset[FormVersion]) -> Generator[str]:
-    """A run stream whose `human_input_required` events, for forms of a version in `forms`,
-    carry hints that target the submit route above."""
+def _submit_admits(subject: Subject) -> bool:
+    """Whether the submit route admits `subject`, by the route's own subject check."""
+    requirements = requirements_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
+    return all(check.admits(subject) for check in requirements if isinstance(check, CheckSubject))
 
+
+def with_form_hints(events: Iterable[str], *, app_id: str, subject: Subject) -> Iterable[str]:
+    """A run stream whose `human_input_required` events carry hints that target the submit route
+    above, when that route admits `subject` and can answer the form's token."""
+
+    if not _submit_admits(subject):
+        return events
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
 
     def build(event: Mapping[str, Any]) -> list[Hint]:
-        return form_hints(op=op, app_id=app_id, response=HumanInputRequiredResponse.model_validate(event), forms=forms)
+        return form_hints(op=op, app_id=app_id, response=HumanInputRequiredResponse.model_validate(event))
 
     return attach_stream_hints(events, event=StreamEvent.HUMAN_INPUT_REQUIRED.value, build=build)
