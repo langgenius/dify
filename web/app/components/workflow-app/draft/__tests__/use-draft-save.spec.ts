@@ -119,9 +119,7 @@ const renderSyncDraft = <R>(
   }: SyncDraftCanvas = {},
 ) => {
   const featuresStore = createFeaturesStore(features ? { features } : undefined)
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
 
   return renderWorkflowCanvasHook(hook, {
@@ -130,6 +128,7 @@ const renderSyncDraft = <R>(
       kind: 'app',
       appId: 'app-1',
       mode: appMode === 'advanced-chat' ? 'advanced-chat' : 'workflow',
+      collaborationEnabled: isCollaborationEnabled,
     },
     nodes,
     edges,
@@ -197,6 +196,30 @@ describe('useWorkflowDraftSave', () => {
   })
 
   describe('payload', () => {
+    it('saves a full draft when collaboration is disabled', async () => {
+      const { result } = renderUseNodesSyncDraft({
+        isCollaborationEnabled: false,
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            features: expect.anything(),
+            conversation_variables: expect.anything(),
+          }),
+        ),
+      )
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    })
+
     it.each(['draft sync', 'page close'] as const)(
       'removes Workflow LLM memory from %s without changing the canvas nodes',
       async (savePath) => {

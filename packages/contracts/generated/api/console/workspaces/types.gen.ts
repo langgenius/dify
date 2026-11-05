@@ -1608,11 +1608,21 @@ export type TriggerOAuthClientResponse = {
   system_configured: boolean
 }
 
+export type TriggerOauthClientConfigInvalidError = ErrorResponse & {
+  code: 'trigger_oauth_client_config_invalid'
+  status: 500
+}
+
 export type TriggerOAuthClientPayload = {
   client_params?: {
     [key: string]: unknown
   } | null
   enabled?: boolean | null
+}
+
+export type TriggerOauthClientChangedError = ErrorResponse & {
+  code: 'trigger_oauth_client_changed'
+  status: 409
 }
 
 export type TriggerSubscriptionBuilderUpdatePayload = {
@@ -1677,6 +1687,11 @@ export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
   subscription_builder: SubscriptionBuilderApiEntity
   subscription_builder_id: string
+}
+
+export type TriggerOauthProviderError = ErrorResponse & {
+  code: 'trigger_oauth_provider_error'
+  status: 502
 }
 
 export type TriggerSubscriptionVerifyPayload = {
@@ -10568,6 +10583,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  500: TriggerOauthClientConfigInvalidError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -10591,6 +10607,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  409: TriggerOauthClientChangedError | ErrorResponse
+  500: TriggerOauthClientConfigInvalidError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -10796,6 +10814,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
+  500: TriggerOauthClientConfigInvalidError | ErrorResponse
+  502: TriggerOauthProviderError | ErrorResponse
   default: ErrorResponse
 }
 

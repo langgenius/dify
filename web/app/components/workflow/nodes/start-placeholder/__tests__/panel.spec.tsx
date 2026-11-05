@@ -81,7 +81,7 @@ it('replaces the placeholder and generates webhook URLs only after the graph is 
   })
   const { queryClient } = createConsoleQueryWrapper({
     appDslVersion: '0.6.0',
-    systemFeatures: { enable_marketplace: false, enable_collaboration_mode: false },
+    systemFeatures: { enable_marketplace: false },
   })
   queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   const { store } = renderWorkflowFlowComponent(

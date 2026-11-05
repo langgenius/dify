@@ -146,9 +146,10 @@ function setup(
     }),
   )
   builderStore.set(difyBuilderSessionBusyAtom, builder.busy)
+  const resource = { kind: 'app', appId: 'app-123', mode, collaborationEnabled: false } as const
   const rendered = renderWorkflowEditor(
     <Provider store={builderStore}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-123', mode }}>
+      <EditorResourceScope resource={resource}>
         <NuqsTestingAdapter>
           <FeaturesProvider>
             <EventEmitterContextProvider>
@@ -167,7 +168,7 @@ function setup(
       nodes,
       historyStore: { nodes, edges: [] },
       initialStoreState,
-      resource: { kind: 'app', appId: 'app-123', mode },
+      resource,
     },
   )
   return { ...rendered, user: userEvent.setup() }

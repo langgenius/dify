@@ -30,7 +30,12 @@ it('keeps the discard choice readable and makes Enter defer an automatically ope
     createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
   )
   const atoms = createStore()
-  atoms.set(editorResourceAtom, { kind: 'app', appId: 'app-1', mode: 'workflow' })
+  atoms.set(editorResourceAtom, {
+    kind: 'app',
+    appId: 'app-1',
+    mode: 'workflow',
+    collaborationEnabled: false,
+  })
   const store = createWorkflowStore()
   store.getState().setWorkflowDraftConflict(true)
   const screen = await render(

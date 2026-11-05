@@ -86,7 +86,6 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     systemFeatures: {
       rbac_enabled: true,
       enable_learn_app: false,
-      enable_collaboration_mode: false,
     },
   })
   const screen = await render(

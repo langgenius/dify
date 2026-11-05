@@ -41,7 +41,9 @@ const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | nu
 
   return renderWorkflowComponent(
     <Provider store={store}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false }}
+      >
         <WorkflowHeader />
       </EditorResourceScope>
     </Provider>,

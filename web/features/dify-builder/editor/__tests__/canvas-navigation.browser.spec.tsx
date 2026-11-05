@@ -229,7 +229,6 @@ function Fixture({
   })
   const [queryClient] = useState(() => {
     const query = createConsoleQueryWrapper({
-      systemFeatures: { enable_collaboration_mode: false },
       appDslVersion: '0.6.0',
     }).queryClient
     query.setQueryData(
@@ -274,7 +273,12 @@ function Fixture({
     <QueryClientProvider client={queryClient}>
       <Provider store={atomStore}>
         <EditorResourceScope
-          resource={{ kind: 'app', appId: 'builder-navigation-app', mode: 'workflow' }}
+          resource={{
+            kind: 'app',
+            appId: 'builder-navigation-app',
+            mode: 'workflow',
+            collaborationEnabled: collaborationRecovery,
+          }}
         >
           <FeaturesProvider>
             <EventEmitterContextProvider>
