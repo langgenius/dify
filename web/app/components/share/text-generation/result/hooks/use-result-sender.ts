@@ -6,6 +6,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
+import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { ENABLE_HITL_IM, TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -75,7 +76,9 @@ export const useResultSender = ({
   taskId,
   visionConfig,
 }: UseResultSenderOptions) => {
-  const connections = useOptionalWebAppConnections()
+  const webAppConnections = useOptionalWebAppConnections()
+  const installedConnections = useOptionalInstalledAppConnections()
+  const connections = webAppConnections ?? installedConnections
   const { clearMoreLikeThis } = runState
   const appMode = useWebAppStore((state) => state.appInfo?.mode)
   const {
@@ -87,11 +90,11 @@ export const useResultSender = ({
   const handleSend = useCallback(
     async (useAcceptedSnapshot = false) => {
       let snapshot: WorkflowRunSnapshot | false | undefined
-      if (isWorkflow && appSourceType === AppSourceType.webApp) {
+      if (isWorkflow && (appSourceType === AppSourceType.webApp || installedConnections)) {
         snapshot =
           useAcceptedSnapshot && runSnapshot
             ? runSnapshot
-            : captureWorkflowRunConfiguration(connections)
+            : captureWorkflowRunConfiguration(connections, installedConnections?.installedAppId)
       }
       if (snapshot === false || (snapshot && !isWorkflowRunSnapshotCurrent(snapshot))) {
         if (isCallBatchAPI && taskId !== undefined) onCompleted('', taskId, false)
@@ -266,6 +269,7 @@ export const useResultSender = ({
     [
       runSnapshot,
       connections,
+      installedConnections,
       onTaskStart,
       appId,
       appMode,

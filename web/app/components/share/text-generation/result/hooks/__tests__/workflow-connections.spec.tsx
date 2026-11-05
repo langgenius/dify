@@ -16,6 +16,11 @@ import { captureWorkflowRunConfiguration } from '../../../workflow-run-configura
 import { useResultRunState } from '../use-result-run-state'
 import { useResultSender } from '../use-result-sender'
 
+const installedConnections = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/explore/installed-app/connections/use-installed-app-connections', () => ({
+  useOptionalInstalledAppConnections: installedConnections,
+}))
+
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({ trackWebAppEvent: vi.fn() }))
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (select: (state: { appInfo: { mode: string } }) => unknown) =>
@@ -74,7 +79,7 @@ const entry: Extract<WebAppEntryState, { parameters: unknown }> = {
   canRun: false,
 }
 
-function renderWorkflow({ batch = false, requiresConnections = true } = {}) {
+function renderWorkflow({ batch = false, requiresConnections = true, installed = false } = {}) {
   const client = createTestQueryClient()
   const onCompleted = vi.fn()
   const onTaskStart = vi.fn()
@@ -105,6 +110,7 @@ function renderWorkflow({ batch = false, requiresConnections = true } = {}) {
     throw new Error(`Unexpected request: ${request.method} ${path}`)
   })
   function Wrapper({ children }: PropsWithChildren) {
+    if (installed) return <QueryClientProvider client={client}>{children}</QueryClientProvider>
     return (
       <QueryClientProvider client={client}>
         <WebAppEntryContext
@@ -133,13 +139,13 @@ function renderWorkflow({ batch = false, requiresConnections = true } = {}) {
       const connections = useOptionalWebAppConnections()
       // oxlint-disable-next-line eslint-react/use-state -- This hook returns a ResultRunStateController object, not a state tuple.
       const runState = useResultRunState({
-        appSourceType: AppSourceType.webApp,
+        appSourceType: installed ? AppSourceType.installedApp : AppSourceType.webApp,
         isWorkflow: true,
         notify: vi.fn(),
       })
       const sender = useResultSender({
         runSnapshot: snapshot,
-        appSourceType: AppSourceType.webApp,
+        appSourceType: installed ? AppSourceType.installedApp : AppSourceType.webApp,
         appId: 'app',
         isWorkflow: true,
         isBelowMd: false,
@@ -184,7 +190,34 @@ function renderWorkflow({ batch = false, requiresConnections = true } = {}) {
 }
 
 beforeEach(() => {
+  installedConnections.mockReturnValue(null)
   window.history.replaceState({}, '', '/workflow/workflow-connections')
+})
+
+it('sends checked workspace selections through the installed app Console run without a Webapp identity', async () => {
+  window.history.replaceState({}, '', '/installed/installed-app')
+  installedConnections.mockReturnValue({
+    installedAppId: 'installed-app',
+    canRun: true,
+    runConfiguration: {
+      connection_revision: checkedRevision,
+      connections: { source: 'workspace-credential' },
+    },
+  })
+  const { result } = renderWorkflow({ installed: true })
+
+  await act(async () => expect(await result.current.handleSend()).toBe(true))
+
+  expect(sendWorkflowMessage).toHaveBeenCalledWith(
+    {
+      inputs: { query: 'Keep this draft' },
+      connection_revision: checkedRevision,
+      connections: { source: 'workspace-credential' },
+    },
+    expect.any(Object),
+    AppSourceType.installedApp,
+    'app',
+  )
 })
 
 describe('public Workflow connection runs', () => {

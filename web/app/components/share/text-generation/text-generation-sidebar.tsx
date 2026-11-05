@@ -14,6 +14,10 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import {
+  InstalledConnectionControls,
+  InstalledConnectionSetup,
+} from '@/app/components/explore/installed-app/connections'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
@@ -129,13 +133,20 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
     </div>
   )
 
-  const connectionSetup = isConfiguringConnections && onStartUsingApp && (
-    <WebAppConnectionSetup
-      onStart={onStartUsingApp}
-      previewSize={showWorkflowLayout ? 'medium' : 'small'}
-      className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
-    />
-  )
+  const connectionSetup =
+    isConfiguringConnections &&
+    onStartUsingApp &&
+    (isInstalledApp ? (
+      <div className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}>
+        <InstalledConnectionSetup onStart={onStartUsingApp} />
+      </div>
+    ) : (
+      <WebAppConnectionSetup
+        onStart={onStartUsingApp}
+        previewSize={showWorkflowLayout ? 'medium' : 'small'}
+        className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
+      />
+    ))
 
   return (
     <Tabs
@@ -167,9 +178,12 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                 <h1 className="min-w-0 grow system-xl-semibold wrap-anywhere text-text-primary">
                   {siteInfo.title}
                 </h1>
-                {!isConfiguringConnections && (
-                  <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
-                )}
+                {!isConfiguringConnections &&
+                  (isInstalledApp ? (
+                    <InstalledConnectionControls isResponding={isResponding} />
+                  ) : (
+                    <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
+                  ))}
               </div>
               {description}
             </div>
@@ -185,10 +199,14 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               <div className="grow truncate system-md-semibold text-text-secondary">
                 {siteInfo.title}
               </div>
-              <WebAppConnectionControls
-                isResponding={isResponding}
-                showSignIn={!showAccountFooter}
-              />
+              {isInstalledApp ? (
+                <InstalledConnectionControls isResponding={isResponding} />
+              ) : (
+                <WebAppConnectionControls
+                  isResponding={isResponding}
+                  showSignIn={!showAccountFooter}
+                />
+              )}
               {!showAccountFooter && (
                 <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
               )}

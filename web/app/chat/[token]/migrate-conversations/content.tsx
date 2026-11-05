@@ -84,7 +84,9 @@ export default function MigrateConversationsContent() {
         throw new Error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       await webAppLogout(address)
       const target = await beginWebAppAccountLogin(parameters.account_login_url, continueHref)
-      window.location.assign(target)
+      const signInUrl = new URL(target)
+      signInUrl.searchParams.set('switch_account', '1')
+      window.location.assign(signInUrl.href)
     },
   })
   useEffect(() => {
