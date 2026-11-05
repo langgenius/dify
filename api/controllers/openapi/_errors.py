@@ -437,7 +437,7 @@ class WebhookNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.WEBHOOK_NOT_FOUND
     description = "This webhook trigger node has no address yet."
-    hint = "Saving the draft gives each webhook trigger node its address; save it again."
+    hint = "Importing the draft gives each webhook trigger node its address; import the draft again."
 
 
 class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818

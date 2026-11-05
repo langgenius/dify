@@ -40,7 +40,7 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from enums import DeploymentEdition
-from events.app_event import app_model_config_was_updated, app_was_created
+from events.app_event import app_draft_workflow_was_synced, app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
@@ -858,6 +858,8 @@ class AppDslService:
                         agent_ids=retirement_candidates,
                         account_id=account.id,
                     )
+                    # The draft was synced without a commit, so `sync_draft_workflow` sent no signal.
+                    app_draft_workflow_was_synced.send(app, synced_draft_workflow=draft_workflow)
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")

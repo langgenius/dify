@@ -60,6 +60,7 @@ from services.entities.dsl_entities import ImportStatus
 from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
+from tests.helpers.unit.services.webhook_sync import route_webhook_sync
 
 """Workflow packages restore node-owned Agents and assets across workspaces."""
 
@@ -365,6 +366,7 @@ def _package_storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> 
         lambda: AgentPackageResourceImporter(storage_backend=backend),
     )
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    route_webhook_sync(monkeypatch, sqlite_engine)
     return backend
 
 
