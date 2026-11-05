@@ -49,7 +49,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.effect_disclosure import EffectDisclosure
-from services.dify_builder.plan import WorkflowPlan
+from services.dify_builder.plan import BuildClarification, WorkflowPlan
 
 __all__ = [
     "ApplyResult",
@@ -95,7 +95,7 @@ class DifyBuilderAgent(Protocol):
 
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
-    ) -> WorkflowPlan | None: ...
+    ) -> WorkflowPlan | BuildClarification | None: ...
 
     def discover_resources(
         self,
@@ -122,7 +122,7 @@ class DifyBuilderAgent(Protocol):
         goal_text: str,
         requirements: dict[str, Any],
         reply_language: str | None = None,
-    ) -> WorkflowPlan | None: ...
+    ) -> WorkflowPlan | BuildClarification | None: ...
 
     def build_nodes(
         self,
@@ -130,6 +130,7 @@ class DifyBuilderAgent(Protocol):
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult: ...
 

@@ -182,6 +182,7 @@ class PlaceholderAgent:
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are

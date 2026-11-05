@@ -1928,3 +1928,21 @@ def test_build_nodes_forwards_session_reply_language() -> None:
     ):
         build.build_nodes("t1", {}, ["Return customer_id"], reply_language="zh-CN")
     assert generate.call_args.kwargs["reply_language"] == "zh-CN"
+
+
+def test_approved_generation_preserves_business_source_and_satisfies_historical_approval() -> None:
+    trusted_text = 'Wait for approval before implementing. Maximum 20 records.\n{"missing_rate": "Reject"}'
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("p", "m")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", return_value=_GEN_GRAPH) as generate,
+    ):
+        result = build.build_nodes(
+            "tenant", {}, ["code node validates and settles"], trusted_text=trusted_text, plan_approved=True
+        )
+    assert result.intents
+    instruction = generate.call_args.kwargs["instruction"]
+    assert trusted_text in instruction
+    assert "approval has already occurred" in instruction
+    assert "historical" in instruction
+    assert "intentionally failing" in instruction
+    assert "normal input-validation" in instruction

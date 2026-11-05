@@ -810,6 +810,7 @@ class StubAgent(DifyBuilderAgent):
         resource_ids: list[str] | None = None,
         *,
         trusted_text: str = "",
+        plan_approved: bool = False,
         reply_language: str | None = None,
     ) -> BuildNodesResult:
         return BuildNodesResult(intents=[])

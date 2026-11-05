@@ -100,7 +100,7 @@ def test_knowledge_confirmation_is_metadata_only_and_never_replans(monkeypatch: 
         goal_text="Use the knowledge I select",
         requirements={},
     )
-    assert result is not None
+    assert isinstance(result, WorkflowPlan)
     assert result.used_resource_ids == []
     assert result.discovery_resource_ids == [KNOWLEDGE]
     assert result.items == PLAN.items
@@ -215,7 +215,7 @@ def test_metadata_confirmation_does_not_even_resolve_a_cognition_model(monkeypat
 
     agent = LlmBuilderAgent("tenant", account_id="actor", model_resolver_fn=resolver)
     result = agent.reconcile_resource_plan(PLAN, [KNOWLEDGE], goal_text="Select knowledge only", requirements={})
-    assert result is not None
+    assert isinstance(result, WorkflowPlan)
     assert result.discovery_resource_ids == [KNOWLEDGE]
     assert calls == []
 
@@ -711,3 +711,35 @@ def test_shared_source_predicate_keeps_handler_clarification_with_false_model_hi
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     assert stored.resource_selection["knowledge_decision_pending"]["original_goal"] == goal
     assert not stored.checkpoint_id
+
+
+def test_explicit_knowledge_waiver_can_clarify_business_rules_before_replanning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.dify_builder.plan import BuildClarification
+
+    runner, repo, sid, agent = decision_dialog()
+    question = BuildClarification(
+        fields=[
+            {
+                "key": "empty_text",
+                "label": "Empty text",
+                "type": "select",
+                "options": ["Reject", "Skip"],
+                "required": True,
+            }
+        ],
+        values={"empty_text": "Reject"},
+    )
+    monkeypatch.setattr(agent, "propose_plan_v1", lambda *_a, **_kw: question)
+    answered = answer_decision(runner, repo, sid, option=1)
+    _, context = repo.get_session(sid)
+
+    assert answered.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert context.form_fields == question.fields
+    assert context.requirements == {"language": "Chinese", "empty_text": "Reject"}
+    assert "Explicit user goal change" in context.goal_text
+    assert context.resource_selection["knowledge_scope_decision"]["choice"] == "waive"
+    assert "knowledge_decision_pending" not in context.resource_selection
+    assert not context.checkpoint_id
+    assert context.built_node_ids == []

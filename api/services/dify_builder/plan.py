@@ -2,7 +2,10 @@
 
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from core.dify_builder.contract import PlanCard, ResourceOption
 from core.dify_builder.models import DifyBuilderContext
@@ -33,6 +36,82 @@ class WorkflowPlan:
     used_resource_ids: list[str] | None = None
     # Server-owned, nonexecuting knowledge preferences; never graph bindings.
     discovery_resource_ids: list[str] | None = None
+
+
+@dataclass
+class BuildClarification:
+    """Editable recommendations, never a plan or confirmed business answers."""
+
+    fields: list[dict[str, Any]]
+    values: dict[str, Any]
+    kind: Literal["clarification"] = field(default="clarification", init=False)
+
+
+class _ClarificationField(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    key: str = Field(min_length=1, max_length=200)
+    label: str = Field(min_length=1, max_length=2000)
+    type: Literal["text", "textarea", "select", "bool", "number"]
+    options: list[str] = Field(default_factory=list, max_length=30)
+    required: Literal[True] = True
+    hint: str | None = Field(default=None, max_length=2000)
+    placeholder: str | None = Field(default=None, max_length=2000)
+
+
+class _ClarificationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    kind: Literal["clarification"]
+    fields: list[_ClarificationField] = Field(min_length=1, max_length=6)
+    values: dict[str, str | bool | int | float | None]
+
+    @model_validator(mode="after")
+    def validate_answers(self) -> "_ClarificationResponse":
+        """Accept only scalar recommendations matching unique visible controls."""
+        keys = [spec.key for spec in self.fields]
+        if len(set(keys)) != len(keys) or set(self.values) - set(keys):
+            raise ValueError("Clarification values must name unique visible fields.")
+        for spec in self.fields:
+            value = self.values.get(spec.key)
+            if not spec.key.strip() or not spec.label.strip():
+                raise ValueError("Clarification keys and labels must be nonblank.")
+            if spec.type == "select" and (not spec.options or any(not option.strip() for option in spec.options)):
+                raise ValueError("A select question needs nonblank options.")
+            if value is not None and not (
+                (spec.type in {"text", "textarea", "select"} and isinstance(value, str))
+                or (spec.type == "bool" and isinstance(value, bool))
+                or (spec.type == "number" and type(value) in {int, float})
+            ):
+                raise ValueError("Clarification recommendations must match their scalar controls.")
+            if spec.type == "select" and value not in (None, "") and value not in spec.options:
+                raise ValueError("A select recommendation must match an offered option.")
+        return self
+
+
+def parse_build_plan_response(data: object) -> WorkflowPlan | BuildClarification:
+    """Decode a Build outcome; malformed questions cannot become an approved plan.
+
+    Edit continues to use parse_plan_response. Clarifications contain only
+    required scalar controls and recommendations; submission owns confirmation.
+    """
+    if isinstance(data, dict) and data.get("kind") == "clarification":
+        try:
+            response = _ClarificationResponse.model_validate(data)
+        except ValidationError:
+            raise ValueError(
+                "Clarification requires 1-6 valid required scalar questions and matching recommendations."
+            ) from None
+        return BuildClarification(
+            fields=[
+                spec.model_dump(exclude_none=True, exclude_defaults=True) | {"required": True}
+                for spec in response.fields
+            ],
+            values=dict(response.values),
+        )
+    if isinstance(data, dict) and any(key in data for key in ("fields", "values")):
+        raise ValueError("Build questions require a clarification outcome without a plan.")
+    return parse_plan_response(data)
 
 
 class ResourceDiscovery(list[ResourceOption]):  # noqa: FURB189 - preserve the existing list-valued agent port
