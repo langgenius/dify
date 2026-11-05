@@ -414,10 +414,19 @@ export const Workflow: FC<WorkflowProps> = memo(
         if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
         const refreshVersion = workflowStore.getState().draftSaveVersion
         const canRefresh = () => {
-          const { draftSaveBlocked, draftSaveVersion, isCollaborationEnabled } = workflowStore.getState()
-          return !draftSaveBlocked && draftSaveVersion === refreshVersion && (
-            !isCollaborationEnabled ||
-            (collaborationManager.isConnected() && collaborationManager.canRestoreGraphFromCrdt())
+          const {
+            draftSaveBlocked,
+            draftSaveVersion,
+            isCollaborationEnabled,
+            isCollaborationFallback,
+          } = workflowStore.getState()
+          return (
+            !draftSaveBlocked &&
+            !isCollaborationFallback &&
+            draftSaveVersion === refreshVersion &&
+            (!isCollaborationEnabled ||
+              (collaborationManager.isConnected() &&
+                collaborationManager.canRestoreGraphFromCrdt()))
           )
         }
         if (!canRefresh()) return

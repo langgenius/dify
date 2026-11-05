@@ -18,7 +18,10 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.workflow_collaboration_service import WorkflowCollaborationDraftOutdatedError, WorkflowCollaborationNotEntitledError
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationNotEntitledError,
+)
 
 
 @pytest.fixture

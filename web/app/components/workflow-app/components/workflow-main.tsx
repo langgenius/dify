@@ -142,7 +142,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
     return collaborationManager.onInitialPlainDraftFallback((fallbackAppId) => {
-      if (fallbackAppId === appId) workflowStore.setState({ isCollaborationEnabled: false })
+      if (fallbackAppId === appId)
+        workflowStore.setState({ isCollaborationEnabled: false, isCollaborationFallback: true })
     })
   }, [appId, isCollaborationEnabled, workflowStore])
 

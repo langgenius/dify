@@ -8,6 +8,8 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import userEvent from '@testing-library/user-event'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useEffect } from 'react'
+import { useStoreApi } from 'reactflow'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { CollectionType } from '@/app/components/tools/types'
@@ -193,13 +195,25 @@ afterEach(async () => {
 
 const WorkflowEventProvider = EventEmitterContext.Provider
 
+function CanvasStoreProbe({
+  onReady,
+}: {
+  onReady: (store: ReturnType<typeof useStoreApi>) => void
+}) {
+  const canvasStore = useStoreApi()
+  useEffect(() => onReady(canvasStore), [canvasStore, onReady])
+  return null
+}
+
 async function renderMain({
+  captureCanvasStore,
   collaboration = true,
   permission_keys,
   nodes = initialNodes,
   initialStoreState,
   triggers = [],
 }: {
+  captureCanvasStore?: (store: ReturnType<typeof useStoreApi>) => void
   collaboration?: boolean
   permission_keys?: AppDetailWithSite['permission_keys']
   nodes?: Node[]
@@ -261,6 +275,7 @@ async function renderMain({
         <WorkflowEventProvider value={{ eventEmitter }}>
           <FeaturesContext value={features}>
             <WorkflowWithDefaultContext nodes={nodes} edges={[]}>
+              {captureCanvasStore && <CanvasStoreProbe onReady={captureCanvasStore} />}
               <WorkflowMain nodes={nodes} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />
             </WorkflowWithDefaultContext>
           </FeaturesContext>
@@ -466,6 +481,37 @@ it.each([
     }
   },
 )
+
+it('preserves an unsaved empty canvas after fallback when the tab becomes visible', async () => {
+  const transport = useRealCollaborationTransport()
+  let canvasStore!: ReturnType<typeof useStoreApi>
+  const { store } = await renderMain({
+    captureCanvasStore: (value) => {
+      canvasStore = value
+    },
+    initialStoreState: { syncWorkflowDraftHash: 'loaded-hash' },
+  })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
+  act(() => {
+    transport.receive('connect')
+    transport.acknowledge('user_connect', { msg: 'collaboration_unavailable' }, 503)
+  })
+  await waitFor(() => expect(store.getState().isCollaborationFallback).toBe(true))
+  act(() => canvasStore.getState().setNodes([]))
+  expect(canvasStore.getState().getNodes()).toEqual([])
+  api.fetchDraft.mockClear()
+  vi.useFakeTimers()
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  expect(store.getState().draftSaveBlocked).toBe(false)
+  visibility.mockReturnValue('visible')
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(api.fetchDraft).not.toHaveBeenCalled()
+  expect(canvasStore.getState().getNodes()).toEqual([])
+})
 
 it('disconnects an expired join before opening a new tab and ignores late join events', async () => {
   const open = vi.spyOn(window, 'open').mockImplementation(() => null)

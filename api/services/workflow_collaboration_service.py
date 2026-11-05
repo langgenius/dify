@@ -121,7 +121,7 @@ class WorkflowCollaborationService:
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        `App.id`. Missing identity or access returns `None`; insufficient entitlement raises an error.
         Registration holds the draft row lock shared with full console saves. A supplied hash for a new session
         must match the saved draft; an established session may rejoin.
         """

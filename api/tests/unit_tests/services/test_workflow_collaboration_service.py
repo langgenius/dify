@@ -19,9 +19,9 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
-    WorkflowCollaborationNotEntitledError,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app
