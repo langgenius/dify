@@ -19,7 +19,7 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isMobile, sidebarCollapseState } =
+  const { appData, appChatListDataLoading, chatShouldReloadKey, isBelowSm, sidebarCollapseState } =
     useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
@@ -39,21 +39,21 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
   }, [isSidebarCollapsed])
 
   useEffect(() => {
-    if (!isSidebarCollapsed || isMobile) {
+    if (!isSidebarCollapsed || isBelowSm) {
       setShowSidePanel(false)
       sidePanelHasFocusRef.current = false
       sidePanelHoveredRef.current = false
     }
     return () => clearTimeout(sidePanelBlurTimeoutRef.current)
-  }, [isSidebarCollapsed, isMobile])
+  }, [isSidebarCollapsed, isBelowSm])
 
   useDocumentTitle(site?.title || 'Chat')
 
   return (
     <div
-      className={cn('flex h-full bg-background-default-burn', isMobile && 'flex-col', className)}
+      className={cn('flex h-full bg-background-default-burn', isBelowSm && 'flex-col', className)}
     >
-      {!isMobile && (
+      {!isBelowSm && (
         <div
           inert={isSidebarCollapsed}
           className={cn(
@@ -64,9 +64,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <Sidebar toggleButtonRef={!isSidebarCollapsed ? sidebarToggleRef : undefined} />
         </div>
       )}
-      {isMobile && <HeaderInMobile />}
-      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%-56px)] p-0')}>
-        {!isMobile && isSidebarCollapsed && (
+      {isBelowSm && <HeaderInMobile />}
+      <div className={cn('relative grow p-2', isBelowSm && 'h-[calc(100%-56px)] p-0')}>
+        {!isBelowSm && isSidebarCollapsed && (
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
@@ -104,10 +104,10 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
         <div
           className={cn(
             'flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg',
-            isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
+            isBelowSm ? 'rounded-t-2xl' : 'rounded-2xl',
           )}
         >
-          {!isMobile && (
+          {!isBelowSm && (
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
@@ -130,7 +130,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   isNewAgent = false,
   renderAgentContent,
 }) => {
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -202,7 +202,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         handleRenameConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         appId,
         handleFeedback,
