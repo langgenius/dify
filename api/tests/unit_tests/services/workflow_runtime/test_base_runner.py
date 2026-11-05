@@ -97,6 +97,7 @@ from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHuma
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
 from models import Account, UploadFile
@@ -109,6 +110,7 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_runtime import response_converter as workflow_response_converter
+from services.workflow_runtime import workflow_runner
 from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from services.workflow_runtime.entry import WorkflowEntry, iter_dify_graph_engine_events
 from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
@@ -1781,15 +1783,14 @@ class TestWorkflowHumanInputCompletionCases:
         assert len(contents) == 2
 
 
-def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch):
-    queue_manager = _DummyQueueManager()
+def test_handle_pause_event_enqueues_email_task(queue_manager: WorkflowAppQueueManager) -> None:
+    """Given a paused form, enqueue its delivery and publish the pause without dispatching Celery."""
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
-    workflow_entry = _DummyWorkflowEntry()
+    workflow_entry = _workflow_entry(runner)
 
     graph_reason = HitlRequired(session_id="form-123", node_id="node-1", node_title="Review")
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={})
 
-    email_task = MagicMock()
     enriched_reason = HumanInputRequired(
         form_id="form-123",
         form_content="content",
@@ -1798,16 +1799,19 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
         node_id="node-1",
         node_title="Review",
     )
-    monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_form_delivery_task", email_task)
+    with patch("services.workflow_runtime.base_runner.dispatch_human_input_form_delivery_task.apply_async") as enqueue:
+        runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 
-    runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
-
-    email_task.apply_async.assert_called_once()
-    kwargs = email_task.apply_async.call_args.kwargs["kwargs"]
+    enqueue.assert_called_once()
+    assert enqueue.call_args.kwargs["queue"] == "mail"
+    kwargs = enqueue.call_args.kwargs["kwargs"]
     assert kwargs["form_id"] == "form-123"
     assert kwargs["node_title"] == "Review"
 
-    assert any(isinstance(evt, QueueWorkflowPausedEvent) for evt in queue_manager.published)
+    message = queue_manager._q.get_nowait()
+    assert message is not None
+    assert isinstance(message.event, QueueWorkflowPausedEvent)
+    assert message.event.paused_nodes == ["node-1"]
 
 
 @pytest.mark.parametrize(
@@ -1822,6 +1826,7 @@ def test_run_uses_single_node_execution_branch(
     single_loop_run: WorkflowAppGenerateEntity.SingleLoopRunEntity | None,
     queue_manager: WorkflowAppQueueManager,
 ) -> None:
+    """Given a single iteration or loop request, prepare its real graph with the returned state."""
     app_generate_entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
@@ -1852,35 +1857,28 @@ def test_run_uses_single_node_execution_branch(
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
-        variable_loader=MagicMock(),
+        variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id="system-user",
     )
 
-    graph, variable_pool, graph_runtime_state = _make_graph_state()
-    mock_workflow_entry = MagicMock()
-    mock_workflow_entry.graph_engine = MagicMock()
-    mock_workflow_entry.graph_engine.layer = MagicMock()
-    mock_workflow_entry.run.return_value = iter([])
+    graph_runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+    graph = _workflow_graph(runner, graph_runtime_state)
+    workflow.graph = json.dumps(graph.graph_config)
 
     with (
-        patch("services.workflow_runtime.workflow_runner.RedisChannel"),
-        patch("services.workflow_runtime.workflow_runner.redis_client"),
-        patch(
-            "services.workflow_runtime.workflow_runner.WorkflowEntry", return_value=mock_workflow_entry
-        ) as entry_class,
         patch.object(
             runner,
             "_prepare_single_node_execution",
             return_value=(
                 graph,
-                variable_pool,
+                graph_runtime_state.variable_pool,
                 graph_runtime_state,
             ),
         ) as prepare_single,
         patch.object(runner, "_init_graph") as init_graph,
     ):
-        runner.prepare()
+        prepared = runner.prepare()
 
     prepare_single.assert_called_once_with(
         workflow=workflow,
@@ -1892,10 +1890,14 @@ def test_run_uses_single_node_execution_branch(
     )
     init_graph.assert_not_called()
 
-    assert entry_class.call_args.kwargs["graph_runtime_state"] is graph_runtime_state
+    assert prepared is not None
+    assert prepared.entry.graph_engine.runtime_state is graph_runtime_state
+    assert prepared.entry.graph_engine.graph is graph
+    assert queue_manager.graph_runtime_state is graph_runtime_state
 
 
 def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
+    """Given a snippet root, retain parent depth and bind inputs to its root and compatible alias."""
     app_generate_entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
@@ -1917,7 +1919,12 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
         id="workflow",
         type="workflow",
         version="v1",
-        graph=json.dumps({"nodes": [], "edges": []}),
+        graph=json.dumps(
+            {
+                "nodes": [{"id": "root-node", "data": {"type": "start", "title": "Start", "variables": []}}],
+                "edges": [],
+            }
+        ),
         kind=WorkflowKind.SNIPPET,
     )
     workflow.environment_variables = []
@@ -1925,33 +1932,22 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
-        variable_loader=MagicMock(),
+        variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id="system-user",
     )
 
-    mock_workflow_entry = MagicMock()
-    mock_workflow_entry.graph_engine = MagicMock()
-    mock_workflow_entry.graph_engine.layer = MagicMock()
-    mock_workflow_entry.run.return_value = iter([])
-
-    graph = _workflow_graph(runner)
-
     with (
-        patch("services.workflow_runtime.workflow_runner.RedisChannel"),
-        patch("services.workflow_runtime.workflow_runner.redis_client"),
-        patch("services.workflow_runtime.workflow_runner.WorkflowEntry", return_value=mock_workflow_entry),
-        patch("services.workflow_runtime.workflow_runner.build_system_variables", return_value={}),
-        patch("services.workflow_runtime.workflow_runner.build_bootstrap_variables", return_value=[]),
-        patch("services.workflow_runtime.workflow_runner.add_variables_to_pool"),
         patch("services.workflow_runtime.workflow_runner.get_default_root_node_id", return_value="root-node"),
         patch(
             "services.workflow_runtime.workflow_runner.get_compatible_start_aliases", return_value=("legacy-start",)
         ) as aliases,
-        patch("services.workflow_runtime.workflow_runner.add_node_inputs_to_pool") as add_inputs,
-        patch.object(runner, "_init_graph", return_value=graph) as init_graph,
+        patch.object(
+            workflow_runner, "add_node_inputs_to_pool", wraps=workflow_runner.add_node_inputs_to_pool
+        ) as add_inputs,
+        patch.object(runner, "_init_graph", wraps=runner._init_graph) as init_graph,
     ):
-        runner.prepare()
+        prepared = runner.prepare()
 
     aliases.assert_called_once_with(workflow_kind="snippet", root_node_id="root-node")
     add_inputs.assert_called_once()
@@ -1959,6 +1955,16 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
     assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
     assert init_graph.call_args.kwargs["call_depth"] == 4
+    assert init_graph.call_args.kwargs["root_node_id"] == "root-node"
+    assert prepared is not None
+    assert prepared.entry.graph_engine.graph.root_node.id == "root-node"
+    variable_pool = prepared.entry.graph_engine.runtime_state.variable_pool
+    root_input = variable_pool.get(["root-node", "question"])
+    alias_input = variable_pool.get(["legacy-start", "question"])
+    assert root_input is not None
+    assert alias_input is not None
+    assert root_input.value == "hello"
+    assert alias_input.value == "hello"
 
 
 @pytest.fixture
