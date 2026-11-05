@@ -27,19 +27,6 @@ const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   ...overrides,
 })
 
-vi.mock('@/hooks/use-breakpoints', () => {
-  const MediaType = {
-    pc: 'pc',
-    pad: 'pad',
-    mobile: 'mobile',
-  }
-  const mockUseBreakpoints = vi.fn(() => MediaType.pc)
-  return {
-    default: mockUseBreakpoints,
-    MediaType,
-  }
-})
-
 const upload = vi.hoisted(() => vi.fn<typeof fileUpload>())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),

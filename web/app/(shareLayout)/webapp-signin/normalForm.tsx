@@ -1,6 +1,5 @@
 'use client'
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -51,13 +50,7 @@ const NormalForm = () => {
     init()
   }, [init])
   if (isLoading) {
-    return (
-      <div
-        className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
-      >
-        <LoadingPlaceholder />
-      </div>
-    )
+    return <LoadingPlaceholder />
   }
   if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
@@ -66,7 +59,7 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseLost, { ns: 'login' })}
@@ -86,7 +79,7 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseExpired, { ns: 'login' })}
@@ -106,7 +99,7 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseInactive, { ns: 'login' })}

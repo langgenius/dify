@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "一次生成多条文本，可在此基础上编辑并继续生成",
   "feature.moreLikeThis.tip": "使用此功能将会额外消耗 tokens",
   "feature.moreLikeThis.title": "更多类似的",
+  "feature.showThoughts.description": "在对话中展示模型的思考内容。",
+  "feature.showThoughts.title": "显示思考过程",
   "feature.speechToText.description": "您可以使用语音输入。",
   "feature.speechToText.title": "语音转文字",
   "feature.suggestedQuestionsAfterAnswer.description": "设置下一步问题建议可以让用户更好的对话。",

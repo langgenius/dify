@@ -451,10 +451,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                             setCustomCollection(newCollection)
                           }}
                           className="h-10 grow"
-                          placeholder={
-                            t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) ||
-                            ''
-                          }
+                          placeholder={t(($) => $['createTool.privacyPolicyPlaceholder'], {
+                            ns: 'tools',
+                          })}
                         />
                       </div>
 
@@ -475,11 +474,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                             setCustomCollection(newCollection)
                           }}
                           className="h-10 grow"
-                          placeholder={
-                            t(($) => $['createTool.customDisclaimerPlaceholder'], {
-                              ns: 'tools',
-                            }) || ''
-                          }
+                          placeholder={t(($) => $['createTool.customDisclaimerPlaceholder'], {
+                            ns: 'tools',
+                          })}
                         />
                       </div>
                     </div>

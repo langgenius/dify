@@ -1252,12 +1252,36 @@ export const zWorkflowToolDeletePayload = z.object({
 })
 
 /**
+ * TriggerOauthClientConfigInvalidError
+ *
+ * The stored trigger OAuth client configuration is invalid.
+ */
+export const zTriggerOauthClientConfigInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_client_config_invalid'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * TriggerOAuthClientPayload
  */
 export const zTriggerOAuthClientPayload = z.object({
   client_params: z.record(z.string(), z.unknown()).nullish(),
   enabled: z.boolean().nullish(),
 })
+
+/**
+ * TriggerOauthClientChangedError
+ *
+ * The trigger OAuth client configuration changed. Reload it before saving again.
+ */
+export const zTriggerOauthClientChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_client_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * TriggerSubscriptionBuilderUpdatePayload
@@ -1296,6 +1320,18 @@ export const zTriggerVerificationResponse = z.object({
 export const zTriggerProviderErrorResponse = z.object({
   error: z.string(),
 })
+
+/**
+ * TriggerOauthProviderError
+ *
+ * The trigger provider could not complete OAuth authorization.
+ */
+export const zTriggerOauthProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_provider_error'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * TriggerSubscriptionVerifyPayload

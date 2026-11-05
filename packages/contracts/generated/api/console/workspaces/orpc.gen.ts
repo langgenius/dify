@@ -38,6 +38,9 @@ import {
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
+  zTriggerOauthClientChangedError,
+  zTriggerOauthClientConfigInvalidError,
+  zTriggerOauthProviderError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -5737,7 +5740,7 @@ export const info3 = {
 }
 
 /**
- * Remove custom OAuth client configuration
+ * Remove the workspace's custom OAuth client configuration
  */
 export const delete26 = oc
   .route({
@@ -5745,14 +5748,14 @@ export const delete26 = oc
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Remove custom OAuth client configuration',
+    summary: "Remove the workspace's custom OAuth client configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 /**
- * Get OAuth client configuration for a provider
+ * Get the masked OAuth client configuration for a provider
  */
 export const get127 = oc
   .route({
@@ -5760,14 +5763,20 @@ export const get127 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Get OAuth client configuration for a provider',
+    summary: 'Get the masked OAuth client configuration for a provider',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 /**
- * Configure custom OAuth client for a provider
+ * Configure the workspace's custom OAuth client for a provider
  */
 export const post84 = oc
   .route({
@@ -5775,7 +5784,7 @@ export const post84 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Configure custom OAuth client for a provider',
+    summary: "Configure the workspace's custom OAuth client for a provider",
     tags: ['console'],
   })
   .input(
@@ -5785,6 +5794,13 @@ export const post84 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 export const client = {
   delete: delete26,
@@ -6020,6 +6036,13 @@ export const get131 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+    trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+  })
 
 export const authorize = {
   get: get131,
@@ -6265,12 +6288,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))

@@ -8,7 +8,7 @@ import {
   zNodeDataMigrationResponse,
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { ORPCError } from '@orpc/client'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { createDefaultFormInputByType, DeliveryMethodType } from '../../../human-input/types'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from '../executor'

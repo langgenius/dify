@@ -12,6 +12,11 @@ existing interaction variants when adding error styles so call-site overrides ke
 Disabled surfaces take precedence over invalid and read-only appearance. Keep invalid state and
 error associations intact while limiting error colors to enabled controls.
 
+Read-only locks the value, not the control. It stays focusable, keeps its indicators and drops
+hover feedback without looking disabled. Its popup opens for browsing; choosing a value and the
+parts that only commit or clear one are unavailable. Expose it with `aria-readonly`, never
+`aria-disabled`.
+
 Where supported by the upstream part, `className(state)` and `style(state)` read that part's state.
 At call sites, before using a callback or React state to calculate styles, check whether data attributes or CSS
 variables already express the requirement. When direct state access is needed, add a short comment
