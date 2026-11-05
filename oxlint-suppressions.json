@@ -1285,11 +1285,6 @@
       "count": 6
     }
   },
-  "web/app/components/base/file-uploader/file-from-link-or-local/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-from-link-or-local/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -1431,11 +1426,6 @@
   "web/app/components/base/icon-picker/emoji-data.ts": {
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "web/app/components/base/image-uploader/__tests__/uploader.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
     }
   },
   "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
@@ -4854,11 +4844,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
