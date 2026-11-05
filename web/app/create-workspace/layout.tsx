@@ -4,8 +4,8 @@ import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Header from '@/app/components/auth-shell/header'
 import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
-import Header from '@/app/signin/_header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export default function CreateWorkspaceLayout({ children }: { children: ReactNode }) {

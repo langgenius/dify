@@ -158,6 +158,7 @@ from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import CeleryTraceEmitter
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.trigger.oauth_gateway import TriggerOAuthBuilderGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -1118,6 +1119,15 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
+    assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
+    assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
+    gateway = services.workspaces.trigger_oauth._builders
+    assert isinstance(gateway, TriggerOAuthBuilderGateway)
+    assert gateway._builders is services.workspaces.trigger_builders
+    assert (
+        services.workspaces.trigger_builders._create_subscription
+        == services.workspaces.trigger_subscription_management.create
+    )
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

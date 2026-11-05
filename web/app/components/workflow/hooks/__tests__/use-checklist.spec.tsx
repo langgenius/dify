@@ -140,7 +140,9 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
   const graph = createRef<ReactFlowInstance>()
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryProvider>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
         <WorkflowContext value={store}>
           <ReactFlowProvider>
             <CatalogProvider>
