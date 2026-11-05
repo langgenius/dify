@@ -97,7 +97,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     () => currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
-  const [isResultDrawerOpen, { setTrue: showRightPanel, setFalse: hideRightPanel }] =
+  const [isResultDrawerOpen, { setTrue: openResultDrawer, setFalse: closeResultDrawer }] =
     useBoolean(false)
 
   const {
@@ -203,7 +203,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             key={queryInputKey}
             setHitResult={setHitResult}
             setExternalHitResult={setExternalHitResult}
-            onSubmit={showRightPanel}
+            onSubmit={() => {
+              if (isBelowSm) openResultDrawer()
+            }}
             onUpdateList={recordsRefetch}
             loading={isRetrievalLoading}
             queries={queries}
@@ -251,7 +253,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         showClose
         isMobile={isBelowSm}
         isOpen={!isBelowSm || isResultDrawerOpen}
-        onClose={hideRightPanel}
+        onClose={closeResultDrawer}
         title={panelTitle}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">

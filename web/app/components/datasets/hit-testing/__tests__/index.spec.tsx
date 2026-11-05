@@ -213,6 +213,21 @@ describe('HitTestingPage', () => {
     expect(await screen.findByRole('dialog', { name: '0 Retrieved Chunks' })).toBeInTheDocument()
   })
 
+  it('does not open the results drawer when a wide-screen query is followed by a narrow window', async () => {
+    const user = userEvent.setup()
+    mockHitTestingMutateAsync.mockResolvedValueOnce({
+      query: { content: 'Test query' },
+      records: [createMockHitTesting()],
+    })
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    await user.type(screen.getByRole('textbox'), 'Test query')
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 Retrieved Chunks'))
+
+    act(() => setViewportWidth(390))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('announces zero retrieved chunks after an empty response', async () => {
     const user = userEvent.setup()
     const response: HitTestingResponse = {
