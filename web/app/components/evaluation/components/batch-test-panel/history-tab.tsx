@@ -48,6 +48,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const [page, setPage] = useState(0)
   const [previewRunId, setPreviewRunId] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const hasResultsPreview = resourceType !== 'snippets'
   const resource = useEvaluationResource(resourceType, resourceId)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
   const logsQuery = useEvaluationLogsQuery(
@@ -77,15 +78,22 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
 
   useEffect(() => {
-    if (resourceType === 'datasets' || resource.selectedRunId) return
+    if (hasResultsPreview || resource.selectedRunId) return
 
     const firstRunId = records[0]?.id
     if (firstRunId) setSelectedRunId(resourceType, resourceId, firstRunId)
-  }, [records, resource.selectedRunId, resourceId, resourceType, setSelectedRunId])
+  }, [
+    hasResultsPreview,
+    records,
+    resource.selectedRunId,
+    resourceId,
+    resourceType,
+    setSelectedRunId,
+  ])
 
   const handleSelectRun = (runId: string) => {
     setSelectedRunId(resourceType, resourceId, runId)
-    if (resourceType === 'datasets') {
+    if (hasResultsPreview) {
       setPreviewRunId(runId)
       setPreviewOpen(true)
     }
@@ -159,7 +167,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                   onClick={() => handleSelectRun(record.id)}
                 >
                   <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">
-                    {resourceType === 'datasets' ? (
+                    {hasResultsPreview ? (
                       <button
                         type="button"
                         aria-label={`${t(($) => $['results.title'])} ${formatCreatedAt(record.created_at, formatTime)}`}
@@ -275,7 +283,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
           onPageChange={(nextPage) => setPage(nextPage - 1)}
         />
       )}
-      {resourceType === 'datasets' && (
+      {hasResultsPreview && (
         <PipelineResultsDialog
           resourceType={resourceType}
           resourceId={resourceId}
