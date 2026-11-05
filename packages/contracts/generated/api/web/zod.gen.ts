@@ -2257,6 +2257,7 @@ export const zVerificationTokenResponse = z.object({
  * WebAccountProfileResponse
  */
 export const zWebAccountProfileResponse = z.object({
+  account_login_url: z.string().nullable(),
   avatar: z.string().nullable(),
   avatar_url: z.string().nullable(),
   has_owned_tenant: z.boolean().nullish(),
