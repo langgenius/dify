@@ -380,6 +380,103 @@ def test_delete_subscription_uses_real_caller_transaction(
         unsubscribe.assert_called_once()
 
 
+@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
+def test_delete_subscription_commits_provider_and_trigger_in_tenant_scope(
+    mocker,
+    trigger_db: TriggerDatabase,
+    provider_controller: Mock,
+    credential_type: CredentialType,
+) -> None:
+    subscription = trigger_db.add_subscription(credential_type=credential_type)
+    foreign_subscription = trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id)
+    triggers = [
+        WorkflowPluginTrigger(
+            tenant_id=tenant_id,
+            app_id=str(uuid4()),
+            node_id="trigger",
+            provider_id=str(trigger_db.provider_id),
+            event_name="push",
+            subscription_id=subscription.id,
+        )
+        for tenant_id in (trigger_db.tenant_id, trigger_db.other_tenant_id)
+    ]
+    with trigger_db.session_maker.begin() as session:
+        session.add_all(triggers)
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
+    unsubscribe = mocker.patch.object(service_module.TriggerManager, "unsubscribe_trigger")
+    mocker.patch.object(service_module, "delete_cache_for_subscription")
+
+    TriggerProviderService.delete_trigger_subscription(trigger_db.tenant_id, subscription.id)
+
+    assert trigger_db.get_subscription(subscription.id) is None
+    assert trigger_db.get_subscription(foreign_subscription.id) is not None
+    with trigger_db.session_maker() as session:
+        assert session.get(WorkflowPluginTrigger, triggers[0].id) is None
+        assert session.get(WorkflowPluginTrigger, triggers[1].id) is not None
+    if credential_type == CredentialType.UNAUTHORIZED:
+        unsubscribe.assert_not_called()
+    else:
+        unsubscribe.assert_called_once()
+
+
+def test_delete_subscription_rolls_back_provider_when_trigger_delete_fails(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
+) -> None:
+    subscription = trigger_db.add_subscription()
+    trigger = WorkflowPluginTrigger(
+        tenant_id=trigger_db.tenant_id,
+        app_id=str(uuid4()),
+        node_id="trigger",
+        provider_id=str(trigger_db.provider_id),
+        event_name="push",
+        subscription_id=subscription.id,
+    )
+    with trigger_db.session_maker.begin() as session:
+        session.add(trigger)
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
+    mocker.patch.object(service_module.TriggerManager, "unsubscribe_trigger")
+    mocker.patch.object(service_module, "delete_cache_for_subscription")
+
+    def fail_trigger_delete(_mapper: object, _connection: Connection, _instance: WorkflowPluginTrigger) -> None:
+        raise RuntimeError("trigger delete failed")
+
+    event.listen(WorkflowPluginTrigger, "before_delete", fail_trigger_delete)
+    try:
+        with pytest.raises(RuntimeError, match="trigger delete failed"):
+            TriggerProviderService.delete_trigger_subscription(trigger_db.tenant_id, subscription.id)
+    finally:
+        event.remove(WorkflowPluginTrigger, "before_delete", fail_trigger_delete)
+
+    assert trigger_db.get_subscription(subscription.id) is not None
+    with trigger_db.session_maker() as session:
+        assert session.get(WorkflowPluginTrigger, trigger.id) is not None
+
+
+def test_delete_subscription_rejects_foreign_subscription_without_deleting_trigger(
+    trigger_db: TriggerDatabase,
+) -> None:
+    subscription = trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id)
+    trigger = WorkflowPluginTrigger(
+        tenant_id=trigger_db.tenant_id,
+        app_id=str(uuid4()),
+        node_id="trigger",
+        provider_id=str(trigger_db.provider_id),
+        event_name="push",
+        subscription_id=subscription.id,
+    )
+    with trigger_db.session_maker.begin() as session:
+        session.add(trigger)
+
+    with pytest.raises(ValueError, match="not found"):
+        TriggerProviderService.delete_trigger_subscription(trigger_db.tenant_id, subscription.id)
+
+    assert trigger_db.get_subscription(subscription.id) is not None
+    with trigger_db.session_maker() as session:
+        assert session.get(WorkflowPluginTrigger, trigger.id) is not None
+
+
 @pytest.mark.parametrize("client_credentials", [None, {}, {"client": "system"}])
 def test_refresh_oauth_token_persists_credentials_after_commit(
     mocker, trigger_db: TriggerDatabase, provider_controller: Mock, client_credentials: dict[str, str] | None

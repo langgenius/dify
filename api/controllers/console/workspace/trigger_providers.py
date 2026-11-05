@@ -5,7 +5,6 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, RootModel, model_validator
-from sqlalchemy.orm import sessionmaker
 from werkzeug import Response
 from werkzeug.exceptions import BadRequest
 
@@ -43,7 +42,6 @@ from core.trigger.entities.api_entities import (
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
@@ -60,7 +58,6 @@ from services.trigger.oauth_service import (
     TriggerOAuthProviderError,
 )
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 logger = logging.getLogger(__name__)
 
@@ -533,19 +530,7 @@ class TriggerSubscriptionDeleteApi(Resource):
         """Delete a subscription instance"""
 
         try:
-            with sessionmaker(db.engine).begin() as session:
-                # Delete trigger provider subscription
-                TriggerProviderService.delete_trigger_provider(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
-                # Delete plugin triggers
-                TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
+            TriggerProviderService.delete_trigger_subscription(tenant_id=tenant_id, subscription_id=subscription_id)
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
             raise BadRequest(str(e)) from e

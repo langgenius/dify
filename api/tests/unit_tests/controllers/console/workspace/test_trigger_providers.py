@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from importlib import import_module
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
@@ -22,7 +21,7 @@ from controllers.console.workspace.trigger_providers import (
 )
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.account import Account
-from models.engine import db
+from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 """Unit tests for controllers.console.workspace.trigger_providers endpoints."""
 
@@ -153,24 +152,14 @@ trigger_provider_module = import_module("controllers.console.workspace.trigger_p
 
 class TestTriggerProvidersCases:
     @staticmethod
-    @pytest.fixture
-    def flask_sqlite_engine() -> Iterator[Engine]:
-        app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        db.init_app(app)
-
-        with app.app_context():
-            yield db.engine
-
-    @staticmethod
-    def test_delete_subscription_uses_sqlite_transaction(flask_sqlite_engine: Engine) -> None:
+    def test_delete_subscription_uses_sqlite_transaction(sqlite_engine: Engine) -> None:
         api = TriggerSubscriptionDeleteApi()
         method = unwrap(api.post)
 
         with (
             patch.object(trigger_provider_module.TriggerProviderService, "delete_trigger_provider") as delete_provider,
             patch.object(
-                trigger_provider_module.TriggerSubscriptionOperatorService,
+                TriggerSubscriptionOperatorService,
                 "delete_plugin_trigger_by_subscription",
             ) as delete_triggers,
         ):
@@ -180,10 +169,9 @@ class TestTriggerProvidersCases:
         provider_session = delete_provider.call_args.kwargs["session"]
         trigger_session = delete_triggers.call_args.kwargs["session"]
         assert provider_session is trigger_session
-        assert provider_session.get_bind() is flask_sqlite_engine
+        assert provider_session.get_bind() is sqlite_engine
 
     @staticmethod
-    @pytest.mark.usefixtures("flask_sqlite_engine")
     def test_delete_subscription_translates_value_error() -> None:
         api = TriggerSubscriptionDeleteApi()
         method = unwrap(api.post)

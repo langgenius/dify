@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.db.session_factory import session_factory
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -33,6 +34,7 @@ from models.trigger import (
     TriggerSubscription,
 )
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +289,22 @@ class TriggerProviderService:
                 )
                 subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
             return subscription
+
+    @classmethod
+    def delete_trigger_subscription(cls, tenant_id: str, subscription_id: str) -> None:
+        """Delete an existing tenant subscription and its plugin trigger atomically.
+
+        The admitted tenant ID scopes both deletes. Success commits both database
+        changes; a missing subscription raises ValueError, and any deletion failure
+        rolls both changes back. Preserve the provider cleanup's existing external
+        unsubscribe and cache invalidation order before deleting the plugin trigger;
+        those external effects are not covered by the database rollback.
+        """
+        with session_factory.get_session_maker().begin() as session:
+            cls.delete_trigger_provider(tenant_id=tenant_id, subscription_id=subscription_id, session=session)
+            TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
+                tenant_id=tenant_id, subscription_id=subscription_id, session=session
+            )
 
     @classmethod
     def delete_trigger_provider(cls, tenant_id: str, subscription_id: str, *, session: Session):
