@@ -243,16 +243,18 @@ it('defaults to models and preserves a real model search across section navigati
 
 it('closes compact navigation after changing the settings section', async () => {
   const user = userEvent.setup()
-  vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-    matches: query === '(width < 48rem)',
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList,
+  )
+  onTestFinished(() => matchMedia.mockRestore())
   renderPage({ ui: <SettingsIntegrations /> })
   await user.click(
     screen.getByRole('button', {

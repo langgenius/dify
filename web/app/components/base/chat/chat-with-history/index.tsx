@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { InstalledAppConnectionsProvider } from '@/app/components/explore/installed-app/connections/provider'
 import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { resolveWebAppAddress } from '@/service/webapp-address'
@@ -242,7 +243,15 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         renderAgentContent,
       }}
     >
-      {supportsConnections ? (
+      {installedAppInfo?.app.mode === 'advanced-chat' ? (
+        <InstalledAppConnectionsProvider
+          key={installedAppInfo.id}
+          installedAppId={installedAppInfo.id}
+          conversationId={currentConversationId || undefined}
+        >
+          {chat}
+        </InstalledAppConnectionsProvider>
+      ) : supportsConnections ? (
         <WebAppConnectionsProvider
           address={address}
           conversationId={currentConversationId || undefined}

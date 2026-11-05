@@ -22,7 +22,7 @@ const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-wi
 })
 
 const InstalledAppFrame = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full bg-background-body pt-2 pl-2">{children}</div>
+  <div className="h-full bg-background-body ps-2 pt-2">{children}</div>
 )
 
 const installedAppSurfaceClassName =
@@ -267,7 +267,7 @@ const InstalledApp = ({ id }: { id: string }) => {
       )}
       {surface === 'workflow' && (
         <InstalledTextGenerationSurface>
-          <TextGenerationApp isWorkflow isInstalledApp />
+          <TextGenerationApp isWorkflow isInstalledApp installedAppId={id} />
         </InstalledTextGenerationSurface>
       )}
     </InstalledAppFrame>

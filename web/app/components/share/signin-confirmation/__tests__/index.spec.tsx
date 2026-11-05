@@ -70,7 +70,7 @@ it.each([null, 'add', 'delete'] as const)(
   },
 )
 
-it('explains unsupported migrations and requires an explicit continue or delete action', async () => {
+it('defaults to continuing without adding data when migration is unsupported and allows deletion instead', async () => {
   const user = userEvent.setup()
   const onConfirm = vi.fn()
   render(
@@ -91,11 +91,10 @@ it('explains unsupported migrations and requires an explicit continue or delete 
     name: 'login.history.continueWithoutAdding',
   })
   const deleteOption = screen.getByRole('radio', { name: 'login.history.delete' })
-  expect(continueOption).not.toBeChecked()
+  expect(continueOption).toBeChecked()
   expect(deleteOption).not.toBeChecked()
-  expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeEnabled()
 
-  await user.click(continueOption)
   await user.click(screen.getByRole('button', { name: 'login.history.continue' }))
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith('continue')
 

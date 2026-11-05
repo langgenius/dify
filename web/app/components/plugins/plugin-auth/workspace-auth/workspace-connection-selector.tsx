@@ -17,6 +17,8 @@ import { CredentialTypeEnum } from '../types'
 import { useWorkspaceConnectionOperations } from './use-workspace-connection-operations'
 
 export type WorkspaceConnectionSelectorProps = {
+  variant?: 'card' | 'inline'
+  warning?: boolean
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
   credentialId?: string
@@ -31,6 +33,8 @@ export type WorkspaceConnectionSelectorProps = {
 }
 
 const WorkspaceConnectionSelector = ({
+  variant = 'card',
+  warning,
   pluginPayload,
   authorization,
   credentialId,
@@ -144,6 +148,8 @@ const WorkspaceConnectionSelector = ({
     <>
       <ConnectionSelector
         dataSource={{
+          variant,
+          warning,
           credentials,
           selectedCredential,
           workspaceDefault: useWorkspaceDefault

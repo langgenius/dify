@@ -46,7 +46,7 @@ describe('useAutoGenerateWebhookUrl', () => {
         nodes: useNodes<WebhookFlowNode['data']>(),
       }),
       {
-        resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
+        resource: { kind: 'app', collaborationEnabled: false, appId: 'app-123', mode: 'workflow' },
         nodes: createFlowNodes(),
         edges: [],
       },
@@ -112,7 +112,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       webhook_url: 'https://example.com/other-webhook',
       webhook_debug_url: 'https://example.com/other-debug',
     })
-    rerender(view({ kind: 'app', appId: 'app-456', mode: 'workflow' }))
+    rerender(view({ kind: 'app', collaborationEnabled: false, appId: 'app-456', mode: 'workflow' }))
     await user.click(screen.getByRole('button', { name: 'Generate URL' }))
     await waitFor(() =>
       expect(mockRequest).toHaveBeenCalledWith(

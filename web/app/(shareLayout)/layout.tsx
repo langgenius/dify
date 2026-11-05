@@ -5,7 +5,7 @@ import Splash from './components/splash'
 
 const Layout: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="h-dvh min-w-75 pb-[env(safe-area-inset-bottom)]">
+    <div className="h-dvh min-w-75">
       <AuthSessionBoundary>
         <WebAppStoreProvider>
           <Splash>{children}</Splash>

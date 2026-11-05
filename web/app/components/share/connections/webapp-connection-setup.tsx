@@ -46,7 +46,6 @@ export default function WebAppConnectionSetup({
         isMutating={state.isMutating}
       />
       <ConnectionLoadState
-        loading={state.status === 'loading' || state.preflight.status === 'checking'}
         error={state.status === 'error' || state.preflight.status === 'error'}
         onRetry={
           state.status === 'error'
@@ -62,6 +61,9 @@ export default function WebAppConnectionSetup({
         variant="primary"
         size="large"
         disabled={!state.canRun || state.isMutating}
+        loading={
+          state.status === 'loading' || state.preflight.status === 'checking' || state.isMutating
+        }
         onClick={() => {
           if (state.canRun && !state.isMutating) onStart()
         }}

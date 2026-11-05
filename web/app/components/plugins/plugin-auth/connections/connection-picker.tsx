@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import ConnectionSelectTrigger from '@/app/components/share/connections/connection-select-trigger'
 import { CredentialTypeEnum } from '../types'
 
 export type ConnectionPickerOption = {
@@ -36,6 +37,8 @@ type ConnectionPickerAction = {
 }
 
 export type ConnectionPickerProps = {
+  variant?: 'card' | 'inline'
+  warning?: boolean
   groups: ConnectionPickerGroup[]
   selected?: ConnectionPickerOption
   fallbackName: string
@@ -54,6 +57,8 @@ export type ConnectionPickerProps = {
 }
 
 const ConnectionPicker = ({
+  variant = 'card',
+  warning,
   groups,
   selected,
   fallbackName,
@@ -78,41 +83,58 @@ const ConnectionPicker = ({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger
-        disabled={disabled}
-        className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
-      >
-        <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
-          <Avatar size="xs" className="border-[0.5px] border-divider-regular">
-            <AvatarFallback className="bg-components-icon-bg-blue-soft text-xs text-text-accent">
-              {selectedName[0]?.toLocaleUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        </span>
-        <span className="flex min-w-0 grow flex-col gap-0.5 px-1 py-0.75">
-          {/* The connection picker discloses the complete name through its wrapping rows. */}
-          <span
-            className={cn(
-              'truncate system-sm-regular text-components-input-text-filled',
-              unavailable && 'text-text-destructive',
-            )}
-          >
-            {selectedName}
-          </span>
-          {selectedSubtitle && (
-            <span className="truncate system-xs-regular text-text-tertiary">
-              {selectedSubtitle}
-            </span>
-          )}
-        </span>
-        {selected?.isDefault && (
-          <Badge className="shrink-0">{t(($) => $['auth.default'], { ns: 'plugin' })}</Badge>
-        )}
-        <span
-          aria-hidden
-          className="me-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
+      {variant === 'inline' ? (
+        <PopoverTrigger
+          disabled={disabled}
+          render={
+            <ConnectionSelectTrigger
+              connectionName={selectedName}
+              methodLabel={
+                selected?.method === CredentialTypeEnum.API_KEY
+                  ? methodLabel(selected.method)
+                  : undefined
+              }
+              warning={warning || unavailable || selected?.reauthorizationRequired}
+            />
+          }
         />
-      </PopoverTrigger>
+      ) : (
+        <PopoverTrigger
+          disabled={disabled}
+          className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
+        >
+          <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
+            <Avatar size="xs" className="border-[0.5px] border-divider-regular">
+              <AvatarFallback className="bg-components-icon-bg-blue-soft text-xs text-text-accent">
+                {selectedName[0]?.toLocaleUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </span>
+          <span className="flex min-w-0 grow flex-col gap-0.5 px-1 py-0.75">
+            {/* The connection picker discloses the complete name through its wrapping rows. */}
+            <span
+              className={cn(
+                'truncate system-sm-regular text-components-input-text-filled',
+                unavailable && 'text-text-destructive',
+              )}
+            >
+              {selectedName}
+            </span>
+            {selectedSubtitle && (
+              <span className="truncate system-xs-regular text-text-tertiary">
+                {selectedSubtitle}
+              </span>
+            )}
+          </span>
+          {selected?.isDefault && (
+            <Badge className="shrink-0">{t(($) => $['auth.default'], { ns: 'plugin' })}</Badge>
+          )}
+          <span
+            aria-hidden
+            className="me-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
+          />
+        </PopoverTrigger>
+      )}
       <PopoverContent
         align="end"
         sideOffset={4}
@@ -132,7 +154,12 @@ const ConnectionPicker = ({
           </div>
         ) : (
           <>
-            <div className="space-y-0.5">
+            <div
+              className={cn(
+                'space-y-0.5',
+                variant === 'inline' && 'max-h-72 overflow-y-auto overscroll-contain',
+              )}
+            >
               {groups
                 .filter((group) => group.items.length > 0)
                 .map((group) => (
@@ -147,15 +174,19 @@ const ConnectionPicker = ({
                           <div
                             key={option.id}
                             className={cn(
-                              'flex min-h-12.5 items-center rounded-lg pe-2 hover:bg-state-base-hover',
-                              isSelected && 'bg-background-section-burn',
+                              'flex items-center rounded-lg pe-2 hover:bg-state-base-hover',
+                              variant === 'inline' ? 'min-h-9' : 'min-h-12.5',
+                              isSelected && variant === 'card' && 'bg-background-section-burn',
                             )}
                           >
                             <Button
                               variant="ghost"
                               aria-pressed={isSelected}
                               // Match the connection row's 8px spacing rather than a compact action label.
-                              className="h-auto min-w-0 grow justify-start gap-2 p-2 text-start hover:bg-transparent"
+                              className={cn(
+                                'h-auto min-w-0 grow justify-start gap-2 p-2 text-start hover:bg-transparent',
+                                variant === 'inline' && 'py-1.5',
+                              )}
                               disabled={option.disabled}
                               onClick={() => onSelect(option.id)}
                             >
@@ -171,12 +202,19 @@ const ConnectionPicker = ({
                                 )}
                               </span>
                               <span className="flex min-w-0 grow flex-col gap-0.5">
-                                <span className="system-sm-medium wrap-anywhere whitespace-normal text-components-input-text-filled">
+                                <span
+                                  className={cn(
+                                    'wrap-anywhere whitespace-normal text-components-input-text-filled',
+                                    variant === 'inline' ? 'system-sm-regular' : 'system-sm-medium',
+                                  )}
+                                >
                                   {option.name}
                                 </span>
-                                <span className="truncate system-xs-regular text-text-tertiary">
-                                  {option.subtitle}
-                                </span>
+                                {variant === 'card' && (
+                                  <span className="truncate system-xs-regular text-text-tertiary">
+                                    {option.subtitle}
+                                  </span>
+                                )}
                                 {option.reauthorizationRequired && (
                                   <span className="system-xs-regular text-text-warning">
                                     {t(($) => $['auth.connection.reauthorizationRequired'], {
@@ -185,12 +223,12 @@ const ConnectionPicker = ({
                                   </span>
                                 )}
                               </span>
-                              {option.isDefault && (
+                              {option.isDefault && variant === 'card' && (
                                 <Badge className="shrink-0">
                                   {t(($) => $['auth.default'], { ns: 'plugin' })}
                                 </Badge>
                               )}
-                              {option.method && (
+                              {option.method && variant === 'card' && (
                                 <span className="shrink-0 system-xs-regular text-text-tertiary">
                                   {methodLabel(option.method)}
                                 </span>

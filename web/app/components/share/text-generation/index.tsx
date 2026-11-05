@@ -10,6 +10,8 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { InstalledAppConnectionsProvider } from '@/app/components/explore/installed-app/connections/provider'
+import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { toast } from '@/app/notifications'
@@ -23,11 +25,14 @@ import { captureWorkflowRunConfiguration } from './workflow-run-configuration'
 
 type IMainProps = {
   isInstalledApp?: boolean
+  installedAppId?: string
   isWorkflow?: boolean
 }
 const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
-  const connections = useOptionalWebAppConnections()
+  const webAppConnections = useOptionalWebAppConnections()
+  const installedConnections = useOptionalInstalledAppConnections()
+  const connections = webAppConnections ?? installedConnections
   const [setupComplete, setSetupComplete] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<WorkflowRunSnapshot>()
   const isBelowMd = useMediaQuery('(width < 48rem)', {})
@@ -104,7 +109,10 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   }, [])
   const handleRunOnce = useCallback(() => {
     if (runControl || (isCallBatchAPI && !allTasksRun)) return
-    const snapshot = captureWorkflowRunConfiguration(connections)
+    const snapshot = captureWorkflowRunConfiguration(
+      connections,
+      installedConnections?.installedAppId,
+    )
     if (snapshot === false) return
     setRunSnapshot(snapshot)
     setIsCallBatchAPI(false)
@@ -114,6 +122,7 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   }, [
     allTasksRun,
     connections,
+    installedConnections?.installedAppId,
     isCallBatchAPI,
     resetBatchExecution,
     runControl,
@@ -123,7 +132,10 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   const handleRunBatch = useCallback(
     (data: string[][]) => {
       if (runControl) return
-      const snapshot = captureWorkflowRunConfiguration(connections)
+      const snapshot = captureWorkflowRunConfiguration(
+        connections,
+        installedConnections?.installedAppId,
+      )
       if (snapshot === false) return
       runBatchExecution(data, {
         onStart: () => {
@@ -134,11 +146,20 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
         },
       })
     },
-    [connections, runBatchExecution, runControl, showResultPanel],
+    [
+      connections,
+      installedConnections?.installedAppId,
+      runBatchExecution,
+      runControl,
+      showResultPanel,
+    ],
   )
   const handleRetryAllFailedTask = () => {
     if (!allTasksRun || runControl) return
-    const snapshot = captureWorkflowRunConfiguration(connections)
+    const snapshot = captureWorkflowRunConfiguration(
+      connections,
+      installedConnections?.installedAppId,
+    )
     if (snapshot === false) return
     setRunSnapshot(snapshot)
     retryAllFailedTasks()
@@ -229,6 +250,16 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
 }
 const TextGeneration: FC<IMainProps> = (props) => {
   const address = resolveWebAppAddress()
+  if (props.isInstalledApp && props.isWorkflow && props.installedAppId) {
+    return (
+      <InstalledAppConnectionsProvider
+        key={props.installedAppId}
+        installedAppId={props.installedAppId}
+      >
+        <TextGenerationContent {...props} />
+      </InstalledAppConnectionsProvider>
+    )
+  }
   if (!props.isInstalledApp && props.isWorkflow && address?.kind === 'default') {
     return (
       <WebAppConnectionsProvider address={address}>
