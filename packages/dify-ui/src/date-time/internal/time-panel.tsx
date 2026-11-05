@@ -13,6 +13,7 @@ type TimePanelProps = {
   hourCycle?: 12 | 24
   scrollRequest?: number
   minuteStep?: 1 | 5 | 10 | 15 | 20 | 30
+  readOnly?: boolean
 }
 
 function TimePanel({
@@ -23,6 +24,7 @@ function TimePanel({
   hourCycle = 12,
   scrollRequest,
   minuteStep = 1,
+  readOnly,
 }: TimePanelProps) {
   const numbers = usePickerNumbers(locale)
   const current = parseTimeValue(value)
@@ -43,6 +45,7 @@ function TimePanel({
     <PickerColumns>
       <OptionColumn
         scrollRequest={scrollRequest}
+        readOnly={readOnly}
         normalizeDigits={numbers.normalizeDigits}
         label={labels.hour}
         value={displayHour}
@@ -54,6 +57,7 @@ function TimePanel({
       />
       <OptionColumn
         scrollRequest={scrollRequest}
+        readOnly={readOnly}
         normalizeDigits={numbers.normalizeDigits}
         label={labels.minute}
         value={current.minute}
@@ -66,6 +70,7 @@ function TimePanel({
       {hourCycle === 12 && (
         <OptionColumn
           scrollRequest={scrollRequest}
+          readOnly={readOnly}
           normalizeDigits={numbers.normalizeDigits}
           label={labels.period}
           value={period}

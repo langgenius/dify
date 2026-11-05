@@ -13,15 +13,9 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -29,7 +23,9 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillArchiveBlob } from '../client'
+import { getSkillErrorCode } from '../error'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
 
 function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
@@ -59,7 +55,9 @@ function SkillDetailDeleteDialog({
   const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -102,8 +100,8 @@ function SkillDetailDeleteDialog({
           onOpenChange(false)
           router.push('/skills')
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -218,15 +216,17 @@ export function SkillDetailSidebarActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(detail.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
     },
   })
 
@@ -244,8 +244,12 @@ export function SkillDetailSidebarActions({
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        onError: (error) => {
+          toast.error(
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : (getErrorMessage(error) ?? t(($) => $['skillManagement.duplicateFailed'])),
+          )
         },
       },
     )
@@ -253,32 +257,32 @@ export function SkillDetailSidebarActions({
 
   return (
     <>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <Menu modal={false}>
+        <MenuTrigger
           aria-label={t(($) => $['skillManagement.moreActions'], {
             name: detail.display_name,
           })}
           className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+        </MenuTrigger>
+        <MenuContent align="end" className="w-40">
           {canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={onRename}>
+            <MenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{tCommon(($) => $['operation.rename'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+            <MenuItem className="gap-2" onClick={handleDuplicate}>
               <span
                 aria-hidden
                 className="i-ri-file-copy-2-line size-4 shrink-0 text-text-tertiary"
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          <DropdownMenuItem
+          <MenuItem
             className="gap-2"
             onClick={() => {
               if (!exportMutation.isPending) exportMutation.mutate()
@@ -289,22 +293,18 @@ export function SkillDetailSidebarActions({
               className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
             />
             <span>{tCommon(($) => $['operation.export'])}</span>
-          </DropdownMenuItem>
+          </MenuItem>
           {canDelete && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                className="gap-2"
-                onClick={() => setDeleteOpen(true)}
-              >
+              <MenuSeparator />
+              <MenuItem variant="destructive" className="gap-2" onClick={() => setDeleteOpen(true)}>
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                 <span>{tCommon(($) => $['operation.delete'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <SkillDetailDeleteDialog detail={detail} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   )

@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "توليد نصوص متعددة في وقت واحد، ثم تحريرها ومتابعة التوليد",
   "feature.moreLikeThis.tip": "سيؤدي استخدام هذه الميزة إلى تكبد نفقات إضافية للرموز",
   "feature.moreLikeThis.title": "المزيد مثل هذا",
+  "feature.showThoughts.description": "اعرض محتوى تفكير النموذج في المحادثات.",
+  "feature.showThoughts.title": "إظهار عملية التفكير",
   "feature.speechToText.description": "يمكن استخدام الإدخال الصوتي في الدردشة.",
   "feature.speechToText.title": "تحويل الكلام إلى نص",
   "feature.suggestedQuestionsAfterAnswer.description": "يمكن أن يعطي إعداد اقتراح الأسئلة التالية للمستخدمين دردشة أفضل.",

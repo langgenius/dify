@@ -26,13 +26,7 @@ import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
-type PopoverOffsetOptions = {
-  mainAxis?: number
-  crossAxis?: number
-  alignmentAxis?: number
-}
-
-type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
+type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -52,7 +46,6 @@ type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   renderTrigger: (open: boolean, props: ComponentPropsWithRef<'button'>) => ReactElement
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: number | PopoverOffsetOptions
   popupClassName?: string
   showItemSelectedIcon?: boolean
   onItemClick?: (credential: Credential, model?: CustomModel) => void
@@ -75,8 +68,8 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  offset = 8,
-  placement = 'bottom-end',
+  side,
+  align = 'end',
   popupClassName,
   showItemSelectedIcon,
   onItemClick,
@@ -149,12 +142,6 @@ const Authorized = ({
     [canUseCredential, handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick],
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const resolvedOffset = typeof offset === 'number' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number'
-      ? 0
-      : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
   const handleTriggerClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       if (!triggerOnlyOpenModal) return
@@ -182,9 +169,8 @@ const Authorized = ({
           onClick={handleTriggerClick}
         />
         <PopoverContent
-          placement={placement}
-          sideOffset={sideOffset}
-          alignOffset={alignOffset}
+          side={side}
+          align={align}
           className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div

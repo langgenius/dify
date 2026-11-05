@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "例如：研究助理",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.deleteDialog.description": "此操作將永久刪除 {{name}}。其 Web 應用程式、API 存取及使用它的工作流程將立即停止運作。",
+  "roster.deleteDialog.inputLabel": "輸入 <name>{{name}}</name> 以確認",
+  "roster.deleteDialog.inputPlaceholder": "輸入 Agent 名稱",
   "roster.deleteDialog.title": "刪除 {{name}}？",
   "roster.deleteFailed": "Agent 刪除失敗。",
   "roster.duplicateDialog.description": "建立 {{name}} 的副本，並自訂它的 Agent 身份資訊。",

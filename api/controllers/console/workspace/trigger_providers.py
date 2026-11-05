@@ -214,9 +214,11 @@ class TriggerSubscriptionListApi(Resource):
         HTTPStatus.NOT_FOUND, "Trigger provider not found", console_ns.models[TriggerProviderErrorResponse.__name__]
     )
     @console_account_admission(
+        require_initialized=False,
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
         rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
     )
+    @account_initialization_required
     def get(self, context: RequestContext, provider: str) -> list[dict[str, Any]] | tuple[dict[str, Any], HTTPStatus]:
         """List all trigger subscriptions for the current tenant's provider"""
 
@@ -615,10 +617,10 @@ class TriggerOAuthCallbackApi(Resource):
         """Complete the cookie-bound flow without requiring a Console login."""
         try:
             application_services().workspaces.trigger_oauth.callback(
-                provider_id=TriggerProviderID(provider),
+                provider=provider,
                 context_id=request.cookies.get("context_id"),
                 redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
-                callback=TriggerOAuthCallbackRequest(
+                callback_loader=lambda: TriggerOAuthCallbackRequest(
                     method=request.method,
                     full_path=request.full_path,
                     headers=tuple(request.headers.items()),

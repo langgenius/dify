@@ -18,8 +18,11 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   ref?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
+  'aria-required'?: boolean
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
@@ -37,8 +40,11 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
   ref,
-  'aria-labelledby': labelledBy,
   currentProvider,
   currentModel,
   defaultModel,
@@ -56,6 +62,7 @@ function ModelSelectorTrigger({
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const valueId = useId()
+  const requiredTextId = useId()
 
   const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
@@ -106,6 +113,13 @@ function ModelSelectorTrigger({
       : isSelected && !isStatusUnavailable && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
+  const configureModelLabel = t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
+  const requiredText = ariaRequired
+    ? t(($) => $['errorMsg.fieldRequired'], { field: '', ns: 'common' }).trim()
+    : undefined
+  const triggerLabelledBy = [ariaLabelledBy, valueId, requiredText ? requiredTextId : undefined]
+    .filter(Boolean)
+    .join(' ')
 
   const trigger = (
     <Tooltip>
@@ -118,15 +132,18 @@ function ModelSelectorTrigger({
             render={
               <button
                 type="button"
-                aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
+                aria-describedby={ariaDescribedBy}
+                aria-labelledby={ariaLabelledBy ? triggerLabelledBy : undefined}
                 data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
+                data-invalid={ariaInvalid ? '' : undefined}
                 data-model-status={status}
+                data-required={ariaRequired ? '' : undefined}
                 data-shape={shape}
                 data-size={size}
                 data-surface={surface}
                 disabled={isDisabled}
                 className={cn(
-                  'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled transition-colors',
+                  'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled transition-colors',
                   'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
                   'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled motion-reduce:transition-none',
@@ -135,18 +152,23 @@ function ModelSelectorTrigger({
                   'data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg data-[surface=workflow]:data-popup-open:bg-workflow-block-parma-bg',
                   'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled data-[model-status=configure-required]:bg-components-input-bg-disabled data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=incompatible]:bg-components-input-bg-disabled',
                   'disabled:data-[model-status=active]:bg-components-input-bg-normal! disabled:data-[model-status=empty]:bg-components-input-bg-normal! disabled:data-[surface=workflow]:bg-workflow-block-parma-bg!',
-                  'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-l-lg! data-[shape=split]:rounded-r-none! data-[shape=split]:focus-visible:z-1',
+                  'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-s-lg! data-[shape=split]:rounded-e-none! data-[shape=split]:focus-visible:z-1',
                   'data-[surface=workflow]:data-deprecated:[&>span]:opacity-50',
                   className,
                 )}
               />
             }
           >
+            {requiredText && (
+              <span id={requiredTextId} className="sr-only">
+                {requiredText}
+              </span>
+            )}
             <span
               className={cn(
                 'flex min-w-0 grow items-center gap-0.5',
                 showClear &&
-                  'group-focus-within/model-selector-clearable:mr-6 group-hover/model-selector-clearable:mr-6',
+                  'group-focus-within/model-selector-clearable:me-6 group-hover/model-selector-clearable:me-6',
               )}
             >
               {isEmpty ? (
@@ -202,7 +224,7 @@ function ModelSelectorTrigger({
                 )}
                 {isEmpty && (
                   <span className="grow truncate text-[13px] text-text-secondary group-disabled/model-selector-trigger:text-components-input-text-placeholder">
-                    {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+                    {configureModelLabel}
                   </span>
                 )}
 
@@ -250,9 +272,7 @@ function ModelSelectorTrigger({
           </PopoverTrigger>
         }
       />
-      {triggerTooltipLabel && (
-        <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
-      )}
+      {triggerTooltipLabel && <TooltipContent>{triggerTooltipLabel}</TooltipContent>}
     </Tooltip>
   )
 
@@ -275,7 +295,7 @@ function ModelSelectorTrigger({
           className={cn(
             'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
             'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
-            shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+            shape === 'split' ? 'inset-e-1' : size === 'small' ? 'inset-e-4.5' : 'inset-e-5',
           )}
         >
           <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />

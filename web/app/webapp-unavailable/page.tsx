@@ -50,6 +50,7 @@ export default async function UnavailableWebAppDocument() {
     ])
   return (
     <AppNotAccessible
+      syncDocument
       clientIp={requestHeaders.get(APP_UNAVAILABLE_IP_HEADER) ?? undefined}
       initialLocale={locale}
       initialResources={{

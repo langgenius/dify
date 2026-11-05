@@ -112,6 +112,7 @@ async function setup() {
     workspacePermissionKeys: [],
     appDslVersion: '0.6.0',
     systemFeatures: { enable_collaboration_mode: false },
+    features: {},
   })
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {

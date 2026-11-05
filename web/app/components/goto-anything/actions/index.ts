@@ -10,16 +10,17 @@ import { workflowNodesAction } from './workflow-nodes'
 const defaultActions = {
   app: appAction,
   knowledge: knowledgeAction,
-  plugin: pluginAction,
 } satisfies Record<string, ActionItem>
 
 type ActionAvailability = {
   agents: boolean
+  plugins: boolean
   skills: boolean
 }
 
 const defaultAvailability: ActionAvailability = {
   agents: false,
+  plugins: true,
   skills: true,
 }
 
@@ -32,6 +33,7 @@ export function createActions(
   const availableActions = {
     ...defaultActions,
     slash,
+    ...(availability.plugins ? { plugin: pluginAction } : {}),
     ...(availability.skills ? { skill: skillAction } : {}),
     ...(availability.agents ? { agent: agentAction } : {}),
   }

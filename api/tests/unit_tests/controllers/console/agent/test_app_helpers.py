@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from controllers.console.agent import app_helpers
 from models.model import App, AppMode
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app
 
 
 def _app() -> App:

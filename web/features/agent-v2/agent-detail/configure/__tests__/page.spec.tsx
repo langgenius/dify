@@ -164,6 +164,17 @@ describe('Configure page loading and access', () => {
 })
 
 describe('Configure chat sessions', () => {
+  it('keeps keyboard focus on the mode control when entering Preview', async () => {
+    const user = userEvent.setup()
+    createEnvironment({ conversationId: null }).render()
+    await screen.findByRole('textbox', { name: `${prefix}.prompt.label` })
+    await user.click(modeButton('build'))
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => expect(modeButton('preview')).toBeChecked())
+    await waitFor(() => expect(chatInput('preview')).toBeVisible())
+    expect(modeButton('preview')).toHaveFocus()
+  })
+
   it('runs and restarts Preview through its own conversation without creating a build draft', async () => {
     const user = userEvent.setup()
     createEnvironment().render('?mode=preview')
@@ -184,11 +195,15 @@ describe('Configure chat sessions', () => {
     expect(api.checkout).not.toHaveBeenCalled()
     await user.click(restartButton())
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
-    expect(api.refresh).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1' },
-      body: { draft_type: 'draft' },
-    })
+    expect(api.refresh).not.toHaveBeenCalled()
     expect(restartButton()).toBeDisabled()
+    await send(user, 'preview')
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toEqual(
+      expect.objectContaining({ conversation_id: '', parent_message_id: null }),
+    )
+    await receive(1, 'preview-2', 'New preview answer')
+    await complete(1)
     await changeMode(user, 'build')
     await waitFor(() => expect(modeButton('build')).toBeChecked())
     expect(api.refresh).toHaveBeenLastCalledWith({ params: { agent_id: 'agent-1' } })

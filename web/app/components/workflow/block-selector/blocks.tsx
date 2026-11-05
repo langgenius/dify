@@ -1,5 +1,6 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassification } from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -11,6 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
+import { useHumanInputMigration } from '../nodes/human-input-v2/migration/context'
+import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -25,6 +28,7 @@ type BlocksProps = {
 }
 type BlockPreviewPayload = {
   block: NodeDefault
+  disabled: boolean
 }
 
 const Blocks = ({
@@ -33,8 +37,9 @@ const Blocks = ({
   availableBlocksTypes = [],
   blocks: blocksFromProps,
 }: BlocksProps) => {
-  const { t } = useTranslation(['workflow', 'workflowLogic'])
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'navigation'])
   const store = useStoreApi()
+  const migration = useHumanInputMigration()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
   const previewDescriptionBaseId = useId()
@@ -98,6 +103,7 @@ const Blocks = ({
       })
       const { getNodes } = store.getState()
       const nodes = getNodes()
+      const humanInputPolicy = getHumanInputCreationPolicy(nodes, true)
       const hasKnowledgeBaseNode = nodes.some((node) => node.data.type === BlockEnum.KnowledgeBase)
       const filteredList = list.filter((block) => {
         if (hasKnowledgeBaseNode) return block.metaData.type !== BlockEnum.KnowledgeBase
@@ -143,6 +149,12 @@ const Blocks = ({
             const previewDescriptionId = block.metaData.description
               ? `${previewDescriptionBaseId}-${block.metaData.type}`
               : undefined
+            const isHumanInputDisabled =
+              block.metaData.type === BlockEnum.HumanInputV2 && humanInputPolicy.hasLegacyHumanInput
+            const disabledReasonId = isHumanInputDisabled
+              ? `${previewDescriptionBaseId}-${block.metaData.type}-disabled`
+              : undefined
+            const describedBy = [previewDescriptionId, disabledReasonId].filter(Boolean).join(' ')
 
             return (
               <Fragment key={block.metaData.type}>
@@ -150,30 +162,69 @@ const Blocks = ({
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}
-                  payload={{ block }}
+                  payload={{ block, disabled: isHumanInputDisabled }}
                   render={
                     <button
                       type="button"
-                      aria-describedby={previewDescriptionId}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => onSelect(block.metaData.type)}
+                      aria-describedby={describedBy || undefined}
+                      aria-disabled={isHumanInputDisabled}
+                      data-disabled={isHumanInputDisabled || undefined}
+                      className="group/block-row flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent"
+                      onClick={() => {
+                        if (!isHumanInputDisabled) onSelect(block.metaData.type)
+                      }}
                     >
-                      <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                      <BlockIcon
+                        className="me-2 shrink-0 group-data-disabled/block-row:opacity-30"
+                        type={block.metaData.type}
+                      />
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary group-data-disabled/block-row:opacity-30">
                         {block.metaData.title}
                       </span>
+                      {isHumanInputDisabled && (
+                        <Badge
+                          text={t(($) => $['nodes.humanInputMigration.disabledBadge'], {
+                            ns: 'workflow',
+                          })}
+                          size="xs"
+                          className="ms-2 shrink-0 px-1.25 py-0.75"
+                        />
+                      )}
+                      {block.metaData.type === BlockEnum.KnowledgeRetrievalV2 && (
+                        <Badge
+                          size="xs"
+                          variant="dimm"
+                          text={t(($) => $['menus.status'], { ns: 'navigation' })}
+                          className="ms-2 shrink-0"
+                        />
+                      )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
                           text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflowLogic' })}
-                          className="ml-2 shrink-0"
+                          className="ms-2 shrink-0"
                         />
                       )}
                     </button>
                   }
                 />
+                {isHumanInputDisabled && migration?.canEdit && (
+                  <Button
+                    className="my-1 ms-3"
+                    size="small"
+                    loading={migration.pending}
+                    onClick={migration.openMigrationDialog}
+                  >
+                    {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
+                  </Button>
+                )}
                 {previewDescriptionId && (
                   <span id={previewDescriptionId} className="sr-only">
                     {block.metaData.description}
+                  </span>
+                )}
+                {disabledReasonId && (
+                  <span id={disabledReasonId} className="sr-only">
+                    {t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' })}
                   </span>
                 )}
               </Fragment>
@@ -182,7 +233,7 @@ const Blocks = ({
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store],
+    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store, migration],
   )
 
   return (
@@ -205,9 +256,42 @@ type BlockPreviewCardProps = {
 }
 
 function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
+  const { t } = useTranslation(['workflow'])
   if (!payload) return null
 
-  const { block } = payload
+  const { block, disabled } = payload
+
+  if (disabled) {
+    return (
+      <BlockSelectorPreviewCardContent>
+        <div className="-mx-2 -my-1.5 flex flex-col gap-1">
+          <div className="p-2">
+            <div className="flex items-center gap-2">
+              <BlockIcon size="md" className="shrink-0" type={block.metaData.type} />
+              <div className="system-md-medium text-text-primary">{block.metaData.title}</div>
+            </div>
+            <div className="mt-2 system-xs-regular wrap-break-word text-text-tertiary">
+              {block.metaData.description}
+            </div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['nodes.humanInputMigration.preview.author'], { ns: 'workflow' })}
+            </div>
+          </div>
+          <div className="rounded-lg bg-background-section p-2">
+            <div className="flex items-start gap-2">
+              <span
+                aria-hidden
+                className="mt-0.5 i-ri-loader-2-line size-4 shrink-0 text-text-tertiary"
+              />
+              <div className="system-xs-regular text-text-secondary">
+                {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </BlockSelectorPreviewCardContent>
+    )
+  }
 
   return (
     <BlockSelectorPreviewCardContent>

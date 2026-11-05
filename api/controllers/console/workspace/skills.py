@@ -25,6 +25,7 @@ from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -388,7 +389,11 @@ class WorkspaceSkillTagsApi(Resource):
 @console_ns.route("/workspaces/current/skills/import")
 class WorkspaceSkillImportApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
-    @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
+    @console_ns.doc(
+        description="Import a Skill zip package from multipart form field `file`.",
+        consumes=["multipart/form-data"],
+        params=_FILE_UPLOAD_PARAMS,
+    )
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
@@ -659,6 +664,10 @@ class WorkspaceSkillFilePreviewApi(Resource):
 class WorkspaceSkillFileContentApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.doc(params={**query_params_from_model(SkillFileQuery), "download": "Return as an attachment when 1."})
+    @console_ns.doc(
+        produces=["*/*"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["*/*"]},
+    )
     @console_ns.response(200, "Skill file content", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission()
     @with_session

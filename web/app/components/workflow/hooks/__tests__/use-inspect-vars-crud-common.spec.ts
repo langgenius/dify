@@ -1,9 +1,10 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
-import { createNode } from '../../__tests__/fixtures'
-import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
-import { BlockEnum, VarType } from '../../types'
+import { useStoreApi } from 'reactflow'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
+import { BlockEnum, NodeRunningStatus, VarType } from '../../types'
 import { useInspectVarsCrudCommon } from '../use-inspect-vars-crud-common'
 
 const mockResetInspectorVar = vi.hoisted(() => vi.fn())
@@ -13,8 +14,6 @@ const mockFetchNodeInspectVars = vi.hoisted(() => vi.fn())
 const mockDoDeleteAllInspectorVars = vi.hoisted(() => vi.fn())
 const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
 const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
-const mockHandleCancelNodeSuccessStatus = vi.hoisted(() => vi.fn())
-const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
 
 const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
@@ -54,18 +53,6 @@ vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: (...args: unknown[]) => mockFetchNodeInspectVars(...args),
 }))
 
-vi.mock('../use-nodes-interactions-without-sync', () => ({
-  useNodesInteractionsWithoutSync: () => ({
-    handleCancelNodeSuccessStatus: mockHandleCancelNodeSuccessStatus,
-  }),
-}))
-
-vi.mock('../use-edges-interactions-without-sync', () => ({
-  useEdgesInteractionsWithoutSync: () => ({
-    handleEdgeCancelRunningStatus: mockHandleEdgeCancelRunningStatus,
-  }),
-}))
-
 const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
   id: 'var-1',
   type: 'node',
@@ -92,6 +79,8 @@ const nodes = [
       title: 'Code',
       desc: '',
       outputs: { answer: { type: VarType.string } },
+      _runningStatus: NodeRunningStatus.Succeeded,
+      _waitingRun: true,
     },
   }),
 ]
@@ -102,7 +91,7 @@ describe('useInspectVarsCrudCommon', () => {
   })
 
   it('invalidates cached system vars without refetching node values for system selectors', async () => {
-    const { result } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
+    const { result } = renderWorkflowCanvasHook(() => useInspectVarsCrudCommon(), {
       nodes,
       initialStoreState: {
         dataSourceList: [],
@@ -120,7 +109,7 @@ describe('useInspectVarsCrudCommon', () => {
   it('fetches node inspect vars, preserves output values, and marks the node as fetched', async () => {
     mockFetchNodeInspectVars.mockResolvedValue([createInspectVar()])
 
-    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
+    const { result, store } = renderWorkflowCanvasHook(() => useInspectVarsCrudCommon(), {
       nodes,
       initialStoreState: {
         dataSourceList: [],
@@ -131,7 +120,7 @@ describe('useInspectVarsCrudCommon', () => {
               type: BlockEnum.Code,
               title: 'Code',
               desc: '',
-            } as never,
+            },
             nodeType: BlockEnum.Code,
             title: 'Code',
             vars: [],
@@ -165,24 +154,39 @@ describe('useInspectVarsCrudCommon', () => {
   it('deletes all inspect vars, invalidates cached values, and clears edge running state', async () => {
     mockDoDeleteAllInspectorVars.mockResolvedValue(undefined)
 
-    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
-      nodes,
-      initialStoreState: {
-        nodesWithInspectVars: [
-          {
-            nodeId: 'node-1',
-            nodePayload: {
-              type: BlockEnum.Code,
-              title: 'Code',
-              desc: '',
-            } as never,
-            nodeType: BlockEnum.Code,
-            title: 'Code',
-            vars: [createInspectVar()],
-          },
+    const { result, store } = renderWorkflowCanvasHook(
+      () => ({ ...useInspectVarsCrudCommon(), flow: useStoreApi() }),
+      {
+        nodes: [...nodes, createNode({ id: 'target' })],
+        edges: [
+          createEdge({
+            id: 'edge',
+            source: 'node-1',
+            target: 'target',
+            data: {
+              _sourceRunningStatus: NodeRunningStatus.Succeeded,
+              _targetRunningStatus: NodeRunningStatus.Running,
+              _waitingRun: true,
+            },
+          }),
         ],
+        initialStoreState: {
+          nodesWithInspectVars: [
+            {
+              nodeId: 'node-1',
+              nodePayload: {
+                type: BlockEnum.Code,
+                title: 'Code',
+                desc: '',
+              },
+              nodeType: BlockEnum.Code,
+              title: 'Code',
+              vars: [createInspectVar()],
+            },
+          ],
+        },
       },
-    })
+    )
 
     await act(async () => {
       await result.current.deleteAllInspectorVars()
@@ -191,13 +195,27 @@ describe('useInspectVarsCrudCommon', () => {
     expect(mockDoDeleteAllInspectorVars).toHaveBeenCalledTimes(1)
     expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
     expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
-    expect(mockHandleEdgeCancelRunningStatus).toHaveBeenCalledTimes(1)
+    expect(result.current.flow.getState().edges).toMatchObject([
+      {
+        id: 'edge',
+        source: 'node-1',
+        target: 'target',
+        data: {
+          _sourceRunningStatus: undefined,
+          _targetRunningStatus: undefined,
+          _waitingRun: false,
+        },
+      },
+    ])
     expect(store.getState().nodesWithInspectVars).toEqual([])
   })
   it.each(['variable', 'node'] as const)(
     'keeps inspected values when %s deletion fails and removes them only after success',
     async (target) => {
-      const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), { nodes })
+      const { result, store } = renderWorkflowCanvasHook(
+        () => ({ ...useInspectVarsCrudCommon(), flow: useStoreApi() }),
+        { nodes },
+      )
       act(() =>
         result.current.appendNodeInspectVars(
           'node-1',
@@ -205,6 +223,10 @@ describe('useInspectVarsCrudCommon', () => {
           [createNode({ id: 'node-1', data: { type: BlockEnum.Code } })],
         ),
       )
+      expect(result.current.flow.getState().getNodes()[0]?.data).toMatchObject({
+        _runningStatus: undefined,
+        _waitingRun: false,
+      })
       const deleteRequest =
         target === 'variable' ? mockDeleteInspectVar : mockDeleteNodeInspectorVars
       const deleteValues = () =>
@@ -225,7 +247,10 @@ describe('useInspectVarsCrudCommon', () => {
   )
 
   it('removes a variable reset with no historical value and preserves neighboring schemas', async () => {
-    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), { nodes })
+    const { result, store } = renderWorkflowCanvasHook(
+      () => ({ ...useInspectVarsCrudCommon(), flow: useStoreApi() }),
+      { nodes },
+    )
     const neighbor = createInspectVar({ id: 'var-2', name: 'other', schemaType: '' })
     act(() =>
       result.current.appendNodeInspectVars(

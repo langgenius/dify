@@ -32,7 +32,7 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
       <DialogTrigger
         aria-label={`${t(($) => $.open, { ns: 'datasetHitTesting' })} ${title}`}
         aria-describedby={descriptionId}
-        className="block w-full cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 text-left hover:shadow-lg"
+        className="block w-full cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 text-start hover:shadow-lg"
       >
         <span id={descriptionId} className="block">
           <ResultItemMeta

@@ -18,11 +18,13 @@ import MetadataTrigger from '../metadata-trigger'
 import MetadataFilterSelector from './metadata-filter-selector'
 
 type MetadataFilterProps = {
+  allowedModes?: readonly MetadataFilteringModeEnum[]
   metadataFilterMode?: MetadataFilteringModeEnum
   handleMetadataFilterModeChange: (mode: MetadataFilteringModeEnum) => void
 } & MetadataShape
 
 const MetadataFilter = ({
+  allowedModes,
   metadataFilterMode = MetadataFilteringModeEnum.disabled,
   handleMetadataFilterModeChange,
   metadataModelConfig,
@@ -71,6 +73,7 @@ const MetadataFilter = ({
         <CollapseActions>
           <div className="flex items-center pr-4">
             <MetadataFilterSelector
+              allowedModes={allowedModes}
               value={metadataFilterMode}
               onSelect={handleMetadataFilterModeChangeWrapped}
             />

@@ -235,8 +235,8 @@ const ModelModal: FC<ModelModalProps> = ({
     if (mode === ModelModalModeEnum.configCustomModel) {
       return (
         <div className="mt-2 flex items-center">
-          <ModelIcon className="mr-2 size-4 shrink-0" provider={provider} />
-          <div className="mr-1 system-md-regular text-text-secondary">
+          <ModelIcon className="me-2 size-4 shrink-0" provider={provider} />
+          <div className="me-1 system-md-regular text-text-secondary">
             {renderI18nObject(provider.label)}
           </div>
         </div>
@@ -249,8 +249,8 @@ const ModelModal: FC<ModelModalProps> = ({
     ) {
       return (
         <div className="mt-2 flex items-center">
-          <ModelIcon className="mr-2 size-4 shrink-0" provider={provider} modelName={model.model} />
-          <div className="mr-1 system-md-regular text-text-secondary">{model.model}</div>
+          <ModelIcon className="me-2 size-4 shrink-0" provider={provider} modelName={model.model} />
+          <div className="me-1 system-md-regular text-text-secondary">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -350,7 +350,7 @@ const ModelModal: FC<ModelModalProps> = ({
           {showCredentialLabel && (
             <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
-              <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
+              <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
             </div>
           )}
           {isLoading && (
@@ -397,7 +397,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url.en_US}
               <span
                 aria-hidden
-                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+                className="ms-1 -mt-0.5 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle rtl:-scale-x-100"
               />
             </a>
           )}

@@ -52,7 +52,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         closeDelay={200}
         aria-label={tipText}
         onClick={handleClick}
-        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0"
+        className="ms-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0"
       >
         <span
           aria-hidden
@@ -60,7 +60,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="top"
+        side="top"
         className="max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
@@ -187,7 +187,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   return (
     <div
       className={cn(
-        'relative h-16 min-w-18 shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
+        'relative h-16 min-w-18 shrink-0 overflow-hidden rounded-xl border-[0.5px] ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs',
         isExhausted
           ? 'border-state-destructive-border hover:bg-state-destructive-hover'
           : 'border-components-panel-border bg-third-party-model-bg-default',

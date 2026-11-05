@@ -86,10 +86,10 @@ from models.account import (
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account
 
 application_redis = test_trigger_oauth_client.application_redis
 
@@ -920,6 +920,22 @@ class TestPluginUploadFromGithubApi:
         ):
             result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+    def test_download_error_reports_status(self, app: Flask):
+        api = PluginUploadFromGithubApi()
+        method = unwrap(api.post)
+
+        payload = {"repo": "r", "version": "v", "package": "p"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
+                side_effect=PluginDaemonClientSideError("Failed to download file: HTTP 403"),
+            ),
+        ):
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
+            assert result == ({"code": "plugin_error", "message": "Failed to download file: HTTP 403"}, 400)
 
 
 class TestPluginUploadFromBundleApi:
