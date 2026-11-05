@@ -1110,7 +1110,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/draft/workflow:run",
-      "summary": "Test-run the draft of a workflow app; streams workflow events. Of its human-input pauses, only a v2 node that lists the initiator as a recipient, with debug mode off, can be resumed over openapi."
+      "summary": "Test-run the draft of a workflow app; streams workflow events. Its stream hints the form submit op only for a pause on a v2 human-input node that lists the initiator as a recipient, with debug mode off."
     },
     "test.console_app.advanced_chat": {
       "bind": {
@@ -1142,7 +1142,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/draft/advanced-chat:run",
-      "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. Of its human-input pauses, only a v2 node that lists the initiator as a recipient, with debug mode off, can be resumed over openapi."
+      "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. Its stream hints the form submit op only for a pause on a v2 human-input node that lists the initiator as a recipient, with debug mode off."
     },
     "check.console_app.dsl": {
       "bind": { "app_id": "body", "workspace_id": "path", "yaml_content": "body" },
