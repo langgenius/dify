@@ -215,9 +215,11 @@ class TriggerSubscriptionListApi(Resource):
         HTTPStatus.NOT_FOUND, "Trigger provider not found", console_ns.models[TriggerProviderErrorResponse.__name__]
     )
     @console_account_admission(
+        require_initialized=False,
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
         rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
     )
+    @account_initialization_required
     def get(self, context: RequestContext, provider: str) -> list[dict[str, Any]] | tuple[dict[str, Any], HTTPStatus]:
         """List all trigger subscriptions for the current tenant's provider"""
 
