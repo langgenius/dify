@@ -1,6 +1,7 @@
 import type { AnnotationList } from '@dify/contracts/api/console/apps/types.gen'
 import type { consoleClient } from '@/service/console'
 import { act } from 'react'
+import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -10,8 +11,16 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import Annotation from '../index'
 
-const { list } = vi.hoisted(() => ({
+const { list, batchImport, importStatus } = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.apps.byAppId.annotations.get>(),
+  batchImport: vi.fn<typeof import('@/service/annotation').annotationBatchImport>(),
+  importStatus:
+    vi.fn<typeof consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get>(),
+}))
+
+vi.mock('@/service/annotation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/annotation')>()),
+  annotationBatchImport: batchImport,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -23,6 +32,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     'apps.byAppId.annotations.get': (input: never) => list(input),
     'apps.byAppId.annotations.count.get': () => ({ count: 30 }),
     'apps.byAppId.annotations.export.get': () => ({ data: [] }),
+    'apps.byAppId.annotations.batchImportStatus.byJobId.get': (input: never) => importStatus(input),
   }
   return {
     ...actual,
@@ -77,6 +87,35 @@ async function setup(appId = 'app-a') {
 
 beforeEach(() => {
   list.mockReset()
+  batchImport.mockReset()
+  importStatus.mockReset()
+})
+
+it('keeps import submission disabled until the completed job has refreshed active queries', async () => {
+  const refresh = createDeferred<AnnotationList>()
+  list.mockResolvedValueOnce(rows('Before import')).mockReturnValueOnce(refresh.promise)
+  batchImport.mockResolvedValue({ job_id: 'import-job', job_status: 'processing' })
+  importStatus.mockResolvedValue({ job_id: 'import-job', job_status: 'completed' })
+  const { screen } = await setup()
+  await expect.element(screen.getByRole('button', { name: 'Before import' })).toBeVisible()
+  await screen.getByRole('button', { name: 'common.operation.more' }).click()
+  await screen.getByRole('menuitem', { name: 'appAnnotation.table.header.bulkImport' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'appAnnotation.batchModal.title' })
+  const input = dialog.element().querySelector<HTMLInputElement>('input[type="file"]')
+  if (!input) throw new Error('CSV file input is missing')
+  await page
+    .elementLocator(input)
+    .upload(new File(['Question,Answer\nQ,A'], 'annotations.csv', { type: 'text/csv' }))
+  const run = dialog.getByRole('button', { name: 'appAnnotation.batchModal.run' })
+  await run.click()
+  await expect.poll(() => list.mock.calls.length).toBe(2)
+  await expect.element(run).toBeDisabled()
+  await expect.element(dialog).toBeVisible()
+  expect(batchImport).toHaveBeenCalledOnce()
+  await resolveResponse(refresh, rows('Imported record'))
+  await expect.element(screen.getByRole('button', { name: 'Imported record' })).toBeVisible()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(batchImport).toHaveBeenCalledOnce()
 })
 afterEach(() => {
   for (const client of clients) client.clear()

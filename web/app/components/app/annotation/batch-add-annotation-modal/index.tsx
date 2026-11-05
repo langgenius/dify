@@ -65,6 +65,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const [isReconciling, setIsReconciling] = useState(false)
   const checkProcess = async (jobID: string) => {
     try {
       const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
@@ -79,17 +80,22 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
       if (res.job_status === ProcessStatus.ERROR)
         toast.error(`${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.annotations.key({
-              input: { params: { app_id: appId } },
+        setIsReconciling(true)
+        try {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.apps.byAppId.annotations.key({
+                input: { params: { app_id: appId } },
+              }),
             }),
-          }),
-          queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
-        ])
-        toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
-        onAdded()
-        onCancel()
+            queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+          ])
+          toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
+          onAdded()
+          onCancel()
+        } finally {
+          setIsReconciling(false)
+        }
       }
     } catch (e: any) {
       toast.error(
@@ -149,7 +155,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
             onClick={handleSend}
             disabled={isAnnotationQuotaUnavailable || isAnnotationFull || !currentCSV}
             loading={
-              importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING
+              isReconciling ||
+              importStatus === ProcessStatus.PROCESSING ||
+              importStatus === ProcessStatus.WAITING
             }
           >
             {t(($) => $['batchModal.run'], { ns: 'appAnnotation' })}
