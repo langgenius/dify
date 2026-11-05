@@ -5,6 +5,7 @@ import tos
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class VolcengineTosStorage(BaseStorage):
@@ -38,18 +39,25 @@ class VolcengineTosStorage(BaseStorage):
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
             raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
-        data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
-        if not isinstance(data, bytes):
-            raise TypeError(f"Expected bytes, got {type(data).__name__}")
-        return data
+        response = self.client.get_object(bucket=self.bucket_name, key=filename)
+        try:
+            data = response.read()
+            if not isinstance(data, bytes):
+                raise TypeError(f"Expected bytes, got {type(data).__name__}")
+            return data
+        finally:
+            close_stream(response.resp)
 
     @override
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
             raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
         response = self.client.get_object(bucket=self.bucket_name, key=filename)
-        while chunk := response.read(4096):
-            yield chunk
+        try:
+            while chunk := response.read(4096):
+                yield chunk
+        finally:
+            close_stream(response.resp)
 
     @override
     def download(self, filename, target_filepath):

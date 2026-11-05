@@ -6,6 +6,7 @@ from botocore.exceptions import ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class OracleOCIStorage(BaseStorage):
@@ -30,7 +31,11 @@ class OracleOCIStorage(BaseStorage):
     @override
     def load_once(self, filename: str) -> bytes:
         try:
-            data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
+            body = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"]
+            try:
+                data: bytes = body.read()
+            finally:
+                close_stream(body)
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found") from ex
@@ -42,7 +47,11 @@ class OracleOCIStorage(BaseStorage):
     def load_stream(self, filename: str) -> Generator:
         try:
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
-            yield from response["Body"].iter_chunks()
+            body = response["Body"]
+            try:
+                yield from body.iter_chunks()
+            finally:
+                close_stream(body)
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found") from ex

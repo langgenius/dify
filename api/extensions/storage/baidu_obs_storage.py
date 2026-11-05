@@ -9,6 +9,7 @@ from baidubce.services.bos.bos_client import BosClient
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class BaiduObsStorage(BaseStorage):
@@ -39,14 +40,21 @@ class BaiduObsStorage(BaseStorage):
     @override
     def load_once(self, filename: str) -> bytes:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
-        data: bytes = response.data.read()
-        return data
+        body = response.data
+        try:
+            data: bytes = body.read()
+            return data
+        finally:
+            close_stream(body)
 
     @override
     def load_stream(self, filename: str) -> Generator:
-        response = self.client.get_object(bucket_name=self.bucket_name, key=filename).data
-        while chunk := response.read(4096):
-            yield chunk
+        body = self.client.get_object(bucket_name=self.bucket_name, key=filename).data
+        try:
+            while chunk := body.read(4096):
+                yield chunk
+        finally:
+            close_stream(body)
 
     @override
     def download(self, filename, target_filepath):
