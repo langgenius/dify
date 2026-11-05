@@ -43,7 +43,7 @@ class TestAppRunStop:
             app.test_request_context(f"/openapi/v1/apps/{app_model.id}/runs/{run_id}:stop", method="POST"),
             pytest.raises(RunNotFound),
         ):
-            api.post.__handler__(
+            api.post.__handler__(  # pyrefly: ignore[missing-attribute]
                 api,
                 context_for(
                     account,

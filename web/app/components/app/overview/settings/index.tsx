@@ -8,6 +8,7 @@ import type {
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { Language } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -297,28 +298,13 @@ function SettingsForm({
     <Form className="contents" onFormSubmit={handleFormSubmit}>
       {canDeploy && (
         <div className="px-6 py-2">
-          <div
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            className="relative flex min-h-10 items-start gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
-          >
-            <div
-              aria-hidden="true"
-              className="absolute -inset-px bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-40"
-            />
-            <div className="relative flex size-6 shrink-0 items-center justify-center p-1">
-              <span
-                aria-hidden="true"
-                className="i-ri-information-2-fill size-4 text-text-accent"
-              />
-            </div>
-            <p className="relative min-w-0 flex-1 py-1 system-xs-medium wrap-break-word text-text-primary">
+          <Alert type="info">
+            <AlertTitle>
               {t(($) => $[`${prefixSettings}.multiEnvironmentNotice`], {
                 ns: 'appOverview',
               })}
-            </p>
-          </div>
+            </AlertTitle>
+          </Alert>
         </div>
       )}
       <DialogBody className="flex flex-col gap-y-5">
@@ -448,7 +434,7 @@ function SettingsForm({
             </Field>
             <Field
               name="chat_color_theme_inverted"
-              className="ml-auto flex w-50 items-center justify-between gap-2"
+              className="ms-auto flex w-50 items-center justify-between gap-2"
             >
               <FieldLabel>
                 {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
@@ -511,7 +497,7 @@ function SettingsForm({
               inputPlaceholderField
             )}
             {canCustomizePlaceholder && (
-              <FieldDescription className="text-right">
+              <FieldDescription className="text-end">
                 {`${inputInfo.inputPlaceholder.length} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
               </FieldDescription>
             )}
@@ -525,7 +511,7 @@ function SettingsForm({
               </FieldsetLegend>
               {showUpgrade && <SettingsUpgradeButton />}
               <Tooltip>
-                <TooltipTrigger render={<div className="ml-auto" />}>
+                <TooltipTrigger render={<div className="ms-auto" />}>
                   <Switch
                     readOnly={pending}
                     aria-labelledby={copyrightLegendId}

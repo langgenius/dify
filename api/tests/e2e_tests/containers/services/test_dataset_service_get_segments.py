@@ -137,7 +137,7 @@ class TestSegmentServiceGetSegments:
     - Combined filters
     """
 
-    def test_get_segments_basic_pagination(self, db_session_with_containers: Session):
+    def test_get_segments_basic_pagination(self, db_session_with_containers: Session) -> None:
         """
         Test basic pagination functionality.
 
@@ -183,7 +183,7 @@ class TestSegmentServiceGetSegments:
         assert items[0].id == segment1.id
         assert items[1].id == segment2.id
 
-    def test_get_segments_with_status_filter(self, db_session_with_containers: Session):
+    def test_get_segments_with_status_filter(self, db_session_with_containers: Session) -> None:
         """
         Test filtering by status list.
 
@@ -240,7 +240,7 @@ class TestSegmentServiceGetSegments:
         statuses = {item.status for item in items}
         assert statuses == {"completed", "indexing"}
 
-    def test_get_segments_with_empty_status_list(self, db_session_with_containers: Session):
+    def test_get_segments_with_empty_status_list(self, db_session_with_containers: Session) -> None:
         """
         Test with empty status list.
 
@@ -283,7 +283,7 @@ class TestSegmentServiceGetSegments:
         assert len(items) == 2
         assert total == 2
 
-    def test_get_segments_with_keyword_search(self, db_session_with_containers: Session):
+    def test_get_segments_with_keyword_search(self, db_session_with_containers: Session) -> None:
         """
         Test keyword search functionality.
 
@@ -327,7 +327,7 @@ class TestSegmentServiceGetSegments:
         assert total == 1
         assert "search term" in items[0].content
 
-    def test_get_segments_ordering_by_position_and_id(self, db_session_with_containers: Session):
+    def test_get_segments_ordering_by_position_and_id(self, db_session_with_containers: Session) -> None:
         """
         Test ordering by position and id.
 
@@ -384,7 +384,7 @@ class TestSegmentServiceGetSegments:
         assert items[1].id == seg_pos2.id
         assert items[2].id == seg_pos3.id
 
-    def test_get_segments_empty_results(self, db_session_with_containers: Session):
+    def test_get_segments_empty_results(self, db_session_with_containers: Session) -> None:
         """
         Test when no segments match the criteria.
 
@@ -405,7 +405,7 @@ class TestSegmentServiceGetSegments:
         assert items == []
         assert total == 0
 
-    def test_get_segments_combined_filters(self, db_session_with_containers: Session):
+    def test_get_segments_combined_filters(self, db_session_with_containers: Session) -> None:
         """
         Test with multiple filters combined.
 
@@ -469,7 +469,7 @@ class TestSegmentServiceGetSegments:
         assert items[0].status == "completed"
         assert "important" in items[0].content
 
-    def test_get_segments_with_none_status_list(self, db_session_with_containers: Session):
+    def test_get_segments_with_none_status_list(self, db_session_with_containers: Session) -> None:
         """
         Test with None status list.
 
@@ -515,7 +515,7 @@ class TestSegmentServiceGetSegments:
         assert len(items) == 2
         assert total == 2
 
-    def test_get_segments_pagination_max_per_page_limit(self, db_session_with_containers: Session):
+    def test_get_segments_pagination_max_per_page_limit(self, db_session_with_containers: Session) -> None:
         """
         Test that max_per_page is correctly set to 100.
 

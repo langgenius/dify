@@ -36,7 +36,12 @@ const createPayload = (
 
 const setup = (
   payload = createPayload(),
-  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  resource: EditorResource = {
+    kind: 'app',
+    collaborationEnabled: false,
+    appId: 'app-1',
+    mode: 'workflow',
+  },
 ) => {
   const { queryClient } = createConsoleQueryWrapper()
   seedToolProviders(queryClient, {
@@ -117,9 +122,22 @@ it('persists consecutive model, completion and class edits without losing earlie
 
 it.each([
   { resource: { kind: 'snippet', snippetId: 'snippet-1' } as EditorResource, selector: [] },
-  { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } as EditorResource, selector: [] },
   {
-    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } as EditorResource,
+    resource: {
+      kind: 'app',
+      collaborationEnabled: false,
+      appId: 'app-1',
+      mode: 'workflow',
+    } as EditorResource,
+    selector: [],
+  },
+  {
+    resource: {
+      kind: 'app',
+      collaborationEnabled: false,
+      appId: 'app-1',
+      mode: 'advanced-chat',
+    } as EditorResource,
     selector: ['start', 'sys.query'],
   },
 ])('derives the default query selector from $resource', async ({ resource, selector }) => {

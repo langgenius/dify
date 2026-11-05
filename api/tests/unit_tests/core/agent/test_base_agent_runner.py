@@ -418,10 +418,10 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value, *args, **kwargs):
-        if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
+    def dumps_side_effect(value: object, *, ensure_ascii: bool = True) -> str:
+        if value in (tool_input, observation, tool_meta) and ensure_ascii is False:
             raise TypeError("fail")
-        return real_dumps(value, *args, **kwargs)
+        return real_dumps(value, ensure_ascii=ensure_ascii)
 
     mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
 

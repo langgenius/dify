@@ -8,6 +8,10 @@ export const editorResourceAtom = atomWithLazy<EditorResource>(() => {
 })
 
 export const editorResourceKindAtom = atom((get) => get(editorResourceAtom).kind)
+export const editorCollaborationEnabledAtom = atom((get) => {
+  const resource = get(editorResourceAtom)
+  return resource.kind === 'app' && resource.collaborationEnabled
+})
 export const editorAppIdAtom = atom((get) => {
   const resource = get(editorResourceAtom)
   return resource.kind === 'app' ? resource.appId : undefined

@@ -257,7 +257,7 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
       await screen.findByRole('heading', { name: /knowledgeRetrieval.label/ }),
     ).toBeInTheDocument()
     expect(screen.getByText('Product manual')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.edit/ }),
     ).not.toBeInTheDocument()

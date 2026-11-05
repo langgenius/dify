@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "تولید چندین متن به طور همزمان، و سپس ویرایش و ادامه تولید",
   "feature.moreLikeThis.tip": "استفاده از این ویژگی هزینه‌های اضافی توکن‌ها را به همراه دارد",
   "feature.moreLikeThis.title": "بیشتر از این",
+  "feature.showThoughts.description": "محتوای تفکر مدل را در گفتگوها نمایش دهید.",
+  "feature.showThoughts.title": "نمایش روند تفکر",
   "feature.speechToText.description": "پس از فعال شدن، می‌توانید از ورودی صوتی استفاده کنید.",
   "feature.speechToText.title": "تبدیل گفتار به متن",
   "feature.suggestedQuestionsAfterAnswer.description": "تنظیم پیشنهاد سوالات بعدی می‌تواند به کاربران یک چت بهتر ارائه دهد.",
