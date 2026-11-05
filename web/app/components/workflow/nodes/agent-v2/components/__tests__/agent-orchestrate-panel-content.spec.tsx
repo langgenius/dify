@@ -178,7 +178,7 @@ function renderWorkspace({
   )
   const props: ComponentProps<typeof WorkflowInlineAgentConfigureWorkspace> = {
     agentId: 'agent-1',
-    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    resource: { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
     inlineComposerState: composer ?? undefined,
     nodeId: 'node-1',
     open,

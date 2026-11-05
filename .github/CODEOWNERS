@@ -292,12 +292,8 @@
 /web/app/components/plugins/marketplace/ @iamjoel @Yessenia-d
 
 # Frontend - Login and Registration
-/web/app/signin/ @iamjoel
-/web/app/signup/ @iamjoel
-/web/app/reset-password/ @iamjoel
-/web/app/install/ @iamjoel
-/web/app/init/ @iamjoel
-/web/app/forgot-password/ @iamjoel
+/web/app/(auth)/ @iamjoel
+/web/app/components/auth-shell/ @iamjoel
 /web/app/account/ @iamjoel
 
 # Frontend - Service Authentication
