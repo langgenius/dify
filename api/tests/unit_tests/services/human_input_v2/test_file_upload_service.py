@@ -21,6 +21,8 @@ from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import FileInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import AccountId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
+from enums import DeploymentEdition
+from extensions.application_services.files import build_file_upload_services
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.enums import FileTransferMethod, FileType
@@ -151,7 +153,11 @@ def approval(
                 token_hash=hashlib.sha256(token.encode()).hexdigest(),
             ),
         )
-    files = FileService(sqlite_session_factory)
+    files = build_file_upload_services(
+        database_client=sqlite_session_factory,
+        staff=FileService(sqlite_session_factory),
+        deployment_edition=DeploymentEdition.COMMUNITY,
+    ).gateway
     service = HumanInputV2FileUploadService(
         session_factory=sqlite_session_factory, files=files, remote_files=RemoteFileService(files=files)
     )

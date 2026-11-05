@@ -30,7 +30,7 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import EndUser, UploadFile
 
 from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
@@ -79,14 +79,19 @@ class FileService:
         mimetype: str,
         user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
-        source: Literal["datasets", "knowledge_fs"] | None = None,
+        source: Literal["datasets", "knowledge_fs", "workflow_offload"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:
-        """Persist a file with the given creator and resource tenant.
+        """Persist a staff/knowledge file with the given creator and resource tenant.
 
-        For Account or EndUser, tenant_id=None (including when omitted) uses
-        the account's current workspace or the end user's tenant. An explicit
+        End-user uploads are owned by EndUserUploadService, reached through
+        FileUploadGateway. Reject them here before any storage side effect.
+        Only the trusted runtime source="workflow_offload" capability may store
+        internal execution payloads, with a stable quota-exempt purpose.
+
+        For Account, tenant_id=None (including when omitted) uses
+        the account's current workspace. An explicit
         tenant_id takes precedence. FileUploadActor carries no tenant, so it
         requires an explicit tenant_id.
 
@@ -94,6 +99,12 @@ class FileService:
         dify_config.UPLOAD_FILE_SIZE_LIMIT, and 0 permits only empty files.
         Images, video and audio always use their dedicated configured limits.
         """
+        if source != "workflow_offload" and (
+            isinstance(user, EndUser)
+            or (isinstance(user, FileUploadActor) and user.creator_role == CreatorUserRole.END_USER)
+        ):
+            raise TypeError("End-user uploads must use the configured FileUploadGateway")
+
         if isinstance(user, FileUploadActor) and tenant_id is None:
             raise TypeError("tenant_id is required when uploading with FileUploadActor")
 
@@ -156,6 +167,7 @@ class FileService:
             used=False,
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
+            purpose=UploadFilePurpose.WORKFLOW_OFFLOAD if source == "workflow_offload" else UploadFilePurpose.UPLOAD,
         )
 
         with self._session_maker(expire_on_commit=False) as session:

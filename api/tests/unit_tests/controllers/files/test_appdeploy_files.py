@@ -105,8 +105,12 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
     )
 
 
-@pytest.fixture
-def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
+@pytest.fixture(params=[{}])
+def sqlite_db(
+    sqlite_engine: Engine, request: pytest.FixtureRequest, config_overrides: Callable[..., None]
+) -> Iterator[FileGrantService]:
+    # Application settings are injected at composition, so configure policy before building the slice.
+    config_overrides(**request.param)
     service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
     services = SimpleNamespace(file_grants=service)
     with (
@@ -347,11 +351,9 @@ def test_upload_applies_the_shared_per_extension_size_limit(
             _post_with_file_grant(GrantedFileUploadApi())
 
 
+@pytest.mark.parametrize("sqlite_db", [{"inner_UPLOAD_FILE_EXTENSION_BLACKLIST": "exe"}], indirect=True)
 @pytest.mark.usefixtures("sqlite_db")
-def test_upload_rejects_a_blacklisted_extension(
-    app: Flask, end_user: EndUser, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
+def test_upload_rejects_a_blacklisted_extension(app: Flask, end_user: EndUser) -> None:
 
     with app.test_request_context(
         "/files/appdeploy/upload",

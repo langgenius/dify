@@ -19,7 +19,8 @@ from libs.datetime_utils import to_utc_timestamp
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.sqlalchemy_file_upload_repository import SQLAlchemyFileUploadRepository
-from services.file_service import FileService, FileUploadActor
+from services.file_service import FileUploadActor
+from services.file_upload_gateway import FileUploadGateway
 from services.human_input_file_upload_service import HumanInputUploadToken, InvalidUploadTokenError
 from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
@@ -42,7 +43,7 @@ class HumanInputV2UploadContext:
 
 class HumanInputV2FileUploadService:
     def __init__(
-        self, *, session_factory: sessionmaker[Session], files: FileService, remote_files: RemoteFileService
+        self, *, session_factory: sessionmaker[Session], files: FileUploadGateway, remote_files: RemoteFileService
     ) -> None:
         self._sessions = session_factory
         self._forms = HumanInputSubmissionService(session_factory=session_factory)
@@ -132,5 +133,7 @@ def build_file_upload_service() -> HumanInputV2FileUploadService:
 
     services = application_services()
     return HumanInputV2FileUploadService(
-        session_factory=session_factory.get_session_maker(), files=services.files, remote_files=services.remote_files
+        session_factory=session_factory.get_session_maker(),
+        files=services.file_uploads,
+        remote_files=services.remote_files,
     )

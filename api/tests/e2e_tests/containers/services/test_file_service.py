@@ -192,30 +192,6 @@ class TestFileService:
 
         assert upload_file.id is not None
 
-    def test_upload_file_with_end_user(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with end user instead of account.
-        """
-
-        end_user = self._create_test_end_user(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test_image.jpg"
-        content = b"test image content"
-        mimetype = "image/jpeg"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=end_user,
-        )
-
-        assert upload_file is not None
-        assert upload_file.created_by == end_user.id
-        assert upload_file.created_by_role == CreatorUserRole.END_USER
-
     def test_upload_file_with_datasets_source(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
     ):
