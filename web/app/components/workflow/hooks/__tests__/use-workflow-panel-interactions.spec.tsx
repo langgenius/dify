@@ -15,7 +15,11 @@ const setup = (state: Partial<Shape> = {}) =>
     {
       nodes: [createNode({ id: 'a', data: { _isBundled: true } }), createNode({ id: 'b' })],
       edges: [createEdge({ source: 'a', target: 'b', data: { _isBundled: true } })],
-      initialStoreState: { controlMode: ControlMode.Pointer, ...state },
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+        isCollaborationEnabled: true,
+        ...state,
+      },
     },
   )
 

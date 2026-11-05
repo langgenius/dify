@@ -1,12 +1,10 @@
 import type { AvailableNodesMetaData } from '../hooks-store'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { useQueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { use, useLayoutEffect, useState } from 'react'
 import { useStoreApi } from 'reactflow'
-import { seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import { fullWorkflowAccessControl, HooksStoreContext } from '../hooks-store'
 import { useWorkflowNodeCatalog } from '../node-catalog'
@@ -27,10 +25,8 @@ function setup(options: Parameters<typeof renderWorkflowEditor>[1] = {}) {
   const preview = vi.fn()
   const exportDSL = vi.fn(async () => {})
   let flow: ReturnType<typeof useStoreApi>
-  let queryClient: ReturnType<typeof useQueryClient>
   function Menu() {
     flow = useStoreApi()
-    queryClient = useQueryClient()
     const [open, setOpen] = useState(true)
     const catalog = useWorkflowNodeCatalog()
     const hooksStore = use(HooksStoreContext)!
@@ -65,7 +61,6 @@ function setup(options: Parameters<typeof renderWorkflowEditor>[1] = {}) {
   })
   return {
     ...result,
-    queryClient: queryClient!,
     user,
     run,
     preview,
@@ -151,10 +146,10 @@ it('opens app import but omits that action for snippets', async () => {
 })
 
 it('allows comments but not node editing when editing permission is denied', async () => {
-  const { user, store, queryClient } = setup({
+  const { user, store } = setup({
+    initialStoreState: { isCollaborationEnabled: true },
     hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit: false } },
   })
-  act(() => seedSystemFeatures(queryClient, { enable_collaboration_mode: true }))
   const comment = await screen.findByRole('menuitem', {
     name: 'workflowComments.comments.actions.addComment',
   })

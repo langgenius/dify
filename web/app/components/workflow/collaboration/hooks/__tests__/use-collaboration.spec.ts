@@ -1,6 +1,9 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
-import { act, waitFor } from '@testing-library/react'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
 type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[2]>
@@ -29,6 +32,17 @@ const unsubscribePresence = vi.hoisted(() => vi.fn())
 const unsubscribeLeader = vi.hoisted(() => vi.fn())
 
 let isCollaborationEnabled = true
+
+const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, enabled: boolean) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: enabled },
+  })
+  const store = createWorkflowStore({ isCollaborationEnabled: enabled })
+  return renderHook(hook, {
+    wrapper: ({ children }) =>
+      createElement(QueryWrapper, null, createElement(WorkflowContext, { value: store }, children)),
+  })
+}
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
@@ -92,11 +106,9 @@ describe('useCollaboration', () => {
     const reactFlowStore: HookReactFlowStore = {
       getState: vi.fn(),
     }
-    const { result, unmount } = renderHookWithConsoleQuery(
+    const { result, unmount } = renderCollaboration(
       () => useCollaboration('app-1', true, reactFlowStore),
-      {
-        systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-      },
+      isCollaborationEnabled,
     )
 
     await waitFor(() => {
@@ -156,9 +168,10 @@ describe('useCollaboration', () => {
     'does not connect or track cursors when a collaboration gate is disabled',
     async (featureEnabled, canEdit) => {
       isCollaborationEnabled = featureEnabled
-      const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', canEdit), {
-        systemFeatures: { enable_collaboration_mode: featureEnabled },
-      })
+      const { result } = renderCollaboration(
+        () => useCollaboration('app-1', canEdit),
+        featureEnabled,
+      )
 
       await waitFor(() => {
         expect(mockConnect).not.toHaveBeenCalled()

@@ -5,9 +5,8 @@ import type {
   NodePanelPresenceMap,
   OnlineUser,
 } from '../types/collaboration'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -38,10 +37,7 @@ export function useCollaboration(
 
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled || !canEdit) {

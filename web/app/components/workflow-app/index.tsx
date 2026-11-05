@@ -18,6 +18,7 @@ import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useWorkspaceCollaborationEnabled } from '@/features/system-features/use-collaboration-enabled'
 import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
@@ -144,6 +145,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
 const WorkflowAppWrapper = () => {
   const { appId } = useParams<{ appId: string }>()
+  const isCollaborationEnabled = useWorkspaceCollaborationEnabled()
   const { data: mode } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
@@ -155,6 +157,7 @@ const WorkflowAppWrapper = () => {
   return (
     <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
       <WorkflowContextProvider
+        isCollaborationEnabled={isCollaborationEnabled}
         injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
       >
         <WorkflowAppWithAdditionalContext />

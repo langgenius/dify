@@ -14,10 +14,12 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.enterprise.rbac_service import RBACService
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +106,7 @@ class WorkflowCollaborationService:
         self, workflow_id: str, sid: str, *, session: Session
     ) -> tuple[str, bool] | None:
         """
-        Join a collaboration room only after validating the socket session and tenant-scoped app access.
+        Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
@@ -123,6 +125,12 @@ class WorkflowCollaborationService:
                 user_id,
                 sid,
             )
+            return None
+
+        if not dify_config.ENABLE_COLLABORATION_MODE or (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and not FeatureService.get_workspace_plan(str(tenant_id)).is_paid
+        ):
             return None
 
         self._ensure_server_heartbeat_started()

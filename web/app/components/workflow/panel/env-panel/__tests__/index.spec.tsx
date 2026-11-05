@@ -321,7 +321,7 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
         resource,
         queryClient,
         nodes,
-        initialStoreState,
+        initialStoreState: { isCollaborationEnabled: collaboration, ...initialStoreState },
         hooksStoreProps: { doSyncWorkflowDraft: mockDoSyncWorkflowDraft },
         reactFlowProps: {
           nodeTypes: { custom: () => null },

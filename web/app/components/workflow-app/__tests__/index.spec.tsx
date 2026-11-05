@@ -10,7 +10,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDetail } from '@/test/console/query-data'
+import { seedAppDetail, seedSystemFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -49,6 +49,7 @@ let searchParamsValue: string | null = null
 
 const render = (ui: ReactElement) => {
   const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
+  seedSystemFeatures(queryClient)
   seedAppDetail(queryClient, appDetail)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.triggers.get.queryKey({

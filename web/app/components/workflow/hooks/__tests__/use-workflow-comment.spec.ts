@@ -123,6 +123,10 @@ const useCommentCanvas = () => ({ ...useWorkflowComment(), flow: useReactFlow() 
 const renderWorkflowHook: typeof renderWorkflowFlowHook = (hook, options) =>
   renderWorkflowFlowHook(hook, {
     ...options,
+    initialStoreState: {
+      isCollaborationEnabled: globalFeatureState.enableCollaboration,
+      ...options?.initialStoreState,
+    },
     reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 160, zoom: 2 } },
   })
 

@@ -99,6 +99,7 @@ type SyncDraftCanvas = {
   transform?: [number, number, number]
   appMode?: AppMode
   isCollaborationEnabled?: boolean
+  cloudPlan?: 'sandbox' | 'professional' | 'team'
   features?: Features
   initialStoreState?: Partial<Shape>
 }
@@ -122,13 +123,18 @@ const renderSyncDraft = <R>(
     transform,
     appMode = 'workflow',
     isCollaborationEnabled = false,
+    cloudPlan,
     features,
     initialStoreState,
   }: SyncDraftCanvas = {},
 ) => {
   const featuresStore = createFeaturesStore(features ? { features } : undefined)
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    systemFeatures: {
+      enable_collaboration_mode: isCollaborationEnabled,
+      deployment_edition: cloudPlan ? 'CLOUD' : 'COMMUNITY',
+    },
+    ...(cloudPlan ? { features: { billing: { subscription: { plan: cloudPlan } } } } : {}),
   })
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
 
@@ -144,6 +150,7 @@ const renderSyncDraft = <R>(
     transform,
     initialStoreState: {
       isWorkflowDataLoaded: true,
+      isCollaborationEnabled: isCollaborationEnabled && cloudPlan !== 'sandbox',
       syncWorkflowDraftHash: 'hash-123',
       ...initialStoreState,
     },
@@ -205,6 +212,31 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('payload', () => {
+    it('saves a full draft for a free Cloud workspace even when collaboration is enabled globally', async () => {
+      const { result } = renderUseNodesSyncDraft({
+        isCollaborationEnabled: true,
+        cloudPlan: 'sandbox',
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            features: expect.anything(),
+            conversation_variables: expect.anything(),
+          }),
+        ),
+      )
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    })
+
     it.each(['draft sync', 'page close'] as const)(
       'removes Workflow LLM memory from %s without changing the canvas nodes',
       async (savePath) => {

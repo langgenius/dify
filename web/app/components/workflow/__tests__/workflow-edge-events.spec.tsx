@@ -383,7 +383,13 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
     comments = comments.filter((item) => item.id !== params.comment_id)
     return { result: 'success' }
   })
-  renderSubject({ initialStoreState: { showUserComments: true, showResolvedComments: false } })
+  renderSubject({
+    initialStoreState: {
+      isCollaborationEnabled: true,
+      showUserComments: true,
+      showResolvedComments: false,
+    },
+  })
   await user.click(
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )
@@ -443,7 +449,7 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     detail.replies = []
     return { result: 'success' }
   })
-  renderSubject({ initialStoreState: { showUserComments: true } })
+  renderSubject({ initialStoreState: { isCollaborationEnabled: true, showUserComments: true } })
   await user.click(
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )

@@ -9,13 +9,14 @@ from engineio.socket import Socket
 from flask import Flask
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Gauge, Histogram, InMemoryMetricReader, Metric, Sum
-from socketio.packet import CONNECT_ERROR, Packet
+from socketio.packet import ACK, CONNECT_ERROR, Packet
 from werkzeug.test import EnvironBuilder
 
 from controllers.console.socketio import workflow
 from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
+from services.errors.billing import BillingUpstreamUnavailableError
 
 
 @pytest.fixture
@@ -101,6 +102,48 @@ def test_connect_without_auth_payload_records_one_rejection(
     assert response.packet_type == CONNECT_ERROR
     assert server.manager.sid_from_eio_sid(eio_sid, "/") is None
     _assert_single_event(_read_metrics(reader), "connect", "rejected")
+
+
+def test_user_connect_returns_ack_when_billing_is_unavailable(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Billing failures return a 503 ACK to the client."""
+    server, _, reader = collaboration_server
+    eio_sid = "billing-unavailable"
+    transport = Socket(server.eio, eio_sid)
+    server.eio.sockets[eio_sid] = transport
+    sid = server.manager.connect(eio_sid, "/")
+    monkeypatch.setattr(workflow.session_factory, "create_session", MagicMock())
+    monkeypatch.setattr(
+        workflow.collaboration_service,
+        "authorize_and_join_workflow_room",
+        MagicMock(side_effect=BillingUpstreamUnavailableError("billing unavailable")),
+    )
+
+    server._handle_event_internal(server, sid, eio_sid, ["user_connect", {"workflow_id": "wf-1"}], "/", 42)
+
+    response = Packet(encoded_packet=transport.queue.get_nowait().data)
+    assert response.packet_type == ACK
+    assert response.id == 42
+    assert response.data == [{"msg": "collaboration_unavailable"}, 503]
+    _assert_single_event(_read_metrics(reader), "user_connect", "error")
+
+
+def test_user_connect_does_not_hide_unrelated_errors(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server, _, _ = collaboration_server
+    monkeypatch.setattr(workflow.session_factory, "create_session", MagicMock())
+    monkeypatch.setattr(
+        workflow.collaboration_service,
+        "authorize_and_join_workflow_room",
+        MagicMock(side_effect=RuntimeError("unexpected error")),
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected error"):
+        server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"})
 
 
 def test_disconnect_with_reason_records_one_success(

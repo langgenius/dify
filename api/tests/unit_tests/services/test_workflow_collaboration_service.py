@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.rbac import RBACPermission, RBACResourceScope
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
@@ -63,6 +64,78 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
+    @pytest.mark.parametrize(
+        ("edition", "plan", "enabled", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+            (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True),
+            (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+        ],
+    )
+    def test_join_respects_workspace_entitlement(
+        self,
+        real_service: ServiceFixture,
+        db_session: Session,
+        edition: DeploymentEdition,
+        plan: CloudPlan,
+        enabled: bool,
+        allowed: bool,
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with (
+            config_overrides_context(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled, RBAC_ENABLED=False),
+            patch(
+                "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
+            ) as get_plan,
+        ):
+            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+
+        if edition == DeploymentEdition.CLOUD and enabled:
+            get_plan.assert_called_once_with("t-1")
+        else:
+            get_plan.assert_not_called()
+        assert (result is not None) is allowed
+        assert bool(repository.list_sessions("wf-1")) is allowed
+        assert socketio.enter_room.called is allowed
+        assert socketio.start_background_task.called is allowed
+        assert repository.server_heartbeat_exists("server-1") is allowed
+        if not allowed:
+            socketio.emit.assert_not_called()
+
+    def test_join_does_not_create_session_when_billing_fails(
+        self, real_service: ServiceFixture, db_session: Session
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with (
+            config_overrides_context(
+                DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+            ),
+            patch(
+                "services.workflow_collaboration_service.FeatureService.get_workspace_plan",
+                side_effect=ValueError("invalid billing response"),
+            ),
+            pytest.raises(ValueError, match="invalid billing response"),
+        ):
+            service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+
+        assert repository.list_sessions("wf-1") == []
+        assert not repository.server_heartbeat_exists("server-1")
+        socketio.start_background_task.assert_not_called()
+        socketio.enter_room.assert_not_called()
+        socketio.emit.assert_not_called()
+
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:
@@ -147,16 +220,18 @@ class TestWorkflowCollaborationService:
         db_session.commit()
 
         with (
-            config_overrides_context(RBAC_ENABLED=True),
+            config_overrides_context(RBAC_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             patch(
                 "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=False
             ) as check_access,
+            patch("services.workflow_collaboration_service.FeatureService.get_workspace_plan") as get_plan,
             patch.object(collaboration_service, "get_or_set_leader") as get_leader,
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
+        get_plan.assert_not_called()
         check_access.assert_called_once_with(
             "t-1",
             "u-1",

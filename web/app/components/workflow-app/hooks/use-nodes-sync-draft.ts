@@ -5,7 +5,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import { safe } from '@orpc/client'
-import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
@@ -23,11 +23,10 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '@/app/components/workflow/nodes/agent-v2/types'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
@@ -52,10 +51,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }),
   )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)

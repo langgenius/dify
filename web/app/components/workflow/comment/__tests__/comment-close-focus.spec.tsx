@@ -130,6 +130,7 @@ function renderCommentCanvas(comments = [comment]) {
   return renderWorkflowFlowComponent(<CommentCanvas />, {
     queryClient,
     initialStoreState: {
+      isCollaborationEnabled: true,
       comments,
       showUserComments: true,
       mentionableUsersCache: { 'app-1': [] },

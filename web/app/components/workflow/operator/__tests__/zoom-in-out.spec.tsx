@@ -29,7 +29,10 @@ const renderZoomInOut = ({
       createNode({ id: 'left', position: { x: 0, y: 0 }, width: 240, height: 80 }),
       createNode({ id: 'right', position: { x: 1600, y: 400 }, width: 240, height: 80 }),
     ],
-    initialStoreState: { canvasReadOnly: workflowReadOnly },
+    initialStoreState: {
+      canvasReadOnly: workflowReadOnly,
+      isCollaborationEnabled: collaborationEnabled,
+    },
     hooksStoreProps: { doSyncWorkflowDraft },
     reactFlowProps: {
       fitView: false,

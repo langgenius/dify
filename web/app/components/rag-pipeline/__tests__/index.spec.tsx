@@ -4,6 +4,7 @@ import { act, screen } from '@testing-library/react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -37,11 +38,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+function CollaborationModeProbe() {
+  const enabled = useStore((state) => state.isCollaborationEnabled)
+  return <output aria-label="Collaboration mode">{enabled ? 'enabled' : 'disabled'}</output>
+}
+
 // Full pipeline editing has its own suite; retain the real initialization/provider boundary.
 vi.mock('../components/rag-pipeline-main', () => ({
   default: ({ viewport }: { viewport: Viewport }) => (
     <>
       <WorkflowInitializationProbe />
+      <CollaborationModeProbe />
       <output aria-label="Initial viewport">{JSON.stringify(viewport)}</output>
     </>
   ),
@@ -88,12 +95,16 @@ const draft = (): FetchWorkflowDraftResponse => ({
   marked_comment: '',
 })
 
-const renderPipeline = (pipelineId: string | null = 'pipeline-1') => {
+const renderPipeline = (
+  pipelineId: string | null = 'pipeline-1',
+  options?: Parameters<typeof renderWithConsoleQuery>[1],
+) => {
   const DatasetProvider = DatasetDetailContext.Provider
   return renderWithConsoleQuery(
     <DatasetProvider value={{ dataset: createDatasetFixture({ pipeline_id: pipelineId }) }}>
       <RagPipelineWrapper />
     </DatasetProvider>,
+    options,
   )
 }
 
@@ -114,11 +125,21 @@ const expectGraph = async () => {
 
 describe('RagPipeline', () => {
   it('offers conversion when the dataset has no pipeline', () => {
-    renderPipeline(null)
+    renderPipeline(null, { systemFeatures: null })
     expect(
       screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }),
     ).toBeInTheDocument()
     expect(requests.draft).not.toHaveBeenCalled()
+  })
+  it('disables collaboration even when enabled for the deployment', async () => {
+    renderPipeline('pipeline-1', {
+      systemFeatures: { deployment_edition: 'CLOUD', enable_collaboration_mode: true },
+    })
+    expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
+  })
+  it('does not need deployment features or the workspace subscription to open the editor', async () => {
+    renderPipeline('pipeline-1', { systemFeatures: null })
+    expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
   })
   it('keeps the editor gated until the pipeline draft arrives', async () => {
     const pending = createDeferred<FetchWorkflowDraftResponse>()

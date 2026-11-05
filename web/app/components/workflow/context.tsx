@@ -9,12 +9,17 @@ export const WorkflowContext = createContext<WorkflowStore | null>(null)
 type WorkflowProviderProps = {
   children: React.ReactNode
   injectWorkflowStoreSliceFn?: StateCreator<SliceFromInjection>
+  isCollaborationEnabled?: boolean
 }
 export const WorkflowContextProvider = ({
   children,
   injectWorkflowStoreSliceFn,
+  isCollaborationEnabled,
 }: WorkflowProviderProps) => {
-  const [store] = useState(() => createWorkflowStore({ injectWorkflowStoreSliceFn }))
+  // Keep the editing session in one persistence mode even if workspace features refresh.
+  const [store] = useState(() =>
+    createWorkflowStore({ injectWorkflowStoreSliceFn, isCollaborationEnabled }),
+  )
 
   return <WorkflowContext.Provider value={store}>{children}</WorkflowContext.Provider>
 }
