@@ -25,6 +25,7 @@ import {
 import { skipToken, useIsMutating, useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
@@ -116,6 +117,11 @@ export function ContactsImPlatformManagementSurface() {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
   const organization = useContactsImPlatformOrganization()
+  const { data: deploymentEdition } = useQuery({
+    ...systemFeaturesQueryOptions(),
+    enabled: organization.canManage,
+    select: (data) => data.deployment_edition,
+  })
   const api = consoleQuery.workspaces.current.humanInput.v2
   const integrationsQuery = useQuery(
     api.channels.get.queryOptions({ enabled: organization.canManage, context: { silent: true } }),
@@ -143,14 +149,15 @@ export function ContactsImPlatformManagementSurface() {
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
   const [, setSyncResult] = useContactImSyncResultUrlState()
   const integrations = integrationsQuery.data?.channels ?? []
-  const providers = [
-    ...(providersQuery.data?.email_providers ?? []),
-    ...(providersQuery.data?.im_providers ?? []),
-  ].map(({ provider }) => ({
-    provider,
-    displayName: providerMetadata[provider].name,
-    requiredFields: providerMetadata[provider].fields,
-  }))
+  const emailProviders =
+    deploymentEdition === 'CLOUD' ? (providersQuery.data?.email_providers ?? []) : []
+  const providers = [...emailProviders, ...(providersQuery.data?.im_providers ?? [])].map(
+    ({ provider }) => ({
+      provider,
+      displayName: providerMetadata[provider].name,
+      requiredFields: providerMetadata[provider].fields,
+    }),
+  )
   const byProvider = new Map(integrations.map((integration) => [integration.provider, integration]))
   const configured = providers.filter((provider) => byProvider.has(provider.provider))
   const available = providers.filter((provider) => !byProvider.has(provider.provider))

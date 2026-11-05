@@ -3,6 +3,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { channelSummary } from './fixtures/channel-client'
@@ -66,6 +67,7 @@ async function setup() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   await render(
     <QueryClientProvider client={queryClient}>
       <NuqsTestingAdapter hasMemory>
