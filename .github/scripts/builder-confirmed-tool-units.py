@@ -56,6 +56,7 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_trace_diagnostics.py",
     "api/tests/unit_tests/services/dify_builder/test_bound_resource_plan_reconciliation.py",
     "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
+    "api/tests/unit_tests/services/dify_builder/test_initial_chatflow.py",
     "api/tests/unit_tests/services/dify_builder/test_build_plan_language.py",
     "api/tests/unit_tests/services/dify_builder/test_reply_language_prompts.py",
     "api/tests/unit_tests/services/test_workflow_generator_service.py",
@@ -75,6 +76,7 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_json_tool_runtime.py",
     "api/tests/unit_tests/core/dify_builder/test_verification.py",
     "api/tests/unit_tests/core/dify_builder/test_handlers_build.py",
+    "api/tests/unit_tests/core/dify_builder/test_replan_apply.py",
     "api/tests/unit_tests/services/dify_builder/test_localize.py",
     "api/tests/unit_tests/services/dify_builder/test_session_ui_localization.py",
     "api/tests/unit_tests/core/dify_builder/test_runner.py",
@@ -1312,6 +1314,9 @@ a4_expected["tests.unit_tests.services.dify_builder.test_build_cognition"] = {
     "test_planner_catalogue_includes_setup_tools_and_remains_capped": 1,
     "test_planner_describes_only_first_phase_nodes_to_the_model": 1,
     "test_planner_keeps_conditional_model_preference_separate_from_required_behavior": 1,
+    "test_planner_can_ask_a_required_select_without_inventing_a_recommendation": 1,
+    "test_planner_never_approves_a_malformed_clarification": 4,
+    "test_planner_returns_later_discovered_business_questions_with_editable_defaults": 1,
     "test_initial_plan_defers_installed_tools_and_discovery_ranks_delayed_setup_beyond_the_old_name_cap": 1,
     "test_propose_plan_v1_corrects_schema_once_with_full_source_and_same_provider_parameters": 1,
     "test_propose_plan_v1_does_not_retry_a_provider_failure": 1,
@@ -1350,6 +1355,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_build_cognition"] = {
     "test_business_clarification_keeps_internal_marked_question_without_a_default": 1,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_build_nodes"] = {
+    "test_approved_generation_preserves_business_source_and_satisfies_historical_approval": 1,
     "test_build_nodes_corrects_list_schema_before_returning_complete_intents": 1,
     "test_build_nodes_degrades_to_empty_on_generator_error": 1,
     "test_build_nodes_does_not_duplicate_an_endpoint_variable_the_start_node_already_declares": 1,
@@ -2228,6 +2234,9 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_full_build_flow_goal_to_complete": 1,
     "test_full_build_flow_keep_draft_reaches_complete_without_publish": 1,
     "test_goal_analysis_renames_an_app_still_carrying_its_derived_name": 1,
+    "test_invalid_requirement_submission_keeps_default_unconfirmed": 6,
+    "test_invisible_requirement_specs_cannot_block_the_rendered_form": 1,
+    "test_later_planner_questions_return_to_requirements_without_writes": 4,
     "test_launch_error_without_native_proof_never_stages_repair": 1,
     "test_launch_input_error_without_proof_stops_at_review": 1,
     "test_loop_back_reapprove_is_still_idempotent": 1,
@@ -2235,6 +2244,8 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate": 1,
     "test_no_gap_notice_when_the_agent_reports_no_gap": 1,
     "test_no_rename_callback_wired_costs_no_model_call": 1,
+    "test_normalized_select_still_rejects_an_unoffered_answer": 1,
+    "test_omitted_optional_input_remains_unconfirmed_and_preserves_its_value": 1,
     "test_plan_approval_approve_builds_graph_and_notifies_once": 1,
     "test_plan_approval_deletes_pre_existing_start_on_from_scratch_build": 1,
     "test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start": 1,
@@ -2251,8 +2262,11 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_repair_counter_survives_same_task_recovery_reentry": 1,
     "test_repair_counter_tracks_consecutive_repeats_of_the_same_error": 1,
     "test_repeated_failure_stops_offering_a_repair": 1,
+    "test_rendered_requirement_normalization_accepts_the_visible_answer": 3,
     "test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan": 1,
     "test_reverted_retry_returns_to_initial_plan": 1,
+    "test_reverted_clarification_clears_old_attempt_before_fresh_build_and_testdata": 1,
+    "test_reverted_planning_failure_retains_prior_attempt_context": 1,
     "test_review_continue_adjusting_collects_a_fresh_request_before_planning": 1,
     "test_review_continue_adjusting_then_reapprove_is_idempotent": 1,
     "test_review_keep_draft_completes_without_publish": 1,
@@ -2265,6 +2279,8 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_run_test_skips_gate_when_input_prepared": 1,
     "test_run_test_still_asks_when_a_file_is_declared_among_other_variables": 1,
     "test_submitting_requirements_prepares_plan_before_automatic_resource_stage": 1,
+    "test_scalar_requirement_submission_preserves_zero_false_and_unbounded_integers": 3,
+    "test_submitted_recommendation_or_edit_replans_preserving_prior_answers": 2,
     "test_submitting_requirements_progress_has_monotonic_revisions_for_each_committed_stage": 1,
     "test_test_and_repair_config_failure_still_routes_to_repair_gate": 1,
     "test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form": 1,
@@ -2283,6 +2299,7 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_the_empty_recommendation_description_is_localizable": 1,
     "test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_later": 1,
     "test_unknown_outcome_requires_review_on_every_attempt": 1,
+    "test_wrong_scalar_requirement_types_cannot_replan": 5,
 }
 a4_expected["tests.unit_tests.core.dify_builder.test_handlers_edit"] = {
     "test_connect_existing_form_selection_reaches_plan_and_real_intent_guard": 2,
@@ -2674,6 +2691,7 @@ a4_expected.update(
             "test_tags_are_authorized_tenant_metadata_only": 1,
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_discovery": {
+            "test_explicit_knowledge_waiver_can_clarify_business_rules_before_replanning": 1,
             "test_only_dataset_is_recommended_as_nonexecuting_preference": 1,
             "test_knowledge_confirmation_is_metadata_only_and_never_replans": 1,
             "test_revoked_or_missing_selected_knowledge_refuses_entire_selection": 2,
@@ -2773,6 +2791,31 @@ a4_expected.update(
             "test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason": 1,
             "test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory": 1,
             "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1,
+        },
+    }
+)
+# ENG-1426: approved draft replacement and replanning run in this lane in full.
+a4_expected.update(
+    {
+        "tests.unit_tests.core.dify_builder.test_replan_apply": {
+            "test_changed_owned_code_applies_only_after_fresh_plan_approval_and_reapproval_is_noop": 1,
+            "test_replan_collision_refuses_the_whole_batch_before_writing": 5,
+            "test_replan_uses_creation_defaults_and_authoritative_node_type_for_generated_fields": 1,
+            "test_replan_cannot_write_a_redacted_generated_value": 1,
+        },
+        "tests.unit_tests.services.dify_builder.test_initial_chatflow": {
+            "test_recognizes_the_console_starter_graph": 1,
+            "test_recognition_ignores_automatic_model_and_canvas_initialization": 1,
+            "test_configured_drafts_are_never_replaced_as_initial_templates": 10,
+            "test_modified_topology_is_not_an_initial_template": 5,
+            "test_chatflow_generation_accepts_answer_and_uses_the_actual_mode": 1,
+            "test_chatflow_retry_rejects_a_workflow_terminal": 1,
+            "test_approved_build_replaces_the_whole_template_and_remains_revertible": 2,
+            "test_failed_generation_keeps_the_initial_template": 1,
+            "test_chatflow_mode_reaches_planning_capability_checks_and_generation": 1,
+            "test_chatflow_planning_and_capability_prompts_use_answer_nodes": 1,
+            "test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent": 1,
+            "test_rejected_generated_graph_keeps_the_initial_template": 1,
         },
     }
 )
