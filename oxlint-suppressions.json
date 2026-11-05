@@ -739,11 +739,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/switch-app-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/text-generate/item/action-groups.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
