@@ -19,14 +19,8 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { Suspense, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { Suspense, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -76,15 +70,6 @@ const headerDescriptionDocPaths = {
   extension: '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 } satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
-
-const compactNavigationQuery = '(width < 48rem)'
-const subscribeToCompactNavigation = (onChange: () => void) => {
-  const mediaQuery = window.matchMedia(compactNavigationQuery)
-  mediaQuery.addEventListener('change', onChange)
-  return () => mediaQuery.removeEventListener('change', onChange)
-}
-const getCompactNavigationSnapshot = () => window.matchMedia(compactNavigationQuery).matches
-const getServerCompactNavigationSnapshot = () => false
 
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
@@ -148,11 +133,7 @@ export default function IntegrationsPage({
 }: IntegrationsPageProps) {
   const { t } = useTranslation(['navigation', 'modelProvider', 'common'])
   const navigationTitleId = useId()
-  const isCompact = useSyncExternalStore(
-    subscribeToCompactNavigation,
-    getCompactNavigationSnapshot,
-    getServerCompactNavigationSnapshot,
-  )
+  const isCompact = useMediaQuery('(width < 48rem)', {})
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -278,7 +259,7 @@ export default function IntegrationsPage({
         'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
         isCompact
           ? 'h-full w-full items-stretch overflow-y-auto'
-          : 'w-50 items-end border-r border-divider-burn',
+          : 'w-50 items-end border-e border-divider-burn',
       )}
       data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
     >
@@ -287,7 +268,7 @@ export default function IntegrationsPage({
       >
         <div
           className={cn(
-            'flex shrink-0 items-start pr-0 pl-2.5',
+            'flex shrink-0 items-start ps-2.5 pe-0',
             reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
           )}
         >
@@ -328,7 +309,7 @@ export default function IntegrationsPage({
             >
               {toolsNavItemContent}
             </CollapsibleTrigger>
-            <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+            <CollapsiblePanel className="relative space-y-px before:absolute before:inset-s-[17.5px] before:-top-px before:bottom-0 before:w-px before:bg-divider-regular">
               {toolItems.map((item) => (
                 <IntegrationSidebarNavItem
                   key={item.label}
@@ -434,34 +415,27 @@ export default function IntegrationsPage({
             </Suspense>
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-            <ScrollAreaViewport
-              aria-label={scrollAreaLabel}
-              className="overscroll-contain"
-              role={scrollAreaLabel ? 'region' : undefined}
-            >
-              <ScrollAreaContent className="min-h-full">
-                <Suspense key={section} fallback={null}>
-                  <IntegrationSectionRenderer
-                    section={section}
-                    title={integrationHeader?.title ?? activeItem?.label}
-                    description={headerDescriptionWithLink}
-                    providerSearchText={providerSearchText}
-                    onProviderSearchTextChange={setProviderSearchText}
-                    onSwitchToMarketplace={handleSwitchToMarketplace}
-                    canInstallPlugin={canInstallPlugin}
-                    canDeletePlugin={canDeletePlugin}
-                    isInstallPermissionLoading={isReferenceSettingLoading}
-                    canUpdatePlugin={canUpdatePlugin}
-                    pluginCategoryToolbarAction={pluginSettingAction}
-                  />
-                </Suspense>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
+          <div
+            aria-label={scrollAreaLabel}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            role={scrollAreaLabel ? 'region' : undefined}
+          >
+            <Suspense key={section} fallback={null}>
+              <IntegrationSectionRenderer
+                section={section}
+                title={integrationHeader?.title ?? activeItem?.label}
+                description={headerDescriptionWithLink}
+                providerSearchText={providerSearchText}
+                onProviderSearchTextChange={setProviderSearchText}
+                onSwitchToMarketplace={handleSwitchToMarketplace}
+                canInstallPlugin={canInstallPlugin}
+                canDeletePlugin={canDeletePlugin}
+                isInstallPermissionLoading={isReferenceSettingLoading}
+                canUpdatePlugin={canUpdatePlugin}
+                pluginCategoryToolbarAction={pluginSettingAction}
+              />
+            </Suspense>
+          </div>
         )}
       </section>
     </div>
