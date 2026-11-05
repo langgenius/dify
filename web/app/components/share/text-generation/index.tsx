@@ -4,12 +4,12 @@ import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl } from './types'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
 import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
@@ -22,8 +22,7 @@ type IMainProps = {
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isPC = !useMediaQuery('(width < 48rem)', {})
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(
