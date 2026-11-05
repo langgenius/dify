@@ -95,7 +95,7 @@ it('keeps import submission disabled until the completed job has refreshed activ
   const refresh = createDeferred<AnnotationList>()
   list.mockResolvedValueOnce(rows('Before import')).mockReturnValueOnce(refresh.promise)
   batchImport.mockResolvedValue({ job_id: 'import-job', job_status: 'processing' })
-  importStatus.mockResolvedValue({ job_id: 'import-job', job_status: 'completed' })
+  importStatus.mockResolvedValue({ job_id: 'import-job', job_status: 'completed', error_msg: '' })
   const { screen } = await setup()
   await expect.element(screen.getByRole('button', { name: 'Before import' })).toBeVisible()
   await screen.getByRole('button', { name: 'common.operation.more' }).click()
