@@ -1,3 +1,4 @@
+import type { WebAppParametersResponse } from '@dify/contracts/api/web/types.gen'
 import type { AppData } from '@/models/share'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -6,6 +7,8 @@ import { AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME 
 import { fetchAppInfo } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
 import { webAppClient } from '@/service/webapp'
+import { webAppLogout } from '@/service/webapp-auth'
+import { beginWebAppAccountLogin } from '@/service/webapp/login'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import MigrateConversationsContent from '../content'
@@ -18,6 +21,16 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   fetchAppInfo: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/webapp-auth')>()),
+  webAppLogout: vi.fn(),
+}))
+
+vi.mock('@/service/webapp/login', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/webapp/login')>()),
+  beginWebAppAccountLogin: vi.fn(),
 }))
 
 vi.mock('@/service/webapp', () => ({
@@ -36,6 +49,7 @@ vi.mock('@/service/webapp', () => ({
   },
   webAppClient: {
     account: { profile: { get: vi.fn() } },
+    parameters: { get: vi.fn() },
     migration: {
       claimablePassports: { post: vi.fn() },
       claim: { post: vi.fn() },
@@ -45,6 +59,7 @@ vi.mock('@/service/webapp', () => ({
 
 const appInfo = {
   app_id: 'current-app',
+  mode: 'advanced-chat',
   custom_config: null,
   site: {
     title: 'Research Assistant',
@@ -55,8 +70,39 @@ const appInfo = {
   },
 } satisfies AppData
 
+const parameters: WebAppParametersResponse = {
+  account_login_enabled: true,
+  account_login_url: 'https://accounts.example/signin',
+  allow_anonymous_end_user_auth: true,
+  annotation_reply: {},
+  connection_requirements: [],
+  connection_revision: null,
+  file_upload: {},
+  more_like_this: {},
+  requires_end_user_connections: false,
+  retriever_resource: {},
+  sensitive_word_avoidance: {},
+  speech_to_text: {},
+  suggested_questions: [],
+  suggested_questions_after_answer: {},
+  system_parameters: {
+    audio_file_size_limit: 50,
+    file_size_limit: 15,
+    image_file_size_limit: 10,
+    video_file_size_limit: 100,
+    workflow_file_upload_limit: 10,
+  },
+  text_to_speech: {},
+  user_input_form: [],
+}
+
 beforeEach(() => {
   vi.mocked(fetchAppInfo).mockReset()
+  vi.mocked(webAppClient.parameters.get).mockReset().mockResolvedValue(parameters)
+  vi.mocked(webAppLogout).mockReset().mockResolvedValue(undefined)
+  vi.mocked(beginWebAppAccountLogin)
+    .mockReset()
+    .mockResolvedValue('https://accounts.example/signin?code_challenge=challenge')
   vi.mocked(webAppClient.account.profile.get).mockResolvedValue({
     name: 'Reader',
     avatar: null,
@@ -107,7 +153,7 @@ it('loads the current WebApp metadata instead of another app or the preview data
   expect(await screen.findByRole('heading', { name: appInfo.site.title })).toBeInTheDocument()
   expect(screen.getByText(appInfo.site.description)).toBeInTheDocument()
   expect(screen.getByText('🔬')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeEnabled()
   expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Writing Assistant' })).not.toBeInTheDocument()
 })
@@ -152,7 +198,7 @@ it('keeps anonymous passports when deferring to the original chat', async () => 
     await screen.findByRole('heading', { name: appInfo.site.title })
     await user.click(screen.getByRole('radio', { name: 'login.history.add' }))
     expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'login.history.delete' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'login.history.delete' })).toBeEnabled()
 
     const notNow = screen.getByRole('link', { name: 'login.history.notNow' })
     expect(notNow).toHaveAttribute('href', '/chat/current-app?conversationId=existing-chat')
@@ -203,3 +249,165 @@ it('claims all eligible anonymous data, retains the account Passport, and return
   expect(localStorage.getItem(AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
   expect(replace).toHaveBeenCalledWith('/chat/current-app?conversationId=existing-chat')
 })
+
+it('deletes only matching anonymous passports locally and continues without claiming data', async ({
+  onTestFinished,
+}) => {
+  const user = userEvent.setup()
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  onTestFinished(() => replace.mockRestore())
+  const unrelatedKey = PASSPORT_LOCAL_STORAGE_NAME('unrelated-app')
+  const accountKey = AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app')
+  localStorage.setItem(unrelatedKey, 'unrelated-anonymous')
+  localStorage.setItem(accountKey, 'authenticated-current')
+  onTestFinished(() => {
+    localStorage.removeItem(unrelatedKey)
+    localStorage.removeItem(accountKey)
+  })
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  await user.click(await screen.findByRole('radio', { name: 'login.history.delete' }))
+  await user.click(screen.getByRole('button', { name: 'login.history.deleteAndContinue' }))
+
+  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/chat/current-app'))
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
+  expect(localStorage.getItem(unrelatedKey)).toBe('unrelated-anonymous')
+  expect(localStorage.getItem(accountKey)).toBe('authenticated-current')
+  expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+})
+
+it('does not load migration candidates for unsupported Apps and keeps the current passport when continuing', async ({
+  onTestFinished,
+}) => {
+  const user = userEvent.setup()
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  onTestFinished(() => replace.mockRestore())
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce({ ...appInfo, mode: 'completion' })
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  expect(await screen.findByText('login.history.unsupportedTitle')).toBeInTheDocument()
+  expect(screen.getByText('login.history.unsupportedDescription')).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: 'login.history.add' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'login.history.notNow' })).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' }),
+  ).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'login.history.delete' })).not.toBeChecked()
+  expect(webAppClient.migration.claimablePassports.post).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' }))
+  await user.click(screen.getByRole('button', { name: 'login.history.continue' }))
+
+  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/chat/current-app'))
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
+  expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+})
+
+it('deletes only the current unsupported App passport without loading or claiming candidates', async ({
+  onTestFinished,
+}) => {
+  const user = userEvent.setup()
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  onTestFinished(() => replace.mockRestore())
+  const unrelatedKey = PASSPORT_LOCAL_STORAGE_NAME('unrelated-app')
+  const accountKey = AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app')
+  localStorage.setItem(unrelatedKey, 'unrelated-anonymous')
+  localStorage.setItem(accountKey, 'authenticated-current')
+  onTestFinished(() => {
+    localStorage.removeItem(unrelatedKey)
+    localStorage.removeItem(accountKey)
+  })
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce({ ...appInfo, mode: 'completion' })
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  await user.click(await screen.findByRole('radio', { name: 'login.history.delete' }))
+  await user.click(screen.getByRole('button', { name: 'login.history.deleteAndContinue' }))
+
+  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/chat/current-app'))
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
+  expect(localStorage.getItem(unrelatedKey)).toBe('unrelated-anonymous')
+  expect(localStorage.getItem(accountKey)).toBe('authenticated-current')
+  expect(webAppClient.migration.claimablePassports.post).not.toHaveBeenCalled()
+  expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+})
+
+it('switches accounts only after logout succeeds, preserving anonymous data and the return URL', async ({
+  onTestFinished,
+}) => {
+  const user = userEvent.setup()
+  const logout = createDeferred()
+  const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
+  onTestFinished(() => assign.mockRestore())
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+  vi.mocked(webAppLogout).mockReturnValueOnce(logout.promise)
+  window.history.replaceState(
+    {},
+    '',
+    '/chat/current-app/migrate-conversations?redirect_url=%2Fchat%2Fcurrent-app%3FconversationId%3Dexisting-chat',
+  )
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  await user.click(await screen.findByRole('button', { name: 'login.history.useDifferentAccount' }))
+  expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  expect(webAppClient.parameters.get).toHaveBeenCalledWith(undefined, {
+    context: { address: { kind: 'default', code: 'current-app' }, silent: true },
+  })
+  expect(webAppLogout).toHaveBeenCalledWith({ kind: 'default', code: 'current-app' })
+  expect(beginWebAppAccountLogin).not.toHaveBeenCalled()
+  expect(assign).not.toHaveBeenCalled()
+  expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+
+  logout.resolve()
+  await vi.waitFor(() => {
+    expect(beginWebAppAccountLogin).toHaveBeenCalledExactlyOnceWith(
+      'https://accounts.example/signin',
+      '/chat/current-app?conversationId=existing-chat',
+    )
+    expect(assign).toHaveBeenCalledWith('https://accounts.example/signin?code_challenge=challenge')
+  })
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
+})
+
+it.each(['parameters', 'logout'] as const)(
+  'retains the migration screen and stops account switching when %s fails',
+  async (failure) => {
+    const user = userEvent.setup()
+    vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+    const error = new Error('Unable to switch account')
+    if (failure === 'parameters')
+      vi.mocked(webAppClient.parameters.get).mockRejectedValueOnce(error)
+    else vi.mocked(webAppLogout).mockRejectedValueOnce(error)
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MigrateConversationsContent />
+      </QueryClientProvider>,
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'login.history.useDifferentAccount' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to switch account')
+    expect(screen.getByRole('button', { name: 'login.history.useDifferentAccount' })).toBeEnabled()
+    expect(screen.getByRole('link', { name: 'login.history.notNow' })).toBeInTheDocument()
+    expect(beginWebAppAccountLogin).not.toHaveBeenCalled()
+    expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+    if (failure === 'parameters') expect(webAppLogout).not.toHaveBeenCalled()
+  },
+)
