@@ -107,7 +107,7 @@ export default function CheckCode() {
   }
 
   return (
-    <div className="flex w-100 flex-col gap-3">
+    <div className="flex w-full max-w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <span
           aria-hidden
@@ -161,7 +161,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full p-1">
           <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )
