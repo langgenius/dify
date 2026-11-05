@@ -1,6 +1,7 @@
 import type { EvaluationRunItemResponse as EvaluationRunItem } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
 import type { MetricColumn } from './pipeline-results-utils'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import {
   formatValue,
@@ -11,6 +12,48 @@ import {
 
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
 
+type ResultCellValueProps = {
+  value: string
+  label: string
+  viewDetailsLabel: string
+  isPlaceholder?: boolean
+}
+
+const ResultCellValue = ({
+  value,
+  label,
+  viewDetailsLabel,
+  isPlaceholder,
+}: ResultCellValueProps) => {
+  if (isPlaceholder || value === '-') return <div className="wrap-anywhere">{value}</div>
+
+  // Evaluation values may be multiline or unbounded; the popover owns their full disclosure.
+  return (
+    <Popover>
+      <PopoverTrigger
+        type="button"
+        openOnHover
+        delay={200}
+        closeDelay={200}
+        aria-label={`${viewDetailsLabel}: ${label}`}
+        className="block w-full min-w-0 cursor-pointer rounded-sm text-start"
+      >
+        <span className="line-clamp-2 wrap-anywhere">{value}</span>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        className="max-h-[min(60dvh,480px)] w-max max-w-[min(560px,calc(100vw-2rem))] overflow-y-auto overscroll-contain p-3"
+      >
+        <PopoverTitle className="system-xs-semibold text-text-primary">{label}</PopoverTitle>
+        <div className="mt-2 system-sm-regular wrap-anywhere whitespace-pre-wrap text-text-secondary">
+          {value}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 type PipelineResultsTableProps = {
   items: EvaluationRunItem[]
   metricColumns: MetricColumn[]
@@ -18,7 +61,11 @@ type PipelineResultsTableProps = {
 }
 
 const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResultsTableProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
+  const viewDetailsLabel = t(($) => $['operation.viewDetails'], { ns: 'common' })
+  const queryLabel = t(($) => $['results.columns.query'])
+  const expectedLabel = t(($) => $['results.columns.expected'])
+  const actualLabel = t(($) => $['results.columns.actual'])
 
   return (
     <div className="min-h-0 flex-1 overflow-auto py-2">
@@ -36,13 +83,13 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
           <tr className="bg-background-section">
             <th className="h-7 rounded-s-lg" />
             <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['results.columns.query'])}
+              {queryLabel}
             </th>
             <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['results.columns.expected'])}
+              {expectedLabel}
             </th>
             <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['results.columns.actual'])}
+              {actualLabel}
             </th>
             {metricColumns.map((column, index) => (
               <th
@@ -70,6 +117,11 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
             items.map((item) => {
               const isPassed = getIsItemPassed(item)
               const actualOutput = item.error ?? item.actual_output
+              const queryContent = getQueryContent(item)
+              const expectedContent = formatValue(item.expected_output)
+              const actualContent = actualOutput
+                ? formatValue(actualOutput)
+                : t(($) => $['results.noResult'])
 
               return (
                 <tr
@@ -92,12 +144,18 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                     />
                   </td>
                   <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
-                    <div className="line-clamp-2 break-words">{getQueryContent(item)}</div>
+                    <ResultCellValue
+                      value={queryContent}
+                      label={queryLabel}
+                      viewDetailsLabel={viewDetailsLabel}
+                    />
                   </td>
                   <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
-                    <div className="line-clamp-2 break-words">
-                      {formatValue(item.expected_output)}
-                    </div>
+                    <ResultCellValue
+                      value={expectedContent}
+                      label={expectedLabel}
+                      viewDetailsLabel={viewDetailsLabel}
+                    />
                   </td>
                   <td
                     className={cn(
@@ -105,9 +163,12 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                       actualOutput ? 'text-text-secondary' : 'text-text-destructive',
                     )}
                   >
-                    <div className="line-clamp-2 break-words">
-                      {actualOutput ? formatValue(actualOutput) : t(($) => $['results.noResult'])}
-                    </div>
+                    <ResultCellValue
+                      value={actualContent}
+                      label={actualLabel}
+                      viewDetailsLabel={viewDetailsLabel}
+                      isPlaceholder={!actualOutput}
+                    />
                   </td>
                   {metricColumns.map((column) => {
                     const metricValue = getMetricValue(item.metrics ?? [], column)
@@ -117,7 +178,11 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                         key={column.id}
                         className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary"
                       >
-                        {formatValue(metricValue)}
+                        <ResultCellValue
+                          value={formatValue(metricValue)}
+                          label={column.label}
+                          viewDetailsLabel={viewDetailsLabel}
+                        />
                       </td>
                     )
                   })}
