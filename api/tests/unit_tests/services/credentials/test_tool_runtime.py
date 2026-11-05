@@ -101,7 +101,11 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     assert lock.keys == [("tool", "workspace", "credential")] * 4
 
 
-@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600])
+# Named ids: xdist workers collect at different seconds, so an id built from the timestamp differs between them.
+@pytest.mark.parametrize(
+    "expires_at",
+    [pytest.param(-1, id="never-expires"), pytest.param(int(time.time()) + 3600, id="expires-in-an-hour")],
+)
 def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),

@@ -38,6 +38,8 @@ import {
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
+  zTriggerOauthClientChangedError,
+  zTriggerOauthClientConfigInvalidError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -1485,12 +1487,12 @@ export const channels = {
 }
 
 /**
- * Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+ * Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
  */
 export const get16 = oc
   .route({
     description:
-      'Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.',
+      'Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptionsBatch',
@@ -1505,12 +1507,12 @@ export const batch = {
 }
 
 /**
- * List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+ * List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
  */
 export const get17 = oc
   .route({
     description:
-      'List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.',
+      'List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptions',
@@ -5737,7 +5739,7 @@ export const info3 = {
 }
 
 /**
- * Remove custom OAuth client configuration
+ * Remove the workspace's custom OAuth client configuration
  */
 export const delete26 = oc
   .route({
@@ -5745,14 +5747,14 @@ export const delete26 = oc
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Remove custom OAuth client configuration',
+    summary: "Remove the workspace's custom OAuth client configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 /**
- * Get OAuth client configuration for a provider
+ * Get the masked OAuth client configuration for a provider
  */
 export const get127 = oc
   .route({
@@ -5760,14 +5762,20 @@ export const get127 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Get OAuth client configuration for a provider',
+    summary: 'Get the masked OAuth client configuration for a provider',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 /**
- * Configure custom OAuth client for a provider
+ * Configure the workspace's custom OAuth client for a provider
  */
 export const post84 = oc
   .route({
@@ -5775,7 +5783,7 @@ export const post84 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Configure custom OAuth client for a provider',
+    summary: "Configure the workspace's custom OAuth client for a provider",
     tags: ['console'],
   })
   .input(
@@ -5785,6 +5793,13 @@ export const post84 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 export const client = {
   delete: delete26,
@@ -6265,12 +6280,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))
