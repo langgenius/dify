@@ -938,12 +938,54 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('failures and skipped saves', () => {
+    it('protects an empty canvas while a normal save is pending and after it receives a conflict', async () => {
+      const pending = createDeferred<{ hash: string; updated_at: number }>()
+      mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+      const { syncPromise } = await startEmptySave(result)
+      expect(store.getState().draftSaveBlocked).toBe(true)
+      act(() => result.current.syncWorkflowDraftWhenPageClose())
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+      await act(async () => {
+        pending.reject(
+          createHttpError(new Response(null, { status: 409 }), {
+            code: 'draft_workflow_collaboration_active',
+            message: 'The workflow is being edited collaboratively.',
+            status: 409,
+          }),
+        )
+        await expect(syncPromise).resolves.toBeNull()
+      })
+      expect(store.getState().draftSaveBlocked).toBe(true)
+    })
+
     it('protects the canvas while a keepalive save is pending or fails', () => {
       const { result, store } = renderUseNodesSyncDraft()
       act(() => result.current.syncWorkflowDraftWhenPageClose())
       expect(store.getState().draftSaveBlocked).toBe(true)
       const callback = mockPostWithKeepalive.mock.calls.at(-1)?.[2] as (response?: Response) => void
       act(() => callback(new Response(null, { status: 409 })))
+      expect(store.getState().draftSaveBlocked).toBe(true)
+    })
+
+    it('ignores an earlier keepalive success after a newer save fails', async () => {
+      const { result, store } = renderUseNodesSyncDraft()
+      act(() => result.current.syncWorkflowDraftWhenPageClose())
+      const callback = mockPostWithKeepalive.mock.calls.at(-1)?.[2] as (response?: Response) => void
+      mockSyncWorkflowDraft.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_collaboration_active',
+          message: 'The workflow is being edited collaboratively.',
+          status: 409,
+        }),
+      )
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      act(() => callback(new Response(null, { status: 200 })))
       expect(store.getState().draftSaveBlocked).toBe(true)
     })
 

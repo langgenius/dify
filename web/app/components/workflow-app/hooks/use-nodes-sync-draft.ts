@@ -55,6 +55,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const isCollaborationEnabled = useStore((s) => s.isCollaborationEnabled)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
+  const collaborationConflictReportedRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
@@ -165,6 +166,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const version = workflowStore.getState().draftSaveVersion + 1
       if (!isCollaborationEnabled)
         workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing unload transport must report conflicts before the canvas can refresh.
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
         if (
           !isCollaborationEnabled &&
@@ -191,6 +193,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
         return null
       }
+
+      const version = workflowStore.getState().draftSaveVersion + 1
+      workflowStore.setState({
+        draftSaveVersion: version,
+        ...(!isCollaborationEnabled ? { draftSaveBlocked: true } : {}),
+      })
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
@@ -293,8 +301,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             : {}),
         }
 
-        const version = workflowStore.getState().draftSaveVersion + 1
-        workflowStore.setState({ draftSaveVersion: version })
         const [error, res, isDefined] = await safe(
           consoleClient.apps.byAppId.workflows.draft.post(
             { params: { app_id: baseParams.appId }, body },
@@ -306,8 +312,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
           if (isDefined && error.code === 'draft_workflow_collaboration_active') {
-            if (!workflowStore.getState().draftSaveBlocked)
+            if (!collaborationConflictReportedRef.current) {
               toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+              collaborationConflictReportedRef.current = true
+            }
             workflowStore.setState({ draftSaveBlocked: true })
           } else if (
             isDefined &&
@@ -321,6 +329,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
         if (workflowStore.getState().draftSaveVersion === version)
           workflowStore.setState({ draftSaveBlocked: false })
+        collaborationConflictReportedRef.current = false
         setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()

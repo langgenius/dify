@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 import pytest
+from psycopg2.errors import LockNotAvailable
 from sqlalchemy import Engine, event
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import OperationalError
@@ -58,7 +59,7 @@ def _short_lock_timeout(session: Session) -> None:
 def _expect_lock_timeout(action: Callable[[], object]) -> None:
     with pytest.raises(OperationalError) as error:
         action()
-    assert getattr(error.value.orig, "pgcode", None) == "55P03"
+    assert isinstance(error.value.orig, LockNotAvailable)
 
 
 def _exercise_save_and_join_lock(

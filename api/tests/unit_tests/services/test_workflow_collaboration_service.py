@@ -16,7 +16,11 @@ from models.base import TypeBase
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    SYNC_REQUEST_TIMEOUT_SECONDS,
+    WorkflowCollaborationService,
+    WorkflowCollaborationUnavailableError,
+)
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
@@ -48,9 +52,18 @@ def db_session(sqlite_engine: Engine) -> Iterator[Session]:
 
     TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, Workflow.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        session.add(Workflow(id="draft-1", tenant_id="t-1", app_id="wf-1", type=WorkflowType.WORKFLOW,
-                             version=Workflow.VERSION_DRAFT, graph='{"nodes": [], "edges": []}',
-                             _features='{}', created_by="u-1"))
+        session.add(
+            Workflow(
+                id="draft-1",
+                tenant_id="t-1",
+                app_id="wf-1",
+                type=WorkflowType.WORKFLOW,
+                version=Workflow.VERSION_DRAFT,
+                graph='{"nodes": [], "edges": []}',
+                _features="{}",
+                created_by="u-1",
+            )
+        )
         session.commit()
         yield session
 
@@ -69,6 +82,24 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
+    def test_join_without_draft_does_not_create_session(
+        self, real_service: ServiceFixture, db_session: Session
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        draft = db_session.get(Workflow, "draft-1")
+        assert draft is not None
+        db_session.delete(draft)
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False):
+            with pytest.raises(WorkflowCollaborationUnavailableError):
+                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+
+        assert repository.get_session_sids("wf-1") == []
+        socketio.enter_room.assert_not_called()
+
     @pytest.mark.parametrize(
         ("edition", "plan", "enabled", "allowed"),
         [

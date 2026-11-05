@@ -181,7 +181,10 @@ function renderSubject({
 it('does not replace a canvas when a draft save has failed', async () => {
   vi.useFakeTimers()
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
-  const { refreshDraft, unmount } = renderSubject({ initialStoreState: { draftSaveBlocked: true } })
+  const { refreshDraft, unmount } = renderSubject({
+    graphNodes: [],
+    initialStoreState: { draftSaveBlocked: true },
+  })
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await act(async () => {
     await vi.advanceTimersByTimeAsync(500)
