@@ -1,15 +1,15 @@
 'use client'
 
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AgentDetailSection, AgentDetailTop } from './navigation'
 
 export function AgentDetailSidebar() {
-  const media = useBreakpoints()
+  const isBelowDesktop = useMediaQuery('(width < 48rem)', {})
 
   return (
     <DetailSidebarFrame
-      compact={media !== MediaType.pc}
+      compact={isBelowDesktop}
       renderTop={({ expand, onToggle }) => <AgentDetailTop expand={expand} onToggle={onToggle} />}
       renderSection={({ expand }) => <AgentDetailSection expand={expand} />}
     />
