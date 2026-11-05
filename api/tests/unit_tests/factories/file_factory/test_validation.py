@@ -41,7 +41,13 @@ def _validate(
         ("video", ".mp4", [], [], True),
     ],
 )
-def test_bucket_semantics(input_file_type, file_extension, allowed_file_types, allowed_file_extensions, expected):
+def test_bucket_semantics(
+    input_file_type: str,
+    file_extension: str,
+    allowed_file_types: list[FileType],
+    allowed_file_extensions: list[str],
+    expected: bool,
+) -> None:
     config = FileUploadConfig(
         allowed_file_types=allowed_file_types,
         allowed_file_extensions=allowed_file_extensions,
@@ -50,7 +56,7 @@ def test_bucket_semantics(input_file_type, file_extension, allowed_file_types, a
 
 
 @pytest.mark.parametrize("whitelist_entry", [".png", ".PNG", "png", "PNG", " .Png ", "PnG"])
-def test_extension_match_is_case_and_dot_insensitive(whitelist_entry):
+def test_extension_match_is_case_and_dot_insensitive(whitelist_entry: str) -> None:
     config = FileUploadConfig(
         allowed_file_types=[FileType.CUSTOM],
         allowed_file_extensions=[whitelist_entry],
@@ -58,7 +64,7 @@ def test_extension_match_is_case_and_dot_insensitive(whitelist_entry):
     assert _validate(input_file_type="custom", file_extension=".png", config=config) is True
 
 
-def test_extension_mismatch_still_rejected_after_normalization():
+def test_extension_mismatch_still_rejected_after_normalization() -> None:
     config = FileUploadConfig(
         allowed_file_types=[FileType.CUSTOM],
         allowed_file_extensions=[".png", ".jpg"],
@@ -66,7 +72,7 @@ def test_extension_mismatch_still_rejected_after_normalization():
     assert _validate(input_file_type="custom", file_extension=".pdf", config=config) is False
 
 
-def test_mixed_case_whitelist_replicating_real_user_config():
+def test_mixed_case_whitelist_replicating_real_user_config() -> None:
     config = FileUploadConfig(
         allowed_file_types=[FileType.CUSTOM],
         allowed_file_extensions=[".PNG", "png", "JPG", ".WEBP", "SVG", "GIF"],
@@ -75,7 +81,7 @@ def test_mixed_case_whitelist_replicating_real_user_config():
         assert _validate(input_file_type="custom", file_extension=ext, config=config) is True
 
 
-def test_tool_file_always_passes():
+def test_tool_file_always_passes() -> None:
     config = FileUploadConfig(allowed_file_types=[FileType.CUSTOM], allowed_file_extensions=[".pdf"])
     assert (
         _validate(
@@ -88,7 +94,7 @@ def test_tool_file_always_passes():
     )
 
 
-def test_transfer_method_gate_for_non_image():
+def test_transfer_method_gate_for_non_image() -> None:
     config = FileUploadConfig(
         allowed_file_types=[FileType.DOCUMENT],
         allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE],
@@ -113,7 +119,7 @@ def test_transfer_method_gate_for_non_image():
     )
 
 
-def test_history_replay_matches_round_1_outcome_under_unchanged_config():
+def test_history_replay_matches_round_1_outcome_under_unchanged_config() -> None:
     """A file that passes round 1 must pass history replay when config is unchanged."""
     config = FileUploadConfig(
         allowed_file_types=[FileType.CUSTOM],
@@ -123,7 +129,7 @@ def test_history_replay_matches_round_1_outcome_under_unchanged_config():
     assert _validate(input_file_type="image", file_extension=".png", config=config) is True
 
 
-def test_empty_whitelist_in_custom_bucket_denies_by_default():
+def test_empty_whitelist_in_custom_bucket_denies_by_default() -> None:
     """Defensive: when a file lands in the CUSTOM bucket, an empty
     allowed_file_extensions list rejects. The UI never submits empty;
     this guards DSL / API paths that bypass the UI from accidentally
@@ -136,7 +142,7 @@ def test_empty_whitelist_in_custom_bucket_denies_by_default():
     assert _validate(input_file_type="image", file_extension=".png", config=config) is False
 
 
-def test_normalize_handles_whitespace_and_empty_consistently():
+def test_normalize_handles_whitespace_and_empty_consistently() -> None:
     """Whitespace-only or empty entries in the whitelist must not match real
     extensions (regression guard for _normalize_extension edge cases)."""
     for noisy_entry in ("", "   ", "\t"):
@@ -147,7 +153,7 @@ def test_normalize_handles_whitespace_and_empty_consistently():
         assert _validate(input_file_type="custom", file_extension=".png", config=config) is False
 
 
-def test_empty_extension_does_not_spuriously_match_empty_whitelist_entry():
+def test_empty_extension_does_not_spuriously_match_empty_whitelist_entry() -> None:
     """Defensive: even if the whitelist contains an empty / whitespace entry
     (e.g., a stray comma in DSL), an extensionless file must not pass via
     a both-sides-empty match. Real entries in the same whitelist still match."""
