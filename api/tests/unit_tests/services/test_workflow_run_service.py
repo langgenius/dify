@@ -50,6 +50,16 @@ def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock]) -> 
     )
 
 
+class _CloseTrackingSession(Session):
+    """Real Session that records whether its owner closed it."""
+
+    closed = False
+
+    def close(self) -> None:
+        super().close()
+        self.closed = True
+
+
 def _workflow_run_service_request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
     return RequestContext(
         request_id="request-1",
@@ -290,16 +300,27 @@ class TestWorkflowRunServiceCases:
         ) -> None:
             node_executions, workflow_runs = service_dependencies
             workflow_runs.get_workflow_run_by_id.return_value = _workflow_run()
-            session = MagicMock(spec=Session)
-            session_factory = MagicMock(spec=sessionmaker)
-            session_factory.return_value.__enter__.return_value = session
             service = WorkflowRunService(
                 workflow_runs=workflow_runs,
                 node_executions=node_executions,
-                session_factory=session_factory,
+                session_factory=sessionmaker(class_=_CloseTrackingSession),
             )
-            mock_assemble = MagicMock(return_value=[])
-            monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
+            expected_executions = (
+                node_executions.get_workflow_tool_executions.return_value
+                if tool_traces
+                else node_executions.get_executions_by_workflow_run.return_value
+            )
+            assembly_sessions: list[Session] = []
+
+            def assemble(
+                executions: object, repository: object, *, session: Session
+            ) -> list[WorkflowNodeExecutionTrace]:
+                assert executions is expected_executions
+                assert repository is node_executions
+                assembly_sessions.append(session)
+                return []
+
+            monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", assemble)
             context = _workflow_run_service_request_context()
 
             if tool_traces:
@@ -309,9 +330,9 @@ class TestWorkflowRunServiceCases:
             else:
                 service.get_workflow_run_node_executions(context, app_id="app-1", run_id="run-1")
 
-            session_factory.assert_called_once_with()
-            mock_assemble.assert_called_once_with(ANY, node_executions, session=session)
-            session_factory.return_value.__exit__.assert_called_once()
+            [assembly_session] = assembly_sessions
+            assert isinstance(assembly_session, _CloseTrackingSession)
+            assert assembly_session.closed
 
 
 """Tests for Console workflow pause details."""
