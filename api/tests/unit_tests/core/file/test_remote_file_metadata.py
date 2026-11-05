@@ -53,6 +53,30 @@ class TestGuessFileInfoFromResponse:
         assert info.mimetype == "text/csv"
 
     @pytest.mark.parametrize(
+        ("content_disposition", "expected_filename"),
+        [
+            ('attachment; filename="myfile.csv"', "myfile.csv"),
+            ('attachment; filename="myfile.csv"; size=1024', "myfile.csv"),
+            ("attachment; filename=myfile.csv; size=1024", "myfile.csv"),
+        ],
+    )
+    def test_quoted_filename_from_content_disposition(
+        self,
+        content_disposition: str,
+        expected_filename: str,
+    ) -> None:
+        response = make_response(
+            url="https://example.com/",
+            headers={"Content-Disposition": content_disposition, "Content-Type": "text/csv"},
+            content=b"Hello World",
+        )
+
+        info = guess_file_info_from_response(response)
+
+        assert info.filename == expected_filename
+        assert info.extension == ".csv"
+
+    @pytest.mark.parametrize(
         ("magic_available", "expected_ext"),
         [
             (True, "txt"),
