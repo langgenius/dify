@@ -16,9 +16,12 @@ from typing import NamedTuple, cast
 
 from pydantic import JsonValue
 from sqlalchemy import Select, and_, or_, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
+from constants import UUID_NIL
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
+from machinery.context import ServiceApiEndUserContext
+from machinery.message_history import MessageHistory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
@@ -28,6 +31,7 @@ from services.entities.message_entities import (
     ConsoleMessageRecord,
     MessageAccount,
     MessageActor,
+    MessageEndUser,
     MessagePage,
     MessageRecord,
     MessageSource,
@@ -58,6 +62,77 @@ class SuggestedQuestionsRecords(NamedTuple):
 class MessageRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+
+    def get_message_history(
+        self,
+        *,
+        context: ServiceApiEndUserContext,
+        conversation_id: str,
+        parent_message_id: str | None,
+    ) -> MessageHistory:
+        """Read a bounded chain after verifying its complete persisted ownership.
+
+        The admitted context and a concrete parent or None are required. Every
+        row shares the live API conversation and end user. Legacy nil-parent
+        rows step backwards by (created_at, id). Missing rows/cycles fail without
+        writes. Success returns oldest-first IDs and never includes descendants.
+        """
+        with self._session_factory() as session:
+            app = self._get_app(session, app_id=context.app_id, tenant_id=context.tenant_id)
+            if app is None or app.mode != AppMode.ADVANCED_CHAT:
+                raise ValueError("Advanced Chat app is unavailable.")
+            actor = MessageEndUser(end_user_id=context.end_user_id)
+            self._require_page_actor(session, app_id=context.app_id, tenant_id=context.tenant_id, actor=actor)
+            self._require_page_conversation(
+                session, app_id=context.app_id, conversation_id=conversation_id, actor=actor
+            )
+            statement = (
+                select(Message)
+                .options(load_only(Message.id, Message.parent_message_id, Message.created_at))
+                .where(
+                    Message.app_id == context.app_id,
+                    Message.conversation_id == conversation_id,
+                    Message.from_source == "api",
+                    Message.from_end_user_id == context.end_user_id,
+                    Message.from_account_id.is_(None),
+                )
+            )
+            ids: list[str] = []
+            seen: set[str] = set()
+            current = self._branch_message(session, statement, parent_message_id) if parent_message_id else None
+            while current is not None and len(ids) < 500:
+                if current.id in seen:
+                    raise ValueError("Message branch contains a cycle.")
+                seen.add(current.id)
+                ids.append(current.id)
+                if current.parent_message_id == UUID_NIL:
+                    current = session.scalar(
+                        statement.where(
+                            or_(
+                                Message.created_at < current.created_at,
+                                and_(Message.created_at == current.created_at, Message.id < current.id),
+                            )
+                        )
+                        .order_by(Message.created_at.desc(), Message.id.desc())
+                        .limit(1)
+                    )
+                elif current.parent_message_id:
+                    current = self._branch_message(session, statement, current.parent_message_id)
+                else:
+                    current = None
+            if current is not None:
+                raise ValueError("Explicit message branches support at most 500 ancestors.")
+            return MessageHistory(
+                app_id=context.app_id, conversation_id=conversation_id, message_ids=tuple(reversed(ids))
+            )
+
+    @staticmethod
+    def _branch_message(session: Session, statement: Select[tuple[Message]], message_id: str) -> Message:
+        """Load one scoped reference; missing references never select another branch."""
+        message = session.scalar(statement.where(Message.id == message_id))
+        if message is None:
+            raise ValueError("Message branch is unavailable in this conversation.")
+        return message
 
     def get_message_page(
         self,

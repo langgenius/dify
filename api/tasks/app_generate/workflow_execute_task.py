@@ -217,7 +217,11 @@ class _AppRunner:
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            from extensions.application_services.message_branches import resolve_message_history
+
+            return AdvancedChatAppGenerator(
+                execution_driver=WorkflowRunAgg.run, message_history_resolver=resolve_message_history
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -700,7 +704,11 @@ def _resume_advanced_chat(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    from extensions.application_services.message_branches import resolve_message_history
+
+    generator = AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run, message_history_resolver=resolve_message_history
+    )
 
     try:
         response = generator.resume(
