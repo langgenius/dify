@@ -228,20 +228,20 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
 
 
-def _valid_requirement_submission(fc: DifyBuilderContext, payload: object) -> bool:
+def _valid_requirement_submission(visible_fields: list[FormField], payload: object) -> bool:
     """Validate visible controls before merging or confirming any answer.
 
     Required answers must occur in this submission; a displayed recommendation
     never substitutes for an omitted value. Invalid submissions change nothing.
+    Validate the same normalized visible controls as the rendered card; raw
+    cognition types/options and skipped specs cannot change that contract.
     Explicit structured technical controls retain their existing JSON support.
     """
     if not isinstance(payload, dict):
-        return not fc.form_fields
-    for spec in fc.form_fields:
-        if not isinstance(spec, dict) or not isinstance(spec.get("key"), str) or not spec["key"]:
-            return False
-        key = spec["key"]
-        required = spec.get("required") is True
+        return not visible_fields
+    for form_field in visible_fields:
+        key = form_field.key
+        required = form_field.required
         if key not in payload:
             if required:
                 return False
@@ -250,10 +250,10 @@ def _valid_requirement_submission(fc: DifyBuilderContext, payload: object) -> bo
             empty = value is None or (isinstance(value, str) and not value.strip())
             if empty and required:
                 return False
-            field_type = spec.get("type", "text")
+            field_type = form_field.type
             valid = (
                 (field_type in {"text", "textarea"} and isinstance(value, str))
-                or (field_type == "select" and isinstance(value, str) and value in spec.get("options", []))
+                or (field_type == "select" and isinstance(value, str) and value in form_field.options)
                 or (field_type == "bool" and isinstance(value, bool))
                 or (
                     field_type == "number"
@@ -310,10 +310,11 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     if fc.resource_selection.get("knowledge_decision_pending"):
         return _handle_knowledge_decision(env, turn, s, fc)
 
-    if not _valid_requirement_submission(fc, turn.action.payload if turn.action else None):
+    visible_fields = build_form_fields(fc.form_fields)
+    if not _valid_requirement_submission(visible_fields, turn.action.payload if turn.action else None):
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
-    if any(field.get("key") == _ADJUSTMENT_REQUEST for field in fc.form_fields):
+    if any(field.key == _ADJUSTMENT_REQUEST for field in visible_fields):
         value = (
             turn.action.payload.get(_ADJUSTMENT_REQUEST)
             if turn.action and isinstance(turn.action.payload, dict)
@@ -335,7 +336,7 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     )
     progress.activate("build-review-requirements")
     if turn.action is not None and isinstance(turn.action.payload, dict):
-        keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        keys = [field.key for field in visible_fields]
         previous_requirements = fc.requirements
         fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
         confirmed_keys = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
@@ -1821,8 +1822,9 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
-    re-proposes plan v1 and returns to build.initial_plan only with a usable
-    replacement; otherwise retain this waiting state and prior context."""
+    re-proposes plan v1 or further business questions. Both usable outcomes
+    clear prior test/repair attempt state before proceeding; no usable outcome
+    retains this waiting state and the prior attempt context."""
     kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.BUILD_REVERTED, context=fc)
@@ -1842,17 +1844,17 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     plan = env.agent.propose_plan_v1(
         _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
     )
-    if isinstance(plan, BuildClarification):
-        progress.finish()
-        return _offer_clarification(fc, plan)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-restart-plan", PcState.BUILD_REVERTED)
-    store_plan(fc, plan)
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     fc.repair_attempts = 0
     fc.last_repair_error = ""
     fc.unknown_outcome_count = 0
+    if isinstance(plan, BuildClarification):
+        progress.finish()
+        return _offer_clarification(fc, plan)
+    store_plan(fc, plan)
     execution = progress.finish()
     turn_items = append_assistant(
         env,
