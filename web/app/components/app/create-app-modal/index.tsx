@@ -39,7 +39,7 @@ import { basePath } from '@/utils/var'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
-  onClose: () => void
+  onClose: () => void | Promise<unknown>
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppType
 }
@@ -133,7 +133,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         // Analytics should not turn a successful app creation into a failed flow.
       }
 
-      onClose()
+      // URL-backed dialogs must finish clearing their query state before navigation.
+      await onClose()
       getRedirection(app, push, {
         currentUserId,
         resourceMaintainer: app.maintainer,

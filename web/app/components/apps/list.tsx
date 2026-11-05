@@ -126,7 +126,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }, [canCreateApp, setCreateAppMode])
   const closeCreationDialog = useCallback(() => {
     setCreationDialog(null)
-    void setCreateAppMode(null)
+    return setCreateAppMode(null)
   }, [setCreateAppMode])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
