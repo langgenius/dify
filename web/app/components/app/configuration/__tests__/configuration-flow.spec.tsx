@@ -35,6 +35,7 @@ import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixt
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { AppACLPermission } from '@/utils/permission'
 import Configuration from '../index'
 import { toast as configurationToast } from '../toast'
@@ -257,7 +258,7 @@ afterEach(() =>
   act(() => {
     toast.dismiss()
     configurationToast.dismiss()
-    vi.unstubAllGlobals()
+    resetViewportWidth()
   }),
 )
 
@@ -558,7 +559,7 @@ it('preserves feature drafts across reopening and restores the last published fe
 })
 
 it('opens and closes the mobile debug drawer while preserving the configuration draft', async () => {
-  vi.stubGlobal('innerWidth', 390)
+  setViewportWidth(390)
   const { user } = setup()
   await waitForPage()
   await user.type(prompt(), ' Mobile draft.')

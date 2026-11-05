@@ -25,6 +25,7 @@
   "enterYourName": "Пожалуйста, введите свое имя пользователя",
   "error.emailEmpty": "Адрес электронной почты обязателен",
   "error.emailInValid": "Пожалуйста, введите действительный адрес электронной почты",
+  "error.initPasswordIncorrect": "Неверный пароль инициализации.",
   "error.invalidEmailOrPassword": "Неверный адрес электронной почты или пароль.",
   "error.invalidSSOProtocol": "Неверный протокол SSO",
   "error.nameEmpty": "Имя обязательно",
