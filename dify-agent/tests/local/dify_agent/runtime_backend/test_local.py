@@ -162,7 +162,8 @@ async def test_local_binding_create_materializes_home_and_new_workspace() -> Non
 
     assert allocation.binding_ref == "binding-1:workspace-1"
     assert allocation.workspace_ref == "workspace-1"
-    assert factory.commands[0] == ("test", "-d", "/snapshots/home-home-1")
+    assert factory.commands[0] == ("exec", "2>&1")
+    assert factory.commands[1] == ("test", "-d", "/snapshots/home-home-1")
     assert ("mkdir", "-p", "/workspaces/workspace-1") in factory.commands
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands

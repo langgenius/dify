@@ -511,7 +511,7 @@ async def test_openshell_snapshot_failure_removes_partial_copy() -> None:
         )
 
     assert len(commands.scripts) == 2
-    assert commands.scripts[1].startswith("rm -rf -- ")
+    assert commands.scripts[1].startswith("exec 2>&1\nrm -rf -- ")
 
 
 @pytest.mark.anyio

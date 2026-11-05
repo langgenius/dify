@@ -112,8 +112,8 @@ async def run_shellctl_control_command(
     *,
     timeout: float = 30.0,
 ) -> CompleteShellCommandResult:
-    """Run one bounded control command through stdout-only stdio and delete its transient job."""
-    result = await commands.run(script, cwd=None, env=None, timeout=timeout, mode="stdio")
+    """Merge stderr into stdout-only stdio for a bounded control command and delete its transient job."""
+    result = await commands.run("exec 2>&1\n" + script, cwd=None, env=None, timeout=timeout, mode="stdio")
     job_id = result.job_id
     output_parts = [result.output]
     try:
