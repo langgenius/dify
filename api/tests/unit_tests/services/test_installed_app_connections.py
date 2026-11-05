@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from context.connection_execution import ConnectionExecutionContext, WorkspaceConnectionScope
 from core.plugin.entities.plugin_daemon import CredentialType
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin
-from models.enums import ConversationFromSource, PermissionEnum
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom, PermissionEnum
 from models.installed_app_connection import InstalledAppConnectionConfiguration
 from models.model import App, AppMode, Conversation, InstalledApp
 from models.tools import BuiltinToolProvider
@@ -106,8 +106,8 @@ def harness(sqlite_session_factory: sessionmaker[Session]):
                 credential,
                 hidden,
                 elsewhere,
-                TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role="normal"),
-                TenantAccountJoin(tenant_id=tenant.id, account_id=other.id, role="normal"),
+                TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.NORMAL),
+                TenantAccountJoin(tenant_id=tenant.id, account_id=other.id, role=TenantAccountRole.NORMAL),
             ]
         )
     scope = WorkspaceConnectionScope(installed_app_id=installation.id, tenant_id=tenant.id, account_id=account.id)
@@ -168,10 +168,10 @@ def conversation(harness, *, account_id=None):
         mode=AppMode.ADVANCED_CHAT,
         from_account_id=account_id or harness.account.id,
         from_source=ConversationFromSource.CONSOLE,
-        invoke_from="explore",
+        invoke_from=InvokeFrom.EXPLORE,
         name="Conversation",
         _inputs={},
-        status="normal",
+        status=ConversationStatus.NORMAL,
     )
     with harness.sessions.begin() as session:
         session.add(row)
@@ -327,7 +327,9 @@ def test_entry_and_worker_revalidate_owner_chain(harness, change):
         elif change == "publication":
             session.execute(update(Workflow).where(Workflow.id == harness.workflow.id).values(version="draft"))
         else:
-            session.execute(update(Tenant).where(Tenant.id == harness.scope.tenant_id).values(status="archive"))
+            session.execute(
+                update(Tenant).where(Tenant.id == harness.scope.tenant_id).values(status=TenantStatus.ARCHIVE)
+            )
     with pytest.raises((ConnectionIdentityError, ConnectionConfigurationError, LookupError)):
         harness.service.resolve(execution, account_id=harness.account.id, node_id="root", graph=harness.graph)
 
