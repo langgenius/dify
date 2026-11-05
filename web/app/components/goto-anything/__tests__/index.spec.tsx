@@ -297,17 +297,18 @@ describe('search shortcut ownership', () => {
 })
 
 describe('real commands', () => {
-  it('lists commands without scopes or search syntax on the home view', async () => {
+  it('lists commands, then scopes, without search syntax on the desktop home view', async () => {
     setup()
     await openSearch()
 
-    expect(
-      screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
-    ).not.toHaveTextContent('/theme')
-    expect(
-      screen.queryByRole('option', { name: 'app.gotoAnything.groups.apps' }),
-    ).not.toBeInTheDocument()
+    const options = screen.getAllByRole('option')
+    const theme = screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ })
+    const apps = screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })
+    expect(theme).not.toHaveTextContent('/theme')
+    expect(apps).not.toHaveTextContent('@app')
+    expect(options.indexOf(theme)).toBeLessThan(options.indexOf(apps))
   })
+
   it('opens a command page before executing a real theme choice', async () => {
     const { user } = setup()
     const input = await openSearch()

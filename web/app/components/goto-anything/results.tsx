@@ -42,7 +42,10 @@ export function ResultList({
                       : `${option.type}:${option.id}`
                   }
                   value={option}
-                  className="mx-2 min-h-12 gap-3 px-3 py-2 text-text-primary"
+                  className={cn(
+                    'mx-2 gap-3 px-3 py-1 text-text-primary',
+                    option.description ? 'min-h-12' : 'min-h-11 md:min-h-10',
+                  )}
                   onClick={() => onSelect(option)}
                 >
                   {isCommandOption(option) ? (

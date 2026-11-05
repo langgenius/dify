@@ -18,9 +18,9 @@ Search actions adapt application, knowledge, plugin, workflow, and RAG owners in
 - Typing with nothing selected searches every resource and command; prefixes are never required.
 - The empty input lists every available command as a single-line row named in plain language. Commands with choices open a page; other commands run directly.
 - A search can be narrowed to one resource type (a scope). With an empty term, a scope lists that resource's first page.
-- In the desktop dialog, the scope or page is a token at the start of the input. Scopes are suggested as rows when the term names one, and a bare `@` lists them; the placeholder teaches `@`. Typed `@scope ` and `/command ` prefixes become tokens.
+- In the desktop dialog, the scope or page is a token at the start of the input. The empty input lists scopes after the commands, a term that names a scope suggests it, and a bare `@` lists them; the placeholder teaches `@`. Typed `@scope ` and `/command ` prefixes become tokens.
 - In the bottom drawer, a scope bar under the input owns scope selection; only a page shows as a token.
-- Results stay grouped by type. Resource rows show a one-line description; command and scope rows show a title only.
+- Results stay grouped by type. Resource rows show a one-line description; command and scope rows show a title only and are shorter.
 
 ## Keyboard
 

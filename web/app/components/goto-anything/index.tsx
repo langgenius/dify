@@ -513,8 +513,10 @@ export function GotoAnything() {
 
   const isScopeSelection = isCommandsMode && trimmedSearchQuery.startsWith('@')
   const showCommands = isCommandsMode ? !isScopeSelection : !currentAction
-  // The dialog suggests a scope when the term names one; the drawer keeps its scope bar instead.
-  const showScopes = isScopeSelection || (isAtLeastMd && !currentAction && !isCommandsMode)
+  // The dialog lists scopes on its home view and suggests one when the term names it; the drawer
+  // keeps its scope bar instead.
+  const showScopes =
+    isScopeSelection || (isAtLeastMd && !currentAction && (!trimmedSearchQuery || !isCommandsMode))
   const commandSuggestions = showCommands && !isScopeSelection ? commandOptions : []
   const scopeSuggestions = showScopes ? scopeOptions : []
   const visibleOptions: GotoAnythingOption[] = [
