@@ -3633,3 +3633,192 @@ def test_wrong_scalar_requirement_types_cannot_replan(
     assert result.next == PcState.BUILD_GOAL_ANALYSIS
     assert fc.requirements == {}
     assert fc.confirmed_requirement_keys == []
+
+
+@pytest.mark.parametrize(
+    ("spec", "answer"),
+    [
+        ({"key": "answer", "label": "Answer", "type": "unknown", "required": True}, "yes"),
+        ({"key": "choice", "label": "Choice", "type": "select", "options": [1, "2"], "required": True}, "1"),
+        ({"key": 7, "label": "Answer", "type": "text", "required": True}, "yes"),
+    ],
+)
+def test_rendered_requirement_normalization_accepts_the_visible_answer(spec: dict[str, object], answer: str) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+    from services.dify_builder.application.handlers_fix import build_form_fields
+
+    visible = build_form_fields([spec])[0]
+    assert visible.type in {"text", "select"}
+    if visible.type == "select":
+        assert visible.options == ["1", "2"]
+        assert answer in visible.options
+    env, _ = _new_env()
+    fc = DifyBuilderContext(
+        goal_text="Use the selected business rule", form_fields=[spec], confirmed_requirement_keys=[]
+    )
+    result = handle_goal_analysis(
+        env,
+        Turn(action=Action(kind="submit_requirements", payload={visible.key: answer}), actor=_actor()),
+        _session(),
+        fc,
+    )
+    assert result.next == PcState.BUILD_INITIAL_PLAN
+    assert fc.requirements == {visible.key: answer}
+    assert fc.confirmed_requirement_keys == [visible.key]
+
+
+def test_invisible_requirement_specs_cannot_block_the_rendered_form() -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+    from services.dify_builder.application.handlers_fix import build_form_fields
+
+    env, _ = _new_env()
+    fc = DifyBuilderContext(goal_text="Use the existing business rule", form_fields=[{}, {"key": "", "required": True}])
+    assert build_form_fields(fc.form_fields) == []
+    result = handle_goal_analysis(env, Turn(action=Action(kind="submit_requirements"), actor=_actor()), _session(), fc)
+    assert result.next == PcState.BUILD_INITIAL_PLAN
+
+
+def test_normalized_select_still_rejects_an_unoffered_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+    from services.dify_builder.application.handlers_fix import build_form_fields
+
+    env, _ = _new_env()
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: pytest.fail("invalid option must not plan"))
+    fc = DifyBuilderContext(
+        goal_text="Use the selected business rule",
+        requirements={"choice": "1"},
+        confirmed_requirement_keys=[],
+        form_fields=[{"key": "choice", "type": "select", "options": [1, "2"], "required": True}],
+    )
+    assert build_form_fields(fc.form_fields)[0].options == ["1", "2"]
+    result = handle_goal_analysis(
+        env, Turn(action=Action(kind="submit_requirements", payload={"choice": "3"}), actor=_actor()), _session(), fc
+    )
+    assert result.next == PcState.BUILD_GOAL_ANALYSIS
+    assert fc.requirements == {"choice": "1"}
+    assert fc.confirmed_requirement_keys == []
+
+
+def test_reverted_clarification_clears_old_attempt_before_fresh_build_and_testdata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from copy import deepcopy
+
+    from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.plan import BuildClarification, WorkflowPlan
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
+    s = _session(current_state=PcState.BUILD_REVERTED)
+    context = DifyBuilderContext(
+        goal_text="Settle records using the confirmed rules",
+        requirements={"currency": "USD"},
+        confirmed_requirement_keys=["currency"],
+        resource_selection={"resource_ids": ["model:chosen"]},
+        plan_items=["Prior plan"],
+        test_input_ref="prior-input",
+        verify_run_id="prior-run",
+        repair_attempts=4,
+        last_repair_error="old failure",
+        unknown_outcome_count=2,
+    )
+    repo.create_session(s, context, [ConversationItem(kind="user", seq=0)])
+    repo.save_test_input(TestInput(id="prior-input", session_id=s.id, inputs={"old_only": "stale"}))
+    original_graph = deepcopy(dify.graph)
+    outcomes = iter(
+        [
+            BuildClarification(
+                fields=[
+                    {
+                        "key": "policy",
+                        "label": "Missing value",
+                        "type": "select",
+                        "options": ["Reject", "Skip"],
+                        "required": True,
+                    }
+                ],
+                values={"policy": "Reject"},
+            ),
+            WorkflowPlan("Settlement", "Records", "Totals", ["code node applies confirmed business rules"]),
+        ]
+    )
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: next(outcomes))
+    runner = Runner(env, build_registry())
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()))
+    assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
+    _, fc = repo.get_session(s.id)
+    assert fc.test_input_ref == ""
+    assert fc.verify_run_id == ""
+    assert fc.repair_attempts == 0
+    assert fc.last_repair_error == ""
+    assert fc.unknown_outcome_count == 0
+    assert fc.goal_text == "Settle records using the confirmed rules"
+    assert fc.requirements == {"currency": "USD", "policy": "Reject"}
+    assert fc.confirmed_requirement_keys == ["currency"]
+    assert fc.resource_selection == {"resource_ids": ["model:chosen"]}
+    assert dify.graph == original_graph
+
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="submit_requirements", payload={"policy": "Skip"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert dify.graph == original_graph
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="confirm_resources", payload={"resource_ids": ["model:chosen"]}, base_version=out.version
+            ),
+            actor=_actor(),
+        ),
+    )
+    assert out.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert dify.graph == original_graph
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    _, fc = repo.get_session(s.id)
+    assert fc.test_input_ref == ""
+    assert fc.requirements == {"currency": "USD", "policy": "Skip"}
+    assert fc.confirmed_requirement_keys == ["currency", "policy"]
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    form = next(item for item in reversed(repo.list_conversation(s.id)) if item.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert "old_only" not in form.payload["values"]
+    assert repo.get_test_input("prior-input").inputs == {"old_only": "stale"}
+
+
+def test_reverted_planning_failure_retains_prior_attempt_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.application.handlers_build import handle_reverted
+
+    env, _ = _new_env()
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_kw: None)
+    fc = DifyBuilderContext(
+        goal_text="Settle records",
+        requirements={"currency": "USD"},
+        test_input_ref="prior-input",
+        verify_run_id="prior-run",
+        repair_attempts=4,
+        last_repair_error="old failure",
+        unknown_outcome_count=2,
+    )
+    result = handle_reverted(env, Turn(action=Action(kind="re_fix"), actor=_actor()), _session(), fc)
+    assert result.next == PcState.BUILD_REVERTED
+    assert (
+        fc.test_input_ref,
+        fc.verify_run_id,
+        fc.repair_attempts,
+        fc.last_repair_error,
+        fc.unknown_outcome_count,
+    ) == (
+        "prior-input",
+        "prior-run",
+        4,
+        "old failure",
+        2,
+    )
