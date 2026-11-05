@@ -66,11 +66,13 @@ from services.workflow_service import WorkflowService
 from tests.helpers.unit.audio_runtime_fixtures import record_calls
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 from tests.helpers.unit.rbac_fakes import RBACDomain
+from tests.helpers.unit.services.webhook_sync import route_webhook_sync
 
 
 @pytest.mark.parametrize(("mode", "include_inline"), [(AppMode.WORKFLOW, False), (AppMode.ADVANCED_CHAT, True)])
 def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
     app_services: AppServices,
+    sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     copy_source: tuple[RequestContext, str],
     monkeypatch: pytest.MonkeyPatch,
@@ -188,6 +190,7 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             )
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+    route_webhook_sync(monkeypatch, sqlite_engine)
     workflow_service = WorkflowService(session_maker=sqlite_session_factory)
     monkeypatch.setattr(
         "services.app_dsl_service.WorkflowService", Mock(wraps=WorkflowService, return_value=workflow_service)

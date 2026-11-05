@@ -861,5 +861,8 @@ def test_describe_webhook_of_a_trigger_without_an_address_is_not_found(
     ctx = _app_context(sqlite_session)
     _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
 
-    with pytest.raises(WebhookNotFound):
+    with pytest.raises(WebhookNotFound) as raised:
         _describe_webhook(app, ctx, monkeypatch, account_application_services, "hook")
+    # An openapi caller writes the draft by importing it; the console's save is not one of its ops.
+    assert raised.value.hint is not None
+    assert "import the draft again" in raised.value.hint
