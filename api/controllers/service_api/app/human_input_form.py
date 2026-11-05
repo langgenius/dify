@@ -8,7 +8,7 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Annotated, NoReturn
+from typing import Annotated
 
 from flask import Response, request
 from flask_restx import Resource
@@ -16,6 +16,7 @@ from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.human_input_v2_errors import legacy_form_http_error
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -42,7 +43,6 @@ from services.human_input_service import (
 )
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
-    HumanInputFormErrorCode,
     HumanInputSubmissionService,
     ServiceAPIFormActor,
 )
@@ -109,25 +109,6 @@ def _jsonify_v2_form_definition(form: V2Form) -> Response:
     return Response(response.model_dump_json(), mimetype="application/json")
 
 
-def _raise_form_error(error: HumanInputFormError) -> NoReturn:
-    # Keep the existing Service API errors instead of leaking Web App v2's
-    # 409/410 statuses or its transport-specific error codes.
-    match error.code:
-        case HumanInputFormErrorCode.NOT_FOUND:
-            raise NotFound("Form not found") from error
-        case HumanInputFormErrorCode.ALREADY_SUBMITTED:
-            assert error.form_id is not None
-            raise FormSubmittedError(error.form_id) from error
-        case HumanInputFormErrorCode.EXPIRED:
-            assert error.form_id is not None
-            raise FormExpiredError(error.form_id) from error
-        case HumanInputFormErrorCode.INVALID_INPUT:
-            description = str(error.__cause__) if error.__cause__ is not None else "Invalid form data"
-            raise InvalidFormDataError(description) from error
-        case HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE:
-            raise BadRequest("The workflow is not paused with an active checkpoint.") from error
-
-
 @service_api_ns.route("/form/human_input/<string:form_token>")
 class WorkflowHumanInputFormApi(Resource):
     @error_responses(FormExpiredError, FormSubmittedError)
@@ -177,7 +158,9 @@ class WorkflowHumanInputFormApi(Resource):
                     ip_address=extract_remote_ip(request) or None,
                 )
             except HumanInputFormError as error:
-                _raise_form_error(error)
+                # Keep the existing Service API errors instead of leaking Web App v2's
+                # 409/410 statuses or its transport-specific error codes.
+                raise legacy_form_http_error(error, not_found=NotFound("Form not found")) from error
             return _jsonify_v2_form_definition(v2_form)
 
         _ensure_form_belongs_to_app(form, app_model)
@@ -243,7 +226,7 @@ class WorkflowHumanInputFormApi(Resource):
                     inputs=payload.inputs,
                 )
             except HumanInputFormError as error:
-                _raise_form_error(error)
+                raise legacy_form_http_error(error, not_found=NotFound("Form not found")) from error
             return {}, 200
 
         _ensure_form_belongs_to_app(form, app_model)

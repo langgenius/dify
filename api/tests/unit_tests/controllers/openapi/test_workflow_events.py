@@ -10,7 +10,9 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 
 from __future__ import annotations
 
+import json
 import sys
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -18,8 +20,11 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
+from controllers.openapi.human_input_form import FormVersion
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.db.session_factory import session_factory
+from core.workflow.nodes.human_input import UserActionConfig
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
@@ -64,6 +69,7 @@ def _make_workflow_run(
     created_by_role=CreatorUserRole.ACCOUNT,
     created_by="acct-1",
     finished_at=None,
+    triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.APP_RUN,
 ) -> WorkflowRun:
     return WorkflowRun(
         id=_RUN_ID,
@@ -71,7 +77,7 @@ def _make_workflow_run(
         tenant_id=tenant_id,
         workflow_id="workflow-1",
         type=WorkflowType.CHAT,
-        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        triggered_from=triggered_from,
         version="1",
         graph="{}",
         inputs="{}",
@@ -107,6 +113,34 @@ def _make_end_user() -> EndUser:
         type=EndUserType.OPENAPI,
         session_id="session-1",
     )
+
+
+class _ReplayedEvents:
+    """A `MessageGenerator` whose replay is a fixed list of stream events."""
+
+    def __init__(self, events: list[dict[str, object]]) -> None:
+        self._events = events
+
+    def retrieve_events(self, *_args: object, **_kwargs: object) -> Iterator[dict[str, object]]:
+        return iter(self._events)
+
+
+def _paused(version: FormVersion) -> dict[str, object]:
+    response = HumanInputRequiredResponse(
+        task_id="t1",
+        workflow_run_id=_RUN_ID,
+        data=HumanInputRequiredResponse.Data(
+            form_version=version.value,
+            form_id=f"form-v{version.value}",
+            node_id="n1",
+            node_title="Review",
+            form_content="",
+            actions=[UserActionConfig(id="approve", title="Approve")],
+            form_token=f"token-v{version.value}",
+            expiration_time=4102444800,
+        ),
+    )
+    return response.model_dump(mode="json")
 
 
 class TestOpenApiWorkflowEventsApi:
@@ -281,3 +315,36 @@ class TestOpenApiWorkflowEventsApi:
 
         terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
         assert terminal_events == ([] if continue_on_pause else None)
+
+    @pytest.mark.parametrize(
+        ("triggered_from", "hinted"),
+        [
+            (WorkflowRunTriggeredFrom.APP_RUN, ["token-v1", "token-v2"]),
+            (WorkflowRunTriggeredFrom.DEBUGGING, ["token-v2"]),
+        ],
+        ids=["published", "draft"],
+    )
+    def test_a_draft_run_s_replay_hints_submit_for_a_v2_form_only(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        triggered_from: WorkflowRunTriggeredFrom,
+        hinted: list[str],
+    ) -> None:
+        module = sys.modules["controllers.openapi.workflow_events"]
+        self._bind_repo(monkeypatch, _make_workflow_run(triggered_from=triggered_from))
+        replay = _ReplayedEvents([_paused(version) for version in FormVersion])
+        monkeypatch.setattr(module, "MessageGenerator", lambda: replay)
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
+            resp = api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                run_id=_RUN_ID,
+                query=WorkflowEventsQuery(),
+            )
+            frames = [json.loads(chunk[len("data: ") :]) for chunk in resp.response]
+
+        assert [hint["input"]["form_token"] for frame in frames for hint in frame.get("hints", [])] == hinted

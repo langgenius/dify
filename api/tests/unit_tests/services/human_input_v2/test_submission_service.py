@@ -49,7 +49,7 @@ def _assert_delivery_attribution(
     context: Context,
     form_id: str,
     token: str,
-    submit: Callable[[str], None],
+    submit: Callable[[str], object],
     *,
     fail_commit: bool,
     im_retry: bool = False,
