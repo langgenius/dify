@@ -394,7 +394,7 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
         query_string={"code": "code-1", "state": state},
         headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
     ):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
     destination = urlsplit(response.headers["Location"])
     assert destination.netloc == "console.example.com"
     assert destination.path == "/signin"
@@ -409,9 +409,11 @@ def test_end_user_oauth_falls_back_to_personal_portal(
     service = FakeOAuthService()
     _install_service(monkeypatch, service)
     with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
-        response = OAuthLogin().get("github")
+        response = narrowed(OAuthLogin().get("github"), Response)
     assert response.status_code == 302
-    state = decode_account_oauth_state(service.authorization_calls[0][1].state)
+    encoded_state = service.authorization_calls[0][1].state
+    assert encoded_state is not None
+    state = decode_account_oauth_state(encoded_state)
     assert state.context["redirect_url"] == f"{CONSOLE_WEB_URL}/my-apps"
 
 
@@ -428,7 +430,7 @@ def test_end_user_oauth_returns_to_personal_portal_with_session(
         query_string={"code": "code-1", "state": state},
         headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
     ):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
     assert response.status_code == 302
     assert response.headers["Location"] == f"{CONSOLE_WEB_URL}{path}"
     assert service.callback_calls[0].mode == "end_user"
