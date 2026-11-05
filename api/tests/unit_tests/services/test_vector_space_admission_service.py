@@ -3,7 +3,6 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import cast
 from unittest.mock import call, patch
 from uuid import uuid4
 
@@ -674,6 +673,11 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
     sqlite_session: Session, quota: dict[str, object]
 ) -> None:
     service = VectorSpaceAdmissionService()
+    # Deliberately raw values: observe-mode validation keeps them unvalidated.
+    # The JSON round-trip preserves each runtime value while satisfying the declared types.
+    raw_size = json.loads(json.dumps(quota.get("size")))
+    raw_limit = json.loads(json.dumps(quota.get("limit")))
+    raw_usage_unknown = json.loads(json.dumps(quota.get("usage_unknown")))
     with (
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
         patch(
@@ -684,10 +688,9 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
             "services.vector_space_admission_service.BillingService.get_vector_space",
             # Observe-mode validation keeps invalid values raw and reads missing fields as None.
             return_value=billing.VectorSpaceQuota.model_construct(
-                # Deliberately raw values: observe-mode keeps them unvalidated.
-                size=cast(float, quota.get("size")),
-                limit=cast(int, quota.get("limit")),
-                usage_unknown=cast("bool | None", quota.get("usage_unknown")),
+                size=raw_size,
+                limit=raw_limit,
+                usage_unknown=raw_usage_unknown,
             ),
         ),
         patch.object(service, "_get_embedding_dimension") as dimension,

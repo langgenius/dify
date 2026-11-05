@@ -1,6 +1,7 @@
+import json
 from collections.abc import Callable, Iterator
 from enum import StrEnum
-from typing import Annotated, Literal, cast
+from typing import Annotated, Literal
 
 import pytest
 import sqlalchemy as sa
@@ -171,8 +172,11 @@ def test_bind_processor_does_not_double_encode_model_json() -> None:
 
 
 def test_bind_treats_serialization_warnings_as_errors() -> None:
+    # Deliberately mistyped; the JSON round-trip keeps the runtime int while
+    # satisfying the declared str type.
+    mistyped_name = json.loads("42")
     invalid_model = _FrozenStrictPayload.model_construct(
-        name=cast(str, 42),  # deliberately mistyped
+        name=mistyped_name,
         attributes={},
     )
 

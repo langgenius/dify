@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, cast, override
+from typing import Any, override
 
 import pytest
 
@@ -17,8 +17,8 @@ class TestExternalDataTool:
             @classmethod
             @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                # intentional: base must raise NotImplementedError
-                return cast(Any, ExternalDataTool).validate_config(tenant_id, config)
+                base_class: Any = ExternalDataTool  # intentional: base must raise NotImplementedError
+                return base_class.validate_config(tenant_id, config)
 
             @override
             def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
@@ -53,8 +53,8 @@ class TestExternalDataTool:
             @classmethod
             @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                # intentional: base must raise NotImplementedError
-                return cast(Any, ExternalDataTool).validate_config(tenant_id, config)
+                base_class: Any = ExternalDataTool  # intentional: base must raise NotImplementedError
+                return base_class.validate_config(tenant_id, config)
 
             @override
             def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:

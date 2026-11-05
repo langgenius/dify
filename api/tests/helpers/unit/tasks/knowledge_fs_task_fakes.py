@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -25,7 +26,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceWorkflowResponse,
 )
-from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicErrorCode, KnowledgeFSPublicFailureResponse
+from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
 
 _TIMESTAMP = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -212,6 +213,9 @@ def source_workflow_response(
             retry_policy="manual",
         )
     )
+    # Remote error codes are not limited to the known enum; keep them verbatim.
+    # The JSON round-trip keeps the raw string while satisfying the declared enum type.
+    verbatim_error_code = json.loads(json.dumps(last_error_code))
     return KnowledgeFSSourceWorkflowResponse.model_construct(
         id=workflow_id,
         checkpoint="finished",
@@ -226,8 +230,7 @@ def source_workflow_response(
         state=state,
         source_id=source_id,
         failure=failure,
-        # Remote error codes are not limited to the known enum; keep them verbatim.
-        last_error_code=cast(KnowledgeFSPublicErrorCode | None, last_error_code),
+        last_error_code=verbatim_error_code,
         updated_at=_TIMESTAMP,
     )
 

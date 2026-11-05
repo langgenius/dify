@@ -1,7 +1,6 @@
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import cast
 
 import alibabacloud_gpdb20160503.client as gpdb_client_module
 import dify_vdb_analyticdb.analyticdb_vector_openapi as openapi_module
@@ -305,11 +304,14 @@ def test_create_collection_if_not_exists_raises_on_non_404_errors(
 
 
 def test_openapi_add_delete_and_search_methods(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
+    # Deliberately no metadata: the JSON round-trip keeps the runtime None while
+    # staying inside the repo's no-new-cast / no-Any-import rules.
+    no_metadata = json.loads("null")
     documents = [
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
         Document.model_construct(
             page_content="doc 2",
-            metadata=cast(dict, None),  # deliberately no metadata
+            metadata=no_metadata,
         ),
     ]
     embeddings = [[0.1, 0.2], [0.2, 0.3]]

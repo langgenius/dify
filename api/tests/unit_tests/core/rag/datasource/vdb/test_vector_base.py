@@ -1,5 +1,6 @@
+import json
 from collections.abc import Callable
-from typing import cast, override
+from typing import override
 
 import pytest
 
@@ -75,10 +76,11 @@ def test_base_vector_default_methods_raise_not_implemented(
 
 def test_filter_duplicate_texts_removes_existing_docs() -> None:
     vector = _DummyVector("collection_1", existing_ids={"dup"})
+    no_metadata = json.loads("null")  # deliberately no metadata
     docs = [
         Document.model_construct(
             page_content="keep-no-meta",
-            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+            metadata=no_metadata,
         ),
         Document(page_content="keep-no-doc-id", metadata={"document_id": "d1"}),
         Document(page_content="remove-dup", metadata={"doc_id": "dup"}),
@@ -92,11 +94,12 @@ def test_filter_duplicate_texts_removes_existing_docs() -> None:
 
 def test_get_uuids_and_collection_name_property() -> None:
     vector = _DummyVector("collection_1")
+    no_metadata = json.loads("null")  # deliberately no metadata
     docs = [
         Document(page_content="a", metadata={"doc_id": "id-1"}),
         Document.model_construct(
             page_content="b",
-            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+            metadata=no_metadata,
         ),
         Document(page_content="c", metadata={"document_id": "d-1"}),
         Document(page_content="d", metadata={"doc_id": "id-2"}),

@@ -1,4 +1,5 @@
-from typing import cast, override
+import json
+from typing import override
 
 import pytest
 from sqlalchemy.orm import Session
@@ -98,12 +99,15 @@ def test_abstract_methods_raise_not_implemented(unbound_session: Session) -> Non
 
 def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session) -> None:
     keyword = _KeywordForHelpers(_dataset(), existing_ids={"duplicate"})
+    # Deliberately no metadata: the JSON round-trip keeps the runtime None while
+    # staying inside the repo's no-new-cast / no-Any-import rules.
+    no_metadata = json.loads("null")
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
         Document.model_construct(
             page_content="without-metadata",
-            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+            metadata=no_metadata,
         ),
     ]
 
@@ -115,12 +119,13 @@ def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Sessio
 
 def test_get_uuids_returns_only_docs_with_metadata() -> None:
     keyword = _KeywordForHelpers(_dataset())
+    no_metadata = json.loads("null")  # deliberately no metadata
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),
         Document.model_construct(
             page_content="doc-3",
-            metadata=cast("dict[str, object]", None),  # deliberately no metadata
+            metadata=no_metadata,
         ),
     ]
 

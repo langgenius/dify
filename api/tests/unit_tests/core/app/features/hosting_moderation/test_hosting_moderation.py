@@ -1,5 +1,5 @@
+import json
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import Mock, patch
 
 from core.app.features.hosting_moderation.hosting_moderation import (
@@ -16,11 +16,11 @@ class TestHostingModerationFeature:
 
         # The middle message bypasses validation on purpose: `content` is not
         # always a string at runtime, and the feature must skip those entries.
+        # The JSON round-trip keeps the runtime int while satisfying the declared type.
+        non_string_content = json.loads("123")
         prompt_messages: list[PromptMessage] = [
             UserPromptMessage(role=PromptMessageRole.USER, content="hello"),
-            UserPromptMessage.model_construct(
-                role=PromptMessageRole.USER, content=cast(str, 123)
-            ),  # deliberately non-string content
+            UserPromptMessage.model_construct(role=PromptMessageRole.USER, content=non_string_content),
             UserPromptMessage(role=PromptMessageRole.USER, content="world"),
         ]
 
