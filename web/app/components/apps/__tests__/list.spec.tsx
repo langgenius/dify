@@ -26,6 +26,7 @@ const api = vi.hoisted(() => ({
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   online: vi.fn<typeof consoleClient.apps.workflows.onlineUsers.post>(),
   learn: vi.fn<typeof consoleClient.explore.apps.learnDify.get>(),
+  create: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
@@ -48,10 +49,14 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.workflows.onlineUsers.post': api.online,
       'explore.apps.learnDify.get': api.learn,
       'explore.apps.get': async () => ({ recommended_apps: [], categories: [] }),
+      'apps.post': ({ body }: { body: Record<string, unknown> }) => api.create(body),
       'tags.get': async () => [{ id: 'tag-1', name: 'Research', type: 'app' }],
     }),
   }
 })
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: vi.fn().mockResolvedValue(undefined),
+}))
 
 const app = (overrides: Partial<AppPartial> = {}) => ({
   ...createAppDetailFixture({ id: 'app-1', name: 'Chat app', maintainer: 'creator-1' }),
@@ -177,6 +182,7 @@ beforeEach(() => {
   api.starred.mockReset().mockResolvedValue(page([]))
   api.online.mockReset().mockResolvedValue({ data: [] })
   api.learn.mockReset().mockResolvedValue({ recommended_apps: [learnApp] })
+  api.create.mockReset()
   api.push.mockReset()
   api.replace.mockReset()
   intersect = mockIntersectionObserver()
@@ -502,6 +508,32 @@ it('opens workflow creation from the direct link and clears it on close', async 
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('create')).toBe(false)
+})
+
+it('opens the new workflow editor after creating from the direct link', async () => {
+  api.create.mockResolvedValue(
+    createAppDetailFixture({
+      id: 'new-workflow',
+      mode: 'workflow',
+      maintainer: 'creator-1',
+      permission_keys: [AppACLPermission.Edit],
+    }),
+  )
+  const { user, onUrlUpdate } = await setup('?category=workflow&create=workflow')
+  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+
+  await user.type(within(dialog).getByRole('textbox', { name: 'app.newApp.name' }), 'Evaluator')
+  await user.click(within(dialog).getByRole('button', { name: /app\.newApp\.Create/ }))
+
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/new-workflow/workflow'))
+  expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ mode: 'workflow' }))
+  const clearCreateParamCall = onUrlUpdate.mock.calls.findIndex(
+    ([event]) => !event.searchParams.has('create'),
+  )
+  expect(clearCreateParamCall).toBeGreaterThanOrEqual(0)
+  expect(onUrlUpdate.mock.invocationCallOrder[clearCreateParamCall]).toBeLessThan(
+    api.push.mock.invocationCallOrder[0]!,
+  )
 })
 
 it('keeps the workflow creation dialog closed without workspace creation permission', async () => {

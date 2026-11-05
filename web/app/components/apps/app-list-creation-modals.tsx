@@ -33,7 +33,7 @@ export function AppListCreationModals({
   canCreateApp: boolean
   category: AppListCategory
   dialog: AppListCreationDialog
-  onClose: () => void
+  onClose: () => void | Promise<unknown>
   onOpenBlank: () => void
   onOpenTemplate: () => void
 }) {
