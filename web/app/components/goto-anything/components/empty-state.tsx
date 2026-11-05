@@ -1,16 +1,22 @@
 'use client'
 
+import type { ScopeSelection } from '../command-options'
 import { useTranslation } from 'react-i18next'
 
-type EmptyStateVariant = 'no-results' | 'error' | 'loading'
+const noResultsKeys = {
+  '@app': 'gotoAnything.emptyState.noAppsFound',
+  '@plugin': 'gotoAnything.emptyState.noPluginsFound',
+  '@knowledge': 'gotoAnything.emptyState.noKnowledgeBasesFound',
+  '@node': 'gotoAnything.emptyState.noWorkflowNodesFound',
+} as const
 
-type EmptyStateProps = {
-  variant: EmptyStateVariant
-  searchMode?: string
-  error?: Error | null
+export type EmptyStateProps = {
+  variant: 'loading' | 'error' | 'no-commands' | 'no-results'
+  scope: ScopeSelection
+  error: Error | null
 }
 
-export function EmptyState({ variant, searchMode = 'general', error }: EmptyStateProps) {
+export function EmptyState({ variant, scope, error }: EmptyStateProps) {
   const { t } = useTranslation(['app'])
 
   if (variant === 'loading') {
@@ -42,30 +48,17 @@ export function EmptyState({ variant, searchMode = 'general', error }: EmptyStat
     )
   }
 
-  const isCommandSearch = searchMode !== 'general'
-  const commandType = isCommandSearch ? searchMode.replace('@', '') : ''
-
-  const getNoResultsMessage = () => {
-    if (!isCommandSearch) {
-      return t(($) => $['gotoAnything.noResults'], { ns: 'app' })
-    }
-
-    const keyMap = {
-      app: 'gotoAnything.emptyState.noAppsFound',
-      plugin: 'gotoAnything.emptyState.noPluginsFound',
-      knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
-      node: 'gotoAnything.emptyState.noWorkflowNodesFound',
-    } as const
-
-    return t(($) => $[keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults'], {
-      ns: 'app',
-    })
-  }
+  const noResultsKey =
+    variant === 'no-commands'
+      ? 'gotoAnything.noMatchingCommands'
+      : scope in noResultsKeys
+        ? noResultsKeys[scope as keyof typeof noResultsKeys]
+        : 'gotoAnything.noResults'
 
   return (
     <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
       <div>
-        <div className="text-sm font-medium">{getNoResultsMessage()}</div>
+        <div className="text-sm font-medium">{t(($) => $[noResultsKey], { ns: 'app' })}</div>
         <div className="mt-1 text-xs text-text-quaternary">
           {t(($) => $['gotoAnything.emptyState.tryDifferentTerm'], { ns: 'app' })}
         </div>

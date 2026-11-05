@@ -15,15 +15,13 @@ type OptionGroup<T> = {
   items: T[]
 }
 
-export function ResultList({
-  groups,
-  label,
-  onSelect,
-}: {
+export type ResultListProps = {
   groups: OptionGroup<GotoAnythingOption>[]
   label: string
   onSelect: (option: GotoAnythingOption) => void
-}) {
+}
+
+export function ResultList({ groups, label, onSelect }: ResultListProps) {
   return (
     <AutocompleteList aria-label={label} className="max-h-none overflow-visible p-0">
       {groups

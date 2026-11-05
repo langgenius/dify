@@ -19,6 +19,8 @@ export type CommandOption = {
   result?: CommandSearchResult
 }
 
+export type ScopeOption = CommandOption & { scope: SearchScope }
+
 export type GotoAnythingOption = CommandOption | SearchResult
 
 export function isCommandOption(option: GotoAnythingOption): option is CommandOption {
@@ -77,7 +79,7 @@ export function useCommandOptions(
     '@skill': t(($) => $['skillManagement.title'], { ns: 'skill' }),
     '@agents': t(($) => $['roster.title'], { ns: 'agentRoster' }),
   }
-  const allScopeOptions: CommandOption[] = Object.values(actions).flatMap((action) => {
+  const allScopeOptions: ScopeOption[] = Object.values(actions).flatMap((action) => {
     if (action.key === '/') return []
     const routeKey = scopeRoutes[action.key as keyof typeof scopeRoutes]
     return [

@@ -5,7 +5,7 @@ import type {
   AutocompleteFlatProps,
   AutocompleteInputProps,
 } from '@langgenius/dify-ui/autocomplete'
-import type { KeyboardEvent } from 'react'
+import type { ComponentProps, KeyboardEvent } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { ActionItem, SearchResult } from './actions/types'
 import type { GotoAnythingOption, ScopeSelection } from './command-options'
@@ -14,7 +14,6 @@ import {
   AutocompleteClear,
   AutocompleteInput,
   AutocompleteInputGroup,
-  AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
@@ -63,11 +62,11 @@ import { parsePluginSearchResults } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { ContextToken } from './components/context-token'
-import { EmptyState } from './components/empty-state'
 import { ScopeBar } from './components/scope-bar'
+import { SearchAnnouncements } from './components/search-announcements'
+import { SearchResults } from './components/search-results'
 import { gotoAnythingDialogHandle, gotoAnythingDrawerHandle } from './handles'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
-import { ResultList } from './results'
 
 const appWorkflowPathPattern = /^\/app\/[^/]+\/workflow$/
 const sharedWorkflowPathPattern = /^\/workflow\/[^/]+$/
@@ -81,27 +80,10 @@ const groupLabelKeys = {
   command: 'gotoAnything.groups.commands',
 } as const
 
-function optionToInputValue(option: GotoAnythingOption) {
-  return isCommandOption(option) ? `${option.shortcut} ` : option.title
-}
-
 function isEditableShortcutTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
 
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-}
-
-function getSearchMode(
-  searchQuery: string,
-  isCommandsMode: boolean,
-  actions: Record<string, ActionItem>,
-) {
-  if (isCommandsMode) return searchQuery.trim().startsWith('/') ? 'commands' : 'scopes'
-
-  const action = matchAction(searchQuery.trimStart().toLowerCase(), actions)
-  if (!action) return 'general'
-
-  return action.key === '/' ? '@command' : action.key
 }
 
 function isCommandSelectionQuery(query: string, actions: Record<string, ActionItem>) {
@@ -181,6 +163,7 @@ export function GotoAnything() {
   const [scope, setScope] = useState<ScopeSelection>('all')
   const [page, setPage] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [surface, setSurface] = useState<'dialog' | 'drawer'>('dialog')
   const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
   if (isAtLeastMd && drawerOpen) setDrawerOpen(false)
   const [activePlugin, setActivePlugin] = useState<Plugin>()
@@ -205,7 +188,7 @@ export function GotoAnything() {
     ],
   )
   const scopeAction = Object.values(actions).find((action) => action.key === scope)
-  // The search pipeline reads one query string; scope and page are encoded as its prefix.
+  const activeScope = scopeAction ? scope : 'all'
   const searchQuery = page ? `/${page} ${term}` : scopeAction ? `${scopeAction.key} ${term}` : term
   const { commandOptions, scopeOptions, allScopeOptions, allCommandOptions } = useCommandOptions(
     actions,
@@ -215,11 +198,10 @@ export function GotoAnything() {
   const pageOption = page
     ? allCommandOptions.find((option) => option.shortcut === `/${page}`)
     : undefined
-  const scopeOption = allScopeOptions.find((option) => option.scope === scope)
+  const scopeOption = allScopeOptions.find((option) => option.scope === activeScope)
   const trimmedSearchQuery = searchQuery.trim()
   const normalizedSearchQuery = searchQuery.trimStart().toLowerCase()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
-  const searchMode = getSearchMode(searchQuery, isCommandsMode, actions)
   const currentAction = matchAction(normalizedSearchQuery, actions)
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const normalizedDebouncedQuery = debouncedSearchQuery.trimStart().toLowerCase()
@@ -348,7 +330,7 @@ export function GotoAnything() {
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function handleDialogOpenChangeComplete(open: boolean) {
+  function resetSearch(open: boolean) {
     if (open) return
     setTerm('')
     setScope('all')
@@ -367,7 +349,7 @@ export function GotoAnything() {
 
       if (isOpen) return
       if (isAtLeastMd) gotoAnythingDialogHandle.open(null)
-      else setDrawerOpen(true)
+      else openDrawer(true)
     },
     {
       ignoreInputs: false,
@@ -376,13 +358,18 @@ export function GotoAnything() {
     },
   )
 
+  function openDrawer(open: boolean) {
+    if (open) setSurface('drawer')
+    setDrawerOpen(open)
+  }
+
   function focusInput() {
-    // Autocomplete finishes activating the old option before focus returns to the input.
     queueMicrotask(() => inputRef.current?.focus())
   }
 
   function openPage(name: string) {
     setPage(name)
+    setScope('all')
     setTerm('')
     focusInput()
   }
@@ -409,11 +396,8 @@ export function GotoAnything() {
     focusInput()
   }
 
-  // Backspace in an empty input removes the context token: the page, then (in the dialog) the scope.
-  // The drawer's Escape clears the term before closing, like Base UI's mobile docs search.
-  function handleKeyDownCapture(event: KeyboardEvent<HTMLElement>, surface: 'dialog' | 'drawer') {
-    // Both keys only confirm an IME composition; Safari reports it through keyCode 229.
-    // oxlint-disable-next-line typescript/no-deprecated -- Safari needs the legacy IME key code.
+  function handleKeyDownCapture(event: KeyboardEvent<HTMLElement>) {
+    // oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME composition through keyCode 229.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
     if (event.target !== inputRef.current) return
 
@@ -424,17 +408,16 @@ export function GotoAnything() {
       return
     }
 
-    if (event.key !== 'Backspace' || term) return
+    if (event.key !== 'Backspace' || event.repeat || term) return
     if (page) {
       event.preventDefault()
       closePage()
-    } else if (surface === 'dialog' && scope !== 'all') {
+    } else if (surface === 'dialog' && activeScope !== 'all') {
       event.preventDefault()
       clearScope()
     }
   }
 
-  // Typed `@scope ` and `/command ` prefixes are shortcuts into the same scope and page state.
   function changeTerm(nextTerm: string) {
     const prefix = page ? undefined : /^([@/][^\s@/]+)\s/.exec(nextTerm)
     if (prefix) {
@@ -443,7 +426,7 @@ export function GotoAnything() {
       const scopeMatch = allScopeOptions.find(
         (option) => option.shortcut === token || option.scope === token,
       )
-      if (scopeMatch?.scope) {
+      if (scopeMatch) {
         setScope(scopeMatch.scope)
         setTerm(rest)
         focusInput()
@@ -456,6 +439,7 @@ export function GotoAnything() {
         command.isAvailable?.(commandContext) !== false
       ) {
         setPage(command.name)
+        setScope('all')
         setTerm(rest)
         focusInput()
         return
@@ -466,7 +450,7 @@ export function GotoAnything() {
 
   function closeSearch() {
     gotoAnythingDialogHandle.close()
-    setDrawerOpen(false)
+    openDrawer(false)
   }
 
   function handleNavigate(result: SearchResult) {
@@ -514,12 +498,10 @@ export function GotoAnything() {
   }
 
   const isScopeSelection = isCommandsMode && trimmedSearchQuery.startsWith('@')
-  const showCommands = isCommandsMode ? !isScopeSelection : !currentAction
-  // The dialog lists scopes on its home view and suggests one when the term names it; the drawer
-  // keeps its scope bar instead.
+  const commandSuggestions = isCommandsMode || !currentAction ? commandOptions : []
   const showScopes =
-    isScopeSelection || (isAtLeastMd && !currentAction && (!trimmedSearchQuery || !isCommandsMode))
-  const commandSuggestions = showCommands && !isScopeSelection ? commandOptions : []
+    isScopeSelection ||
+    (surface === 'dialog' && !currentAction && (!trimmedSearchQuery || !isCommandsMode))
   const scopeSuggestions = showScopes ? scopeOptions : []
   const visibleOptions: GotoAnythingOption[] = [
     ...commandSuggestions,
@@ -559,10 +541,10 @@ export function GotoAnything() {
       count: autocompleteResultCount,
     })
 
-  let emptyStateVariant: 'loading' | 'error' | 'no-results' | null = null
-  if (isLoading && autocompleteResultCount === 0) emptyStateVariant = 'loading'
-  else if (isError) emptyStateVariant = 'error'
-  else if (autocompleteResultCount === 0) emptyStateVariant = 'no-results'
+  let emptyState: 'loading' | 'error' | 'no-commands' | 'no-results' | null = null
+  if (isLoading && autocompleteResultCount === 0) emptyState = 'loading'
+  else if (isError) emptyState = 'error'
+  else if (autocompleteResultCount === 0) emptyState = isCommandsMode ? 'no-commands' : 'no-results'
 
   const searchTitle = t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
@@ -570,7 +552,7 @@ export function GotoAnything() {
     items: visibleOptions,
     value: term,
     onValueChange: handleAutocompleteValueChange,
-    itemToStringValue: optionToInputValue,
+    itemToStringValue: (option) => option.title,
     filter: null,
     open: true,
     inline: true,
@@ -588,62 +570,39 @@ export function GotoAnything() {
             ns: 'app',
             scope: scopeOption.title,
           })
-        : isAtLeastMd
+        : surface === 'dialog'
           ? t(($) => $['gotoAnything.searchOrFilterPlaceholder'], { ns: 'app' })
           : t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' }),
     'aria-describedby': searchHintId,
   } satisfies AutocompleteInputProps
-  const searchAnnouncements = (
-    <>
-      <p id={searchHintId} className="sr-only">
-        {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
-      </p>
-      <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
-    </>
-  )
-  const searchResultsContent = (
-    <ScrollAreaContent className="min-h-full w-full max-w-full" style={{ minWidth: '100%' }}>
-      {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
-
-      {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
-
-      {emptyStateVariant === 'no-results' && isCommandsMode && (
-        <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-          <div>
-            <div className="text-sm font-medium text-text-tertiary">
-              {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
-            </div>
-            <div className="mt-1 text-xs text-text-quaternary">
-              {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {emptyStateVariant === 'no-results' && !isCommandsMode && (
-        <EmptyState variant={emptyStateVariant} searchMode={searchMode} />
-      )}
-
-      <ResultList groups={resultGroups} label={searchTitle} onSelect={selectOption} />
-    </ScrollAreaContent>
-  )
+  const searchResultsProps = {
+    groups: resultGroups,
+    label: searchTitle,
+    onSelect: selectOption,
+    emptyState,
+    scope: activeScope,
+    error,
+    hasPartialFailure: hasUnavailableServices && !isError,
+  } satisfies ComponentProps<typeof SearchResults>
 
   return (
     <>
       <Dialog
         handle={gotoAnythingDialogHandle}
-        onOpenChangeComplete={handleDialogOpenChangeComplete}
+        onOpenChange={(open) => {
+          if (open) setSurface('dialog')
+        }}
+        onOpenChangeComplete={resetSearch}
       >
         <DialogContent
           initialFocus={inputRef}
-          onKeyDownCapture={(event) => handleKeyDownCapture(event, 'dialog')}
+          onKeyDownCapture={handleKeyDownCapture}
           className="w-140 data-open:transition-none"
           backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
         >
           <HotkeysProvider scope={hotkeyScopeId} exclusive>
             <SearchDialogHotkeys />
             <DialogTitle className="sr-only">{searchTitle}</DialogTitle>
-            {/* A new page or scope is a new list, so its highlight starts at the first option. */}
             <Autocomplete key={page ?? scope} {...autocompleteProps}>
               <AutocompleteInputGroup
                 size="medium"
@@ -663,15 +622,23 @@ export function GotoAnything() {
                   <AutocompleteInput {...searchInputProps} size="medium" className="px-0" />
                 </div>
               </AutocompleteInputGroup>
-              {searchAnnouncements}
-
+              <SearchAnnouncements
+                hintId={searchHintId}
+                status={autocompleteStatus}
+                describesTokenRemoval
+              />
               <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
                 <ScrollAreaViewport
                   tabIndex={-1}
                   aria-busy={isLoading || undefined}
                   className="scroll-pt-10 scroll-pb-1 overscroll-contain"
                 >
-                  {searchResultsContent}
+                  <ScrollAreaContent
+                    className="min-h-full w-full max-w-full"
+                    style={{ minWidth: '100%' }}
+                  >
+                    <SearchResults {...searchResultsProps} />
+                  </ScrollAreaContent>
                 </ScrollAreaViewport>
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
@@ -689,8 +656,8 @@ export function GotoAnything() {
         handle={gotoAnythingDrawerHandle}
         swipeDirection="down"
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        onOpenChangeComplete={handleDialogOpenChangeComplete}
+        onOpenChange={openDrawer}
+        onOpenChangeComplete={resetSearch}
       >
         <DrawerVirtualKeyboardProvider>
           <DrawerPortal>
@@ -698,13 +665,12 @@ export function GotoAnything() {
             <DrawerViewport>
               <DrawerPopup
                 initialFocus={inputRef}
-                onKeyDownCapture={(event) => handleKeyDownCapture(event, 'drawer')}
+                onKeyDownCapture={handleKeyDownCapture}
                 className="h-[min(85dvh,calc(100dvh-3.5rem))]"
               >
                 <HotkeysProvider scope={hotkeyScopeId} exclusive>
                   <SearchDialogHotkeys />
                   <DrawerTitle className="sr-only">{searchTitle}</DrawerTitle>
-                  {/* The scope bar lives inside, so only a page change may remount the list. */}
                   <Autocomplete key={page ?? 'home'} {...autocompleteProps}>
                     <div className="shrink-0 px-4 pt-2 pb-3">
                       <div
@@ -737,10 +703,17 @@ export function GotoAnything() {
                       </AutocompleteInputGroup>
                     </div>
                     {!page && (
-                      <ScopeBar scopes={allScopeOptions} value={scope} onValueChange={setScope} />
+                      <ScopeBar
+                        scopes={allScopeOptions}
+                        value={activeScope}
+                        onValueChange={setScope}
+                      />
                     )}
-                    {searchAnnouncements}
-
+                    <SearchAnnouncements
+                      hintId={searchHintId}
+                      status={autocompleteStatus}
+                      describesTokenRemoval={Boolean(page)}
+                    />
                     <DrawerContent className="overflow-hidden border-t border-divider-subtle">
                       <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                         <ScrollAreaViewport
@@ -748,7 +721,12 @@ export function GotoAnything() {
                           aria-busy={isLoading || undefined}
                           className="scroll-pt-10 overscroll-contain pb-[calc(env(safe-area-inset-bottom)+var(--drawer-keyboard-inset,0px))]"
                         >
-                          {searchResultsContent}
+                          <ScrollAreaContent
+                            className="min-h-full w-full max-w-full"
+                            style={{ minWidth: '100%' }}
+                          >
+                            <SearchResults {...searchResultsProps} />
+                          </ScrollAreaContent>
                         </ScrollAreaViewport>
                         <ScrollAreaScrollbar>
                           <ScrollAreaThumb />

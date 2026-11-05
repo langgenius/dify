@@ -20,12 +20,13 @@ Search actions adapt application, knowledge, plugin, workflow, and RAG owners in
 - A search can be narrowed to one resource type (a scope). With an empty term, a scope lists that resource's first page.
 - In the desktop dialog, the scope or page is a token at the start of the input. The empty input lists scopes after the commands, a term that names a scope suggests it, and a bare `@` lists them; the placeholder teaches `@`. Typed `@scope ` and `/command ` prefixes become tokens.
 - In the bottom drawer, a scope bar under the input owns scope selection; only a page shows as a token.
-- Results stay grouped by type. Resource rows show a one-line description; command and scope rows show a title only and are shorter.
+- Results stay grouped by type. Resource rows show a one-line description; command and scope rows show a title only and are shorter. When some providers fail, a visible notice sits above the remaining results.
+- The open surface, not the viewport width, decides between tokens and the scope bar: a sidebar trigger can open the dialog on a narrow screen. A scope that becomes unavailable falls back to all.
 
 ## Keyboard
 
-- The desktop dialog follows the APG modal dialog and combobox patterns: focus starts in the input and stays there, Up and Down move the active option, Enter activates it, Tab stays inside the dialog, and one Escape closes it and returns focus to the trigger.
-- Backspace in an empty input removes the token: it leaves a page or, in the dialog, clears the scope. The token's remove button does the same for pointers.
+- The desktop dialog follows the APG modal dialog and combobox patterns: focus starts in the input and stays there, Up and Down move the active option, Enter activates it, and one Escape closes it and returns focus to the trigger. Base UI owns the focus trap.
+- Backspace in an empty input removes the token: it leaves a page or, in the dialog, clears the scope. A held key only deletes text; a fresh press removes the token. The token's remove button does the same for pointers, and only the dialog's screen-reader hint mentions token removal.
 - The drawer's Escape clears the term before closing, like Base UI's mobile docs search.
 - The drawer's scope bar is an APG radio group: Tab enters on the checked scope, arrow keys move and select, and the focus ring is drawn inset so the scroller cannot clip it.
 - None of these keys act during IME composition. Browser specs cover these contracts.

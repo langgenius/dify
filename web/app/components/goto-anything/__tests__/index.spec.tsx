@@ -35,11 +35,10 @@ const api = vi.hoisted(() => ({
   refresh: vi.fn(),
   setLocale: vi.fn<(locale: string) => Promise<void>>(),
   agentEnabled: true,
-  atLeastMd: true,
   pathname: '/',
 }))
 vi.mock('@langgenius/dify-ui/use-media-query', () => ({
-  useMediaQuery: (query: string) => query === '(width >= 48rem)' && api.atLeastMd,
+  useMediaQuery: (query: string) => query === '(width >= 48rem)',
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -180,7 +179,6 @@ beforeEach(() => {
   api.refresh.mockReset()
   api.setLocale.mockReset().mockResolvedValue(undefined)
   api.agentEnabled = true
-  api.atLeastMd = true
   api.pathname = '/'
 })
 afterEach(() => {
@@ -248,10 +246,10 @@ describe('search shortcut ownership', () => {
     const { user } = setup()
     const input = await openSearch()
     await user.type(input, '@app research')
+    const scopedInput = screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })
     triggerSearchShortcut()
-    expect(screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })).toHaveValue(
-      'research',
-    )
+    expect(scopedInput).toHaveValue('research')
+    expect(scopedInput).toHaveFocus()
     await user.keyboard('{Escape}')
     await waitFor(() =>
       expect(
@@ -260,6 +258,7 @@ describe('search shortcut ownership', () => {
     )
     expect(await openSearch()).toHaveValue('')
   })
+
   it('leaves shortcuts in unrelated editable controls to their owner', async () => {
     setup()
     render(<input aria-label="Other editor" />)
@@ -453,8 +452,9 @@ describe('resource search', () => {
     api.apps.mockResolvedValue(page([{ ...app(), mode: 'workflow' }]))
     const { user } = setup()
     await user.type(await openSearch(), '@app research')
-    await user.click(await screen.findByRole('option', { name: /Research app/ }))
-    expect(screen.queryByRole('option', { name: /Research app \// })).not.toBeInTheDocument()
+    const appOption = await screen.findByRole('option', { name: /Research app/ })
+    expect(screen.getAllByRole('option')).toEqual([appOption])
+    await user.click(appOption)
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/workflow')
   })
 
@@ -483,10 +483,49 @@ describe('resource search', () => {
     api.agentEnabled = false
     const { user } = setup()
     const input = await openSearch()
-    expect(screen.queryByRole('gridcell', { name: /@agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: 'agentRoster.roster.title' }),
+    ).not.toBeInTheDocument()
     await user.type(input, 'research')
     await waitFor(() => expect(api.apps).toHaveBeenCalled())
     expect(api.agents).not.toHaveBeenCalled()
+  })
+
+  it('falls back to all resources when the selected scope becomes unavailable', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@agents ')
+    const scopedInput = screen.getByRole('combobox', { name: 'agentRoster.roster.title' })
+
+    api.agentEnabled = false
+    await user.type(scopedInput, 'r')
+
+    const input = screen.getByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+    expect(input).toBe(scopedInput)
+    expect(input).toHaveValue('r')
+    expect(input).toHaveFocus()
+    await user.keyboard('{Backspace}{Backspace}')
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+  })
+
+  it('leaves the scope behind when a command page opens', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@app /theme ')
+    const pageInput = await screen.findByRole('combobox', {
+      name: 'app.gotoAnything.actions.themeCategoryDesc',
+    })
+    await waitFor(() => expect(pageInput).toHaveFocus())
+
+    await user.type(pageInput, 'zzz')
+    expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+    expect(screen.queryByText('app.gotoAnything.emptyState.noAppsFound')).not.toBeInTheDocument()
+
+    await user.clear(pageInput)
+    await user.keyboard('{Backspace}')
+    expect(
+      await screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' }),
+    ).toBeInTheDocument()
   })
 
   it.each([
@@ -624,6 +663,7 @@ describe('pending and failed searches', () => {
         'app.gotoAnything.someServicesUnavailable',
       ),
     )
+    expect(screen.getAllByText('app.gotoAnything.someServicesUnavailable')).toHaveLength(2)
     await user.click(screen.getByRole('option', { name: /Available result/ }))
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
   })

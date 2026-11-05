@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { consoleClient } from '@/service/console'
 import type { marketplaceClient } from '@/service/marketplace'
 import { detectPlatform } from '@tanstack/react-hotkeys'
@@ -5,7 +6,9 @@ import { ThemeProvider } from 'next-themes'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MainNavSearchButton } from '@/app/components/main-nav/components/search-button'
+import { MainNavMobileBar } from '@/app/components/main-nav/mobile-nav'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { GotoAnything } from '../index'
 
@@ -98,7 +101,7 @@ beforeEach(() => {
   api.marketplace.mockResolvedValue({ data: { plugins: [], total: 0 } })
 })
 
-function renderPalette() {
+function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
   const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
     features: { enable_skill: true },
@@ -116,7 +119,7 @@ function renderPalette() {
   return render(
     <ConsoleWrapper>
       <ThemeProvider defaultTheme="light" enableSystem={false}>
-        <MainNavSearchButton />
+        {trigger}
         <GotoAnything />
       </ThemeProvider>
     </ConsoleWrapper>,
@@ -142,6 +145,7 @@ describe('desktop dialog', () => {
     await expect.element(searchField()).toHaveFocus()
 
     await userEvent.keyboard('research')
+    await expect.element(searchField()).toHaveValue('research')
     await userEvent.keyboard('{Escape}')
 
     await expect.element(page.getByRole('dialog', { name: searchTitle })).not.toBeInTheDocument()
@@ -183,23 +187,18 @@ describe('desktop dialog', () => {
 
     const languageField = searchField('app.gotoAnything.actions.languageChangeDesc')
     await expect.element(languageField).toHaveFocus()
+    await expect.element(language).not.toBeInTheDocument()
     await expect
-      .poll(() => languageField.element().getAttribute('aria-activedescendant'))
-      .toBe(page.getByRole('option').first().element().id)
+      .poll(
+        () =>
+          languageField.element().getAttribute('aria-activedescendant') ===
+          page.getByRole('option').first().element().id,
+      )
+      .toBe(true)
   })
 
-  it('keeps Tab and Shift+Tab inside the dialog', async () => {
-    renderPalette()
-    await openWithShortcut()
-    const dialog = page.getByRole('dialog', { name: searchTitle }).element()
-
-    await userEvent.keyboard('{Tab}')
-    expect(dialog.contains(document.activeElement)).toBe(true)
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-    expect(dialog.contains(document.activeElement)).toBe(true)
-  })
-
-  it('turns a matching scope into a token that Backspace or its remove button clears', async () => {
+  it('turns a matching scope into a token that starts at its first result and Backspace or its remove button clears', async () => {
+    api.datasets.mockResolvedValue({ ...emptyPage, data: [createDatasetFixture()], total: 1 })
     renderPalette()
     await openWithShortcut()
     const knowledge = 'app.gotoAnything.groups.knowledgeBases'
@@ -207,8 +206,17 @@ describe('desktop dialog', () => {
     await userEvent.keyboard('knowledgeBases')
     await expect.element(page.getByRole('option', { name: knowledge })).toBeInTheDocument()
     await userEvent.keyboard('{Enter}')
-    await expect.element(searchField(knowledge)).toHaveFocus()
-    await expect.element(searchField(knowledge)).toHaveValue('')
+    const scopedField = searchField(knowledge)
+    await expect.element(scopedField).toHaveFocus()
+    await expect.element(scopedField).toHaveValue('')
+    const firstResult = page.getByRole('option').first()
+    await expect.element(firstResult).not.toHaveAccessibleName(knowledge)
+    await expect
+      .poll(
+        () =>
+          scopedField.element().getAttribute('aria-activedescendant') === firstResult.element().id,
+      )
+      .toBe(true)
 
     await userEvent.keyboard('{Backspace}')
     await expect.element(searchField()).toHaveFocus()
@@ -216,6 +224,19 @@ describe('desktop dialog', () => {
     await userEvent.keyboard('@kb ')
     await expect.element(searchField(knowledge)).toHaveValue('')
     await page.getByRole('button', { name: 'common.operation.remove' }).click()
+    await expect.element(searchField()).toHaveFocus()
+  })
+  it('removes a token only on a fresh Backspace press, not while the key repeats', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const knowledge = 'app.gotoAnything.groups.knowledgeBases'
+
+    await userEvent.keyboard('@kb ab')
+    await expect.element(searchField(knowledge)).toHaveValue('ab')
+    await userEvent.keyboard('{Backspace>4/}')
+    await expect.element(searchField(knowledge)).toHaveValue('')
+
+    await userEvent.keyboard('{Backspace}')
     await expect.element(searchField()).toHaveFocus()
   })
 
@@ -248,6 +269,7 @@ describe('narrow bottom sheet', () => {
     await expect.element(sheet).toHaveAttribute('data-swipe-direction', 'down')
 
     await userEvent.keyboard('research')
+    await expect.element(searchField()).toHaveValue('research')
     await userEvent.keyboard('{Escape}')
     await expect.element(searchField()).toHaveValue('')
     await expect.element(sheet).toBeInTheDocument()
@@ -256,7 +278,7 @@ describe('narrow bottom sheet', () => {
     await expect.element(sheet).not.toBeInTheDocument()
   })
 
-  it('returns Tab to the checked scope with a visible ring and moves selection with arrows', async () => {
+  it('keeps the scope on Backspace and shows a focus ring only for keyboard focus', async () => {
     renderPalette()
     await openWithShortcut()
     const knowledgeName = 'app.gotoAnything.groups.knowledgeBases'
@@ -264,9 +286,13 @@ describe('narrow bottom sheet', () => {
 
     await knowledge.click()
     await expect.element(knowledge).toBeChecked()
+    expect(getComputedStyle(knowledge.element()).boxShadow).not.toContain('inset')
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     await expect.element(searchField(knowledgeName)).toHaveFocus()
+    await userEvent.keyboard('{Backspace}')
+    await expect.element(knowledge).toBeChecked()
+
     await userEvent.keyboard('{Tab}')
     await expect.element(knowledge).toHaveFocus()
     expect(getComputedStyle(knowledge.element()).boxShadow).toContain('inset')
@@ -277,6 +303,34 @@ describe('narrow bottom sheet', () => {
     await expect.element(apps).toHaveFocus()
   })
 
+  it('opens from the top bar search button and returns focus to it', async () => {
+    renderPalette(<MainNavMobileBar />)
+    const trigger = page.getByRole('button', { name: searchTitle })
+
+    await trigger.click()
+    const sheet = page.getByRole('dialog', { name: searchTitle })
+    await expect.element(sheet).toHaveAttribute('data-swipe-direction', 'down')
+    await expect.element(searchField()).toHaveFocus()
+
+    await userEvent.keyboard('{Escape}')
+    await expect.element(sheet).not.toBeInTheDocument()
+    await expect.element(trigger).toHaveFocus()
+  })
+
+  it('offers scopes in the dialog when a sidebar trigger opens it on a narrow screen', async () => {
+    renderPalette()
+    await page.getByRole('button', { name: searchTitle }).click()
+
+    await expect
+      .element(page.getByRole('dialog', { name: searchTitle }))
+      .not.toHaveAttribute('data-swipe-direction')
+    await expect
+      .element(page.getByRole('option', { name: 'app.gotoAnything.groups.apps' }))
+      .toBeInTheDocument()
+    await expect
+      .element(searchField())
+      .toHaveAttribute('placeholder', 'app.gotoAnything.searchOrFilterPlaceholder')
+  })
   it('closes when the viewport widens to the dialog breakpoint', async () => {
     renderPalette()
     await openWithShortcut()
