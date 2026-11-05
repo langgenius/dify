@@ -19,7 +19,35 @@ def load_rag_pipeline(session: Session, pipeline_id: str) -> Pipeline:
     return pipeline
 
 
+def _injected_session(args: tuple[object, ...]) -> Session | None:
+    """Return the session ``with_session`` placed right after ``self``, or ``None``.
+
+    ``with_session`` passes its session as the first argument after ``self``, so a
+    handler that composes it directly above ``get_rag_pipeline`` reaches this decorator
+    with ``args == (self, session, ...)``. Any other value in that slot, such as an
+    ``Account`` from ``with_current_user``, means the handler has not migrated.
+    """
+    if len(args) < 2:
+        return None
+    candidate = args[1]
+    if isinstance(candidate, Session):
+        return candidate
+    return None
+
+
 def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
+    """Replace the ``pipeline_id`` path parameter with the tenant's ``Pipeline``.
+
+    Handlers may compose ``@with_session`` directly above this decorator so the pipeline
+    loads through the same request session the handler uses. Handlers that have not
+    migrated keep loading it through ``db.session``.
+
+    Precondition: ``pipeline_id`` is a keyword argument and a tenant is signed in.
+    Postcondition: the view receives ``pipeline`` instead of ``pipeline_id``. A missing
+    ``pipeline_id`` raises ``ValueError``; a pipeline outside the tenant raises
+    ``PipelineNotFoundError``. Nothing is written.
+    """
+
     @wraps(view_func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         if not kwargs.get("pipeline_id"):
@@ -29,7 +57,8 @@ def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
         pipeline_id = str(pipeline_id)
 
         del kwargs["pipeline_id"]
-        kwargs["pipeline"] = load_rag_pipeline(db.session(), pipeline_id)
+        session = _injected_session(args)
+        kwargs["pipeline"] = load_rag_pipeline(db.session() if session is None else session, pipeline_id)
 
         return view_func(*args, **kwargs)
 
