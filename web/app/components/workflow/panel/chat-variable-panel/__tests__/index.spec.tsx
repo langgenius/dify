@@ -24,11 +24,17 @@ function InspectVariables({ children }: { children: ReactNode }) {
   flowStore = useStoreApi()
   const invalidateConversationVarValues = useInvalidateConversationVarValues({
     kind: 'app',
+    collaborationEnabled: false,
     appId: 'app-1',
     mode: 'advanced-chat',
   })
   const [hooks] = useState(() => createHooksStore({ invalidateConversationVarValues }))
-  const { data } = useConversationVarValues({ kind: 'app', appId: 'app-1', mode: 'advanced-chat' })
+  const { data } = useConversationVarValues({
+    kind: 'app',
+    collaborationEnabled: false,
+    appId: 'app-1',
+    mode: 'advanced-chat',
+  })
   return (
     <HooksStoreContext value={hooks}>
       {children}

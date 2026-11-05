@@ -178,36 +178,57 @@ class TestParseTimeRange:
             assert start is not None
             assert end is not None
 
-    def test_parse_time_range_dst_nonexistent_time(self) -> None:
-        """Test parsing during DST nonexistent time (spring forward)."""
-        with patch("pytz.timezone", autospec=True) as mock_timezone:
-            # Mock timezone that raises NonExistentTimeError
-            mock_tz = mock_timezone.return_value
+    @pytest.mark.parametrize(
+        ("tzname", "time_str", "expected"),
+        [
+            pytest.param(
+                "America/New_York",
+                "2024-03-10 02:30",
+                datetime.datetime(2024, 3, 10, 7, 30, tzinfo=pytz.UTC),
+                id="one-hour-gap",
+            ),
+            pytest.param(
+                "Australia/Lord_Howe",
+                "2024-10-06 02:15",
+                datetime.datetime(2024, 10, 5, 15, 45, tzinfo=pytz.UTC),
+                id="half-hour-gap",
+            ),
+            pytest.param(
+                "Antarctica/Troll",
+                "2024-03-31 01:30",
+                datetime.datetime(2024, 3, 31, 1, 30, tzinfo=pytz.UTC),
+                id="two-hour-gap",
+            ),
+            pytest.param(
+                "Pacific/Apia",
+                "2011-12-30 12:00",
+                datetime.datetime(2011, 12, 30, 22, tzinfo=pytz.UTC),
+                id="skipped-day",
+            ),
+            pytest.param(
+                "Europe/Dublin",
+                "2024-03-31 01:30",
+                datetime.datetime(2024, 3, 31, 1, 30, tzinfo=pytz.UTC),
+                id="negative-dst",
+            ),
+            pytest.param(
+                "Asia/Kathmandu",
+                "1986-01-01 00:05",
+                datetime.datetime(1985, 12, 31, 18, 35, tzinfo=pytz.UTC),
+                id="non-dst-quarter-hour-gap",
+            ),
+        ],
+    )
+    def test_parse_time_range_nonexistent_local_time(
+        self, tzname: str, time_str: str, expected: datetime.datetime
+    ) -> None:
+        """Both bounds shift forward by the real gap size and resolve to exact UTC instants."""
+        start, end = parse_time_range(time_str, time_str, tzname)
 
-            # Create a mock datetime object for the return value
-            mock_dt = datetime.datetime(2024, 1, 1, 10, 0, 0)
-            mock_utc_dt = mock_dt.replace(tzinfo=pytz.UTC)
-
-            # Create a proper mock for the localized datetime
-            from unittest.mock import MagicMock
-
-            mock_localized_dt = MagicMock()
-            mock_localized_dt.astimezone.return_value = mock_utc_dt
-
-            # Set up side effects: first call raises exception, second call succeeds
-            mock_tz.localize.side_effect = [
-                pytz.NonExistentTimeError("Non-existent time"),  # First call for start
-                mock_localized_dt,  # Second call for start (with adjusted time)
-                pytz.NonExistentTimeError("Non-existent time"),  # First call for end
-                mock_localized_dt,  # Second call for end (with adjusted time)
-            ]
-
-            start, end = parse_time_range("2024-01-01 10:00", "2024-01-01 18:00", "US/Eastern")
-
-            # Should adjust time forward by 1 hour for nonexistent times
-            assert mock_tz.localize.call_count == 4  # 2 calls per time (first fails, second succeeds)
-            assert start is not None
-            assert end is not None
+        assert start is not None
+        assert end is not None
+        assert start == end == expected
+        assert start.tzinfo == end.tzinfo == pytz.UTC
 
     def test_parse_time_range_edge_cases(self) -> None:
         """Test edge cases for time parsing."""
