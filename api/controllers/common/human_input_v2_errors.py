@@ -1,9 +1,13 @@
 """HTTP errors shared by the Human Input v2 approval transports."""
 
-from typing import override
+from collections.abc import Callable
+from typing import Final, override
+
+from werkzeug.exceptions import BadRequest, HTTPException
 
 from controllers.common.errors import NotFoundError
 from libs.exception import BaseHTTPException
+from services.human_input_service import FormExpiredError, FormSubmittedError, InvalidFormDataError
 from services.human_input_v2.email_otp_service import EmailOtpError, OtpFailure
 from services.human_input_v2.submission_service import HumanInputFormError, HumanInputFormErrorCode
 
@@ -120,3 +124,34 @@ def email_otp_http_error(error: EmailOtpError) -> BaseHTTPException:
         OtpFailure.CHALLENGE_EXPIRED: HumanInputExpiredChallengeError,
     }[error.reason]
     return error_type(description="Unable to complete email verification.")
+
+
+_INVALID_FORM_DATA: Final = "Invalid form data"
+_WORKFLOW_NOT_ACTIVE: Final = "The workflow is not paused with an active checkpoint."
+
+
+def _form_id(error: HumanInputFormError) -> str:
+    assert error.form_id is not None
+    return error.form_id
+
+
+def _invalid_input(error: HumanInputFormError) -> HTTPException:
+    return InvalidFormDataError(str(error.__cause__) if error.__cause__ is not None else _INVALID_FORM_DATA)
+
+
+_LEGACY_FORM_ERRORS: Final[dict[HumanInputFormErrorCode, Callable[[HumanInputFormError], HTTPException]]] = {
+    HumanInputFormErrorCode.ALREADY_SUBMITTED: lambda error: FormSubmittedError(_form_id(error)),
+    HumanInputFormErrorCode.EXPIRED: lambda error: FormExpiredError(_form_id(error)),
+    HumanInputFormErrorCode.INVALID_INPUT: _invalid_input,
+    HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: lambda _error: BadRequest(_WORKFLOW_NOT_ACTIVE),
+}
+
+
+def legacy_form_http_error(error: HumanInputFormError, *, not_found: HTTPException) -> HTTPException:
+    """A v2 rejection in the v1 form errors, for a transport whose form ops predate v2.
+
+    Each transport keeps its own not-found answer.
+    """
+    if error.code is HumanInputFormErrorCode.NOT_FOUND:
+        return not_found
+    return _LEGACY_FORM_ERRORS[error.code](error)

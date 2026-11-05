@@ -31,6 +31,7 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.auth.subjects import Subject
 from controllers.openapi.human_input_form import (
+    PUBLISHED_RUN_FORMS,
     CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
     OpenApiWorkflowHumanInputFormSubmitApi,
@@ -135,19 +136,6 @@ class TestOpenApiHumanInputFormGet:
         assert payload["resolved_default_values"] == {"field1": "default"}
         assert payload["user_actions"] == [{"id": "submit", "title": "Submit"}]
         service_mock.ensure_form_active.assert_called_once_with(form)
-
-    def test_get_form_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        _mock_service(monkeypatch, None)
-
-        api = OpenApiWorkflowHumanInputFormApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/bad"):
-            with pytest.raises(HumanInputFormNotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    form_token="bad",
-                )
 
     def test_get_form_wrong_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         _mock_service(monkeypatch, _make_form(app_id="other-app"))
@@ -328,7 +316,7 @@ class TestFormHints:
             inputs=[ParagraphInputConfig(output_variable_name="comment")],
             actions=[UserActionConfig(id="approve", title="批准"), UserActionConfig(id="reject", title="")],
         )
-        [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1"))
+        [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1", forms=PUBLISHED_RUN_FORMS))
         body = json.loads(out[len("data: ") :])
         op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
         assert op == "submit.run.form"

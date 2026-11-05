@@ -31,7 +31,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
-from controllers.openapi.human_input_form import with_form_hints
+from controllers.openapi.human_input_form import DRAFT_RUN_FORMS, PUBLISHED_RUN_FORMS, with_form_hints
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -40,6 +40,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
@@ -111,6 +112,11 @@ class OpenApiWorkflowEventsApi(Resource):
         workflow_run_entity = workflow_run
         tenant_id = app_model.tenant_id
         owning_app_id = app_model.id
+        forms = (
+            DRAFT_RUN_FORMS
+            if workflow_run.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING
+            else PUBLISHED_RUN_FORMS
+        )
 
         if workflow_run_entity.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
@@ -158,7 +164,7 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            with_form_hints(event_generator(), app_id=owning_app_id),
+            with_form_hints(event_generator(), app_id=owning_app_id, forms=forms),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

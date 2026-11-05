@@ -191,32 +191,47 @@ class HumanInputSubmissionService:
                 form.workflow_run_id,
             )
 
-    def get_console_form(self, *, account_id: AccountId, form_token: str, ip_address: str | None = None) -> Form:
+    def get_console_form(
+        self,
+        *,
+        account_id: AccountId,
+        form_token: str,
+        ip_address: str | None = None,
+        app_id: str | None = None,
+    ) -> Form:
+        """`app_id` narrows the lookup to one app's forms, for a transport scoped to an app."""
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
-            form = self._authorize_console(session, account_id=account_id, token_hash=token_hash).form
+            form = self._authorize_console(session, account_id=account_id, token_hash=token_hash, app_id=app_id).form
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
-            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
         self._record_form_view(form, ip_address=ip_address)
         return replace(form, resolved_form=refresh_form_file_urls(form.resolved_form))
 
     def submit_console_form(
-        self, *, account_id: AccountId, form_token: str, action: str, inputs: Mapping[str, JsonValue]
-    ) -> None:
+        self,
+        *,
+        account_id: AccountId,
+        form_token: str,
+        action: str,
+        inputs: Mapping[str, JsonValue],
+        app_id: str | None = None,
+    ) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
 
         def authorize(session: Session) -> _AuthorizedForm:
-            return self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+            return self._authorize_console(session, account_id=account_id, token_hash=token_hash, app_id=app_id)
 
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
         self._enqueue_resume(form)
+        return form
 
     def get_web_app_form(self, *, actor: WebAppFormActor, form_token: str, ip_address: str | None = None) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form = self._authorize_web_app(session, actor=actor, token_hash=token_hash).form
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
-            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
         self._record_form_view(form, ip_address=ip_address)
         return form
 
@@ -275,7 +290,7 @@ class HumanInputSubmissionService:
 
     def submit_web_app_form(
         self, *, actor: WebAppFormActor, form_token: str, action: str, inputs: Mapping[str, JsonValue]
-    ) -> None:
+    ) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
 
         def authorize(session: Session) -> _AuthorizedForm:
@@ -283,6 +298,7 @@ class HumanInputSubmissionService:
 
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
         self._enqueue_resume(form)
+        return form
 
     def submit_public_form(
         self,
@@ -468,14 +484,20 @@ class HumanInputSubmissionService:
         return _AuthorizedForm(form, recipient, delivery)
 
     @staticmethod
-    def _authorize_console(session: Session, *, account_id: AccountId, token_hash: str) -> _AuthorizedForm:
+    def _authorize_console(
+        session: Session, *, account_id: AccountId, token_hash: str, app_id: str | None
+    ) -> _AuthorizedForm:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
         if delivery is None or delivery.auth_type != SubmissionAuthType.CONSOLE:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
-        app_id = SQLAlchemyFormRepository.find_app_id(session, tenant_id=delivery.tenant_id, form_id=delivery.form_id)
-        if app_id is None:
+        form_app_id = SQLAlchemyFormRepository.find_app_id(
+            session, tenant_id=delivery.tenant_id, form_id=delivery.form_id
+        )
+        if form_app_id is None:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
-        form = SQLAlchemyFormRepository(session, delivery.tenant_id, app_id).get_form_by_id(delivery.form_id)
+        if app_id is not None and form_app_id != app_id:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        form = SQLAlchemyFormRepository(session, delivery.tenant_id, form_app_id).get_form_by_id(delivery.form_id)
         assert form is not None
         recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
         if recipient is None or not isinstance(recipient.subject, ContactRecipientSubject):

@@ -59,7 +59,7 @@ from controllers.openapi.auth.requirements import (
     account_app_guards,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
-from controllers.openapi.human_input_form import with_form_hints
+from controllers.openapi.human_input_form import DRAFT_RUN_FORMS, PUBLISHED_RUN_FORMS, with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -152,7 +152,10 @@ _RUN_GUARDS: Final = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
-_DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
+_DRAFT_FORM_NOTE: Final = (
+    "Of its human-input pauses, only a v2 node that lists the initiator as a recipient, "
+    "with debug mode off, can be resumed over openapi."
+)
 STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 
@@ -227,7 +230,11 @@ def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
 
 
 def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
-    return with_form_hints(events, app_id=app_id)
+    return with_form_hints(events, app_id=app_id, forms=PUBLISHED_RUN_FORMS)
+
+
+def _draft_form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
+    return with_form_hints(events, app_id=app_id, forms=DRAFT_RUN_FORMS)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -380,6 +387,7 @@ _RUN_ROUTES: Final = (
         summary="Test-run the draft of a workflow app; streams workflow events. " + _DRAFT_FORM_NOTE,
         payload=DraftWorkflowRunPayload,
         modes=(AppMode.WORKFLOW,),
+        hints=(_draft_form_layer,),
         examples=(
             Example(title="Test the draft with one input", input={"app_id": "<app_id>", "inputs": {"topic": "test"}}),
             Example(
@@ -396,7 +404,7 @@ _RUN_ROUTES: Final = (
         summary="Test-run the draft of an advanced-chat app; streams message and workflow events. " + _DRAFT_FORM_NOTE,
         payload=ChatRunPayload,
         modes=(AppMode.ADVANCED_CHAT,),
-        hints=(_reply_layer,),
+        hints=(_reply_layer, _draft_form_layer),
         examples=(
             Example(title="Test the draft with one message", input={"app_id": "<app_id>", "query": "hello"}),
             Example(
