@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Сохраненный контент",
   "chatVariable.tips": "Советы",
   "chatVariable.updatedAt": "Обновлено в ",
+  "collaboration.capabilityUnavailable": "Не удалось определить, доступно ли совместное редактирование в этом рабочем пространстве.",
   "collaboration.historyAction.generic": "Участник выполнил отмену/повтор",
   "collaboration.joinDenied": "Не удалось присоединиться к совместному редактированию. Проверьте права доступа и тариф рабочего пространства, затем откройте редактор снова.",
   "collaboration.joinUnavailable": "Не удалось подключиться к совместной работе. Изменения на этом холсте могут быть не сохранены.",

@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Contenu stocké",
   "chatVariable.tips": "Conseils",
   "chatVariable.updatedAt": "Mis à jour le ",
+  "collaboration.capabilityUnavailable": "Impossible de déterminer si la collaboration est disponible pour cet espace de travail.",
   "collaboration.historyAction.generic": "Un collaborateur a effectué une annulation/une réexécution",
   "collaboration.joinDenied": "Impossible de rejoindre la collaboration. Vérifiez vos droits d’accès et l’offre de l’espace de travail, puis rouvrez l’éditeur.",
   "collaboration.joinUnavailable": "Impossible de se connecter à la collaboration. Les modifications de ce canevas ne sont peut-être pas enregistrées.",

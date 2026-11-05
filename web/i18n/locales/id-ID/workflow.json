@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Konten yang disimpan",
   "chatVariable.tips": "Tips",
   "chatVariable.updatedAt": "Diperbarui pada",
+  "collaboration.capabilityUnavailable": "Tidak dapat menentukan apakah kolaborasi tersedia untuk ruang kerja ini.",
   "collaboration.historyAction.generic": "Seorang kolaborator melakukan urungkan/ulang",
   "collaboration.joinDenied": "Tidak dapat bergabung dalam kolaborasi. Periksa akses dan paket ruang kerja Anda, lalu buka kembali editor.",
   "collaboration.joinUnavailable": "Tidak dapat terhubung ke kolaborasi. Perubahan pada kanvas ini mungkin belum disimpan.",

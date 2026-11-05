@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Contenuto memorizzato",
   "chatVariable.tips": "Suggerimenti",
   "chatVariable.updatedAt": "Aggiornato il ",
+  "collaboration.capabilityUnavailable": "Impossibile determinare se la collaborazione è disponibile per questo spazio di lavoro.",
   "collaboration.historyAction.generic": "Un collaboratore ha eseguito annulla/ripristina",
   "collaboration.joinDenied": "Impossibile partecipare alla collaborazione. Controlla i permessi di accesso e il piano dell’area di lavoro, quindi riapri l’editor.",
   "collaboration.joinUnavailable": "Impossibile connettersi alla collaborazione. Le modifiche a questa area di lavoro potrebbero non essere salvate.",

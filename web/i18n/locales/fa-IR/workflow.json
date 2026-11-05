@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "محتوای ذخیره‌شده",
   "chatVariable.tips": "نکات",
   "chatVariable.updatedAt": "به‌روزرسانی شده در ",
+  "collaboration.capabilityUnavailable": "امکان تشخیص در دسترس بودن همکاری برای این فضای کاری وجود ندارد.",
   "collaboration.historyAction.generic": "یک همکار عملیات برگرداندن/انجام مجدد را انجام داد",
   "collaboration.joinDenied": "پیوستن به ویرایش مشارکتی ممکن نشد. دسترسی خود و طرح فضای کاری را بررسی کنید و ویرایشگر را دوباره باز کنید.",
   "collaboration.joinUnavailable": "اتصال به ویرایش مشارکتی ممکن نشد. تغییرات این بوم ممکن است ذخیره نشده باشند.",

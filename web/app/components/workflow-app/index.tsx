@@ -146,7 +146,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
 const WorkflowAppWrapper = () => {
   const { appId } = useParams<{ appId: string }>()
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workflow'])
   const collaboration = useQuery({
     ...consoleQuery.features.get.queryOptions(),
     retry: false,
@@ -171,10 +171,10 @@ const WorkflowAppWrapper = () => {
     return (
       <div className="flex size-full flex-col items-center justify-center gap-4">
         <div role="alert" className="system-sm-regular text-text-tertiary">
-          {t(($) => $['errorBoundary.message'])}
+          {t(($) => $['collaboration.capabilityUnavailable'], { ns: 'workflow' })}
         </div>
         <Button size="small" variant="secondary" onClick={() => void collaboration.refetch()}>
-          {t(($) => $['errorBoundary.tryAgain'])}
+          {t(($) => $['operation.retry'], { ns: 'common' })}
         </Button>
       </div>
     )

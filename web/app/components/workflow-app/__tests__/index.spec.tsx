@@ -243,8 +243,10 @@ describe('WorkflowApp', () => {
       .mockResolvedValueOnce(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }))
 
     render(<WorkflowApp />, { collaboration: null })
-    const retry = await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
-    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.message')
+    const retry = await screen.findByRole('button', { name: 'common.operation.retry' })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'workflow.collaboration.capabilityUnavailable',
+    )
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
 
     await user.click(retry)
