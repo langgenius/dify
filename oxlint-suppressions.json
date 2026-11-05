@@ -42,17 +42,9 @@
       "count": 1
     }
   },
-  "web/app/(auth)/device/components/code-input.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/(auth)/device/page.tsx": {
     "dify/require-disable-directive-description": {
       "count": 5
-    },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
     }
   },
   "web/app/(auth)/signin/normal-form.tsx": {
@@ -85,22 +77,9 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/page.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/__tests__/home-banner.browser.spec.tsx": {

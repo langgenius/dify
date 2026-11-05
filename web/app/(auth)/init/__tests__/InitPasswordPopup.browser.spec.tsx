@@ -41,6 +41,12 @@ beforeEach(() => {
   getInitStatus.mockReset().mockResolvedValue({ status: 'not_started' })
 })
 
+it('puts the cursor in the password field on arrival', async () => {
+  const screen = await renderPopup()
+
+  await expect.element(screen.getByLabelText('login.adminInitPassword')).toHaveFocus()
+})
+
 it('asks for the password before submitting', async () => {
   const screen = await renderPopup()
 

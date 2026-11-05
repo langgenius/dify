@@ -7,6 +7,7 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -71,6 +72,7 @@ const InitPasswordPopup = () => {
       >
         <FieldLabel>{pageTitle}</FieldLabel>
         <Input
+          ref={focusOnArrival}
           type="password"
           autoComplete="off"
           onValueChange={() => {
