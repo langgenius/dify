@@ -193,11 +193,14 @@ def _build_parameters(
     configured: Mapping[str, object],
     declared: Sequence[AgentStrategyParameter],
     variables: Mapping[str, object],
+    scoped_variables: Mapping[tuple[str, str], object] | None = None,
     for_log: bool = False,
 ) -> dict[str, object]:
     variable_pool = VariablePool()
     for name, value in variables.items():
         variable_pool.add(("start", name), value)
+    for selector, value in (scoped_variables or {}).items():
+        variable_pool.add(selector, value)
     node_data = AgentNodeData.model_validate({"type": "agent", "agent_parameters": configured})
     return AgentRuntimeSupport().build_parameters(
         agent_parameters=declared,
@@ -325,3 +328,80 @@ def test_build_parameters_selects_log_form_for_nested_leaves_when_logging():
 
     assert logged_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False, indent=2)
     assert rendered_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False)
+
+
+_SELECTOR_LOOKALIKES = {
+    ("sys", "query"): "the user question",
+    ("env", "SECRET"): "s3cr3t-value",
+    ("start", "target"): "plain",
+}
+
+
+@pytest.mark.parametrize(
+    "literal",
+    [
+        pytest.param("sys.query", id="system-variable"),
+        pytest.param("env.SECRET", id="environment-secret"),
+        pytest.param("start.target", id="node-output"),
+    ],
+)
+def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(literal: str):
+    """A tool argument carrying no {{#...#}} marker is literal text even when it names a variable.
+
+    convert_template also looks a bare dotted fragment up as a selector. That stayed dormant while
+    the value was resolved as one serialized document, so resolving leaves one by one must not
+    resurrect it or existing configurations would start sending variable values to the tool.
+    """
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting(literal)]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == literal
+
+
+def test_build_parameters_resolves_markers_without_touching_bare_selectors_beside_them():
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("env.SECRET{{#start.target#}}")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == "env.SECRETplain"
+
+
+def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants():
+    result = _build_parameters(
+        configured={
+            "options": {
+                "type": "constant",
+                "value": [{"label": "env.SECRET", "nested": {"items": ["sys.query", "{{#start.target#}}"]}}],
+            }
+        },
+        declared=[_declared_parameter("options", _ParameterType.ANY)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+    )
+
+    assert result["options"] == [{"label": "env.SECRET", "nested": {"items": ["sys.query", "plain"]}}]
+
+
+def test_build_parameters_keeps_top_level_string_lookup_behaviour():
+    """A top-level string is the template itself, so its lookup is deliberately left unchanged."""
+    result = _build_parameters(
+        configured={"query": {"type": "mixed", "value": "sys.query"}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+    )
+
+    assert result["query"] == "the user question"
