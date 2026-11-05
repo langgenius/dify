@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
@@ -75,7 +75,7 @@ class Provider(TypeBase):
     # lazy="raise" keeps reads from opening a session: callers load it with selectinload in their own session.
     credential: Mapped[ProviderCredential | None] = relationship(
         lambda: ProviderCredential,
-        primaryjoin="foreign(Provider.credential_id) == ProviderCredential.id",
+        primaryjoin=lambda: foreign(Provider.credential_id) == ProviderCredential.id,
         lazy="raise",
         viewonly=True,
         init=False,

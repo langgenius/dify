@@ -1294,6 +1294,50 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
     assert "anthropic" not in second
 
 
+def test_provider_model_cache_entries_resolve_credentials_through_owned_session(provider_db: Session) -> None:
+    credential = ProviderModelCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+
+    def build_model(model_name: str, credential_id: str | None) -> ProviderModel:
+        return ProviderModel(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name=model_name,
+            model_type=ModelType.LLM,
+            credential_id=credential_id,
+            is_valid=True,
+        )
+
+    provider_db.add_all(
+        [
+            credential,
+            build_model("active", "credential-id"),
+            build_model("dangling", "deleted-credential-id"),
+            build_model("unset", None),
+        ]
+    )
+    provider_db.commit()
+
+    entries = {
+        entry.model_name: entry for entry in provider_manager_module._load_provider_model_cache_entries("tenant-id")
+    }
+
+    assert (entries["active"].credential_name, entries["active"].encrypted_config) == (
+        "primary",
+        '{"api_key": "secret"}',
+    )
+    assert entries["dangling"].credential_id == "deleted-credential-id"
+    assert (entries["dangling"].credential_name, entries["dangling"].encrypted_config) == (None, None)
+    assert (entries["unset"].credential_name, entries["unset"].encrypted_config) == (None, None)
+
+
 def test_provider_configuration_cache_skips_write_when_version_changes_during_load(
     provider_db: Session, sqlite_engine: Engine
 ) -> None:
