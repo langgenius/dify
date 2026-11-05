@@ -3188,6 +3188,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | ---- | ---- | ----------- | -------- |
 | default |  | The value the node runs with when the field is left out | No |
 | description | string |  | Yes |
+| fields | [ [FieldHintItemRow](#fieldhintitemrow) ] | For an object, each of its fields, located relative to the object; left out for any other field | No |
 | items | [ [FieldHintItemRow](#fieldhintitemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] |  | Yes |
@@ -3868,6 +3869,7 @@ Query parameters for GET /node-types/<node_type>.
 | ---- | ---- | ----------- | -------- |
 | default |  | The value the node runs with when the field is left out; left out when there is none or it is null | No |
 | description | string | The first line of the field's description; include_schema=true has the whole text | No |
+| fields | [ [NodeTypeFieldItemRow](#nodetypefielditemrow) ] | For an object, each of its fields, located relative to the object; left out for any other field | No |
 | items | [ [NodeTypeFieldItemRow](#nodetypefielditemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
 | loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
 | options | [ string ] | The values the field accepts | No |

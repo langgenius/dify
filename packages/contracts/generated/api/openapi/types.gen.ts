@@ -673,6 +673,7 @@ export type FieldHintItemRow = {
 export type FieldHintRow = {
   default?: unknown
   description: string | null
+  fields?: Array<FieldHintItemRow>
   items?: Array<FieldHintItemRow>
   loc: Array<string | number>
   options: Array<string>
@@ -1237,6 +1238,7 @@ export type NodeTypeFieldItemRow = {
 export type NodeTypeFieldRow = {
   default?: unknown
   description?: string | null
+  fields?: Array<NodeTypeFieldItemRow>
   items?: Array<NodeTypeFieldItemRow>
   loc: Array<string | number>
   options?: Array<string>
