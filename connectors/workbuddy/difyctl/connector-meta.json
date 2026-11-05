@@ -1,7 +1,7 @@
 {
-  "name": "Dify（测试版）",
-  "name_zh": "Dify（测试版）",
-  "name_en": "Dify (Beta)",
+  "name": "Dify CLI（测试版）",
+  "name_zh": "Dify CLI（测试版）",
+  "name_en": "Dify CLI (Beta)",
   "description": "在 WorkBuddy 里用 difyctl 运行和搭建 Dify 应用。支持 Dify Cloud 和私有部署，登录时输入 Dify 控制台地址即可",
   "description_zh": "在 WorkBuddy 里用 difyctl 运行和搭建 Dify 应用。支持 Dify Cloud 和私有部署，登录时输入 Dify 控制台地址即可",
   "description_en": "Run and build Dify apps with difyctl. For Dify Cloud or self-hosted, log in with your console URL.",
