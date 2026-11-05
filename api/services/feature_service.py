@@ -36,6 +36,7 @@ class FeatureService:
 
     @classmethod
     def can_use_workflow_collaboration(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
+        """Return the workspace entitlement using its loaded plan, or propagate billing failures."""
         if not dify_config.ENABLE_COLLABORATION_MODE:
             return False
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
