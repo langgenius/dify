@@ -6,6 +6,7 @@ import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -18,7 +19,6 @@ import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -39,8 +39,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isPC = !useMediaQuery('(width < 48rem)', {})
 
   const [inputs, doSetInputs] = useState<Record<string, InputValueTypes>>({})
   const inputsRef = useRef<Record<string, InputValueTypes>>(inputs)
@@ -156,7 +155,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   )
 
   const renderResWrap = (
-    <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
+    <div className={cn('relative flex h-full flex-col', 'rounded-e-2xl bg-chatbot-bg')}>
       <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
         {isCompleted && !isHideTryNotice && (
           <Alert type="info" className="mb-3 shrink-0">
@@ -195,7 +194,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         className={cn(
           'relative flex h-full shrink-0 flex-col',
           isPC && 'w-150 max-w-[50%]',
-          'rounded-l-2xl bg-components-panel-bg',
+          'rounded-s-2xl bg-components-panel-bg',
         )}
       >
         {/* Header */}
@@ -278,7 +277,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
-                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
+                : 'absolute inset-s-0 top-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
             )}
             onClick={() => {
               if (isShowResultPanel) hideResultPanel()

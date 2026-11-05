@@ -18,7 +18,6 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import SettingsModal from '../settings-modal'
 
@@ -32,8 +31,6 @@ type ItemProps = {
 }
 
 const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, editable = true }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const settingsDrawerActionsRef = useRef<DrawerActions>(null)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const { t } = useTranslation(['common', 'dataset'])
@@ -66,7 +63,7 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
           {config.name}
         </div>
       </div>
-      <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
+      <div className="ms-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {editable && !readonly && (
           <Drawer actionsRef={settingsDrawerActionsRef} modal swipeDirection="right">
             <DrawerTrigger
@@ -83,7 +80,7 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
               }
             />
             <DrawerPortal>
-              <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+              <DrawerBackdrop className="sm:bg-transparent" />
               <DrawerViewport>
                 <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
                   <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">

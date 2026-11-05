@@ -23,7 +23,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
@@ -39,9 +38,6 @@ const defaultValue = 'N/A'
 const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
-
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogPartialResponse | undefined>()
@@ -162,20 +158,20 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         <table className={cn('mt-2 w-full min-w-110 border-collapse border-0')}>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+              <td className="w-5 rounded-s-lg bg-background-section-burn ps-2 pe-1 whitespace-nowrap"></td>
               <th
                 aria-sort={sortOrder === 'asc' ? 'ascending' : 'descending'}
-                className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap"
+                className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap"
               >
                 <button
                   type="button"
-                  className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="flex cursor-pointer items-center border-none bg-transparent p-0 text-start hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={handleSort}
                 >
                   {t(($) => $['table.header.startTime'], { ns: 'appLog' })}
                   <ArrowDownIcon
                     className={cn(
-                      'ml-0.5 size-3 stroke-current stroke-2 transition-all',
+                      'ms-0.5 size-3 stroke-current stroke-2 transition-all',
                       'text-text-tertiary',
                       sortOrder === 'asc' ? 'rotate-180' : '',
                     )}
@@ -183,25 +179,25 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   />
                 </button>
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.status'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.runtime'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.tokens'], { ns: 'appLog' })}
               </th>
               <th
                 className={cn(
-                  'bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap',
-                  !isWorkflow ? 'rounded-r-lg' : '',
+                  'bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap',
+                  !isWorkflow ? 'rounded-e-lg' : '',
                 )}
               >
                 {t(($) => $['table.header.user'], { ns: 'appLog' })}
               </th>
               {isWorkflow && (
-                <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+                <th className="rounded-e-lg bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.triggered_from'], { ns: 'appLog' })}
                 </th>
               )}
@@ -231,15 +227,15 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   <td className="h-4">
                     {/* The console workflow-log response does not declare read_at yet. */}
                     {!('read_at' in log && log.read_at) && (
-                      <div className="flex items-center p-3 pr-0.5">
+                      <div className="flex items-center p-3 pe-0.5">
                         <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                       </div>
                     )}
                   </td>
-                  <td className="w-45 p-3 pr-2">
+                  <td className="w-45 p-3 pe-2">
                     <DrawerTrigger
                       data-log-detail-trigger
-                      className="w-full cursor-pointer rounded-sm text-left"
+                      className="w-full cursor-pointer rounded-sm text-start"
                       onClick={(event) => {
                         event.stopPropagation()
                         setCurrentLog(log)
@@ -254,14 +250,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                         : defaultValue}
                     </DrawerTrigger>
                   </td>
-                  <td className="p-3 pr-2">{statusTdRender(log.workflow_run?.status)}</td>
-                  <td className="p-3 pr-2">
+                  <td className="p-3 pe-2">{statusTdRender(log.workflow_run?.status)}</td>
+                  <td className="p-3 pe-2">
                     <div className={cn(!log.workflow_run?.elapsed_time && 'text-text-quaternary')}>
                       {`${(log.workflow_run?.elapsed_time ?? 0).toFixed(3)}s`}
                     </div>
                   </td>
-                  <td className="p-3 pr-2">{log.workflow_run?.total_tokens}</td>
-                  <td className="p-3 pr-2">
+                  <td className="p-3 pe-2">{log.workflow_run?.total_tokens}</td>
+                  <td className="p-3 pe-2">
                     <div
                       className={cn(
                         endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary',
@@ -272,7 +268,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     </div>
                   </td>
                   {isWorkflow && (
-                    <td className="p-3 pr-2">
+                    <td className="p-3 pe-2">
                       <TriggerByDisplay
                         triggeredFrom={log.workflow_run?.triggered_from as WorkflowRunTriggeredFrom}
                         triggerMetadata={
@@ -287,7 +283,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           </tbody>
         </table>
         <DrawerPortal>
-          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerBackdrop className="sm:bg-transparent" />
           <DrawerViewport>
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">

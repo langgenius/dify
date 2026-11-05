@@ -3,9 +3,9 @@ import type { InstalledAppResponse } from '@dify/contracts/api/console/installed
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
@@ -57,7 +57,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
         <div
           inert={isSidebarCollapsed}
           className={cn(
-            'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+            'flex w-59 flex-col p-1 pe-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
@@ -70,7 +70,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
-              showSidePanel ? 'left-0' : '-left-62',
+              showSidePanel ? 'inset-s-0' : '-inset-s-62',
             )}
             onMouseEnter={() => {
               sidePanelHoveredRef.current = true
@@ -130,8 +130,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   isNewAgent = false,
   renderAgentContent,
 }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,

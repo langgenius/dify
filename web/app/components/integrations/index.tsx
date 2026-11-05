@@ -19,7 +19,8 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Suspense, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { Suspense, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -69,15 +70,6 @@ const headerDescriptionDocPaths = {
   extension: '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 } satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
-
-const compactNavigationQuery = '(width < 48rem)'
-const subscribeToCompactNavigation = (onChange: () => void) => {
-  const mediaQuery = window.matchMedia(compactNavigationQuery)
-  mediaQuery.addEventListener('change', onChange)
-  return () => mediaQuery.removeEventListener('change', onChange)
-}
-const getCompactNavigationSnapshot = () => window.matchMedia(compactNavigationQuery).matches
-const getServerCompactNavigationSnapshot = () => false
 
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
@@ -141,11 +133,7 @@ export default function IntegrationsPage({
 }: IntegrationsPageProps) {
   const { t } = useTranslation(['navigation', 'modelProvider', 'common'])
   const navigationTitleId = useId()
-  const isCompact = useSyncExternalStore(
-    subscribeToCompactNavigation,
-    getCompactNavigationSnapshot,
-    getServerCompactNavigationSnapshot,
-  )
+  const isCompact = useMediaQuery('(width < 48rem)', {})
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)

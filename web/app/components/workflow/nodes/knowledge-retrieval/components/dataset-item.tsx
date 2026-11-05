@@ -21,7 +21,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
 type Props = Readonly<{
@@ -47,9 +46,7 @@ const DatasetItem: FC<Props> = ({
   settingsDrawerPopupClassName,
   settingsModalHeight,
 }) => {
-  const media = useBreakpoints()
   const { t } = useTranslation(['common', 'dataset'])
-  const isMobile = media === MediaType.mobile
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
@@ -91,7 +88,7 @@ const DatasetItem: FC<Props> = ({
         <div className="w-0 grow truncate system-sm-medium text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (
-        <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
+        <div className="ms-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {editable && (
             <Drawer actionsRef={settingsDrawerActionsRef} modal swipeDirection="right">
               <DrawerTrigger
@@ -111,7 +108,7 @@ const DatasetItem: FC<Props> = ({
                 <DrawerBackdrop
                   forceRender={settingsDrawerBackdropForceRender}
                   className={cn(
-                    !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
+                    !settingsDrawerBackdropClassName && 'sm:bg-transparent',
                     settingsDrawerBackdropClassName,
                   )}
                 />
@@ -148,7 +145,7 @@ const DatasetItem: FC<Props> = ({
         </div>
       )}
       {payload.is_multimodal && (
-        <div className="mr-1 shrink-0 group-hover/dataset-item:hidden">
+        <div className="me-1 shrink-0 group-hover/dataset-item:hidden">
           <FeatureIcon feature={ModelFeatureEnum.vision} />
         </div>
       )}
