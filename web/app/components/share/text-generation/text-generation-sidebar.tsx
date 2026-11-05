@@ -309,7 +309,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                   className="block h-5 w-auto"
                 />
               ) : (
-                <DifyLogo alt="Dify" size="small" />
+                <DifyLogo alt="Dify" size="small" className="translate-y-0.5" />
               )}
             </div>
           )}

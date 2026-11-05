@@ -172,6 +172,41 @@ it('shows a load failure instead of confirmation actions when the WebApp cannot 
   expect(screen.queryByRole('button', { name: 'login.history.continue' })).not.toBeInTheDocument()
 })
 
+it('skips migration when the response contains no connections or conversations', async ({
+  onTestFinished,
+}) => {
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  onTestFinished(() => replace.mockRestore())
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+  vi.mocked(webAppClient.migration.claimablePassports.post).mockResolvedValueOnce({
+    data: [
+      {
+        index: 0,
+        app_code: 'current-app',
+        app_name: 'Research Assistant',
+        connection_count: 0,
+        conversation_count: 0,
+      },
+    ],
+  })
+  window.history.replaceState(
+    {},
+    '',
+    '/chat/current-app/migrate-conversations?redirect_url=%2Fworkflow%2Fcurrent-app',
+  )
+
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/workflow/current-app'))
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
+})
+
 it('keeps anonymous passports when deferring to the original chat', async () => {
   const user = userEvent.setup()
   const passports = [
