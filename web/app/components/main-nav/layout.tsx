@@ -14,6 +14,7 @@ import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
+import { MainNavMobileBar } from './mobile-nav'
 import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
 import { MAIN_CONTENT_ID, SkipLink } from './skip-link'
 
@@ -40,15 +41,23 @@ const MainNavLayout = ({
     agentV2Enabled: isAgentV2Enabled(),
     isCurrentWorkspaceDatasetOperator,
   })
+  const showMainNav = !hideMainNavigation && !useDetailSidebar
 
   return (
-    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div
+      className={cn(
+        'flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body',
+        showMainNav && 'max-md:flex-col',
+      )}
+    >
       <SkipLink>{t(($) => $['navigation.skipToMain'])}</SkipLink>
       {appId && <AppDetailPrefetch appId={appId} />}
-      {hideMainNavigation ? null : useDetailSidebar ? (
-        detailSidebar
-      ) : (
-        <MainNav initialPlatform={initialPlatform} />
+      {useDetailSidebar && !hideMainNavigation && detailSidebar}
+      {showMainNav && (
+        <>
+          <MainNavMobileBar initialPlatform={initialPlatform} />
+          <MainNav className="max-md:hidden" initialPlatform={initialPlatform} />
+        </>
       )}
       <main
         id={MAIN_CONTENT_ID}
