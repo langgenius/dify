@@ -1430,6 +1430,7 @@ def _generate_entity() -> WorkflowAppGenerateEntity:
         inputs={},
         files=[],
         user_id="user",
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id="run-1",

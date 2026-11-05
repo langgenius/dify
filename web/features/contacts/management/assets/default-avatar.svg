@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="72" height="116.571" viewBox="0 0 72 116.571" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="People">
+<circle id="Head" cx="36" cy="18.8571" r="18.8571" fill="url(#paint0_radial_0_1917)"/>
+<circle id="Body" cx="36" cy="80.5714" r="36" fill="url(#paint1_radial_0_1917)"/>
+</g>
+<defs>
+<radialGradient id="paint0_radial_0_1917" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(27.4286 7.71428) rotate(54.6375) scale(32.5827)">
+<stop stop-color="white" stop-opacity="0.9"/>
+<stop offset="1" stop-color="white" stop-opacity="0.3"/>
+</radialGradient>
+<radialGradient id="paint1_radial_0_1917" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(24.8571 55.7143) rotate(62.1524) scale(51.3785)">
+<stop stop-color="white" stop-opacity="0.7"/>
+<stop offset="1" stop-color="white" stop-opacity="0.3"/>
+</radialGradient>
+</defs>
+</svg>

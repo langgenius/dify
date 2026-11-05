@@ -12,21 +12,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 import { basePath } from '@/utils/var'
+import { normalizeHumanInputV2Error } from '../public/errors'
 import { normalizeConsoleFormDefinition } from './definition'
-
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-
-const getErrorKind = (error: unknown) => {
-  const record = asRecord(error)
-  const data = asRecord(record.data)
-  const code = asRecord(data.body).code ?? data.code ?? record.code
-  if (code === 'expired' || record.status === 410) return 'expired'
-  if (code === 'already_submitted') return 'submitted'
-  if (record.status === 404 || code === 'not_found') return 'not-found'
-  if (record.status === 429) return 'rate-limited'
-  return 'unknown'
-}
 
 function UnavailableConsoleForm({ formToken }: { formToken: string }) {
   const { t } = useTranslation(['share'])
@@ -61,7 +48,6 @@ function UnavailableConsoleForm({ formToken }: { formToken: string }) {
 export default function ConsoleHumanInputForm({ formToken }: { formToken: string }) {
   const { t } = useTranslation(['workflow', 'share', 'common'])
   useDocumentTitle(t(($) => $['blocks.human-input'], { ns: 'workflow' }))
-  const [submitError, setSubmitError] = useState<unknown>()
   const [now, setNow] = useState(Date.now)
   const form = useQuery(
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
@@ -91,21 +77,19 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   )
   const errorKind =
     expiresAt !== undefined && expiresAt <= now
-      ? 'expired'
-      : submitError !== undefined
-        ? getErrorKind(submitError)
-        : form.error instanceof Response && form.error.status === 409
-          ? 'submitted'
-          : getErrorKind(form.error)
-  const terminal = ['expired', 'submitted', 'not-found'].includes(errorKind)
+      ? 'form-expired'
+      : normalizeHumanInputV2Error(submission.error ?? form.error).category
+  const terminal = ['form-expired', 'already-submitted', 'not-found'].includes(errorKind)
   const errorText =
-    errorKind === 'expired'
+    errorKind === 'form-expired'
       ? t(($) => $['humanInput.expired'], { ns: 'share' })
-      : errorKind === 'submitted'
+      : errorKind === 'already-submitted'
         ? t(($) => $['humanInput.completed'], { ns: 'share' })
-        : errorKind === 'rate-limited'
+        : errorKind === 'form-rate-limit'
           ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
-          : t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
+          : errorKind === 'unavailable'
+            ? t(($) => $['humanInputV2.unavailable'], { ns: 'share' })
+            : t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
 
   if (form.isPending) return <LoadingPlaceholder className="h-full" />
 
@@ -120,7 +104,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
     )
   }
 
-  if (errorKind === 'submitted') {
+  if (errorKind === 'already-submitted') {
     return (
       <FormStatusCard
         iconClassName="i-ri-information-2-fill text-text-accent"
@@ -140,7 +124,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
         title={errorText}
         subtitle={
           !terminal && (
-            <Button onClick={() => form.refetch()} disabled={form.isFetching}>
+            <Button onClick={() => form.refetch()} loading={form.isFetching}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           )
@@ -150,43 +134,30 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   }
 
   return (
-    <form className="h-full" onSubmit={(event) => event.preventDefault()}>
+    <div className="h-full">
       <LoadedFormContent
         definition={form.data}
         isSubmitting={submission.isPending}
         verificationContent={
-          submitError ? (
+          submission.isError ? (
             <p role="alert" className="system-sm-regular text-text-destructive">
               {errorText}
             </p>
           ) : undefined
         }
-        onSubmit={async (inputs, action) => {
+        onSubmit={(inputs, action) => {
           if (expiresAt !== undefined && expiresAt <= Date.now()) {
             setNow(Date.now())
             return
           }
-          setSubmitError(undefined)
-          try {
-            await submission.mutateAsync({
-              params: { form_token: formToken },
-              body: { inputs, action },
-            })
-          } catch (error) {
-            const detail: unknown =
-              error instanceof Response
-                ? {
-                    status: error.status,
-                    data: await error
-                      .clone()
-                      .json()
-                      .catch(() => ({})),
-                  }
-                : error
-            setSubmitError(detail)
-          }
+          return new Promise<void>((resolve) => {
+            submission.mutate(
+              { params: { form_token: formToken }, body: { inputs, action } },
+              { onSettled: () => resolve() },
+            )
+          })
         }}
       />
-    </form>
+    </div>
   )
 }
