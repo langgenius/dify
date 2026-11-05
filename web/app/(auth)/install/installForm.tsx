@@ -15,12 +15,10 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import * as React from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -43,34 +41,12 @@ const InstallForm = () => {
   useDocumentTitle(pageTitle)
   const { replace } = useRouter()
   const queryClient = useQueryClient()
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const setupStatus = useQuery(
-    consoleQuery.setup.get.queryOptions({
-      staleTime: 0,
-      retry: false,
-      throwOnError: true,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    }),
-  )
   const initStatus = useQuery(
-    consoleQuery.init.get.queryOptions({
-      enabled:
-        setupStatus.isSuccess && !setupStatus.isFetching && setupStatus.data.step !== 'finished',
-      staleTime: 0,
-      retry: false,
-      throwOnError: true,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    }),
+    consoleQuery.init.get.queryOptions({ retry: false, throwOnError: true }),
   )
-
-  const handleSubmit = async (value: AccountFormValues) => {
-    if (isSubmitting) return
-
-    setIsSubmitting(true)
-    try {
-      // First, setup the admin account
+  const isInitPending = initStatus.data?.status === 'not_started'
+  const setupAccount = useMutation({
+    mutationFn: async (value: AccountFormValues) => {
       await consoleClient.setup.post({
         body: {
           ...value,
@@ -78,59 +54,34 @@ const InstallForm = () => {
         },
       })
 
-      // Then, automatically login with the same credentials
-      const loginRes = await consoleClient.login.post({
+      return consoleClient.login.post({
         body: {
           email: value.email,
           password: encodePassword(value.password),
         },
       })
-
-      // Store tokens and redirect if login successful
+    },
+    onSuccess: async (loginRes) => {
       if (loginRes.result === 'success') {
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replace('/')
       } else {
-        // Fallback to signin page if auto-login fails
         replace('/signin')
       }
-    } finally {
-      setIsSubmitting(false)
-    }
+    },
+  })
+  const isSubmitting = setupAccount.isPending || setupAccount.isSuccess
+
+  const handleSubmit = (value: AccountFormValues) => {
+    if (isSubmitting) return
+    setupAccount.mutate(value)
   }
 
   useEffect(() => {
-    if (!setupStatus.isSuccess || setupStatus.isFetching) return
-    if (setupStatus.data.step === 'finished') {
-      replace('/signin')
-    } else if (
-      initStatus.isSuccess &&
-      !initStatus.isFetching &&
-      initStatus.data.status === 'not_started'
-    ) {
-      replace('/init')
-    }
-  }, [
-    replace,
-    setupStatus.isSuccess,
-    setupStatus.isFetching,
-    setupStatus.data,
-    initStatus.isSuccess,
-    initStatus.isFetching,
-    initStatus.data,
-  ])
+    if (isInitPending) replace('/init')
+  }, [isInitPending, replace])
 
-  const canSetup =
-    setupStatus.isSuccess &&
-    !setupStatus.isFetching &&
-    setupStatus.data.step !== 'finished' &&
-    initStatus.isSuccess &&
-    !initStatus.isFetching &&
-    initStatus.data.status !== 'not_started'
-
-  return !canSetup ? (
-    <LoadingPlaceholder />
-  ) : (
+  return (
     <>
       <div>
         <h1 className="text-[32px] font-bold text-text-primary">{pageTitle}</h1>
@@ -140,7 +91,7 @@ const InstallForm = () => {
       </div>
       <div className="mt-8">
         <div className="relative">
-          <Form<AccountFormValues> onFormSubmit={(value) => void handleSubmit(value)}>
+          <Form<AccountFormValues> onFormSubmit={handleSubmit}>
             <Field
               name="email"
               validate={(value) =>

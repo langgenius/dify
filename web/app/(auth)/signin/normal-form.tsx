@@ -87,7 +87,7 @@ function NormalForm() {
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+    shouldRedirectLoggedInUser || (isInviteLink && (isCheckLoading || isInviteCheckLoading))
 
   useEffect(() => {
     if (!isLoggedIn) return

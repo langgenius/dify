@@ -4,43 +4,34 @@ import { consoleClient } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    setup: {
-      get: vi.fn(),
-    },
-    init: {
-      get: vi.fn(),
-    },
-    forgotPassword: {
-      post: vi.fn(),
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const responses = { 'forgotPassword.post': vi.fn(), 'init.get': vi.fn() }
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, responses),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, responses),
+  }
+})
 
-const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
-const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
 const mockSendForgotPasswordEmail = vi.mocked(consoleClient.forgotPassword.post)
+const mockFetchInitStatus = vi.mocked(consoleClient.init.get)
+const mockReplace = vi.fn()
 
-const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
-  mockFetchInitValidateStatus.mockResolvedValue({
-    status: 'finished',
-  })
-}
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: mockReplace }) }))
 
 describe('ForgotPasswordForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    prepareLoadedState()
+    mockFetchInitStatus.mockResolvedValue({ status: 'finished' })
   })
 
-  it('should render form after loading', async () => {
+  it('should render the form without waiting on a status request', () => {
     render(<ForgotPasswordForm />)
 
-    expect(document.title).toBe('common.loading - Dify')
-    expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByLabelText('login.email')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
     expect(document.title).toBe('login.forgotPassword - Dify')
   })
@@ -138,7 +129,6 @@ describe('ForgotPasswordForm', () => {
 
   it('should keep form state when request fails', async () => {
     const user = userEvent.setup()
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' })
 
     render(<ForgotPasswordForm />)
@@ -155,29 +145,13 @@ describe('ForgotPasswordForm', () => {
       'aria-disabled',
       'true',
     )
-
-    consoleSpy.mockRestore()
   })
 
-  it('should redirect to init when status is not started', async () => {
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      value: { href: '' },
-      writable: true,
-    })
-    mockFetchInitValidateStatus.mockResolvedValue({
-      status: 'not_started',
-    })
+  it('should send an instance that still needs its init password to init', async () => {
+    mockFetchInitStatus.mockResolvedValue({ status: 'not_started' })
 
     render(<ForgotPasswordForm />)
 
-    await waitFor(() => {
-      expect(window.location.href).toBe('/init')
-    })
-
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      writable: true,
-    })
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/init'))
   })
 })
