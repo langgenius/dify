@@ -4,6 +4,7 @@ import type { AccountWithRoleResponse } from '@dify/contracts/api/console/worksp
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { IconInfo } from '@/models/datasets'
 import type { PermissionLevel } from '@/models/permission'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -23,6 +24,7 @@ const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 type BasicInfoSectionProps = {
   currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   name: string
+  nameInvalid?: boolean
   setName: (value: string) => void
   description: string
   setDescription: (value: string) => void
@@ -39,6 +41,7 @@ type BasicInfoSectionProps = {
 const BasicInfoSection = ({
   currentDataset,
   name,
+  nameInvalid = false,
   setName,
   description,
   setDescription,
@@ -63,7 +66,7 @@ const BasicInfoSection = ({
             {t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}
           </div>
         </div>
-        <div className="flex min-w-0 grow items-center gap-x-2">
+        <div className="flex min-w-0 grow items-start gap-x-2">
           <IconPicker
             value={
               iconInfo.icon_type === 'emoji'
@@ -91,12 +94,19 @@ const BasicInfoSection = ({
             />
             <IconPickerContent />
           </IconPicker>
-          <Input
-            aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
-            disabled={!currentDataset?.embedding_available || readonly}
-            value={name}
-            onValueChange={(nextValue) => setName(nextValue)}
-          />
+          <Field name="name" invalid={nameInvalid} className="grow">
+            <Input
+              aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
+              disabled={!currentDataset?.embedding_available || readonly}
+              value={name}
+              onValueChange={(nextValue) => setName(nextValue)}
+            />
+            {nameInvalid && (
+              <FieldError match role="alert">
+                {t(($) => $['form.nameError'], { ns: 'datasetSettings' })}
+              </FieldError>
+            )}
+          </Field>
         </div>
       </div>
 
