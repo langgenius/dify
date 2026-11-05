@@ -1,6 +1,5 @@
 'use client'
 
-import type { ActionItem } from '../actions/types'
 import { useTranslation } from 'react-i18next'
 
 type EmptyStateVariant = 'no-results' | 'error' | 'loading'
@@ -9,15 +8,9 @@ type EmptyStateProps = {
   variant: EmptyStateVariant
   searchMode?: string
   error?: Error | null
-  actions?: Record<string, ActionItem>
 }
 
-export function EmptyState({
-  variant,
-  searchMode = 'general',
-  error,
-  actions = {},
-}: EmptyStateProps) {
+export function EmptyState({ variant, searchMode = 'general', error }: EmptyStateProps) {
   const { t } = useTranslation(['app'])
 
   if (variant === 'loading') {
@@ -69,22 +62,13 @@ export function EmptyState({
     })
   }
 
-  const getHintMessage = () => {
-    if (isCommandSearch) {
-      return t(($) => $['gotoAnything.emptyState.tryDifferentTerm'], { ns: 'app' })
-    }
-
-    const shortcuts = Object.values(actions)
-      .map((action) => action.shortcut)
-      .join(', ')
-    return t(($) => $['gotoAnything.emptyState.trySpecificSearch'], { ns: 'app', shortcuts })
-  }
-
   return (
     <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
       <div>
         <div className="text-sm font-medium">{getNoResultsMessage()}</div>
-        <div className="mt-1 text-xs text-text-quaternary">{getHintMessage()}</div>
+        <div className="mt-1 text-xs text-text-quaternary">
+          {t(($) => $['gotoAnything.emptyState.tryDifferentTerm'], { ns: 'app' })}
+        </div>
       </div>
     </div>
   )
