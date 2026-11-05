@@ -34,6 +34,23 @@ it.each([
   },
 )
 
+it.each([
+  [401, undefined],
+  [{ msg: 'unauthorized' }, undefined],
+  [{ msg: 'access denied' }, 401],
+] as const)('treats an unauthorized join acknowledgement as denied', async (body, status) => {
+  const { manager, receive, acknowledge } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  acknowledge('user_connect', body, status)
+  expect(failures).toHaveBeenLastCalledWith('denied')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
 it('starts joining before notifying connection listeners', async () => {
   const { manager, receive, emit } = await createSession({ connected: false, role: 'pending' })
   const onStateChange = vi.fn((state: { isConnected?: boolean }) => {

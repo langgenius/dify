@@ -1,6 +1,9 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
+import type {
+  CollaborationUpdate,
+  JoinFailure,
+} from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
@@ -66,9 +69,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     appId: null as string | null,
     isReady: false,
   })
-  const [joinFailure, setJoinFailure] = useState<
-    'denied' | 'unavailable' | 'session_unavailable' | null
-  >(null)
+  const [joinFailure, setJoinFailure] = useState<JoinFailure>(null)
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 

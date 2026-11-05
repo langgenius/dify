@@ -8,6 +8,7 @@ import type {
   CollaborationUpdate,
   CursorPosition,
   GraphReloadRequest,
+  JoinFailure,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
@@ -21,7 +22,12 @@ import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { EventEmitter } from './event-emitter'
-import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
+import {
+  emitWithAuthGuard,
+  isDefaultSocketUrl,
+  isUnauthorizedAck,
+  webSocketClient,
+} from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
@@ -178,7 +184,7 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
-  private joinFailure: 'denied' | 'unavailable' | 'session_unavailable' | null = null
+  private joinFailure: JoinFailure = null
   private joinPending = false
   private hasJoinedRoom = false
   private joinAttempt = 0
@@ -233,14 +239,7 @@ export class CollaborationManager {
       this.emitGraphReadyState()
       return
     }
-    if (
-      status === 401 ||
-      body === 401 ||
-      status === 403 ||
-      body === 403 ||
-      message === 'unauthorized' ||
-      message === 'not_entitled'
-    )
+    if (isUnauthorizedAck(...args) || status === 403 || body === 403 || message === 'not_entitled')
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
     else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
@@ -252,9 +251,7 @@ export class CollaborationManager {
     this.emitGraphReadyState()
   }
 
-  onJoinFailure(
-    callback: (failure: 'denied' | 'unavailable' | 'session_unavailable' | null) => void,
-  ): () => void {
+  onJoinFailure(callback: (failure: JoinFailure) => void): () => void {
     const unsubscribe = this.eventEmitter.on('joinFailure', callback)
     callback(this.joinFailure)
     return unsubscribe

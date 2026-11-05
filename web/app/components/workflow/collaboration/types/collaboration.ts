@@ -1,3 +1,5 @@
+export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable' | null
+
 export type OnlineUser = {
   user_id: string
   username: string
