@@ -49,6 +49,9 @@ pytest_plugins = (
     "tests.helpers.unit.model_provider_fixtures",
 )
 
+# Test modules import names from this fixture helper before their `pytest_plugins` registers it.
+pytest.register_assert_rewrite("tests.helpers.unit.services.human_input_v2_approvals")
+
 # set global mock for Redis client
 redis_mock = MagicMock()
 redis_mock.get = MagicMock(return_value=None)
