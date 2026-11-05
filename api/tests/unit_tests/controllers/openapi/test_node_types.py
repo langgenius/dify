@@ -82,12 +82,13 @@ def test_describe_llm_seed_has_no_empty_value_in_a_required_field(describe: _Des
     assert {"provider", "name"}.isdisjoint(seed["model"])
 
 
-def test_the_llm_reply_stays_small_with_items_included(describe: _Describe) -> None:
+def test_the_llm_reply_stays_small_with_items_and_fields_included(describe: _Describe) -> None:
     body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
 
-    assert len(body.encode()) < 1900, (
-        "measured 1871 bytes: prompt_template and default_value list their item fields, no example or purpose key, "
-        "and the seed keeps the canvas's empty values outside required fields"
+    assert len(body.encode()) < 3300, (
+        "measured 3217 bytes: prompt_template and default_value list their item fields, the object fields "
+        "(model, context, memory, vision, prompt_template, prompt_config, retry_config) list their own fields, "
+        "no example or purpose key, and the seed keeps the canvas's empty values outside required fields"
     )
 
 
@@ -117,6 +118,22 @@ def test_a_list_row_carries_its_item_fields(describe: _Describe) -> None:
     assert {"variable", "value_selector"} <= items.keys()
     assert items["variable"]["required"] is True
     assert all(NO_CANVAS_KEYS.isdisjoint(item) and "items" not in item for item in items.values())
+
+
+def test_an_object_row_carries_its_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.HUMAN_INPUT)).items()}
+
+    template = {field["loc"][0]: field for field in rows["message_template"]["fields"]}
+    assert {"subject", "body"} <= template.keys()
+    assert template["body"]["required"] is True
+    assert "channels" in {field["loc"][0] for field in rows["debug_mode"]["fields"]}
+    assert all("fields" not in field and "items" not in field for field in template.values())
+
+
+def test_a_scalar_row_leaves_out_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
+
+    assert "fields" not in rows["reasoning_format"]
 
 
 def test_a_row_that_is_not_a_list_of_objects_leaves_out_items(describe: _Describe) -> None:

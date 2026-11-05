@@ -876,6 +876,9 @@ def _omitted_when_empty(description: str) -> Any:
 _ITEMS_DESCRIPTION: Final = (
     "For a list of objects, each field of one item, located relative to the item; left out for any other field"
 )
+_FIELDS_DESCRIPTION: Final = (
+    "For an object, each of its fields, located relative to the object; left out for any other field"
+)
 
 
 class FieldHintItemRow(BaseModel):
@@ -900,6 +903,7 @@ class FieldHintItemRow(BaseModel):
 
 class FieldHintRow(FieldHintItemRow):
     items: list[FieldHintItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
+    fields: list[FieldHintItemRow] = _omitted_when_empty(_FIELDS_DESCRIPTION)
 
     @override
     @classmethod
@@ -907,6 +911,7 @@ class FieldHintRow(FieldHintItemRow):
         return cls(
             **dict(FieldHintItemRow.of(hint)),
             items=[FieldHintItemRow.of(item) for item in hint.items],
+            fields=[FieldHintItemRow.of(field) for field in hint.fields],
         )
 
 
@@ -1215,12 +1220,14 @@ class NodeTypeFieldItemRow(BaseModel):
 
 class NodeTypeFieldRow(NodeTypeFieldItemRow):
     items: list[NodeTypeFieldItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
+    fields: list[NodeTypeFieldItemRow] = _omitted_when_empty(_FIELDS_DESCRIPTION)
 
     @classmethod
     def describing(cls, hint: FieldHint) -> Self:
         return cls(
             **dict(NodeTypeFieldItemRow.of(hint)),
             items=[NodeTypeFieldItemRow.of(item) for item in hint.items],
+            fields=[NodeTypeFieldItemRow.of(field) for field in hint.fields],
         )
 
 

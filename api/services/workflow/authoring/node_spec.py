@@ -44,6 +44,8 @@ class FieldHint:
     default: object
     # One row per field of a list's object item, located relative to the item; an item row has none of its own.
     items: tuple[FieldHint, ...] = ()
+    # One row per field of an object value, located relative to the object; a field row has none of its own.
+    fields: tuple[FieldHint, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -169,16 +171,17 @@ def _row(root: Mapping[str, Any], found: Mapping[str, Any] | None, loc: Loc, *, 
     )
 
 
-def _item_rows(root: Mapping[str, Any], item: Mapping[str, Any] | None) -> tuple[FieldHint, ...]:
-    item_object = None if item is None else _object(root, item)
-    if item_object is None:
+def _object_rows(root: Mapping[str, Any], value: Mapping[str, Any] | None) -> tuple[FieldHint, ...]:
+    """A row per field of the one object `value` can be, required ones first; none when it can be several or none."""
+    value_object = None if value is None else _object(root, value)
+    if value_object is None:
         return ()
-    required = item_object.get("required", ())
+    required = value_object.get("required", ())
     return tuple(
         sorted(
             (
                 _row(root, _resolved(root, child), (name,), required=name in required)
-                for name, child in item_object["properties"].items()
+                for name, child in value_object["properties"].items()
                 if isinstance(child, Mapping)
             ),
             key=_required_first,
@@ -187,9 +190,11 @@ def _item_rows(root: Mapping[str, Any], item: Mapping[str, Any] | None) -> tuple
 
 
 def _field_hint(schema: Mapping[str, Any], loc: Loc, *, required: bool) -> FieldHint:
+    found = schema_at(schema, loc)
     return replace(
-        _row(schema, schema_at(schema, loc), loc, required=required),
-        items=_item_rows(schema, schema_at(schema, (*loc, 0))),
+        _row(schema, found, loc, required=required),
+        items=_object_rows(schema, schema_at(schema, (*loc, 0))),
+        fields=_object_rows(schema, found),
     )
 
 
