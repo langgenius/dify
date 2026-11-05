@@ -1,9 +1,10 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { act, screen, waitFor } from '@testing-library/react'
+import { useAtomValue } from 'jotai'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
-import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -35,7 +36,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 function CollaborationModeProbe() {
-  const enabled = useStore((state) => state.isCollaborationEnabled)
+  const enabled = useAtomValue(editorCollaborationEnabledAtom)
   return <output aria-label="Collaboration mode">{enabled ? 'enabled' : 'disabled'}</output>
 }
 

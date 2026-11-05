@@ -272,7 +272,12 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
       collaboration = false,
       initialStoreState = {},
       nodes = [],
-      resource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource = {
+        kind: 'app',
+        appId: 'app-1',
+        mode: 'workflow',
+        collaborationEnabled: collaboration,
+      },
     }: RenderPanelOptions = {},
   ) => {
     const { queryClient } = createConsoleQueryWrapper()
@@ -319,7 +324,7 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
         resource,
         queryClient,
         nodes,
-        initialStoreState: { isCollaborationEnabled: collaboration, ...initialStoreState },
+        initialStoreState,
         hooksStoreProps: { doSyncWorkflowDraft: mockDoSyncWorkflowDraft },
         reactFlowProps: {
           nodeTypes: { custom: () => null },

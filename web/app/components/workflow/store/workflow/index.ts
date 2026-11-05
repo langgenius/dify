@@ -66,11 +66,10 @@ export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
 
 type CreateWorkflowStoreParams = {
   injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn
-  initialCollaborationEnabled?: boolean
 }
 
 export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
-  const { injectWorkflowStoreSliceFn, initialCollaborationEnabled = false } = params
+  const { injectWorkflowStoreSliceFn } = params
 
   return createStore<Shape>()(
     temporal<Shape, [], [], WorkflowHistoryTemporalState>(
@@ -87,7 +86,6 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
         ...createVersionSlice(...args),
         ...createWorkflowDraftSlice(...args),
         ...createWorkflowSlice(...args),
-        isCollaborationEnabled: initialCollaborationEnabled,
         ...createInspectVarsSlice(...args),
         ...createLayoutSlice(...args),
         ...(injectWorkflowStoreSliceFn?.(...args) || ({} as SliceFromInjection)),

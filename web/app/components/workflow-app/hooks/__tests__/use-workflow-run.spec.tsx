@@ -171,7 +171,9 @@ async function setup() {
   function Providers({ children }: { children: ReactNode }) {
     return (
       <ConsoleProvider>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+        >
           {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API. */}
           <WorkflowContext.Provider value={store}>
             <FeaturesContext value={features}>
@@ -281,7 +283,12 @@ it('saves the graph before running and applies streamed results to the real work
     result: { status: WorkflowRunningStatus.Succeeded, outputs: { answer: 'Result' } },
     resultText: 'Result',
   })
-  expect(api.inspect).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1', mode: 'workflow' })
+  expect(api.inspect).toHaveBeenCalledWith({
+    kind: 'app',
+    collaborationEnabled: false,
+    appId: 'app-1',
+    mode: 'workflow',
+  })
 })
 
 it('marks the active node failed and reports the current trace in bounded analytics chunks', async () => {

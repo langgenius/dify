@@ -180,7 +180,13 @@ async function setup(props: CanvasProps = {}, commentMode = false) {
     </>,
     {
       queryClient,
-      initialStoreState: { controlMode: ControlMode.Hand, isCollaborationEnabled: commentMode },
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: 'workflow',
+        collaborationEnabled: commentMode,
+      },
+      initialStoreState: { controlMode: ControlMode.Hand },
       hooksStoreProps: { doSyncWorkflowDraft: save },
       historyStore: { nodes: props.nodes ?? initialNodes, edges: props.edges ?? [] },
     },

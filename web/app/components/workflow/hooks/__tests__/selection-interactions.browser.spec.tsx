@@ -129,7 +129,9 @@ async function setup() {
   const screen = await render(
     <NuqsTestingAdapter>
       <Wrapper>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+        >
           <WorkflowContext value={createWorkflowStore({})}>
             <HooksStoreContext value={createHooksStore({})}>
               <ReactFlowProvider>

@@ -2,6 +2,7 @@ import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../typ
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
@@ -35,10 +36,22 @@ let isCollaborationEnabled = true
 
 const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, enabled: boolean) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
-  const store = createWorkflowStore({ initialCollaborationEnabled: enabled })
+  const store = createWorkflowStore({})
   return renderHook(hook, {
     wrapper: ({ children }) =>
-      createElement(QueryWrapper, null, createElement(WorkflowContext, { value: store }, children)),
+      createElement(
+        QueryWrapper,
+        null,
+        createElement(EditorResourceScope, {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: 'workflow',
+            collaborationEnabled: enabled,
+          },
+          children: createElement(WorkflowContext, { value: store }, children),
+        }),
+      ),
   })
 }
 

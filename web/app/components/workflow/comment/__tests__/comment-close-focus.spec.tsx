@@ -129,8 +129,8 @@ function renderCommentCanvas(comments = [comment]) {
   seedSystemFeatures(queryClient)
   return renderWorkflowFlowComponent(<CommentCanvas />, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
     initialStoreState: {
-      isCollaborationEnabled: true,
       comments,
       showUserComments: true,
       mentionableUsersCache: { 'app-1': [] },

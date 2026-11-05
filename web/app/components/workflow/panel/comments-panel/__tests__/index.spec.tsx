@@ -11,7 +11,8 @@ function setup() {
   })
   return renderWorkflowFlowComponent(<CommentsPanel />, {
     queryClient,
-    initialStoreState: { showResolvedComments: true, isCollaborationEnabled: true },
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
+    initialStoreState: { showResolvedComments: true },
   })
 }
 

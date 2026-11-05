@@ -3,10 +3,12 @@ import type { ReactElement } from 'react'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
 import { StrictMode } from 'react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
@@ -147,7 +149,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
         <WorkflowInitializationProbe />
         <output aria-label="Saved viewport">{JSON.stringify(viewport)}</output>
         <output aria-label="Collaboration enabled">
-          {String(useStore((state) => state.isCollaborationEnabled))}
+          {String(useAtomValue(editorCollaborationEnabledAtom))}
         </output>
       </section>
     )

@@ -1,4 +1,6 @@
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { editorCollaborationEnabledAtom } from '../editor-resource/state'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
@@ -32,7 +34,7 @@ export const useWorkflowMoveMode = () => {
   const isRestoring = useStore((s) => s.isRestoring)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
-  const isCommentModeAvailable = useStore((s) => s.isCollaborationEnabled)
+  const isCommentModeAvailable = useAtomValue(editorCollaborationEnabledAtom)
   const isCommentModeOperationBlocked = !!(
     workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
     workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||

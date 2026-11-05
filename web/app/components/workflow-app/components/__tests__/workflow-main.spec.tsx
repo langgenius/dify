@@ -263,9 +263,14 @@ async function renderMain({
       </NuqsTestingAdapter>,
       {
         queryClient,
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: 'workflow',
+          collaborationEnabled: collaboration,
+        },
         initialStoreState: {
           isWorkflowDataLoaded: true,
-          isCollaborationEnabled: collaboration,
           ...initialStoreState,
         },
         injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
