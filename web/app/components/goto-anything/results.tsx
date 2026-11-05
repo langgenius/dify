@@ -109,9 +109,11 @@ export function ResultList({
                     option.icon
                   )}
                   <span className="min-w-0 flex-1 text-start">
-                    <span className="block text-sm font-medium">{option.title}</span>
+                    <span className="block truncate text-sm font-medium">{option.title}</span>
                     {option.description && (
-                      <span className="block text-xs text-text-tertiary">{option.description}</span>
+                      <span className="block truncate text-xs text-text-tertiary">
+                        {option.description}
+                      </span>
                     )}
                   </span>
                   {isCommandOption(option) && (
