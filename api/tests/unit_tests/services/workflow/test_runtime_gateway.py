@@ -164,19 +164,12 @@ class _CallArgs:
 
 
 @dataclass
-class _TopicPublishSpy:
-    call_args_list: list[_CallArgs] = field(default_factory=list)
-
-    def __call__(self, *args: object, **kwargs: object) -> None:
-        self.call_args_list.append(_CallArgs(args=args, kwargs=kwargs))
-
-    def reset_mock(self) -> None:
-        self.call_args_list.clear()
-
-
-@dataclass
 class _TopicSpy:
-    publish: _TopicPublishSpy = field(default_factory=_TopicPublishSpy)
+    payloads: list[bytes] = field(default_factory=list)
+
+    def publish(self, payload: bytes) -> None:
+        """Record the serialized stream payload without contacting a broker."""
+        self.payloads.append(payload)
 
 
 @dataclass
@@ -286,7 +279,7 @@ def test_recover_abandoned_debug_reservation_without_global_database(
         # An expired lease is fenced even before the periodic sweep gets to it.
         with pytest.raises(ValueError, match="expired before worker startup"):
             task_module._AppRunner(sqlite_session_factory, params, variables=gateway._variables).run()
-        payloads = [json.loads(call.args[0]) for call in topic.publish.call_args_list]
+        payloads = [json.loads(payload) for payload in topic.payloads]
         assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
         assert payloads[-1]["data"]["status"] == "failed"
         assert "expired before worker startup" in payloads[-1]["data"]["error"]
@@ -322,9 +315,9 @@ def test_recover_abandoned_debug_reservation_without_global_database(
         assert collector.call_args.kwargs["home_snapshot_ids"] == ["home"]
         # A delivery after recovery replays the persisted failure, including
         # the distinct reason for a lost worker, without a synthetic restart.
-        topic.publish.reset_mock()
+        topic.payloads.clear()
         assert task_module._AppRunner(sqlite_session_factory, params, variables=gateway._variables).run() is None
-        payloads = [json.loads(call.args[0]) for call in topic.publish.call_args_list]
+        payloads = [json.loads(payload) for payload in topic.payloads]
         assert [payload["event"] for payload in payloads] == ["workflow_finished"]
         assert payloads[0]["data"]["status"] == "failed"
         assert payloads[0]["data"]["error"] == run.error
@@ -1354,7 +1347,6 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
 ) -> None:
     from core.app.apps import base_app_queue_manager
     from core.app.features.rate_limiting.rate_limit import RateLimit
-    from core.ops.ops_trace_manager import TraceQueueManager
     from services.workflow.execution.adapters.response_stream import WorkflowEventStream
     from services.workflow.execution.adapters.workflow import app_generator as generator_module
     from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
@@ -1462,8 +1454,6 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
         yield from ()
 
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    trace_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
-    monkeypatch.setattr(generator_module, "TraceQueueManager", lambda **_kwargs: trace_manager)
     monkeypatch.setattr(generator_module, "WorkflowAppRunner", GraphRunner)
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", empty_response)
     monkeypatch.setattr(task_module, "_publish_streaming_response", lambda response, *_args, **_kwargs: list(response))

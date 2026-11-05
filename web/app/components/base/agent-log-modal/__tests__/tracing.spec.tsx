@@ -1,17 +1,8 @@
 import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import TracingPanel from '../tracing'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
-    <div data-testid="code-editor">
-      {title}
-      {typeof value === 'string' ? value : JSON.stringify(value)}
-    </div>
-  ),
-}))
 
 const createIteration = (thought: string, tokens: number): AgentIterationLogResponse => ({
   created_at: '',
@@ -52,16 +43,19 @@ describe('TracingPanel', () => {
 
     for (const llm of screen.getAllByText('LLM')) await user.click(llm)
 
-    const editors = screen
-      .getAllByTestId('code-editor')
-      .filter((editor) => /Thought \d/.test(editor.textContent ?? ''))
-    expect(editors.map((editor) => editor.textContent)).toEqual([
-      'THOUGHTThought 1',
-      'THOUGHTThought 2',
-      'FINAL ANSWERThought 3',
+    const editors = screen.getAllByRole('textbox') as HTMLTextAreaElement[]
+    expect(editors.map((editor) => JSON.parse(editor.value))).toEqual([
+      '',
+      'Thought 1',
+      '',
+      'Thought 2',
+      '',
+      'Thought 3',
     ])
-    expect(within(editors[2]!).getByText('FINAL ANSWER')).toBeInTheDocument()
-    expect(screen.getAllByText('THOUGHT')).toHaveLength(2)
+    for (const editor of editors) expect(editor).toHaveAttribute('readonly')
+    expect(
+      screen.getAllByText(/^(?:THOUGHT|FINAL ANSWER)$/).map((title) => title.textContent),
+    ).toEqual(['THOUGHT', 'THOUGHT', 'FINAL ANSWER'])
     expect(screen.getByText('FINAL ANSWER')).toBeInTheDocument()
   })
 })

@@ -12,6 +12,7 @@ from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.snapshot import SessionSnapshot
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -21,9 +22,11 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
+from extensions.application_services.workflow import WorkflowExecutionDependencies
+from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime.variable_pool import VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
     Agent,
@@ -44,7 +47,10 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from models.tool_runtime_contracts import WorkflowToolQueries
-from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from models.workflow import Workflow
+from services.tools.provider_queries import ToolProviders
+from services.tracing.adapters import CeleryTraceEmitter
+from services.workflow.execution.adapters.agent_node import AgentNode as LegacyAgentNode
 from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -53,17 +59,24 @@ from services.workflow.execution.adapters.agent_v2.runtime_request_builder impor
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
-
-
-@pytest.fixture(autouse=True)
-def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 
 
 def _workflow_queries() -> WorkflowToolQueries:
     return create_autospec(WorkflowToolQueries, instance=True, spec_set=True)
+
+
+@pytest.fixture
+def runtime_builder(tool_providers: ToolProviders) -> WorkflowAgentRuntimeRequestBuilder:
+    """Build with explicit tool-query ports for metadata-filter contract tests."""
+    return WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
+        )
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -252,9 +265,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
 
 
 @pytest.mark.parametrize("preview", [False, True])
-def test_builder_passes_inline_or_preview_context_to_application_tracing(
-    monkeypatch: pytest.MonkeyPatch, tool_providers, preview: bool
-):
+def test_builder_passes_inline_or_preview_context_to_application_tracing(tool_providers, preview: bool):
     from uuid import uuid4
 
     from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
@@ -267,18 +278,14 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
         session_id="session",
         capture_content=False,
     )
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     context = replace(_context(), workflow_run_id=None if preview else "run-1", attempt=2)
-    calls: list[tuple[WorkflowAgentRuntimeBuildContext, str | None]] = []
-
-    def prepare(value: WorkflowAgentRuntimeBuildContext, conversation_id: str | None) -> ApplicationTracingContext:
-        calls.append((value, conversation_id))
-        return tracing
-
-    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_workflow_agent", staticmethod(prepare))
-    hooks = RuntimeApplicationTracingHooks()
+    hooks = RecordingTracingHooks(tracing)
     app = Flask(__name__)
-    bind_application_tracing_hooks(app, hooks)
+    bind_tracing(
+        app,
+        scopes=kernel_trace_scopes(CeleryTraceEmitter(), policies=NoTracingPolicies(), enterprise_enabled=False),
+        hooks=hooks,
+    )
 
     with app.app_context():
         result = WorkflowAgentRuntimeRequestBuilder(
@@ -288,12 +295,238 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
         ).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
-    assert calls == [(context, None)]
+    assert hooks.workflow_agents == [(context, None)]
 
 
 def _request_layers(result) -> dict[str, dict[str, object]]:
     dumped = result.request.model_dump(mode="json")
     return {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+
+
+def _metadata_filter_context() -> WorkflowAgentRuntimeBuildContext:
+    context = _context()
+    soul = context.snapshot.config_snapshot_dict
+    soul["knowledge"] = {
+        "sets": [
+            {
+                "id": "exhibits",
+                "name": "Exhibits",
+                "datasets": [{"id": "dataset-1"}],
+                "query": {"mode": "generated_query"},
+                "retrieval": {"mode": "multiple", "top_k": 4},
+                "metadata_filtering": {
+                    "mode": "manual",
+                    "conditions": {
+                        "logical_operator": "and",
+                        "conditions": [
+                            {"name": name, "comparison_operator": "=", "value": "{{#start." + name + "#}}"}
+                            for name in ("guide_program_id", "guide_item_id")
+                        ],
+                    },
+                },
+            }
+        ],
+    }
+    context.snapshot.config_snapshot = soul
+    return context
+
+
+def test_workflow_metadata_filters_resolve_current_run_values_without_mutating_snapshot(runtime_builder):
+    context = _metadata_filter_context()
+    saved_snapshot = context.snapshot.config_snapshot_dict
+    builder = runtime_builder
+
+    for program_id, item_id in [(123, 456), (789, 0), ("00123", "00456")]:
+        pool = VariablePool()
+        pool.add(["start", "guide_program_id"], program_id)
+        pool.add(["start", "guide_item_id"], item_id)
+        pool.add(["sys", "query"], "Describe this exhibit")
+        result = builder.build(replace(context, variable_pool=pool))
+        layer = result.request.model_dump(mode="json")["composition"]["layers"]
+        knowledge = next(item for item in layer if item["name"] == "knowledge")
+        filtering = knowledge["config"]["sets"][0]["metadata_filtering"]
+
+        assert filtering["conditions"] == {
+            "logical_operator": "and",
+            "conditions": [
+                {"name": "guide_program_id", "comparison_operator": "=", "value": program_id},
+                {"name": "guide_item_id", "comparison_operator": "=", "value": item_id},
+            ],
+        }
+        assert context.snapshot.config_snapshot_dict == saved_snapshot
+
+
+def test_workflow_metadata_filter_rejects_missing_variable_before_starting_agent(runtime_builder):
+    context = _metadata_filter_context()
+    with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="start.guide_program_id"):
+        runtime_builder.build(replace(context, variable_pool=VariablePool()))
+
+
+@pytest.mark.parametrize("operator", ["empty", "not empty"])
+def test_value_free_metadata_filters_ignore_retained_variable_template(runtime_builder, operator):
+    context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    saved_conditions = soul["knowledge"]["sets"][0]["metadata_filtering"]["conditions"]["conditions"]
+    # The editor changes the operator without clearing the previously selected variable.
+    saved_conditions[0]["comparison_operator"] = operator
+    context.snapshot.config_snapshot = soul
+    pool = VariablePool()
+    pool.add(["start", "guide_item_id"], 456)
+    pool.add(["sys", "query"], "Describe this exhibit")
+
+    result = runtime_builder.build(replace(context, variable_pool=pool))
+
+    conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
+        "conditions"
+    ]
+    assert conditions[0]["comparison_operator"] == operator
+    assert conditions[1] == {"name": "guide_item_id", "comparison_operator": "=", "value": 456}
+    assert saved_conditions[0]["value"] == "{{#start.guide_program_id#}}"
+
+
+@pytest.mark.parametrize("operator", ["=", "empty", "not empty"])
+def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    operator: str,
+    workflow_runtime: WorkflowExecutionDependencies,
+    runtime_builder,
+):
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent-backend.invalid")
+    context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    soul["knowledge"]["sets"][0]["metadata_filtering"]["conditions"]["conditions"][0]["comparison_operator"] = operator
+    context.snapshot.config_snapshot = soul
+    context.binding.workflow_version = "draft"
+    context.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+    context.agent.scope = AgentScope.WORKFLOW_ONLY
+    context.agent.source = AgentSource.WORKFLOW
+    sqlite_session.add_all([context.agent, context.snapshot, context.binding])
+    sqlite_session.commit()
+    workflow = Workflow(
+        id=context.workflow_id,
+        tenant_id=context.dify_context.tenant_id,
+        app_id=context.dify_context.app_id,
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": context.node_id,
+                        "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
+                    }
+                ],
+                "edges": [],
+            }
+        ),
+    )
+    source_pool = VariablePool()
+    if operator == "=":
+        source_pool.add(["start", "guide_program_id"], "00123")
+    source_pool.add(["start", "guide_item_id"], 456)
+
+    requested_selectors: list[list[str]] = []
+
+    class DraftVariableLoader:
+        def load_variables(self, selectors):
+            requested_selectors.extend(list(selector) for selector in selectors)
+            return [value for selector in selectors if (value := source_pool.get(selector)) is not None]
+
+    pool = VariablePool()
+    _, events = WorkflowEntry.single_step_run(
+        workflow=workflow,
+        node_id=context.node_id,
+        user_id=context.dify_context.user_id,
+        user_inputs={},
+        variable_pool=pool,
+        variable_loader=DraftVariableLoader(),
+        workflow_runtime=workflow_runtime,
+        agent_binding_resolver=workflow_runtime.agent_bindings,
+    )
+    events.close()
+    if operator != "=":
+        assert ["start", "guide_program_id"] not in requested_selectors
+    result = runtime_builder.build(replace(context, variable_pool=pool))
+    conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
+        "conditions"
+    ]
+    assert conditions[0]["comparison_operator"] == operator
+    assert conditions[1]["value"] == 456
+    if operator == "=":
+        assert conditions[0]["value"] == "00123"
+
+
+def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypatch, workflow_runtime):
+    monkeypatch.setattr(WorkflowEntry, "_run_node_with_layers", lambda *_args, **_kwargs: iter(()))
+
+    def reject_new_agent_binding(*_args, **_kwargs):
+        raise AssertionError("Legacy Agent must not resolve an Agent v2 binding")
+
+    monkeypatch.setattr(workflow_runtime.agent_bindings, "resolve", reject_new_agent_binding)
+    workflow = Workflow(
+        id="workflow-id",
+        tenant_id="tenant-id",
+        app_id="app-id",
+        graph=json.dumps(
+            {
+                "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2", "title": "Legacy Agent"}}],
+                "edges": [],
+            }
+        ),
+    )
+    node, _ = WorkflowEntry.single_step_run(
+        workflow=workflow,
+        node_id="legacy-agent",
+        user_id="user-id",
+        user_inputs={},
+        variable_pool=VariablePool(),
+        workflow_runtime=workflow_runtime,
+        agent_binding_resolver=workflow_runtime.agent_bindings,
+    )
+    assert isinstance(node, LegacyAgentNode)
+    assert node.id == "legacy-agent"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("program:{{#start.guide_program_id#}}/{{#start.guide_item_id#}}", "program:123/00456"),
+        (["{{#start.guide_program_id#}}", "{{#start.guide_item_id#}}", "constant"], ["123", "00456", "constant"]),
+        (0, 0),
+        (None, None),
+        ("", ""),
+    ],
+)
+def test_metadata_filters_resolve_templates_and_lists_preserving_constants(runtime_builder, value, expected):
+    context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    condition = soul["knowledge"]["sets"][0]["metadata_filtering"]["conditions"]["conditions"][0]
+    condition.update(value=value, id="condition-1", metadata_id="program-metadata")
+    context.snapshot.config_snapshot = soul
+    pool = VariablePool()
+    pool.add(["start", "guide_program_id"], 123)
+    pool.add(["start", "guide_item_id"], "00456")
+    result = runtime_builder.build(replace(context, variable_pool=pool))
+    conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
+        "conditions"
+    ]
+    assert conditions[0] == {"name": "guide_program_id", "comparison_operator": "=", "value": expected}
+
+
+@pytest.mark.parametrize("mode", ["disabled", "automatic"])
+def test_inactive_manual_filters_do_not_require_workflow_variables(runtime_builder, mode):
+    context = _metadata_filter_context()
+    soul = context.snapshot.config_snapshot_dict
+    soul["knowledge"]["sets"][0]["metadata_filtering"]["mode"] = mode
+    if mode == "automatic":
+        soul["knowledge"]["sets"][0]["metadata_filtering"]["model_config"] = {
+            "provider": "openai",
+            "name": "gpt-test",
+            "mode": "chat",
+            "completion_params": {},
+        }
+    context.snapshot.config_snapshot = soul
+    result = runtime_builder.build(replace(context, variable_pool=VariablePool()))
+    assert _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["mode"] == mode
 
 
 def _workflow_user_prompt(result) -> str:

@@ -983,9 +983,7 @@ def test_published_agent_app_parameters_requires_published_agent(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(
-    sqlite_session: Session,
-) -> None:
+def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:unpublished-draft")
     agent_id = _stable_uuid("agent:unpublished-draft")
     snapshot_id = _stable_uuid("snapshot:unpublished-draft")

@@ -91,7 +91,7 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
           name={name}
           onBlur={(nextName) => validateVariableName({ name: nextName, notify, t })}
           onChange={handleNameChange}
-          placeholder={t(($) => $['chatVariable.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
+          placeholder={t(($) => $['chatVariable.modal.namePlaceholder'], { ns: 'workflow' })}
           title={t(($) => $['chatVariable.modal.name'], { ns: 'workflow' })}
         />
         <TypeSection
@@ -132,9 +132,7 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
           description={description}
           maxLength={MAX_DESCRIPTION_LENGTH}
           onChange={setDescription}
-          placeholder={
-            t(($) => $['chatVariable.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''
-          }
+          placeholder={t(($) => $['chatVariable.modal.descriptionPlaceholder'], { ns: 'workflow' })}
           title={t(($) => $['chatVariable.modal.description'], { ns: 'workflow' })}
         />
       </div>

@@ -65,9 +65,7 @@ def test_datasource_extras_preserve_persisted_icon() -> None:
         metadata={"datasource_info": {"icon": "datasource-icon"}},
     )
 
-    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {
-        "icon": "datasource-icon"
-    }
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {"icon": "datasource-icon"}
 
 
 def test_trigger_extras_resolve_plugin_icon(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -82,9 +80,7 @@ def test_trigger_extras_resolve_plugin_icon(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(TriggerManager, "get_trigger_plugin_icon", get_trigger_plugin_icon)
 
-    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {
-        "icon": "trigger-icon"
-    }
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {"icon": "trigger-icon"}
 
 
 def test_extras_are_empty_without_supported_metadata() -> None:

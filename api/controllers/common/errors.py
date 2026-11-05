@@ -233,7 +233,11 @@ def raise_unexpected_error(error: Exception, *, message: str) -> NoReturn:
 
 
 def register_resource_error_handlers(api: ExternalApi) -> None:
-    """Translate annotation and document failures at the HTTP boundary."""
+    """Register resource failures before generic handlers on an initialized API.
+
+    Missing resources retain HTTP 404 and denied documents HTTP 403, including
+    their documented error codes; unrelated handlers remain registered.
+    """
 
     def missing_resource(error: Exception) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
@@ -251,9 +255,13 @@ def register_resource_error_handlers(api: ExternalApi) -> None:
         DocumentNotFoundError,
         DocumentSourceNotFoundError,
     ):
-        api.errorhandler(error_type)(missing_resource)
+        register_handler = api.errorhandler(error_type)
+        assert callable(register_handler)
+        register_handler(missing_resource)
         handlers.move_to_end(error_type, last=False)
-    api.errorhandler(DocumentAccessDeniedError)(document_access_denied)
+    register_access_handler = api.errorhandler(DocumentAccessDeniedError)
+    assert callable(register_access_handler)
+    register_access_handler(document_access_denied)
     handlers.move_to_end(DocumentAccessDeniedError, last=False)
     for error_type in (
         AnnotationResourceNotFoundError,
@@ -272,7 +280,7 @@ def register_resource_error_handlers(api: ExternalApi) -> None:
 def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
-    @api.errorhandler(NoPermissionError)
+    @api.errorhandler(NoPermissionError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
     def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         return {
@@ -289,9 +297,16 @@ def register_permission_error_handler(api: ExternalApi) -> None:
 
 
 def register_credential_refresh_error_handler(api: ExternalApi) -> None:
-    """Give temporary refresh failures the same retryable response on each API surface."""
+    """Give temporary refresh failures the same retryable response on each API surface.
 
-    @api.errorhandler(CredentialRefreshUnavailableError)
+    Preconditions: The API supports exception-specific error registration.
+    Postconditions: Refresh failures return HTTP 503 before the generic handler.
+    Existing exception handlers and public error documentation remain registered.
+    """
+    register_handler = api.errorhandler(CredentialRefreshUnavailableError)
+    assert callable(register_handler)
+
+    @register_handler
     def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         status = HTTPStatus.SERVICE_UNAVAILABLE

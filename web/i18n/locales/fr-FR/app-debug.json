@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Générez plusieurs textes à la fois, puis modifiez et continuez à générer",
   "feature.moreLikeThis.tip": "L'utilisation de cette fonctionnalité entraînera un surcoût de tokens supplémentaires",
   "feature.moreLikeThis.title": "Plus comme ça",
+  "feature.showThoughts.description": "Affichez le raisonnement du modèle dans les conversations.",
+  "feature.showThoughts.title": "Afficher le raisonnement",
   "feature.speechToText.description": "Une fois activé, vous pouvez utiliser l'entrée vocale.",
   "feature.speechToText.title": "Discours en Texte",
   "feature.suggestedQuestionsAfterAnswer.description": "La configuration de la suggestion des prochaines questions peut offrir aux utilisateurs une meilleure discussion.",
