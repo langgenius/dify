@@ -6,10 +6,17 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { createEmptyDataset } from '@/service/datasets'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import StepOne from '../index'
+
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  createEmptyDataset: vi.fn(),
+}))
 
 const vectorSpace = vi.hoisted(() =>
   vi.fn<typeof import('@/service/console').consoleClient.features.vectorSpace.get>(),
@@ -221,6 +228,59 @@ it('offers empty creation only for a new dataset and closes its real dialog on c
   expect(
     screen.queryByRole('button', { name: 'datasetCreation.stepOne.emptyDatasetCreation' }),
   ).not.toBeInTheDocument()
+})
+
+it('announces empty creation as a dialog', async () => {
+  const { user } = setup()
+  const trigger = screen.getByRole('button', {
+    name: 'datasetCreation.stepOne.emptyDatasetCreation',
+  })
+  expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+  await user.click(trigger)
+  expect(trigger).toHaveAttribute('aria-expanded', 'true')
+})
+
+it('starts a fresh empty-dataset draft after cancellation', async () => {
+  const { user } = setup()
+  const trigger = screen.getByRole('button', {
+    name: 'datasetCreation.stepOne.emptyDatasetCreation',
+  })
+  await user.click(trigger)
+  const dialog = screen.getByRole('dialog', { name: 'datasetCreation.stepOne.modal.title' })
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
+    'Cancelled draft',
+  )
+  await user.click(
+    within(dialog).getByRole('button', { name: 'datasetCreation.stepOne.modal.cancelButton' }),
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(trigger)
+  expect(
+    await screen.findByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
+  ).toHaveValue('')
+})
+
+it('keeps a pending creation open until it succeeds', async () => {
+  const dataset = createDatasetFixture({ id: 'created-dataset', name: 'New Dataset' })
+  const pending = createDeferred<typeof dataset>()
+  vi.mocked(createEmptyDataset).mockReturnValueOnce(pending.promise)
+  const { user } = setup()
+  await user.click(
+    screen.getByRole('button', { name: 'datasetCreation.stepOne.emptyDatasetCreation' }),
+  )
+  await user.type(
+    screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
+    'New Dataset{Enter}',
+  )
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'datasetCreation.stepOne.modal.cancelButton' }),
+  )
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await act(async () => pending.resolve(dataset))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
 it('requires an upgrade before advancing multiple uploaded files on the sandbox plan', async () => {

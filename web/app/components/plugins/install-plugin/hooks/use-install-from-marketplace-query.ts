@@ -3,7 +3,7 @@
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { useEffect, useState } from 'react'
 import { parseMarketplacePluginId } from '@/app/components/plugins/plugin-routes'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import {
   fetchBundleInfoFromMarketPlace,
@@ -70,7 +70,7 @@ export const useInstallFromMarketplaceQuery = ({
             manifest: {
               ...plugin,
               version: version.version,
-              icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+              icon: getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`),
             },
           })
           setIsShowInstallFromMarketplace(true)

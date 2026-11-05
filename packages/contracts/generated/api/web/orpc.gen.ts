@@ -5,6 +5,8 @@ import * as z from 'zod'
 import {
   zAccountBannedError,
   zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAlreadySubmittedError,
   zAppMoreLikeThisDisabledError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
   zAppUnavailableError,
@@ -22,23 +24,36 @@ import {
   zConnectionReauthorizationRequiredError,
   zConnectionRequiredError,
   zConnectionRevisionChangedError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zCredentialCheckUnavailableError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
   zEndUserBusyError,
   zEndUserLoginRequiredError,
+  zExpiredError,
   zFileExtensionBlockedError,
   zFileTooLargeError,
   zFilenameNotExistsError,
+  zHumanInputAccessDeliveryFailedError,
+  zHumanInputAccessRateLimitExceededError,
+  zHumanInputChallengeExpiredError,
+  zHumanInputChallengeStaleError,
   zHumanInputFormExpiredError,
+  zHumanInputFormNotFoundError,
   zHumanInputFormSubmittedError,
+  zHumanInputInvalidOtpError,
+  zHumanInputV2UnavailableError,
   zInvalidEmailError,
   zInvalidFormDataError,
+  zInvalidInputError,
   zInvalidOrExpiredTokenError,
   zInvalidParamError,
   zInvalidUploadTokenError,
   zMalformedUploadTokenError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -66,6 +81,7 @@ import {
   zWebFormRateLimitExceededError,
   zWebLoginUnavailableError,
   zWebappResourcesChangedError,
+  zWorkflowNotActiveError,
 } from './zod.gen.ts'
 import {
   zDeleteConnectionsByConnectionIdPath,
@@ -99,6 +115,10 @@ import {
   zGetConversationsResponse,
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
+  zGetFormHumanInputV2PublicByFormTokenPath,
+  zGetFormHumanInputV2PublicByFormTokenResponse,
   zGetLoginStatusQuery,
   zGetLoginStatusResponse,
   zGetMeAppsQuery,
@@ -179,7 +199,23 @@ import {
   zPostFormHumanInputByFormTokenResponse,
   zPostFormHumanInputByFormTokenUploadTokenPath,
   zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestPath,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse,
+  zPostFormHumanInputV2PublicByFormTokenBody,
+  zPostFormHumanInputV2PublicByFormTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
   zPostHumanInputFormsFilesResponse,
+  zPostHumanInputV2FilesBody,
+  zPostHumanInputV2FilesHeaders,
+  zPostHumanInputV2FilesRemoteBody,
+  zPostHumanInputV2FilesRemoteHeaders,
+  zPostHumanInputV2FilesRemoteResponse,
+  zPostHumanInputV2FilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
@@ -796,7 +832,14 @@ export const post10 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post10,
@@ -816,18 +859,22 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch: patch2,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch3 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -836,7 +883,10 @@ export const patch3 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch3,
@@ -857,7 +907,10 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete2,
@@ -880,7 +933,11 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get: get9,
@@ -1065,13 +1122,178 @@ export const forgotPassword = {
   validity: validity2,
 }
 
+export const post17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenAccessRequest',
+    path: '/form/human-input/v2/public/{form_token}/access-request',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenAccessRequestPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse)
+  .errors({
+    human_input_access_delivery_failed: { status: 503, data: zHumanInputAccessDeliveryFailedError },
+    human_input_access_rate_limit_exceeded: {
+      status: 429,
+      data: zHumanInputAccessRateLimitExceededError,
+    },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+  })
+
+export const accessRequest = {
+  post: post17,
+}
+
+export const post18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenUploadToken',
+    path: '/form/human-input/v2/public/{form_token}/upload-token',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+  })
+
+export const uploadToken = {
+  post: post18,
+}
+
+/**
+ * Read a public v2 form definition by delivery token without an OTP or login session.
+ */
+export const get10 = oc
+  .route({
+    description:
+      'Read a public v2 form definition by delivery token without an OTP or login session.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2PublicByFormTokenPath }))
+  .output(zGetFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  })
+
+/**
+ * Submit a form with inputs, an action, and email verification proof.
+ */
+export const post19 = oc
+  .route({
+    description: 'Submit a form with inputs, an action, and email verification proof.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2PublicByFormTokenBody,
+      params: zPostFormHumanInputV2PublicByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_challenge_expired: { status: 400, data: zHumanInputChallengeExpiredError },
+    human_input_challenge_stale: { status: 400, data: zHumanInputChallengeStaleError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_invalid_otp: { status: 400, data: zHumanInputInvalidOtpError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken = {
+  get: get10,
+  post: post19,
+  accessRequest,
+  uploadToken,
+}
+
+export const public_ = {
+  byFormToken,
+}
+
+/**
+ * Read a v2 form using the original EndUser's Web App passport.
+ */
+export const get11 = oc
+  .route({
+    description: "Read a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
+
+/**
+ * Submit a v2 form using the original EndUser's Web App passport.
+ */
+export const post20 = oc
+  .route({
+    description: "Submit a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken2 = {
+  get: get11,
+  post: post20,
+}
+
+export const v2 = {
+  public: public_,
+  byFormToken: byFormToken2,
+}
+
 /**
  * Issue an upload token for a human input form
  *
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post17 = oc
+export const post21 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -1090,8 +1312,8 @@ export const post17 = oc
     web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
-export const uploadToken = {
-  post: post17,
+export const uploadToken2 = {
+  post: post21,
 }
 
 /**
@@ -1100,7 +1322,7 @@ export const uploadToken = {
  * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
-export const get10 = oc
+export const get12 = oc
   .route({
     description:
       'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
@@ -1133,7 +1355,7 @@ export const get10 = oc
  * "action": "Approve"
  * }
  */
-export const post18 = oc
+export const post22 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -1158,14 +1380,15 @@ export const post18 = oc
     web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
-export const byFormToken = {
-  get: get10,
-  post: post18,
-  uploadToken,
+export const byFormToken3 = {
+  get: get12,
+  post: post22,
+  uploadToken: uploadToken2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken3,
 }
 
 export const form = {
@@ -1175,7 +1398,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post19 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1207,7 +1430,7 @@ export const post19 = oc
   })
 
 export const files2 = {
-  post: post19,
+  post: post23,
 }
 
 export const humanInputForms = {
@@ -1215,9 +1438,108 @@ export const humanInputForms = {
 }
 
 /**
+ * Fetch a remote file using a v2 upload grant.
+ */
+export const post24 = oc
+  .route({
+    description: 'Fetch a remote file using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2FilesRemote',
+    path: '/human-input/v2/files/remote',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesRemoteBody,
+      headers: zPostHumanInputV2FilesRemoteHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesRemoteResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const remote = {
+  post: post24,
+}
+
+/**
+ * Upload a file or a remote URL using a v2 upload grant.
+ */
+export const post25 = oc
+  .route({
+    description: 'Upload a file or a remote URL using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2Files',
+    path: '/human-input/v2/files',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesBody.optional(),
+      headers: zPostHumanInputV2FilesHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const files3 = {
+  post: post25,
+  remote,
+}
+
+export const v22 = {
+  files: files3,
+}
+
+export const humanInput2 = {
+  v2: v22,
+}
+
+/**
  * Check login status
  */
-export const get11 = oc
+export const get13 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -1230,7 +1552,7 @@ export const get11 = oc
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get11,
+  get: get13,
 }
 
 /**
@@ -1238,7 +1560,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post20 = oc
+export const post26 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -1256,14 +1578,14 @@ export const post20 = oc
   })
 
 export const login = {
-  post: post20,
+  post: post26,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post21 = oc
+export const post27 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -1275,7 +1597,7 @@ export const post21 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post21,
+  post: post27,
 }
 
 export const delete3 = oc
@@ -1332,7 +1654,7 @@ export const byAppId = {
 /**
  * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
  */
-export const get12 = oc
+export const get14 = oc
   .route({
     description:
       'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.',
@@ -1346,14 +1668,14 @@ export const get12 = oc
   .output(zGetMeAppsResponse)
 
 export const apps = {
-  get: get12,
+  get: get14,
   byAppId,
 }
 
 /**
  * List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
  */
-export const get13 = oc
+export const get15 = oc
   .route({
     description:
       'List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.',
@@ -1372,7 +1694,7 @@ export const get13 = oc
   .output(zGetMeConnectionsProvidersByProviderConnectionsResponse)
 
 export const connections2 = {
-  get: get13,
+  get: get15,
 }
 
 export const byProvider = {
@@ -1386,7 +1708,7 @@ export const providers = {
 /**
  * List accessible WebApps associated with a Connection group from a Provider's list.
  */
-export const get14 = oc
+export const get16 = oc
   .route({
     description:
       "List accessible WebApps associated with a Connection group from a Provider's list.",
@@ -1406,7 +1728,7 @@ export const get14 = oc
   .errors({ connection_not_found: { status: 404, data: zConnectionNotFoundError } })
 
 export const apps2 = {
-  get: get14,
+  get: get16,
 }
 
 /**
@@ -1438,7 +1760,7 @@ export const byConnectionKey = {
 /**
  * List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
  */
-export const get15 = oc
+export const get17 = oc
   .route({
     description:
       'List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.',
@@ -1452,7 +1774,7 @@ export const get15 = oc
   .output(zGetMeConnectionsResponse)
 
 export const connections3 = {
-  get: get15,
+  get: get17,
   providers,
   byConnectionKey,
 }
@@ -1465,7 +1787,7 @@ export const me = {
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post22 = oc
+export const post28 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -1482,15 +1804,19 @@ export const post22 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
-  post: post22,
+  post: post28,
 }
 
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get16 = oc
+export const get18 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -1508,6 +1834,7 @@ export const get16 = oc
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
   .errors({
     app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_completion_app: { status: 400, data: zNotCompletionAppError },
@@ -1516,15 +1843,16 @@ export const get16 = oc
   })
 
 export const moreLikeThis = {
-  get: get16,
+  get: get18,
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
-export const get17 = oc
+export const get19 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -1534,10 +1862,12 @@ export const get17 = oc
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
       data: zAppSuggestedQuestionsAfterAnswerDisabledError,
     },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
@@ -1546,7 +1876,7 @@ export const get17 = oc
   })
 
 export const suggestedQuestions = {
-  get: get17,
+  get: get19,
 }
 
 export const byMessageId = {
@@ -1558,7 +1888,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get18 = oc
+export const get20 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -1569,10 +1899,13 @@ export const get18 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
-  get: get18,
+  get: get20,
   byMessageId,
 }
 
@@ -1581,7 +1914,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get19 = oc
+export const get21 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -1595,13 +1928,13 @@ export const get19 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get19,
+  get: get21,
 }
 
 /**
  * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
  */
-export const post23 = oc
+export const post29 = oc
   .route({
     description:
       'Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.',
@@ -1620,13 +1953,13 @@ export const post23 = oc
   })
 
 export const claim = {
-  post: post23,
+  post: post29,
 }
 
 /**
  * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
  */
-export const post24 = oc
+export const post30 = oc
   .route({
     description:
       'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
@@ -1640,7 +1973,7 @@ export const post24 = oc
   .output(zPostMigrationClaimablePassportsResponse)
 
 export const claimablePassports = {
-  post: post24,
+  post: post30,
 }
 
 export const migration = {
@@ -1653,7 +1986,7 @@ export const migration = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get20 = oc
+export const get22 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -1670,13 +2003,13 @@ export const get20 = oc
   })
 
 export const parameters = {
-  get: get20,
+  get: get22,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get21 = oc
+export const get23 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -1692,7 +2025,7 @@ export const get21 = oc
 /**
  * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.
  */
-export const post25 = oc
+export const post31 = oc
   .route({
     description:
       'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.',
@@ -1710,8 +2043,8 @@ export const post25 = oc
   })
 
 export const passport = {
-  get: get21,
-  post: post25,
+  get: get23,
+  post: post31,
 }
 
 /**
@@ -1742,7 +2075,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post26 = oc
+export const post32 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -1769,7 +2102,7 @@ export const post26 = oc
   })
 
 export const upload2 = {
-  post: post26,
+  post: post32,
 }
 
 /**
@@ -1790,7 +2123,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get22 = oc
+export const get24 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -1813,7 +2146,7 @@ export const get22 = oc
   })
 
 export const byUrl = {
-  get: get22,
+  get: get24,
 }
 
 export const remoteFiles = {
@@ -1845,7 +2178,7 @@ export const byMessageId2 = {
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get23 = oc
+export const get25 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -1861,7 +2194,7 @@ export const get23 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post27 = oc
+export const post33 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -1875,8 +2208,8 @@ export const post27 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get23,
-  post: post27,
+  get: get25,
+  post: post33,
   byMessageId: byMessageId2,
 }
 
@@ -1885,7 +2218,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get24 = oc
+export const get26 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -1898,7 +2231,7 @@ export const get24 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get24,
+  get: get26,
 }
 
 /**
@@ -1910,7 +2243,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get25 = oc
+export const get27 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -1924,7 +2257,7 @@ export const get25 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get25,
+  get: get27,
 }
 
 /**
@@ -1932,7 +2265,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post28 = oc
+export const post34 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1953,13 +2286,13 @@ export const post28 = oc
   })
 
 export const textToAudio = {
-  post: post28,
+  post: post34,
 }
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get26 = oc
+export const get28 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1973,13 +2306,13 @@ export const get26 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get26,
+  get: get28,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get27 = oc
+export const get29 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1992,7 +2325,7 @@ export const get27 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get27,
+  get: get29,
 }
 
 export const webapp = {
@@ -2007,7 +2340,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get28 = oc
+export const get30 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -2022,7 +2355,7 @@ export const get28 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get28,
+  get: get30,
 }
 
 export const byTaskId3 = {
@@ -2038,7 +2371,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
  */
-export const post29 = oc
+export const post35 = oc
   .route({
     description:
       'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
@@ -2083,7 +2416,7 @@ export const post29 = oc
   })
 
 export const run = {
-  post: post29,
+  post: post35,
 }
 
 /**
@@ -2091,7 +2424,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post30 = oc
+export const post36 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -2106,7 +2439,7 @@ export const post30 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post30,
+  post: post36,
 }
 
 export const byTaskId4 = {
@@ -2134,6 +2467,7 @@ export const contract = {
   forgotPassword,
   form,
   humanInputForms,
+  humanInput: humanInput2,
   login,
   logout,
   me,

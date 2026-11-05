@@ -7,6 +7,8 @@ UUID_NIL = "00000000-0000-0000-0000-000000000000"
 
 DEFAULT_FILE_NUMBER_LIMITS = 3
 
+BYTES_PER_MIB = 1024 * 1024
+
 _IMAGE_EXTENSION_BASE: frozenset[str] = frozenset(("jpg", "jpeg", "png", "webp", "gif", "svg"))
 _VIDEO_EXTENSION_BASE: frozenset[str] = frozenset(("mp4", "mov", "mpeg", "webm"))
 _AUDIO_EXTENSION_BASE: frozenset[str] = frozenset(("mp3", "m4a", "wav", "amr", "mpga"))

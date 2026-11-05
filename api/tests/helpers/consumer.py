@@ -30,7 +30,7 @@ def consumer_connection_key(connection: EndUserConnection | ConnectionSummary) -
 
 
 def new_consumer_run(base: ConnectionHarness, *, created_at: datetime) -> WorkflowRun:
-    return WorkflowRun(
+    run = WorkflowRun(
         tenant_id=base.context.tenant_id,
         app_id=base.context.app_id,
         workflow_id=base.workflow_id,
@@ -40,8 +40,9 @@ def new_consumer_run(base: ConnectionHarness, *, created_at: datetime) -> Workfl
         status=WorkflowExecutionStatus.SUCCEEDED,
         created_by_role=CreatorUserRole.END_USER,
         created_by=base.context.end_user_id,
-        created_at=created_at,
     )
+    run.created_at = created_at
+    return run
 
 
 @dataclass

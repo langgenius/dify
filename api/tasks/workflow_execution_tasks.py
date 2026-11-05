@@ -109,6 +109,7 @@ def _create_workflow_run_from_execution(
         app_id=app_id,
         workflow_id=execution.workflow_id,
         end_user_id=creator_user_id if creator_user_role == CreatorUserRole.END_USER else None,
+        account_id=creator_user_id if creator_user_role == CreatorUserRole.ACCOUNT else None,
     )
     from models.workflow import WorkflowType as ModelWorkflowType
 
@@ -150,6 +151,7 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
         app_id=workflow_run.app_id,
         workflow_id=workflow_run.workflow_id,
         end_user_id=workflow_run.created_by if workflow_run.created_by_role == CreatorUserRole.END_USER else None,
+        account_id=workflow_run.created_by if workflow_run.created_by_role == CreatorUserRole.ACCOUNT else None,
     )
     if context is not None:
         if workflow_run.connection_context is not None and context != workflow_run.connection_context:

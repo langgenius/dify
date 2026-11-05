@@ -351,7 +351,7 @@ export const buildSigninUrlWithRedirect = (): string => {
 function unicodeToChar(text: string) {
   if (!text) return ''
 
-  return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
+  return text.replace(/\\u([0-9a-f]{4})/gi, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
@@ -1213,8 +1213,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && !silent) {
-        toast.error(message, { timeout: 4000 })
+      if (code === 'init_validate_failed') {
+        if (!silent) toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
       if (code === 'not_init_validated') {

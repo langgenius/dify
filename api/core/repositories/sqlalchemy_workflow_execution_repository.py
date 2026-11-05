@@ -158,6 +158,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                 app_id=self._app_id,
                 workflow_id=domain_model.workflow_id,
                 end_user_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.END_USER else None,
+                account_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.ACCOUNT else None,
             )
         db_model.triggered_from = self._triggered_from
 
@@ -241,8 +242,13 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                         and existing_model.connection_context != db_model.connection_context
                     ):
                         raise ValueError("Workflow execution connection choices are immutable.")
+                else:
+                    db_model.connection_context = existing_model.connection_context
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
+                # The control repository owns these fields. Dataclass defaults must not clear them on merge.
+                db_model.task_id = existing_model.task_id
+                db_model.stop_requested_at = existing_model.stop_requested_at
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key

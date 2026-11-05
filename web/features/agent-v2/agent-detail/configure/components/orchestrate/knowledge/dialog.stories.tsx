@@ -9,13 +9,16 @@ import { I18nextProvider, initReactI18next } from 'react-i18next'
 import agentEn from '@/i18n/locales/en-US/agent-v-2.json'
 import appDebugEn from '@/i18n/locales/en-US/app-debug.json'
 import commonEn from '@/i18n/locales/en-US/common.json'
+import knowledgeSpaceEn from '@/i18n/locales/en-US/knowledge-space.json'
 import workflowEn from '@/i18n/locales/en-US/workflow.json'
 import agentZh from '@/i18n/locales/zh-Hans/agent-v-2.json'
 import appDebugZh from '@/i18n/locales/zh-Hans/app-debug.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
+import knowledgeSpaceZh from '@/i18n/locales/zh-Hans/knowledge-space.json'
 import workflowZh from '@/i18n/locales/zh-Hans/workflow.json'
 import { getInitOptions } from '@/i18n/settings'
 import { consoleQuery } from '@/service/console'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 const examples = [
@@ -55,8 +58,7 @@ function createPreviewQueryClient(many: boolean) {
       visibility: 'only_me',
       permission_keys: [
         'knowledge_space_read',
-        'knowledge_space_query',
-        ...(index % examples.length === 5 ? [] : ['knowledge_space_access_config']),
+        ...(index % examples.length === 5 ? [] : ['knowledge_space_query']),
       ],
       technical_summary: {
         knowledge_space_id: id,
@@ -76,15 +78,34 @@ function createPreviewQueryClient(many: boolean) {
     pages: [zKnowledgeFsSpaceListResponse.parse({ data, page: 1, limit: 50, has_more: false })],
     pageParams: [1],
   })
+  const datasets = consoleQuery.datasets.get.infiniteOptions({
+    input: (page: number) => ({ query: { page, limit: 50 } }),
+    initialPageParam: 1,
+    getNextPageParam: () => undefined,
+  })
+  client.setQueryData(datasets.queryKey, {
+    pages: [
+      {
+        data: [createDatasetFixture({ name: '经典产品文档' })],
+        page: 1,
+        limit: 50,
+        total: 1,
+        has_more: false,
+      },
+    ],
+    pageParams: [1],
+  })
   return client
 }
 
 function PickerPreview({
   locale = 'zh-Hans',
   many = false,
+  knowledgeFsEnabled = true,
 }: {
   locale?: 'zh-Hans' | 'en-US'
   many?: boolean
+  knowledgeFsEnabled?: boolean
 }) {
   const [bindings, setBindings] = useState<AgentKnowledgeRetrievalItem[]>([])
   const [open, setOpen] = useState(true)
@@ -94,15 +115,22 @@ function PickerPreview({
     void instance.use(initReactI18next).init({
       ...getInitOptions(),
       lng: locale,
-      ns: ['agentV2', 'common', 'appDebug', 'workflow'],
+      ns: ['agentV2', 'common', 'appDebug', 'workflow', 'knowledgeSpace'],
       resources: {
         'zh-Hans': {
           agentV2: agentZh,
           common: commonZh,
           appDebug: appDebugZh,
           workflow: workflowZh,
+          knowledgeSpace: knowledgeSpaceZh,
         },
-        'en-US': { agentV2: agentEn, common: commonEn, appDebug: appDebugEn, workflow: workflowEn },
+        'en-US': {
+          agentV2: agentEn,
+          common: commonEn,
+          appDebug: appDebugEn,
+          workflow: workflowEn,
+          knowledgeSpace: knowledgeSpaceEn,
+        },
       },
     })
     return instance
@@ -119,6 +147,7 @@ function PickerPreview({
             {bindings.map((item) => item.name).join(' · ')}
           </output>
           <AgentKnowledgeRetrievalDialog
+            knowledgeFsEnabled={knowledgeFsEnabled}
             open={open}
             initialBindings={bindings}
             onOpenChange={setOpen}
@@ -145,3 +174,5 @@ type Story = StoryObj<typeof meta>
 export const Chinese: Story = {}
 export const English: Story = { args: { locale: 'en-US' } }
 export const LongList: Story = { args: { many: true } }
+
+export const ClassicOnly: Story = { args: { knowledgeFsEnabled: false } }

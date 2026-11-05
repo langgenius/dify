@@ -10,6 +10,8 @@ from core.app.app_config.common.parameters_mapping import AppParametersDict, get
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.end_user_connections.errors import ConnectionError
 from services.end_user_connections.revision import ConnectionRevisions
+from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
+from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
 
 
@@ -57,6 +59,17 @@ class AppDefinitionSummary(NamedTuple):
     author_name: str | None
 
 
+class ServiceApiAppRecord(NamedTuple):
+    """App admission state; a null tenant status means the workspace is missing."""
+
+    app_id: str
+    tenant_id: str
+    mode: str
+    status: str
+    enable_api: bool
+    tenant_status: str | None
+
+
 class AppSiteConfiguration(NamedTuple):
     title: str
     chat_color_theme: str | None
@@ -77,6 +90,12 @@ class AppSiteConfiguration(NamedTuple):
 
 class AppDefinitionQuery(Protocol):
     def get_mode(self, app_id: str) -> str | None: ...
+
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None: ...
+
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
+        """Return the active workspace's owner ID, or None when that identity is unavailable."""
+        ...
 
     def get_published_parameter_config(
         self,
@@ -120,6 +139,33 @@ class AppDefinitionQueryService:
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
         self._plugin_readme = plugin_readme
         self._plugin_asset = plugin_asset
+
+    def get_service_api_app(self, app_id: str | None, *, tenant_id: str | None = None) -> ServiceApiAppRecord:
+        """Return an app admitted for Service API access, or raise a domain error.
+
+        ``None`` means the API token no longer references an app. The repository
+        closes its read session before this policy runs or an end user is provisioned.
+        Credentials with a recorded ``tenant_id`` constrain the lookup to that
+        workspace; ``None`` supports historical app keys without a tenant ID.
+        """
+        if app_id is None:
+            raise AppDefinitionUnavailableError("The app no longer exists.")
+        app = self._definitions.get_service_api_record(app_id, tenant_id=tenant_id)
+        if app is None:
+            raise AppDefinitionUnavailableError("The app no longer exists.")
+        if app.status != "normal":
+            raise AppAbnormalStatusError("The app's status is abnormal.")
+        if not app.enable_api:
+            raise AppApiDisabledError("The app's API service has been disabled.")
+        if app.tenant_status is None:
+            raise WorkspaceNotFoundError("Tenant does not exist.")
+        if app.tenant_status == "archive":
+            raise WorkspaceArchivedError("The workspace's status is archived.")
+        return app
+
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
+        """Return the active workspace's legacy owner identity; None means unavailable."""
+        return self._definitions.get_service_api_owner_id(tenant_id)
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)

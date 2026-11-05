@@ -42,6 +42,16 @@ export type AgentThought = {
   tool_labels: AnyJsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AlreadySubmittedError = ErrorResponse & {
+  code: 'already_submitted'
+  status: 409
+}
+
 export type AnyJsonValue = unknown
 
 export type AppAccessModeQuery = {
@@ -356,6 +366,16 @@ export type ConsumerConnectionsResponse = {
   next_cursor: string | null
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -367,6 +387,11 @@ export type ConversationListQuery = {
   limit?: number
   pinned?: boolean | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -529,9 +554,22 @@ export type EventStreamResponse = string
 
 export type ExecutionContentType = 'human_input'
 
+export type ExpiredError = ErrorResponse & {
+  code: 'expired'
+  status: 410
+}
+
 export type FileExtensionBlockedError = ErrorResponse & {
   code: 'file_extension_blocked'
   status: 400
+}
+
+export type FileInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file_input'
 }
 
 export type FileInputConfig = {
@@ -540,6 +578,15 @@ export type FileInputConfig = {
   allowed_file_upload_methods?: Array<FileTransferMethod>
   output_variable_name: string
   type?: 'file'
+}
+
+export type FileListInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type?: 'file_list_input'
 }
 
 export type FileListInputConfig = {
@@ -611,6 +658,22 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type FormAccessRequestResponse = {
+  challenge_token: string
+  expires_in_seconds: number
+  resend_after_seconds: number
+}
+
+export type FormDefinitionResponse = {
+  expiration_time: number
+  form_content?: string | null
+  inputs?: Array<FormInputConfig>
+  resolved_default_values?: {
+    [key: string]: string
+  }
+  user_actions?: Array<UserActionConfig>
+}
+
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -625,7 +688,53 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
+export type FormPart =
+  | ({
+      type: 'markdown_fragment'
+    } & MarkdownFragment)
+  | ({
+      type: 'paragraph_input'
+    } & ParagraphInput)
+  | ({
+      type: 'select_input'
+    } & SelectInput)
+  | ({
+      type: 'file_input'
+    } & FileInput)
+  | ({
+      type: 'file_list_input'
+    } & FileListInput)
+
+export type FormSubmitResponse = {
+  [key: string]: unknown
+}
+
+export type FormUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
 export type GeneratedAppResponse = ShallowJsonValue
+
+export type HumanInputAccessDeliveryFailedError = ErrorResponse & {
+  code: 'human_input_access_delivery_failed'
+  status: 503
+}
+
+export type HumanInputAccessRateLimitExceededError = ErrorResponse & {
+  code: 'human_input_access_rate_limit_exceeded'
+  status: 429
+}
+
+export type HumanInputChallengeExpiredError = ErrorResponse & {
+  code: 'human_input_challenge_expired'
+  status: 400
+}
+
+export type HumanInputChallengeStaleError = ErrorResponse & {
+  code: 'human_input_challenge_stale'
+  status: 400
+}
 
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
@@ -646,6 +755,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -668,6 +778,11 @@ export type HumanInputFormDefinitionResponse = {
 export type HumanInputFormExpiredError = ErrorResponse & {
   code: 'human_input_form_expired'
   status: 412
+}
+
+export type HumanInputFormNotFoundError = ErrorResponse & {
+  code: 'human_input_form_not_found'
+  status: 404
 }
 
 export type HumanInputFormSubmissionData = {
@@ -697,9 +812,32 @@ export type HumanInputFormSubmittedError = ErrorResponse & {
   status: 412
 }
 
+export type HumanInputInvalidOtpError = ErrorResponse & {
+  code: 'human_input_invalid_otp'
+  status: 400
+}
+
 export type HumanInputUploadTokenResponse = {
   expires_at: number
   upload_token: string
+}
+
+export type HumanInputV2FormSubmitRequest = {
+  action: string
+  challenge_token?: string | null
+  inputs: {
+    [key: string]: JsonValue
+  }
+  otp_code?: string | null
+}
+
+export type HumanInputV2RemoteUploadPayload = {
+  url: string
+}
+
+export type HumanInputV2UnavailableError = ErrorResponse & {
+  code: 'human_input_v2_unavailable'
+  status: 503
 }
 
 export type I18nObject = {
@@ -716,6 +854,11 @@ export type InvalidEmailError = ErrorResponse & {
 
 export type InvalidFormDataError = ErrorResponse & {
   code: 'invalid_form_data'
+  status: 400
+}
+
+export type InvalidInputError = ErrorResponse & {
+  code: 'invalid_input'
   status: 400
 }
 
@@ -783,9 +926,19 @@ export type MalformedUploadTokenError = ErrorResponse & {
   status: 400
 }
 
+export type MarkdownFragment = {
+  text: string
+  type?: 'markdown_fragment'
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
 }
 
 export type MessageFile = {
@@ -854,6 +1007,12 @@ export type NotWorkflowAppError = ErrorResponse & {
 export type Option = {
   label: I18nObject
   value: string
+}
+
+export type ParagraphInput = {
+  default_value: string | null
+  output_variable_name: string
+  type?: 'paragraph_input'
 }
 
 export type ParagraphInputConfig = {
@@ -979,6 +1138,13 @@ export type RemoteFileUrlBlockedError = ErrorResponse & {
   status: 400
 }
 
+export type ResolvedForm = {
+  actions: Array<UserAction>
+  legacy_form_content: string
+  parts: Array<FormPart>
+  title: string
+}
+
 export type ResultResponse = {
   result: string
 }
@@ -1043,6 +1209,13 @@ export type SavedMessageItem = {
 export type SavedMessageListQuery = {
   last_id?: string | null
   limit?: number
+}
+
+export type SelectInput = {
+  default_value: string | null
+  options: Array<string>
+  output_variable_name: string
+  type?: 'select_input'
 }
 
 export type SelectInputConfig = {
@@ -1175,6 +1348,12 @@ export type UploadTokenRequiredError = ErrorResponse & {
   status: 401
 }
 
+export type UserAction = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
 export type UserActionConfig = {
   button_style?: ButtonStyle
   id: string
@@ -1228,6 +1407,22 @@ export type WebAppCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
+export type WebAppHumanInputV2FormDefinitionResponse = {
+  expiration_time: number
+  resolved_form: ResolvedForm
+}
+
+export type WebAppHumanInputV2SubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+}
+
+export type WebAppHumanInputV2SubmitResponse = {
+  [key: string]: unknown
+}
+
 export type WebAppParametersResponse = {
   account_login_enabled: boolean
   account_login_url: string | null
@@ -1259,6 +1454,9 @@ export type WebAppParametersResponse = {
     enabled?: boolean
   }
   sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
     enabled?: boolean
   }
   speech_to_text: {
@@ -1646,6 +1844,11 @@ export type WebappResourcesChangedError = ErrorResponse & {
   status: 409
 }
 
+export type WorkflowNotActiveError = ErrorResponse & {
+  code: 'workflow_not_active'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
   connection_revision?: string | null
   connections?: {
@@ -1691,6 +1894,10 @@ export type EndUserConnectionPreflightResponseWritable = {
   connections: Array<ConnectionPreflightStatus>
 }
 
+export type FormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
 export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
@@ -1702,6 +1909,10 @@ export type WebAccountProfileResponseWritable = {
   has_owned_tenant?: boolean | null
   has_tenant?: boolean | null
   name: string
+}
+
+export type WebAppHumanInputV2SubmitResponseWritable = {
+  [key: string]: unknown
 }
 
 export type WebMessageInfiniteScrollPaginationWritable = {
@@ -2300,7 +2511,7 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2325,7 +2536,7 @@ export type DeleteConversationsByCIdData = {
 export type DeleteConversationsByCIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2355,7 +2566,8 @@ export type PostConversationsByCIdNameData = {
 export type PostConversationsByCIdNameErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2382,7 +2594,7 @@ export type PatchConversationsByCIdPinData = {
 export type PatchConversationsByCIdPinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2409,7 +2621,7 @@ export type PatchConversationsByCIdUnpinData = {
 export type PatchConversationsByCIdUnpinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2570,6 +2782,174 @@ export type PostForgotPasswordValidityResponses = {
 export type PostForgotPasswordValidityResponse =
   PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
 
+export type GetFormHumanInputV2PublicByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}'
+}
+
+export type GetFormHumanInputV2PublicByFormTokenErrors = {
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputV2PublicByFormTokenError =
+  GetFormHumanInputV2PublicByFormTokenErrors[keyof GetFormHumanInputV2PublicByFormTokenErrors]
+
+export type GetFormHumanInputV2PublicByFormTokenResponses = {
+  200: FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2PublicByFormTokenResponse =
+  GetFormHumanInputV2PublicByFormTokenResponses[keyof GetFormHumanInputV2PublicByFormTokenResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenData = {
+  body: HumanInputV2FormSubmitRequest
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenErrors = {
+  400:
+    | HumanInputChallengeExpiredError
+    | HumanInputChallengeStaleError
+    | HumanInputInvalidOtpError
+    | InvalidInputError
+    | ErrorResponse
+  404: HumanInputFormNotFoundError | ErrorResponse
+  409: WorkflowNotActiveError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  422: ErrorResponse
+  503: HumanInputV2UnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenError =
+  PostFormHumanInputV2PublicByFormTokenErrors[keyof PostFormHumanInputV2PublicByFormTokenErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenResponses = {
+  200: FormSubmitResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenResponse =
+  PostFormHumanInputV2PublicByFormTokenResponses[keyof PostFormHumanInputV2PublicByFormTokenResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}/access-request'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestErrors = {
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: HumanInputAccessRateLimitExceededError | ErrorResponse
+  503: HumanInputAccessDeliveryFailedError | HumanInputV2UnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestError =
+  PostFormHumanInputV2PublicByFormTokenAccessRequestErrors[keyof PostFormHumanInputV2PublicByFormTokenAccessRequestErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestResponses = {
+  200: FormAccessRequestResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestResponse =
+  PostFormHumanInputV2PublicByFormTokenAccessRequestResponses[keyof PostFormHumanInputV2PublicByFormTokenAccessRequestResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenErrors = {
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenError =
+  PostFormHumanInputV2PublicByFormTokenUploadTokenErrors[keyof PostFormHumanInputV2PublicByFormTokenUploadTokenErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenResponses = {
+  200: FormUploadTokenResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenResponse =
+  PostFormHumanInputV2PublicByFormTokenUploadTokenResponses[keyof PostFormHumanInputV2PublicByFormTokenUploadTokenResponses]
+
+export type GetFormHumanInputV2ByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type GetFormHumanInputV2ByFormTokenErrors = {
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenError =
+  GetFormHumanInputV2ByFormTokenErrors[keyof GetFormHumanInputV2ByFormTokenErrors]
+
+export type GetFormHumanInputV2ByFormTokenResponses = {
+  200: WebAppHumanInputV2FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenResponse =
+  GetFormHumanInputV2ByFormTokenResponses[keyof GetFormHumanInputV2ByFormTokenResponses]
+
+export type PostFormHumanInputV2ByFormTokenData = {
+  body: WebAppHumanInputV2SubmitPayload
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type PostFormHumanInputV2ByFormTokenErrors = {
+  400: InvalidInputError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | WorkflowNotActiveError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenError =
+  PostFormHumanInputV2ByFormTokenErrors[keyof PostFormHumanInputV2ByFormTokenErrors]
+
+export type PostFormHumanInputV2ByFormTokenResponses = {
+  200: WebAppHumanInputV2SubmitResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenResponse =
+  PostFormHumanInputV2ByFormTokenResponses[keyof PostFormHumanInputV2ByFormTokenResponses]
+
 export type GetFormHumanInputByFormTokenData = {
   body?: never
   path: {
@@ -2687,6 +3067,91 @@ export type PostHumanInputFormsFilesResponses = {
 
 export type PostHumanInputFormsFilesResponse =
   PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
+
+export type PostHumanInputV2FilesData = {
+  body?: {
+    file?: Blob | File
+    url?: string
+  }
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files'
+}
+
+export type PostHumanInputV2FilesErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | MalformedUploadTokenError
+    | NoFileUploadedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostHumanInputV2FilesError =
+  PostHumanInputV2FilesErrors[keyof PostHumanInputV2FilesErrors]
+
+export type PostHumanInputV2FilesResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesResponse =
+  PostHumanInputV2FilesResponses[keyof PostHumanInputV2FilesResponses]
+
+export type PostHumanInputV2FilesRemoteData = {
+  body: HumanInputV2RemoteUploadPayload
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files/remote'
+}
+
+export type PostHumanInputV2FilesRemoteErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | MalformedUploadTokenError
+    | NoFileUploadedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostHumanInputV2FilesRemoteError =
+  PostHumanInputV2FilesRemoteErrors[keyof PostHumanInputV2FilesRemoteErrors]
+
+export type PostHumanInputV2FilesRemoteResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesRemoteResponse =
+  PostHumanInputV2FilesRemoteResponses[keyof PostHumanInputV2FilesRemoteResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -2959,7 +3424,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2987,8 +3452,9 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   401: ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -3017,6 +3483,7 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
@@ -3051,6 +3518,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
@@ -3059,7 +3527,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

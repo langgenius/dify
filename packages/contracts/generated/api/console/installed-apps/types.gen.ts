@@ -382,6 +382,9 @@ export type InstalledAppParametersResponse = {
   sensitive_word_avoidance: {
     enabled?: boolean
   }
+  show_thoughts?: {
+    enabled?: boolean
+  }
   speech_to_text: {
     enabled?: boolean
   }
@@ -957,6 +960,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -1691,7 +1695,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404:
     | ConversationNotFoundError
@@ -1723,7 +1727,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse

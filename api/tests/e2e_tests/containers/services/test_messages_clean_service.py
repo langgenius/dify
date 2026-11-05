@@ -42,6 +42,7 @@ from services.retention.conversation.messages_clean_policy import (
     create_message_clean_policy,
 )
 from services.retention.conversation.messages_clean_service import MessagesCleanService
+from tests.helpers import billing_builders as builders
 
 
 class TestMessagesCleanServiceIntegration:
@@ -451,15 +452,9 @@ class TestMessagesCleanServiceIntegration:
 
         plan_map = {}
         for tenant in sandbox_tenants:
-            plan_map[tenant.id] = {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_15_days_ago,
-            }
+            plan_map[tenant.id] = builders.plan_item("sandbox", expired_15_days_ago)
         for tenant in paid_tenants:
-            plan_map[tenant.id] = {
-                "plan": CloudPlan.PROFESSIONAL,
-                "expiration_date": now_timestamp + (365 * 24 * 60 * 60),  # Active for 1 year
-            }
+            plan_map[tenant.id] = builders.plan_item("professional", now_timestamp + (365 * 24 * 60 * 60))
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
             mock_billing.return_value = plan_map
@@ -525,12 +520,7 @@ class TestMessagesCleanServiceIntegration:
             message_ids.append(msg.id)
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
-            mock_billing.return_value = {
-                tenant.id: {
-                    "plan": CloudPlan.SANDBOX,
-                    "expiration_date": -1,  # No previous subscription
-                }
-            }
+            mock_billing.return_value = {tenant.id: builders.plan_item("sandbox", -1)}
 
             # Act - Use small batch size to trigger multiple batches
             end_before = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -569,12 +559,7 @@ class TestMessagesCleanServiceIntegration:
             message_ids.append(msg.id)
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
-            mock_billing.return_value = {
-                tenant.id: {
-                    "plan": CloudPlan.SANDBOX,
-                    "expiration_date": -1,  # No previous subscription
-                }
-            }
+            mock_billing.return_value = {tenant.id: builders.plan_item("sandbox", -1)}
 
             # Act
             end_before = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -625,14 +610,8 @@ class TestMessagesCleanServiceIntegration:
 
         # Only tenant[0] is confirmed as sandbox, tenant[1] is professional, tenant[2] is missing
         partial_plan_map = {
-            tenants_data[0]["tenant"].id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,  # No previous subscription
-            },
-            tenants_data[1]["tenant"].id: {
-                "plan": CloudPlan.PROFESSIONAL,
-                "expiration_date": now_timestamp + (365 * 24 * 60 * 60),  # Active for 1 year
-            },
+            tenants_data[0]["tenant"].id: builders.plan_item("sandbox", -1),
+            tenants_data[1]["tenant"].id: builders.plan_item("professional", now_timestamp + (365 * 24 * 60 * 60)),
             # tenants_data[2] is missing from response
         }
 
@@ -760,12 +739,7 @@ class TestMessagesCleanServiceIntegration:
 
         # Mock billing service
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
-            mock_billing.return_value = {
-                tenant.id: {
-                    "plan": CloudPlan.SANDBOX,
-                    "expiration_date": -1,  # No previous subscription
-                }
-            }
+            mock_billing.return_value = {tenant.id: builders.plan_item("sandbox", -1)}
 
             # Act - Clean with specific time range [2024-01-10, 2024-01-20)
             policy = create_message_clean_policy(graceful_period_days=21)
@@ -859,26 +833,11 @@ class TestMessagesCleanServiceIntegration:
 
         # Mock billing service with all scenarios
         plan_map = {
-            tenant1.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_5_days_ago,
-            },
-            tenant2.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_10_days_ago,
-            },
-            tenant3.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,
-            },
-            tenant4.id: {
-                "plan": CloudPlan.PROFESSIONAL,
-                "expiration_date": future_expiration,
-            },
-            tenant5.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_exactly_8_days_ago,
-            },
+            tenant1.id: builders.plan_item("sandbox", expired_5_days_ago),
+            tenant2.id: builders.plan_item("sandbox", expired_10_days_ago),
+            tenant3.id: builders.plan_item("sandbox", -1),
+            tenant4.id: builders.plan_item("professional", future_expiration),
+            tenant5.id: builders.plan_item("sandbox", expired_exactly_8_days_ago),
         }
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
@@ -939,18 +898,9 @@ class TestMessagesCleanServiceIntegration:
 
         # Mock billing service - all tenants are sandbox with no subscription
         plan_map = {
-            tenants_data[0]["tenant"].id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,
-            },
-            tenants_data[1]["tenant"].id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,
-            },
-            tenants_data[2]["tenant"].id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,
-            },
+            tenants_data[0]["tenant"].id: builders.plan_item("sandbox", -1),
+            tenants_data[1]["tenant"].id: builders.plan_item("sandbox", -1),
+            tenants_data[2]["tenant"].id: builders.plan_item("sandbox", -1),
         }
 
         # Setup whitelist - tenant0 and tenant1 are whitelisted, tenant2 is not
@@ -1021,12 +971,7 @@ class TestMessagesCleanServiceIntegration:
         db_session_with_containers.commit()
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
-            mock_billing.return_value = {
-                tenant.id: {
-                    "plan": CloudPlan.SANDBOX,
-                    "expiration_date": -1,
-                }
-            }
+            mock_billing.return_value = {tenant.id: builders.plan_item("sandbox", -1)}
 
             # Act - Use from_days to clean messages older than 30 days
             policy = create_message_clean_policy(graceful_period_days=21)
@@ -1075,14 +1020,8 @@ class TestMessagesCleanServiceIntegration:
 
         # Mock billing service
         plan_map = {
-            tenant1.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_30_days_ago,  # Beyond grace period
-            },
-            tenant2.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": expired_10_days_ago,  # Within grace period
-            },
+            tenant1.id: builders.plan_item("sandbox", expired_30_days_ago),
+            tenant2.id: builders.plan_item("sandbox", expired_10_days_ago),
         }
 
         # Setup whitelist - only tenant1 is whitelisted
@@ -1134,12 +1073,7 @@ class TestMessagesCleanServiceIntegration:
             msg_ids.append(msg.id)
 
         # Mock billing service
-        plan_map = {
-            tenant.id: {
-                "plan": CloudPlan.SANDBOX,
-                "expiration_date": -1,
-            }
-        }
+        plan_map = {tenant.id: builders.plan_item("sandbox", -1)}
 
         # Setup empty whitelist (default behavior from fixture)
         mock_whitelist.return_value = []

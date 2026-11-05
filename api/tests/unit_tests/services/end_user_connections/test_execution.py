@@ -323,6 +323,7 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
         "inputs": {},
         "files": [],
         "user_id": user.id,
+        "user_from": "end-user",
         "stream": True,
         "invoke_from": InvokeFrom.WEB_APP,
         "connection_context": restored.connection_context,

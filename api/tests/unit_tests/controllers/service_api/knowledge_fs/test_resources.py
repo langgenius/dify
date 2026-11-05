@@ -24,6 +24,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSServiceSourceConnectionCreatePayload,
     KnowledgeFSServiceSourceCreatePayload,
@@ -219,9 +220,47 @@ def test_logical_read_exposes_current_cas_and_pagination(runtime: FakeRuntime) -
     runtime.facade.execute_service.return_value = {"items": [raw], "nextCursor": "next"}
     with Flask(__name__).test_request_context("/?limit=17&cursor=prev"):
         result = resources.KnowledgeFSServiceLogicalDocumentsApi().get("control-1")
-    assert result["data"][0]["row_version"] == 7
-    assert result["data"][0]["id"] == "doc-1"
+    assert isinstance(result, dict)
+    documents = result["data"]
+    assert isinstance(documents, list)
+    document = documents[0]
+    assert isinstance(document, dict)
+    assert document["row_version"] == 7
+    assert document["id"] == "doc-1"
     assert runtime.facade.execute_service.last_call.kwargs["query"] == (("limit", "17"), ("cursor", "prev"))
+
+
+def test_logical_delete_uses_row_version_and_public_deletion_status(
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example/v1")
+    runtime.facade.execute_service.return_value = {
+        "job": _job(),
+        "statusUrl": "http://internal/deletion-jobs/job-1",
+    }
+
+    with Flask(__name__).test_request_context(
+        "/",
+        method="DELETE",
+        json={"expectedRevision": 0},
+        headers={"Idempotency-Key": "logical-delete-1"},
+    ):
+        result, status, headers = resources.KnowledgeFSServiceLogicalDocumentApi().delete("control-1", "document-1")
+
+    assert status == 202
+    assert isinstance(result, dict)
+    job = result["job"]
+    assert isinstance(job, dict)
+    assert job["target_type"] == "logical_document"
+    assert headers["Location"] == "https://api.example/v1/knowledge-fs/spaces/control-1/deletion-jobs/job-1"
+    assert result["status_url"] == headers["Location"]
+    kwargs = runtime.facade.execute_service.last_call.kwargs
+    assert kwargs["operation_id"] == "deleteLogicalDocument"
+    assert kwargs["resource_id"] == "document-1"
+    assert kwargs["path_parameters"] == (("documentId", "document-1"),)
+    assert kwargs["headers"] == (("Idempotency-Key", "logical-delete-1"),)
+    assert isinstance(kwargs["payload"], KnowledgeFSLogicalDocumentDeletePayload)
+    assert kwargs["payload"].expected_revision == 0
 
 
 def test_deletion_links_and_partial_batch_results_stay_on_public_origin(
@@ -252,10 +291,15 @@ def test_deletion_links_and_partial_batch_results_stay_on_public_origin(
         result, status, headers = resources.KnowledgeFSServiceBulkDocumentsApi().delete("control-1")
     assert status == 202
     assert headers["Location"] == "https://api.example/v1/knowledge-fs/spaces/control-1/deletion-batches/batch-1"
-    assert result["results"][1]["status"] == "rejected"
-    assert (
-        result["results"][0]["status_url"] == "https://api.example/v1/knowledge-fs/spaces/control-1/deletion-jobs/job-1"
-    )
+    assert isinstance(result, dict)
+    results = result["results"]
+    assert isinstance(results, list)
+    rejected_result = results[1]
+    assert isinstance(rejected_result, dict)
+    assert rejected_result["status"] == "rejected"
+    accepted_result = results[0]
+    assert isinstance(accepted_result, dict)
+    assert accepted_result["status_url"] == "https://api.example/v1/knowledge-fs/spaces/control-1/deletion-jobs/job-1"
     assert "internal" not in str(result)
 
 
@@ -275,6 +319,7 @@ def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(run
     ):
         result, status = resource.post("control-1", "source-1")
     assert status == 202
+    assert isinstance(result, dict)
     assert result["id"] == "run-1"
     kwargs = runtime.facade.execute_service.last_call.kwargs
     assert kwargs["operation_id"] == "importSourceWorkflow"
@@ -314,7 +359,12 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
     }
     with Flask(__name__).test_request_context("/"):
         response = resources.KnowledgeFSServiceDocumentProcessingTasksApi().get("control-1", "doc-1")
-    assert response["data"][0]["state"] == "superseded"
+    assert isinstance(response, dict)
+    tasks = response["data"]
+    assert isinstance(tasks, list)
+    task = tasks[0]
+    assert isinstance(task, dict)
+    assert task["state"] == "superseded"
     assert runtime.facade.execute_service.last_call.kwargs["resource_id"] == "doc-1"
     runtime.facade.execute_service.return_value = {
         "id": "task-1",
@@ -328,6 +378,7 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
     }
     with Flask(__name__).test_request_context("/", method="POST"):
         response = resources.KnowledgeFSServiceResearchTaskResumeApi().post("control-1", "task-1")
+    assert isinstance(response, dict)
     assert response["id"] == "task-1"
     assert runtime.facade.execute_service.last_call.kwargs["operation_id"] == "resumeResearchTask"
     assert runtime.facade.execute_service.last_call.kwargs["resource_id"] == "task-1"
@@ -491,6 +542,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime: Fak
     ):
         result, status = resources.KnowledgeFSServiceCrawlPreviewSelectionApi().post("control-1", "run-1")
     assert status == 202
+    assert isinstance(result, dict)
     assert result["id"] == "run-1"
     call = runtime.facade.execute_service.last_call.kwargs
     assert call["operation_id"] == "selectCrawlPreviewPages"

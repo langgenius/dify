@@ -25,7 +25,8 @@ from repositories.api_workflow_run_repository import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
@@ -502,7 +503,7 @@ class WorkflowRunCleanup:
                 logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
                 continue
 
-            if info.get("plan") != CloudPlan.SANDBOX:
+            if info.plan != CloudPlan.SANDBOX:
                 continue
 
             if self._is_within_grace_period(tenant_id, info):
@@ -522,12 +523,11 @@ class WorkflowRunCleanup:
             logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
             return None
 
-    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlan) -> bool:
+    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlanItem) -> bool:
         if self.free_plan_grace_period_days <= 0:
             return False
 
-        expiration_value = info.get("expiration_date", -1)
-        expiration_at = self._expiration_datetime(tenant_id, expiration_value)
+        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
         if expiration_at is None:
             return False
 

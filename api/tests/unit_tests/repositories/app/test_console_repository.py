@@ -302,7 +302,7 @@ def test_draft_trigger_enrichment_is_tenant_scoped_and_tolerates_bad_graphs(
                     "edges": [],
                 }
             ),
-            features="{}",
+            _features="{}",
             created_by=ACTOR,
         )
         sqlite_session.add(workflow)
@@ -428,3 +428,20 @@ def test_invalid_consumer_usage_does_not_record_first_app_time(
     with sqlite_session_factory() as session:
         assert session.scalar(select(Account.first_app_used_at).where(Account.id == base.context.account_id)) is None
         assert session.scalar(select(func.count()).select_from(AccountWebApp)) == 0
+
+
+@pytest.mark.parametrize("empty_whitelist", [True, False])
+def test_app_list_includes_maintained_apps_outside_whitelist(
+    repository: ConsoleAppRepository, sqlite_session: Session, empty_whitelist: bool
+) -> None:
+    own = persist_app(sqlite_session, maintainer=ACTOR, created_by="other")
+    allowed = persist_app(sqlite_session, maintainer="other")
+    persist_app(sqlite_session, maintainer="other", created_by=ACTOR)
+    persist_app(sqlite_session, maintainer=ACTOR, tenant_id=str(uuid4()))
+    params = AppListParams(accessible_app_ids=[] if empty_whitelist else [allowed.id])
+
+    page = repository.list_apps(CONTEXT, params)
+
+    expected = {own.id} if empty_whitelist else {own.id, allowed.id}
+    assert {app.id for app in page.data} == expected
+    assert page.total == len(expected)

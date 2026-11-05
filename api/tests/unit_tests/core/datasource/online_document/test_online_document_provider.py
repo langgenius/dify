@@ -31,6 +31,24 @@ from models.enums import DataSourceType, DocumentCreatedFrom
 from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
 
+def _notion_database_response(data: Mapping[str, object]) -> httpx.Response:
+    """Associate database fixtures with the request required for HTTP status checks."""
+    return httpx.Response(
+        200,
+        json=data,
+        request=httpx.Request("POST", notion_extractor_module.DATABASE_URL_TMPL.format(database_id="database-789")),
+    )
+
+
+def _notion_table_response(data: Mapping[str, object]) -> httpx.Response:
+    """Attach table fixtures to their GET request so HTTP status checks run normally."""
+    return httpx.Response(
+        200,
+        json=data,
+        request=httpx.Request("GET", notion_extractor_module.BLOCK_CHILD_URL_TMPL.format(block_id="table-block-123")),
+    )
+
+
 class TestOnlineDocumentProviderCases:
     class TestOnlineDocumentDatasourcePluginProviderController:
         def test_init(self) -> None:
@@ -562,7 +580,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -590,7 +608,7 @@ class TestNotionProviderCases:
                 "has_more": True,
                 "next_cursor": "cursor-xyz",
             }
-            first_response = httpx.Response(200, json=first_response_data)
+            first_response = _notion_database_response(first_response_data)
             second_response_data = {
                 "object": "list",
                 "results": [
@@ -601,7 +619,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            second_response = httpx.Response(200, json=second_response_data)
+            second_response = _notion_database_response(second_response_data)
             mock_post.side_effect = [first_response, second_response]
 
             # Act
@@ -635,7 +653,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -665,7 +683,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -687,7 +705,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -701,7 +719,7 @@ class TestNotionProviderCases:
             """Test handling of malformed API response."""
             # Arrange
             mock_response_data = {"object": "list"}
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -773,7 +791,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -805,7 +823,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -844,7 +862,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.side_effect = [httpx.Response(200, json=first_page), httpx.Response(200, json=second_page)]
+            mock_request.side_effect = [_notion_table_response(first_page), _notion_table_response(second_page)]
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -1104,7 +1122,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            database_response = httpx.Response(200, json=database_response_data)
+            database_response = _notion_database_response(database_response_data)
             mock_post.return_value = database_response
 
             # Act
@@ -1553,7 +1571,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -1590,7 +1608,7 @@ class TestNotionProviderCases:
                 "has_more": True,
                 "next_cursor": "cursor-1",
             }
-            page1_response = httpx.Response(200, json=page1_response_data)
+            page1_response = _notion_database_response(page1_response_data)
 
             page2_response_data = {
                 "object": "list",
@@ -1603,7 +1621,7 @@ class TestNotionProviderCases:
                 "has_more": True,
                 "next_cursor": "cursor-2",
             }
-            page2_response = httpx.Response(200, json=page2_response_data)
+            page2_response = _notion_database_response(page2_response_data)
 
             page3_response_data = {
                 "object": "list",
@@ -1616,7 +1634,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            page3_response = httpx.Response(200, json=page3_response_data)
+            page3_response = _notion_database_response(page3_response_data)
 
             mock_post.side_effect = [page1_response, page2_response, page3_response]
 
@@ -1658,7 +1676,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Act
@@ -1801,7 +1819,7 @@ class TestNotionProviderCases:
                 "has_more": False,
                 "next_cursor": None,
             }
-            mock_response = httpx.Response(200, json=mock_response_data)
+            mock_response = _notion_database_response(mock_response_data)
             mock_post.return_value = mock_response
 
             # Create a custom query filter
@@ -1872,7 +1890,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")

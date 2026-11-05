@@ -6,7 +6,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from http import HTTPStatus
 from typing import Any, Final
-from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
@@ -16,17 +15,17 @@ from constants.oauth_bearer import Scope
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
     NodeNotFound,
-    OpenApiError,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
     VersionNotFound,
     VersionNotRestorable,
+    require_uuid,
 )
 from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import cursor_after, next_page_hint, page_after
@@ -89,18 +88,9 @@ _ENV_WRITE_GUARDS: Final = account_app_guards(
 )
 
 
-def _require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
-    """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
-    a UUID-typed database column and fail as a 500."""
-    try:
-        return str(UUID(value))
-    except ValueError as e:
-        raise not_found() from e
-
-
 def _require_run(ctx: Context, run_id: str) -> WorkflowRun:
     run = application_services().workflow_runs.get_workflow_run(
-        ctx.request_context, app_id=ctx.app.id, run_id=_require_uuid(run_id, not_found=RunNotFound)
+        ctx.request_context, app_id=ctx.app.id, run_id=require_uuid(run_id, not_found=RunNotFound)
     )
     if run is None:
         raise RunNotFound()
@@ -269,6 +259,7 @@ class AppVersionRestoreApi(Resource):
     @endpoint(
         op="restore.console_app.version",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Copy a published version into the draft; publish again to make it live",
         examples=(
             Example(title="Restore an older version", input={"app_id": "<app_id>", "version_id": "<version_id>"}),
@@ -277,7 +268,7 @@ class AppVersionRestoreApi(Resource):
         returns=(HTTPStatus.OK, RestoreResponse, "Restored into the draft"),
     )
     def post(self, ctx: Context, app_id: str, version_id: str):
-        version_id = _require_uuid(version_id, not_found=VersionNotFound)
+        version_id = require_uuid(version_id, not_found=VersionNotFound)
         try:
             draft = WorkflowService().restore_published_workflow_to_draft(
                 app_model=ctx.app, workflow_id=version_id, account=ctx.account, session=ctx.session

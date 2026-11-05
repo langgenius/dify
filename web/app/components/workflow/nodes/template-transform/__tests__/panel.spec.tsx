@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { TemplateTransformNodeType } from '../types'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,33 +10,26 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import { BlockEnum, VarType } from '../../../types'
 import Panel from '../panel'
 
-// The external code editor is a text-input boundary; variable editing and configuration stay real.
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars',
-  () => ({
-    default: ({
-      value,
-      onChange,
-      readOnly,
-      headerRight,
-    }: {
-      value: string
-      onChange: (value: string) => void
-      readOnly: boolean
-      headerRight: ReactNode
-    }) => (
-      <div>
-        {headerRight}
-        <textarea
-          aria-label="template-editor"
-          value={value}
-          readOnly={readOnly}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-    ),
-  }),
-)
+// Only the external Monaco runtime is replaced; Dify's editor wrappers remain real.
+vi.mock('@monaco-editor/react', () => ({
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string
+    onChange: (value: string) => void
+    options: { readOnly?: boolean }
+  }) => (
+    <textarea
+      aria-label="Template editor"
+      value={value}
+      readOnly={options.readOnly}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
+  loader: { config: vi.fn() },
+}))
 
 const payload: TemplateTransformNodeType = {
   title: 'Template',
@@ -99,7 +91,7 @@ it('renames real input variables and keeps the template synchronized through sub
   const variable = screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' })
   // One change event represents replacing the selected identifier, preserving a valid name throughout.
   fireEvent.change(variable, { target: { value: 'renamed_input' } })
-  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveValue(
+  expect(screen.getByRole('textbox', { name: 'Template editor' })).toHaveValue(
     '{{ renamed_input }}',
   )
   await user.click(
@@ -111,7 +103,7 @@ it('renames real input variables and keeps the template synchronized through sub
     screen.getAllByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' }),
   ).toHaveLength(2)
   expect(variable).toHaveValue('renamed_input')
-  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveValue(
+  expect(screen.getByRole('textbox', { name: 'Template editor' })).toHaveValue(
     '{{ renamed_input }}',
   )
   expect(
@@ -119,14 +111,17 @@ it('renames real input variables and keeps the template synchronized through sub
   ).toHaveAttribute('href', 'https://jinja.palletsprojects.com/en/3.1.x/templates/')
 })
 
-it('keeps both variable names and the template readonly when editing is denied', () => {
+it('keeps both variable names and the template readonly when editing is denied', async () => {
+  const user = userEvent.setup()
   setup(true)
+  await user.type(screen.getByRole('textbox', { name: 'Template editor' }), 'changed')
+  expect(screen.getByRole('textbox', { name: 'Template editor' })).toHaveValue(payload.template)
   expect(
     screen.queryByRole('button', {
       name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
     }),
   ).not.toBeInTheDocument()
-  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveAttribute('readonly')
+  expect(screen.getByRole('textbox', { name: 'Template editor' })).toHaveAttribute('readonly')
   expect(
     screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' }),
   ).toBeDisabled()

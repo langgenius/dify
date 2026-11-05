@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
+  PopoverArrow,
   PopoverContent,
   PopoverDescription,
   PopoverTitle,
@@ -8,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useIsClient } from 'foxact/use-is-client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -28,6 +29,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
   const isClient = useIsClient()
   const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
+  const gotItRef = useRef<HTMLButtonElement>(null)
   const guideOpen = isClient && (guideOpenOverride ?? !guideDismissed)
 
   const dismissGuide = () => {
@@ -73,14 +75,12 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         />
         <PopoverContent
           sideOffset={13}
+          initialFocus={guideOpenOverride ? gotItRef : false}
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
-          <span
-            aria-hidden
-            className="absolute top-[-9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
-          >
-            <span className="size-[13.757px] -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
-          </span>
+          <PopoverArrow className="h-[9.728px] w-[19.456px] overflow-clip data-[side=bottom]:top-[-9.728px] data-[side=top]:bottom-[-9.728px] data-[side=top]:rotate-180">
+            <span className="absolute bottom-0 left-1/2 size-[13.757px] -translate-x-1/2 translate-y-1/2 -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
+          </PopoverArrow>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">
               {t(($) => $.guideTitle)}
@@ -90,17 +90,14 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
             </PopoverDescription>
             <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
               <a
-                href={docLink(
-                  // @ts-expect-error Cloud-only page not yet in the generated doc paths.
-                  '/cloud/use-dify/knowledge-base/overview',
-                )}
+                href={docLink('/cloud/use-dify/knowledge-base/overview')}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
                 {t(($) => $.learnMore)}
               </a>
-              <Button variant="primary" size="small" onClick={dismissGuide}>
+              <Button ref={gotItRef} variant="primary" size="small" onClick={dismissGuide}>
                 {t(($) => $.gotIt)}
               </Button>
             </div>

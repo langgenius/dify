@@ -7,7 +7,6 @@ import types
 import pytest
 from unstructured.documents.elements import ElementMetadata, Text
 
-import core.rag.extractor.unstructured.unstructured_epub_extractor as epub_module
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
@@ -118,9 +117,7 @@ class TestUnstructuredMarkdownMsgXml:
 
 
 class TestUnstructuredEmailAndEpub:
-    def test_email_extractor_local_decodes_html_and_suppresses_decode_errors(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_email_extractor_local_preserves_partitioned_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _register_unstructured_packages(monkeypatch)
         captured: dict[str, list[Text]] = {}
 
@@ -141,7 +138,7 @@ class TestUnstructuredEmailAndEpub:
 
         assert docs[0].page_content == "chunked-email"
         chunk_elements = captured["elements"]
-        assert "Hello Email" in chunk_elements[0].text
+        assert chunk_elements[0].text == encoded_html
         assert chunk_elements[1].text == bad_base64
 
     def test_email_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -159,23 +156,19 @@ class TestUnstructuredEmailAndEpub:
     def test_epub_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="epub-doc")])
 
-        calls = {"download": 0, "partition": 0}
+        calls = {"partition": 0}
 
-        def fake_download_pandoc() -> None:
-            calls["download"] += 1
-
-        def partition_epub(filename: str, xml_keep_tags: bool) -> list[Text]:
+        def partition_epub(file_path: str) -> list[Text]:
             calls["partition"] += 1
-            assert xml_keep_tags is True
+            assert file_path == "/tmp/file.epub"
             return [Text(text="x")]
 
-        monkeypatch.setattr(epub_module.pypandoc, "download_pandoc", fake_download_pandoc)
-        _register_module(monkeypatch, "unstructured.partition.epub", partition_epub=partition_epub)
+        _register_module(monkeypatch, "libs.epub", partition_epub=partition_epub)
 
         docs = UnstructuredEpubExtractor("/tmp/file.epub").extract()
 
         assert docs[0].page_content == "epub-doc"
-        assert calls == {"download": 1, "partition": 1}
+        assert calls == {"partition": 1}
 
         _register_module(
             monkeypatch,
@@ -185,6 +178,7 @@ class TestUnstructuredEmailAndEpub:
 
         docs = UnstructuredEpubExtractor("/tmp/file.epub", api_url="https://u", api_key="k").extract()
         assert docs[0].page_content == "epub-doc"
+        assert calls == {"partition": 1}
 
 
 class TestUnstructuredPPTAndPPTX:

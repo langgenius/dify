@@ -18,26 +18,45 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Final, cast
+from typing import Any, Final, cast, get_args, get_origin, override
 
+from flask import request
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import RequestEntityTooLarge
 
+from constants import BYTES_PER_MIB
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
-from controllers.openapi._errors import ErrorBody
+from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Example, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
+from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
 
-__all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = [
+    "MULTIPART_HEADER_BYTES_PER_PART",
+    "CapRequestBody",
+    "Effect",
+    "Example",
+    "Kind",
+    "accepts",
+    "endpoint",
+    "multipart_header_allowance",
+    "op_of",
+    "paginated",
+    "returns",
+]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
+MULTIPART_HEADER_BYTES_PER_PART: Final = 1024
 
 
 def paginated(op: str) -> Callable:
@@ -65,19 +84,57 @@ def paginated(op: str) -> Callable:
     return decorator
 
 
+class CapRequestBody(Requirement):
+    def __init__(self, *, max_bytes: Callable[[], int], max_parts: Callable[[], int]) -> None:
+        self.max_bytes = max_bytes
+        self.max_parts = max_parts
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        request.max_content_length = self.max_bytes()
+        request.max_form_parts = self.max_parts()
+
+
+def multipart_header_allowance(parts: int) -> int:
+    return parts * MULTIPART_HEADER_BYTES_PER_PART
+
+
+def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
+    try:
+        return body_from_request(file_fields=body_file_fields)
+    except RequestEntityTooLarge as exc:
+        limit = request.max_content_length
+        if limit is None:
+            raise
+        raise RequestOverRouteLimits(
+            f"{RequestOverRouteLimits.description}: at most {request.max_form_parts} parts"
+            f" and {limit / BYTES_PER_MIB:g} MiB"
+        ) from exc
+
+
+def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
+    """Query fields typed as a list, which a repeated parameter fills."""
+    return tuple(
+        name
+        for name, field in model.model_fields.items()
+        if any(get_origin(part) is list for part in (field.annotation, *get_args(field.annotation)))
+    )
+
+
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
     """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
     def decorator(view: Callable) -> Callable:
         body_file_fields = file_fields(body) if body is not None else frozenset()
+        query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 if query is not None:
-                    kwargs["query"] = query_params_from_request(query)
+                    kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(body_from_request(file_fields=body_file_fields))
+                    kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 abort(
@@ -159,6 +216,7 @@ def endpoint(
     context: AdmissionContext | None = "orm",
     internal: bool = False,
     deprecated: bool = False,
+    effect: Effect | None = None,
     examples: Sequence[Example] = (),
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
@@ -185,7 +243,8 @@ def endpoint(
 
     ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
     hides the op from the CLI's default listing; ``deprecated`` marks it as kept
-    for compatibility only; ``examples`` are complete inputs the catalog shows
+    for compatibility only; ``effect`` overrides the effect the HTTP method implies;
+    ``examples`` are complete inputs the catalog shows
     next to the schema.
     """
     requirements = tuple(requirements)
@@ -204,6 +263,7 @@ def endpoint(
             body=body,
             internal=internal,
             deprecated=deprecated,
+            effect=effect,
             examples=tuple(examples),
         ),
     )

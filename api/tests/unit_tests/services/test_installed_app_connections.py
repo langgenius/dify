@@ -65,7 +65,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]):
         type=WorkflowType.CHAT,
         version="published",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=account.id,
     )
     app.workflow_id = workflow.id

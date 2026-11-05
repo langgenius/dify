@@ -1,14 +1,27 @@
 """Workflow execution values shared across runtime and storage boundaries."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from threading import Lock
 from time import perf_counter
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from pydantic import Field
 
 from context.connection_execution import ConnectionExecutionContext
 from graphon.entities import WorkflowExecution as GraphonWorkflowExecution
+
+if TYPE_CHECKING:
+    from core.app.entities.app_invoke_entities import UserFrom
+
+
+@dataclass(frozen=True)
+class WorkflowExecutionIdentity:
+    """Resolved caller values crossing execution boundaries without ORM objects."""
+
+    user_id: str
+    user_from: UserFrom
 
 
 @dataclass
@@ -57,14 +70,29 @@ def serialize_connection_context(
     app_id: str | None,
     workflow_id: str,
     end_user_id: str | None,
+    account_id: str | None,
 ) -> str | None:
+    """Serialize references only for the run's tenant, app, workflow and caller namespace.
+
+    A missing context preserves legacy execution. Personal contexts require an EndUser;
+    workspace contexts require their Account creator. Mismatches fail before persistence.
+    """
     if context is None:
         return None
+    identity_matches = (
+        end_user_id is not None and context.end_user_id == end_user_id and account_id is None
+        if context.workspace is None
+        else account_id is not None
+        and end_user_id is None
+        and context.end_user_id == ""
+        and context.account_id == account_id
+        and context.workspace.account_id == account_id
+    )
     if (
         context.tenant_id != tenant_id
         or context.app_id != app_id
         or context.workflow_id != workflow_id
-        or context.end_user_id != end_user_id
+        or not identity_matches
     ):
         raise ValueError("Connection context does not match the workflow execution identity.")
     return context.model_dump_json()
