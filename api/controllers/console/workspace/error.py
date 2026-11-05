@@ -3,6 +3,18 @@ from http import HTTPStatus
 from libs.exception import BaseHTTPException
 
 
+class TriggerOAuthContextInvalidError(BaseHTTPException):
+    error_code = "trigger_oauth_context_invalid"
+    code = HTTPStatus.FORBIDDEN
+    description = "The trigger OAuth context is missing, expired or invalid."
+
+
+class TriggerOAuthProviderRequestError(BaseHTTPException):
+    error_code = "trigger_oauth_provider_error"
+    code = HTTPStatus.BAD_GATEWAY
+    description = "The trigger provider could not complete OAuth authorization."
+
+
 class TriggerOAuthClientConfigInvalidError(BaseHTTPException):
     error_code = "trigger_oauth_client_config_invalid"
     code = HTTPStatus.INTERNAL_SERVER_ERROR

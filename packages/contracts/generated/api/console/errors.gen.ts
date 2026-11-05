@@ -59,6 +59,7 @@ export { get12Errors as 'GET /apps/{app_id}/agent/config/skills/{name}/files/dow
 export { get12Errors as 'GET /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}' } from './knowledge-fs/errors.gen.ts'
 export { get12Errors as 'GET /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables' } from './rag/errors.gen.ts'
 export { get12Errors as 'GET /trial-apps/{app_id}/export' } from './trial-apps/errors.gen.ts'
+export { get131Errors as 'GET /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize' } from './workspaces/errors.gen.ts'
 export { get13Errors as 'GET /agent/{agent_id}/config/skills/{name}/download' } from './agent/errors.gen.ts'
 export { get13Errors as 'GET /apps/{app_id}/agent/config/skills/{name}/files/preview' } from './apps/errors.gen.ts'
 export { get13Errors as 'GET /datasets/{dataset_id}/batch/{batch}/indexing-estimate' } from './datasets/errors.gen.ts'

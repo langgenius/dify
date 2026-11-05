@@ -40,6 +40,7 @@ import {
   zTooManyFilesError,
   zTriggerOauthClientChangedError,
   zTriggerOauthClientConfigInvalidError,
+  zTriggerOauthProviderError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -6035,6 +6036,13 @@ export const get131 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+    trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+  })
 
 export const authorize = {
   get: get131,

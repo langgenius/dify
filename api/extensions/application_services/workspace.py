@@ -4,8 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.plugin.plugin_service import PluginService
-from core.trigger.trigger_manager import TriggerManager
+from core.plugin.impl.oauth import OAuthHandler
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -16,6 +15,12 @@ from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
+from services.trigger.oauth_gateway import (
+    OAuthProxyContextGateway,
+    PluginTriggerOAuthGateway,
+    TriggerOAuthBuilderGateway,
+)
+from services.trigger.oauth_service import TriggerOAuthService
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -52,6 +57,7 @@ class WorkspaceServices:
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
     trigger_oauth_clients: TriggerOAuthClientService
+    trigger_oauth: TriggerOAuthService
 
 
 def build_workspace_membership_services(
@@ -88,6 +94,11 @@ def build_workspace_services(
     registration: InvitedAccountRegistration,
     invitation_tokens: RedisInvitationTokenStore,
 ) -> WorkspaceServices:
+    trigger_providers = PluginTriggerOAuthGateway(oauth=OAuthHandler())
+    trigger_oauth_clients = TriggerOAuthClientService(
+        clients=TriggerOAuthClientRepository(session_factory=database_client),
+        providers=trigger_providers,
+    )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
         management=WorkspaceService(
@@ -120,9 +131,11 @@ def build_workspace_services(
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
-        trigger_oauth_clients=TriggerOAuthClientService(
-            clients=TriggerOAuthClientRepository(session_factory=database_client),
-            get_provider=TriggerManager.get_trigger_provider,
-            is_plugin_verified=PluginService.is_plugin_verified,
+        trigger_oauth_clients=trigger_oauth_clients,
+        trigger_oauth=TriggerOAuthService(
+            clients=trigger_oauth_clients,
+            providers=trigger_providers,
+            contexts=OAuthProxyContextGateway(),
+            builders=TriggerOAuthBuilderGateway(),
         ),
     )

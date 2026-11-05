@@ -51,14 +51,11 @@ class TriggerOAuthClientRepository(TriggerOAuthClientStore):
     def get(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthClientSnapshot:
         with self._session_factory() as session:
             custom = self._find_custom(session=session, tenant_id=tenant_id, provider_id=provider_id)
-            system_configured = (
-                session.scalar(
-                    select(TriggerOAuthSystemClient.id).where(
-                        TriggerOAuthSystemClient.plugin_id == provider_id.plugin_id,
-                        TriggerOAuthSystemClient.provider == provider_id.provider_name,
-                    )
+            encrypted_system_oauth_params = session.scalar(
+                select(TriggerOAuthSystemClient.encrypted_oauth_params).where(
+                    TriggerOAuthSystemClient.plugin_id == provider_id.plugin_id,
+                    TriggerOAuthSystemClient.provider == provider_id.provider_name,
                 )
-                is not None
             )
             return TriggerOAuthClientSnapshot(
                 custom=TriggerOAuthTenantClientRecord(
@@ -68,7 +65,7 @@ class TriggerOAuthClientRepository(TriggerOAuthClientStore):
                 )
                 if custom is not None
                 else None,
-                system_configured=system_configured,
+                encrypted_system_oauth_params=encrypted_system_oauth_params,
             )
 
     @override
