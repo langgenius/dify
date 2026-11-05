@@ -543,8 +543,9 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
+          // Each iteration or loop round starts the same node with a new execution id.
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(
-            (item) => item.node_id === data.node_id,
+            (item) => item.id === data.id,
           )
           if (currentIndex > -1) {
             responseItem.workflowProcess!.tracing![currentIndex] = {
