@@ -393,9 +393,7 @@ export default function IntegrationsPage({
                     }
                   />
                 </div>
-                <DrawerContent className="min-h-0 flex-1 p-0 pb-0">
-                  {renderSidebar('drawer')}
-                </DrawerContent>
+                <DrawerContent>{renderSidebar('drawer')}</DrawerContent>
               </DrawerPopup>
             </DrawerViewport>
           </DrawerPortal>

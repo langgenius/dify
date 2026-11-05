@@ -53,10 +53,9 @@ export function MainNavMobileBar({ initialPlatform }: Pick<MainNavProps, 'initia
           <DrawerViewport>
             <DrawerPopup
               aria-label={menuLabel}
-              className="bg-background-body data-[swipe-direction=left]:w-60 data-[swipe-direction=left]:border-y-0"
+              className="bg-background-body data-[swipe-direction=left]:w-60"
             >
               <DrawerContent
-                className="flex flex-col p-0"
                 onClick={(event) => {
                   if (isPlainLinkClick(event)) setOpen(false)
                 }}
