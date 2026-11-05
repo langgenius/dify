@@ -145,7 +145,7 @@ class TriggerOAuthService:
     def callback(
         self,
         *,
-        provider_id: TriggerProviderID,
+        provider: str,
         context_id: str | None,
         redirect_uri: str,
         callback_loader: Callable[[], TriggerOAuthCallbackRequest],
@@ -154,6 +154,7 @@ class TriggerOAuthService:
         if not context_id:
             raise TriggerOAuthContextError("context_id not found")
         context = self._contexts.consume(context_id)
+        provider_id = TriggerProviderID(provider)
         if context.plugin_id != provider_id.plugin_id or context.provider != provider_id.provider_name:
             raise TriggerOAuthContextError("OAuth context does not belong to this trigger provider")
         client_config = self._clients.resolve(tenant_id=context.tenant_id, provider_id=provider_id)
