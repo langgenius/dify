@@ -13,6 +13,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -21,7 +22,7 @@ import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
 import {
-  getAccountLoginCallbackUrl,
+  getEndUserAccountRedirectUrl,
   getEndUserLoginContext,
   isEndUserSignIn,
 } from './utils/end-user-login'
@@ -46,9 +47,9 @@ function NormalForm() {
       refetchOnWindowFocus: false,
     }),
   )
-  const accountCallback = getAccountLoginCallbackUrl(
+  const accountCallback = getEndUserAccountRedirectUrl(
     accountSession.data?.redirect_url,
-    accountInput?.redirect_url,
+    accountInput,
   )
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
@@ -121,8 +122,10 @@ function NormalForm() {
 
   useEffect(() => {
     if (isEndUser) {
-      if (accountSession.data?.logged_in && accountCallback)
-        globalThis.location.replace(accountCallback)
+      if (accountSession.data?.logged_in && accountCallback) {
+        if (!accountInput?.app_code) startWebAppAccountSession()
+        replaceLoginRedirect({ kind: 'absolute', href: accountCallback }, router.replace, basePath)
+      }
       return
     }
     if (!isLoggedIn) return
@@ -137,6 +140,7 @@ function NormalForm() {
   }, [
     accountSession.data,
     accountCallback,
+    accountInput?.app_code,
     isEndUser,
     isInvitationForCurrentAccount,
     isInviteLink,

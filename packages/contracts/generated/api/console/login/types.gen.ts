@@ -87,11 +87,11 @@ export type LoginMode = 'console' | 'end_user'
 export type GetLoginData = {
   body?: never
   path?: never
-  query: {
-    app_code: string
-    code_challenge: string
+  query?: {
+    app_code?: string
+    code_challenge?: string
     mode?: string
-    redirect_url: string
+    redirect_url?: string
   }
   url: '/login'
 }

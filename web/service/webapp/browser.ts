@@ -2,9 +2,11 @@ import type { WebAppClientContext } from './index'
 import { contract } from '@dify/contracts/api/web/orpc.gen'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
+import { basePath as appBasePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports -- The generated Web client preserves the existing public auth and access guard transport.
-import { request } from '../base'
+import { buildSigninUrlWithRedirect, request } from '../base'
 import { validateDefinedErrors } from '../console/defined-errors'
+import { isUnauthorizedError } from '../http-error'
 import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
 import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
 
@@ -29,6 +31,21 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         fetchCompat: true,
         request: input,
         silent: options.context.silent,
+      }).catch((error: unknown) => {
+        assertCurrentAccount()
+        if (
+          isUnauthorizedError(error) &&
+          window.location.pathname.replace(/\/$/, '') === `${appBasePath}/my-apps`
+        ) {
+          const signin = new URL(buildSigninUrlWithRedirect())
+          signin.searchParams.set('is_end_user', '1')
+          signin.searchParams.set(
+            'redirect_url',
+            `${appBasePath}/my-apps${window.location.search}${window.location.hash}`,
+          )
+          window.location.replace(signin.href)
+        }
+        throw error
       })
       assertCurrentAccount()
       return response
