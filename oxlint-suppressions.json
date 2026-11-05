@@ -2982,11 +2982,6 @@
       "count": 2
     }
   },
-  "web/app/components/integrations/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/integrations/sidebar-nav-item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

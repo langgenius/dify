@@ -122,7 +122,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   )
 
   const popupRef = useRef<HTMLDivElement>(null)
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const isChatMode = appDetail.mode !== 'completion'
   const isChatflow = appDetail.mode === 'advanced-chat'
@@ -177,8 +177,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     <div className="relative mt-2 grow overflow-x-auto">
       <Dialog
         open={!!conversationIdInUrl}
-        modal={isMobile}
-        disablePointerDismissal={!isMobile}
+        modal={isBelowSm}
+        disablePointerDismissal={!isBelowSm}
         onOpenChange={(open) => {
           if (!open) onCloseDialog()
         }}
@@ -372,7 +372,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </tbody>
         </table>
         <DialogPortal>
-          {isMobile && <DialogBackdrop />}
+          {isBelowSm && <DialogBackdrop />}
           <DialogViewport className="pointer-events-none">
             <DialogPopup
               ref={popupRef}

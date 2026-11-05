@@ -55,7 +55,7 @@ type Props = Readonly<{
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
 
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<
@@ -97,7 +97,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     () => currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
-  const [isMobileRightPanelOpen, { setTrue: showRightPanel, setFalse: hideRightPanel }] =
+  const [isResultDrawerOpen, { setTrue: showRightPanel, setFalse: hideRightPanel }] =
     useBoolean(false)
 
   const {
@@ -249,8 +249,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       <FloatRightContainer
         panelClassName="justify-start! overflow-y-auto!"
         showClose
-        isMobile={isMobile}
-        isOpen={!isMobile || isMobileRightPanelOpen}
+        isMobile={isBelowSm}
+        isOpen={!isBelowSm || isResultDrawerOpen}
         onClose={hideRightPanel}
         title={panelTitle}
       >

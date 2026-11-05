@@ -319,6 +319,26 @@ describe('DocumentDetail', () => {
       }
     })
 
+    it('does not open the mobile drawer when an open inline panel crosses the breakpoint', () => {
+      try {
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        const toggle = screen.getByRole('button', { name: /metadata\.title/ })
+        expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+        act(() => setViewportWidth(390))
+        expect(toggle).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+        act(() => resetViewportWidth())
+        expect(toggle).toHaveAttribute('aria-expanded', 'true')
+        expect(
+          screen.getByText('dataset.metadata.documentMetadata.documentInformation'),
+        ).toBeInTheDocument()
+      } finally {
+        resetViewportWidth()
+      }
+    })
+
     it.each([true, false])(
       'allows metadata editing only with edit permission (%s)',
       async (canEdit) => {

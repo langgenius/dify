@@ -72,7 +72,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const { data: currentUserId } = useSuspenseQuery({
@@ -91,7 +91,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditDocument = datasetACLCapabilities.canEdit
-  const [showMetadata, setShowMetadata] = useState(!isMobile)
+  const [isMetadataPanelOpen, setIsMetadataPanelOpen] = useState(true)
+  const [isMetadataDrawerOpen, setIsMetadataDrawerOpen] = useState(false)
+  const showMetadata = isBelowSm ? isMetadataDrawerOpen : isMetadataPanelOpen
+  const setShowMetadata = isBelowSm ? setIsMetadataDrawerOpen : setIsMetadataPanelOpen
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
   const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
@@ -306,7 +309,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const metadataPanel = docDetail && (
     <Metadata
-      className={cn(isMobile && 'me-2 mt-3')}
+      className={cn(isBelowSm && 'me-2 mt-3')}
       datasetId={datasetId}
       documentId={documentId}
       docDetail={docDetail}
@@ -441,11 +444,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             showClose
             isOpen={showMetadata}
             onClose={() => setShowMetadata(false)}
-            isMobile={isMobile}
+            isMobile={isBelowSm}
             panelClassName="justify-start!"
           >
             {metadataPanel &&
-              (isMobile ? (
+              (isBelowSm ? (
                 metadataPanel
               ) : (
                 <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">

@@ -68,7 +68,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const { t } = useTranslation(['datasetCreation'])
   const locale = useLocale()
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)
@@ -386,7 +386,7 @@ const StepTwo: FC<StepTwoProps> = ({
         />
       </div>
       <PreviewPanel
-        isMobile={isMobile}
+        isMobile={isBelowSm}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         finalFocus={previewTriggerRef}
