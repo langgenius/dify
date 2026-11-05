@@ -13,6 +13,7 @@ from core.dify_builder.models import BuildNodesResult, Graph, Inputs
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import build, resources
+from services.dify_builder.plan import WorkflowPlan
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
@@ -356,7 +357,7 @@ def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch: pytest.Mo
 def test_propose_plan_v1_returns_overview_and_steps_in_one_call() -> None:
     m = _FakeInstance([_plan_reply(["Ingest", "Summarize", "Emit"])])
     out = build.propose_plan_v1(m, {"x": 1})
-    assert out is not None
+    assert isinstance(out, WorkflowPlan)
     assert out.title == "Build a document summary workflow"
     assert out.input_summary == "Source documents to summarize."
     assert out.output_summary == "A summary report."
@@ -408,7 +409,7 @@ def test_propose_plan_v1_corrects_schema_once_with_full_source_and_same_provider
 
     out = build.propose_plan_v1(model, requirements, reasoning.append, goal_text=goal)
 
-    assert out is not None
+    assert isinstance(out, WorkflowPlan)
     assert out.items == ["start node reads input", "end node returns link"]
     assert len(model.calls) == 2
     source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
@@ -436,7 +437,7 @@ def test_propose_plan_v1_preserves_valid_plan_strings_without_content_thresholds
     model = _FakeInstance([_plan_reply(["start node: collect input", "llm node: draft", "end node: return"])])
 
     out = build.propose_plan_v1(model, {})
-    assert out is not None
+    assert isinstance(out, WorkflowPlan)
     assert out.items == ["start node: collect input", "llm node: draft", "end node: return"]
     assert len(model.calls) == 1
 
@@ -2031,7 +2032,7 @@ class TestNativeBuildCapabilityMessages:
         plan = ["http-request node GETs the URL", "if-else node checks status", "end node returns the result"]
         model = _FakeInstance([_plan_reply(plan)])
         result = build.propose_plan_v1(model, cls._REQUIREMENTS, goal_text=cls._GOAL)
-        assert result is not None
+        assert isinstance(result, WorkflowPlan)
         assert result.items == plan
         assert len(model.calls) == 1
         return model.calls[0][0]
@@ -2589,3 +2590,74 @@ def test_business_clarification_keeps_internal_marked_question_without_a_default
 
     assert [field["key"] for field in analysis["fields"]] == ["constraints"]
     assert analysis["values"] == {}
+
+
+def test_planner_returns_later_discovered_business_questions_with_editable_defaults() -> None:
+    from dataclasses import asdict
+
+    reply = {
+        "kind": "clarification",
+        "fields": [
+            {
+                "key": "missing_rate",
+                "label": "Missing rate",
+                "hint": "Recommended: reject missing rates to avoid inaccurate totals.",
+                "type": "select",
+                "options": ["Reject", "Skip"],
+                "required": True,
+            }
+        ],
+        "values": {"missing_rate": "Reject"},
+    }
+    model = _FakeInstance([json.dumps(reply)])
+
+    outcome = build.propose_plan_v1(model, {"currency": "USD"}, goal_text="Settle orders after rule approval.")
+
+    assert outcome is not None
+    assert asdict(outcome) == reply
+    assert len(model.calls) == 1
+    system = model.calls[0][0][0].content
+    assert "unanswered business" in system
+    assert "recommended" in system
+    assert "submission" in system
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        {"kind": "clarification", "fields": [], "values": {}},
+        {"kind": "clarification", "fields": [{"key": "x", "label": "X", "type": "json"}], "values": {"x": {}}},
+        {
+            "kind": "clarification",
+            "fields": [{"key": "x", "label": "X", "type": "select", "options": ["A"]}],
+            "values": {"x": "B"},
+        },
+        {"kind": "clarification", "fields": [{"key": "x", "label": "X", "type": "text"}], "values": {"x": []}},
+    ],
+)
+def test_planner_never_approves_a_malformed_clarification(invalid: dict[str, object]) -> None:
+    model = _FakeInstance([json.dumps(invalid), json.dumps(invalid)])
+    assert build.propose_plan_v1(model, {}, goal_text="Settle orders") is None
+
+
+def test_planner_can_ask_a_required_select_without_inventing_a_recommendation() -> None:
+    from services.dify_builder.plan import BuildClarification
+
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "kind": "clarification",
+                    "fields": [
+                        {"key": "recipient", "label": "Recipient", "type": "select", "options": ["Owner", "Reviewer"]}
+                    ],
+                    "values": {"recipient": ""},
+                }
+            )
+        ]
+    )
+    outcome = build.propose_plan_v1(model, {}, goal_text="Notify the responsible person")
+    assert isinstance(outcome, BuildClarification)
+    assert outcome.values == {"recipient": ""}
+    assert outcome.fields[0]["options"] == ["Owner", "Reviewer"]
+    assert outcome.fields[0]["required"] is True

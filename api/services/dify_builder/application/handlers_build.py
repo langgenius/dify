@@ -10,6 +10,7 @@ no handler; completion and publish receipts are emitted as assistant text.
 
 import json
 import logging
+import math
 import uuid
 from dataclasses import asdict, fields, replace
 from typing import Any
@@ -98,6 +99,7 @@ from services.dify_builder.business_acceptance import (
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import (
+    BuildClarification,
     ResourceDiscovery,
     WorkflowPlan,
     has_confirmed_knowledge_source_cue,
@@ -185,6 +187,9 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         plan = env.agent.propose_plan_v1(
             fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None
         )
+        if isinstance(plan, BuildClarification):
+            progress.finish()
+            return _offer_clarification(fc, plan)
         if not plan:
             # No clarification is needed, so an empty form cannot recover
             # planning. Settle honestly and offer the existing explicit restart.
@@ -223,6 +228,75 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
 
 
+def _valid_requirement_submission(fc: DifyBuilderContext, payload: object) -> bool:
+    """Validate visible controls before merging or confirming any answer.
+
+    Required answers must occur in this submission; a displayed recommendation
+    never substitutes for an omitted value. Invalid submissions change nothing.
+    Explicit structured technical controls retain their existing JSON support.
+    """
+    if not isinstance(payload, dict):
+        return not fc.form_fields
+    for spec in fc.form_fields:
+        if not isinstance(spec, dict) or not isinstance(spec.get("key"), str) or not spec["key"]:
+            return False
+        key = spec["key"]
+        required = spec.get("required") is True
+        if key not in payload:
+            if required:
+                return False
+        else:
+            value = payload[key]
+            empty = value is None or (isinstance(value, str) and not value.strip())
+            if empty and required:
+                return False
+            field_type = spec.get("type", "text")
+            valid = (
+                (field_type in {"text", "textarea"} and isinstance(value, str))
+                or (field_type == "select" and isinstance(value, str) and value in spec.get("options", []))
+                or (field_type == "bool" and isinstance(value, bool))
+                or (
+                    field_type == "number"
+                    and (
+                        (isinstance(value, int) and not isinstance(value, bool))
+                        or (isinstance(value, float) and math.isfinite(value))
+                    )
+                )
+                or (field_type == "json" and isinstance(value, (list, dict)))
+                or (field_type == "json_object" and isinstance(value, dict))
+            )
+            if not empty and not valid:
+                return False
+    return True
+
+
+def _offer_clarification(fc: DifyBuilderContext, clarification: BuildClarification) -> StepResult:
+    """Offer editable defaults without approving a plan, generating or writing a graph.
+
+    Preserve the goal, prior answers, their confirmation provenance and resource
+    choices. Only a subsequent valid submission can confirm these new values.
+    """
+    confirmed = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
+    fc.requirements = {
+        **fc.requirements,
+        **{key: value for key, value in clarification.values.items() if key not in (confirmed or [])},
+    }
+    fc.form_fields = list(clarification.fields)
+    form_fields = build_form_fields(fc.form_fields)
+    items = append_card(
+        fc,
+        FormCard(
+            variant="build_requirements",
+            title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+            description=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_DESCRIPTION),
+            fields=form_fields,
+            values=dict(fc.requirements),
+            frozen=False,
+        ),
+    )
+    return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc, items=items)
+
+
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """Merge requirements and commit the abstract plan before resource discovery.
 
@@ -235,6 +309,9 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
     if fc.resource_selection.get("knowledge_decision_pending"):
         return _handle_knowledge_decision(env, turn, s, fc)
+
+    if not _valid_requirement_submission(fc, turn.action.payload if turn.action else None):
+        return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
     if any(field.get("key") == _ADJUSTMENT_REQUEST for field in fc.form_fields):
         value = (
@@ -282,6 +359,9 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     plan = env.agent.propose_plan_v1(
         _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
     )
+    if isinstance(plan, BuildClarification):
+        progress.finish()
+        return _offer_clarification(fc, plan)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.BUILD_GOAL_ANALYSIS)
     store_plan(fc, plan)
@@ -556,6 +636,9 @@ def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     clear_task_acceptance(fc)
     fc.goal_text = revised_goal
     decision["effective_scope_digest"] = _knowledge_scope(fc)
+    if isinstance(plan, BuildClarification):
+        fc.resource_selection.pop("knowledge_decision_pending", None)
+        return _offer_clarification(fc, plan)
     store_plan(fc, plan)
     fc.resource_selection = {"knowledge_scope_decision": decision}
     fc.form_fields = []
@@ -665,6 +748,10 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             turn_id=progress.operation_id,
         )
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc, items=items)
+    if isinstance(plan, BuildClarification):
+        fc.resource_selection["resource_ids"] = resource_ids
+        progress.finish()
+        return _offer_clarification(fc, plan)
     if plan is None:
         return _planning_failed(env, s, fc, progress, "build-bind-resources", PcState.BUILD_RESOURCE_RECOMMENDATION)
     if requested_knowledge:
@@ -787,7 +874,11 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # endpoint the user actually gave from one the model invented (ESQ1-302/S5b).
     trusted_text = f"{fc.goal_text}\n{json.dumps(dict(_knowledge_requirements(fc)), ensure_ascii=False)}"
     build_result = env.agent.build_nodes(
-        list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text, reply_language=fc.reply_language or None
+        list(fc.plan_items),
+        selected_resource_ids,
+        trusted_text=trusted_text,
+        plan_approved=True,
+        reply_language=fc.reply_language or None,
     )
     intents = build_result.intents
 
@@ -1751,6 +1842,9 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     plan = env.agent.propose_plan_v1(
         _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
     )
+    if isinstance(plan, BuildClarification):
+        progress.finish()
+        return _offer_clarification(fc, plan)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-restart-plan", PcState.BUILD_REVERTED)
     store_plan(fc, plan)

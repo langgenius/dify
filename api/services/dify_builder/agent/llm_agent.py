@@ -25,7 +25,7 @@ from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import build, chat, edit, fix, mock_inputs, resources
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.cognition_model_gateway import PolicyModelInstance
-from services.dify_builder.plan import WorkflowPlan
+from services.dify_builder.plan import BuildClarification, WorkflowPlan
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +211,7 @@ class LlmBuilderAgent:
     @diagnostics.cognition
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
-    ) -> WorkflowPlan | None:
+    ) -> WorkflowPlan | BuildClarification | None:
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
@@ -273,13 +273,22 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def build_nodes(self, plan_items, resource_ids=None, *, trusted_text="", reply_language: str | None = None):
+    def build_nodes(
+        self,
+        plan_items,
+        resource_ids=None,
+        *,
+        trusted_text="",
+        plan_approved: bool = False,
+        reply_language: str | None = None,
+    ):
         return build.build_nodes(
             self._tenant_id,
             self._model_config,
             plan_items,
             resource_ids or (),
             trusted_text=trusted_text,
+            plan_approved=plan_approved,
             account_id=self._account_id,
             mode=self._app_mode,
             reply_language=reply_language,

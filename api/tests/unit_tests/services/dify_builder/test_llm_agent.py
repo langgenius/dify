@@ -131,11 +131,13 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         *,
         mode: str,
         trusted_text: str = "",
+        plan_approved: bool = False,
         account_id: str | None = None,  # noqa: ARG001
         reply_language: str | None = None,
         cognition_model: object | None = None,
     ) -> list[object]:
         del cognition_model
+        assert plan_approved is False
         assert mode == "workflow"
         assert reply_language is None
         seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
@@ -489,13 +491,14 @@ def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.Monkey
     agent.propose_plan_v1({}, goal_text="goal")
     agent.discover_resources(["step"], goal_text="goal", requirements={}, reply_language="en")
     agent.bind_resources(["step"], ["rid"])
-    agent.build_nodes(["step"])
+    agent.build_nodes(["step"], plan_approved=True)
 
     assert "planning_catalogue" not in seen
     for owner in ("discover_resources", "bind_resources", "build_nodes"):
         assert seen[owner][0] == "t1"
         assert seen[owner][1].get("account_id") == "acct-a", owner
 
+    assert seen["build_nodes"][1].get("plan_approved") is True
     assert seen["discover_resources"][1].get("mode") == "advanced-chat"
     assert seen["discover_resources"][1].get("reply_language") == "en"
 
