@@ -91,7 +91,12 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
 type PromptEditorAriaProps = Pick<
   React.AriaAttributes,
-  'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
 >
 
 type PromptEditorProps = PromptEditorAriaProps & {
@@ -136,6 +141,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   instanceId,
   children,
   compact,
@@ -241,6 +248,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
           aria-haspopup={ariaHasPopup}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           compact={compact}
           className={className}
           placeholder={placeholder}

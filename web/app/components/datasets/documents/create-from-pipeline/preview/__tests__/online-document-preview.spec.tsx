@@ -2,8 +2,12 @@ import type { NotionPage } from '@/models/common'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createDataSourceStore } from '../../data-source/store'
+import { DataSourceContext } from '../../data-source/store/provider'
 import OnlineDocumentPreview from '../online-document-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
@@ -23,17 +27,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-// Mock dataset-detail context - needs mock to control return values
-const mockPipelineId = vi.fn()
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    _selector: (s: { dataset: { pipeline_id: string } }) => string,
-  ) => {
-    return mockPipelineId()
-  },
-}))
-
-// Mock usePreviewOnlineDocument hook - needs mock to control mutation behavior
 const mockMutateAsync = vi.fn()
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -48,16 +41,20 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Mock data source store - needs mock to control store state
-const mockCurrentCredentialId = 'credential-123'
-const mockGetState = vi.fn(() => ({
-  currentCredentialId: mockCurrentCredentialId,
-}))
-vi.mock('../../data-source/store', () => ({
-  useDataSourceStore: () => ({
-    getState: mockGetState,
-  }),
-}))
+const render = (ui: React.ReactElement, credential = 'credential-123') => {
+  const store = createDataSourceStore()
+  store.getState().setCurrentCredentialId(credential)
+  const wrap = (children: React.ReactNode) => (
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API.
+    <DatasetDetailContext.Provider
+      value={{ dataset: createDatasetFixture({ pipeline_id: 'pipeline-123' }) }}
+    >
+      <DataSourceContext value={store}>{children}</DataSourceContext>
+    </DatasetDetailContext.Provider>
+  )
+  const result = renderWithConsoleQuery(wrap(ui))
+  return { ...result, rerender: (next: React.ReactElement) => result.rerender(wrap(next)) }
+}
 
 // Test data factory
 const createMockNotionPage = (overrides?: Partial<NotionPage>): NotionPage => ({
@@ -79,15 +76,11 @@ const defaultProps = {
 
 describe('OnlineDocumentPreview', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockPipelineId.mockReturnValue('pipeline-123')
-    mockGetState.mockReturnValue({ currentCredentialId: mockCurrentCredentialId })
     mockMutateAsync.mockReset().mockResolvedValue({ content: 'Test content' })
   })
 
   it('requests the current page using the pipeline, node, workspace and credential', async () => {
-    mockGetState.mockReturnValue({ currentCredentialId: 'custom-credential' })
-    render(<OnlineDocumentPreview {...defaultProps} />)
+    render(<OnlineDocumentPreview {...defaultProps} />, 'custom-credential')
     expect(await screen.findByText('Test content')).toBeInTheDocument()
     expect(screen.getByText('Test Notion Page')).toBeInTheDocument()
     expect(screen.getByText('page')).toBeInTheDocument()

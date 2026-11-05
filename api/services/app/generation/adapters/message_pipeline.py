@@ -4,6 +4,8 @@ import time
 from collections.abc import Generator
 from threading import Thread
 
+from dify_trace_sdk.events import MessageCompleted
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
@@ -43,8 +45,6 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher
 from core.model_manager import ModelInstance
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
@@ -69,7 +69,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     """
 
     _task_state: EasyUITaskState
-    _precomputed_event_type: StreamEvent | None = None
 
     def __init__(
         self,
@@ -134,7 +133,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 message_id=self._message_id,
             )
 
-        generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
+        generator = self._wrapper_process_stream_response()
         if self.stream:
             return self._to_stream_response(generator)
         else:
@@ -222,9 +221,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             return None
         raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
-    def _wrapper_process_stream_response(
-        self, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse]:
+    def _wrapper_process_stream_response(self) -> Generator[StreamResponse]:
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
@@ -243,7 +240,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 get_credit_usage_app_type(self._app_config.app_mode),
             )
         try:
-            for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+            for response in self._process_stream_response(publisher=publisher):
                 while audio_response := self._listen_audio_msg(publisher, task_id):
                     yield audio_response
                 if publisher and isinstance(response, ErrorStreamResponse):
@@ -276,9 +273,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             if publisher:
                 publisher.cancel()
 
-    def _process_stream_response(
-        self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse]:
+    def _process_stream_response(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
         """
         Process stream response.
         :return:
@@ -293,15 +288,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     err = self.handle_error(event=event)
                     self._records.fail_message(self._identity, self._error_to_desc(err))
 
-                    if trace_manager:
-                        trace_manager.add_trace_task(
-                            TraceTask(
-                                TraceTaskName.MESSAGE_TRACE,
-                                conversation_id=self._conversation_id,
-                                message_id=self._message_id,
-                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                            )
-                        )
+                    self._emit_message_trace()
 
                     yield self.error_to_stream_response(err)
                     break
@@ -322,21 +309,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                             answer=output_moderation_answer
                         )
 
-                    # A cancelled Agent can report authoritative usage after the SSE
-                    # stream stops. The repository preserves it atomically with the answer.
+                    stopped = isinstance(event, QueueStopEvent)
+                    # Closing an Agent consumer records intent; the worker owns its runtime terminal.
+                    agent_stop_requested = stopped and self._app_config.app_mode == AppMode.AGENT
+                    # Preserve authoritative usage that may arrive after the SSE stream stops.
                     saved_message = self._save_message(
-                        trace_manager=trace_manager, preserve_existing_usage=isinstance(event, QueueStopEvent)
+                        preserve_existing_usage=stopped, agent_stop_requested=agent_stop_requested
                     )
-                    if (
-                        isinstance(event, QueueStopEvent)
-                        and self._application_generate_entity.app_config.app_mode == AppMode.AGENT
-                    ):
+                    if agent_stop_requested:
                         # Provider/billing subscribers may perform external I/O.
                         # The repository has released the stop-save row lock before this notification.
                         message_was_created.send(
                             saved_message,
                             application_generate_entity=self._application_generate_entity,
                         )
+                    else:
+                        self._emit_message_trace()
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
@@ -388,15 +376,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     current_content += delta_text
                     self._task_state.llm_result.message.content = current_content
 
-                    # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
-                    if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
-                        self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
-                            message_id=self._message_id
-                        )
                     yield self._message_cycle_manager.message_to_stream_response(
                         answer=delta_text,
                         message_id=self._message_id,
-                        event_type=self._precomputed_event_type,
+                        event_type=StreamEvent.MESSAGE,
                     )
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
@@ -434,23 +417,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     continue
         return delta_text
 
-    def _save_message(
-        self,
-        *,
-        trace_manager: TraceQueueManager | None = None,
-        preserve_existing_usage: bool = False,
-    ) -> Message:
+    def _save_message(self, *, preserve_existing_usage: bool, agent_stop_requested: bool) -> Message:
+        """Commit the final answer before notifying ``message_was_created`` subscribers.
+
+        The owned message must exist. ``agent_stop_requested`` is true only for
+        a stopped Agent App consumer and implies ``preserve_existing_usage``.
+        Successful saves record stop intent for trace recovery, not a runtime
+        outcome. Repository failures propagate without notification or tracing.
+        Return the committed detached message; for Agent stops the caller owns
+        post-commit notification, without emitting a consumer terminal trace.
+        """
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
         usage.latency = time.perf_counter() - self.start_at
         self._task_state.metadata.usage = usage
-        agent_stop_requested = (
-            preserve_existing_usage and self._application_generate_entity.app_config.app_mode == AppMode.AGENT
-        )
         metadata = self._task_state.metadata.model_dump(mode="json")
         if agent_stop_requested:
-            # Closing the consumer records a request, not a runtime outcome.
-            # The Agent worker owns the terminal after cancellation/cleanup.
             metadata["agent_stop_requested"] = True
         saved = self._records.save_message(
             self._identity,
@@ -470,22 +452,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 preserve_existing_usage=preserve_existing_usage,
             ),
         )
-        metadata = json.loads(saved.message_metadata) if saved.message_metadata else {}
-        if "usage" in metadata:
-            self._task_state.llm_result.usage = LLMUsage.from_metadata(metadata["usage"])
-        if trace_manager and not agent_stop_requested:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE,
-                    conversation_id=self._conversation_id,
-                    message_id=self._message_id,
-                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                )
-            )
+        saved_metadata = json.loads(saved.message_metadata) if saved.message_metadata else {}
+        if "usage" in saved_metadata:
+            self._task_state.llm_result.usage = LLMUsage.from_metadata(saved_metadata["usage"])
         # Consumers observe a committed, detached message.
         if not agent_stop_requested:
             message_was_created.send(saved, application_generate_entity=self._application_generate_entity)
         return saved
+
+    def _emit_message_trace(self) -> None:
+        """Emit one completion through the request scope after its outcome is committed.
+
+        Callers must persist the message first. With no trace scope this is a no-op.
+        """
+        trace_scope = self._application_generate_entity.trace_scope
+        if trace_scope is not None:
+            trace_scope.emit(MessageCompleted(message_id=self._message_id, conversation_id=self._conversation_id))
 
     def _handle_stop(self, event: QueueStopEvent):
         """

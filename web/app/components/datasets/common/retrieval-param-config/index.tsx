@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -166,18 +167,11 @@ const RetrievalParamConfig: FC<Props> = ({
                 disabled={disabled}
               />
               {showMultiModalTip && (
-                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                  <div className="p-1">
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                    />
-                  </div>
-                  <span className="system-xs-medium text-text-primary">
+                <Alert type="warning" className="mt-2">
+                  <AlertTitle>
                     {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-                  </span>
-                </div>
+                  </AlertTitle>
+                </Alert>
               )}
             </>
           )}
@@ -302,18 +296,11 @@ const RetrievalParamConfig: FC<Props> = ({
                 disabled={disabled}
               />
               {showMultiModalTip && (
-                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                  <div className="p-1">
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                    />
-                  </div>
-                  <span className="system-xs-medium text-text-primary">
+                <Alert type="warning" className="mt-2">
+                  <AlertTitle>
                     {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-                  </span>
-                </div>
+                  </AlertTitle>
+                </Alert>
               )}
             </>
           )}

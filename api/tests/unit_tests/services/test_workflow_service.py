@@ -1801,7 +1801,8 @@ class TestWorkflowServiceDraftExecution:
                 )
 
             runtime = replace(
-                workflow_runtime, node_writer=lambda *args, **kwargs: repository  # noqa: ARG005
+                workflow_runtime,
+                node_writer=lambda *args, **kwargs: repository,  # noqa: ARG005
             )
             service = WorkflowService(
                 sessionmaker(bind=sqlite_engine, expire_on_commit=False),

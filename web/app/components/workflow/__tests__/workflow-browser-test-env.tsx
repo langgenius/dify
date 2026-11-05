@@ -16,7 +16,6 @@ export async function renderWorkflowBrowserComponent(
 ) {
   const { queryClient: defaultClient } = createConsoleQueryWrapper({
     appDslVersion: '0.6.0',
-    systemFeatures: { enable_collaboration_mode: false },
   })
   const queryClient = options.queryClient ?? defaultClient
   seedModelProviderQueries(queryClient)

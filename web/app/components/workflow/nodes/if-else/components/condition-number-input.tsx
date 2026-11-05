@@ -138,7 +138,7 @@ const ConditionNumberInput = ({
               type="number"
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
+              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' })}
               onFocus={setFocus}
               onBlur={setBlur}
             />

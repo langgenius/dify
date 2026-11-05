@@ -1,10 +1,15 @@
 import types
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
+from contextvars import Context
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
+from flask import has_app_context
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import (
     DIFY_RUN_CONTEXT_KEY,
@@ -24,6 +29,7 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.graph import Graph
 from graphon.graph.validation import GraphValidationError
+from graphon.model_runtime.entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -41,6 +47,7 @@ from graphon.nodes.variable_assigner.v2.node import (
 )
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
+from models.enums import ConversationFromSource
 from services.workflow.execution.adapters import node_factory
 from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 from services.workflow.execution.adapters.memory import NodeMemory
@@ -49,6 +56,7 @@ from services.workflow.execution.adapters.node_factory import get_node_type_clas
 from services.workflow.execution.adapters.node_runtime import DifyPreparedLLM
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -459,34 +467,74 @@ class TestNodeFactoryCasesWorkflow:
             assert result.conversation_id == "conversation-id"
             assert result.model_instance is sentinel.model_instance
 
-        def test_uses_injected_history_without_flask_app_context(self) -> None:
-            prepared = MagicMock()
-            prepared.get_prompt_messages.return_value = [sentinel.message]
-            history = MagicMock()
-            history.history.return_value = prepared
-            runtime = _WorkflowRuntimeStub(history=history)
+        def test_uses_injected_history_without_flask_app_context(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session_factory: sessionmaker[Session],
+            workflow_runtime: WorkflowRuntime,
+        ) -> None:
+            """Read committed history without Flask and preserve message/token limits."""
+            with sqlite_session_factory.begin() as session:
+                session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
+                session.add(
+                    make_conversation(
+                        conversation_id="conversation-id",
+                        app_id="app-id",
+                        inputs={},
+                        from_source=ConversationFromSource.CONSOLE,
+                    )
+                )
+                for index in range(2):
+                    session.add(
+                        make_message(
+                            message_id=f"message-{index}",
+                            app_id="app-id",
+                            conversation_id="conversation-id",
+                            query=f"question-{index}",
+                            answer=f"answer-{index}",
+                            answer_tokens=1,
+                            inputs={},
+                            message={},
+                            message_unit_price=Decimal(0),
+                            answer_unit_price=Decimal(0),
+                            currency="USD",
+                            from_source=ConversationFromSource.CONSOLE,
+                            created_at=datetime(2026, 1, index + 1),
+                        )
+                    )
+            model = make_model_instance(provider="provider", model="model")
+            counted: list[list[object]] = []
+
+            def count_tokens(
+                prompt_messages: Sequence[PromptMessage],
+                tools: Sequence[PromptMessageTool] | None = None,
+            ) -> int:
+                """Count each prepared prompt as one token without provider I/O."""
+                assert tools is None
+                counted.append([prompt.content for prompt in prompt_messages])
+                return len(prompt_messages)
+
+            monkeypatch.setattr(model, "get_llm_num_tokens", count_tokens)
             variables = VariablePool.from_bootstrap(
                 system_variables=build_system_variables(conversation_id="conversation-id")
             )
-            memory = AgentRuntimeSupport(workflow_runtime=runtime).fetch_memory(
+            memory = AgentRuntimeSupport(workflow_runtime=workflow_runtime).fetch_memory(
                 variable_pool=variables,
                 tenant_id="tenant-id",
                 app_id="app-id",
-                model_instance=sentinel.model_instance,
+                model_instance=model,
             )
 
             assert memory is not None
-            assert memory.get_history_prompt_messages(max_token_limit=128, message_limit=2) == [sentinel.message]
-            history.history.assert_called_once_with(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                conversation_id="conversation-id",
-                message_limit=2,
-            )
-            prepared.get_prompt_messages.assert_called_once_with(
-                model_instance=sentinel.model_instance,
-                max_token_limit=128,
-            )
+
+            def read_messages() -> Sequence[PromptMessage]:
+                """Exercise history with no request or application context inherited."""
+                assert not has_app_context()
+                return memory.get_history_prompt_messages(max_token_limit=1, message_limit=1)
+
+            messages = Context().run(read_messages)
+            assert [message.content for message in messages] == ["answer-1"]
+            assert counted == [["question-1", "answer-1"], ["answer-1"]]
 
     class TestDifyGraphInitContext:
         def test_to_graph_init_params_preserves_explicit_values(self):

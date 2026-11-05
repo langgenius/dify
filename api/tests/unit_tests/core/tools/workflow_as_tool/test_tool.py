@@ -206,8 +206,6 @@ def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    from core.ops.ops_trace_manager import OpsTraceManager
-
     tool_db = SqliteToolDb(sqlite_engine, sqlite_session_factory, sqlite_session)
     _persist_tenant(tool_db)
     user = _persist_end_user(tool_db)
@@ -244,7 +242,6 @@ def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
     sqlite_session.add(provider)
     sqlite_session.commit()
     flask_app = Flask(__name__)
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda *_args: None)
 
     with flask_app.app_context():
         tool = ToolManager.get_tool_runtime(
@@ -1047,7 +1044,6 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
 
     from core.app.apps import base_app_queue_manager
     from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
-    from core.ops.ops_trace_manager import TraceQueueManager
     from extensions.application_services.workflow_variables import build_workflow_variable_service
     from graphon.nodes import BuiltinNodeTypes
     from graphon.nodes.tool.entities import ToolNodeData
@@ -1128,11 +1124,6 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
     assert tool._draft_variable_saver is saver
 
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(
-        generator_module,
-        "TraceQueueManager",
-        lambda *args, **kwargs: create_autospec(TraceQueueManager, instance=True, spec_set=True),
-    )
     monkeypatch.setattr(WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     outputs = {"result": "nested result"}
 
@@ -1173,7 +1164,6 @@ def test_nested_workflow_preserves_admitted_end_user_and_resolves_agent_binding(
     """Exercise tool admission, generator, worker, runner and node construction across apps."""
     from flask import Flask
 
-    from core.ops.ops_trace_manager import OpsTraceManager
     from enums.agent import WorkflowAgentBindingType
     from models.tools import WorkflowToolProvider
     from services.tools.workflow.provider import WorkflowToolProviderController
@@ -1240,7 +1230,6 @@ def test_nested_workflow_preserves_admitted_end_user_and_resolves_agent_binding(
     tool = controller.get_tools(child.tenant_id)[0].fork_tool_runtime(
         ToolRuntime(tenant_id=child.tenant_id, invoke_from=invoke_from)
     )
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda *_args: None)
     resolved: list[tuple[str, str]] = []
 
     def probe_engine(entry: WorkflowEntry) -> Iterator[object]:

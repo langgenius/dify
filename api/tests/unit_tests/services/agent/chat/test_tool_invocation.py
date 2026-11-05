@@ -4,13 +4,14 @@ from typing import override
 from unittest.mock import create_autospec
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, TraceCorrelation, TraceEvent
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.entities import AgentScratchpadUnit
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -93,6 +94,26 @@ class _NoFilesExpected(MessageFileWriter):
         raise AssertionError(f"no files expected: {tenant_id=}, {message_id=}, {files=}")
 
 
+class _RecordingEmitter:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(emitter: _RecordingEmitter) -> TraceScope:
+    return TraceScope(
+        emitter=emitter,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="account-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
 @pytest.mark.parametrize("fail_after_first_message", [False, True])
 def test_session_bound_invoker_consumes_lazy_messages_before_closing_session(
     fail_after_first_message: bool,
@@ -100,6 +121,7 @@ def test_session_bound_invoker_consumes_lazy_messages_before_closing_session(
     tool_sessions: sessionmaker[Session] = sessionmaker(class_=_TrackingSession)
     invoker = build_workflow_execution_dependencies(tool_sessions).agent_tool_invoker
     tool = _LazyTool(fail_after_first_message=fail_after_first_message)
+    emitter = _RecordingEmitter()
 
     text, files, meta = invoker(
         tool=tool,
@@ -109,6 +131,7 @@ def test_session_bound_invoker_consumes_lazy_messages_before_closing_session(
         message=make_message(message_id="message-1", conversation_id="conversation-1"),
         invoke_from=InvokeFrom.DEBUGGER,
         agent_tool_callback=DifyAgentCallbackHandler(),
+        trace_scope=_trace_scope(emitter),
         records=_NoFilesExpected(),
     )
 
@@ -119,10 +142,24 @@ def test_session_bound_invoker_consumes_lazy_messages_before_closing_session(
         assert tool.events == ["before-first-message", "after-first-message"]
         assert "tool failed after yielding" in text
         assert meta.error == "tool failed after yielding"
+        assert emitter.events == []
     else:
         assert tool.events == ["before-first-message", "after-first-message", "after-second-message"]
         assert text == "firstsecond"
         assert meta.error is None
+        [event] = emitter.events
+        payload = event.payload
+        assert isinstance(payload, ToolInvoked)
+        assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-1", "app-1", "account-1")
+        assert payload.message_id == "message-1"
+        assert payload.tool_name == "lazy-tool"
+        assert payload.tool_inputs == {}
+        assert payload.tool_outputs == "firstsecond"
+        assert payload.tool_config["tool_name"] == "lazy-tool"
+        assert payload.tool_config["tool_provider"] == "test-provider"
+        assert payload.error is None
+        assert payload.time_cost == meta.time_cost
+        assert payload.ended_at >= payload.started_at
 
 
 @dataclass(frozen=True)
@@ -133,6 +170,7 @@ class _Invocation:
     tenant_id: str
     message: Message
     invoke_from: InvokeFrom
+    trace_scope: TraceScope | None
     records: MessageFileWriter
 
 
@@ -149,7 +187,7 @@ class _RecordingInvoker(AgentToolInvoker):
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -157,7 +195,6 @@ class _RecordingInvoker(AgentToolInvoker):
         records: MessageFileWriter,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         assert isinstance(agent_tool_callback, DifyAgentCallbackHandler)
-        assert trace_manager is None
         assert conversation_id is None
         assert app_id is None
         assert message_id is None
@@ -169,6 +206,7 @@ class _RecordingInvoker(AgentToolInvoker):
                 tenant_id=tenant_id,
                 message=message,
                 invoke_from=invoke_from,
+                trace_scope=trace_scope,
                 records=records,
             )
         )
@@ -221,11 +259,13 @@ def test_cot_runner_invokes_tool_through_injected_port() -> None:
     )
     tool = _LazyTool(fail_after_first_message=False)
     message_file_ids: list[str] = []
+    trace_scope = _trace_scope(_RecordingEmitter())
 
     response, meta = runner._handle_invoke_action(
         action=AgentScratchpadUnit.Action(action_name="lazy-tool", action_input={"query": "hello"}),
         tool_instances={"lazy-tool": tool},
         message_file_ids=message_file_ids,
+        trace_scope=trace_scope,
     )
 
     assert response == "port result"
@@ -239,6 +279,8 @@ def test_cot_runner_invokes_tool_through_injected_port() -> None:
             tenant_id="tenant-1",
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_scope=trace_scope,
             records=records,
         )
     ]
+    assert invoker.calls[0].trace_scope is trace_scope

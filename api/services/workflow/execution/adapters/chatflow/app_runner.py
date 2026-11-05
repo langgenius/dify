@@ -416,7 +416,7 @@ class AdvancedChatAppRunner:
             inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
-            trace_manager=app_generate_entity.trace_manager,
+            trace_scope=app_generate_entity.trace_scope,
         )
 
     def _initialize_conversation_variables(self) -> list[Variable]:

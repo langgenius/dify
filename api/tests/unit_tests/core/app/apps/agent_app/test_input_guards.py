@@ -13,6 +13,8 @@ from typing import override
 from unittest.mock import create_autospec
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 
 import core.moderation.input_moderation as input_moderation_mod
 from core.app.app_config.entities import (
@@ -75,6 +77,14 @@ def _app_config() -> EasyUIBasedAppConfig:
     )
 
 
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
 def _make_entity(query: str = "hello") -> AgentAppGenerateEntity:
     return AgentAppGenerateEntity(
         task_id="task-1",
@@ -86,7 +96,15 @@ def _make_entity(query: str = "hello") -> AgentAppGenerateEntity:
         query=query,
         files=[],
         parent_message_id=None,
-        trace_manager=None,
+        trace_scope=TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        ),
         user_id="user-1",
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
@@ -122,8 +140,12 @@ def _patch_moderation(
     *,
     returns: ModerationResult | None = None,
     raises: Exception | None = None,
-) -> None:
-    def check(_moderation: InputModeration, **_kwargs: object) -> ModerationResult:
+) -> list[dict[str, object]]:
+    """Record moderation inputs while returning or raising the configured outcome."""
+    calls: list[dict[str, object]] = []
+
+    def check(_moderation: InputModeration, **kwargs: object) -> ModerationResult:
+        calls.append(kwargs)
         if raises is not None:
             raise raises
         if returns is None:
@@ -131,6 +153,7 @@ def _patch_moderation(
         return returns
 
     monkeypatch.setattr(input_moderation_mod.InputModeration, "check", check)
+    return calls
 
 
 def _patch_annotation(
@@ -172,9 +195,10 @@ class TestRunInputGuards:
         annotation_replies: AnnotationReplies,
         app_records: AppGenerationRepository,
     ) -> None:
-        _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
+        moderation_calls = _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, annotation_replies, reply=None)
         qm = _FakeQueueManager()
+        entity = _make_entity("hello")
 
         handled, query, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
@@ -183,7 +207,7 @@ class TestRunInputGuards:
             tool_providers=tool_providers,
             workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
         )._run_input_guards(
-            application_generate_entity=_make_entity("hello"),
+            application_generate_entity=entity,
             app_model=_app(),
             message=_message(),
             queue_manager=qm,
@@ -193,6 +217,9 @@ class TestRunInputGuards:
         assert query == "hello"
         assert annotation_reply is None
         assert qm.events == []
+        assert len(moderation_calls) == 1
+        assert moderation_calls[0]["message_id"] == "msg-1"
+        assert moderation_calls[0]["trace_scope"] is entity.trace_scope
 
     def test_moderation_override_sanitizes_query(
         self,
