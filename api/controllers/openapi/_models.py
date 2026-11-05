@@ -1115,6 +1115,17 @@ class VersionListResponse(Hinted):
     data: list[VersionRow]
 
 
+class WebhookResponse(BaseModel):
+    node_id: str
+    webhook_url: str = Field(
+        description="Runs the published workflow on each request, once the node is published and its trigger is on"
+    )
+    webhook_debug_url: str = Field(
+        description="Feeds the draft's node while the console's variable inspector listens for it; otherwise "
+        "the request is refused"
+    )
+
+
 class EnvVariableRow(BaseModel):
     id: str = Field(description="What set and delete take to address this variable")
     name: str = Field(description="What nodes use to refer to this variable")

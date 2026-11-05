@@ -1,5 +1,5 @@
 """Build routes on /openapi/v1 for workflow and advanced-chat apps: run history,
-publishing and versions, and draft environment variables."""
+publishing and versions, draft environment variables, and webhook trigger addresses."""
 
 from __future__ import annotations
 
@@ -20,11 +20,13 @@ from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
     NodeNotFound,
+    NotWebhookTrigger,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
     VersionNotFound,
     VersionNotRestorable,
+    WebhookNotFound,
     require_uuid,
 )
 from controllers.openapi._files import end_read_transaction, merge_files
@@ -44,11 +46,14 @@ from controllers.openapi._models import (
     VersionListQuery,
     VersionListResponse,
     VersionRow,
+    WebhookResponse,
 )
 from controllers.openapi._upload import UploadParts
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import EDITOR_ROLES, Requirement, account_app_guards
 from core.helper import encrypter
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
@@ -70,6 +75,7 @@ from libs.helper import to_timestamp
 from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.trigger.app_trigger_store import WebhookTriggerNotFoundError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
@@ -92,6 +98,10 @@ _RELEASE_GUARDS: Final = account_app_guards(
 )
 _ENV_WRITE_GUARDS: Final = account_app_guards(
     RBACPermission.APP_EDIT, scope=Scope.WORKSPACE_WRITE, roles=EDITOR_ROLES, modes=GRAPH_MODES
+)
+# Only workflow apps sync webhook triggers to addresses.
+_WEBHOOK_READ_GUARDS: Final = account_app_guards(
+    RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, roles=EDITOR_ROLES, modes=(AppMode.WORKFLOW,)
 )
 
 
@@ -311,6 +321,16 @@ def require_draft(ctx: Context) -> Workflow:
     return draft
 
 
+def _require_draft_node(draft: Workflow, node_id: str) -> NodeConfigDict:
+    """The draft's node with this id; NodeNotFound when it has none, BadRequest when its graph cannot be read."""
+    try:
+        return draft.get_node_config_by_id(node_id)
+    except WorkflowDataError as exc:
+        raise NodeNotFound() from exc
+    except ValueError as exc:
+        raise BadRequest(str(exc)) from exc
+
+
 def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str]) -> None:
     try:
         WorkflowService().patch_draft_workflow_environment_variables(
@@ -392,6 +412,34 @@ class AppEnvItemApi(Resource):
         return SimpleResultResponse(result="success")
 
 
+@openapi_ns.route("/apps/<string:app_id>/webhooks/<string:node_id>")
+class AppWebhookApi(Resource):
+    @endpoint(
+        op="describe.webhook",
+        kind=Kind.OBJECT,
+        summary="The addresses of a webhook trigger node in the draft: one runs the published workflow, "
+        "one feeds the console's listening draft",
+        examples=(
+            Example(title="Addresses of a webhook trigger", input={"app_id": "<app_id>", "node_id": "<node_id>"}),
+        ),
+        requirements=_WEBHOOK_READ_GUARDS,
+        returns=(HTTPStatus.OK, WebhookResponse, "Webhook addresses"),
+    )
+    def get(self, ctx: Context, app_id: str, node_id: str):
+        node_type = Workflow.get_node_type_from_node_config(_require_draft_node(require_draft(ctx), node_id))
+        if node_type != TRIGGER_WEBHOOK_NODE_TYPE:
+            raise NotWebhookTrigger(f"Node {node_id} is a {node_type} node, not a {TRIGGER_WEBHOOK_NODE_TYPE} node.")
+        try:
+            webhook = application_services().apps.triggers.get_webhook(ctx.request_context, ctx.app.id, node_id)
+        except WebhookTriggerNotFoundError as exc:
+            raise WebhookNotFound() from exc
+        return WebhookResponse(
+            node_id=webhook.node_id,
+            webhook_url=generate_webhook_trigger_endpoint(webhook.webhook_id),
+            webhook_debug_url=generate_webhook_trigger_endpoint(webhook.webhook_id, debug=True),
+        )
+
+
 def _node_run_guards(mode: AppMode) -> tuple[Requirement, ...]:
     return account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=(mode,))
 
@@ -436,12 +484,7 @@ def run_draft_node(
 ) -> WorkflowRunNodeExecutionResponse:
     workflow_service = WorkflowService()
     draft = require_draft(ctx)
-    try:
-        node = draft.get_node_config_by_id(node_id)
-    except WorkflowDataError as exc:
-        raise NodeNotFound() from exc
-    except ValueError as exc:
-        raise BadRequest(str(exc)) from exc
+    node = _require_draft_node(draft, node_id)
     if Workflow.get_node_type_from_node_config(node) in CONTAINER_NODE_TYPES:
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
     if files:

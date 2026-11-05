@@ -832,6 +832,12 @@ ROUTES: tuple[Route, ...] = (
     ),
     Route("app_workflow.env.list", "GET", "/apps/{app_id}/env", frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED})),
     Route(
+        "app_workflow.webhook.describe",
+        "GET",
+        "/apps/{app_id}/webhooks/{node_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
         "app_workflow.env.set",
         "PUT",
         "/apps/{app_id}/env/{env_id}",
@@ -1456,6 +1462,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_workflow.version.restore": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.release_check": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.list": dict(_ACCOUNT_EDITOR_APP),
+    "app_workflow.webhook.describe": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.set": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.delete": dict(_ACCOUNT_EDITOR_APP),
     "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
@@ -1808,6 +1815,11 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_workflow.version.restore": _REQ_RELEASE,
     "app_workflow.release_check": _REQ_VERSION_READ,
     "app_workflow.env.list": _REQ_VERSION_READ,
+    "app_workflow.webhook.describe": (
+        *_REQ_VERSION_READ[:3],
+        CheckAppMode(_auth_matrix_AppMode.WORKFLOW),
+        *_REQ_VERSION_READ[4:],
+    ),
     "app_workflow.env.set": _REQ_ENV_WRITE,
     "app_workflow.env.delete": _REQ_ENV_WRITE,
     "node_types.list": _REQ_NODE_TYPES,
@@ -2357,6 +2369,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/versions/{version_id}:restore"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/release:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/env"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webhooks/{node_id}"): frozenset({"200", "default"}),
     ("put", "/apps/{app_id}/env/{env_id}"): frozenset({"200", "422", "default"}),
     ("delete", "/apps/{app_id}/env/{env_id}"): frozenset({"200", "default"}),
     # The catalog and the five device-flow rows document their 200 with a raw

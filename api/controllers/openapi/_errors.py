@@ -94,6 +94,8 @@ class OpenApiErrorCode(StrEnum):
     WEBAPP_ACCESS_UNAVAILABLE = "webapp_access_unavailable"
     NODE_TYPE_NOT_FOUND = "node_type_not_found"
     NODE_NOT_FOUND = "node_not_found"
+    NOT_WEBHOOK_TRIGGER = "not_webhook_trigger"
+    WEBHOOK_NOT_FOUND = "webhook_not_found"
     WEBAPP_ACCESS_MODE_CONSOLE_ONLY = "webapp_access_mode_console_only"
     WEBAPP_PUBLIC_ACCESS_DISABLED = "webapp_public_access_disabled"
     SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
@@ -423,6 +425,19 @@ class NodeNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.NODE_NOT_FOUND
     description = "The draft has no node with this id."
+
+
+class NotWebhookTrigger(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.NOT_WEBHOOK_TRIGGER
+    description = "Only a webhook trigger node has a webhook address."
+
+
+class WebhookNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.WEBHOOK_NOT_FOUND
+    description = "This webhook trigger node has no address yet."
+    hint = "Saving the draft gives each webhook trigger node its address; save it again."
 
 
 class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818
