@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, TypedDict, cast
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -26,6 +27,22 @@ from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
+
+_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
+
+def _decode_encrypted_config(encrypted_config: str | None) -> dict[str, Any]:
+    """Decode a stored load balancing ``encrypted_config`` into a credentials mapping.
+
+    Missing, malformed and non-object payloads all decode to an empty mapping so that a single
+    corrupted row cannot break listing or editing the other load balancing configs.
+    """
+    if not encrypted_config:
+        return {}
+    try:
+        return _credentials_adapter.validate_json(encrypted_config)
+    except ValidationError:
+        return {}
 
 
 class LoadBalancingConfigDetailDict(TypedDict):
@@ -192,13 +209,7 @@ class ModelLoadBalancingService:
                 config_id=load_balancing_config.id,
             )
 
-            try:
-                if load_balancing_config.encrypted_config:
-                    credentials: dict[str, Any] = json.loads(load_balancing_config.encrypted_config)
-                else:
-                    credentials = {}
-            except (json.JSONDecodeError, ValueError):
-                credentials = {}
+            credentials = _decode_encrypted_config(load_balancing_config.encrypted_config)
 
             # Get provider credential secret variables
             credential_secret_variables = provider_configuration.extract_secret_variables(
@@ -282,13 +293,7 @@ class ModelLoadBalancingService:
         if not load_balancing_model_config:
             return None
 
-        try:
-            if load_balancing_model_config.encrypted_config:
-                credentials = json.loads(load_balancing_model_config.encrypted_config)
-            else:
-                credentials = {}
-        except (json.JSONDecodeError, ValueError):
-            credentials = {}
+        credentials = _decode_encrypted_config(load_balancing_model_config.encrypted_config)
 
         # Get credential form schemas from model credential schema or provider credential schema
         credential_schemas = self._get_credential_schema(provider_configuration)
@@ -630,14 +635,8 @@ class ModelLoadBalancingService:
         )
 
         if load_balancing_model_config:
-            try:
-                # fix origin data
-                if load_balancing_model_config.encrypted_config:
-                    original_credentials = json.loads(load_balancing_model_config.encrypted_config)
-                else:
-                    original_credentials = {}
-            except (json.JSONDecodeError, ValueError):
-                original_credentials = {}
+            # fix origin data
+            original_credentials = _decode_encrypted_config(load_balancing_model_config.encrypted_config)
 
             # encrypt credentials
             for key, value in credentials.items():
