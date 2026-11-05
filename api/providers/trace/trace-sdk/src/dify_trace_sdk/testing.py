@@ -78,7 +78,7 @@ class RecordingEgress:
 
 
 def otlp_spans(egress: RecordingEgress) -> list[OtlpSpan]:
-    """Every span of the OTLP/HTTP protobuf requests ``egress`` recorded, in send order."""
+    """Every span ``egress`` recorded in OTLP requests, in send order."""
     return [
         span
         for request in egress.requests

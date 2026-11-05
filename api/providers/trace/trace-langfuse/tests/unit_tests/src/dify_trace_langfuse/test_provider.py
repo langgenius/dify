@@ -29,7 +29,7 @@ from pydantic import JsonValue
 
 CONFIG = LangfuseConfig(public_key="pk-lf-1", secret_key="sk-lf-1", host="https://cloud.langfuse.com")
 OTEL_URL = "https://cloud.langfuse.com/api/public/otel/v1/traces"
-# Langfuse answers with the queued ingestion job, not an OTLP acknowledgment.
+# Langfuse replies with its queued job, not an OTLP acknowledgment.
 ACK = response(200, {"name": "otel-ingestion-job", "data": {"id": "job-1"}, "opts": {"attempts": 6}, "progress": 0})
 
 
@@ -311,7 +311,7 @@ def test_span_ids_are_stable_across_redelivery() -> None:
         (response(413, {}), ExportRejectedError),
         (response(503, {}), ExportRetryableError),
         (EgressError("refused", request_sent=False), ExportRetryableError),
-        # Langfuse would duplicate spans it already accepted, so an unknown outcome is not re-sent.
+        # Not retried: Langfuse would duplicate spans it already accepted.
         (EgressError("read timeout", request_sent=True), ExportOutcomeUnknownError),
     ],
 )
