@@ -10,7 +10,8 @@ import hashlib
 import logging
 import mimetypes
 import os
-from typing import TypedDict, cast, override
+from collections.abc import Hashable
+from typing import TypedDict, override
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -149,7 +150,7 @@ class ExcelExtractor(BaseExtractor):
                     for col_pos, (k, v) in enumerate(series_row.items()):
                         # row_idx is typed Hashable but is an integer label here (plain int or numpy
                         # integer); numpy integers hash/compare equal to int, so the lookup still matches.
-                        stored_text = stored_text_cells.get((cast(int, row_idx), col_pos))
+                        stored_text = stored_text_cells.get((row_idx, col_pos))
                         if stored_text is not None:
                             value = stored_text
                         elif pd.notna(v):
@@ -169,14 +170,14 @@ class ExcelExtractor(BaseExtractor):
         return documents
 
     @staticmethod
-    def _xls_stored_text_cells(excel_file: pd.ExcelFile, sheet_name: str | int) -> dict[tuple[int, int], str]:
+    def _xls_stored_text_cells(excel_file: pd.ExcelFile, sheet_name: str | int) -> dict[tuple[Hashable, int], str]:
         """Return {(data-row index, column position): stored text} for XL_CELL_TEXT cells.
 
         Row 0 of the xlrd sheet is the pandas header row, so pandas data-row index ``i``
         maps to xlrd row ``i + 1``. Returns an empty mapping when the underlying
         workbook is unavailable (e.g. a mocked ExcelFile in tests).
         """
-        overrides: dict[tuple[int, int], str] = {}
+        overrides: dict[tuple[Hashable, int], str] = {}
         try:
             book = excel_file.book
         except AttributeError:
@@ -184,11 +185,13 @@ class ExcelExtractor(BaseExtractor):
         if book is None:
             return overrides
         try:
-            import xlrd
+            import xlrd  # pyrefly: ignore[untyped-import]
         except ImportError:
             return overrides
         try:
-            sheet = book.sheet_by_name(sheet_name)
+            # pandas types ExcelFile.book as every engine's workbook. This path is xlrd-only;
+            # test doubles also expose sheet_by_name, so keep the call and ignore the union.
+            sheet = book.sheet_by_name(sheet_name)  # pyrefly: ignore[missing-attribute]
         except Exception:
             logger.warning("Failed to read stored text cells from sheet %s", sheet_name, exc_info=True)
             return overrides
