@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Bütün resurslar",
   "personalAccessToken.allWorkspaces": "Bütün iş sahələri",
   "personalAccessToken.allowed": "İcazə verilib",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Tətbiq yerləşdirməsi",
   "personalAccessToken.conflict": "Bu token başqa yerdə dəyişdirilib. Saxlamazdan əvvəl ən son versiyanı yenidən yükləyin.",
   "personalAccessToken.copyFailed": "Kopyalama alınmadı. Yenidən cəhd edin.",
   "personalAccessToken.copyNow": "İndi kopyalayın. Bu tokeni bir daha görə bilməyəcəksiniz.",

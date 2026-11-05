@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Toate resursele",
   "personalAccessToken.allWorkspaces": "Toate spațiile de lucru",
   "personalAccessToken.allowed": "Permis",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Implementarea aplicației",
   "personalAccessToken.conflict": "Acest token a fost modificat în altă parte. Reîncarcă ultima versiune înainte de salvare.",
   "personalAccessToken.copyFailed": "Copierea a eșuat. Încercați din nou.",
   "personalAccessToken.copyNow": "Copiază-l acum. Nu îl vei mai putea vedea.",

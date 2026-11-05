@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "所有资源",
   "personalAccessToken.allWorkspaces": "所有工作空间",
   "personalAccessToken.allowed": "允许",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "应用部署",
   "personalAccessToken.conflict": "此令牌已在其他位置修改，请重新加载最新版本后再保存。",
   "personalAccessToken.copyFailed": "复制失败，请重试。",
   "personalAccessToken.copyNow": "请立即复制，之后将无法再次查看。",

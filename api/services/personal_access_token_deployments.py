@@ -1,4 +1,4 @@
-"""PAT configuration adapter for the existing App Runner Console catalog.
+"""PAT configuration adapter for the existing App deployment Console catalog.
 
 The upstream Console enforces current-workspace deployment-management access.
 Returned deployments are eligible regardless of their runtime state or API switch.
@@ -72,7 +72,7 @@ class ConsolePersonalAccessTokenDeploymentCatalog:
                 name = f"{app.display_name} / {deployment.environment.display_name}"
                 resources.append(
                     PersonalAccessTokenResourceView(
-                        resource_type="app_runner",
+                        resource_type="app_deployment",
                         resource_id=str(deployment.deployment_id),
                         workspace_id=current,
                         display_name=name,

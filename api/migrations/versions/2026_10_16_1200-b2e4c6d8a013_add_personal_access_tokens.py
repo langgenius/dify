@@ -23,7 +23,6 @@ def upgrade() -> None:
         sa.Column("account_id", StringUUID(), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("secret_digest", sa.String(64), nullable=False),
-        sa.Column("secret_ciphertext", sa.LargeBinary(), nullable=False),
         sa.Column("secret_last_four", sa.String(4), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=True),
         sa.Column("revoked_at", sa.DateTime(), nullable=True),
@@ -56,7 +55,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="personal_access_token_resources_pkey"),
         sa.UniqueConstraint("token_id", "resource_type", "resource_id", name="personal_access_token_resource_unique"),
-        sa.CheckConstraint("resource_type IN ('app', 'dataset', 'app_runner')", name="pat_resource_type"),
+        sa.CheckConstraint("resource_type IN ('app', 'dataset', 'app_deployment')", name="pat_resource_type"),
     )
     op.create_index("personal_access_token_resource_token_idx", "personal_access_token_resources", ["token_id"])
     op.create_table(

@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Tất cả tài nguyên",
   "personalAccessToken.allWorkspaces": "Tất cả không gian làm việc",
   "personalAccessToken.allowed": "Được phép",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Triển khai ứng dụng",
   "personalAccessToken.conflict": "Token này đã được thay đổi ở nơi khác. Hãy tải lại phiên bản mới nhất trước khi lưu.",
   "personalAccessToken.copyFailed": "Sao chép thất bại. Vui lòng thử lại.",
   "personalAccessToken.copyNow": "Sao chép ngay bây giờ. Bạn sẽ không thể xem lại mã này.",

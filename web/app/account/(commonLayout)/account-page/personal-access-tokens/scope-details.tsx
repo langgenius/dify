@@ -124,10 +124,10 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                             ? t(($) => $['resourceAccessToken.tabApps'])
                             : resource.resource_type === 'dataset'
                               ? t(($) => $['resourceAccessToken.tabKnowledgeBases'])
-                              : t(($) => $['personalAccessToken.appRunner'])
+                              : t(($) => $['personalAccessToken.appDeployment'])
                         const deployments =
-                          resource.resource_type === 'app' && resource.app_runners?.length
-                            ? resource.app_runners.map((runner) =>
+                          resource.resource_type === 'app' && resource.app_deployments?.length
+                            ? resource.app_deployments.map((runner) =>
                                 runner.display_name.split(' / ').at(-1),
                               )
                             : resource.resource_type === 'app'
@@ -136,7 +136,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                                     ns: 'dataset',
                                   }),
                                 ]
-                              : resource.resource_type === 'app_runner'
+                              : resource.resource_type === 'app_deployment'
                                 ? [resource.display_name.split(' / ').at(-1)]
                                 : []
                         return (

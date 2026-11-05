@@ -1,7 +1,7 @@
 """Repository-owned PAT transactions and account-scoped value projections."""
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import datetime
 from typing import Literal
@@ -33,7 +33,7 @@ from services.personal_access_token_service import (
     PersonalAccessTokenWorkspaceView,
 )
 
-_RESOURCE_TYPE = TypeAdapter(Literal["app", "dataset", "app_runner"])
+_RESOURCE_TYPE = TypeAdapter(Literal["app", "dataset", "app_deployment"])
 _SCOPE_MODE = TypeAdapter(Literal["all", "selected", "none"])
 
 
@@ -71,7 +71,6 @@ class PersonalAccessTokenRepository:
                 account_id=record.account_id,
                 name=summary.name,
                 secret_digest=record.secret_digest,
-                secret_ciphertext=b"",
                 secret_last_four=summary.secret_last_four,
                 expires_at=summary.expires_at,
                 creation_key=record.creation_key,
@@ -148,7 +147,14 @@ class PersonalAccessTokenRepository:
                 raise PersonalAccessTokenNotFoundError()
             return self._record(session, token)
 
-    def find_by_digest(self, digest: str, *, now: datetime) -> PersonalAccessTokenRecord | None:
+    def authenticate(
+        self, token_id: str, *, now: datetime, verify: Callable[[str, str], bool]
+    ) -> PersonalAccessTokenRecord | None:
+        """Lock a live PAT and verify its owner-bound digest before updating usage.
+
+        The verifier must be a pure, local check of account ID and stored digest.
+        Invalid credentials leave usage metadata unchanged.
+        """
         with self._session_factory.begin() as session:
             token = session.scalar(
                 select(PersonalAccessToken)
@@ -157,13 +163,14 @@ class PersonalAccessTokenRepository:
                     Account.id == PersonalAccessToken.account_id,
                 )
                 .where(
-                    PersonalAccessToken.secret_digest == digest,
+                    PersonalAccessToken.id == token_id,
                     PersonalAccessToken.revoked_at.is_(None),
                     Account.status == AccountStatus.ACTIVE,
                     or_(PersonalAccessToken.expires_at.is_(None), PersonalAccessToken.expires_at > now),
                 )
+                .with_for_update(of=PersonalAccessToken)
             )
-            if token is None:
+            if token is None or not verify(token.account_id, token.secret_digest):
                 return None
             # Usage metadata only: do not overwrite scope/version/revocation or
             # move the timestamp backwards when concurrent requests finish.
@@ -226,7 +233,6 @@ class PersonalAccessTokenRepository:
                 raise PersonalAccessTokenNotFoundError()
             if token.revoked_at is None:
                 token.revoked_at = naive_utc_now()
-                token.secret_ciphertext = b""
 
     def details(self, account_id: str, token_id: str) -> PersonalAccessTokenDetails:
         with self._session_factory() as session:
@@ -319,7 +325,7 @@ class PersonalAccessTokenRepository:
         if app_ids - apps.keys() or dataset_ids - datasets.keys():
             raise PersonalAccessTokenAccessDeniedError("Selected resource is unavailable.")
         for resource_type, resource_id in added_resources:
-            if resource_type == "app_runner":
+            if resource_type == "app_deployment":
                 resource = validated.get((resource_type, resource_id))
                 parent = (
                     self._available_app(session, account_id, resource.parent_app_id)
@@ -496,7 +502,10 @@ class PersonalAccessTokenRepository:
             else {}
         )
         workspace_names = (
-            dict(session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids))).all())
+            {
+                row[0]: row[1]
+                for row in session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
+            }
             if workspace_ids
             else {}
         )
@@ -513,7 +522,7 @@ class PersonalAccessTokenRepository:
             workspace_entry = workspaces.get(row.workspace_id)
             workspace = workspace_entry[0] if workspace_entry else None
             available = workspace is not None and (
-                row.resource_type == "app_runner" or (app is not None and app.tenant_id == row.workspace_id)
+                row.resource_type == "app_deployment" or (app is not None and app.tenant_id == row.workspace_id)
             )
             resources_by_token[row.token_id].append(
                 PersonalAccessTokenResourceView(

@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Усі ресурси",
   "personalAccessToken.allWorkspaces": "Усі робочі простори",
   "personalAccessToken.allowed": "Дозволено",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Розгортання застосунку",
   "personalAccessToken.conflict": "Цей токен змінено в іншому місці. Завантажте останню версію перед збереженням.",
   "personalAccessToken.copyFailed": "Не вдалося скопіювати. Спробуйте ще раз.",
   "personalAccessToken.copyNow": "Скопіюйте зараз. Ви більше не зможете переглянути цей токен.",

@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "すべてのリソース",
   "personalAccessToken.allWorkspaces": "すべてのワークスペース",
   "personalAccessToken.allowed": "許可",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "アプリのデプロイ",
   "personalAccessToken.conflict": "このトークンは別の場所で変更されました。最新バージョンを再読み込みしてから保存してください。",
   "personalAccessToken.copyFailed": "コピーに失敗しました。もう一度お試しください。",
   "personalAccessToken.copyNow": "今すぐコピーしてください。このトークンは再表示されません。",

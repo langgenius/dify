@@ -32801,19 +32801,19 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | resource_id | string (uuid) |  | Yes |
-| resource_type | string, <br>**Available values:** "app", "app_runner", "dataset" | *Enum:* `"app"`, `"app_runner"`, `"dataset"` | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
 
 #### PersonalAccessTokenResourceResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_runners | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | No |
+| app_deployments | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | No |
 | available | boolean |  | Yes |
 | display_name | string |  | Yes |
 | parent_app_id | string |  | No |
 | reason | string |  | Yes |
 | resource_id | string |  | Yes |
-| resource_type | string, <br>**Available values:** "app", "app_runner", "dataset" | *Enum:* `"app"`, `"app_runner"`, `"dataset"` | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 

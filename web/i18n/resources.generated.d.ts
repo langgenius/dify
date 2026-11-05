@@ -66,7 +66,7 @@ export default interface Resources {
     'personalAccessToken.allResources': 'All resources'
     'personalAccessToken.allWorkspaces': 'All workspaces'
     'personalAccessToken.allowed': 'Allowed'
-    'personalAccessToken.appRunner': 'App Runner'
+    'personalAccessToken.appDeployment': 'App deployment'
     'personalAccessToken.conflict': 'This token changed elsewhere. Reload the latest version before saving.'
     'personalAccessToken.copyFailed': 'Copy failed. Please try again.'
     'personalAccessToken.copyNow': "Copy it now. You won't see it again."

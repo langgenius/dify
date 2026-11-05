@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Semua sumber daya",
   "personalAccessToken.allWorkspaces": "Semua ruang kerja",
   "personalAccessToken.allowed": "Diizinkan",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Deployment aplikasi",
   "personalAccessToken.conflict": "Token ini diubah di tempat lain. Muat ulang versi terbaru sebelum menyimpan.",
   "personalAccessToken.copyFailed": "Gagal menyalin. Silakan coba lagi.",
   "personalAccessToken.copyNow": "Salin sekarang. Anda tidak akan dapat melihatnya lagi.",

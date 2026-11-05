@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "كل الموارد",
   "personalAccessToken.allWorkspaces": "كل مساحات العمل",
   "personalAccessToken.allowed": "مسموح",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "نشر التطبيق",
   "personalAccessToken.conflict": "تم تعديل هذا الرمز في مكان آخر. أعد تحميل أحدث نسخة قبل الحفظ.",
   "personalAccessToken.copyFailed": "تعذّر النسخ. حاول مرة أخرى.",
   "personalAccessToken.copyNow": "انسخ هذا الرمز الآن. لن تتمكن من رؤيته مرة أخرى.",

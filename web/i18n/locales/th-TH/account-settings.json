@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "ทรัพยากรทั้งหมด",
   "personalAccessToken.allWorkspaces": "พื้นที่ทำงานทั้งหมด",
   "personalAccessToken.allowed": "อนุญาต",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "การปรับใช้แอป",
   "personalAccessToken.conflict": "โทเค็นนี้ถูกแก้ไขจากที่อื่น โปรดโหลดเวอร์ชันล่าสุดก่อนบันทึก",
   "personalAccessToken.copyFailed": "คัดลอกไม่สำเร็จ โปรดลองอีกครั้ง",
   "personalAccessToken.copyNow": "คัดลอกตอนนี้ คุณจะไม่สามารถดูได้อีก",

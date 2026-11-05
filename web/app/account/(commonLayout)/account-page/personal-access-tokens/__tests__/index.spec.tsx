@@ -520,10 +520,10 @@ it('shows expiration status and deployment beside the workspace in scope details
               workspace_name: 'Acme',
               available: true,
               reason: null,
-              app_runners: [
+              app_deployments: [
                 {
                   resource_id: 'runner-id',
-                  resource_type: 'app_runner',
+                  resource_type: 'app_deployment',
                   display_name: 'Customer FAQ Bot / Production',
                   workspace_id: 'workspace-id',
                   workspace_name: 'Acme',
@@ -540,7 +540,7 @@ it('shows expiration status and deployment beside the workspace in scope details
               workspace_name: "fatelei's Workspace",
               available: true,
               reason: null,
-              app_runners: [],
+              app_deployments: [],
             },
             {
               resource_id: 'dataset-id',
@@ -1049,10 +1049,10 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
             ...common,
             resource_type: 'app',
             display_name: 'Assistant',
-            app_runners: [
+            app_deployments: [
               {
                 ...common,
-                resource_type: 'app_runner',
+                resource_type: 'app_deployment',
                 display_name: 'Assistant / Production',
                 parent_app_id: common.resource_id,
               },
@@ -1118,7 +1118,7 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
   expect(submitted?.[1].body.resource_scope.resources).toEqual([
     { resource_type: 'app', resource_id: common.resource_id },
     { resource_type: 'dataset', resource_id: common.resource_id },
-    { resource_type: 'app_runner', resource_id: common.resource_id },
+    { resource_type: 'app_deployment', resource_id: common.resource_id },
   ])
 })
 
@@ -1131,7 +1131,7 @@ it('shows a workspace-switch hint instead of revoked access for a saved runner i
           token: active,
           resources: [
             {
-              resource_type: 'app_runner',
+              resource_type: 'app_deployment',
               resource_id: '019a0000-0000-7000-8000-000000000002',
               workspace_id: '019a0000-0000-7000-8000-000000000003',
               workspace_name: 'Other workspace',
