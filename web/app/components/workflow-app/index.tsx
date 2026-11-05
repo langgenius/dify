@@ -146,7 +146,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
 const WorkflowAppWrapper = () => {
   const { appId } = useParams<{ appId: string }>()
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workflow'])
   const collaboration = useQuery({
     ...consoleQuery.features.get.queryOptions(),
     retry: false,
@@ -160,7 +160,7 @@ const WorkflowAppWrapper = () => {
   )
   if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
 
-  if (collaboration.data === undefined && (collaboration.isPending || collaboration.isFetching)) {
+  if (collaboration.data === undefined && collaboration.isPending) {
     return (
       <div className="relative flex size-full items-center justify-center">
         <LoadingPlaceholder />
@@ -171,19 +171,20 @@ const WorkflowAppWrapper = () => {
     return (
       <div className="flex size-full flex-col items-center justify-center gap-4">
         <div role="alert" className="system-sm-regular text-text-tertiary">
-          {t(($) => $['errorBoundary.message'])}
+          {t(($) => $['collaboration.capabilityUnavailable'], { ns: 'workflow' })}
         </div>
         <Button size="small" variant="secondary" onClick={() => void collaboration.refetch()}>
-          {t(($) => $['errorBoundary.tryAgain'])}
+          {t(($) => $['operation.retry'], { ns: 'common' })}
         </Button>
       </div>
     )
   }
 
   return (
-    <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
+    <EditorResourceScope
+      resource={{ kind: 'app', appId, mode, collaborationEnabled: collaboration.data }}
+    >
       <WorkflowContextProvider
-        isCollaborationEnabled={collaboration.data}
         injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
       >
         <WorkflowAppWithAdditionalContext />

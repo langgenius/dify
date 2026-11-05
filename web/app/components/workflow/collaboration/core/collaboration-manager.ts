@@ -277,6 +277,7 @@ export class CollaborationManager {
     this.waitingForDraftHash = false
     this.cancelJoinAttempt()
     const attempt = this.joinAttempt
+    const sid = socket.id
     this.joinPending = true
     this.joinTimer = setTimeout(() => {
       if (attempt !== this.joinAttempt) return
@@ -289,13 +290,14 @@ export class CollaborationManager {
       'user_connect',
       { workflow_id: this.currentAppId, ...(draftHash ? { draft_hash: draftHash } : {}) },
       (body: unknown, status?: number) => {
-        if (attempt !== this.joinAttempt || this.getActiveSocket() !== socket) return
+        if (attempt !== this.joinAttempt || this.getActiveSocket() !== socket || socket.id !== sid)
+          return
         const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
         if (message === 'draft_outdated') {
           this.cancelJoinAttempt()
           this.rejoinInProgress = false
           this.setJoinFailure('draft_outdated')
-        } else if (status === 503 || message === 'collaboration_unavailable') {
+        } else if (status === 503 || body === 503 || message === 'collaboration_unavailable') {
           this.cancelJoinAttempt()
           this.setJoinFailure('retrying')
           const delay = Math.min(
@@ -307,7 +309,12 @@ export class CollaborationManager {
             () => this.joinWorkflow(socket, skipDraftHash),
             delay * (0.5 + Math.random() * 0.5),
           )
-        } else if (isUnauthorizedAck(body, status)) {
+        } else if (
+          isUnauthorizedAck(body, status) ||
+          status === 403 ||
+          body === 403 ||
+          message === 'not_entitled'
+        ) {
           this.cancelJoinAttempt()
           this.rejoinInProgress = false
           this.setJoinFailure('denied')
@@ -2060,15 +2067,16 @@ export class CollaborationManager {
         this.awaitingSnapshotImport = false
         this.crdtTrusted = false
       }
+      this.pendingInitialSync = true
       this.joinWorkflow(socket, skipDraftHash)
       this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
-      this.pendingInitialSync = true
     })
 
     socket.on('disconnect', (reason) => {
       this.clearInitialSyncRetry()
       this.cancelJoinAttempt()
+      this.rejoinInProgress = false
       this.joinRetryCount = 0
       this.setJoinFailure(null)
       this.cursors = {}

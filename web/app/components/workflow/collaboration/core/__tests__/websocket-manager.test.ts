@@ -46,7 +46,7 @@ it.each([true, false])(
   },
 )
 
-it('connects using cookies and leaves the room join to the collaboration manager', () => {
+it('connects using cookies without joining a workflow', () => {
   const { socket, emit, receive } = createTransport('socket-auth', false)
   ioMock.mockReturnValue(socket)
   const client = createClient()

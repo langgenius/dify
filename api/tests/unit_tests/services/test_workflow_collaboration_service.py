@@ -21,6 +21,7 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
 )
@@ -150,6 +151,34 @@ class TestWorkflowCollaborationService:
         assert result == ("u-1", True)
         assert repository.session_exists("wf-1", "sid-1")
 
+    @pytest.mark.parametrize("expired_part", ["mapping", "session"])
+    def test_same_socket_with_expired_session_must_match_draft(
+        self,
+        real_service: ServiceFixture,
+        db_session: Session,
+        collaboration_redis: RedisClientWrapper,
+        expired_part: str,
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        seed_session(repository, "sid-1")
+        if expired_part == "mapping":
+            collaboration_redis.delete(repository.sid_key("sid-1"))
+        else:
+            repository.delete_session("wf-1", "sid-1")
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            with pytest.raises(WorkflowCollaborationDraftOutdatedError):
+                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="old")
+
+        assert repository.session_exists("wf-1", "sid-1") is (expired_part == "mapping")
+        socketio.enter_room.assert_not_called()
+        socketio.start_background_task.assert_not_called()
+
     def test_join_without_draft_does_not_create_session(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:
@@ -200,13 +229,17 @@ class TestWorkflowCollaborationService:
                 "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
             ) as get_plan,
         ):
-            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            if allowed:
+                result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                assert result is not None
+            else:
+                with pytest.raises(WorkflowCollaborationNotEntitledError):
+                    service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         if edition == DeploymentEdition.CLOUD and enabled:
             get_plan.assert_called_once_with("t-1")
         else:
             get_plan.assert_not_called()
-        assert (result is not None) is allowed
         assert bool(repository.list_sessions("wf-1")) is allowed
         assert socketio.enter_room.called is allowed
         assert socketio.start_background_task.called is allowed

@@ -1,3 +1,5 @@
+export type JoinFailure = 'denied' | 'retrying' | 'unavailable' | 'draft_outdated'
+
 export type OnlineUser = {
   user_id: string
   username: string
@@ -34,8 +36,6 @@ export type CollaborationState = {
   disconnectReason?: string
   error?: string
 }
-
-export type JoinFailure = 'denied' | 'retrying' | 'unavailable' | 'draft_outdated'
 
 type CollaborationEventType =
   | 'mouse_move'

@@ -9,6 +9,7 @@ import type { Edge, Node } from '@/app/components/workflow/types'
 import type { WorkflowGeneratorEditor } from '@/app/components/workflow/workflow-generator/store'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -62,7 +63,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation(['workflow', 'common', 'contacts'] as const)
+  const { t } = useTranslation(['workflow'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
@@ -617,7 +618,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"
-            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+            className={cn(
+              'absolute inset-0 z-50 flex items-center justify-center',
+              !joinFailure && 'cursor-wait',
+            )}
           >
             <div
               role="status"
@@ -626,20 +630,24 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             >
               {joinFailure ? (
                 <>
-                  <span role="alert">
+                  <span>
                     {joinFailure === 'draft_outdated'
                       ? t(($) => $['collaboration.draftOutdated'], { ns: 'workflow' })
                       : joinFailure === 'denied'
                         ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
                         : joinFailure === 'retrying'
                           ? t(($) => $['collaboration.joinRetrying'], { ns: 'workflow' })
-                          : t(($) => $['imPlatform.status.connection_error'], { ns: 'contacts' })}
+                          : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
                   </span>
                   {joinFailure !== 'retrying' &&
                     joinFailure !== 'draft_outdated' &&
                     !collaborationManager.hasJoinedCollaborationRoom() && (
-                      <Button size="small" onClick={() => window.location.reload()}>
-                        {t(($) => $['errorBoundary.reloadPage'], { ns: 'common' })}
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        onClick={() => window.location.reload()}
+                      >
+                        {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
                       </Button>
                     )}
                 </>

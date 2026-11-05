@@ -274,12 +274,15 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
       collaboration = false,
       initialStoreState = {},
       nodes = [],
-      resource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource = {
+        kind: 'app',
+        appId: 'app-1',
+        mode: 'workflow',
+        collaborationEnabled: collaboration,
+      },
     }: RenderPanelOptions = {},
   ) => {
-    const { queryClient } = createConsoleQueryWrapper({
-      systemFeatures: { enable_collaboration_mode: collaboration },
-    })
+    const { queryClient } = createConsoleQueryWrapper()
     seedModelProviderQueries(queryClient, [
       createModelCatalogFixture({
         provider: 'old-provider',
@@ -324,7 +327,6 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
         queryClient,
         nodes,
         initialStoreState: {
-          isCollaborationEnabled: collaboration,
           // The editor loads its draft and hash before mounting collaboration.
           ...(collaboration
             ? { isWorkflowDataLoaded: true, syncWorkflowDraftHash: 'draft-hash' }

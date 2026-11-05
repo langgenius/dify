@@ -1,7 +1,7 @@
 import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 
 export type EditorResource =
-  | Readonly<{ kind: 'app'; appId: string; mode: WorkflowAppMode }>
+  | Readonly<{ kind: 'app'; appId: string; mode: WorkflowAppMode; collaborationEnabled: boolean }>
   | Readonly<{ kind: 'knowledge-pipeline'; pipelineId: string }>
   | Readonly<{ kind: 'snippet'; snippetId: string }>
 

@@ -14,6 +14,7 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import (
     WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
 )
@@ -92,6 +93,8 @@ def handle_user_connect(sid, data):
         return {"msg": "collaboration_unavailable"}, 503
     except WorkflowCollaborationDraftOutdatedError:
         return {"msg": "draft_outdated"}, 409
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
     if not result:
         return {"msg": "unauthorized"}, 401
 
