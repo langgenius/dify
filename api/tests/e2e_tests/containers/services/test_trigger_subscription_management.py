@@ -27,7 +27,7 @@ from models.account import TenantAccountRole
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
-from services.trigger.subscription_service import TriggerSubscriptionService
+from services.trigger.subscription_service import TriggerSubscriptionLeaseLostError, TriggerSubscriptionService
 from tests.e2e_tests.containers.services import test_trigger_subscription_builder
 from tests.e2e_tests.containers.services.test_trigger_subscription_query import _provider_with_secrets
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
@@ -41,6 +41,25 @@ sqlite_engine = test_trigger_subscription_builder.sqlite_engine
 sqlite_session_factory = test_trigger_subscription_builder.sqlite_session_factory
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_subscription_builder.daemon
+
+
+def test_subscription_lease_renews_and_does_not_release_a_successor(harness: _Harness) -> None:
+    """Renew an owned Redis lease and fail closed if another owner replaces it."""
+    subscription_id = str(uuid4())
+    key = f"trigger_subscription_update_lock:{harness.tenant_id}_{subscription_id}"
+    locks = RedisTriggerSubscriptionLocks(redis=redis_client)
+    successor = b"successor-owner"
+    try:
+        with locks.for_subscription(tenant_id=harness.tenant_id, subscription_id=subscription_id) as lease:
+            assert redis_client.expire(key, 2)
+            lease.ensure_owned()
+            assert 45 <= redis_client.ttl(key) <= 60
+            redis_client.set(key, successor, ex=60)
+            with pytest.raises(TriggerSubscriptionLeaseLostError):
+                lease.ensure_owned()
+        assert redis_client.get(key) == successor
+    finally:
+        redis_client.delete(key)
 
 
 def _seed(harness: _Harness, daemon: _Daemon, credential_type: CredentialType) -> TriggerSubscription:
@@ -365,7 +384,7 @@ def test_rebuild_preserves_owner_and_endpoint_while_replacing_provider_state(
     assert _decrypt(harness, saved.properties["secret"]) == "stored-property"
     sent = [sent for sent in daemon.requests if sent.method == "POST"]
     assert [call.path.rsplit("/", 1)[-1] for call in sent] == ["unsubscribe", "subscribe"]
-    assert all(call.lock_held is False for call in sent)
+    assert all(call.lock_held is True for call in sent)
     assert all(call.payload["user_id"] == subscription.user_id for call in sent)
     assert sent[1].payload["data"] == {
         "provider": "github",
@@ -455,7 +474,7 @@ def test_delete_removes_all_owned_workflow_links_even_when_provider_fails(
     sent = [sent for sent in daemon.requests if sent.method == "POST"]
     assert len(sent) == 1
     assert sent[0].path.endswith("/dispatch/trigger/unsubscribe")
-    assert sent[0].lock_held is False
+    assert sent[0].lock_held is True
     assert all(not sent.open_transactions for sent in daemon.requests)
 
 
