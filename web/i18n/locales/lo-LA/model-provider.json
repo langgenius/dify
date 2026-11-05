@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "ໂມເດວປ່ຽນຂໍ້ຄວາມເປັນສຽງ",
   "modelProvider.ttsModel.tip": "ຕັ້ງຄ່າໂມເດວເລີ່ມຕົ້ນສຳລັບການປ່ຽນຂໍ້ຄວາມເປັນສຽງໃນການສົນທະນາ.",
   "modelProvider.upgradeForLoadBalancing": "ອັບເກຣດແຜນຂອງທ່ານເພື່ອເປີດໃຊ້ Load Balancing.",
+  "modelProvider.usage.description": "ກວດສອບສະບັບຮ່າງເວີກໂຟລວ໌, ເວີກໂຟລວ໌ທີ່ເຜີຍແຜ່ແລ້ວ ແລະ ການຕັ້ງຄ່າໂມເດວຂອງແອັບໃນພື້ນທີ່ເຮັດວຽກນີ້. ບໍ່ກວດສອບ: ເວີຊັນເວີກໂຟລວ໌ກ່ອນໜ້າ, ໂນດ Agent, ການເລືອກໂມເດວໃນການຕັ້ງຄ່າໂນດເຄື່ອງມື, ໂມເດວຂອງຄຸນສົມບັດແອັບ ເຊັ່ນ ຄຳຖາມທີ່ແນະນຳ, ແລະ ຕົວແທນທີ່ຈັດການໃນສ່ວນຕົວແທນ.",
+  "modelProvider.usage.empty": "ບໍ່ມີແອັບໃດໃນພື້ນທີ່ເຮັດວຽກນີ້ທີ່ໃຊ້ໂມເດວນີ້.",
+  "modelProvider.usage.inaccessible_one": "ບໍ່ສະແດງການນຳໃຊ້ {{count}} ລາຍການທີ່ຢູ່ໃນແອັບທີ່ທ່ານບໍ່ມີສິດເຂົ້າເຖິງ.",
+  "modelProvider.usage.inaccessible_other": "ບໍ່ສະແດງການນຳໃຊ້ {{count}} ລາຍການທີ່ຢູ່ໃນແອັບທີ່ທ່ານບໍ່ມີສິດເຂົ້າເຖິງ.",
+  "modelProvider.usage.source.app_model_config": "ການຕັ້ງຄ່າໂມເດວຂອງແອັບ",
+  "modelProvider.usage.source.workflow_draft": "ສະບັບຮ່າງເວີກໂຟລວ໌",
+  "modelProvider.usage.source.workflow_published": "ເວີກໂຟລວ໌ທີ່ເຜີຍແຜ່ແລ້ວ",
+  "modelProvider.usage.title": "ແອັບທີ່ໃຊ້ {{model}}",
+  "modelProvider.usage.view": "ການນຳໃຊ້",
   "modelProvider.used": "ໃຊ້ໄປແລ້ວ"
 }

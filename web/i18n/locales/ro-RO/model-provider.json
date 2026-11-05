@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Model de conversie vorbire-la-text",
   "modelProvider.ttsModel.tip": "Setați modelul implicit pentru intrarea de conversie vorbire-la-text în conversație.",
   "modelProvider.upgradeForLoadBalancing": "Actualizați-vă planul pentru a activa Load Balancing.",
+  "modelProvider.usage.description": "Verifică ciornele fluxurilor de lucru, fluxurile de lucru publicate și setările de model ale aplicațiilor din acest spațiu de lucru. Nu sunt verificate: versiunile anterioare ale fluxurilor de lucru, nodurile Agent, selecțiile de model din setările nodurilor de instrument, modelele funcțiilor aplicației, cum ar fi întrebările sugerate, și agenții gestionați în Agenți.",
+  "modelProvider.usage.empty": "Nicio aplicație din acest spațiu de lucru nu folosește acest model.",
+  "modelProvider.usage.inaccessible_one": "{{count}} utilizare se află într-o aplicație la care nu aveți acces și nu este afișată.",
+  "modelProvider.usage.inaccessible_other": "Utilizări în aplicații la care nu aveți acces, neafișate: {{count}}.",
+  "modelProvider.usage.source.app_model_config": "Setările de model ale aplicației",
+  "modelProvider.usage.source.workflow_draft": "Ciorna fluxului de lucru",
+  "modelProvider.usage.source.workflow_published": "Flux de lucru publicat",
+  "modelProvider.usage.title": "Aplicații care folosesc {{model}}",
+  "modelProvider.usage.view": "Utilizări",
   "modelProvider.used": "utilizate"
 }

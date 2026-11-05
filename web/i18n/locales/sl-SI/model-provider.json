@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Model za pretvorbo besedila v govor",
   "modelProvider.ttsModel.tip": "Nastavite privzeti model za pretvorbo besedila v govor v pogovoru.",
   "modelProvider.upgradeForLoadBalancing": "Nadgradite svoj načrt, da omogočite uravnoteženje obremenitev.",
+  "modelProvider.usage.description": "Preveri osnutke delovnih tokov, objavljene delovne tokove in nastavitve modela aplikacij v tem delovnem prostoru. Ne preveri: starejših različic delovnih tokov, vozlišč Agent, izbir modela v nastavitvah vozlišč orodij, modelov funkcij aplikacij, kot so predlagana vprašanja, in agentov, upravljanih v razdelku Agenti.",
+  "modelProvider.usage.empty": "Nobena aplikacija v tem delovnem prostoru ne uporablja tega modela.",
+  "modelProvider.usage.inaccessible_one": "Uporabe v aplikacijah, do katerih nimate dostopa, niso prikazane: {{count}}.",
+  "modelProvider.usage.inaccessible_other": "Uporabe v aplikacijah, do katerih nimate dostopa, niso prikazane: {{count}}.",
+  "modelProvider.usage.source.app_model_config": "Nastavitve modela aplikacije",
+  "modelProvider.usage.source.workflow_draft": "Osnutek delovnega toka",
+  "modelProvider.usage.source.workflow_published": "Objavljeni delovni tok",
+  "modelProvider.usage.title": "Aplikacije, ki uporabljajo {{model}}",
+  "modelProvider.usage.view": "Uporabe",
   "modelProvider.used": "porabljeno"
 }

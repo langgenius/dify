@@ -79,6 +79,7 @@ from repositories.human_input_file_upload_repository import SQLAlchemyHumanInput
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
+from repositories.model_usage_repository import SQLAlchemyModelUsageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -171,6 +172,8 @@ from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.model_provider.usage_adapters import ConsoleAppVisibility, PluginModelProviderIdentity
+from services.model_provider.usage_query import ModelUsageQueryService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -341,6 +344,7 @@ class ApplicationServices:
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
     message_more_like_this: MessageMoreLikeThisService
+    model_usages: ModelUsageQueryService
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -640,6 +644,11 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
+        model_usages=ModelUsageQueryService(
+            documents=SQLAlchemyModelUsageRepository(session_factory=database_client),
+            providers=PluginModelProviderIdentity(),
+            visibility=ConsoleAppVisibility(),
+        ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,

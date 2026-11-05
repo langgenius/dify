@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Модель перетворення тексту в мовлення",
   "modelProvider.ttsModel.tip": "Встановіть модель за замовчуванням для введення тексту в мовлення в розмові.",
   "modelProvider.upgradeForLoadBalancing": "Оновіть свій план, щоб увімкнути балансування навантаження.",
+  "modelProvider.usage.description": "Перевіряє чернетки робочих процесів, опубліковані робочі процеси та налаштування моделі застосунків у цьому робочому просторі. Не перевіряються: попередні версії робочих процесів, вузли Agent, вибір моделі в налаштуваннях вузлів інструментів, моделі функцій застосунків, як-от запропоновані запитання, та агенти, якими керують у розділі «Агенти».",
+  "modelProvider.usage.empty": "Жоден застосунок у цьому робочому просторі не використовує цю модель.",
+  "modelProvider.usage.inaccessible_one": "Використання в застосунках, до яких у вас немає доступу, не показано: {{count}}.",
+  "modelProvider.usage.inaccessible_other": "Використання в застосунках, до яких у вас немає доступу, не показано: {{count}}.",
+  "modelProvider.usage.source.app_model_config": "Налаштування моделі застосунку",
+  "modelProvider.usage.source.workflow_draft": "Чернетка робочого процесу",
+  "modelProvider.usage.source.workflow_published": "Опублікований робочий процес",
+  "modelProvider.usage.title": "Застосунки, що використовують {{model}}",
+  "modelProvider.usage.view": "Використання",
   "modelProvider.used": "використано"
 }

@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "テキストから音声への変換モデル",
   "modelProvider.ttsModel.tip": "会話でのテキストから音声への変換に使用するデフォルトモデルを設定します。",
   "modelProvider.upgradeForLoadBalancing": "負荷分散を利用するには、プランのアップグレードが必要です。",
+  "modelProvider.usage.description": "このワークスペースのワークフローの下書き、公開中のワークフロー、アプリのモデル設定を確認します。確認対象外：以前のワークフローバージョン、Agent ノード、ツールノード設定内のモデル選択、アプリ機能（回答後の質問候補など）で使われるモデル、「エージェント」で管理されているエージェント。",
+  "modelProvider.usage.empty": "このワークスペースにこのモデルを使用しているアプリはありません。",
+  "modelProvider.usage.inaccessible_one": "アクセス権のないアプリにある {{count}} 件の使用箇所は表示されていません。",
+  "modelProvider.usage.inaccessible_other": "アクセス権のないアプリにある {{count}} 件の使用箇所は表示されていません。",
+  "modelProvider.usage.source.app_model_config": "アプリのモデル設定",
+  "modelProvider.usage.source.workflow_draft": "ワークフローの下書き",
+  "modelProvider.usage.source.workflow_published": "公開中のワークフロー",
+  "modelProvider.usage.title": "{{model}} を使用しているアプリ",
+  "modelProvider.usage.view": "使用箇所",
   "modelProvider.used": "使用済み"
 }

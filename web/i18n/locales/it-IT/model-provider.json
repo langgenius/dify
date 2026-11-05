@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Modello da Testo a Voce",
   "modelProvider.ttsModel.tip": "Imposta il modello predefinito per l'input da testo a voce nella conversazione.",
   "modelProvider.upgradeForLoadBalancing": "Aggiorna il tuo piano per abilitare il Bilanciamento del Carico.",
+  "modelProvider.usage.description": "Controlla le bozze dei workflow, i workflow pubblicati e le impostazioni del modello delle app in questo spazio di lavoro. Non controllati: versioni precedenti dei workflow, nodi Agent, selezioni del modello nelle impostazioni dei nodi strumento, modelli delle funzionalità dell'app come le domande suggerite e agenti gestiti in Agenti.",
+  "modelProvider.usage.empty": "Nessuna app di questo spazio di lavoro usa questo modello.",
+  "modelProvider.usage.inaccessible_one": "{{count}} utilizzo si trova in un'app a cui non hai accesso e non viene mostrato.",
+  "modelProvider.usage.inaccessible_other": "{{count}} utilizzi si trovano in app a cui non hai accesso e non vengono mostrati.",
+  "modelProvider.usage.source.app_model_config": "Impostazioni del modello dell'app",
+  "modelProvider.usage.source.workflow_draft": "Bozza del workflow",
+  "modelProvider.usage.source.workflow_published": "Workflow pubblicato",
+  "modelProvider.usage.title": "App che usano {{model}}",
+  "modelProvider.usage.view": "Utilizzi",
   "modelProvider.used": "utilizzati"
 }

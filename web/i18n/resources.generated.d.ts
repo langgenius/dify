@@ -4344,6 +4344,16 @@ export default interface Resources {
     'modelProvider.ttsModel.key': 'Text-to-Speech Model'
     'modelProvider.ttsModel.tip': 'Set the default model for text-to-speech input in conversation.'
     'modelProvider.upgradeForLoadBalancing': 'Upgrade your plan to enable Load Balancing.'
+    'modelProvider.usage.description': 'Checks workflow drafts, published workflows, and app model settings in this workspace. Not checked: earlier workflow versions, Agent nodes, model selections in tool node settings, models used by app features such as suggested questions, and agents managed in Agents.'
+    'modelProvider.usage.empty': 'No app in this workspace uses this model.'
+    'modelProvider.usage.inaccessible':
+      | "{{count}} usage is in an app you don't have access to and is not shown."
+      | "{{count}} usages are in apps you don't have access to and are not shown."
+    'modelProvider.usage.source.app_model_config': 'App model settings'
+    'modelProvider.usage.source.workflow_draft': 'Workflow draft'
+    'modelProvider.usage.source.workflow_published': 'Published workflow'
+    'modelProvider.usage.title': 'Apps using {{model}}'
+    'modelProvider.usage.view': 'Usages'
     'modelProvider.used': 'used'
   }
   navigation: {

@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Model Teks-ke-Ucapan",
   "modelProvider.ttsModel.tip": "Atur model default untuk input teks-ke-ucapan dalam percakapan.",
   "modelProvider.upgradeForLoadBalancing": "Tingkatkan paket Anda untuk mengaktifkan Penyeimbangan Beban.",
+  "modelProvider.usage.description": "Memeriksa draf alur kerja, alur kerja yang diterbitkan, dan pengaturan model aplikasi di ruang kerja ini. Tidak diperiksa: versi alur kerja sebelumnya, node Agent, pilihan model di pengaturan node alat, model fitur aplikasi seperti pertanyaan yang disarankan, dan agen yang dikelola di Agen.",
+  "modelProvider.usage.empty": "Tidak ada aplikasi di ruang kerja ini yang menggunakan model ini.",
+  "modelProvider.usage.inaccessible_one": "{{count}} penggunaan berada di aplikasi yang tidak dapat Anda akses dan tidak ditampilkan.",
+  "modelProvider.usage.inaccessible_other": "{{count}} penggunaan berada di aplikasi yang tidak dapat Anda akses dan tidak ditampilkan.",
+  "modelProvider.usage.source.app_model_config": "Pengaturan model aplikasi",
+  "modelProvider.usage.source.workflow_draft": "Draf alur kerja",
+  "modelProvider.usage.source.workflow_published": "Alur kerja yang diterbitkan",
+  "modelProvider.usage.title": "Aplikasi yang menggunakan {{model}}",
+  "modelProvider.usage.view": "Penggunaan",
   "modelProvider.used": "digunakan"
 }

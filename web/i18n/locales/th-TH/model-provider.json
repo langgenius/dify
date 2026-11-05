@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "โมเดลการแปลงข้อความเป็นคําพูด",
   "modelProvider.ttsModel.tip": "ตั้งค่าโมเดลเริ่มต้นสําหรับการป้อนข้อมูลเป็นข้อความเป็นคําพูดในการสนทนา",
   "modelProvider.upgradeForLoadBalancing": "อัปเกรดแผนของคุณเพื่อเปิดใช้งานการปรับสมดุลโหลด",
+  "modelProvider.usage.description": "ตรวจสอบแบบร่างเวิร์กโฟลว์ เวิร์กโฟลว์ที่เผยแพร่แล้ว และการตั้งค่าโมเดลของแอปในพื้นที่ทำงานนี้ ไม่ตรวจสอบ: เวอร์ชันเวิร์กโฟลว์ก่อนหน้า โหนด Agent การเลือกโมเดลในการตั้งค่าโหนดเครื่องมือ โมเดลของฟีเจอร์แอป เช่น คำถามแนะนำ และตัวแทนที่จัดการในส่วนตัวแทน",
+  "modelProvider.usage.empty": "ไม่มีแอปในพื้นที่ทำงานนี้ที่ใช้โมเดลนี้",
+  "modelProvider.usage.inaccessible_one": "ไม่แสดงการใช้งาน {{count}} รายการที่อยู่ในแอปที่คุณไม่มีสิทธิ์เข้าถึง",
+  "modelProvider.usage.inaccessible_other": "ไม่แสดงการใช้งาน {{count}} รายการที่อยู่ในแอปที่คุณไม่มีสิทธิ์เข้าถึง",
+  "modelProvider.usage.source.app_model_config": "การตั้งค่าโมเดลของแอป",
+  "modelProvider.usage.source.workflow_draft": "แบบร่างเวิร์กโฟลว์",
+  "modelProvider.usage.source.workflow_published": "เวิร์กโฟลว์ที่เผยแพร่แล้ว",
+  "modelProvider.usage.title": "แอปที่ใช้ {{model}}",
+  "modelProvider.usage.view": "การใช้งาน",
   "modelProvider.used": "ใช้แล้ว"
 }

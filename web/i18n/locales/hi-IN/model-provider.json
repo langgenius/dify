@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "पाठ-से-भाषण मॉडल",
   "modelProvider.ttsModel.tip": "संवाद में पाठ-से-भाषण इनपुट के लिए डिफ़ॉल्ट मॉडल सेट करें।",
   "modelProvider.upgradeForLoadBalancing": "लोड बैलेंसिंग सक्षम करने के लिए अपनी योजना अपग्रेड करें।",
+  "modelProvider.usage.description": "इस वर्कस्पेस के वर्कफ़्लो ड्राफ़्ट, प्रकाशित वर्कफ़्लो और ऐप की मॉडल सेटिंग जाँचता है। नहीं जाँचे जाते: पुराने वर्कफ़्लो संस्करण, Agent नोड, टूल नोड सेटिंग में मॉडल चयन, सुझाए गए प्रश्नों जैसी ऐप सुविधाओं के मॉडल और एजेंट अनुभाग में प्रबंधित एजेंट।",
+  "modelProvider.usage.empty": "इस वर्कस्पेस में कोई भी ऐप इस मॉडल का उपयोग नहीं करता।",
+  "modelProvider.usage.inaccessible_one": "जिस ऐप तक आपकी पहुँच नहीं है, उसमें {{count}} उपयोग है और वह नहीं दिखाया गया है।",
+  "modelProvider.usage.inaccessible_other": "जिन ऐप तक आपकी पहुँच नहीं है, उनमें {{count}} उपयोग हैं और वे नहीं दिखाए गए हैं।",
+  "modelProvider.usage.source.app_model_config": "ऐप की मॉडल सेटिंग",
+  "modelProvider.usage.source.workflow_draft": "वर्कफ़्लो ड्राफ़्ट",
+  "modelProvider.usage.source.workflow_published": "प्रकाशित वर्कफ़्लो",
+  "modelProvider.usage.title": "{{model}} का उपयोग करने वाले ऐप",
+  "modelProvider.usage.view": "उपयोग",
   "modelProvider.used": "उपयोग किया गया"
 }

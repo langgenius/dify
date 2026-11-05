@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "文字轉語音模型",
   "modelProvider.ttsModel.tip": "設定對話中文字轉語音輸出的預設使用模型。",
   "modelProvider.upgradeForLoadBalancing": "升級您的計劃以啟用 Load Balancing。",
+  "modelProvider.usage.description": "檢查本工作區的工作流草稿、已發佈工作流和應用模型設定。不檢查：更早的工作流版本、Agent 節點、工具節點設定裡的模型選擇、應用功能（如回答後的建議問題）使用的模型，以及在「Agent」頁面中管理的 Agent。",
+  "modelProvider.usage.empty": "本工作區沒有應用使用此模型。",
+  "modelProvider.usage.inaccessible_one": "另有 {{count}} 處引用位於你無權查看的應用中，未顯示。",
+  "modelProvider.usage.inaccessible_other": "另有 {{count}} 處引用位於你無權查看的應用中，未顯示。",
+  "modelProvider.usage.source.app_model_config": "應用模型設定",
+  "modelProvider.usage.source.workflow_draft": "工作流草稿",
+  "modelProvider.usage.source.workflow_published": "已發佈工作流",
+  "modelProvider.usage.title": "使用 {{model}} 的應用",
+  "modelProvider.usage.view": "引用",
   "modelProvider.used": "已用"
 }

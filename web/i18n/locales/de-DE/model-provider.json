@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Text-zu-Sprache-Modell",
   "modelProvider.ttsModel.tip": "Legen Sie das Standardmodell für die Text-zu-Sprache-Eingabe in Konversationen fest.",
   "modelProvider.upgradeForLoadBalancing": "Aktualisieren Sie Ihren Plan, um den Lastenausgleich zu aktivieren.",
+  "modelProvider.usage.description": "Prüft Workflow-Entwürfe, veröffentlichte Workflows und Modelleinstellungen von Apps in diesem Workspace. Nicht geprüft: frühere Workflow-Versionen, Agent-Knoten, Modellauswahlen in den Einstellungen von Tool-Knoten, Modelle von App-Funktionen wie Fragevorschlägen und Agenten, die unter „Agenten“ verwaltet werden.",
+  "modelProvider.usage.empty": "Keine App in diesem Workspace verwendet dieses Modell.",
+  "modelProvider.usage.inaccessible_one": "{{count}} Verwendung liegt in einer App, auf die Sie keinen Zugriff haben, und wird nicht angezeigt.",
+  "modelProvider.usage.inaccessible_other": "{{count}} Verwendungen liegen in Apps, auf die Sie keinen Zugriff haben, und werden nicht angezeigt.",
+  "modelProvider.usage.source.app_model_config": "Modelleinstellungen der App",
+  "modelProvider.usage.source.workflow_draft": "Workflow-Entwurf",
+  "modelProvider.usage.source.workflow_published": "Veröffentlichter Workflow",
+  "modelProvider.usage.title": "Apps, die {{model}} verwenden",
+  "modelProvider.usage.view": "Verwendungen",
   "modelProvider.used": "verwendet"
 }

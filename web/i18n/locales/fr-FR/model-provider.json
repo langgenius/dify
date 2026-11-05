@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Modèle de Texte-à-Parole",
   "modelProvider.ttsModel.tip": "Définissez le modèle par défaut pour l'entrée de texte à la parole dans une conversation.",
   "modelProvider.upgradeForLoadBalancing": "Mettez à niveau votre plan pour activer l’équilibrage de charge.",
+  "modelProvider.usage.description": "Vérifie les brouillons de workflow, les workflows publiés et les paramètres de modèle des applications de cet espace de travail. Non vérifiés : les versions antérieures des workflows, les nœuds Agent, les sélections de modèle dans les paramètres des nœuds d'outil, les modèles des fonctionnalités d'application comme les questions suggérées, et les agents gérés dans Agents.",
+  "modelProvider.usage.empty": "Aucune application de cet espace de travail n'utilise ce modèle.",
+  "modelProvider.usage.inaccessible_one": "{{count}} utilisation se trouve dans une application à laquelle vous n'avez pas accès et n'est pas affichée.",
+  "modelProvider.usage.inaccessible_other": "{{count}} utilisations se trouvent dans des applications auxquelles vous n'avez pas accès et ne sont pas affichées.",
+  "modelProvider.usage.source.app_model_config": "Paramètres de modèle de l'application",
+  "modelProvider.usage.source.workflow_draft": "Brouillon du workflow",
+  "modelProvider.usage.source.workflow_published": "Workflow publié",
+  "modelProvider.usage.title": "Applications utilisant {{model}}",
+  "modelProvider.usage.view": "Utilisations",
   "modelProvider.used": "utilisés"
 }

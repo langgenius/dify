@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "نموذج تحويل النص إلى كلام",
   "modelProvider.ttsModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل النص إلى كلام في المحادثة.",
   "modelProvider.upgradeForLoadBalancing": "قم بترقية خطتك لتمكين موازنة التحميل.",
+  "modelProvider.usage.description": "يفحص مسودات سير العمل وسير العمل المنشور وإعدادات نموذج التطبيقات في مساحة العمل هذه. لا يتم فحص: الإصدارات السابقة من سير العمل، وعُقد Agent، واختيارات النموذج في إعدادات عُقد الأدوات، ونماذج ميزات التطبيق مثل الأسئلة المقترحة، والوكلاء المُدارين في قسم الوكلاء.",
+  "modelProvider.usage.empty": "لا يوجد تطبيق في مساحة العمل هذه يستخدم هذا النموذج.",
+  "modelProvider.usage.inaccessible_one": "لا يتم عرض {{count}} استخدام في تطبيقات لا تملك صلاحية الوصول إليها.",
+  "modelProvider.usage.inaccessible_other": "لا يتم عرض {{count}} استخدامات في تطبيقات لا تملك صلاحية الوصول إليها.",
+  "modelProvider.usage.source.app_model_config": "إعدادات نموذج التطبيق",
+  "modelProvider.usage.source.workflow_draft": "مسودة سير العمل",
+  "modelProvider.usage.source.workflow_published": "سير العمل المنشور",
+  "modelProvider.usage.title": "التطبيقات التي تستخدم {{model}}",
+  "modelProvider.usage.view": "الاستخدامات",
   "modelProvider.used": "مستخدم"
 }

@@ -1441,3 +1441,36 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 allow_indirect_imports = True
+
+[importlinter:contract:model-usage-query-service-boundary]
+name = Model usage query service and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.model_provider.usage_query
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    services.model_provider.usage_adapters
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:console-model-usage-controller-boundary]
+name = Console model usage controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.workspace.model_usages
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.model_provider.usage_adapters
+    sqlalchemy
+# The composition root (extensions.ext_application_services) wires repositories,
+# so only direct imports are checked here.
+allow_indirect_imports = True

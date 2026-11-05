@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "文本转语音模型",
   "modelProvider.ttsModel.tip": "设置对话中文字转语音输出的默认使用模型。",
   "modelProvider.upgradeForLoadBalancing": "升级以解锁负载均衡功能",
+  "modelProvider.usage.description": "检查本工作区的工作流草稿、已发布工作流和应用模型设置。不检查：更早的工作流版本、Agent 节点、工具节点设置里的模型选择、应用功能（如回答后的建议问题）使用的模型，以及在「Agent」页面中管理的 Agent。",
+  "modelProvider.usage.empty": "本工作区没有应用使用此模型。",
+  "modelProvider.usage.inaccessible_one": "另有 {{count}} 处引用位于你无权查看的应用中，未显示。",
+  "modelProvider.usage.inaccessible_other": "另有 {{count}} 处引用位于你无权查看的应用中，未显示。",
+  "modelProvider.usage.source.app_model_config": "应用模型设置",
+  "modelProvider.usage.source.workflow_draft": "工作流草稿",
+  "modelProvider.usage.source.workflow_published": "已发布工作流",
+  "modelProvider.usage.title": "使用 {{model}} 的应用",
+  "modelProvider.usage.view": "引用",
   "modelProvider.used": "已用"
 }

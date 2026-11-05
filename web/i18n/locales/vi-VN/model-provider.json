@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Mô hình Văn bản thành Tiếng nói",
   "modelProvider.ttsModel.tip": "Thiết lập mô hình mặc định cho đầu vào văn bản thành tiếng nói trong cuộc trò chuyện.",
   "modelProvider.upgradeForLoadBalancing": "Nâng cấp gói của bạn để bật Cân bằng tải.",
+  "modelProvider.usage.description": "Kiểm tra bản nháp quy trình, quy trình đã xuất bản và cài đặt mô hình của ứng dụng trong không gian làm việc này. Không kiểm tra: các phiên bản quy trình trước đó, nút Agent, lựa chọn mô hình trong cài đặt nút công cụ, mô hình của các tính năng ứng dụng như câu hỏi gợi ý, và các tác nhân được quản lý trong Tác nhân.",
+  "modelProvider.usage.empty": "Không có ứng dụng nào trong không gian làm việc này sử dụng mô hình này.",
+  "modelProvider.usage.inaccessible_one": "{{count}} nơi sử dụng nằm trong ứng dụng bạn không có quyền truy cập và không được hiển thị.",
+  "modelProvider.usage.inaccessible_other": "{{count}} nơi sử dụng nằm trong ứng dụng bạn không có quyền truy cập và không được hiển thị.",
+  "modelProvider.usage.source.app_model_config": "Cài đặt mô hình của ứng dụng",
+  "modelProvider.usage.source.workflow_draft": "Bản nháp quy trình",
+  "modelProvider.usage.source.workflow_published": "Quy trình đã xuất bản",
+  "modelProvider.usage.title": "Ứng dụng sử dụng {{model}}",
+  "modelProvider.usage.view": "Nơi sử dụng",
   "modelProvider.used": "đã dùng"
 }

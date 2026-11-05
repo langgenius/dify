@@ -8,11 +8,17 @@ import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../d
 import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelListItem from '../model-list-item'
 
+const { listModelUsages } = vi.hoisted(() => ({ listModelUsages: vi.fn() }))
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.usages.get': listModelUsages,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.modelProviders.byProvider.models.enable.patch': vi
         .fn()
@@ -162,3 +168,86 @@ it.each([
     expect(screen.queryByRole('button', { name: configName })).not.toBeInTheDocument()
   },
 )
+
+it('lists where an LLM is used for members who manage model preferences', async () => {
+  const user = userEvent.setup()
+  listModelUsages.mockResolvedValue({
+    data: [
+      {
+        app_id: 'app-1',
+        app_name: 'Support flow',
+        app_mode: 'advanced-chat',
+        source: 'workflow_published',
+        node_id: 'llm-1',
+        node_title: 'Answer',
+        node_type: 'llm',
+      },
+      {
+        app_id: 'app-2',
+        app_name: 'Support bot',
+        app_mode: 'chat',
+        source: 'app_model_config',
+        node_id: null,
+        node_title: null,
+        node_type: null,
+      },
+    ],
+    inaccessible_count: 0,
+  })
+  renderWithConsoleQuery(<ModelListItem model={model} provider={provider} isConfigurable />, {
+    workspacePermissionKeys: ['plugin.plugin_preferences'],
+  })
+
+  await user.click(screen.getByRole('button', { name: 'modelProvider.modelProvider.usage.view' }))
+
+  expect(await screen.findByRole('link', { name: 'Support flow' })).toHaveAttribute(
+    'href',
+    '/app/app-1/workflow',
+  )
+  expect(
+    screen.getByText('modelProvider.modelProvider.usage.source.workflow_published · Answer'),
+  ).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Support bot' })).toHaveAttribute(
+    'href',
+    '/app/app-2/configuration',
+  )
+  expect(listModelUsages).toHaveBeenCalledExactlyOnceWith({
+    params: { provider: 'test-provider' },
+    query: { model: 'gpt-4', model_type: 'llm' },
+  })
+  expect(screen.queryByText(/modelProvider\.usage\.inaccessible/)).not.toBeInTheDocument()
+})
+
+it('says how many usages are withheld instead of reporting none', async () => {
+  const user = userEvent.setup()
+  listModelUsages.mockResolvedValue({ data: [], inaccessible_count: 3 })
+  renderWithConsoleQuery(<ModelListItem model={model} provider={provider} isConfigurable />, {
+    workspacePermissionKeys: ['plugin.plugin_preferences'],
+  })
+
+  await user.click(screen.getByRole('button', { name: 'modelProvider.modelProvider.usage.view' }))
+
+  expect(
+    await screen.findByText('modelProvider.modelProvider.usage.inaccessible:{"count":3}'),
+  ).toBeInTheDocument()
+  expect(screen.queryByText('modelProvider.modelProvider.usage.empty')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+})
+
+it.each([
+  { permissions: ['plugin.model_config'], modelType: ModelTypeEnum.textGeneration },
+  { permissions: ['plugin.plugin_preferences'], modelType: ModelTypeEnum.textEmbedding },
+])('hides the usage entry for $permissions on $modelType models', ({ permissions, modelType }) => {
+  renderWithConsoleQuery(
+    <ModelListItem
+      model={{ ...model, model_type: modelType }}
+      provider={provider}
+      isConfigurable
+    />,
+    { workspacePermissionKeys: permissions },
+  )
+  expect(screen.getByText('GPT-4')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'modelProvider.modelProvider.usage.view' }),
+  ).not.toBeInTheDocument()
+})

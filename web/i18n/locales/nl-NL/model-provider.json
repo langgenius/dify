@@ -126,5 +126,14 @@
   "modelProvider.ttsModel.key": "Text-to-Speech Model",
   "modelProvider.ttsModel.tip": "Set the default model for text-to-speech input in conversation.",
   "modelProvider.upgradeForLoadBalancing": "Upgrade your plan to enable Load Balancing.",
+  "modelProvider.usage.description": "Controleert workflowconcepten, gepubliceerde workflows en modelinstellingen van apps in deze werkruimte. Niet gecontroleerd: eerdere workflowversies, Agent-knooppunten, modelselecties in de instellingen van toolknooppunten, modellen van app-functies zoals voorgestelde vragen en agenten die in Agenten worden beheerd.",
+  "modelProvider.usage.empty": "Geen app in deze werkruimte gebruikt dit model.",
+  "modelProvider.usage.inaccessible_one": "{{count}} gebruik staat in een app waartoe u geen toegang hebt en wordt niet getoond.",
+  "modelProvider.usage.inaccessible_other": "{{count}} gebruiken staan in apps waartoe u geen toegang hebt en worden niet getoond.",
+  "modelProvider.usage.source.app_model_config": "Modelinstellingen van de app",
+  "modelProvider.usage.source.workflow_draft": "Workflowconcept",
+  "modelProvider.usage.source.workflow_published": "Gepubliceerde workflow",
+  "modelProvider.usage.title": "Apps die {{model}} gebruiken",
+  "modelProvider.usage.view": "Gebruik",
   "modelProvider.used": "gebruikt"
 }
