@@ -29,8 +29,10 @@ def calculate_next_run_at(
         - Special characters: ? wildcard, L (last day), Sunday as 7
         - Standard 5-field format only (minute hour day month dayOfWeek)
     """
+    cron_expression = cron_expression.strip()
+
     # Validate cron expression format to match frontend behavior
-    parts = cron_expression.strip().split()
+    parts = cron_expression.split()
 
     # Support both 5-field format and predefined expressions (matching frontend)
     if len(parts) != 5 and not cron_expression.startswith("@"):

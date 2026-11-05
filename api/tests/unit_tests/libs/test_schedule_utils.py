@@ -477,6 +477,20 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result is not None, f"Failed to parse: {expr}"
                 assert validator(result), f"Validator failed for {expr}: {result}"
 
+    def test_expressions_with_surrounding_whitespace(self):
+        """Test surrounding whitespace is ignored."""
+        test_cases = [
+            (" @daily", "@daily"),
+            ("@daily ", "@daily"),
+            ("  @weekly  ", "@weekly"),
+            (" 30 9 * * MON ", "30 9 * * MON"),
+        ]
+
+        for expr, expected_expr in test_cases:
+            with self.subTest(expr=repr(expr)):
+                result = calculate_next_run_at(expr, "UTC", self.base_time)
+                assert result == calculate_next_run_at(expected_expr, "UTC", self.base_time)
+
     def test_question_mark_wildcard(self):
         """Test ? wildcard character."""
         # ? in day position with specific weekday
