@@ -224,7 +224,7 @@ def _branching_dsl(second_target_handle: str) -> str:
         output = {"variable": "result", "value_type": "string", "value_selector": ["sys", "query"]}
         return {"id": node_id, "data": {"type": "end", "title": node_id, "outputs": [output]}}
 
-    case = {"case_id": "true", "logical_operator": "and", "conditions": []}
+    case: dict[str, object] = {"case_id": "true", "logical_operator": "and", "conditions": []}
     branch = {"id": "branch", "data": {"type": "if-else", "title": "If", "cases": [case]}}
     edges = [
         {"id": "e1", "source": "start", "target": "branch", "sourceHandle": "source"},

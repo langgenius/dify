@@ -289,7 +289,7 @@ def _end(node_id: str, value_type: str | None = "string", *, parent: str | None 
 
 
 def _if_else(node_id: str) -> dict[str, object]:
-    case = {"case_id": "true", "logical_operator": "and", "conditions": []}
+    case: dict[str, object] = {"case_id": "true", "logical_operator": "and", "conditions": []}
     return _node(node_id, {"type": "if-else", "title": node_id, "cases": [case]})
 
 
