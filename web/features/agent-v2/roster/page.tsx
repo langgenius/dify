@@ -99,8 +99,8 @@ export default function RosterPage() {
   useDocumentTitle(pageTitle)
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto">
-      <div className="shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
+    <div className="flex h-0 min-w-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-background-body">
+      <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
         <div className="flex h-6 min-w-0 items-center justify-between gap-2 sm:gap-4">
           <h1
             id={pageTitleId}
@@ -130,9 +130,7 @@ export default function RosterPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 max-md:min-h-64">
-        <AgentRosterList aria-labelledby={pageTitleId} state={listState} />
-      </div>
+      <AgentRosterList aria-labelledby={pageTitleId} state={listState} />
     </div>
   )
 }
