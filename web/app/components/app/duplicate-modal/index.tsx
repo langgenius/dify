@@ -149,7 +149,7 @@ const DuplicateAppModal = ({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-10"
-                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
                     />
                   </Field>
                 </div>

@@ -81,7 +81,7 @@ function renderSender(
         controlRetry,
         taskId: 7,
         isCallBatchAPI: false,
-        isPC: false,
+        isBelowMd: true,
         completionFiles: [],
         inputs: options.inputs ?? { name: 'Alice' },
         promptConfig,

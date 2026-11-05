@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "여러 텍스트를 한 번에 생성하고 편집하여 계속해서 생성합니다.",
   "feature.moreLikeThis.tip": "이 기능을 사용하면 추가적인 토큰 오버헤드가 발생합니다",
   "feature.moreLikeThis.title": "유사한 항목",
+  "feature.showThoughts.description": "대화에서 모델의 사고 내용을 표시합니다.",
+  "feature.showThoughts.title": "사고 과정 표시",
   "feature.speechToText.description": "활성화하면 음성 입력을 사용할 수 있습니다.",
   "feature.speechToText.title": "음성에서 텍스트로",
   "feature.suggestedQuestionsAfterAnswer.description": "다음 질문 제안을 설정하면 사용자에게 더 나은 채팅이 제공됩니다.",

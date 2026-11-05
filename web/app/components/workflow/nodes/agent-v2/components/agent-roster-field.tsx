@@ -133,21 +133,21 @@ function AgentRosterDrawer({
         {/* Portaled into the panel, not body: keep a layer above the panel's positioned content. */}
         <DrawerViewport className="pointer-events-none z-50">
           <DrawerPopup
-            className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
+            className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5 data-[swipe-direction=right]:ring-divider-subtle"
             style={{
               right: 'var(--workflow-node-panel-right, 4px)',
               width: 'var(--workflow-node-panel-width, 400px)',
             }}
           >
-            <DrawerContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+            <DrawerContent className="h-full overflow-hidden">
               <header
                 className={cn(
                   'flex shrink-0 flex-col border-b border-divider-subtle bg-components-panel-bg',
                   isSetup
                     ? 'h-16 px-4 py-3'
                     : showDetailActions
-                      ? 'h-27 gap-3 py-3 pr-4 pl-3'
-                      : 'py-3 pr-4 pl-3',
+                      ? 'h-27 gap-3 py-3 ps-3 pe-4'
+                      : 'py-3 ps-3 pe-4',
                 )}
               >
                 <div className="flex min-w-0 items-start justify-between">
@@ -246,7 +246,7 @@ function AgentRosterDrawer({
                   </div>
                 </div>
                 {!isSetup && showDetailActions && (
-                  <div className="flex h-8 gap-2 pl-1">
+                  <div className="flex h-8 gap-2 ps-1">
                     {showConsoleLink && canConfigureAgent && (
                       <EditInConsoleLink agentId={agent.id} />
                     )}
@@ -310,7 +310,7 @@ function AgentRosterInlineConfigureDialog({
           <Suspense fallback={<InlineAgentLoading />}>
             {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
           </Suspense>
-          <div className="absolute top-3 right-5 flex items-center max-sm:right-3">
+          <div className="absolute inset-e-5 top-3 flex items-center max-sm:inset-e-3">
             <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
             <DialogClose
               render={
@@ -411,7 +411,7 @@ export function AgentRosterField({
       type="button"
       aria-label={t(($) => $[`${i18nPrefix}.roster.openPanel`], { ns: 'workflowAgent', name })}
       aria-busy={isLoading || undefined}
-      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       onClick={onClick}
     >
       {isLoading ? loadingContent : agentContent}
@@ -449,7 +449,7 @@ export function AgentRosterField({
       {errorMessage ? (
         <div
           role="alert"
-          className="flex min-h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-2 pl-2 text-left shadow-xs shadow-shadow-shadow-3"
+          className="flex min-h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-2 text-start shadow-xs shadow-shadow-shadow-3"
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
@@ -502,19 +502,19 @@ export function AgentRosterField({
             )}
           </>
         ) : (
-          <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+          <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3">
             {agentContent}
           </div>
         )
       ) : isPending || agentId ? (
         <div
           aria-busy="true"
-          className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3"
+          className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3"
         >
           {loadingContent}
         </div>
       ) : (
-        <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+        <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
           </span>

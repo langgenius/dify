@@ -1457,7 +1457,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/trace-config
@@ -3828,7 +3828,7 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/trace-config
@@ -7152,7 +7152,7 @@ Get dataset indexing status
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse)<br> |
+| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradePreparationResponse](#knowledgefsupgradepreparationresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades
@@ -7163,11 +7163,18 @@ Get dataset indexing status
 | Idempotency-Key | header | Stable key used to make the Dataset upgrade safe to retry | Yes | string |
 | dataset_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUpgradeStartPayload](#knowledgefsupgradestartpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsUpgradeModelsUnavailableError](#knowledgefsupgrademodelsunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
@@ -11381,7 +11388,7 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
-**Handle OAuth callback for trigger provider**
+**Complete the cookie-bound flow without requiring a Console login**
 
 #### Parameters
 
@@ -11394,6 +11401,9 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[TriggerOauthContextInvalidError](#triggeroauthcontextinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
@@ -14942,7 +14952,7 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/contact-options
-List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
 
 #### Parameters
 
@@ -14960,7 +14970,7 @@ List editor-safe Contact options for static recipient selection. The projection 
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/contact-options/batch
-Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
 
 #### Parameters
 
@@ -18399,7 +18409,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Remove custom OAuth client configuration**
+**Remove the workspace's custom OAuth client configuration**
 
 #### Parameters
 
@@ -18415,7 +18425,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Get OAuth client configuration for a provider**
+**Get the masked OAuth client configuration for a provider**
 
 #### Parameters
 
@@ -18428,10 +18438,11 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Configure custom OAuth client for a provider**
+**Configure the workspace's custom OAuth client for a provider**
 
 #### Parameters
 
@@ -18450,6 +18461,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerOauthClientChangedError](#triggeroauthclientchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
@@ -18473,6 +18486,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionLimitReachedError](#triggersubscriptionlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
@@ -18608,10 +18624,12 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
-**Verify credentials for an existing subscription (edit mode only)**
+**Verify credentials against the subscription's own provider without updating it**
 
 #### Parameters
 
@@ -18631,10 +18649,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionInvalidError](#triggersubscriptioninvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
-**Delete a subscription instance**
+**Delete the subscription and its workflow trigger bindings**
 
 #### Parameters
 
@@ -18647,10 +18668,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
-**Update a subscription instance**
+**Rename a subscription or rebuild its provider configuration**
 
 #### Parameters
 
@@ -18669,6 +18693,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
@@ -18750,6 +18777,10 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+**Return an icon for a tenant UUID and a supported icon type**
+
+Invalid path arguments fail before provider discovery or asset access.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -20731,6 +20762,7 @@ Visibility and lifecycle scope of an Agent record.
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
+| show_thoughts | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | speech_to_text | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) |  | No |
@@ -23706,6 +23738,7 @@ Least-privilege contact projection returned to workflow editors.
 | avatar_url | string | Signed avatar URL if one is available. | No |
 | email | string | Current deliverable Email, when available. | No |
 | id | string | Unique contact identifier persisted in workflow recipient configuration. | Yes |
+| im_providers | [ [IMProvider](#improvider) ] | Distinct providers of effective IM bindings in the current workspace; not a delivery health check. | Yes |
 | name | string | Display name shown in the contact picker. | Yes |
 | type | [HumanInputContactType](#humaninputcontacttype) | Resolved contact type in the current workspace scope. | Yes |
 
@@ -26293,6 +26326,7 @@ Effective feature availability and limits for the current workspace.
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -30212,6 +30246,63 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeJobStatus | string |  |  |
 
+#### KnowledgeFSUpgradeModelChoice
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSUpgradeModelErrorDetailsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| issues | [ [KnowledgeFSUpgradeModelIssueResponse](#knowledgefsupgrademodelissueresponse) ] |  | Yes |
+
+#### KnowledgeFSUpgradeModelIssueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| field | string, <br>**Available values:** "embedding", "reasoning", "rerank" | *Enum:* `"embedding"`, `"reasoning"`, `"rerank"` | Yes |
+| model | string |  | No |
+| provider | string |  | No |
+| reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" | *Enum:* `"credential-removed"`, `"deprecated"`, `"disabled"`, `"missing"`, `"no-configure"`, `"no-permission"`, `"not_found"`, `"quota-exceeded"` | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| source | string, <br>**Available values:** "legacy", "workspace_default" |  | Yes |
+| unavailable_reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" |  | No |
+| value | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+
+#### KnowledgeFSUpgradeModelsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradePreparationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block_reason | [KnowledgeFSUpgradeBlockReason](#knowledgefsupgradeblockreason) |  | No |
+| can_retry | boolean |  | Yes |
+| can_upgrade | boolean |  | Yes |
+| job | [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse) |  | No |
+| models | [KnowledgeFSUpgradeModelRecommendationsResponse](#knowledgefsupgrademodelrecommendationsresponse) |  | No |
+
 #### KnowledgeFSUpgradeRetryResponse
 
 | Name | Type | Description | Required |
@@ -30224,6 +30315,12 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeStage | string |  |  |
+
+#### KnowledgeFSUpgradeStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| models | [KnowledgeFSUpgradeModelsPayload](#knowledgefsupgrademodelspayload) |  | No |
 
 #### KnowledgeFSUploadPartPresignPayload
 
@@ -30385,6 +30482,14 @@ Agent Knowledge Base was not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFsSpaceNotFoundError |  | Agent Knowledge Base was not found. |  |
+
+#### KnowledgeFsUpgradeModelsUnavailableError
+
+One or more selected upgrade models are unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsUpgradeModelsUnavailableError |  | One or more selected upgrade models are unavailable. |  |
 
 #### KnowledgeFsUpstreamUnavailableError
 
@@ -32121,6 +32226,7 @@ Enum class for parameter type.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
@@ -35462,7 +35568,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -35942,13 +36047,14 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
+| configured_secrets | [ string ] | Secret fields that hold a value; submit them empty to keep that value | No |
 | created_at | string |  | No |
 | error | string |  | No |
 | has_not_configured | boolean |  | No |
 | id | string |  | No |
 | is_active | boolean |  | No |
 | result | string |  | No |
-| tracing_config | object |  | No |
+| tracing_config | object | Non-secret fields; secrets are write-only and never returned | No |
 | tracing_provider | string |  | No |
 | updated_at | string |  | No |
 
@@ -36410,6 +36516,38 @@ the app is not allowed to be trial.
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
+#### TriggerOauthClientChangedError
+
+The trigger OAuth client configuration changed. Reload it before saving again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientChangedError |  | The trigger OAuth client configuration changed. Reload it before saving again. |  |
+
+#### TriggerOauthClientConfigInvalidError
+
+The stored trigger OAuth client configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
+
+#### TriggerOauthContextInvalidError
+
+The trigger OAuth context is missing, expired or invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthContextInvalidError |  | The trigger OAuth context is missing, expired or invalid. |  |
+
+#### TriggerOauthProviderError
+
+The trigger provider could not complete OAuth authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthProviderError |  | The trigger provider could not complete OAuth authorization. |  |
+
 #### TriggerProviderApiEntity
 
 | Name | Type | Description | Required |
@@ -36517,6 +36655,54 @@ The identity of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | No |
+
+#### TriggerSubscriptionChangedError
+
+The trigger subscription changed. Reload it before trying again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionChangedError |  | The trigger subscription changed. Reload it before trying again. |  |
+
+#### TriggerSubscriptionInvalidError
+
+The trigger subscription configuration or credentials are invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionInvalidError |  | The trigger subscription configuration or credentials are invalid. |  |
+
+#### TriggerSubscriptionLimitReachedError
+
+The maximum number of trigger subscriptions for this provider has been reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionLimitReachedError |  | The maximum number of trigger subscriptions for this provider has been reached. |  |
+
+#### TriggerSubscriptionNameConflictError
+
+A trigger subscription with this name already exists for the provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNameConflictError |  | A trigger subscription with this name already exists for the provider. |  |
+
+#### TriggerSubscriptionNotFoundError
+
+The trigger subscription does not exist in this workspace and provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNotFoundError |  | The trigger subscription does not exist in this workspace and provider. |  |
+
+#### TriggerSubscriptionProviderError
+
+The trigger provider could not complete the subscription operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionProviderError |  | The trigger provider could not complete the subscription operation. |  |
 
 #### TriggerSubscriptionVerifyPayload
 

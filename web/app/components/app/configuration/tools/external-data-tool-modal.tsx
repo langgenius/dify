@@ -168,9 +168,9 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 value={localeData.label || ''}
                 onChange={(e) => handleValueChange({ label: e.target.value })}
                 className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-                placeholder={
-                  t(($) => $['feature.tools.modal.name.placeholder'], { ns: 'appDebug' }) || ''
-                }
+                placeholder={t(($) => $['feature.tools.modal.name.placeholder'], {
+                  ns: 'appDebug',
+                })}
               />
               <IconPicker
                 value={
@@ -209,10 +209,9 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
               value={localeData.variable || ''}
               onChange={(e) => handleValueChange({ variable: e.target.value })}
               className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-              placeholder={
-                t(($) => $['feature.tools.modal.variableName.placeholder'], { ns: 'appDebug' }) ||
-                ''
-              }
+              placeholder={t(($) => $['feature.tools.modal.variableName.placeholder'], {
+                ns: 'appDebug',
+              })}
             />
           </div>
           {localeData.type === 'api' && (

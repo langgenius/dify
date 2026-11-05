@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy.orm import Session
 
 from core.app.apps.chat.app_config_manager import ChatAppConfig
@@ -16,6 +18,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
+from services.app.generation.adapters import chat as generator_module
 from services.app.generation.adapters.chat import ChatAppGenerator
 from services.app.generation.adapters.chat_runner import ChatAppRunner
 from services.errors.conversation import ConversationNotExistsError
@@ -38,6 +41,26 @@ class _AppIdTenantId:
 class DummyGenerateEntity:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 class DummyQueueManager:
@@ -167,7 +190,13 @@ class TestChatAppGenerator:
             )
 
     def test_generate_debugger_overrides_model_config(
-        self, app_records, unbound_session: Session, *, annotation_replies, sqlite_session_factory
+        self,
+        app_records,
+        unbound_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        annotation_replies,
+        sqlite_session_factory,
     ):
         generator = ChatAppGenerator(
             retrieval=build_dataset_retrieval(sqlite_session_factory),
@@ -175,7 +204,16 @@ class TestChatAppGenerator:
             records=app_records,
         )
         app_model = _app()
+        app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
         user = _account()
+        trace_scope = _trace_scope()
+        scope_requests: list[dict[str, object]] = []
+
+        def create_trace_scope(**kwargs: object) -> TraceScope:
+            scope_requests.append(kwargs)
+            return trace_scope
+
+        monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
         args = {
             "query": "hi",
             "inputs": {},
@@ -202,7 +240,6 @@ class TestChatAppGenerator:
                 "services.app.generation.adapters.chat.ChatAppGenerateEntity",
                 Mock(side_effect=DummyGenerateEntity),
             ) as generate_entity,
-            patch("services.app.generation.adapters.chat.TraceQueueManager", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.MessageBasedAppQueueManager", DummyQueueManager),
             patch(
                 "services.app.generation.adapters.chat.ChatAppGenerateResponseConverter.convert",
@@ -226,7 +263,18 @@ class TestChatAppGenerator:
 
         assert result == {"ok": True}
         assert get_conversation.call_args.kwargs["app_id"] == "app-1"
-        assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        extras = generate_entity.call_args.kwargs["extras"]
+        assert extras == {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
+        assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert scope_requests == [
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "app_tracing": '{"enabled": true, "tracing_provider": "langfuse"}',
+                "user_id": "user-1",
+                "extras": extras,
+            }
+        ]
 
     def test_generate_releases_explicit_session_before_stream_consumption(
         self, app_records, sqlite_session: Session, *, annotation_replies, sqlite_session_factory
@@ -273,7 +321,6 @@ class TestChatAppGenerator:
             patch("services.app.generation.adapters.chat.ModelConfigConverter.convert", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.FileUploadConfigManager.convert", return_value=None),
             patch("services.app.generation.adapters.chat.ChatAppGenerateEntity", DummyGenerateEntity),
-            patch("services.app.generation.adapters.chat.TraceQueueManager", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.MessageBasedAppQueueManager", DummyQueueManager),
             patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
             patch.object(ChatAppGenerator, "_init_generate_records", side_effect=initialize_records),

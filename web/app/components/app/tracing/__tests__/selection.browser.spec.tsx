@@ -36,11 +36,17 @@ it('preserves provider focus during an async save and allows keyboard selection 
     const provider = url.searchParams.get('tracing_provider')
     const config =
       provider === 'langfuse'
-        ? { public_key: 'public', secret_key: 'secret', host: 'https://cloud.langfuse.com' }
+        ? {
+            tracing_config: { host: 'https://cloud.langfuse.com' },
+            configured_secrets: ['public_key', 'secret_key'],
+          }
         : provider === 'langsmith'
-          ? { api_key: 'key', project: 'project', endpoint: 'https://api.smith.langchain.com' }
-          : null
-    return Response.json({ has_not_configured: !config, tracing_config: config })
+          ? {
+              tracing_config: { project: 'project', endpoint: 'https://api.smith.langchain.com' },
+              configured_secrets: ['api_key'],
+            }
+          : { has_not_configured: true }
+    return Response.json(config)
   })
   const QueryProvider = createQueryClientWrapper(createTestQueryClient())
   const { wrapper: NuqsProvider } = createNuqsTestWrapper({ hasMemory: true })

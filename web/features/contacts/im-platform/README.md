@@ -1,39 +1,21 @@
-# Contacts IM Platform
+# Workspace channels
 
-Organization-scoped IM platform binding and directory-sync UI for the Contacts domain.
+The Account Settings Channels tab configures Email and IM delivery and inspects directory synchronization. It is available only to workspace managers when `NEXT_PUBLIC_ENABLE_HITL_IM` is true and `/features.im_centrally_managed` is false. The release flag defaults to false; disabling it preserves saved channels and credentials and restores the existing V1 entry points.
 
-## Mount Points
+## Data ownership
 
-- CE / SaaS workspace management mounts this feature from `app/components/header/account-setting`.
-- Centrally managed deployments do not expose this workspace binding entry. The Account Settings shell checks `im_centrally_managed` from `/features` before mounting the feature.
-- `features/agent-v2/roster` is intentionally outside this feature boundary and must not import or mount Contacts IM platform UI.
+The surface uses generated `consoleQuery.workspaces.current.humanInput.v2` options. Channel lists and provider definitions are loaded at the page owner. Redacted channel details are requested when a configuration session opens. Shared mutation defaults own generated-key invalidation; the feature has no repository, DTO status mirror, or private cache namespace.
 
-The entry requires the dedicated `NEXT_PUBLIC_ENABLE_HITL_IM` release gate to be
-`true` and `im_centrally_managed` to be `false`. The release gate defaults to
-`false`, independently of `NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW`. Disabled or
-unavailable entries also reject the IM platform settings deep link. Changing the
-release gate requires restarting Web and reloading the page. Turning it off also
-restores legacy V1 editing/form entry points and disables V2 editors, migration,
-and approval entry points. Saved V2 data and channel credentials are preserved;
-V2 tokens are never sent through legacy V1 transports.
+`credentials.ts` owns credential draft payload shaping and saved redaction metadata. Optional credentials can be retained, replaced, or explicitly cleared. Successful saves and closing clear typed secrets; rejected writes keep the draft available for correction. Credential mutations have zero cache retention and reset after completion. Generated mutations receive typed payloads while pending; the outer orchestration mutation receives credentials through a ref rather than mutation variables.
 
-## Internal Modules
+The configuration and sync-detail sessions mount inside `DialogContent`. Their roots remain mounted while closing, and the subject survives until the closing lifecycle completes. `callback-setup.tsx` displays each provider's actual webhook URL and provider-specific setup destination.
 
-- `types.ts` defines provider, connection, sync, command, pagination, and safe-error contracts.
-- `repository.ts` defines the replaceable frontend data boundary.
-- `__tests__/fixtures/scenarios.ts` owns named deterministic fixtures and consistency validation.
-- `__tests__/fixtures/repository.ts` owns in-memory mutations and explicitly controlled sync transitions.
-- `composition.tsx` injects Organization context and the runtime API repository adapter.
-- `hooks.ts` is the only React Query access layer used by feature components.
-- `management-surface.tsx` owns binding status, provider selection, diagnostics, and confirmations.
-- `binding-dialog.tsx` and `provider-form-adapters.ts` own credential and mock OAuth flows.
-- `sync-section.tsx` owns manual-trigger eligibility, active-run recovery, and summary presentation.
-- `sync-details-dialog.tsx` owns the URL-addressable, filtered, paginated, read-only result view.
-- `sync-run-url-state.ts` keeps the selected run in the `sync_run_id` query parameter.
-- `account-setting-page.tsx` is the workspace-managed settings composition root.
+## Directory synchronization
 
-## External Modules
+The server exposes the latest run only. The selected run ID and result filter are stored with nuqs in `sync_run_id` and `sync_result`. A different latest ID is reported as changed rather than displayed under the requested identity. The summary polls only queued/running runs and refreshes related generated caches on an observed active-to-terminal transition.
 
-- `app/components/header/account-setting`
-- `config`
-- `@tanstack/react-query`
+The result view consumes generated run/result types directly. CSV export requests up to 100 rows per page and verifies the latest run before and after the complete export. It never invents contact email, actor, partial-success, or OAuth fields absent from the contract.
+
+## Verification
+
+Feature tests exercise real generated clients and query policies with mocked HTTP responses, retaining the actual dialogs, forms, and URL-state owner. The API's generated types determine valid scenarios. No production mock repository or mock-only status is shipped.

@@ -130,6 +130,37 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zKnowledgeFsUpgradeModelIssueResponse = /* @__PURE__ */ (() =>
+  z.object({
+    field: z.enum(['embedding', 'reasoning', 'rerank']),
+    model: z.string().nullish(),
+    provider: z.string().nullish(),
+    reason: z.enum([
+      'credential-removed',
+      'deprecated',
+      'disabled',
+      'missing',
+      'no-configure',
+      'no-permission',
+      'not_found',
+      'quota-exceeded',
+    ]),
+  }))()
+
+const zKnowledgeFsUpgradeModelErrorDetailsResponse = /* @__PURE__ */ (() =>
+  z.object({
+    issues: z.array(zKnowledgeFsUpgradeModelIssueResponse).min(1).max(3),
+  }))()
+
+const zKnowledgeFsUpgradeModelsUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('knowledge_fs_upgrade_models_unavailable'),
+      details: zKnowledgeFsUpgradeModelErrorDetailsResponse.optional(),
+      status: z.literal(422),
+    }),
+  ))()
+
 export const postErrors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
 
 export const post2Errors = {
@@ -252,6 +283,13 @@ export const post17Errors = {
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+}
+
+export const post19Errors = {
+  knowledge_fs_upgrade_models_unavailable: {
+    status: 422,
+    data: zKnowledgeFsUpgradeModelsUnavailableError,
+  },
 }
 
 export const get31Errors = {
