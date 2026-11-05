@@ -24,12 +24,13 @@ from core.trigger.entities.entities import (
     TriggerProviderIdentity,
 )
 from core.trigger.provider import PluginTriggerProviderController
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
+from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.oauth_gateway import OAuthProxyContextGateway, TriggerOAuthBuilderGateway
 from services.trigger.oauth_service import TriggerOAuthContext, TriggerOAuthContextError
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
 _PROVIDER_ID = TriggerProviderID("langgenius/github/github")
 _PLUGIN_IDENTIFIER = "langgenius/github:0.1.0@package-hash"
@@ -97,6 +98,7 @@ def test_existing_context_is_consumed_once_by_new_callback(flask_app_with_contai
 class _CreatedBuilder:
     context: TriggerOAuthContext
     response: SubscriptionBuilderApiEntity
+    gateway: TriggerOAuthBuilderGateway
 
 
 def _provider(tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
@@ -137,9 +139,8 @@ def created_builder(flask_app_with_containers: Flask) -> Iterator[_CreatedBuilde
     contexts.plugin_trigger_providers_lock.set(Lock())
     try:
         with flask_app_with_containers.app_context():
-            response = TriggerOAuthBuilderGateway().create(
-                tenant_id=tenant_id, user_id=user_id, provider_id=_PROVIDER_ID
-            )
+            gateway = TriggerOAuthBuilderGateway(builders=application_services().workspaces.trigger_builders)
+            response = gateway.create(tenant_id=tenant_id, user_id=user_id, provider_id=_PROVIDER_ID)
             context = TriggerOAuthContext(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -149,16 +150,16 @@ def created_builder(flask_app_with_containers: Flask) -> Iterator[_CreatedBuilde
                 plugin_unique_identifier=_PLUGIN_IDENTIFIER,
             )
             try:
-                yield _CreatedBuilder(context=context, response=response)
+                yield _CreatedBuilder(context=context, response=response, gateway=gateway)
             finally:
-                redis_client.delete(TriggerSubscriptionBuilderService.encode_cache_key(response.id))
+                redis_client.delete(RedisTriggerSubscriptionBuilderRepository.encode_cache_key(response.id))
     finally:
         contexts.plugin_trigger_providers.set(previous_providers)
         contexts.plugin_trigger_providers_lock.set(previous_lock)
 
 
 def _read_builder(builder_id: str) -> SubscriptionBuilder:
-    cached = redis_client.get(TriggerSubscriptionBuilderService.encode_cache_key(builder_id))
+    cached = redis_client.get(RedisTriggerSubscriptionBuilderRepository.encode_cache_key(builder_id))
     assert cached is not None
     return SubscriptionBuilder.model_validate_json(cached)
 
@@ -176,7 +177,7 @@ def test_builder_gateway_creates_owned_oauth_builder(created_builder: _CreatedBu
     assert stored.credential_expires_at == -1
     assert stored.parameters == response.parameters == {"event": "push"}
     assert stored.properties == response.properties == {"repository": "dify"}
-    assert 0 < redis_client.ttl(TriggerSubscriptionBuilderService.encode_cache_key(response.id)) <= 30 * 60
+    assert 0 < redis_client.ttl(RedisTriggerSubscriptionBuilderRepository.encode_cache_key(response.id)) <= 30 * 60
 
 
 def test_builder_gateway_updates_credentials_and_expiry_only(created_builder: _CreatedBuilder) -> None:
@@ -184,7 +185,7 @@ def test_builder_gateway_updates_credentials_and_expiry_only(created_builder: _C
     before = _read_builder(context.subscription_builder_id)
     credentials = {"access_token": "provider-access-token", "refresh_token": "provider-refresh-token"}
 
-    TriggerOAuthBuilderGateway().set_credentials(
+    created_builder.gateway.set_credentials(
         context=context,
         provider_id=_PROVIDER_ID,
         credentials=credentials,
@@ -213,7 +214,7 @@ def test_builder_gateway_rejects_mismatched_owner_without_updating(
         context = replace(context, subscription_builder_id=str(uuid4()))
 
     with pytest.raises(ValueError, match="not found"):
-        TriggerOAuthBuilderGateway().set_credentials(
+        created_builder.gateway.set_credentials(
             context=context,
             provider_id=provider_id,
             credentials={"access_token": "must-not-be-stored"},

@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 
 
 class PluginParameterService:
@@ -30,6 +30,8 @@ class PluginParameterService:
         parameter: str,
         credential_id: str | None,
         provider_type: Literal["tool", "trigger"],
+        *,
+        builders: TriggerSubscriptionBuilderQuery,
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options for a plugin parameter.
@@ -90,7 +92,7 @@ class PluginParameterService:
             case "trigger":
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(
+                    subscription = builders.get_subscription_builder(
                         tenant_id=tenant_id,
                         user_id=user_id,
                         provider_id=TriggerProviderID(provider_name),

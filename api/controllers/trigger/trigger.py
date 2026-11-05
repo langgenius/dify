@@ -1,12 +1,12 @@
 import logging
 import re
 
-from flask import jsonify, request
+from flask import Response, jsonify, request
 
 from controllers.common.access_response import plugin_endpoint_not_found_response
 from controllers.trigger import bp
+from extensions.ext_application_services import application_services
 from services.trigger.trigger_service import TriggerService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
 logger = logging.getLogger(__name__)
 
@@ -15,23 +15,19 @@ UUID_MATCHER = re.compile(UUID_PATTERN)
 
 
 @bp.route("/plugin/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
-def trigger_endpoint(endpoint_id: str):
+def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
     """
     Handle endpoint trigger calls.
     """
     # endpoint_id must be UUID
     if not UUID_MATCHER.match(endpoint_id):
         return plugin_endpoint_not_found_response()
-    handling_chain = [
-        TriggerService.process_endpoint,
-        TriggerSubscriptionBuilderService.process_builder_validation_endpoint,
-    ]
-    response = None
     try:
-        for handler in handling_chain:
-            response = handler(endpoint_id, request)
-            if response:
-                break
+        response = TriggerService.process_endpoint(endpoint_id, request)
+        if not response:
+            response = application_services().workspaces.trigger_builders.process_builder_validation_endpoint(
+                endpoint_id, request
+            )
         if not response:
             logger.info("Endpoint not found for %s", endpoint_id)
             return plugin_endpoint_not_found_response()
