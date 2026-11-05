@@ -17,7 +17,7 @@ export function AuthShell({ children, header = true, wide = false }: AuthShellPr
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <div className="flex min-h-dvh w-full justify-center bg-background-default-subtle px-[max(env(safe-area-inset-left),env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] in-data-viewport-frame:min-h-full in-data-viewport-frame:pb-0 sm:bg-background-default-burn sm:px-[max(--spacing(6),env(safe-area-inset-left),env(safe-area-inset-right))] sm:pt-[max(--spacing(6),env(safe-area-inset-top))] sm:pb-[max(--spacing(6),env(safe-area-inset-bottom))] in-data-viewport-frame:sm:pb-6">
+    <div className="flex min-h-dvh w-full justify-center bg-background-default-subtle sm:bg-background-default-burn sm:p-6">
       <div className="flex w-full min-w-0 flex-col items-center bg-background-default-subtle sm:rounded-2xl sm:border sm:border-effects-highlight">
         {header && <Header />}
         <main className="flex w-full grow flex-col items-center justify-center px-4 sm:px-6 md:px-27">
