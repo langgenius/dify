@@ -382,6 +382,16 @@ describe('applyToCurrentApp', () => {
     )
   })
 
+  it('preserves a collaboration-room conflict instead of reporting a hash collision', async () => {
+    const error = createHttpError(new Response(null, { status: 409 }), {
+      code: 'draft_workflow_collaboration_active',
+      message: 'The workflow is being edited collaboratively.',
+    })
+    mockSyncWorkflowDraft.mockRejectedValueOnce(error)
+
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(error)
+  })
+
   // Non-409 errors (5xx, network) MUST NOT be misclassified as hash
   // collisions — those still surface as the original rejection so the
   // generic "apply failed" toast fires.
