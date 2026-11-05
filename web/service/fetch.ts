@@ -18,6 +18,7 @@ import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { captureRequestGuard } from './request-guard'
+import { fetchWithUploadProgress } from './upload-progress'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -201,6 +202,11 @@ async function base<T>(
         })
         options.headers = mergedHeaders
       }
+      if (otherOptions.onUploadProgress)
+        return fetchWithUploadProgress(
+          new Request(resource, options),
+          otherOptions.onUploadProgress,
+        )
       return globalThis.fetch(resource, options)
     },
   })

@@ -150,6 +150,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': apiMock.uploadFile,
       'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
       [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
       [`${space}.goldenQuestions.post`]: apiMock.createGolden,
@@ -161,7 +162,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'files.upload.post': apiMock.uploadFile,
       [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
       [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
         const detail = () =>
@@ -2872,7 +2872,8 @@ describe('RetrievalTestPage', () => {
     await act(async () => resolveUpload({ id: 'upload-image-a' }))
 
     expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
-    expect(createObjectUrl).not.toHaveBeenCalled()
+    expect(createObjectUrl).toHaveBeenCalledOnce()
+    expect(apiMock.uploadFile.mock.calls[0]?.[1].signal.aborted).toBe(true)
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
     await waitFor(() =>
       expect(apiMock.queryAdmission).toHaveBeenCalledWith({
