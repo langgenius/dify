@@ -112,6 +112,35 @@ class _Grove(BaseModel):
     leaves_or_gaps: list[_Leaf | None] = Field(default_factory=list)
     shapes: list[_Leaf | _Bud] = Field(default_factory=list)
     shapes_or_gaps: list[_Leaf | _Bud | None] = Field(default_factory=list)
+    shape: _Leaf | _Bud = Field(default_factory=_Bud)
+
+
+@pytest.mark.parametrize("field", ["leaf", "maybe"])
+def test_an_object_hint_carries_its_fields_required_ones_first(field: str) -> None:
+    hint = field_hint(_Tree, (field,), required=False)
+
+    assert [(row.loc, row.required) for row in hint.fields] == [(("name",), True), (("shade",), False)]
+    assert hint.items == ()
+
+
+def test_an_object_field_carries_no_fields_of_its_own() -> None:
+    node = read_node({"id": "ask", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "2"}}, CTX)
+    assert node is not None
+
+    rows = node.hint(("message_template",), required=True).fields
+
+    assert {row.loc for row in rows} == {("subject",), ("body",)}
+    assert all(row.fields == () and row.items == () for row in rows)
+
+
+@pytest.mark.parametrize(
+    ("model", "field"),
+    [(_Grove, "shape"), (_Tree, "leaves"), (_Tree, "by_key"), (_Tree, "size")],
+)
+def test_a_hint_for_a_union_of_objects_a_list_a_mapping_or_a_scalar_has_no_fields(
+    model: type[BaseModel], field: str
+) -> None:
+    assert field_hint(model, (field,), required=False).fields == ()
 
 
 @pytest.mark.parametrize("field", ["maybe_leaves", "leaves_or_gaps"])
