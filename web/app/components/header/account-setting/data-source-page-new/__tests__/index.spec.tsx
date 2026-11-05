@@ -12,7 +12,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -132,7 +132,7 @@ function setup(
       <NuqsTestingAdapter>
         <DataSourcePage {...props} />
         <ReadmePanel />
-        <AppToastHost />
+        <AppToaster />
       </NuqsTestingAdapter>
     </ThemeProvider>,
     {

@@ -19,7 +19,7 @@ type CalendarPanelLabels = {
 
 type CalendarPanelProps = {
   value: string | null
-  onSelect: (date: string) => void
+  onSelect: (date: string, event: React.MouseEvent<Element> | React.KeyboardEvent<Element>) => void
   displayMonth: string
   onDisplayMonthChange: (month: string) => void
   locale?: DayPickerProps['locale']
@@ -29,6 +29,7 @@ type CalendarPanelProps = {
   isDateUnavailable?: (date: string) => boolean
   labels: CalendarPanelLabels
   footer?: React.ReactNode
+  readOnly?: boolean
 }
 
 function CalendarPanel({
@@ -43,6 +44,7 @@ function CalendarPanel({
   isDateUnavailable,
   labels,
   footer,
+  readOnly,
 }: CalendarPanelProps) {
   const [monthPickerHeight, setMonthPickerHeight] = React.useState<number | null>(null)
   const choosingMonth = monthPickerHeight !== null
@@ -241,6 +243,7 @@ function CalendarPanel({
           minDate={minDate}
           maxDate={maxDate}
           isDateUnavailable={isDateUnavailable}
+          readOnly={readOnly}
         />
       )}
     </PickerPanel>

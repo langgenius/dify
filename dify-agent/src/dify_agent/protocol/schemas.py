@@ -14,7 +14,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, WithJsonSchema, model_validator
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -215,7 +215,10 @@ class PydanticAIStreamRunEvent(BaseRunEvent):
     """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
-    data: AgentStreamEvent
+    # Keep runtime validation against Pydantic AI's event union while exposing
+    # its evolving payload as a generic object in OpenAPI. New event variants
+    # can otherwise produce schemas that FastAPI's OpenAPI model cannot validate.
+    data: Annotated[AgentStreamEvent, WithJsonSchema({"type": "object", "additionalProperties": True})]
     agent_message_delta: str | None = None
 
 

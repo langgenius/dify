@@ -107,7 +107,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       : undefined)
   const handleOpenChange = (nextOpen: boolean) => {
     if (saveMutation.isPending) return
-    saveMutation.reset()
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
@@ -140,6 +139,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           return
         }
         handleOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) saveMutation.reset()
       }}
     >
       <DialogTrigger
@@ -287,6 +289,7 @@ function SystemModelSession({
   }
 
   const getClearProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+    'aria-labelledby': `${modelLabelId}-${labelKey}`,
     triggerRef: (element: HTMLButtonElement | null) => {
       modelTriggersRef.current[modelType] = element
     },
@@ -330,7 +333,7 @@ function SystemModelSession({
         <Infotip>
           <InfotipTrigger
             aria-labelledby={`${modelLabelId}-${labelKey}`}
-            className="ml-0.5 text-text-tertiary"
+            className="ms-0.5 text-text-tertiary"
           />
           <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
             {tipText}

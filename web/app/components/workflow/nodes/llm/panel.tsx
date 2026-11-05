@@ -24,6 +24,7 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -141,13 +142,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
               `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
             )
           handleModelChanged(model, filtered)
-        } catch {
+        } catch (error) {
           if (
             modelSelectionRequestGenerationRef.current !== requestGeneration ||
             modelSelectionKeyRef.current !== baselineSelectionKey
           )
             return
-          toast.error(t(($) => $.error, { ns: 'common' }))
+          toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
         }
       })()
     },
@@ -192,13 +193,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
               `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
             )
           handleModelSelectorChange(modelSelector, filtered)
-        } catch {
+        } catch (error) {
           if (
             modelSelectionRequestGenerationRef.current !== requestGeneration ||
             modelSelectionKeyRef.current !== baselineSelectionKey
           )
             return
-          toast.error(t(($) => $.error, { ns: 'common' }))
+          toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
         }
       })()
     },

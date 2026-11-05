@@ -1,8 +1,9 @@
 import type { FileEntity } from './types'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useEffect, useState } from 'react'
 import { create, useStore as useZustandStore } from 'zustand'
 
 type Shape = {
+  isActive: boolean
   files: FileEntity[]
   setFiles: (files: FileEntity[]) => void
 }
@@ -11,9 +12,11 @@ export const createFileStore = (
   value: FileEntity[] = [],
   onChange?: (files: FileEntity[]) => void,
 ) => {
-  return create<Shape>((set) => ({
+  return create<Shape>((set, get) => ({
+    isActive: true,
     files: value ? [...value] : [],
     setFiles: (files) => {
+      if (!get().isActive) return
       set({ files })
       onChange?.(files)
     },
@@ -41,6 +44,13 @@ type FileProviderProps = {
 }
 export const FileContextProvider = ({ children, value, onChange }: FileProviderProps) => {
   const [store] = useState(() => createFileStore(value, onChange))
+
+  useEffect(() => {
+    store.setState({ isActive: true })
+    return () => {
+      store.setState({ isActive: false })
+    }
+  }, [store])
 
   return <FileContext.Provider value={store}>{children}</FileContext.Provider>
 }

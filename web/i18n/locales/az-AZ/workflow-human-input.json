@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Əməliyyat dəyəri",
   "nodes.humanInput.userActions.buttonTextTooLong": "Düymə mətni ən çox {{maxLength}} simvoldan ibarət olmalıdır",
   "nodes.humanInput.userActions.chooseStyle": "Düymə üslubu seçin",
+  "nodes.humanInput.userActions.defaultTitle": "Düymə mətni {{index}}",
   "nodes.humanInput.userActions.emptyTip": "İstifadəçi əməliyyatları əlavə etmək üçün '+' düyməsinə basın",
   "nodes.humanInput.userActions.title": "İstifadəçi əməliyyatları",
   "nodes.humanInput.userActions.tooltip": "İstifadəçilərin bu formaya cavab vermək üçün basa biləcəyi düymələri təyin edin. Əməliyyat ID-si şaxələnməni idarə edir. Əməliyyat dəyəri sonrakı addımlara seçilmiş daxili çıxış kimi ötürülür. Əməliyyat ID-si hərf və ya alt xətlə başlamalı, ardınca hərflər, rəqəmlər və ya alt xətlər gəlməlidir.",

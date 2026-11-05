@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -31,14 +33,8 @@ from services.tag_application_service import (
     TagSummary,
     UpdateTagInput,
 )
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account
 
 
 @pytest.fixture
@@ -63,7 +59,7 @@ def _account(role: TenantAccountRole) -> Account:
 
 
 @pytest.fixture
-def tags_service() -> MagicMock:
+def tags_service() -> Iterator[MagicMock]:
     tags = MagicMock()
     with patch.object(module, "application_services", return_value=SimpleNamespace(tags=tags)):
         yield tags
@@ -502,10 +498,12 @@ class TestTagResponseAndRoutes:
         assert payload["binding_count"] == "1"
 
     def test_binding_routes_keep_contract(self) -> None:
-        assert TagBindingCollectionApi.post.__apidoc__["id"] == "create_tag_binding"
-        assert TagBindingRemoveApi.post.__apidoc__["id"] == "remove_tag_bindings"
-        assert TagBindingCollectionApi.post.__apidoc__.get("deprecated") is not True
-        assert TagBindingRemoveApi.post.__apidoc__.get("deprecated") is not True
+        post_doc = TagBindingCollectionApi.post.__apidoc__  # pyrefly: ignore[missing-attribute]
+        remove_doc = TagBindingRemoveApi.post.__apidoc__  # pyrefly: ignore[missing-attribute]
+        assert post_doc["id"] == "create_tag_binding"
+        assert remove_doc["id"] == "remove_tag_bindings"
+        assert post_doc.get("deprecated") is not True
+        assert remove_doc.get("deprecated") is not True
 
         route_map = {
             resource.__name__: urls

@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "リソース",
   "resourceAccessToken.searchPlaceholder": "トークンを検索…",
   "resourceAccessToken.searchResourcesPlaceholder": "アプリまたはナレッジベースを検索…",
-  "resourceAccessToken.tabAll": "すべて",
+  "resourceAccessToken.tabAllTypes": "すべてのタイプ",
   "resourceAccessToken.tabApps": "アプリ",
   "resourceAccessToken.tabKnowledgeBases": "ナレッジベース",
   "resourceAccessToken.token": "トークン",

@@ -115,6 +115,154 @@ async def test_dify_api_handler_manifest_success(monkeypatch: pytest.MonkeyPatch
     }
 
 
+@pytest.mark.parametrize("prompt", ["  原文 🪷 [§skill:research:Research§]\r\n\n", ""])
+def test_http_prompt_routes_use_signed_scope_and_preserve_text(monkeypatch: pytest.MonkeyPatch, prompt: str) -> None:
+    original_async_client = httpx.AsyncClient
+    saved = {"prompt": "original"}
+    requests: list[str] = []
+    scope = {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": "build_draft",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/inner/api/agent-config/agent-1/prompt"
+        assert request.headers["X-Inner-Api-Key"] == "inner-secret"
+        requests.append(request.method)
+        if request.method == "GET":
+            assert dict(request.url.params) == scope
+        else:
+            assert request.method == "PUT"
+            assert json.loads(request.content) == {**scope, "prompt": prompt}
+            saved["prompt"] = prompt
+        return httpx.Response(200, json=saved)
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.server.agent_stub_config.httpx.AsyncClient",
+        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    codec = _token_codec()
+    app = FastAPI()
+    app.include_router(
+        create_agent_stub_http_router(
+            codec,
+            config_request_handler=DifyApiAgentStubConfigRequestHandler(
+                inner_api_url="https://api.example.com",
+                inner_api_key="inner-secret",
+                sandbox_files_base_url="https://sandbox-files.example.com",
+            ),
+        )
+    )
+    with TestClient(app) as client:
+        headers = {"Authorization": f"Bearer {codec.encode_connection_token(_execution_context())}"}
+        assert client.get(
+            "/agent-stub/config/prompt",
+            headers=headers,
+            params={**dict.fromkeys(scope, "other"), "agent_id": "other"},
+        ).json() == {"prompt": "original"}
+        response = client.put("/agent-stub/config/prompt", headers=headers, json={"prompt": prompt})
+        assert response.status_code == 200
+        assert response.json() == {"prompt": prompt}
+        assert client.get("/agent-stub/config/prompt", headers=headers).json() == {"prompt": prompt}
+    assert requests == ["GET", "PUT", "GET"]
+
+
+@pytest.mark.parametrize("method", ["GET", "PUT"])
+@pytest.mark.parametrize(
+    ("status", "payload", "expected_status"),
+    [
+        (200, {}, 502),
+        (200, {"prompt": None}, 502),
+        (200, {"prompt": 123}, 502),
+        (403, {"code": "config_not_writable"}, 403),
+    ],
+)
+def test_http_prompt_routes_map_inner_response_errors(
+    monkeypatch: pytest.MonkeyPatch, method: str, status: int, payload: object, expected_status: int
+) -> None:
+    original_async_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.server.agent_stub_config.httpx.AsyncClient",
+        lambda **kwargs: original_async_client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(status, json=payload)), **kwargs
+        ),
+    )
+    codec = _token_codec()
+    app = FastAPI()
+    app.include_router(
+        create_agent_stub_http_router(
+            codec,
+            config_request_handler=DifyApiAgentStubConfigRequestHandler(
+                inner_api_url="https://api.example.com",
+                inner_api_key="inner-secret",
+                sandbox_files_base_url="https://sandbox-files.example.com",
+            ),
+        )
+    )
+    with TestClient(app) as client:
+        response = client.request(
+            method,
+            "/agent-stub/config/prompt",
+            headers={"Authorization": f"Bearer {codec.encode_connection_token(_execution_context())}"},
+            json={"prompt": "new"} if method == "PUT" else None,
+        )
+    assert response.status_code == expected_status
+    if status == 403:
+        assert response.json() == {"detail": payload}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"prompt": None},
+        {"prompt": 123},
+        *[
+            {"prompt": "x", key: "other"}
+            for key in ("tenant_id", "agent_id", "user_id", "config_version_id", "config_version_kind")
+        ],
+    ],
+)
+def test_http_prompt_rejects_invalid_text_and_sandbox_scope_overrides(body: dict[str, object]) -> None:
+    codec = _token_codec()
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec))
+    with TestClient(app) as client:
+        response = client.put(
+            "/agent-stub/config/prompt",
+            headers={"Authorization": f"Bearer {codec.encode_connection_token(_execution_context())}"},
+            json=body,
+        )
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("operation", "field"),
+    [
+        (operation, field)
+        for operation in ("get_prompt", "update_prompt")
+        for field in ("agent_id", "agent_config_version_id", "agent_config_version_kind", "user_id")
+        if operation == "update_prompt" or field != "user_id"
+    ],
+)
+async def test_prompt_requires_execution_scope(operation: str, field: str) -> None:
+    handler = DifyApiAgentStubConfigRequestHandler(
+        inner_api_url="https://api.example.com",
+        inner_api_key="secret",
+        sandbox_files_base_url="https://files.example.com",
+    )
+    with pytest.raises(AgentStubConfigRequestError) as exc_info:
+        principal = _principal(**{field: None})
+        if operation == "get_prompt":
+            await handler.get_prompt(principal=principal)
+        else:
+            await handler.update_prompt(principal=principal, prompt="new")
+    assert exc_info.value.status_code == 400
+
+
 @pytest.mark.anyio
 async def test_dify_api_handler_config_download_returns_sandbox_data_plane_url(
     monkeypatch: pytest.MonkeyPatch,

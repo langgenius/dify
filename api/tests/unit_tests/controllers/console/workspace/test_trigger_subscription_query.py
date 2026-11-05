@@ -9,9 +9,10 @@ from sqlalchemy import delete
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from models import TenantAccountJoin
-from models.account import TenantAccountRole
+from models.account import Account, AccountStatus, TenantAccountRole
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_provider_query
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_provider_query import _Daemon
@@ -90,6 +91,25 @@ def test_subscriptions_require_editor_role_before_querying_plugin(
 
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.get_json()["code"] == "forbidden"
+    assert daemon.requests == []
+
+
+@pytest.mark.parametrize("rbac_enabled", [False, True], ids=["roles", "rbac"])
+@pytest.mark.parametrize("role", [TenantAccountRole.NORMAL, TenantAccountRole.OWNER])
+def test_uninitialized_account_is_rejected_before_permission_checks(
+    harness: _Harness, daemon: _Daemon, rbac_enabled: bool, role: TenantAccountRole
+) -> None:
+    harness.set_role(role)
+    with harness.session_factory.begin() as session:
+        account = session.get(Account, harness.account_id)
+        assert account is not None
+        account.status = AccountStatus.UNINITIALIZED
+
+    with config_overrides_context(RBAC_ENABLED=rbac_enabled):
+        response = Context().run(harness.call, "GET", url=_LIST)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "account_not_initialized"
     assert daemon.requests == []
 
 

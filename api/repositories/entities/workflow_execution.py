@@ -1,13 +1,26 @@
 """Workflow execution values shared across runtime and storage boundaries."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from threading import Lock
 from time import perf_counter
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from pydantic import Field
 
 from graphon.entities import WorkflowExecution as GraphonWorkflowExecution
+
+if TYPE_CHECKING:
+    from core.app.entities.app_invoke_entities import UserFrom
+
+
+@dataclass(frozen=True)
+class WorkflowExecutionIdentity:
+    """Resolved caller values crossing execution boundaries without ORM objects."""
+
+    user_id: str
+    user_from: UserFrom
 
 
 @dataclass

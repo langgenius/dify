@@ -1,171 +1,95 @@
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { createRef } from 'react'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import ProcessDocuments from '../index'
 
-// Mock useInputVariables hook
-let mockIsFetchingParams = false
-let mockParamsConfig: { variables: unknown[] } | undefined = { variables: [] }
-vi.mock('../hooks', () => ({
-  useInputVariables: vi.fn(() => ({
-    isFetchingParams: mockIsFetchingParams,
-    paramsConfig: mockParamsConfig,
-  })),
-}))
-
-// Mock useConfigurations hook
-let mockConfigurations: BaseConfiguration[] = []
-
-// Mock useInitialData hook
-let mockInitialData: Record<string, unknown> = {}
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
-  useInitialData: vi.fn(() => mockInitialData),
-  useConfigurations: vi.fn(() => mockConfigurations),
-}))
-
-// Test Data Factory Functions
-
-/**
- * Creates mock configuration for testing
- */
-const createMockConfiguration = (
-  overrides: Partial<BaseConfiguration> = {},
-): BaseConfiguration => ({
-  type: BaseFieldType.textInput,
-  variable: 'testVariable',
-  label: 'Test Label',
-  required: false,
-  maxLength: undefined,
-  options: undefined,
-  showConditions: [],
-  placeholder: '',
-  tooltip: '',
-  ...overrides,
+const getParameters = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': getParameters,
+    }),
+  }
 })
-
-/**
- * Creates default test props
- */
-const createDefaultProps = (
-  overrides: Partial<React.ComponentProps<typeof ProcessDocuments>> = {},
-) => ({
-  dataSourceNodeId: 'test-node-id',
-  ref: React.createRef<{ submit: () => void }>(),
-  isRunning: false,
-  onProcess: vi.fn(),
-  onPreview: vi.fn(),
-  onSubmit: vi.fn(),
-  onBack: vi.fn(),
-  ...overrides,
-})
-
-describe('ProcessDocuments', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset mock values
-    mockIsFetchingParams = false
-    mockParamsConfig = { variables: [] }
-    mockInitialData = {}
-    mockConfigurations = []
-  })
-
-  // User Interactions Testing
-  describe('User Interactions', () => {
-    it('should call onProcess when Actions process button is clicked', async () => {
-      const user = userEvent.setup()
-      const onProcess = vi.fn()
-      const props = createDefaultProps({ onProcess })
-
-      render(<ProcessDocuments {...props} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
-      )
-
-      expect(onProcess).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onBack when Actions back button is clicked', async () => {
-      const user = userEvent.setup()
-      const onBack = vi.fn()
-      const props = createDefaultProps({ onBack })
-
-      render(<ProcessDocuments {...props} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }),
-      )
-
-      expect(onBack).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onPreview when preview button is clicked', async () => {
-      const user = userEvent.setup()
-      const onPreview = vi.fn()
-      const props = createDefaultProps({ onPreview })
-
-      render(<ProcessDocuments {...props} />)
-
-      await user.click(
-        screen.getByRole('button', {
-          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
-        }),
-      )
-
-      expect(onPreview).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Hook Integration Tests
-
-  // Actions runDisabled Testing
-
-  // Component Memoization Testing
-
-  // Edge Cases Testing
-
-  // runDisabled Logic Testing (with test.each)
-  describe('runDisabled Logic', () => {
-    const runDisabledTestCases = [
-      { isFetchingParams: false, isRunning: false, expectedDisabled: false },
-      { isFetchingParams: false, isRunning: true, expectedDisabled: true },
-      { isFetchingParams: true, isRunning: false, expectedDisabled: true },
-      { isFetchingParams: true, isRunning: true, expectedDisabled: true },
-    ]
-
-    it.each(runDisabledTestCases)(
-      'should set process button disabled=$expectedDisabled when isFetchingParams=$isFetchingParams and isRunning=$isRunning',
-      ({ isFetchingParams, isRunning, expectedDisabled }) => {
-        mockIsFetchingParams = isFetchingParams
-        const props = createDefaultProps({ isRunning })
-
-        render(<ProcessDocuments {...props} />)
-
-        const processButton = screen.getByRole('button', {
-          name: /datasetPipeline.operations.saveAndProcess/i,
-        })
-        if (expectedDisabled) expect(processButton).toBeDisabled()
-        else expect(processButton).not.toBeDisabled()
-      },
+const parameters = {
+  variables: [
+    {
+      type: 'text-input',
+      belong_to_node_id: 'node-1',
+      variable: 'separator',
+      label: 'Separator',
+      required: false,
+      default_value: '---',
+    },
+  ],
+}
+function renderProcess({ loading = false, isRunning = false } = {}) {
+  const queryClient = createConsoleQueryClient()
+  if (!loading)
+    queryClient.setQueryData(
+      consoleQuery.rag.pipelines.byPipelineId.workflows.published.processing.parameters.get.queryKey(
+        { input: { params: { pipeline_id: 'pipeline-1' }, query: { node_id: 'node-1' } } },
+      ),
+      parameters,
     )
-  })
-
-  // Configuration Rendering Tests
-
-  // Full Integration Props Testing
-  it('submits the edited processing fields through the public form ref', async () => {
-    const user = userEvent.setup()
-    mockConfigurations = [createMockConfiguration({ variable: 'separator', label: 'Separator' })]
-    mockInitialData = { separator: '---' }
-    const ref = React.createRef<{ submit: () => void }>()
-    const onSubmit = vi.fn()
-    render(<ProcessDocuments {...createDefaultProps({ ref, onSubmit })} />)
-    const input = screen.getByDisplayValue('---')
-    await user.clear(input)
-    await user.type(input, '|||')
-    await act(async () => ref.current!.submit())
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ separator: '|||' }))
-  })
+  const ref = createRef<{ submit: () => void }>()
+  const callbacks = { onProcess: vi.fn(), onPreview: vi.fn(), onBack: vi.fn(), onSubmit: vi.fn() }
+  renderWithConsoleQuery(
+    <DatasetDetailContext.Provider
+      value={{ dataset: createDatasetFixture({ pipeline_id: 'pipeline-1' }) }}
+    >
+      <ProcessDocuments ref={ref} dataSourceNodeId="node-1" isRunning={isRunning} {...callbacks} />
+    </DatasetDetailContext.Provider>,
+    { queryClient },
+  )
+  return { ref, ...callbacks }
+}
+it.each([
+  { action: 'onProcess', name: 'datasetPipeline.operations.saveAndProcess' },
+  { action: 'onBack', name: 'datasetPipeline.operations.dataSource' },
+  { action: 'onPreview', name: 'datasetPipeline.addDocuments.stepTwo.previewChunks' },
+] as const)('routes $action from the real processing form', async ({ action, name }) => {
+  const user = userEvent.setup()
+  const callbacks = renderProcess()
+  await user.click(screen.getByRole('button', { name }))
+  expect(callbacks[action]).toHaveBeenCalledOnce()
+})
+it.each([false, true])(
+  'disables processing while parameters load (running=%s)',
+  async (isRunning) => {
+    const pending = createDeferred<typeof parameters>()
+    getParameters.mockReturnValueOnce(pending.promise)
+    renderProcess({ loading: true, isRunning })
+    const process = screen.getByRole('button', {
+      name: 'datasetPipeline.operations.saveAndProcess',
+    })
+    expect(process).toBeDisabled()
+    await act(async () => pending.resolve(parameters))
+    await waitFor(() =>
+      expect(getParameters).toHaveBeenCalledWith({
+        params: { pipeline_id: 'pipeline-1' },
+        query: { node_id: 'node-1' },
+      }),
+    )
+    if (isRunning) expect(process).toBeDisabled()
+    else await waitFor(() => expect(process).toBeEnabled())
+  },
+)
+it('converts published variables to editable defaults and submits the edited values', async () => {
+  const user = userEvent.setup()
+  const { ref, onSubmit } = renderProcess()
+  const input = screen.getByRole('textbox', { name: 'Separator' })
+  expect(input).toHaveValue('---')
+  await user.clear(input)
+  await user.type(screen.getByRole('textbox', { name: 'Separator' }), '|||')
+  await act(async () => ref.current!.submit())
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ separator: '|||' }))
 })

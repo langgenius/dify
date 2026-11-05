@@ -11,7 +11,7 @@ import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-st
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { DatasourceType } from '@/models/pipeline'
@@ -149,7 +149,7 @@ function setup(initialStoreState: Partial<Shape> = {}) {
             <DatasetsDetailProvider nodes={nodes}>
               <OpenPanels />
               <RagPipelinePanel />
-              <AppToastHost timeout={0} />
+              <AppToaster timeout={0} />
             </DatasetsDetailProvider>
           </DatasetDetailContext.Provider>
         </EventEmitterContextProvider>

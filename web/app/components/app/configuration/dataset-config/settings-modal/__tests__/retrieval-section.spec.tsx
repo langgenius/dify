@@ -123,7 +123,7 @@ describe('RetrievalChangeTip', () => {
     const onDismiss = vi.fn()
     render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
-    await user.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('Test message'))!.toBeInTheDocument()
     expect(onDismiss).toHaveBeenCalledTimes(1)

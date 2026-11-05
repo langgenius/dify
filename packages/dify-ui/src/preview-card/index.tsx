@@ -1,11 +1,9 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
 import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 /**
@@ -36,25 +34,16 @@ type PreviewCardTriggerProps<Payload = unknown> = BasePreviewCard.Trigger.Props<
 type PreviewCardPortalProps = BasePreviewCard.Portal.Props
 type PreviewCardViewportProps = BasePreviewCard.Viewport.Props
 
-type PreviewCardPositionerProps = Omit<BasePreviewCard.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type PreviewCardPositionerProps = BasePreviewCard.Positioner.Props
 
 function PreviewCardPositioner({
   className,
-  placement = 'bottom',
   sideOffset = 8,
-  alignOffset = 0,
   ...props
 }: PreviewCardPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BasePreviewCard.Positioner
-      side={side}
-      align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
@@ -73,22 +62,24 @@ function PreviewCardPopup({ className, ...props }: PreviewCardPopupProps) {
 }
 
 type PreviewCardContentProps = Omit<PreviewCardPopupProps, 'children'> &
-  Pick<PreviewCardPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<PreviewCardPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function PreviewCardContent({
   children,
-  placement = 'bottom',
-  sideOffset = 8,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: PreviewCardContentProps) {
   return (
     <PreviewCardPortal>
       <PreviewCardPositioner
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >

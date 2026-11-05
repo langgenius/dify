@@ -51,7 +51,7 @@ function SettingTimeZone({ children }: { children?: ReactNode }) {
 
   return (
     <DialogClose
-      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      className="cursor-pointer border-none bg-transparent p-0 text-start body-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       onClick={() => {
         if (settingsDestination)
           setSettingsDestination('preferences', { history: 'replace', shallow: true })
@@ -254,7 +254,10 @@ export function UpdateSettingDialogForm({
         )}
       </div>
       <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
-        <DialogClose render={<Button variant="secondary" className="min-w-18" />}>
+        <DialogClose
+          disabled={isSavePending}
+          render={<Button variant="secondary" className="min-w-18" />}
+        >
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" variant="primary" className="min-w-18" disabled={isSavePending}>

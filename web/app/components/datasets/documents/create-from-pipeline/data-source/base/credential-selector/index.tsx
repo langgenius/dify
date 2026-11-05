@@ -50,7 +50,7 @@ const CredentialSelector = ({
         )}
       />
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >

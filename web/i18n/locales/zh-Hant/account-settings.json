@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "資源",
   "resourceAccessToken.searchPlaceholder": "搜尋權杖…",
   "resourceAccessToken.searchResourcesPlaceholder": "搜尋應用或知識庫…",
-  "resourceAccessToken.tabAll": "全部",
+  "resourceAccessToken.tabAllTypes": "全部類型",
   "resourceAccessToken.tabApps": "應用",
   "resourceAccessToken.tabKnowledgeBases": "知識庫",
   "resourceAccessToken.token": "權杖",

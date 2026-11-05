@@ -241,7 +241,7 @@ class TestSubmitFollowRunHint:
         assert hint.op == op_of(OpenApiWorkflowEventsApi.get) == "get.run.event"
         assert hint.input == {
             "app_id": "app-1",
-            "task_id": "run-9",
+            "run_id": "run-9",
             "include_state_snapshot": True,
             "continue_on_pause": False,
         }

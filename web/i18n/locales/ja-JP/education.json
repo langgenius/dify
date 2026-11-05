@@ -1,4 +1,5 @@
 {
+  "activateFailed": "教育割引を有効にできませんでした。現在の教育認証がまだ有効であるか、このメールアドレスが対象外になっている可能性があります。",
   "applied.activeSubscription.description": "現在有効なサブスクリプションがあります。サブスクリプションの有効期限が切れた後、教育割引を使用できます。<stripeLink>Stripe</stripeLink> でサブスクリプションを確認してください。",
   "applied.noPaymentPermission.description": "このワークスペースでは支払い権限がありません。教育割引を使用するには、請求を管理できるワークスペースに切り替えてください。",
   "applied.noPaymentPermission.returnHome": "Dify に戻る",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "100％割引クーポン",
   "toVerifiedTip.end": "を受け取ることができます。",
   "toVerifiedTip.front": "現在、教育認証ステータスを取得する資格があります。以下に教育情報を入力し、認証プロセスを完了すると、Dify プロフェッショナルプランの",
-  "useEducationDiscount": "教育割引を使用"
+  "tooManyAttempts": "試行回数が多すぎます。しばらくしてからもう一度お試しください。",
+  "useEducationDiscount": "教育割引を使用",
+  "verifyFailed": "教育認証を確認できませんでした。最近認証した場合は、現在の教育認証がまだ有効である可能性があります。それ以外の場合は、しばらくしてからもう一度お試しください。"
 }
