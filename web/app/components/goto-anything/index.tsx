@@ -47,7 +47,7 @@ import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
-import { gotoAnythingDialogHandle } from './dialog-handle'
+import { gotoAnythingDialogHandle } from './handles'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
 import { CommandGrid, ResultList } from './results'
 
