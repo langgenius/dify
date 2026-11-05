@@ -89,9 +89,17 @@ def otlp_spans(egress: RecordingEgress) -> list[OtlpSpan]:
 
 
 def _scalar(value: AnyValue) -> object:
-    kind = value.WhichOneof("value")
-    assert kind is not None
-    return getattr(value, kind)
+    match value.WhichOneof("value"):
+        case "string_value":
+            return value.string_value
+        case "int_value":
+            return value.int_value
+        case "double_value":
+            return value.double_value
+        case "bool_value":
+            return value.bool_value
+        case other:
+            raise AssertionError(f"unexpected attribute value type {other}")
 
 
 def otlp_attributes(span: OtlpSpan) -> dict[str, object]:
