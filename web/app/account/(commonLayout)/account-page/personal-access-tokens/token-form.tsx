@@ -88,6 +88,7 @@ export default function TokenForm({
       context: { silent: true },
     }),
   )
+  const pending = create.isPending || update.isPending
   const options = [
     { value: '30_days', label: t(($) => $['personalAccessToken.days'], { count: 30 }) },
     { value: '90_days', label: t(($) => $['personalAccessToken.days'], { count: 90 }) },
@@ -103,7 +104,7 @@ export default function TokenForm({
     (workspaceMode !== 'selected' || workspaces.length > 0)
   const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!name.trim() || !validScope || editExpired) return
+    if (!name.trim() || !validScope || editExpired || pending) return
     const body: PersonalAccessTokenCreatePayload = {
       name: name.trim(),
       expiration,
@@ -147,7 +148,7 @@ export default function TokenForm({
   }
   return (
     <>
-      <div className="px-6 pe-14 pt-6 pb-3">
+      <div className="ps-6 pe-14 pt-6 pb-3">
         <DialogTitle>
           {created
             ? t(($) => $['personalAccessToken.createdTitle'])
@@ -162,6 +163,7 @@ export default function TokenForm({
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               className="absolute inset-e-5 top-5"
+              disabled={pending}
             >
               <span aria-hidden="true" className="i-ri-close-line size-4" />
             </IconButton>
@@ -225,7 +227,7 @@ export default function TokenForm({
         </div>
       ) : (
         <form onSubmit={submit}>
-          <div className="space-y-5 px-6 py-3">
+          <div className="flex flex-col gap-5 px-6 py-3">
             {duplicate && (
               <p className="system-xs-regular text-text-tertiary">
                 {t(($) => $['personalAccessToken.duplicateDescription'])}
@@ -247,7 +249,7 @@ export default function TokenForm({
                 />
               </Field>
               {!isEdit && (
-                <div className="w-49.25">
+                <div className="grid w-49.25 gap-1">
                   <Select
                     value={expiration}
                     items={options}
@@ -270,14 +272,15 @@ export default function TokenForm({
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 border-t border-components-panel-border pt-4">
+            <div className="grid grid-cols-1 items-center gap-x-3 border-t border-components-panel-border pt-4 sm:grid-cols-[auto_minmax(0,1fr)]">
               <h3
                 id="pat-call-apps"
-                className="col-span-2 mb-2 system-sm-semibold text-text-secondary"
+                className="col-span-full mb-2 system-sm-semibold text-text-secondary"
               >
                 {t(($) => $['resourceAccessToken.resources'])}
               </h3>
               <SegmentedControl
+                className="justify-self-start"
                 aria-labelledby="pat-call-apps"
                 value={resourceMode}
                 onValueChange={(value) => {
@@ -326,7 +329,7 @@ export default function TokenForm({
               {resourceMode === 'selected' ? (
                 expanded !== 'resources' && (
                   <Button
-                    className="col-span-2 mt-2 justify-self-start"
+                    className="col-span-full mt-2 justify-self-start"
                     variant="ghost-accent"
                     onClick={() => setExpanded('resources')}
                   >
@@ -338,7 +341,7 @@ export default function TokenForm({
                   </Button>
                 )
               ) : (
-                <p className="col-span-2 mt-2 system-xs-regular text-text-tertiary">
+                <p className="col-span-full mt-2 system-xs-regular text-text-tertiary">
                   {resourceMode === 'all'
                     ? t(($) => $['personalAccessToken.allIncludingFuture'])
                     : resourceMode === 'none'
@@ -347,14 +350,15 @@ export default function TokenForm({
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 border-t border-components-panel-border pt-4">
+            <div className="grid grid-cols-1 items-center gap-x-3 border-t border-components-panel-border pt-4 sm:grid-cols-[auto_minmax(0,1fr)]">
               <h3
                 id="pat-manage-workspaces"
-                className="col-span-2 mb-2 system-sm-semibold text-text-secondary"
+                className="col-span-full mb-2 system-sm-semibold text-text-secondary"
               >
                 {t(($) => $['personalAccessToken.manageWorkspaces'])}
               </h3>
               <SegmentedControl
+                className="justify-self-start"
                 aria-labelledby="pat-manage-workspaces"
                 value={workspaceMode}
                 onValueChange={(value) => {
@@ -395,7 +399,7 @@ export default function TokenForm({
               {workspaceMode === 'selected' ? (
                 expanded !== 'workspaces' && (
                   <Button
-                    className="col-span-2 mt-2 justify-self-start"
+                    className="col-span-full mt-2 justify-self-start"
                     variant="ghost-accent"
                     onClick={() => setExpanded('workspaces')}
                   >
@@ -407,7 +411,7 @@ export default function TokenForm({
                   </Button>
                 )
               ) : (
-                <p className="col-span-2 mt-2 system-xs-regular text-text-tertiary">
+                <p className="col-span-full mt-2 system-xs-regular text-text-tertiary">
                   {workspaceMode === 'all'
                     ? t(($) => $['personalAccessToken.allIncludingFuture'])
                     : workspaceMode === 'none'
@@ -456,13 +460,13 @@ export default function TokenForm({
             </div>
           )}
           <div className="flex justify-end gap-2 px-6 py-4">
-            <DialogClose render={<Button />}>
+            <DialogClose render={<Button disabled={pending} />}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </DialogClose>
             <Button
               type="submit"
               variant="primary"
-              loading={create.isPending || update.isPending}
+              loading={pending}
               disabled={!name.trim() || !validScope || editExpired}
             >
               {isEdit

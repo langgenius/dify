@@ -1,5 +1,4 @@
 import type { PersonalAccessTokenWorkspaceResponse } from '@dify/contracts/api/console/account/types.gen'
-import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -7,6 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
+import PickerList from './picker-list'
 import WorkspaceRole from './workspace-role'
 
 export default function WorkspacePicker({
@@ -16,7 +16,7 @@ export default function WorkspacePicker({
   selected: PersonalAccessTokenWorkspaceResponse[]
   onToggle: (workspace: PersonalAccessTokenWorkspaceResponse) => void
 }) {
-  const { t } = useTranslation(['accountSettings', 'common'])
+  const { t } = useTranslation(['accountSettings', 'common', 'navigation'])
   const [search, setSearch] = useState('')
   const keyword = useDebounce(search.trim(), { wait: 200 })
   const query = useInfiniteQuery(
@@ -42,14 +42,22 @@ export default function WorkspacePicker({
   return (
     <div className="contents">
       <SearchInput
+        className="mt-2 sm:mt-0"
         value={search}
         onValueChange={setSearch}
         placeholder={t(($) => $['personalAccessToken.searchWorkspaces'])}
       />
-      <div className="col-span-2 mt-2 max-h-64 overflow-y-auto rounded-lg border border-components-panel-border px-4 py-2">
-        {query.isPending && (
-          <div className="h-24 animate-pulse bg-background-section" aria-busy="true" />
-        )}
+      <PickerList
+        query={query}
+        keyword={keyword}
+        hasVisibleItems={candidates.size > 0}
+        labels={{
+          loading: t(($) => $['dynamicSelect.loading'], { ns: 'common' }),
+          loadError: t(($) => $['dynamicSelect.error'], { ns: 'common' }),
+          empty: t(($) => $['mainNav.workspace.noResults'], { ns: 'navigation' }),
+          loadMore: t(($) => $['personalAccessToken.loadMoreWorkspaces']),
+        }}
+      >
         {Array.from(candidates.values()).map((workspace) => {
           const checked = selected.some((item) => item.workspace_id === workspace.workspace_id)
           return (
@@ -65,6 +73,7 @@ export default function WorkspacePicker({
                 )}
               </span>
               <Checkbox
+                data-pat-picker-item=""
                 checked={checked}
                 disabled={!workspace.available && !checked}
                 aria-label={workspace.display_name}
@@ -73,25 +82,7 @@ export default function WorkspacePicker({
             </label>
           )
         })}
-        {query.isError && (
-          <div role="alert">
-            {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
-            <Button onClick={() => query.refetch()}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
-          </div>
-        )}
-        {!query.isPending && !query.isError && candidates.size === 0 && (
-          <p className="py-4 system-xs-regular text-text-tertiary">
-            {t(($) => $['resourceAccessToken.noResourceSearchResults'])}
-          </p>
-        )}
-        {query.hasNextPage && (
-          <Button loading={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
-            {t(($) => $['resourceAccessToken.loadMore'])}
-          </Button>
-        )}
-      </div>
+      </PickerList>
     </div>
   )
 }

@@ -376,12 +376,16 @@ export const password = {
   post: post9,
 }
 
+/**
+ * List account-visible candidates for the validated search, type, and cursor
+ */
 export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccountPersonalAccessTokenResources',
     path: '/account/personal-access-token-resources',
+    summary: 'List account-visible candidates for the validated search, type, and cursor',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAccountPersonalAccessTokenResourcesQuery.optional() }).optional())

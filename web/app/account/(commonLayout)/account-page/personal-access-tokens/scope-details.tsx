@@ -30,7 +30,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
   const unavailableCount = unavailableResourceCount + unavailableWorkspaceCount
   return (
     <>
-      <div className="px-6 pe-14 pt-6 pb-2">
+      <div className="ps-6 pe-14 pt-6 pb-2">
         <DialogTitle>{t(($) => $['personalAccessToken.scopeTitle'])}</DialogTitle>
         <div className="mt-1">
           <DialogDescription>
@@ -96,7 +96,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
               </p>
             )}
           </div>
-          <div className="max-h-115 space-y-6 overflow-y-auto px-6">
+          <div className="flex max-h-115 flex-col gap-6 overflow-y-auto px-6">
             <section aria-labelledby="pat-resource-scope">
               <h3 id="pat-resource-scope" className="mb-3 system-sm-semibold text-text-secondary">
                 {t(($) => $['resourceAccessToken.resources'])}
@@ -106,13 +106,13 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                   <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">
                     <thead className="bg-background-section text-text-tertiary">
                       <tr>
-                        <th className="w-2/5 px-3 py-2 font-normal">
+                        <th className="w-2/5 px-3 py-2 text-start font-normal">
                           {t(($) => $['resourceAccessToken.resources'])}
                         </th>
-                        <th className="w-1/3 px-3 py-2 font-normal">
+                        <th className="w-1/3 px-3 py-2 text-start font-normal">
                           {t(($) => $['personalAccessToken.workspace'])}
                         </th>
-                        <th className="px-3 py-2 font-normal">
+                        <th className="px-3 py-2 text-start font-normal">
                           {t(($) => $['personalAccessToken.status'])}
                         </th>
                       </tr>
@@ -126,19 +126,15 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                               ? t(($) => $['resourceAccessToken.tabKnowledgeBases'])
                               : t(($) => $['personalAccessToken.appDeployment'])
                         const deployments =
-                          resource.resource_type === 'app' && resource.app_deployments?.length
-                            ? resource.app_deployments.map((runner) =>
-                                runner.display_name.split(' / ').at(-1),
-                              )
-                            : resource.resource_type === 'app'
-                              ? [
-                                  t(($) => $['metadata.datasetMetadata.builtIn'], {
-                                    ns: 'dataset',
-                                  }),
-                                ]
-                              : resource.resource_type === 'app_deployment'
-                                ? [resource.display_name.split(' / ').at(-1)]
-                                : []
+                          resource.resource_type === 'app'
+                            ? [
+                                t(($) => $['metadata.datasetMetadata.builtIn'], {
+                                  ns: 'dataset',
+                                }),
+                              ]
+                            : resource.resource_type === 'app_deployment'
+                              ? [resource.display_name.split(' / ').at(-1)]
+                              : []
                         return (
                           <tr
                             key={`${resource.resource_type}:${resource.resource_id}`}
@@ -189,13 +185,13 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                   <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">
                     <thead className="bg-background-section text-text-tertiary">
                       <tr>
-                        <th className="w-2/5 px-3 py-2 font-normal">
+                        <th className="w-2/5 px-3 py-2 text-start font-normal">
                           {t(($) => $['personalAccessToken.workspace'])}
                         </th>
-                        <th className="w-1/3 px-3 py-2 font-normal">
+                        <th className="w-1/3 px-3 py-2 text-start font-normal">
                           {t(($) => $['personalAccessToken.yourRole'])}
                         </th>
-                        <th className="px-3 py-2 font-normal">
+                        <th className="px-3 py-2 text-start font-normal">
                           {t(($) => $['personalAccessToken.status'])}
                         </th>
                       </tr>

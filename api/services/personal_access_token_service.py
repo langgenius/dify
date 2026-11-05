@@ -595,14 +595,21 @@ class PersonalAccessTokenService:
         context: AccountRequestContext,
         *,
         keyword: str | None,
+        resource_type: Literal["app", "dataset"] | None,
         cursor: int,
         limit: int,
     ) -> PersonalAccessTokenResourcePage:
+        """Page visible candidates of the requested type, or both types when unspecified.
+
+        Reuse the same keyword and type with the returned cursor. App rows carry
+        their deployments as children.
+        """
         workspaces = self._tokens.workspace_candidates(context.account_id, keyword=None)
         candidates = self._list_resource_candidates_across_workspaces(
             context,
             workspaces=workspaces,
             keyword=keyword,
+            resource_type=resource_type,
             offset=cursor,
             limit=limit + 1,
         )
@@ -627,11 +634,13 @@ class PersonalAccessTokenService:
         *,
         workspaces: Sequence[PersonalAccessTokenWorkspaceView],
         keyword: str | None,
+        resource_type: Literal["app", "dataset"] | None,
         offset: int,
         limit: int,
     ) -> tuple[PersonalAccessTokenResourceView, ...]:
-        """Page through account-visible candidates while preserving workspace list access rules."""
+        """Apply the optional type filter before sorting and paging visible candidates."""
         prefix_limit = offset + limit
+        kinds = (resource_type,) if resource_type is not None else ("app", "dataset")
         resources: list[PersonalAccessTokenResourceView] = []
         for workspace in workspaces:
             search = keyword
@@ -643,7 +652,7 @@ class PersonalAccessTokenService:
                 account_id=context.account_id,
                 active_workspace_id=workspace.workspace_id,
             )
-            for kind in ("app", "dataset"):
+            for kind in kinds:
                 page = 1
                 count = 0
                 has_more = True

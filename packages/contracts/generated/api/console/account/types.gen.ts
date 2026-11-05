@@ -750,6 +750,7 @@ export type GetAccountPersonalAccessTokenResourcesData = {
     cursor?: number
     keyword?: string
     limit?: number
+    resource_type?: 'app' | 'dataset'
   }
   url: '/account/personal-access-token-resources'
 }

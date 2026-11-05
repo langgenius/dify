@@ -84,6 +84,12 @@ class PersonalAccessTokenCandidateQuery(BaseModel):
     keyword: str | None = Field(default=None, max_length=100)
 
 
+class PersonalAccessTokenResourceCandidateQuery(PersonalAccessTokenCandidateQuery):
+    resource_type: Literal["app", "dataset"] | None = Field(
+        default=None, description="Resource type to filter by before pagination"
+    )
+
+
 class PersonalAccessTokenResponse(ResponseModel):
     id: str
     name: str
@@ -313,18 +319,20 @@ class PersonalAccessTokenApi(Resource):
 class PersonalAccessTokenResourcesApi(Resource):
     @console_ns.doc(
         "list_personal_access_token_resources",
-        params=query_params_from_model(PersonalAccessTokenCandidateQuery),
+        params=query_params_from_model(PersonalAccessTokenResourceCandidateQuery),
     )
     @console_ns.response(
         200, "Available resources", console_ns.models[PersonalAccessTokenResourceCandidateResponse.__name__]
     )
     @console_personal_account_admission
-    @model_validate(PersonalAccessTokenCandidateQuery)
-    def get(self, query: PersonalAccessTokenCandidateQuery, context: AccountRequestContext):
+    @model_validate(PersonalAccessTokenResourceCandidateQuery)
+    def get(self, query: PersonalAccessTokenResourceCandidateQuery, context: AccountRequestContext):
+        """List account-visible candidates for the validated search, type, and cursor."""
         with _token_errors():
             page = application_services().personal_access_tokens.resource_candidates(
                 context,
                 keyword=query.keyword,
+                resource_type=query.resource_type,
                 cursor=query.cursor,
                 limit=query.limit,
             )

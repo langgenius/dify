@@ -787,6 +787,7 @@ export const zGetAccountPersonalAccessTokenResourcesQuery = z.object({
   cursor: z.int().gte(0).optional().default(0),
   keyword: z.string().max(100).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
+  resource_type: z.enum(['app', 'dataset']).optional(),
 })
 
 /**
