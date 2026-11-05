@@ -5,10 +5,10 @@ import type {
   AutocompleteFlatProps,
   AutocompleteInputProps,
 } from '@langgenius/dify-ui/autocomplete'
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { ActionItem, SearchResult } from './actions/types'
-import type { GotoAnythingOption, SearchScope } from './command-options'
+import type { GotoAnythingOption, ScopeSelection } from './command-options'
 import {
   Autocomplete,
   AutocompleteClear,
@@ -28,8 +28,6 @@ import {
   DrawerViewport,
   DrawerVirtualKeyboardProvider,
 } from '@langgenius/dify-ui/drawer'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -37,9 +35,8 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
-import { formatForDisplay, HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
+import { HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
@@ -65,8 +62,9 @@ import { knowledgeSearchQueryOptions } from './actions/knowledge'
 import { parsePluginSearchResults } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
+import { ContextToken } from './components/context-token'
 import { EmptyState } from './components/empty-state'
-import { Footer } from './components/footer'
+import { ScopeBar } from './components/scope-bar'
 import { gotoAnythingDialogHandle, gotoAnythingDrawerHandle } from './handles'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
 import { ResultList } from './results'
@@ -180,7 +178,7 @@ export function GotoAnything() {
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const [term, setTerm] = useState('')
-  const [scope, setScope] = useState<SearchScope | null>(null)
+  const [scope, setScope] = useState<ScopeSelection>('all')
   const [page, setPage] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
@@ -217,6 +215,7 @@ export function GotoAnything() {
   const pageOption = page
     ? allCommandOptions.find((option) => option.shortcut === `/${page}`)
     : undefined
+  const scopeOption = allScopeOptions.find((option) => option.scope === scope)
   const trimmedSearchQuery = searchQuery.trim()
   const normalizedSearchQuery = searchQuery.trimStart().toLowerCase()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
@@ -352,7 +351,7 @@ export function GotoAnything() {
   function handleDialogOpenChangeComplete(open: boolean) {
     if (open) return
     setTerm('')
-    setScope(null)
+    setScope('all')
     setPage(null)
   }
 
@@ -405,28 +404,34 @@ export function GotoAnything() {
     closeSearch()
   }
 
-  function handleSurfaceKeyDownCapture(event: KeyboardEvent<HTMLElement>) {
-    // Escape and Backspace only confirm an IME composition; Safari reports it through keyCode 229.
+  function clearScope() {
+    setScope('all')
+    focusInput()
+  }
+
+  // Backspace in an empty input removes the context token: the page, then (in the dialog) the scope.
+  // The drawer's Escape clears the term before closing, like Base UI's mobile docs search.
+  function handleKeyDownCapture(event: KeyboardEvent<HTMLElement>, surface: 'dialog' | 'drawer') {
+    // Both keys only confirm an IME composition; Safari reports it through keyCode 229.
     // oxlint-disable-next-line typescript/no-deprecated -- Safari needs the legacy IME key code.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
+    if (event.target !== inputRef.current) return
 
-    if (event.key === 'Escape' && (page || term)) {
+    if (event.key === 'Escape' && surface === 'drawer' && term) {
       event.preventDefault()
       event.stopPropagation()
-      if (page) closePage()
-      else setTerm('')
+      setTerm('')
       return
     }
 
-    if (event.key === 'Backspace' && page && !term && event.target === inputRef.current) {
+    if (event.key !== 'Backspace' || term) return
+    if (page) {
       event.preventDefault()
       closePage()
+    } else if (surface === 'dialog' && scope !== 'all') {
+      event.preventDefault()
+      clearScope()
     }
-  }
-
-  // Like Base UI's input-attached controls, a pointer press keeps typing focus in the input.
-  function keepInputFocus(event: MouseEvent<HTMLElement>) {
-    if (event.currentTarget.ownerDocument.activeElement === inputRef.current) event.preventDefault()
   }
 
   // Typed `@scope ` and `/command ` prefixes are shortcuts into the same scope and page state.
@@ -508,20 +513,26 @@ export function GotoAnything() {
 
   const isScopeSelection = isCommandsMode && trimmedSearchQuery.startsWith('@')
   const showCommands = isCommandsMode ? !isScopeSelection : !currentAction
-  const optionSuggestions = isScopeSelection ? scopeOptions : showCommands ? commandOptions : []
+  // The dialog suggests a scope when the term names one; the drawer keeps its scope bar instead.
+  const showScopes = isScopeSelection || (isAtLeastMd && !currentAction && !isCommandsMode)
+  const commandSuggestions = showCommands && !isScopeSelection ? commandOptions : []
+  const scopeSuggestions = showScopes ? scopeOptions : []
   const visibleOptions: GotoAnythingOption[] = [
-    ...optionSuggestions,
+    ...commandSuggestions,
+    ...scopeSuggestions,
     ...(!isCommandsMode ? dedupedResults : []),
   ]
-  const suggestionGroup = {
-    id: isScopeSelection ? 'scopes' : 'commands',
-    label: isScopeSelection
-      ? t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })
-      : t(($) => $['gotoAnything.groups.commands'], { ns: 'app' }),
-    items: optionSuggestions,
-  }
   const resultGroups = [
-    suggestionGroup,
+    {
+      id: 'commands',
+      label: t(($) => $['gotoAnything.groups.commands'], { ns: 'app' }),
+      items: commandSuggestions,
+    },
+    {
+      id: 'scopes',
+      label: t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' }),
+      items: scopeSuggestions,
+    },
     ...(isCommandsMode
       ? []
       : Object.entries(groupedResults).map(([type, items]) => ({
@@ -549,18 +560,6 @@ export function GotoAnything() {
   else if (isError) emptyStateVariant = 'error'
   else if (autocompleteResultCount === 0) emptyStateVariant = 'no-results'
 
-  const decoration = (
-    <>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
-      />
-    </>
-  )
   const searchTitle = t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
   const autocompleteProps = {
@@ -577,8 +576,17 @@ export function GotoAnything() {
   } satisfies AutocompleteFlatProps<GotoAnythingOption>
   const searchInputProps = {
     ref: inputRef,
-    'aria-label': pageOption?.title ?? searchTitle,
-    placeholder: t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' }),
+    'aria-label': pageOption?.title ?? scopeOption?.title ?? searchTitle,
+    placeholder: pageOption
+      ? t(($) => $['placeholder.search'], { ns: 'common' })
+      : scopeOption
+        ? t(($) => $['gotoAnything.searchInScopePlaceholder'], {
+            ns: 'app',
+            scope: scopeOption.title,
+          })
+        : isAtLeastMd
+          ? t(($) => $['gotoAnything.searchOrFilterPlaceholder'], { ns: 'app' })
+          : t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' }),
     'aria-describedby': searchHintId,
   } satisfies AutocompleteInputProps
   const searchAnnouncements = (
@@ -588,48 +596,6 @@ export function GotoAnything() {
       </p>
       <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
     </>
-  )
-  const inputLeading = pageOption ? (
-    <>
-      <IconButton
-        size="md"
-        aria-label={t(($) => $['operation.back'], { ns: 'common' })}
-        onClick={closePage}
-      >
-        <span aria-hidden className="i-ri-arrow-left-line size-4 [&:dir(rtl)]:-scale-x-100" />
-      </IconButton>
-      <span className="shrink-0 system-sm-medium text-text-secondary">{pageOption.title}</span>
-    </>
-  ) : (
-    <span aria-hidden className="i-ri-search-line size-4 shrink-0 text-text-quaternary" />
-  )
-  const scopeControl = !page && (
-    <div
-      data-base-ui-swipe-ignore="x"
-      className="shrink-0 scrollbar-none overflow-x-auto px-4 pb-3"
-    >
-      <SegmentedControl<SearchScope | 'all'>
-        aria-label={t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
-        value={scope ?? 'all'}
-        onValueChange={(value) => setScope(value === 'all' ? null : value)}
-      >
-        <SegmentedControlItem value="all" onMouseDown={keepInputFocus}>
-          {t(($) => $['types.all'], { ns: 'app' })}
-        </SegmentedControlItem>
-        {allScopeOptions.map(
-          (option) =>
-            option.scope && (
-              <SegmentedControlItem
-                key={option.scope}
-                value={option.scope}
-                onMouseDown={keepInputFocus}
-              >
-                {option.title}
-              </SegmentedControlItem>
-            ),
-        )}
-      </SegmentedControl>
-    </div>
   )
   const searchResultsContent = (
     <ScrollAreaContent className="min-h-full w-full max-w-full" style={{ minWidth: '100%' }}>
@@ -666,31 +632,32 @@ export function GotoAnything() {
       >
         <DialogContent
           initialFocus={inputRef}
-          onKeyDownCapture={handleSurfaceKeyDownCapture}
-          className="w-160 data-open:transition-none"
+          onKeyDownCapture={(event) => handleKeyDownCapture(event, 'dialog')}
+          className="w-140 data-open:transition-none"
           backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
         >
           <HotkeysProvider scope={hotkeyScopeId} exclusive>
             <SearchDialogHotkeys />
-            {decoration}
             <DialogTitle className="sr-only">{searchTitle}</DialogTitle>
             <Autocomplete {...autocompleteProps}>
               <AutocompleteInputGroup
                 size="medium"
                 // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
-                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
+                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-transparent px-4 py-3 hover:bg-transparent has-[input:focus]:bg-transparent has-[input:focus]:ring-0"
               >
-                {inputLeading}
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                />
+                {pageOption ? (
+                  <ContextToken title={pageOption.title} onRemove={closePage} />
+                ) : (
+                  scopeOption && <ContextToken title={scopeOption.title} onRemove={clearScope} />
+                )}
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <AutocompleteInput {...searchInputProps} size="medium" className="px-0" />
                 </div>
-                <KbdGroup className="hidden sm:flex">
-                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
-                    <Kbd key={key}>{key}</Kbd>
-                  ))}
-                </KbdGroup>
               </AutocompleteInputGroup>
-              {scopeControl}
               {searchAnnouncements}
 
               <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
@@ -705,12 +672,6 @@ export function GotoAnything() {
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
               </ScrollArea>
-
-              <Footer
-                resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
-                isLoading={isLoading}
-                hasPartialFailure={hasUnavailableServices && !isError}
-              />
             </Autocomplete>
             <DialogClose tabIndex={-1} className="sr-only">
               {closeLabel}
@@ -732,12 +693,11 @@ export function GotoAnything() {
             <DrawerViewport>
               <DrawerPopup
                 initialFocus={inputRef}
-                onKeyDownCapture={handleSurfaceKeyDownCapture}
-                className="h-[calc(100dvh-2rem)]"
+                onKeyDownCapture={(event) => handleKeyDownCapture(event, 'drawer')}
+                className="h-[min(85dvh,calc(100dvh-3.5rem))]"
               >
                 <HotkeysProvider scope={hotkeyScopeId} exclusive>
                   <SearchDialogHotkeys />
-                  {decoration}
                   <DrawerTitle className="sr-only">{searchTitle}</DrawerTitle>
                   <Autocomplete {...autocompleteProps}>
                     <div className="shrink-0 px-4 pt-2 pb-3">
@@ -750,7 +710,13 @@ export function GotoAnything() {
                         // oxlint-disable-next-line shadcn/no-restyle -- The sheet's search field is its header, so it is taller than a form input and keeps the ring off while the active descendant shows navigation.
                         className="h-10 gap-2 rounded-[10px] px-3 has-[input:focus]:ring-0"
                       >
-                        {inputLeading}
+                        <span
+                          aria-hidden
+                          className="i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                        />
+                        {pageOption && (
+                          <ContextToken title={pageOption.title} onRemove={closePage} />
+                        )}
                         <AutocompleteInput
                           {...searchInputProps}
                           size="medium"
@@ -764,7 +730,9 @@ export function GotoAnything() {
                         )}
                       </AutocompleteInputGroup>
                     </div>
-                    {scopeControl}
+                    {!page && (
+                      <ScopeBar scopes={allScopeOptions} value={scope} onValueChange={setScope} />
+                    )}
                     {searchAnnouncements}
 
                     <DrawerContent className="overflow-hidden border-t border-divider-subtle">

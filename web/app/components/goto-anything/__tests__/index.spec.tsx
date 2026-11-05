@@ -244,44 +244,21 @@ describe('search shortcut ownership', () => {
     expect(save).toHaveBeenCalledTimes(2)
   })
 
-  it('opens search, keeps the current query on a repeated shortcut, and resets it after closing', async () => {
+  it('opens search, keeps the query on a repeated shortcut, and resets term and scope after closing', async () => {
     const { user } = setup()
     const input = await openSearch()
-    expect(input).toHaveFocus()
-    await user.type(input, 'research')
+    await user.type(input, '@app research')
     triggerSearchShortcut()
-    expect(input).toHaveValue('research')
-    expect(input).toHaveFocus()
+    expect(screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })).toHaveValue(
+      'research',
+    )
     await user.keyboard('{Escape}')
-    expect(input).toHaveValue('')
-    await user.type(input, 'research')
-    await user.click(screen.getByRole('radio', { name: 'app.gotoAnything.groups.apps' }))
-    await user.keyboard('{Escape}{Escape}')
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'app.gotoAnything.searchTitle' }),
       ).not.toBeInTheDocument(),
     )
     expect(await openSearch()).toHaveValue('')
-    expect(screen.getByRole('radio', { name: 'app.types.all' })).toBeChecked()
-  })
-
-  it('opens a bottom sheet without a footer on narrow screens', async () => {
-    api.atLeastMd = false
-    const { user } = setup()
-    await openSearch()
-
-    const sheet = screen.getByRole('dialog', { name: 'app.gotoAnything.searchTitle' })
-    expect(sheet).toHaveAttribute('data-swipe-direction', 'down')
-    expect(
-      within(sheet).getByRole('option', {
-        name: /modelProvider.modelProvider.systemModelSettings/,
-      }),
-    ).toBeInTheDocument()
-    expect(within(sheet).queryByText('app.gotoAnything.activate')).not.toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(sheet).not.toBeInTheDocument())
   })
   it('leaves shortcuts in unrelated editable controls to their owner', async () => {
     setup()
@@ -320,85 +297,16 @@ describe('search shortcut ownership', () => {
 })
 
 describe('real commands', () => {
-  it('keeps typing focus in the input when a scope is pressed with the pointer', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    await user.type(input, 'research')
-    const knowledge = screen.getByRole('radio', { name: 'app.gotoAnything.groups.knowledgeBases' })
-    await user.click(knowledge)
-
-    expect(knowledge).toBeChecked()
-    expect(input).toHaveFocus()
-    expect(input).toHaveValue('research')
-    await waitFor(() =>
-      expect(api.datasets).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.objectContaining({ keyword: 'research' }) }),
-      ),
-    )
-  })
-
-  it('moves through scopes with arrow keys once the scope group has keyboard focus', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    await user.tab()
-    const all = screen.getByRole('radio', { name: 'app.types.all' })
-    expect(all).toHaveFocus()
-
-    await user.keyboard('{ArrowRight}')
-    const apps = screen.getByRole('radio', { name: 'app.gotoAnything.groups.apps' })
-    expect(apps).toBeChecked()
-    expect(apps).toHaveFocus()
-
-    await user.tab({ shift: true })
-    expect(input).toHaveFocus()
-  })
-
-  it('steps back through page, query and dialog with Escape', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    await user.type(input, '/theme dark')
-    await screen.findByRole('option', { name: darkTheme })
-
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('radiogroup')).toBeInTheDocument()
-    expect(input).toHaveValue('')
-
-    await user.type(input, 'research')
-    await user.keyboard('{Escape}')
-    expect(input).toHaveValue('')
-    expect(screen.getByRole('dialog', { name: 'app.gotoAnything.searchTitle' })).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'app.gotoAnything.searchTitle' }),
-      ).not.toBeInTheDocument(),
-    )
-  })
-
-  it('leaves a command page with Backspace on an empty input', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    await user.type(input, '/theme ')
-    expect(
-      screen.getByRole('combobox', { name: 'app.gotoAnything.actions.themeCategoryDesc' }),
-    ).toBe(input)
-
-    await user.keyboard('{Backspace}')
-
-    expect(screen.getByRole('combobox', { name: 'app.gotoAnything.searchTitle' })).toBe(input)
-    expect(screen.getByRole('radiogroup')).toBeInTheDocument()
-  })
-
-  it('lists every command on the home view without search syntax', async () => {
+  it('lists commands without scopes or search syntax on the home view', async () => {
     setup()
     await openSearch()
 
-    expect(screen.queryByRole('gridcell')).not.toBeInTheDocument()
     expect(
       screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
     ).not.toHaveTextContent('/theme')
-    expect(screen.getByRole('radio', { name: 'app.types.all' })).toBeChecked()
+    expect(
+      screen.queryByRole('option', { name: 'app.gotoAnything.groups.apps' }),
+    ).not.toBeInTheDocument()
   })
   it('opens a command page before executing a real theme choice', async () => {
     const { user } = setup()
@@ -407,7 +315,6 @@ describe('real commands', () => {
       screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
     )
     expect(input).toHaveValue('')
-    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
     await user.click(await screen.findByRole('option', { name: darkTheme }))
     await waitFor(() =>
       expect(
@@ -417,20 +324,6 @@ describe('real commands', () => {
     expect(localStorage.getItem('theme')).toBe('dark')
   })
 
-  it('returns from a command page to the home view', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    await user.click(
-      screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
-    )
-    await screen.findByRole('option', { name: darkTheme })
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.back' }))
-
-    expect(screen.queryByRole('option', { name: darkTheme })).not.toBeInTheDocument()
-    expect(screen.getByRole('radiogroup')).toBeInTheDocument()
-    await waitFor(() => expect(input).toHaveFocus())
-  })
   it('executes a direct command once without a resource search', async () => {
     const { user } = setup()
     await user.type(await openSearch(), '/models')
@@ -611,12 +504,12 @@ describe('resource search', () => {
     },
   )
 
-  it('turns a typed scope prefix into the scope control', async () => {
+  it('turns a typed scope prefix into a scope token', async () => {
     const { user } = setup()
-    const input = await openSearch()
-    await user.type(input, '@app research')
-    expect(input).toHaveValue('research')
-    expect(screen.getByRole('radio', { name: 'app.gotoAnything.groups.apps' })).toBeChecked()
+    await user.type(await openSearch(), '@app research')
+    expect(screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })).toHaveValue(
+      'research',
+    )
     await waitFor(() =>
       expect(api.apps).toHaveBeenCalledWith({ query: { page: 1, name: 'research' } }),
     )

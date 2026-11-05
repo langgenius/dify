@@ -15,18 +15,20 @@ Search actions adapt application, knowledge, plugin, workflow, and RAG owners in
 
 ## Discovery and interaction
 
-- The empty input lists every available command as a row, named in plain language. Commands with choices open a page; other commands run directly.
-- A segmented scope control under the input narrows results to one resource type. Selecting a scope with an empty term lists that resource's first page.
-- Typed `@scope ` and `/command ` prefixes are shortcuts into the same scope and page state. A bare `@` lists scopes as rows.
-- Ordinary text searches localized command names, aliases, page choices, and resources. Commands stay usable while remote searches load or fail.
-- The desktop footer shows the result count and an Enter hint while a query is active. The bottom Drawer has no footer.
+- Typing with nothing selected searches every resource and command; prefixes are never required.
+- The empty input lists every available command as a single-line row named in plain language. Commands with choices open a page; other commands run directly.
+- A search can be narrowed to one resource type (a scope). With an empty term, a scope lists that resource's first page.
+- In the desktop dialog, the scope or page is a token at the start of the input. Scopes are suggested as rows when the term names one, and a bare `@` lists them; the placeholder teaches `@`. Typed `@scope ` and `/command ` prefixes become tokens.
+- In the bottom drawer, a scope bar under the input owns scope selection; only a page shows as a token.
+- Results stay grouped by type. Resource rows show a one-line description; command and scope rows show a title only.
 
 ## Keyboard
 
-- DOM focus stays in the input; Up and Down move the highlighted result and Enter activates it.
-- Tab moves between the back button (on a page), the input, and the scope control, which is one tab stop. Inside the scope control, arrow keys move and select.
-- A pointer press on a scope keeps focus in the input when the input already has it, matching Base UI's input-attached controls.
-- Escape steps back one layer: it leaves a command page, then clears the term, then closes the surface. Backspace in an empty input leaves a command page. Neither acts during IME composition.
+- The desktop dialog follows the APG modal dialog and combobox patterns: focus starts in the input and stays there, Up and Down move the active option, Enter activates it, Tab stays inside the dialog, and one Escape closes it and returns focus to the trigger.
+- Backspace in an empty input removes the token: it leaves a page or, in the dialog, clears the scope. The token's remove button does the same for pointers.
+- The drawer's Escape clears the term before closing, like Base UI's mobile docs search.
+- The drawer's scope bar is an APG radio group: Tab enters on the checked scope, arrow keys move and select, and the focus ring is drawn inset so the scroller cannot clip it.
+- None of these keys act during IME composition. Browser specs cover these contracts.
 
 ## Runtime
 

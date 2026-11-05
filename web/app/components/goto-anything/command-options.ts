@@ -6,6 +6,8 @@ import { slashCommandRegistry } from './actions/commands/catalog'
 
 export type SearchScope = Exclude<ActionItem['key'], '/'>
 
+export type ScopeSelection = SearchScope | 'all'
+
 export type CommandOption = {
   kind: 'command-option'
   shortcut: string
@@ -40,13 +42,6 @@ const scopeRoutes = {
   '@plugin': 'marketplace',
   '@skill': 'skills',
   '@agents': 'roster',
-} as const
-
-const scopeDescriptions = {
-  '@app': 'gotoAnything.actions.searchApplicationsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
-  '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
 } as const
 
 const featuredCommands = ['refine', 'create', 'go', 'models', 'theme', 'language']
@@ -85,15 +80,11 @@ export function useCommandOptions(
   const allScopeOptions: CommandOption[] = Object.values(actions).flatMap((action) => {
     if (action.key === '/') return []
     const routeKey = scopeRoutes[action.key as keyof typeof scopeRoutes]
-    const descriptionKey = scopeDescriptions[action.key as keyof typeof scopeDescriptions]
     return [
       {
         kind: 'command-option',
         shortcut: action.shortcut,
         title: scopeTitles[action.key],
-        description: descriptionKey
-          ? t(($) => $[descriptionKey], { ns: 'app' })
-          : action.description,
         icon: MAIN_NAV_ROUTES.find((route) => route.key === routeKey)?.icon ?? 'i-ri-node-tree',
         scope: action.key,
       },
@@ -117,10 +108,6 @@ export function useCommandOptions(
             : presentation
               ? t(($) => $[presentation[0]], { ns: 'app' })
               : command.description,
-        description:
-          command.name === 'models'
-            ? t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
-            : undefined,
         icon: presentation?.[1] ?? 'i-ri-brain-2-line',
         opensPage: command.mode === 'submenu',
       }

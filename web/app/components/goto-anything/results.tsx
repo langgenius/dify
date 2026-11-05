@@ -42,11 +42,11 @@ export function ResultList({
                       : `${option.type}:${option.id}`
                   }
                   value={option}
-                  className="group mx-2 min-h-12 gap-3 px-3 py-2 text-text-primary"
+                  className="mx-2 min-h-12 gap-3 px-3 py-2 text-text-primary"
                   onClick={() => onSelect(option)}
                 >
                   {isCommandOption(option) ? (
-                    <span className="flex size-8 shrink-0 items-center justify-center text-text-tertiary group-data-highlighted:text-text-accent">
+                    <span className="flex size-8 shrink-0 items-center justify-center text-text-tertiary">
                       <span aria-hidden className={cn(option.icon, 'size-5')} />
                     </span>
                   ) : (
