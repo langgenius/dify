@@ -25,6 +25,7 @@
   "enterYourName": "사용자 이름을 입력해 주세요",
   "error.emailEmpty": "이메일 주소를 입력하세요.",
   "error.emailInValid": "유효한 이메일 주소를 입력하세요.",
+  "error.initPasswordIncorrect": "초기화 비밀번호가 올바르지 않습니다.",
   "error.invalidEmailOrPassword": "유효하지 않은 이메일이나 비밀번호입니다.",
   "error.invalidSSOProtocol": "유효하지 않은 SSO 프로토콜",
   "error.nameEmpty": "사용자 이름을 입력하세요.",

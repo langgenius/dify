@@ -2,10 +2,8 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -15,43 +13,21 @@ import SSOAuth from './components/sso-auth'
 const NormalForm = () => {
   const { t } = useTranslation(['login'])
 
-  const [isLoading, setIsLoading] = useState(true)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
     systemFeatures.deployment_edition === 'ENTERPRISE'
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
   const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
-  const [authType, updateAuthType] = useState<'code' | 'password'>('password')
-  const [showORLine, setShowORLine] = useState(false)
-  const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
+  const hasEmailLogin =
+    systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login
+  const [selectedAuthType, updateAuthType] = useState<'code' | 'password' | null>(null)
+  const authType =
+    selectedAuthType ?? (systemFeatures.enable_email_password_login ? 'password' : 'code')
+  const showORLine = (systemFeatures.enable_social_oauth_login || hasSsoLogin) && hasEmailLogin
+  const allMethodsAreDisabled =
+    !systemFeatures.enable_social_oauth_login && !hasEmailLogin && !hasSsoLogin
 
-  const init = useCallback(async () => {
-    try {
-      setAllMethodsAreDisabled(
-        !systemFeatures.enable_social_oauth_login &&
-          !systemFeatures.enable_email_code_login &&
-          !systemFeatures.enable_email_password_login &&
-          !hasSsoLogin,
-      )
-      setShowORLine(
-        (systemFeatures.enable_social_oauth_login || hasSsoLogin) &&
-          (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login),
-      )
-      updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
-    } catch (error) {
-      console.error(error)
-      setAllMethodsAreDisabled(true)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [hasSsoLogin, systemFeatures])
-  useEffect(() => {
-    init()
-  }, [init])
-  if (isLoading) {
-    return <LoadingPlaceholder />
-  }
   if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
       <div className="mx-auto mt-8 w-full">
@@ -147,8 +123,7 @@ const NormalForm = () => {
               </div>
             </div>
           )}
-          {(systemFeatures.enable_email_code_login ||
-            systemFeatures.enable_email_password_login) && (
+          {hasEmailLogin && (
             <>
               {systemFeatures.enable_email_code_login && authType === 'code' && (
                 <>

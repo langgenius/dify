@@ -55,11 +55,6 @@
       "count": 1
     }
   },
-  "web/app/(auth)/init/InitPasswordPopup.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/(auth)/signin/normal-form.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1

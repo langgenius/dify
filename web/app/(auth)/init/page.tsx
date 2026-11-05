@@ -5,8 +5,6 @@ export function generateMetadata() {
   return getRouteMetadata('login', ($) => $.adminInitPassword)
 }
 
-const Init = () => {
+export default function Init() {
   return <InitPasswordPopup />
 }
-
-export default Init

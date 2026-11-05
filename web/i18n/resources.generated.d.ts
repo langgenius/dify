@@ -4217,6 +4217,7 @@ export default interface Resources {
     enterYourName: 'Please enter your username'
     'error.emailEmpty': 'Email address is required'
     'error.emailInValid': 'Please enter a valid email address'
+    'error.initPasswordIncorrect': 'Incorrect initialization password.'
     'error.invalidEmailOrPassword': 'Invalid email or password.'
     'error.invalidSSOProtocol': 'Invalid SSO protocol'
     'error.nameEmpty': 'Name is required'

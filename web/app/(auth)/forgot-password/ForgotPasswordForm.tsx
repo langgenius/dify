@@ -4,14 +4,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
-import { consoleClient } from '@/service/console'
-import { basePath } from '@/utils/var'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 
 type ForgotPasswordFormValues = {
   email: string
@@ -23,44 +23,26 @@ const emailSchema = z.email('error.emailInValid').min(1, {
 
 const ForgotPasswordForm = () => {
   const { t } = useTranslation(['common', 'login'])
-  const [loading, setLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isEmailSent, setIsEmailSent] = useState(false)
-  const documentTitle = loading
-    ? t(($) => $.loading, { ns: 'common' })
-    : isEmailSent
-      ? t(($) => $.resetLinkSent, { ns: 'login' })
-      : t(($) => $.forgotPassword, { ns: 'login' })
+  const router = useRouter()
+  const initStatus = useQuery(consoleQuery.init.get.queryOptions({ retry: false }))
+  const isInitPending = initStatus.data?.status === 'not_started'
+  const sendResetLink = useMutation(consoleQuery.forgotPassword.post.mutationOptions())
+  const isEmailSent = sendResetLink.data?.result === 'success'
+  const documentTitle = isEmailSent
+    ? t(($) => $.resetLinkSent, { ns: 'login' })
+    : t(($) => $.forgotPassword, { ns: 'login' })
   useDocumentTitle(documentTitle)
 
-  const handleSubmit = async ({ email }: ForgotPasswordFormValues) => {
-    if (isSubmitting) return
-
-    setIsSubmitting(true)
-    try {
-      const res = await consoleClient.forgotPassword.post({ body: { email } })
-      if (res.result === 'success') setIsEmailSent(true)
-      else console.error('Email verification failed')
-    } catch (error) {
-      console.error('Request failed:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
+  const handleSubmit = ({ email }: ForgotPasswordFormValues) => {
+    if (sendResetLink.isPending) return
+    sendResetLink.mutate({ body: { email } })
   }
 
   useEffect(() => {
-    consoleClient.setup.get().then(() => {
-      consoleClient.init.get().then((res) => {
-        if (res.status === 'not_started') window.location.href = `${basePath}/init`
-      })
+    if (isInitPending) router.replace('/init')
+  }, [isInitPending, router])
 
-      setLoading(false)
-    })
-  }, [])
-
-  return loading ? (
-    <LoadingPlaceholder />
-  ) : (
+  return (
     <>
       <div>
         <h1 className="text-[32px] font-bold text-text-primary">
@@ -76,11 +58,7 @@ const ForgotPasswordForm = () => {
       </div>
       <div className="mt-8">
         <div className="relative">
-          <Form<ForgotPasswordFormValues>
-            onFormSubmit={(value) => {
-              void handleSubmit(value)
-            }}
-          >
+          <Form<ForgotPasswordFormValues> onFormSubmit={handleSubmit}>
             {!isEmailSent && (
               <Field
                 name="email"
@@ -107,7 +85,12 @@ const ForgotPasswordForm = () => {
                 {t(($) => $.backToSignIn, { ns: 'login' })}
               </Link>
             ) : (
-              <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                loading={sendResetLink.isPending}
+              >
                 {t(($) => $.sendResetLink, { ns: 'login' })}
               </Button>
             )}

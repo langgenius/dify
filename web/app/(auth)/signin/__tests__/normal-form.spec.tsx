@@ -93,6 +93,20 @@ describe('NormalForm', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
+  it('shows the sign-in form while the login probe is still pending', () => {
+    mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
+    const queryClient = createConsoleQueryClient()
+    void queryClient.query({
+      queryKey: userProfileQueryOptions().queryKey,
+      queryFn: () => new Promise(() => {}),
+    })
+
+    renderWithConsoleQuery(<NormalForm />, { queryClient, accountProfile: null })
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
   describe('Default Redirects', () => {
     it('should send logged-in visitors without a redirect target to the console home', async () => {
       const searchParams = new URLSearchParams()

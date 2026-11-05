@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
 import ThemeSelector from '../theme-selector'
 
 const setTheme = vi.fn()
@@ -11,6 +12,13 @@ vi.mock('next-themes', () => ({
 describe('ThemeSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('renders its trigger in the server HTML', () => {
+    const container = document.createElement('div')
+    container.innerHTML = renderToString(<ThemeSelector />)
+
+    expect(container.querySelector('button[aria-label="common.theme.theme"]')).not.toBeNull()
   })
 
   it.each([

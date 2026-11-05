@@ -23,6 +23,8 @@ vi.mock('@/i18n/server', async (importOriginal) => ({
   getLocaleOnServer: async () => 'en-US',
 }))
 
+vi.mock('@/service/console/server', () => ({ resolveServerConsoleApiUrl: () => null }))
+vi.mock('@/features/account-profile/server', () => ({ serverUserProfileQueryOptions: vi.fn() }))
 vi.mock('../(auth)/signin/sign-in-page', () => ({ default: () => null }))
 vi.mock('../(auth)/init/InitPasswordPopup', () => ({ default: () => null }))
 vi.mock('@/app/components/apps', () => ({ Apps: () => null }))
