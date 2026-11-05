@@ -351,9 +351,6 @@
     }
   },
   "web/app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -495,11 +492,6 @@
   "web/app/components/app/configuration/configuration-view/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
-    }
-  },
-  "web/app/components/app/configuration/dataset-config/card-item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/context-var/index.tsx": {
@@ -735,11 +727,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/log/list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 34
-    }
-  },
   "web/app/components/app/log/model-info.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
@@ -831,9 +818,6 @@
     }
   },
   "web/app/components/app/workflow-log/list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 27
-    },
     "eslint-react/set-state-in-effect": {
       "count": 2
     }
@@ -1002,9 +986,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     }
@@ -1030,16 +1011,6 @@
     },
     "typescript/no-deprecated": {
       "count": 91
-    }
-  },
-  "web/app/components/base/chat/chat/answer/agent-roster-response-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat/answer/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
     }
   },
   "web/app/components/base/chat/chat/answer/more.tsx": {
@@ -1158,11 +1129,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 14
-    }
-  },
-  "web/app/components/base/chat/embedded-chatbot/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
@@ -1293,11 +1259,6 @@
     },
     "typescript/no-deprecated": {
       "count": 6
-    }
-  },
-  "web/app/components/base/file-uploader/file-from-link-or-local/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/base/file-uploader/file-from-link-or-local/index.tsx": {
@@ -1441,11 +1402,6 @@
   "web/app/components/base/icon-picker/emoji-data.ts": {
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "web/app/components/base/image-uploader/__tests__/uploader.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
     }
   },
   "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
@@ -2684,11 +2640,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/detail/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -2884,9 +2835,6 @@
     }
   },
   "web/app/components/explore/try-app/app/text-generation.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "dify/require-disable-directive-description": {
       "count": 1
     },
@@ -2908,9 +2856,6 @@
     }
   },
   "web/app/components/explore/try-app/preview/basic-app-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -3035,11 +2980,6 @@
   "web/app/components/integrations/__tests__/page.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2
-    }
-  },
-  "web/app/components/integrations/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/integrations/sidebar-nav-item.tsx": {
@@ -3483,11 +3423,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-page/plugins-panel-results.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-tags-filter/compact-trigger.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -3758,11 +3693,6 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/share/text-generation/run-batch/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
   },
@@ -4310,11 +4240,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/collapse/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/editor/base.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 6
@@ -4350,11 +4275,6 @@
   "web/app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
@@ -4876,11 +4796,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -5058,11 +4973,6 @@
   "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/recall-settings.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/dataset-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector.tsx": {
@@ -6461,11 +6371,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/logs/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-detail/monitoring/time-range-picker.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -6484,11 +6389,6 @@
   "web/features/agent-v2/roster/components/agent-form-fields.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/agent-v2/roster/components/agent-roster-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/features/agent-v2/roster/components/agent-workflow-references-menu.tsx": {
@@ -6809,11 +6709,6 @@
   "web/features/skills/detail/version-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 13
-    }
-  },
-  "web/features/skills/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/features/tag-management/components/tag-filter.tsx": {

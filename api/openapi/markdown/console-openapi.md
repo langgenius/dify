@@ -18421,7 +18421,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Remove custom OAuth client configuration**
+**Remove the workspace's custom OAuth client configuration**
 
 #### Parameters
 
@@ -18437,7 +18437,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Get OAuth client configuration for a provider**
+**Get the masked OAuth client configuration for a provider**
 
 #### Parameters
 
@@ -18450,10 +18450,11 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Configure custom OAuth client for a provider**
+**Configure the workspace's custom OAuth client for a provider**
 
 #### Parameters
 
@@ -18472,6 +18473,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerOauthClientChangedError](#triggeroauthclientchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
@@ -18772,6 +18775,10 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+**Return an icon for a tenant UUID and a supported icon type**
+
+Invalid path arguments fail before provider discovery or asset access.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -20753,6 +20760,7 @@ Visibility and lifecycle scope of an Agent record.
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
+| show_thoughts | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | speech_to_text | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) |  | No |
@@ -32215,6 +32223,7 @@ Enum class for parameter type.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
@@ -36504,6 +36513,22 @@ the app is not allowed to be trial.
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
+
+#### TriggerOauthClientChangedError
+
+The trigger OAuth client configuration changed. Reload it before saving again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientChangedError |  | The trigger OAuth client configuration changed. Reload it before saving again. |  |
+
+#### TriggerOauthClientConfigInvalidError
+
+The stored trigger OAuth client configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
 
 #### TriggerProviderApiEntity
 
