@@ -51,9 +51,9 @@ from models.human_input_v2 import HumanInputForm
 from models.model import App, AppMode, EndUser
 from services.human_input_service import FormSubmittedError
 from services.human_input_v2.form_service import AccountInitiator
-from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import Context as V2Context
+from tests.helpers.unit.services.human_input_v2_approvals import Context as V2Context
 
-pytest_plugins = ("tests.unit_tests.services.human_input_v2.test_form_delivery_runtime",)
+pytest_plugins = ("tests.helpers.unit.services.human_input_v2_approvals",)
 
 _UNKNOWN_TOKEN = "no-such-form-token"
 _OTHER_APP = "00000000-0000-0000-0000-0000000000ff"
