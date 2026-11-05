@@ -15,7 +15,13 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
@@ -372,8 +378,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
     onTryLearnDify,
     scrollViewportRef,
   } = props
-  const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
-  const systemFeatures = systemFeaturesQuery.data
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: isCollaborationEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       retry: false,
@@ -407,14 +412,9 @@ export function AppListCatalog(props: AppListCatalogProps) {
     }),
   )
 
-  if (systemFeatures === undefined && systemFeaturesQuery.error) throw systemFeaturesQuery.error
   if (appList.data === undefined && appList.error) throw appList.error
 
-  if (
-    systemFeatures === undefined ||
-    appList.data === undefined ||
-    (starredAppList.data === undefined && !starredAppList.error)
-  )
+  if (appList.data === undefined || (starredAppList.data === undefined && !starredAppList.error))
     return <CatalogSkeleton />
 
   return (
