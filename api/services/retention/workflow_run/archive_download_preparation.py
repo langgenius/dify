@@ -50,7 +50,7 @@ from services.retention.workflow_run.constants import (
 logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
-_CSV_FORMULA_PREFIX_PATTERN = f"^[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
+_CSV_FORMULA_PREFIX_PATTERN = rf"^\s*[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
 
 
 class WorkflowRunArchiveDownloadPreparer:

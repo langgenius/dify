@@ -51,8 +51,8 @@ class CSVSanitizer:
         if not str_value:
             return ""
 
-        # Check if first character is a formula initiator
-        if str_value[0] in cls.FORMULA_CHARS:
+        # Check if first character, or first character after leading whitespace, is a formula initiator
+        if str_value[0] in cls.FORMULA_CHARS or str_value.lstrip()[:1] in cls.FORMULA_CHARS:
             # Prefix with single quote to escape
             return f"'{str_value}"
 

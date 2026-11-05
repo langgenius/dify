@@ -298,7 +298,12 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
     }
     second_bundle_payloads = {
         "workflow_app_logs": _parquet_bytes([{"id": "log-b", "workflow_run_id": "run-b"}]),
-        "workflow_runs": _parquet_bytes([{"id": "run-b", "status": "failed", "error": "safe"}]),
+        "workflow_runs": _parquet_bytes(
+            [
+                {"id": "run-b", "status": "failed", "error": "safe"},
+                {"id": "run-c", "status": "failed", "error": "\n=1+1"},
+            ]
+        ),
     }
     archive_storage = FakeArchiveStorage(
         {
@@ -351,6 +356,7 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
         assert workflow_runs_csv.count('"id","status","error"') == 1
         assert '"run-a","succeeded","\'=1+1"' in workflow_runs_csv
         assert '"run-b","failed","safe"' in workflow_runs_csv
+        assert '"run-c","failed","\'\n=1+1"' in workflow_runs_csv
 
 
 def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch(

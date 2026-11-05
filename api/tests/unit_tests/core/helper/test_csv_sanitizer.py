@@ -149,3 +149,10 @@ class TestCSVSanitizer:
         assert CSVSanitizer.sanitize_value("\n\n") == "\n\n"
         # Tab at start should be escaped
         assert CSVSanitizer.sanitize_value("\t  ") == "'\t  "
+
+    def test_sanitize_formula_after_leading_whitespace(self) -> None:
+        """Test sanitizing formulas hidden behind leading spaces or line feeds."""
+        assert CSVSanitizer.sanitize_value("  =1+1") == "'  =1+1"
+        assert CSVSanitizer.sanitize_value("\n=SUM(A1)") == "'\n=SUM(A1)"
+        assert CSVSanitizer.sanitize_value("\n@cmd") == "'\n@cmd"
+        assert CSVSanitizer.sanitize_value(" \n+cmd|'/c calc") == "' \n+cmd|'/c calc"
