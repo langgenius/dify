@@ -3,9 +3,13 @@
 import type { MetricSelectorProps } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { createWorkflowAppHref } from '@/app/components/apps/query-params'
 import { SearchInput } from '@/app/components/base/search-input'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { hasPermission } from '@/utils/permission'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import SelectorEmptyState from './selector-empty-state'
 import SelectorFooter from './selector-footer'
@@ -15,6 +19,8 @@ import { useMetricSelectorData } from './use-metric-selector-data'
 const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSelectorProps) => {
   const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canCreateWorkflowApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const addCustomMetric = useEvaluationStore((state) => state.addCustomMetric)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -114,6 +120,10 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
 
           <SelectorFooter
             title={t(($) => $['metrics.custom.footerTitle'])}
+            infoLabel={t(($) => $['metrics.custom.title'])}
+            infoDescription={t(($) => $['metrics.custom.info'])}
+            createLabel={t(($) => $['metrics.custom.createWorkflow'])}
+            createHref={canCreateWorkflowApp ? createWorkflowAppHref : undefined}
             description={
               hasCustomMetric
                 ? t(($) => $['metrics.custom.limitDescription'])

@@ -492,6 +492,25 @@ it('opens a real blank-app form from the first empty state', async () => {
   expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
 })
 
+it('opens workflow creation from the direct link and clears it on close', async () => {
+  const { user, onUrlUpdate } = await setup('?category=workflow&create=workflow')
+  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  expect(
+    within(dialog).getByRole('heading', { name: 'app.types.workflow', level: 4 }),
+  ).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('create')).toBe(false)
+})
+
+it('keeps the workflow creation dialog closed without workspace creation permission', async () => {
+  await setup('?category=workflow&create=workflow', { workspacePermissionKeys: [] })
+  expect(
+    screen.queryByRole('dialog', { name: 'app.newApp.startFromBlank' }),
+  ).not.toBeInTheDocument()
+})
+
 it('opens DSL import with the file dropped on the app list', async () => {
   await setup()
   const file = new File(

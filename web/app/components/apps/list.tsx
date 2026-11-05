@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { throttle, useQueryStates } from 'nuqs'
+import { throttle, useQueryState, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { CheckResultToast } from '@/hooks/use-pay'
@@ -25,7 +25,12 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
-import { appListQueryParsers, serializeAppListQuery } from './query-params'
+import {
+  appListQueryParsers,
+  createWorkflowAppQueryParamName,
+  createWorkflowAppQueryParser,
+  serializeAppListQuery,
+} from './query-params'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -40,6 +45,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
+  const [createAppMode, setCreateAppMode] = useQueryState(
+    createWorkflowAppQueryParamName,
+    createWorkflowAppQueryParser,
+  )
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -108,14 +117,24 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
 
   const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'blank' })
-  }, [canCreateApp])
+    if (!canCreateApp) return
+    setCreationDialog({ type: 'blank' })
+    void setCreateAppMode(null)
+  }, [canCreateApp, setCreateAppMode])
   const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'template' })
-  }, [canCreateApp])
+    if (!canCreateApp) return
+    setCreationDialog({ type: 'template' })
+    void setCreateAppMode(null)
+  }, [canCreateApp, setCreateAppMode])
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'dsl' })
-  }, [canCreateApp])
+    if (!canCreateApp) return
+    setCreationDialog({ type: 'dsl' })
+    void setCreateAppMode(null)
+  }, [canCreateApp, setCreateAppMode])
+  const closeCreationDialog = useCallback(() => {
+    setCreationDialog(null)
+    void setCreateAppMode(null)
+  }, [setCreateAppMode])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
@@ -194,9 +213,9 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        category={category}
-        dialog={creationDialog}
-        onClose={() => setCreationDialog(null)}
+        category={createAppMode === 'workflow' && !creationDialog ? 'workflow' : category}
+        dialog={creationDialog ?? (createAppMode === 'workflow' ? { type: 'blank' } : null)}
+        onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
       />
