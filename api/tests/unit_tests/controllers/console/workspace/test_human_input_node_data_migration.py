@@ -323,7 +323,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
                                 "type": "email",
                                 "config": {
                                     "subject": "Review",
-                                    "body": "Please review",
+                                    "body": "Please review {{#url#}}",
                                     "recipients": {"items": [{"type": "member", "reference_id": "member-1"}]},
                                 },
                             }

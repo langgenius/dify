@@ -107,7 +107,7 @@ def build_node(form: Form, *, initiator: bool = False, token: str | None = None)
                 "version": "2",
                 "title": "Changed title",
                 "recipients_spec": [Initiator()] if initiator else [],
-                "message_template": {"subject": "Notice", "body": "[Request URL]"},
+                "message_template": {"subject": "Notice", "body": "{{#url#}}"},
                 "debug_mode": {"enabled": False, "channels": []},
                 "form_content": "Changed form",
                 "user_actions": [],
@@ -450,7 +450,7 @@ def test_debug_dependencies_include_all_sources_and_complete_nested_paths(form: 
         update={
             "form_content": "{{#upstream.data.name#}} {{#$output.answer#}}",
             "message_template": MessageTemplateConfig(
-                subject="{{#upstream.subject#}}", body="{{#upstream.body#}} [Request URL]"
+                subject="{{#upstream.subject#}}", body="{{#upstream.body#}} {{#url#}}"
             ),
             "recipients_spec": [DynamicEmail(selector=("upstream", "data", "email"))],
             "inputs": [

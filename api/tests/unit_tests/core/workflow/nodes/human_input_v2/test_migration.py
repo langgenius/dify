@@ -215,7 +215,7 @@ def test_member_user_id_has_safe_resolution_blocker_value() -> None:
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {
                             "items": [{"type": "member", "reference_id": "member-1"}],
                         },
@@ -256,7 +256,7 @@ def test_external_email_conversion_is_independent_of_unrelated_directory_state()
                             "items": [{"type": "external", "email": "approver@example.com"}],
                         },
                         "subject": "Review request",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                     },
                 }
             ],
@@ -286,7 +286,7 @@ def test_whole_workspace_marker_preserves_overlap_source_order_and_deduplicates(
                             "items": [{"type": "member", "reference_id": "member-1"}],
                         },
                         "subject": "Review request",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                     },
                 },
                 {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
@@ -296,7 +296,7 @@ def test_whole_workspace_marker_preserves_overlap_source_order_and_deduplicates(
                     "config": {
                         "recipients": {"include_bound_group": True},
                         "subject": "Review request",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                     },
                 },
             ],
@@ -444,7 +444,7 @@ def test_conflicting_email_templates_block_after_recipient_preflight() -> None:
                     "config": {
                         "recipients": {"items": [{"type": "external", "email": "first@example.com"}]},
                         "subject": "First subject",
-                        "body": "Shared body",
+                        "body": "Shared body {{#url#}}",
                     },
                 },
                 {
@@ -453,7 +453,7 @@ def test_conflicting_email_templates_block_after_recipient_preflight() -> None:
                     "config": {
                         "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                         "subject": "Second subject",
-                        "body": "Shared body",
+                        "body": "Shared body {{#url#}}",
                     },
                 },
             ],
@@ -568,4 +568,36 @@ def test_formal_v1_im_delivery_keeps_unsupported_delivery_blocker() -> None:
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in conversion.blockers] == [
         ("unsupported-delivery-method", _EMAIL_METHOD_ID, "im"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param("Please review", id="no request url"),
+        pytest.param("Open {{#url#}} or {{#url#}}", id="two request urls"),
+    ],
+)
+def test_email_body_without_exactly_one_request_url_blocks_at_the_body(body: str) -> None:
+    legacy = HumanInputNodeDataFull.model_validate(
+        {
+            "delivery_methods": [
+                {
+                    "id": _EMAIL_METHOD_ID,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": body,
+                        "recipients": {"items": [{"type": "external", "email": "approver@example.com"}]},
+                    },
+                }
+            ],
+        }
+    )
+
+    conversion = convert_legacy_human_input_node_data(legacy, MemberEmailSnapshot())
+
+    assert conversion.node_data is None
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in conversion.blockers] == [
+        ("invalid-email-configuration", _EMAIL_METHOD_ID, "body")
     ]

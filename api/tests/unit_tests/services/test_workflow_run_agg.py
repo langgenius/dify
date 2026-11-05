@@ -1083,7 +1083,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
             "form_content": "Changed content",
             "recipients_spec": [],
             "user_actions": [],
-            "message_template": {"subject": "Notice", "body": "[Request URL]"},
+            "message_template": {"subject": "Notice", "body": "{{#url#}}"},
             "debug_mode": {"enabled": False, "channels": []},
         }
     ).model_dump(mode="json")

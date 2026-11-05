@@ -48,7 +48,7 @@ def _member_node(title: str, *member_ids: str) -> HumanInputNodeDataFull:
                             "items": [{"type": "member", "reference_id": member_id} for member_id in member_ids]
                         },
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                     },
                 }
             ],
@@ -126,7 +126,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "member", "reference_id": "member-1"}]},
                     },
                 }
@@ -199,7 +199,7 @@ def test_service_preserves_method_order_when_merging_preflight_and_conversion_bl
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                     },
                 }
@@ -243,7 +243,7 @@ def test_service_preserves_recipient_source_order_across_preflight_and_converter
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {
                             "items": [
                                 {"type": "external", "email": "invalid-email"},
@@ -288,7 +288,7 @@ def test_service_preserves_adversarial_preflight_and_conversion_order_without_pa
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                     },
                 },
@@ -363,7 +363,7 @@ def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_p
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                     },
                 },
@@ -403,7 +403,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "external", "email": "first-invalid"}]},
                     },
                 },
@@ -412,7 +412,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"items": [{"type": "external", "email": "second-invalid"}]},
                     },
                 },
@@ -503,7 +503,7 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {
                             "items": [
                                 {"type": "external", "email": "invalid-email"},
@@ -589,7 +589,7 @@ def test_whole_workspace_does_not_enumerate_members() -> None:
                     "type": "email",
                     "config": {
                         "subject": "Review",
-                        "body": "Please review",
+                        "body": "Please review {{#url#}}",
                         "recipients": {"whole_workspace": True},
                     },
                 }

@@ -30,6 +30,7 @@ from .entities import (
     MessageTemplateConfig,
     OnetimeEmail,
     RecipientConfig,
+    holds_one_request_url,
 )
 
 
@@ -115,17 +116,16 @@ def _disabled_method_has_material_configuration(method: DeliveryChannelConfig) -
 
 
 def _invalid_template_field(config: EmailDeliveryConfig) -> str | None:
+    """The first template field v2 would refuse; v1 accepted any count of Request URLs, v2 needs exactly one."""
     if not config.subject.strip():
         return "subject"
-    if not config.body.strip():
+    if not holds_one_request_url(config.body):
         return "body"
     return None
 
 
 def _validated_email_template(config: EmailDeliveryConfig) -> tuple[str, str] | None:
-    if not config.subject.strip():
-        return None
-    if not config.body.strip():
+    if _invalid_template_field(config) is not None:
         return None
     return config.subject, config.body
 
