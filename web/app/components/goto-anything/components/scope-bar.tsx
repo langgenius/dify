@@ -18,14 +18,13 @@ export function ScopeBar({ scopes, value, onValueChange }: ScopeBarProps) {
   ]
 
   return (
-    <ScrollArea className="shrink-0 pb-3">
+    <ScrollArea className="shrink-0 pb-2">
       <ScrollAreaViewport
-        data-base-ui-swipe-ignore="x"
         tabIndex={-1}
         style={{ overflowY: 'hidden' }}
-        className="mask-[linear-gradient(to_right,transparent,#000_min(var(--scope-fade),var(--scroll-area-overflow-x-start,0px)),#000_calc(100%-min(var(--scope-fade),var(--scroll-area-overflow-x-end,0px))),transparent)] [--scope-fade:1.5rem] has-focus-visible:mask-none data-has-overflow-x:overscroll-x-contain"
+        className="mask-[linear-gradient(to_right,transparent,#000_min(1.5rem,var(--scroll-area-overflow-x-start,0px)),#000_calc(100%-min(1.5rem,var(--scroll-area-overflow-x-end,0px))),transparent)] has-focus-visible:mask-none data-has-overflow-x:overscroll-x-contain"
       >
-        <ScrollAreaContent className="px-4">
+        <ScrollAreaContent className="px-4 py-1">
           <RadioGroup<ScopeSelection>
             aria-label={t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
             value={value}
