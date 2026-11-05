@@ -436,6 +436,11 @@ class DatasetRetrieval:
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
     ) -> tuple[str, list[File]]:
+        """Render retrieved documents and publish their ranked source metadata.
+
+        Documents must belong to the admitted retrieval scope. Preserve external
+        metadata without modifying its source; repository and callback failures propagate.
+        """
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
         document_context_list: list[DocumentContext] = []
@@ -453,6 +458,7 @@ class DatasetRetrieval:
                 retriever_from=invoke_from.to_source(),
                 score=item.metadata.get("score"),
                 content=item.page_content,
+                doc_metadata=item.metadata,
             )
             retrieval_resource_list.append(source)
         # deal with dify documents
