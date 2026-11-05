@@ -1498,8 +1498,8 @@ function AppliedResourceConfiguration({
   providerRegion?: string
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const [appliedParameters, setAppliedParameters] = useState<DatasourceParameters | undefined>(
-    () => (parametersValid ? parameters : undefined),
+  const [appliedParameters, setAppliedParameters] = useState<DatasourceParameters | undefined>(() =>
+    parametersValid ? parameters : undefined,
   )
   const parametersApplied =
     appliedParameters !== undefined &&

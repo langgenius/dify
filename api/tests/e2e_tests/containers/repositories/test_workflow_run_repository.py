@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import timedelta
 from uuid import uuid4
@@ -86,7 +87,7 @@ def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflow
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(db_session_with_containers: Session) -> Iterator[_TestScope]:
     """Provide an isolated scope and clean related data after each test."""
     scope = _TestScope()
     yield scope
