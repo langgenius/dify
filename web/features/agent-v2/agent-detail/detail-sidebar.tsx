@@ -1,15 +1,15 @@
 'use client'
 
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsBelowDesktop } from '@/hooks/use-media-query'
 import { AgentDetailSection, AgentDetailTop } from './navigation'
 
 export function AgentDetailSidebar() {
-  const media = useBreakpoints()
+  const isBelowDesktop = useIsBelowDesktop()
 
   return (
     <DetailSidebarFrame
-      compact={media !== MediaType.pc}
+      compact={isBelowDesktop}
       renderTop={({ expand, onToggle }) => <AgentDetailTop expand={expand} onToggle={onToggle} />}
       renderSection={({ expand }) => <AgentDetailSection expand={expand} />}
     />

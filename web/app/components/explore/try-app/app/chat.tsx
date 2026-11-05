@@ -17,7 +17,7 @@ import { EmbeddedChatbotContext } from '@/app/components/base/chat/embedded-chat
 import { useEmbeddedChatbot } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { AppSourceType } from '@/service/share'
 
 type Props = Readonly<{
@@ -28,8 +28,7 @@ type Props = Readonly<{
 
 const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const { t } = useTranslation(['explore', 'share', 'common'])
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useIsMobile()
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
   const theme = createTheme(
     chatData.appData?.site?.chat_color_theme ?? null,

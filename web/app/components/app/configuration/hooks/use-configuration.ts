@@ -25,7 +25,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
 import { ModelModeType } from '@/types/app'
@@ -68,8 +68,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useIsMobile()
   const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] =
     useBoolean(false)
 

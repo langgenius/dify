@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { DatasetACLPermission } from '@/utils/permission'
 import DocumentDetail from '../index'
 const expectDocumentListInvalidated = (queryClient: QueryClient) =>
@@ -300,7 +301,7 @@ describe('DocumentDetail', () => {
 
     it('opens metadata in a drawer on mobile instead of beside the chunks', async () => {
       const user = userEvent.setup()
-      vi.stubGlobal('innerWidth', 390)
+      setViewportWidth(390)
       try {
         render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
         expect(
@@ -314,7 +315,7 @@ describe('DocumentDetail', () => {
           ),
         ).toBeVisible()
       } finally {
-        vi.unstubAllGlobals()
+        resetViewportWidth()
       }
     })
 

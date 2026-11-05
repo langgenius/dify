@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-history/context'
 import { useChatWithHistory } from '@/app/components/base/chat/chat-with-history/hooks'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 
 vi.mock('@/app/components/base/chat/chat-with-history/hooks', () => ({
@@ -27,13 +27,8 @@ vi.mock('@/app/components/base/chat/chat-with-history/chat-wrapper', () => {
   return { default: ChatThemeProbe }
 })
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: vi.fn(),
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
+vi.mock('@/hooks/use-media-query', () => ({
+  useIsMobile: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -116,7 +111,7 @@ const defaultHookReturn: HookReturn = {
 describe('Base Chat Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+    vi.mocked(useIsMobile).mockReturnValue(false)
     vi.mocked(useChatWithHistory).mockReturnValue(defaultHookReturn)
   })
 
@@ -149,7 +144,7 @@ describe('Base Chat Flow', () => {
     })
 
     it('falls back to the mobile loading shell when site metadata is unavailable', () => {
-      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+      vi.mocked(useIsMobile).mockReturnValue(true)
       vi.mocked(useChatWithHistory).mockReturnValue({
         ...defaultHookReturn,
         appData: null,

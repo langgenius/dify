@@ -25,7 +25,7 @@ import { keepPreviousData, useMutation, useQuery, useSuspenseQuery } from '@tans
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -35,7 +35,7 @@ import docStyle from '@/app/components/datasets/documents/detail/completed/style
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
@@ -55,8 +55,7 @@ type Props = Readonly<{
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useIsMobile()
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<
@@ -98,10 +97,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     () => currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
-  const [
-    isShowRightPanel,
-    { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
-  ] = useBoolean(!isMobile)
+  const [isMobileRightPanelOpen, { setTrue: showRightPanel, setFalse: hideRightPanel }] =
+    useBoolean(false)
 
   const {
     mutate: hitTestingMutation,
@@ -185,10 +182,6 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     setQueryInputKey(Date.now())
   }, [])
 
-  useEffect(() => {
-    setShowRightPanel(!isMobile)
-  }, [isMobile, setShowRightPanel])
-
   if (!canRunRetrievalRecall) return <LoadingPlaceholder className="h-full" />
 
   return (
@@ -257,7 +250,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         panelClassName="justify-start! overflow-y-auto!"
         showClose
         isMobile={isMobile}
-        isOpen={isShowRightPanel}
+        isOpen={!isMobile || isMobileRightPanelOpen}
         onClose={hideRightPanel}
         title={panelTitle}
       >
@@ -291,7 +284,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         }}
       >
         <DrawerPortal>
-          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerBackdrop className="sm:bg-transparent" />
           <DrawerViewport>
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">

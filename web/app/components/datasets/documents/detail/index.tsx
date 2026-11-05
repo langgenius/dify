@@ -36,8 +36,8 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -72,8 +72,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useIsMobile()
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const { data: currentUserId } = useSuspenseQuery({
@@ -307,7 +306,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const metadataPanel = docDetail && (
     <Metadata
-      className={cn(isMobile && 'mt-3 mr-2')}
+      className={cn(isMobile && 'me-2 mt-3')}
       datasetId={datasetId}
       documentId={documentId}
       docDetail={docDetail}
@@ -326,7 +325,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
-        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 ps-3 pe-4">
           <button
             type="button"
             aria-label={backButtonLabel}
@@ -393,7 +392,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               aria-label={metadataToggleLabel}
               aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className="ml-2"
+              className="ms-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -418,7 +417,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className={cn(
                 'flex h-full min-w-0 grow flex-col',
                 !embedding && isFullDocMode && 'relative px-11 pt-4',
-                !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5',
+                !embedding && !isFullDocMode && 'relative ps-5 pe-11 pt-3',
               )}
             >
               {embedding ? (

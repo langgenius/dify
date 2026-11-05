@@ -4,7 +4,7 @@ import type { Theme } from '../theme/theme'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import { screen } from '@testing-library/react'
 import { vi } from 'vite-plus/test'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
@@ -21,13 +21,8 @@ vi.mock('../hooks', () => ({
   useEmbeddedChatbot: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: vi.fn(),
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
+vi.mock('@/hooks/use-media-query', () => ({
+  useIsMobile: vi.fn(),
 }))
 
 vi.mock('../chat-wrapper', () => ({
@@ -121,7 +116,7 @@ describe('EmbeddedChatbot index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBrandingWorkspaceLogo = ''
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+    vi.mocked(useIsMobile).mockReturnValue(true)
     vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn())
   })
 
@@ -259,7 +254,7 @@ describe('EmbeddedChatbot index', () => {
     })
 
     it('should not show powered by section on desktop', () => {
-      vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+      vi.mocked(useIsMobile).mockReturnValue(false)
       vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({ appData: null }))
 
       render(<EmbeddedChatbot />)

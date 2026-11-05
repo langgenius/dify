@@ -27,7 +27,7 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useIsMobile } from '@/hooks/use-media-query'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
 import { useGetTryAppDataSets } from '@/service/use-try-app'
@@ -330,8 +330,7 @@ const normalizeAgentTool = (
 }
 
 const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = useIsMobile()
 
   const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
     consoleQuery.workspaces.current.toolProviders.get.queryOptions({
@@ -622,7 +621,7 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
                 className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
                 style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
               >
-                <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
+                <div className="flex grow flex-col rounded-ss-2xl border-s-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
                     isPreview
                     onSetting={noop}
