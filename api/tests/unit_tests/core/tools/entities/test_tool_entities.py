@@ -95,6 +95,18 @@ def test_multiple_dynamic_select_normalization_parses_python_repr_string():
     assert parameter.init_frontend_parameter("['id1', 'id2']") == ["id1", "id2"]
 
 
+def test_multiple_dynamic_select_normalization_falls_back_to_comma_split():
+    # A bracketed string that is not the repr of a list of strings must fall
+    # back to comma splitting, preserving the previous behavior: an
+    # unparsable bracket ("[1, 2") and a repr of non-strings ("[1, 2]").
+    parameter = _make_select_parameter(
+        type=ToolParameter.ToolParameterType.DYNAMIC_SELECT, multiple=True, required=False
+    )
+
+    assert parameter.init_frontend_parameter("[1, 2") == ["[1", "2"]
+    assert parameter.init_frontend_parameter("[1, 2]") == ["[1", "2]"]
+
+
 def test_multiple_select_normalization_keeps_required_and_option_checks_for_strings():
     # The string-to-list normalization must not weaken the existing checks:
     # a required parameter stays required, and SELECT options still apply.
