@@ -7,7 +7,6 @@ export function useUpdateMemberRoles(allowMultipleRoles: boolean, onSuccess?: ()
   const mutation = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
       context: { silent: true },
-      // Keep the shared onSettled cache policy; owner effects survive observer unmount.
       onSuccess,
     }),
   )

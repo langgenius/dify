@@ -1,8 +1,6 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import type { MouseEvent, RefObject } from 'react'
-import type { RemoveMemberPayload } from './remove-member-content'
+import type { MouseEvent } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useRef } from 'react'
@@ -13,9 +11,8 @@ import MemberMenu from './member-menu'
 import RoleBadges from './role-badges'
 
 type MemberRowProps = {
-  removeReturnFocusRef: RefObject<HTMLButtonElement | null>
-  removeDialogHandle: AlertDialogHandle<RemoveMemberPayload>
   member: AccountWithRoleResponse
+  onRemove: (row: HTMLTableRowElement | null) => void
   roles: Array<{
     id: string
     name: string
@@ -28,8 +25,7 @@ type MemberRowProps = {
 
 const MemberRow = ({
   member,
-  removeDialogHandle,
-  removeReturnFocusRef,
+  onRemove,
   roles,
   isCurrentUser,
   canManage,
@@ -37,6 +33,7 @@ const MemberRow = ({
   allowMultipleRoles,
 }: MemberRowProps) => {
   const { t } = useTranslation(['workspaceMembers'])
+  const rowRef = useRef<HTMLTableRowElement>(null)
   const detailsTriggerRef = useRef<HTMLButtonElement>(null)
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
@@ -58,6 +55,7 @@ const MemberRow = ({
 
   return (
     <tr
+      ref={rowRef}
       data-testid={`member-row-${member.id}`}
       className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-2 has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-state-accent-solid has-[[aria-haspopup=dialog]:focus-visible]:outline-hidden has-[[aria-haspopup=menu]:hover]:bg-transparent"
       onClick={handleRowClick}
@@ -104,8 +102,7 @@ const MemberRow = ({
         <td className="px-3 py-2">
           <MemberMenu
             member={member}
-            removeDialogHandle={removeDialogHandle}
-            removeReturnFocusRef={removeReturnFocusRef}
+            onRemove={() => onRemove(rowRef.current)}
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}

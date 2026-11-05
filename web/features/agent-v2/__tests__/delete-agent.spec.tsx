@@ -46,16 +46,19 @@ describe('roster agent deletion', () => {
   beforeEach(() => {
     service.deleteAgent.mockReset().mockResolvedValue(undefined)
     render(
-      <AgentRosterList
-        label="Agents"
-        state={{
-          status: 'ready',
-          agents: [agent],
-          emptyState: 'roster',
-          footer: { status: 'none' },
-          isFetching: false,
-        }}
-      />,
+      <>
+        <h1 id="agent-roster-title">Agents</h1>
+        <AgentRosterList
+          aria-labelledby="agent-roster-title"
+          state={{
+            status: 'ready',
+            agents: [agent],
+            emptyState: 'roster',
+            footer: { status: 'none' },
+            isFetching: false,
+          }}
+        />
+      </>,
     )
   })
 

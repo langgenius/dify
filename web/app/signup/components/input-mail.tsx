@@ -57,7 +57,7 @@ export default function SignupEmailForm({ onSuccess }: Props) {
           required
           autoComplete="email"
           spellCheck={false}
-          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
         />
         <FieldValidity>
           {({ validity }) => (

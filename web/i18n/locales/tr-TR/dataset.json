@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Yeni bir Harici Bilgi API'si oluşturma",
   "creatorFilter.creators": "Oluşturanlar",
   "creatorFilter.maxCreators": "En fazla oluşturan",
-  "datasetDeleted": "Bilgi silindi",
   "datasetUsedByApp": "Bilgi bazı uygulamalar tarafından kullanılıyor. Uygulamalar artık bu Bilgiyi kullanamayacak ve tüm prompt yapılandırmaları ve günlükler kalıcı olarak silinecektir.",
   "defaultRetrievalTip": "Varsayılan olarak çok alma kullanılır. Bilgi, birden fazla bilgi tabanından alınır ve ardından yeniden sıralanır.",
   "deleteDatasetConfirmContent": "Bilginin silinmesi geri alınamaz. Kullanıcılar artık Bilginize erişemeyecek ve tüm prompt yapılandırmaları ve günlükler kalıcı olarak silinecektir.",

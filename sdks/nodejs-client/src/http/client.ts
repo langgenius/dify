@@ -68,6 +68,8 @@ export type RequestOptions<TResponseType extends HttpResponseType = 'json'> = {
   data?: HttpRequestBody
   headers?: Headers
   responseType?: TResponseType
+  /** Body fields whose API contract accepts text beyond the generic string limit. */
+  unboundedBodyStringFields?: readonly string[]
 }
 
 export type HttpClientSettings = Required<Omit<DifyClientConfig, 'apiKey'>> & {
@@ -491,7 +493,7 @@ export class HttpClient {
     }
 
     if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {
-      validateParams(data)
+      validateParams(data, options.unboundedBodyStringFields)
     }
 
     const url = buildRequestUrl(this.settings.baseUrl, path, query)

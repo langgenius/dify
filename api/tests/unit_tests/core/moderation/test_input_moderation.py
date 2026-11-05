@@ -1,34 +1,41 @@
-import queue
+from datetime import timedelta
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ModerationChecked, TraceCorrelation, TraceEvent
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
 from core.moderation.input_moderation import InputModeration
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _Recorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="test_tenant_id",
+        app_id="test_app_id",
+        user_id="test_user_id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 class TestInputModeration:
     @pytest.fixture
     def app_config(self):
         return AppConfig(tenant_id="test_tenant_id", app_id="test_app_id", app_mode=AppMode.CHAT)
-
-    @pytest.fixture
-    def trace_manager(self):
-        with (
-            Flask(__name__).app_context(),
-            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", queue.Queue()),
-            patch.object(TraceQueueManager, "start_timer"),
-        ):
-            manager = TraceQueueManager(app_id="test_app_id")
-            with patch.object(manager, "add_trace_task", wraps=manager.add_trace_task):
-                yield manager
 
     @pytest.fixture
     def input_moderation(self):
@@ -42,7 +49,13 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
+            app_id=app_id,
+            tenant_id=tenant_id,
+            app_config=app_config,
+            inputs=inputs,
+            query=query,
+            message_id=message_id,
+            trace_scope=None,
         )
 
         assert flagged is False
@@ -67,7 +80,13 @@ class TestInputModeration:
         mock_factory.moderation_for_inputs.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
+            app_id=app_id,
+            tenant_id=tenant_id,
+            app_config=app_config,
+            inputs=inputs,
+            query=query,
+            message_id=message_id,
+            trace_scope=None,
         )
 
         assert flagged is False
@@ -78,46 +97,86 @@ class TestInputModeration:
         )
         mock_factory.moderation_for_inputs.assert_called_once_with(dict(inputs), query)
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
-    @patch("core.moderation.input_moderation.TraceTask")
-    def test_check_with_trace_manager(
-        self, mock_trace_task, mock_factory_cls, app_config, input_moderation, trace_manager
-    ):
-        app_id = "test_app_id"
-        tenant_id = "test_tenant_id"
-        inputs = {"input_key": "input_value"}
-        query = "test query"
-        message_id = "test_message_id"
-
-        # Setup config
-        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={})
-        app_config.sensitive_word_avoidance = sensitive_word_config
-
-        # Setup factory mock
-        mock_factory = mock_factory_cls.return_value
-        mock_result = ModerationInputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-        mock_factory.moderation_for_inputs.return_value = mock_result
+    def test_check_without_sensitive_word_avoidance_emits_nothing(
+        self, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
+        recorder = _Recorder()
 
         input_moderation.check(
-            app_id=app_id,
-            tenant_id=tenant_id,
+            app_id="test_app_id",
+            tenant_id="test_tenant_id",
             app_config=app_config,
-            inputs=inputs,
-            query=query,
-            message_id=message_id,
-            trace_manager=trace_manager,
+            inputs={"input_key": "input_value"},
+            query="test query",
+            message_id="test_message_id",
+            trace_scope=_trace_scope(recorder),
         )
 
-        trace_manager.add_trace_task.assert_called_once_with(mock_trace_task.return_value)
-        assert trace_manager.collect_tasks() == [mock_trace_task.return_value]
-        mock_trace_task.assert_called_once()
-        call_kwargs = mock_trace_task.call_args.kwargs
-        call_args = mock_trace_task.call_args.args
-        assert call_args[0] == TraceTaskName.MODERATION_TRACE
-        assert call_kwargs["message_id"] == message_id
-        assert call_kwargs["moderation_result"] == mock_result
-        assert call_kwargs["inputs"] == inputs
-        assert "timer" in call_kwargs
+        assert recorder.events == []
+
+    @patch("core.moderation.input_moderation.ModerationFactory")
+    def test_check_with_trace_scope_emits_moderation_checked(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
+        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(type="keywords", config={})
+        mock_factory_cls.return_value.moderation_for_inputs.return_value = ModerationInputsResult(
+            flagged=False, action=ModerationAction.DIRECT_OUTPUT
+        )
+        recorder = _Recorder()
+
+        input_moderation.check(
+            app_id="test_app_id",
+            tenant_id="test_tenant_id",
+            app_config=app_config,
+            inputs={"input_key": "input_value", "budget": Decimal("1.5")},
+            query="test query",
+            message_id="test_message_id",
+            trace_scope=_trace_scope(recorder),
+        )
+
+        [event] = recorder.events
+        payload = event.payload
+        assert isinstance(payload, ModerationChecked)
+        assert payload == ModerationChecked(
+            message_id="test_message_id",
+            inputs={"input_key": "input_value", "budget": "1.5"},
+            query="",
+            flagged=False,
+            action="direct_output",
+            preset_response="",
+            started_at=payload.started_at,
+            ended_at=payload.ended_at,
+        )
+        assert payload.started_at.utcoffset() == timedelta(0)
+        assert payload.ended_at >= payload.started_at
+
+    @patch("core.moderation.input_moderation.ModerationFactory")
+    def test_check_flagged_direct_output_emits_before_raising(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
+        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(type="keywords", config={})
+        mock_factory_cls.return_value.moderation_for_inputs.return_value = ModerationInputsResult(
+            flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked content"
+        )
+        recorder = _Recorder()
+
+        with pytest.raises(ModerationError, match="Blocked content"):
+            input_moderation.check(
+                app_id="test_app_id",
+                tenant_id="test_tenant_id",
+                app_config=app_config,
+                inputs={"input_key": "input_value"},
+                query="test query",
+                message_id="test_message_id",
+                trace_scope=_trace_scope(recorder),
+            )
+
+        [event] = recorder.events
+        payload = event.payload
+        assert isinstance(payload, ModerationChecked)
+        assert payload.flagged is True
+        assert payload.action == "direct_output"
+        assert payload.preset_response == "Blocked content"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
     def test_check_flagged_direct_output(self, mock_factory_cls, app_config, input_moderation):
@@ -146,6 +205,7 @@ class TestInputModeration:
                 inputs=inputs,
                 query=query,
                 message_id=message_id,
+                trace_scope=None,
             )
 
         assert str(excinfo.value) == "Blocked content"
@@ -173,7 +233,13 @@ class TestInputModeration:
         mock_factory.moderation_for_inputs.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
+            app_id=app_id,
+            tenant_id=tenant_id,
+            app_config=app_config,
+            inputs=inputs,
+            query=query,
+            message_id=message_id,
+            trace_scope=None,
         )
 
         assert flagged is True
@@ -206,6 +272,7 @@ class TestInputModeration:
             inputs=inputs,
             query=query,
             message_id=message_id,
+            trace_scope=None,
         )
 
         assert flagged is True

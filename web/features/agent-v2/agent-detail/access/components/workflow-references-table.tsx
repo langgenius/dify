@@ -46,20 +46,20 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
           <col className="w-36" />
         </colgroup>
         <thead>
-          <tr className="h-7 rounded-lg bg-background-section-burn text-left system-xs-semibold-uppercase text-text-tertiary">
-            <th scope="col" className="rounded-l-lg px-3 font-semibold">
+          <tr className="h-7 rounded-lg bg-background-section-burn text-start system-xs-semibold-uppercase text-text-tertiary">
+            <th scope="col" className="rounded-s-lg px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.name'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.version'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.nodes'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.lastUpdated'])}
             </th>
-            <th scope="col" className="rounded-r-lg px-3 font-semibold">
+            <th scope="col" className="rounded-e-lg px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.actions'])}
             </th>
           </tr>

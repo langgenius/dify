@@ -1,3 +1,4 @@
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
@@ -7,7 +8,8 @@ from sqlalchemy.orm import Session
 import core.app.apps.completion.app_config_manager as module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from models.model import App, AppMode, AppModelConfig
+from models.enums import PromptType
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig
 
 
 def _app() -> App:
@@ -157,3 +159,45 @@ class TestCompletionAppConfigManager:
             "more_like_this",
             "moderation",
         }
+
+
+@pytest.mark.parametrize("use_override", [False, True])
+def test_materialized_config_matches_orm_conversion(use_override: bool) -> None:
+    app = _app()
+    config = AppModelConfig(
+        app_id=app.id,
+        model='{"provider": "langgenius/openai/openai", "name": "gpt-4", "mode": "chat", '
+        '"completion_params": {"temperature": 0.9, "stop": ["END"]}}',
+        prompt_type=PromptType.SIMPLE,
+        pre_prompt="Answer {{topic}}",
+        user_input_form='[{"text-input": {"label": "Topic", "variable": "topic", "required": true}}]',
+        more_like_this='{"enabled": true}',
+    )
+    config.id = "historical-config"
+    annotation_reply: AnnotationReplyConfig = {"enabled": False}
+    materialized = config.to_dict(annotation_reply=annotation_reply)
+    expected = CompletionAppConfigManager.get_app_config(
+        app_model=app,
+        app_model_config=config,
+        override_config_dict=deepcopy(materialized) if use_override else None,
+        annotation_reply=annotation_reply,
+    )
+
+    actual = CompletionAppConfigManager.get_app_config_from_dict(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        app_model_config_id=config.id,
+        app_mode=AppMode.COMPLETION,
+        config_dict=materialized,
+        config_from=(
+            EasyUIBasedAppModelConfigFrom.ARGS if use_override else EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
+        ),
+    )
+
+    assert actual == expected
+    assert actual.model.parameters == {"temperature": 0.9}
+    assert actual.model.stop == ["END"]
+    assert actual.additional_features is not None
+    assert actual.additional_features.more_like_this is True
+    assert actual.variables[0].variable == "topic"
+    assert actual.prompt_template.simple_prompt_template == "Answer {{topic}}"

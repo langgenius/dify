@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Criar uma nova API de conhecimento externo",
   "creatorFilter.creators": "Criadores",
   "creatorFilter.maxCreators": "Máximo de criadores",
-  "datasetDeleted": "Conhecimento excluído",
   "datasetUsedByApp": "O conhecimento está sendo usado por alguns aplicativos. Os aplicativos não poderão mais usar esse Conhecimento, e todas as configurações de prompt e logs serão excluídos permanentemente.",
   "defaultRetrievalTip": "A recuperação de vários caminhos é usada por padrão. O conhecimento é recuperado de várias bases de dados de conhecimento e, em seguida, reclassificado.",
   "deleteDatasetConfirmContent": "A exclusão do Conhecimento é irreversível. Os usuários não poderão mais acessar seu Conhecimento e todas as configurações e registros de prompt serão excluídos permanentemente.",

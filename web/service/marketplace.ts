@@ -4,7 +4,8 @@ import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import { APP_VERSION, IS_MARKETPLACE } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { reportClientError } from './client-error'
 
 // 15s deadline so a stalled Marketplace fetch can error/retry.

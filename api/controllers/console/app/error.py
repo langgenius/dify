@@ -3,6 +3,17 @@ from http import HTTPStatus
 from libs.exception import BaseHTTPException
 
 
+class AnnotationIdsRequiredError(BaseHTTPException):
+    error_code = "bad_request"
+    description = "annotation_ids are required if the parameter is provided."
+    code = HTTPStatus.BAD_REQUEST
+
+
+class AnnotationImportRateLimitError(BaseHTTPException):
+    error_code = "too_many_requests"
+    code = HTTPStatus.TOO_MANY_REQUESTS
+
+
 class AppNotFoundError(BaseHTTPException):
     error_code = "app_not_found"
     description = "App not found."

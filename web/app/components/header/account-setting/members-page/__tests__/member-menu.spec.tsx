@@ -1,7 +1,5 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { RemoveMemberPayload } from '../remove-member-content'
 import type { Role } from '@/models/access-control'
-import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -71,8 +69,7 @@ describe('MemberMenu', () => {
 
     renderWithConsoleQuery(
       <MemberMenu
-        removeReturnFocusRef={{ current: null }}
-        removeDialogHandle={createAlertDialogHandle<RemoveMemberPayload>()}
+        onRemove={vi.fn()}
         member={member}
         isCurrentUser={false}
         allowMultipleRoles={false}
@@ -106,8 +103,7 @@ describe('MemberMenu', () => {
     )
     renderWithConsoleQuery(
       <MemberMenu
-        removeReturnFocusRef={{ current: null }}
-        removeDialogHandle={createAlertDialogHandle<RemoveMemberPayload>()}
+        onRemove={vi.fn()}
         member={member}
         isCurrentUser={false}
         allowMultipleRoles={false}
@@ -151,8 +147,7 @@ describe('MemberMenu', () => {
     )
     renderWithConsoleQuery(
       <MemberMenu
-        removeReturnFocusRef={{ current: null }}
-        removeDialogHandle={createAlertDialogHandle<RemoveMemberPayload>()}
+        onRemove={vi.fn()}
         member={member}
         isCurrentUser={false}
         allowMultipleRoles={false}
@@ -188,8 +183,7 @@ describe('MemberMenu', () => {
     mockUpdateRolesOfMember.mockRejectedValueOnce(new Error('Save failed'))
     renderWithConsoleQuery(
       <MemberMenu
-        removeReturnFocusRef={{ current: null }}
-        removeDialogHandle={createAlertDialogHandle<RemoveMemberPayload>()}
+        onRemove={vi.fn()}
         member={member}
         isCurrentUser={false}
         allowMultipleRoles={false}
@@ -212,5 +206,15 @@ describe('MemberMenu', () => {
       'aria-selected',
       'true',
     )
+  })
+
+  it('asks the list to confirm removal of this member', async () => {
+    const onRemove = vi.fn()
+    const user = userEvent.setup()
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} onRemove={onRemove} />)
+    const trigger = screen.getByRole('button', { name: /members\.memberActions/i })
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    expect(onRemove).toHaveBeenCalledOnce()
   })
 })

@@ -1,20 +1,29 @@
 'use client'
 
 import type { KnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query'
-import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
-import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
-import { useDocLink } from '@/context/i18n'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -22,18 +31,14 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
+import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
 import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from '../upgrade/knowledge-upgrade-filters'
 import { KnowledgeSpaceCard } from './knowledge-space-card'
-import { KnowledgeViewSwitcher } from './knowledge-view-switcher'
-import {
-  KNOWLEDGE_SPACE_GRID_CLASS_NAME,
-  NewKnowledgeEmptyState,
-  NewKnowledgeLoadingState,
-  NewKnowledgePageState,
-} from './states'
+import { NewKnowledgeEmptyState, NewKnowledgeLoadingState, NewKnowledgePageState } from './states'
 
 const PAGE_SIZE = 30
 const UPGRADE_DATASET_BATCH_SIZE = 50
@@ -86,19 +91,24 @@ function isUnavailableError(error: unknown) {
   return status === 404 || status === 503
 }
 
-export function NewKnowledgeList({
-  view,
-  onViewChange,
-}: {
-  view: 'classic' | 'agent'
-  onViewChange: (value: 'classic' | 'agent') => void
-}) {
+export function NewKnowledgeList() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const docLink = useDocLink()
-  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
-  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
+  const listRef = useRef<HTMLElement>(null)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<{
+      id: string
+      name: string
+      adjacentFocusTargets: HTMLElement[]
+      fallbackFocus: { current: HTMLElement | null }
+    }>(),
+  )
+  const deletion = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -241,78 +251,45 @@ export function NewKnowledgeList({
 
   return (
     <section
+      ref={listRef}
+      tabIndex={-1}
       aria-label={t(($) => $.new)}
-      className="relative flex grow flex-col overflow-y-auto bg-background-body"
+      className="relative flex grow flex-col overflow-y-auto bg-background-body focus-visible:outline-2 focus-visible:outline-state-accent-solid"
     >
-      <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
-        <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $.knowledge, { ns: 'dataset' })}
-            </h1>
-            <KnowledgeViewSwitcher value={view} onChange={onViewChange} />
-          </div>
-          <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
-            {canConnect && (
-              <Button
-                variant="ghost"
-                size="small"
-                className="overflow-hidden text-text-tertiary"
-                onClick={() => setShowExternalApiPanel(true)}
-              >
-                <span
-                  aria-hidden
-                  className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
-                />
-                <span className="system-xs-medium">
-                  {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-                </span>
-              </Button>
-            )}
-            <ServiceApi
-              apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
-              apiReferenceUrl={docLink(
-                // @ts-expect-error Agent Knowledge Base API guide not yet in the generated doc paths.
-                '/api-reference/guides/knowledge-base',
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-background-body px-4 pt-3.5 pb-2 sm:px-8">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <TagFilter
+            type="knowledge"
+            value={tagIds}
+            onChange={(nextTagIds) => void setTagIds(nextTagIds)}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            showLeadingIcon={false}
+            triggerClassName="min-w-0"
+          />
+          <CreatorFilter
+            value={creatorIds}
+            onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
+          />
+          <SearchInput
+            className="w-full min-w-0 sm:w-50"
+            value={searchValue}
+            onValueChange={(value) => void setSearchValue(value || null)}
+          />
+        </div>
+        {canCreate && (
+          <div className="flex items-center gap-1">
+            <Link
+              href="/datasets/new/create"
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'medium' }),
+                'w-24 gap-0.5 overflow-hidden p-2!',
               )}
-            />
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+              <span className="pl-1">{createLabel}</span>
+            </Link>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <TagFilter
-              type="knowledge"
-              value={tagIds}
-              onChange={(nextTagIds) => void setTagIds(nextTagIds)}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-              showLeadingIcon={false}
-              triggerClassName="min-w-0"
-            />
-            <CreatorFilter
-              value={creatorIds}
-              onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
-            />
-            <SearchInput
-              className="w-full min-w-0 sm:w-50"
-              value={searchValue}
-              onValueChange={(value) => void setSearchValue(value || null)}
-            />
-          </div>
-          {canCreate && (
-            <div className="flex items-center gap-1">
-              <Link
-                href="/datasets/new/create"
-                className={cn(
-                  buttonVariants({ variant: 'primary', size: 'medium' }),
-                  'w-24 gap-0.5 overflow-hidden p-2!',
-                )}
-              >
-                <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
-              </Link>
-            </div>
-          )}
-        </div>
+        )}
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         {knowledgeSpacesQuery.isPending || (upgradeRecoveryPending && !hasVisibleKnowledge) ? (
@@ -390,7 +367,7 @@ export function NewKnowledgeList({
               // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
               // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
               role="list"
-              className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+              className={cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
               aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
             >
               {pendingUpgradeCards.map((upgrade) => (
@@ -406,6 +383,17 @@ export function NewKnowledgeList({
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
+                  onDelete={(item) =>
+                    deleteDialog.openWithPayload({
+                      id: knowledgeSpace.control_space_id,
+                      name:
+                        knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id,
+                      adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                        sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                      ),
+                      fallbackFocus: { current: null },
+                    })
+                  }
                   highlighted={highlightedControlSpaceId === knowledgeSpace.control_space_id}
                   onOpenTagManagement={() => setShowTagManagementModal(true)}
                 />
@@ -431,6 +419,55 @@ export function NewKnowledgeList({
           </div>
         )}
       </div>
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
+            {payload && (
+              <DeleteKnowledgeForm
+                knowledgeName={payload.name}
+                isPending={deletion.isPending}
+                error={
+                  deletion.error
+                    ? getHttpErrorStatus(deletion.error) !== undefined
+                      ? deletion.error.message
+                      : tCommon(($) => $['api.actionFailed'])
+                    : undefined
+                }
+                onSubmit={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { control_space_id: payload.id } },
+                    {
+                      onSuccess: () => {
+                        payload.fallbackFocus.current = listRef.current
+                        deleteDialog.close()
+                      },
+                    },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
       <TagManagementModal
         type="knowledge"
         show={showTagManagementModal}
@@ -441,12 +478,6 @@ export function NewKnowledgeList({
           })
         }}
       />
-      {showExternalApiPanel && canConnect && (
-        <ExternalAPIPanel
-          canManageExternalKnowledgeApi={canConnect}
-          onClose={() => setShowExternalApiPanel(false)}
-        />
-      )}
     </section>
   )
 }

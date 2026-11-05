@@ -8,8 +8,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { isAgentCompatibleModel, isAgentSuggestedModel } from '../../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -53,7 +53,7 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
               aria-hidden="true"
               className="size-5 shrink-0 rounded-md"
               height={20}
-              src={getIconFromMarketPlace(currentModel.plugin_id)}
+              src={getMarketplacePluginIconUrl(currentModel.plugin_id)}
               width={20}
             />
           )}

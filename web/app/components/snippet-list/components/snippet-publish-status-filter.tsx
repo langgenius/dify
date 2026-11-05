@@ -3,13 +3,13 @@
 import type { SnippetPublishStatus } from '../query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -40,8 +40,8 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
   const triggerLabel = isSelected ? activeOption?.text : defaultLabel
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <button
             type="button"
@@ -56,25 +56,25 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
       >
         <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-55">
-        <DropdownMenuRadioGroup<SnippetPublishStatus>
+      </MenuTrigger>
+      <MenuContent align="start" className="w-55">
+        <MenuRadioGroup<SnippetPublishStatus>
           value={value}
           onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem<SnippetPublishStatus>
+            <MenuRadioItem<SnippetPublishStatus>
               key={option.value}
               value={option.value}
               closeOnClick
             >
               <span>{option.text}</span>
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

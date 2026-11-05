@@ -8,6 +8,7 @@ import type {
   KnowledgeFsUploadProgress,
 } from '../upload/knowledge-fs-upload'
 import type { QueuedUpload } from './upload-queue'
+import type { CreationModelSelections } from './use-creation-models'
 import type { KnowledgeVisibility } from './workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -56,10 +57,12 @@ import { DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB as fileSizeLimitMb } from '../upload
 import { getKnowledgeFsUploadQuotaFailure } from '../upload/quota'
 import { useKnowledgeBatchUpload } from '../upload/use-batch-upload'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
+import { CreateModelSettings } from './model-settings'
 import { KnowledgeCreationPermissions } from './permissions'
 import { CreateSourceSetup } from './source-setup'
 import { createSourceSelectionAtom, useCreateInitialSource } from './source-state'
 import { CreateUploadQueue } from './upload-queue'
+import { useCreationModels } from './use-creation-models'
 import {
   createKnowledge,
   DESCRIPTION_MAX_LENGTH,
@@ -123,6 +126,10 @@ function CreateKnowledgeSession() {
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
+  const models = useCreationModels()
+  const [modelSettingsOpen, setModelSettingsOpen] = useState(false)
+  const [modelValidationAttempt, setModelValidationAttempt] = useState(0)
+  const submittedModelsRef = useRef<CreationModelSelections | undefined>(undefined)
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [stagingCount, setStagingCount] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -266,6 +273,12 @@ function CreateKnowledgeSession() {
 
     if (startMode === 'source' && !initialSource) return
 
+    if (!createdKnowledge && !submittedModelsRef.current && !models.selections) {
+      setModelSettingsOpen(true)
+      setModelValidationAttempt((attempt) => attempt + 1)
+      return
+    }
+
     if (
       startMode === 'upload' &&
       deploymentEdition === 'CLOUD' &&
@@ -284,6 +297,10 @@ function CreateKnowledgeSession() {
       }
     }
 
+    if (!submittedModelsRef.current && models.selections) {
+      submittedModelsRef.current = models.selections
+      models.rememberSelections(models.selections)
+    }
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
@@ -293,6 +310,7 @@ function CreateKnowledgeSession() {
         idempotencyKey: idempotencyKeyRef.current,
         initialSource: startMode === 'source' ? initialSource : undefined,
         name: normalizedName,
+        models: submittedModelsRef.current,
         members: selectedMemberIds.map((accountId) => ({ account_id: accountId, role: 'viewer' })),
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
@@ -385,6 +403,7 @@ function CreateKnowledgeSession() {
         (error.stage === 'preflight' || isDefinitiveCreationRejection(error.originalError))
       ) {
         idempotencyKeyRef.current = undefined
+        submittedModelsRef.current = undefined
         setSubmissionLocked(false)
       }
       // The mutation state renders a retryable, localized error without exposing upstream details.
@@ -408,26 +427,25 @@ function CreateKnowledgeSession() {
             size="lg"
             variant="ghost"
             aria-label={tCommon(($) => $['operation.close'])}
-            className="absolute top-3 right-3 z-10 bg-background-section-burn"
+            className="absolute inset-e-3 top-3 z-10 bg-background-section-burn"
             onClick={requestClose}
             disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
           </IconButton>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
-            <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle py-6 xl:items-end xl:border-e [@media(max-height:600px)]:py-3">
             <Form
-              className="flex max-h-full min-h-0 w-full max-w-180 flex-col"
+              className="flex min-h-0 w-full max-w-180 flex-1 flex-col"
               onFormSubmit={() => void handleSubmit()}
             >
-              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
+              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10 [@media(max-height:600px)]:pb-3">
                 <DialogTitle id={dialogTitleId}>
                   {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
+              <div className="flex min-h-0 flex-1 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
                 <div className="flex flex-col gap-4">
                   <Field
                     name="name"
@@ -444,7 +462,7 @@ function CreateKnowledgeSession() {
                   >
                     <FieldLabel>
                       {t(($) => $.name)}
-                      <span aria-hidden className="ml-0.5 text-text-destructive">
+                      <span aria-hidden className="ms-0.5 text-text-destructive">
                         *
                       </span>
                     </FieldLabel>
@@ -601,9 +619,17 @@ function CreateKnowledgeSession() {
                     </div>
                   )}
                 </div>
+                <CreateModelSettings
+                  models={models}
+                  open={modelSettingsOpen}
+                  onOpenChange={setModelSettingsOpen}
+                  disabled={submissionLocked}
+                  onChange={resetUnsubmittedError}
+                  validationAttempt={modelValidationAttempt}
+                />
               </div>
 
-              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
+              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10 [@media(max-height:600px)]:py-3">
                 {startMode === 'upload' && (
                   <ModelCostNotice
                     id={modelCostNoticeId}
@@ -623,7 +649,12 @@ function CreateKnowledgeSession() {
                     type="submit"
                     variant="primary"
                     loading={submissionPending}
-                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid}
+                    disabled={
+                      uploadSubmissionBlocked ||
+                      sourceSubmissionBlocked ||
+                      membersInvalid ||
+                      (!createdKnowledge && models.pending)
+                    }
                     aria-describedby={startMode === 'upload' ? modelCostNoticeId : undefined}
                   >
                     {startMode === 'upload'
@@ -633,7 +664,6 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
             </Form>
-            <div className="min-h-px w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">

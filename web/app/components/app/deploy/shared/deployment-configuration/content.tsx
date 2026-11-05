@@ -4,7 +4,6 @@ import type { DeploymentDialogRequest } from '../../types'
 import type { DeploymentVersion } from '../../utils/version'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
-import type { DeploymentFieldError } from './utils/field-id'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -36,7 +35,6 @@ function ConfigurationError({ messages }: { messages: string[] }) {
 export function DeploymentConfigurationContent({
   compact = false,
   configurationValues,
-  fieldError,
   onConfigurationChange,
   queryState,
   request,
@@ -44,7 +42,6 @@ export function DeploymentConfigurationContent({
 }: {
   compact?: boolean
   configurationValues: DeploymentConfigurationValuesController
-  fieldError?: DeploymentFieldError
   onConfigurationChange: () => void
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
@@ -63,7 +60,7 @@ export function DeploymentConfigurationContent({
     precheckError,
   } = queryState
   const {
-    credentials,
+    getCredential,
     getEnvironmentVariableSelection,
     setCredential,
     setEnvironmentVariableSelection,
@@ -134,8 +131,7 @@ export function DeploymentConfigurationContent({
           <>
             <CredentialsSection
               credentialSlots={deploymentOptions?.credential_slots ?? []}
-              credentials={credentials}
-              fieldError={fieldError}
+              getCredential={getCredential}
               horizontalPaddingClassName={horizontalPaddingClassName}
               onChange={(key, value) => {
                 setCredential(key, value)
@@ -144,7 +140,6 @@ export function DeploymentConfigurationContent({
             />
             <EnvironmentVariablesSection
               environmentVariableGroups={deploymentOptions?.environment_variable_groups ?? []}
-              fieldError={fieldError}
               getEnvironmentVariableSelection={getEnvironmentVariableSelection}
               hasCredentialSlots={hasCredentialSlots}
               horizontalPaddingClassName={horizontalPaddingClassName}

@@ -1,9 +1,14 @@
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
+from sqlalchemy import Engine, text
+from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_definition_query_service as module
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from models.account import Tenant
+from models.model import App, AppMode
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQuery,
@@ -13,6 +18,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.errors.app import AppAbnormalStatusError
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -26,6 +32,64 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
         ),
         definitions,
     )
+
+
+@pytest.fixture
+def persisted_app_service(sqlite_session_factory: sessionmaker[Session]) -> AppDefinitionQueryService:
+    tenant = Tenant(name="App workspace")
+    tenant.id = "tenant"
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                tenant,
+                App(id="app", tenant_id="tenant", name="App", mode=AppMode.CHAT, enable_site=False, enable_api=True),
+            ]
+        )
+    return AppDefinitionQueryService(
+        definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
+        builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
+    )
+
+
+@pytest.mark.parametrize("tenant_id", [None, "tenant"])
+def test_service_api_historical_key_derives_workspace_from_app(
+    persisted_app_service: AppDefinitionQueryService,
+    tenant_id: str | None,
+) -> None:
+    app = persisted_app_service.get_service_api_app("app", tenant_id=tenant_id)
+
+    assert app.app_id == "app"
+    assert app.tenant_id == "tenant"
+
+
+def test_service_api_provided_foreign_workspace_is_rejected(
+    persisted_app_service: AppDefinitionQueryService,
+) -> None:
+    with pytest.raises(AppDefinitionUnavailableError, match="The app no longer exists"):
+        persisted_app_service.get_service_api_app("app", tenant_id="other-tenant")
+
+
+def test_service_api_orphaned_key_does_not_require_database(
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    service = AppDefinitionQueryService(
+        definitions=AppDefinitionQueryRepository(session_factory=unbound_session_factory),
+        builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
+    )
+
+    with pytest.raises(AppDefinitionUnavailableError, match="The app no longer exists"):
+        service.get_service_api_app(None)
+
+
+def test_service_api_abnormal_persisted_status_reaches_access_policy(
+    persisted_app_service: AppDefinitionQueryService,
+    sqlite_engine: Engine,
+) -> None:
+    with sqlite_engine.begin() as connection:
+        connection.execute(text("UPDATE apps SET status = 'disabled' WHERE id = 'app'"))
+
+    with pytest.raises(AppAbnormalStatusError, match="The app's status is abnormal"):
+        persisted_app_service.get_service_api_app("app", tenant_id="tenant")
 
 
 def test_get_mode_returns_repository_value() -> None:

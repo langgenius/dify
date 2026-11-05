@@ -3,7 +3,7 @@
 import logging
 from typing import Literal
 
-from pydantic import BaseModel, ValidationError, field_validator
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
@@ -30,7 +30,7 @@ def _crawl_cache_key(data_source_info: str | None) -> str | None:
         return None
     try:
         info = FirecrawlDataSourceInfo.model_validate_json(data_source_info)
-    except (ValueError, TypeError, ValidationError):
+    except (ValueError, TypeError):
         return None
     return f"website_files/{info.job_id}.txt"
 

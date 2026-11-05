@@ -1,18 +1,9 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import type { RefObject } from 'react'
-import type { RemoveMemberPayload } from './remove-member-content'
 import type { Role } from '@/models/access-control'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
@@ -21,9 +12,8 @@ import TransferOwnershipContent from './transfer-ownership-content'
 import { useUpdateMemberRoles } from './use-update-member-roles'
 
 type MemberMenuProps = {
-  removeReturnFocusRef: RefObject<HTMLButtonElement | null>
-  removeDialogHandle: AlertDialogHandle<RemoveMemberPayload>
   member: AccountWithRoleResponse
+  onRemove: () => void
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
@@ -31,14 +21,12 @@ type MemberMenuProps = {
 
 const MemberMenu = ({
   member,
-  removeDialogHandle,
-  removeReturnFocusRef,
+  onRemove,
   isCurrentUser,
   canTransferOwnership = false,
   allowMultipleRoles = true,
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -71,7 +59,6 @@ const MemberMenu = ({
 
   const handleAssignRolesSubmit = (roles: Role[]) => {
     if (isSavingRoles) return
-    // Mutation state renders failures both in the dialog and on the closed row.
     updateRolesOfMember(member.id, roles)
   }
 
@@ -79,12 +66,10 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
-              ref={menuTriggerRef}
-              type="button"
               size="lg"
               aria-label={`${t(($) => $['members.memberActions'], { ns: 'workspaceMembers' })}: ${memberName}`}
               className="data-popup-open:bg-state-base-hover"
@@ -93,43 +78,32 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent className="min-w-45 rounded-xl">
+        <MenuContent align="end" className="min-w-45 rounded-xl">
           {canAssignRoles && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               disabled={isSavingRoles}
               onClick={handleOpenAssignRoles}
             >
               {assignRolesLabel}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {showTransferOwnership && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               onClick={() => setTransferOpen(true)}
             >
               {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
+          {(canAssignRoles || showTransferOwnership) && canRemove && <MenuSeparator />}
           {canRemove && (
-            <DropdownMenuItem
-              variant="destructive"
-              className="system-sm-medium"
-              onClick={() => {
-                removeReturnFocusRef.current = menuTriggerRef.current
-                removeDialogHandle.openWithPayload({
-                  id: member.id,
-                  name: member.name,
-                  email: member.email,
-                })
-              }}
-            >
+            <MenuItem variant="destructive" className="system-sm-medium" onClick={onRemove}>
               {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       {roleSaveFailed && !assignModalOpen && (
         <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
           {t(($) => $['api.actionFailed'], { ns: 'common' })}

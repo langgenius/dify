@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [
@@ -60,13 +60,6 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
-  },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "24.22.1",
-      "onFail": "download"
-    }
   },
   "engines": {
     "node": "^24.22.1"

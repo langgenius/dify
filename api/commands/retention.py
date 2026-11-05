@@ -140,7 +140,7 @@ def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[lis
     paid_tenant_ids = [
         tenant_id
         for tenant_id in tenant_ids
-        if plans.get(tenant_id) and plans[tenant_id].get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+        if (plan := plans.get(tenant_id)) and plan.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
     ]
     unpaid_tenant_ids = sorted(set(tenant_ids) - set(paid_tenant_ids))
     return paid_tenant_ids, unpaid_tenant_ids

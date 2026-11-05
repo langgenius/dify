@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Kaynaklar",
   "resourceAccessToken.searchPlaceholder": "Belirteç ara…",
   "resourceAccessToken.searchResourcesPlaceholder": "Uygulama veya bilgi tabanı ara…",
-  "resourceAccessToken.tabAll": "Tümü",
+  "resourceAccessToken.tabAllTypes": "Tüm türler",
   "resourceAccessToken.tabApps": "Uygulamalar",
   "resourceAccessToken.tabKnowledgeBases": "Bilgi tabanları",
   "resourceAccessToken.token": "Belirteç",

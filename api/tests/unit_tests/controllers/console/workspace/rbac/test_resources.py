@@ -170,3 +170,19 @@ def test_resource_whitelist_parses_body_and_returns_response(
     assert result == {"account_ids": ["member"]}
     assert domain.transport.only_request.json == {"automatic_include_workspace_members": True}
     assert domain.tasks.queued == [Initialization("tenant", "actor", {_id_param(spec): resource_id})]
+
+
+def test_workspace_matrix_documents_pagination_and_language(apis: rbac_mod._ResourceAccessApis) -> None:
+    from flask_restx.swagger import Swagger
+
+    from controllers.console import api
+
+    resource = Swagger(api).serialize_resource(console_ns, apis.workspace_matrix, "/workspace/access-policy")
+    assert resource is not None
+    operation = resource["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert {"page", "limit", "reverse", "language"} <= parameters.keys()
+    assert all(parameters[name]["in"] == "query" for name in ("page", "limit", "language"))
+    assert parameters["page"]["schema"]["type"] == "integer"
+    assert parameters["limit"]["schema"]["type"] == "integer"
+    assert parameters["language"]["schema"]["enum"] == ["en", "ja", "zh"]

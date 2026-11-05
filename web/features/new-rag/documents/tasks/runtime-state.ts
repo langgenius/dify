@@ -5,6 +5,7 @@ import type { TerminalTaskPin } from './snapshot'
 import { ACTIVE_TASK_STATES, taskIsActive, taskVersionIsAfter } from '../model'
 
 export type TaskRuntimeState = {
+  observedTasks: ReadonlyMap<string, DocumentProcessingTask>
   currentStates: ReadonlyMap<string, DocumentProcessingTask['state']>
   currentVersions: ReadonlyMap<string, string>
   eventCursors: ReadonlyMap<string, string>
@@ -54,6 +55,7 @@ export function createTaskRuntimeState(
   tasks: readonly DocumentProcessingTask[] = [],
 ): TaskRuntimeState {
   return {
+    observedTasks: new Map(tasks.map((task) => [task.id, task])),
     currentStates: new Map(tasks.map((task) => [task.id, task.state])),
     currentVersions: new Map(tasks.map((task) => [task.id, task.updatedAt])),
     eventCursors: new Map(),
@@ -81,8 +83,22 @@ function retainRecord<Value>(
 
 function listSnapshot(
   state: TaskRuntimeState,
-  tasks: readonly DocumentProcessingTask[],
+  listedTasks: readonly DocumentProcessingTask[],
 ): TaskRuntimeState {
+  // A filtered document page and a paginated task history are partial snapshots. Keep
+  // subscriptions for discovered active tasks until a terminal snapshot reconciles them.
+  const observedTasks = new Map(
+    [...state.observedTasks].filter(
+      ([id, task]) =>
+        ACTIVE_TASK_STATES.has(state.currentStates.get(id) ?? task.state) || state.terminalPins[id],
+    ),
+  )
+  for (const task of listedTasks) {
+    const observed = observedTasks.get(task.id)
+    if (!observed || !taskVersionIsAfter(observed.updatedAt, task.updatedAt))
+      observedTasks.set(task.id, task)
+  }
+  const tasks = [...observedTasks.values()]
   const taskIds = new Set(tasks.map((task) => task.id))
   const currentStates = retainMap(state.currentStates, taskIds)
   const currentVersions = retainMap(state.currentVersions, taskIds)
@@ -102,6 +118,7 @@ function listSnapshot(
 
   return {
     ...state,
+    observedTasks,
     currentStates,
     currentVersions,
     eventCursors,
@@ -127,6 +144,9 @@ function taskSnapshot(
 
   const currentStates = new Map(state.currentStates).set(task.id, task.state)
   const currentVersions = new Map(state.currentVersions).set(task.id, task.updatedAt)
+  const observedTasks = new Map(state.observedTasks)
+  if (taskIsActive(task)) observedTasks.set(task.id, task)
+  else observedTasks.delete(task.id)
   const streamActiveOverrideVersions = new Map(state.streamActiveOverrideVersions)
   streamActiveOverrideVersions.delete(task.id)
   const trustedActiveOverrides = new Map(state.trustedActiveOverrides)
@@ -158,6 +178,7 @@ function taskSnapshot(
     accepted: true,
     state: {
       ...state,
+      observedTasks,
       currentStates,
       currentVersions,
       eventCursors,
@@ -291,6 +312,8 @@ function retireSnapshot(
   task: DocumentProcessingTask,
   retry: boolean,
 ): TaskRuntimeState {
+  const observedTasks = new Map(state.observedTasks)
+  if (!retry) observedTasks.delete(task.id)
   const terminalPins = { ...state.terminalPins }
   delete terminalPins[task.id]
   const overrides = { ...state.overrides }
@@ -298,7 +321,7 @@ function retireSnapshot(
   if (!overrideVersion || !taskVersionIsAfter(overrideVersion, task.updatedAt))
     delete overrides[task.id]
 
-  if (!retry) return { ...state, overrides, terminalPins }
+  if (!retry) return { ...state, observedTasks, overrides, terminalPins }
   const eventCursors = new Map(state.eventCursors)
   eventCursors.delete(task.id)
   const pendingTerminalProgress = new Map(state.pendingTerminalProgress)

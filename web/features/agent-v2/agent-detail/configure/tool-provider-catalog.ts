@@ -8,9 +8,9 @@ import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useGetLanguage } from '@/context/i18n'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
@@ -116,7 +116,7 @@ export function getAgentProviderToolIcon(tool: AgentProviderTool, provider?: Too
   if (provider?.icon) return provider.icon
 
   const pluginId = getAgentProviderPluginId(tool)
-  return pluginId ? getIconFromMarketPlace(pluginId) : undefined
+  return pluginId ? getMarketplacePluginIconUrl(pluginId) : undefined
 }
 
 function getMarketplacePluginInfo(pluginId: string) {

@@ -1,6 +1,4 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { RemoveMemberPayload } from '../remove-member-content'
-import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,7 +19,7 @@ const member: AccountWithRoleResponse = {
   status: 'active',
 }
 
-const renderMemberRow = () => {
+const renderMemberRow = (onRemove = vi.fn()) => {
   renderWithConsoleQuery(
     <Dialog<AccountWithRoleResponse>>
       {({ payload }) => (
@@ -29,8 +27,7 @@ const renderMemberRow = () => {
           <table>
             <tbody>
               <MemberRow
-                removeReturnFocusRef={{ current: null }}
-                removeDialogHandle={createAlertDialogHandle<RemoveMemberPayload>()}
+                onRemove={onRemove}
                 member={member}
                 roles={[{ id: 'role-1', name: 'Editor' }]}
                 isCurrentUser={false}
@@ -83,6 +80,19 @@ describe('MemberRow details entry points', () => {
     ).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('requests removal without opening member details', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi.fn()
+    renderMemberRow(onRemove)
+    const trigger = screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ })
+    await user.click(trigger)
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
+    )
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(screen.getByRole('row'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

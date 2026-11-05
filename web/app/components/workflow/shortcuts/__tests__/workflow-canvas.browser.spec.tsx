@@ -16,7 +16,7 @@ import { useEdgesInteractions } from '../../hooks/use-edges-interactions'
 import { useNodeKeyboardInteractions } from '../../hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useSelectionInteractions } from '../../hooks/use-selection-interactions'
-import { NodeActionsDropdown } from '../../node-actions-menu'
+import { NodeActionsMenu } from '../../node-actions-menu'
 import { NodeActionsContextMenuContent } from '../../node-actions-menu/context-menu-content'
 import VarReferenceVars from '../../nodes/_base/components/variable/var-reference-vars'
 import { NoteEditor, NoteEditorContextProvider } from '../../note-node/note-editor'
@@ -39,7 +39,7 @@ function NodeWithMenu({ id, data }: NodeProps) {
   return (
     <div className="nodrag nopan">
       Workflow node
-      <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
+      <NodeActionsMenu id={id} data={data} showHelpLink={false} />
     </div>
   )
 }

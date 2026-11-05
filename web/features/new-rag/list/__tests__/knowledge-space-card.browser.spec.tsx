@@ -46,7 +46,11 @@ const renderCard = async () => {
     <QueryClientProvider client={queryClient}>
       <button type="button">Before card</button>
       <ul className="mt-4 grid w-80 p-4">
-        <KnowledgeSpaceCard knowledgeSpace={knowledgeSpace} onOpenTagManagement={vi.fn()} />
+        <KnowledgeSpaceCard
+          onDelete={vi.fn()}
+          knowledgeSpace={knowledgeSpace}
+          onOpenTagManagement={vi.fn()}
+        />
       </ul>
     </QueryClientProvider>,
   )

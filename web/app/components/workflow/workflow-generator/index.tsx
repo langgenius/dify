@@ -425,6 +425,7 @@ function WorkflowGeneratorModal() {
       onError: (msg) => {
         if (!settled) {
           generateWorkflow(body, {
+            silent: true,
             getAbortController: (c) => {
               abortRef.current = c
             },
