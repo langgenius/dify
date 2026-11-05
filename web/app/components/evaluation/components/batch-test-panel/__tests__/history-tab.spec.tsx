@@ -11,7 +11,12 @@ import HistoryTab from '../history-tab'
 
 const resourceId = 'dataset-1'
 
-const createRun = (id: string, createdAt: number): EvaluationRunResponse => ({
+const createRun = (
+  id: string,
+  createdAt: number,
+  targetType = 'dataset',
+  targetId = resourceId,
+): EvaluationRunResponse => ({
   completed_items: 1,
   created_at: createdAt,
   created_by: 'user-1',
@@ -20,8 +25,8 @@ const createRun = (id: string, createdAt: number): EvaluationRunResponse => ({
   id,
   progress: 100,
   status: 'completed',
-  target_id: resourceId,
-  target_type: 'dataset',
+  target_id: targetId,
+  target_type: targetType,
   tenant_id: 'tenant-1',
   total_items: 1,
 })
@@ -29,14 +34,24 @@ const createRun = (id: string, createdAt: number): EvaluationRunResponse => ({
 const createDetail = (run: EvaluationRunResponse, query: string): EvaluationRunDetailResponse => ({
   run,
   items: {
-    data: [{ id: `${run.id}-item`, item_index: 0, inputs: { query }, overall_score: 1 }],
+    data: [
+      {
+        id: `${run.id}-item`,
+        item_index: 0,
+        inputs: { query },
+        expected_output: `${query} expected`,
+        actual_output: `${query} answer`,
+        metrics: [{ name: 'accuracy', value: 0.9 }],
+        overall_score: 1,
+      },
+    ],
     page: 1,
     page_size: 100,
     total: 1,
   },
 })
 
-describe('knowledge evaluation history', () => {
+describe('evaluation history result preview', () => {
   it('opens a result preview for the clicked record', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
@@ -86,5 +101,51 @@ describe('knowledge evaluation history', () => {
     const secondDialog = await screen.findByRole('dialog', { name: 'evaluation.results.title' })
     expect(within(secondDialog).getByText('second question')).toBeInTheDocument()
     expect(within(secondDialog).queryByText('first question')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['agents', 'agent'],
+    ['apps', 'workflow'],
+  ] as const)('opens a result preview from an %s record', async (resourceType, targetType) => {
+    const user = userEvent.setup()
+    const targetId = `${targetType}-1`
+    const run = createRun('run-1', 1793894400, resourceType, targetId)
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.queryKey({
+        input: {
+          params: { evaluate_target_id: targetId, evaluate_target_type: resourceType },
+          query: { page: 1, page_size: 16 },
+        },
+      }),
+      { data: [run], page: 1, page_size: 16, total: 1 },
+    )
+    queryClient.setQueryData(
+      consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.get.queryKey({
+        input: {
+          params: {
+            evaluate_target_id: targetId,
+            evaluate_target_type: resourceType,
+            run_id: run.id,
+          },
+          query: { page: 1, page_size: 100 },
+        },
+      }),
+      createDetail(run, `${targetType} question`),
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource(resourceType, targetId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType={resourceType} resourceId={targetId} />, {
+      queryClient,
+    })
+
+    await user.click(screen.getByRole('row', { name: /2026-11-05/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'evaluation.results.title' })
+    expect(within(dialog).getByText(`${targetType} question`)).toBeInTheDocument()
+    expect(within(dialog).getByText(`${targetType} question answer`)).toBeInTheDocument()
+    expect(within(dialog).getByText('0.9')).toBeInTheDocument()
   })
 })
