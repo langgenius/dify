@@ -128,6 +128,15 @@ function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
 
 const searchField = (name = searchTitle) => page.getByRole('combobox', { name })
 
+async function expectActiveOption(
+  field: ReturnType<typeof searchField>,
+  option: ReturnType<typeof page.getByRole>,
+) {
+  await expect
+    .poll(() => field.element().getAttribute('aria-activedescendant') === option.element().id)
+    .toBe(true)
+}
+
 async function openWithShortcut() {
   await userEvent.keyboard(shortcut)
   await expect.element(searchField()).toHaveFocus()
@@ -156,75 +165,86 @@ describe('desktop dialog', () => {
     renderPalette()
     await openWithShortcut()
     const options = page.getByRole('option')
-    await expect.element(options.nth(1)).toBeInTheDocument()
+    await expectActiveOption(searchField(), options.nth(0))
 
     await userEvent.keyboard('{ArrowDown}')
 
-    const input = searchField().element()
-    await expect
-      .poll(() => input.getAttribute('aria-activedescendant'))
-      .toBe(options.nth(1).element().id)
+    await expectActiveOption(searchField(), options.nth(1))
     await expect.element(searchField()).toHaveFocus()
   })
-
   it('starts a command page with its first option highlighted', async () => {
     renderPalette()
     await openWithShortcut()
+    const options = page.getByRole('option')
     const language = page.getByRole('option', {
       name: 'app.gotoAnything.actions.languageChangeDesc',
     })
-    await expect.element(language).toBeInTheDocument()
-    const languageIndex = page
-      .getByRole('option')
-      .elements()
-      .indexOf(language.element() as HTMLElement)
+    await expectActiveOption(searchField(), options.nth(0))
+    const languageIndex = options.elements().indexOf(language.element() as HTMLElement)
 
-    for (let step = 0; step < languageIndex; step++) await userEvent.keyboard('{ArrowDown}')
-    await expect
-      .poll(() => searchField().element().getAttribute('aria-activedescendant'))
-      .toBe(language.element().id)
+    for (let step = 1; step <= languageIndex; step++) {
+      await userEvent.keyboard('{ArrowDown}')
+      await expectActiveOption(searchField(), options.nth(step))
+    }
     await userEvent.keyboard('{Enter}')
 
     const languageField = searchField('app.gotoAnything.actions.languageChangeDesc')
     await expect.element(languageField).toHaveFocus()
     await expect.element(language).not.toBeInTheDocument()
-    await expect
-      .poll(
-        () =>
-          languageField.element().getAttribute('aria-activedescendant') ===
-          page.getByRole('option').first().element().id,
-      )
-      .toBe(true)
+    await expectActiveOption(languageField, page.getByRole('option').first())
   })
-
-  it('turns a matching scope into a token that starts at its first result and Backspace or its remove button clears', async () => {
+  it('turns a suggested scope into a token that lists its first result highlighted', async () => {
     api.datasets.mockResolvedValue({ ...emptyPage, data: [createDatasetFixture()], total: 1 })
     renderPalette()
     await openWithShortcut()
     const knowledge = 'app.gotoAnything.groups.knowledgeBases'
 
     await userEvent.keyboard('knowledgeBases')
-    await expect.element(page.getByRole('option', { name: knowledge })).toBeInTheDocument()
+    const scopeOption = page.getByRole('option', { name: knowledge })
+    await expectActiveOption(searchField(), scopeOption)
     await userEvent.keyboard('{Enter}')
+
     const scopedField = searchField(knowledge)
     await expect.element(scopedField).toHaveFocus()
     await expect.element(scopedField).toHaveValue('')
     const firstResult = page.getByRole('option').first()
-    await expect.element(firstResult).not.toHaveAccessibleName(knowledge)
-    await expect
-      .poll(
-        () =>
-          scopedField.element().getAttribute('aria-activedescendant') === firstResult.element().id,
-      )
-      .toBe(true)
+    await expect.element(firstResult).toHaveAccessibleName(/Test Dataset/)
+    await expectActiveOption(scopedField, firstResult)
+  })
 
+  it('clears a scope token with Backspace in an empty field or with its remove button', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const knowledge = 'app.gotoAnything.groups.knowledgeBases'
+
+    await userEvent.keyboard('@kb ')
+    await expect.element(searchField(knowledge)).toHaveFocus()
     await userEvent.keyboard('{Backspace}')
     await expect.element(searchField()).toHaveFocus()
 
     await userEvent.keyboard('@kb ')
-    await expect.element(searchField(knowledge)).toHaveValue('')
+    await expect.element(searchField(knowledge)).toHaveFocus()
     await page.getByRole('button', { name: 'common.operation.remove' }).click()
     await expect.element(searchField()).toHaveFocus()
+  })
+
+  it('ignores Backspace while an IME composition is active', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const knowledge = 'app.gotoAnything.groups.knowledgeBases'
+    await userEvent.keyboard('@kb ')
+    await expect.element(searchField(knowledge)).toHaveFocus()
+
+    searchField(knowledge)
+      .element()
+      .dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Backspace', isComposing: true, bubbles: true }),
+      )
+
+    await expect.element(searchField(knowledge)).toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: 'common.operation.remove' }))
+      .toBeVisible()
   })
   it('removes a token only on a fresh Backspace press, not while the key repeats', async () => {
     renderPalette()
@@ -278,7 +298,7 @@ describe('narrow bottom sheet', () => {
     await expect.element(sheet).not.toBeInTheDocument()
   })
 
-  it('keeps the scope on Backspace and shows a focus ring only for keyboard focus', async () => {
+  it('keeps the selected scope when Backspace runs in an empty field', async () => {
     renderPalette()
     await openWithShortcut()
     const knowledgeName = 'app.gotoAnything.groups.knowledgeBases'
@@ -286,13 +306,25 @@ describe('narrow bottom sheet', () => {
 
     await knowledge.click()
     await expect.element(knowledge).toBeChecked()
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await expect.element(searchField(knowledgeName)).toHaveFocus()
+    await userEvent.keyboard('{Backspace}')
+
+    await expect.element(knowledge).toBeChecked()
+  })
+
+  it('enters the scope bar on the checked scope with a keyboard-only ring and moves selection with arrows', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const knowledgeName = 'app.gotoAnything.groups.knowledgeBases'
+    const knowledge = page.getByRole('radio', { name: knowledgeName })
+
+    await knowledge.click()
+    await expect.element(knowledge).toHaveFocus()
     expect(getComputedStyle(knowledge.element()).boxShadow).not.toContain('inset')
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     await expect.element(searchField(knowledgeName)).toHaveFocus()
-    await userEvent.keyboard('{Backspace}')
-    await expect.element(knowledge).toBeChecked()
-
     await userEvent.keyboard('{Tab}')
     await expect.element(knowledge).toHaveFocus()
     expect(getComputedStyle(knowledge.element()).boxShadow).toContain('inset')
@@ -303,6 +335,25 @@ describe('narrow bottom sheet', () => {
     await expect.element(apps).toHaveFocus()
   })
 
+  it('shows a page as a token and a typed scope in the scope bar', async () => {
+    renderPalette()
+    await openWithShortcut()
+    const theme = 'app.gotoAnything.actions.themeCategoryDesc'
+
+    await userEvent.keyboard('/theme ')
+    await expect.element(searchField(theme)).toHaveFocus()
+    await expect.element(page.getByRole('radiogroup')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Backspace}')
+    await expect.element(searchField()).toHaveFocus()
+
+    await userEvent.keyboard('@app ')
+    await expect
+      .element(page.getByRole('radio', { name: 'app.gotoAnything.groups.apps' }))
+      .toBeChecked()
+    await expect
+      .element(page.getByRole('button', { name: 'common.operation.remove' }))
+      .not.toBeInTheDocument()
+  })
   it('opens from the top bar search button and returns focus to it', async () => {
     renderPalette(<MainNavMobileBar />)
     const trigger = page.getByRole('button', { name: searchTitle })

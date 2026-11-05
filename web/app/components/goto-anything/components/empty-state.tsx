@@ -3,12 +3,20 @@
 import type { ScopeSelection } from '../command-options'
 import { useTranslation } from 'react-i18next'
 
-const noResultsKeys = {
+const noResultsKeys: Partial<
+  Record<
+    ScopeSelection,
+    | 'gotoAnything.emptyState.noAppsFound'
+    | 'gotoAnything.emptyState.noPluginsFound'
+    | 'gotoAnything.emptyState.noKnowledgeBasesFound'
+    | 'gotoAnything.emptyState.noWorkflowNodesFound'
+  >
+> = {
   '@app': 'gotoAnything.emptyState.noAppsFound',
   '@plugin': 'gotoAnything.emptyState.noPluginsFound',
   '@knowledge': 'gotoAnything.emptyState.noKnowledgeBasesFound',
   '@node': 'gotoAnything.emptyState.noWorkflowNodesFound',
-} as const
+}
 
 export type EmptyStateProps = {
   variant: 'loading' | 'error' | 'no-commands' | 'no-results'
@@ -51,9 +59,7 @@ export function EmptyState({ variant, scope, error }: EmptyStateProps) {
   const noResultsKey =
     variant === 'no-commands'
       ? 'gotoAnything.noMatchingCommands'
-      : scope in noResultsKeys
-        ? noResultsKeys[scope as keyof typeof noResultsKeys]
-        : 'gotoAnything.noResults'
+      : (noResultsKeys[scope] ?? 'gotoAnything.noResults')
 
   return (
     <div className="flex items-center justify-center py-8 text-center text-text-tertiary">

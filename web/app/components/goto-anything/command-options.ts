@@ -120,7 +120,6 @@ export function useCommandOptions(
   const result = { scopeOptions, allScopeOptions, allCommandOptions }
 
   if (trimmed.startsWith('@')) return { ...result, commandOptions: [] }
-  if (!trimmed) return { ...result, commandOptions: allCommandOptions }
 
   const commandOptions = commandEntries.flatMap<CommandOption>(({ command, option }) => {
     if (

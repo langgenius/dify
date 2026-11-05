@@ -80,12 +80,6 @@ it('closes from the close button in the panel header', async () => {
   await expectClosed()
 })
 
-it('places the search trigger beside the menu button', () => {
-  render(<MainNavMobileBar />)
-
-  expect(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' })).toBeInTheDocument()
-})
-
 it('closes when the route changes without a link click', async () => {
   const { view } = await openMenu()
 

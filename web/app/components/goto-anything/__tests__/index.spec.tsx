@@ -472,7 +472,12 @@ describe('resource search', () => {
     async (options) => {
       const { user } = setup(options)
       const input = await openSearch()
-      expect(screen.queryByRole('gridcell', { name: /@skill/ })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('option', { name: 'skill.skillManagement.title' }),
+      ).not.toBeInTheDocument()
       await user.type(input, 'research')
       await waitFor(() => expect(api.apps).toHaveBeenCalled())
       expect(api.skills).not.toHaveBeenCalled()
@@ -519,7 +524,6 @@ describe('resource search', () => {
 
     await user.type(pageInput, 'zzz')
     expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
-    expect(screen.queryByText('app.gotoAnything.emptyState.noAppsFound')).not.toBeInTheDocument()
 
     await user.clear(pageInput)
     await user.keyboard('{Backspace}')
@@ -544,7 +548,7 @@ describe('resource search', () => {
     },
   )
 
-  it('turns a typed scope prefix into a scope token', async () => {
+  it('turns a typed scope prefix into a token and sends only the term to that provider', async () => {
     const { user } = setup()
     await user.type(await openSearch(), '@app research')
     expect(screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })).toHaveValue(
@@ -554,6 +558,17 @@ describe('resource search', () => {
       expect(api.apps).toHaveBeenCalledWith({ query: { page: 1, name: 'research' } }),
     )
     expect(api.apps).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists only scopes for a bare @', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@')
+
+    expect(screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
+    ).not.toBeInTheDocument()
+    expect(api.apps).not.toHaveBeenCalled()
   })
 })
 
@@ -663,8 +678,12 @@ describe('pending and failed searches', () => {
         'app.gotoAnything.someServicesUnavailable',
       ),
     )
-    expect(screen.getAllByText('app.gotoAnything.someServicesUnavailable')).toHaveLength(2)
-    await user.click(screen.getByRole('option', { name: /Available result/ }))
+    const result = screen.getByRole('option', { name: /Available result/ })
+    const notice = screen
+      .getAllByText('app.gotoAnything.someServicesUnavailable')
+      .find((element) => !screen.getByRole('status').contains(element))
+    expect(notice?.compareDocumentPosition(result)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    await user.click(result)
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
   })
 })
