@@ -133,6 +133,7 @@ class MessageCycleManager:
                         conversation_id,
                         config.app_id,
                         message_id=message_id,
+                        trace_scope=self._application_generate_entity.trace_scope,
                     )
                     redis_client.setex(cache_key, 3600, name)
                 except Exception:

@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Eyni anda bir neçə mətn yaradın, sonra redaktə edin və yaratmağa davam edin",
   "feature.moreLikeThis.tip": "Bu funksiyadan istifadə əlavə token sərfiyyatına səbəb olacaq",
   "feature.moreLikeThis.title": "Buna bənzər daha çox mətn",
+  "feature.showThoughts.description": "Söhbətlərdə modelin düşüncə məzmununu göstərin.",
+  "feature.showThoughts.title": "Düşüncə prosesini göstər",
   "feature.speechToText.description": "Söhbətdə səsli daxiletmədən istifadə etmək olar.",
   "feature.speechToText.title": "Səsin mətnə çevrilməsi",
   "feature.suggestedQuestionsAfterAnswer.description": "Növbəti sual təkliflərinin qurulması istifadəçilərin söhbət təcrübəsini yaxşılaşdıra bilər.",

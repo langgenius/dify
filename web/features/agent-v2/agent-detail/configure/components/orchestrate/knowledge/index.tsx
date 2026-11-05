@@ -61,7 +61,7 @@ function AgentKnowledgeRetrievalRow({
   )
 }
 
-export function AgentKnowledgeRetrieval() {
+export function AgentKnowledgeRetrieval({ workflowNodeId }: { workflowNodeId?: string }) {
   const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const enabled = useAtomValue(agentKnowledgeFsEnabledAtom)
@@ -99,11 +99,12 @@ export function AgentKnowledgeRetrieval() {
         tip={knowledgeRetrievalTip}
         panelContentClassName="flex flex-col gap-1"
         actions={
-          <ConfigureSectionAddButton
-            ariaLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
-            onClick={() => addRetrieval()}
-            disabled={readOnly}
-          />
+          !readOnly ? (
+            <ConfigureSectionAddButton
+              ariaLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
+              onClick={() => addRetrieval()}
+            />
+          ) : undefined
         }
       >
         {visibleRetrievals.length === 0 ? (
@@ -123,6 +124,7 @@ export function AgentKnowledgeRetrieval() {
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
+        workflowNodeId={workflowNodeId}
         open={isDialogOpen && !readOnly}
         knowledgeFsEnabled={enabled}
         initialBindings={retrievals}
