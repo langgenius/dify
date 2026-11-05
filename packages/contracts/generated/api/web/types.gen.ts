@@ -1369,6 +1369,7 @@ export type VerificationTokenResponse = {
 }
 
 export type WebAccountProfileResponse = {
+  readonly account_login_url: string | null
   avatar: string | null
   readonly avatar_url: string | null
   has_owned_tenant?: boolean | null
