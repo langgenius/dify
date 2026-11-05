@@ -12,7 +12,11 @@ from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationService, WorkflowCollaborationUnavailableError
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationService,
+    WorkflowCollaborationUnavailableError,
+)
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -72,15 +76,22 @@ def handle_user_connect(sid, data):
     workflow_id = data.get("workflow_id")
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
+    draft_hash = data.get("draft_hash")
+    if draft_hash is not None and not isinstance(draft_hash, str):
+        return {"msg": "invalid draft_hash"}, 400
 
     try:
         with sio.app.app_context(), session_factory.create_session() as session:
-            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+            result = collaboration_service.authorize_and_join_workflow_room(
+                workflow_id, sid, session=session, draft_hash=draft_hash
+            )
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
     except WorkflowCollaborationUnavailableError:
         return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationDraftOutdatedError:
+        return {"msg": "draft_outdated"}, 409
     if not result:
         return {"msg": "unauthorized"}, 401
 

@@ -18,6 +18,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
+    WorkflowCollaborationDraftOutdatedError,
     WorkflowCollaborationService,
     WorkflowCollaborationUnavailableError,
 )
@@ -82,6 +83,71 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
+    @pytest.mark.parametrize("room", ["empty", "with_leader", "without_leader"])
+    def test_outdated_new_join_is_rejected_before_room_changes(
+        self, real_service: ServiceFixture, db_session: Session, room: str
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        if room != "empty":
+            seed_session(repository, "sid-other", user_id="other-user")
+        if room == "with_leader":
+            repository.set_leader("wf-1", "sid-other")
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            with pytest.raises(WorkflowCollaborationDraftOutdatedError):
+                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="outdated")
+
+        assert not repository.session_exists("wf-1", "sid-1")
+        assert repository.session_exists("wf-1", "sid-other") is (room != "empty")
+        assert repository.get_current_leader("wf-1") == ("sid-other" if room == "with_leader" else None)
+        socketio.enter_room.assert_not_called()
+        socketio.emit.assert_not_called()
+        socketio.start_background_task.assert_not_called()
+
+    @pytest.mark.parametrize("draft_hash", ["matching", "missing"])
+    def test_current_or_legacy_new_join_can_enter(
+        self, real_service: ServiceFixture, db_session: Session, draft_hash: str
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        draft = db_session.get(Workflow, "draft-1")
+        assert draft is not None
+        current_hash = draft.unique_hash
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            result = service.authorize_and_join_workflow_room(
+                "wf-1", "sid-1", session=db_session, draft_hash=current_hash if draft_hash == "matching" else None
+            )
+
+        assert result == ("u-1", True)
+        assert repository.session_exists("wf-1", "sid-1")
+
+    def test_established_session_can_rejoin_with_outdated_hash(
+        self, real_service: ServiceFixture, db_session: Session
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        seed_session(repository, "sid-1")
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="old")
+
+        assert result == ("u-1", True)
+        assert repository.session_exists("wf-1", "sid-1")
+
     def test_join_without_draft_does_not_create_session(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:

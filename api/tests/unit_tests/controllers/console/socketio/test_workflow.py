@@ -18,6 +18,7 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
+from services.workflow_collaboration_service import WorkflowCollaborationDraftOutdatedError
 
 
 @pytest.fixture
@@ -129,6 +130,32 @@ def test_user_connect_returns_ack_when_billing_is_unavailable(
     assert response.id == 42
     assert response.data == [{"msg": "collaboration_unavailable"}, 503]
     _assert_single_event(_read_metrics(reader), "user_connect", "error")
+
+
+def test_user_connect_returns_ack_when_draft_is_outdated(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server, _, reader = collaboration_server
+    eio_sid = "draft-outdated"
+    transport = Socket(server.eio, eio_sid)
+    server.eio.sockets[eio_sid] = transport
+    sid = server.manager.connect(eio_sid, "/")
+
+    def outdated_join(*_args: object, **kwargs: object) -> None:
+        assert kwargs["draft_hash"] == "old-hash"
+        raise WorkflowCollaborationDraftOutdatedError()
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", outdated_join)
+    server._handle_event_internal(
+        server, sid, eio_sid, ["user_connect", {"workflow_id": "wf-1", "draft_hash": "old-hash"}], "/", 42
+    )
+
+    response = Packet(encoded_packet=transport.queue.get_nowait().data)
+    assert response.packet_type == ACK
+    assert response.data == [{"msg": "draft_outdated"}, 409]
+    _assert_single_event(_read_metrics(reader), "user_connect", "rejected")
 
 
 def test_user_connect_does_not_hide_unrelated_errors(

@@ -23,7 +23,10 @@ from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services import workflow_service as workflow_service_module
 from services.errors.app import WorkflowCollaborationActiveError
-from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationDraftOutdatedError,
+    WorkflowCollaborationService,
+)
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -152,6 +155,11 @@ def _exercise_save_and_join_lock(
                 release.set()
             current_hash = future.result(timeout=5)
 
+        assert current_hash != old_hash
+        with Session(engine) as session, pytest.raises(WorkflowCollaborationDraftOutdatedError):
+            collaboration.authorize_and_join_workflow_room(app_id, "sid-old", session=session, draft_hash=old_hash)
+        assert repository.get_session_sids(app_id) == []
+
         reached = threading.Event()
         release = threading.Event()
         original_set = repository.set_session_info
@@ -165,7 +173,9 @@ def _exercise_save_and_join_lock(
 
         def blocked_join() -> tuple[str, bool] | None:
             with Session(engine) as session:
-                return collaboration.authorize_and_join_workflow_room(app_id, "sid-b", session=session)
+                return collaboration.authorize_and_join_workflow_room(
+                    app_id, "sid-b", session=session, draft_hash=current_hash
+                )
 
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(blocked_join)
