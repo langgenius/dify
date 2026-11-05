@@ -1,4 +1,7 @@
-import type { PersonalAccessTokenResponse } from '@dify/contracts/api/console/account/types.gen'
+import type {
+  GetAccountPersonalAccessTokenResourcesData,
+  PersonalAccessTokenResponse,
+} from '@dify/contracts/api/console/account/types.gen'
 import { ORPCError } from '@orpc/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, within } from '@testing-library/react'
@@ -500,7 +503,7 @@ it('shows token expiration dates in ISO format', async () => {
   expect(within(table).getByText('2026-09-29')).toBeInTheDocument()
 })
 
-it('shows expiration status and deployment beside the workspace in scope details', async () => {
+it('shows expiration status and saved resources beside their workspaces in scope details', async () => {
   const user = userEvent.setup()
   const expiredToken = {
     ...token,
@@ -578,7 +581,9 @@ it('shows expiration status and deployment beside the workspace in scope details
   )
   expect(expirationMessage).toHaveClass('text-text-destructive')
   expect(expirationMessage).toHaveClass('mt-1')
-  expect(within(dialog).getByText('Acme · Production')).toBeInTheDocument()
+  expect(
+    within(dialog).getByText('Acme · dataset.metadata.datasetMetadata.builtIn'),
+  ).toBeInTheDocument()
   expect(
     within(dialog).getByText('fatelei · dataset.metadata.datasetMetadata.builtIn'),
   ).toBeInTheDocument()
@@ -1041,32 +1046,33 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
     available: true,
     reason: null,
   }
-  transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('personalAccessTokenResources'))
-      return {
-        data: [
-          {
-            ...common,
-            resource_type: 'app',
-            display_name: 'Assistant',
-            app_deployments: [
-              {
-                ...common,
-                resource_type: 'app_deployment',
-                display_name: 'Assistant / Production',
-                parent_app_id: common.resource_id,
-              },
-            ],
-          },
-          { ...common, resource_type: 'dataset', display_name: 'Handbook' },
-        ],
-        next_cursor: null,
-        has_more: false,
-      }
+  const app = {
+    ...common,
+    resource_type: 'app',
+    display_name: 'Assistant',
+    app_deployments: [
+      {
+        ...common,
+        resource_type: 'app_deployment',
+        display_name: 'Assistant / Production',
+        parent_app_id: common.resource_id,
+      },
+    ],
+  }
+  const dataset = { ...common, resource_type: 'dataset', display_name: 'Handbook' }
+  transport.call.mockImplementation(
+    async (path: string[], input: Pick<GetAccountPersonalAccessTokenResourcesData, 'query'>) => {
+      if (path.includes('personalAccessTokenResources'))
+        return {
+          data: input.query?.resource_type === 'dataset' ? [dataset] : [app],
+          next_cursor: null,
+          has_more: false,
+        }
 
-    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_mixed_resources' }
-    return { data: [], page: 1, limit: 20, total: 0, has_more: false }
-  })
+      if (path.at(-1) === 'post') return { ...token, secret: 'dpat_mixed_resources' }
+      return { data: [], page: 1, limit: 20, total: 0, has_more: false }
+    },
+  )
   render(
     <QueryClientProvider client={createTestQueryClient()}>
       <PersonalAccessTokens />
@@ -1086,30 +1092,28 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
   await user.click(
     within(scope).getByRole('radio', { name: 'accountSettings.personalAccessToken.selected' }),
   )
-  const resourceTabs = within(dialog).getByRole('group', {
+  const resourceTabs = within(dialog).getByRole('tablist', {
     name: 'accountSettings.resourceAccessToken.resources',
   })
-  await user.click(
-    within(resourceTabs).getByRole('button', {
-      name: 'accountSettings.resourceAccessToken.tabKnowledgeBases',
-    }),
-  )
-  expect(within(dialog).getByRole('checkbox', { name: 'Handbook' })).toBeInTheDocument()
-  expect(within(dialog).queryByRole('checkbox', { name: 'Production' })).not.toBeInTheDocument()
-  await user.click(
-    within(resourceTabs).getByRole('button', {
-      name: 'accountSettings.resourceAccessToken.tabAllTypes',
-    }),
-  )
   const builtInLabel = 'dataset.metadata.datasetMetadata.builtIn'
   await user.click(await within(dialog).findByRole('checkbox', { name: builtInLabel }))
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Handbook' }))
+  await user.click(
+    within(resourceTabs).getByRole('tab', {
+      name: /accountSettings\.resourceAccessToken\.tabKnowledgeBases/,
+    }),
+  )
+  await user.click(await within(dialog).findByRole('checkbox', { name: 'Handbook' }))
+  expect(within(dialog).queryByRole('checkbox', { name: 'Production' })).not.toBeInTheDocument()
+  await user.click(
+    within(resourceTabs).getByRole('tab', {
+      name: /accountSettings\.resourceAccessToken\.tabApps/,
+    }),
+  )
   const productionRunner = await within(dialog).findByRole('checkbox', { name: 'Production' })
   await user.hover(within(dialog).getByRole('button', { name: 'Production' }))
   expect(await screen.findByText(`deployment_id: ${common.resource_id}`)).toBeInTheDocument()
   await user.click(productionRunner)
   expect(within(dialog).getByRole('checkbox', { name: builtInLabel })).toBeChecked()
-  expect(within(dialog).getByRole('checkbox', { name: 'Handbook' })).toBeChecked()
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
   await screen.findByDisplayValue('dpat_mixed_resources')
   const submitted = transport.call.mock.calls.find(

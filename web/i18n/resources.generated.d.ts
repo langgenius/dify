@@ -64,6 +64,7 @@ export default interface Resources {
     'personalAccessToken.all': 'All'
     'personalAccessToken.allIncludingFuture': 'All, including future'
     'personalAccessToken.allResources': 'All resources'
+    'personalAccessToken.allResultsShown': 'All results shown'
     'personalAccessToken.allWorkspaces': 'All workspaces'
     'personalAccessToken.allowed': 'Allowed'
     'personalAccessToken.appDeployment': 'App deployment'
@@ -89,6 +90,9 @@ export default interface Resources {
     'personalAccessToken.expires': 'Expires'
     'personalAccessToken.howToUseIt': 'How to use it'
     'personalAccessToken.lastUsed': 'Last used'
+    'personalAccessToken.loadMoreResources': 'Load more resources'
+    'personalAccessToken.loadMoreRetry': "Couldn't load more. Retry"
+    'personalAccessToken.loadMoreWorkspaces': 'Load more workspaces'
     'personalAccessToken.manageWorkspaces': 'Manage workspaces'
     'personalAccessToken.never': 'Never'
     'personalAccessToken.noResourceCalls': 'This token cannot call apps.'
