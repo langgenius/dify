@@ -88,10 +88,17 @@ def _body_validator(body: str) -> str:
 
 
 class MessageTemplateConfig(BaseModel):
-    """The message every recipient gets; its body holds the Request URL exactly once, the link to the form."""
-
     subject: str
-    body: Annotated[str, AfterValidator(_body_validator)]
+    body: Annotated[
+        str,
+        AfterValidator(_body_validator),
+        Field(
+            description=(
+                f"Must hold the Request URL placeholder {EmailDeliveryConfig.URL_PLACEHOLDER} exactly once: "
+                "it becomes the link to the form"
+            )
+        ),
+    ]
 
 
 class DebugModeConfig(BaseModel):

@@ -12,6 +12,7 @@ from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDescribeQuery, NodeTypeDetailResponse, NodeTypeFieldRow
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
+from core.workflow.human_input_adapter import EmailDeliveryConfig
 from graphon.enums import BuiltinNodeTypes
 from libs.oauth_bearer import AuthContext
 
@@ -128,6 +129,13 @@ def test_an_object_row_carries_its_fields(describe: _Describe) -> None:
     assert template["body"]["required"] is True
     assert "channels" in {field["loc"][0] for field in rows["debug_mode"]["fields"]}
     assert all("fields" not in field and "items" not in field for field in template.values())
+
+
+def test_the_message_body_row_says_it_holds_the_request_url_once(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.HUMAN_INPUT)).items()}
+
+    template = {field["loc"][0]: field for field in rows["message_template"]["fields"]}
+    assert f"{EmailDeliveryConfig.URL_PLACEHOLDER} exactly once" in template["body"]["description"]
 
 
 def test_a_scalar_row_leaves_out_fields(describe: _Describe) -> None:
