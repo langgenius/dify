@@ -21,7 +21,7 @@ class TestAccountInfo:
 
         api = AccountApi()
         with app.test_request_context("/openapi/v1/account"):
-            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
+            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))  # pyrefly: ignore[missing-attribute]
 
         assert result.subject_type == "account"
         assert result.subject_email == account.email
@@ -46,7 +46,7 @@ class TestAccountInfo:
 
         api = AccountApi()
         with app.test_request_context("/openapi/v1/account"):
-            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
+            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))  # pyrefly: ignore[missing-attribute]
 
         assert {w.id for w in result.workspaces} == {owner_tenant.id, second.id}
         roles = {w.id: w.role for w in result.workspaces}

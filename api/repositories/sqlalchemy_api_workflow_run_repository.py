@@ -1246,8 +1246,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 update(WorkflowRun)
                 .where(
                     WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
+                    # Keep owner checks together so PostgreSQL can use the run's primary key instead of
+                    # underestimating the tenant/app composite index when their values are correlated.
+                    and_(WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id).is_(True),
                     WorkflowRun.task_id.is_(None),
                 )
                 .values(task_id=task_id)

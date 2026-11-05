@@ -164,7 +164,6 @@ async function setup({
           deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY',
           enable_learn_app: true,
           rbac_enabled: true,
-          enable_collaboration_mode: false,
         },
         features: { apps: { size: 0, limit: 10 } },
       },

@@ -4,7 +4,7 @@ import type {
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
-import type { ConfigurableTracingProvider } from './providers'
+import type { ConfigurableTracingProvider, TracingProviderField } from './providers'
 import type { TracingResource } from './resource'
 import {
   AlertDialog,
@@ -31,6 +31,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { consoleQuery } from '@/service/console'
@@ -39,7 +40,8 @@ import { tracingProviders } from './providers'
 type ProviderConfigModalProps = {
   resource: TracingResource
   type: ConfigurableTracingProvider
-  payload?: TraceAppConfigResponse['tracing_config']
+  /** The saved configuration; absent while the provider is not configured yet. */
+  config: TraceAppConfigResponse | null | undefined
   /** Whether traces currently go to this provider, so removing it turns tracing off. */
   inUse: boolean
   onRemoved: () => void
@@ -49,10 +51,15 @@ type ProviderConfigModalProps = {
 
 const I18N_PREFIX = 'tracing.configProvider'
 
+/** A destination as the API compares it: trimmed, without trailing slashes. */
+function comparableDestination(value: string | null) {
+  return value === null ? null : value.trim().replace(/\/+$/, '')
+}
+
 export function ProviderConfigModal({
   resource,
   type,
-  payload,
+  config,
   inUse,
   onRemoved,
   firstInputRef,
@@ -80,7 +87,27 @@ export function ProviderConfigModal({
   const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig
   const updateConfig = resource.kind === 'agent' ? updateAgentConfig : updateAppConfig
   const removeConfig = resource.kind === 'agent' ? removeAgentConfig : removeAppConfig
-  const isEdit = !!payload
+  const fields: readonly TracingProviderField[] = tracingProviders[type].fields
+  const savedValues = config?.tracing_config
+  const configuredSecrets = config?.configured_secrets ?? []
+  // Mirrors the destination inputs, which start from the values loaded when the form opened.
+  const [destinationDrafts, setDestinationDrafts] = useState(() =>
+    Object.fromEntries(
+      fields
+        .filter((field) => field.destination)
+        .map((field) => [field.name, savedValues?.[field.name] ?? '']),
+    ),
+  )
+  const submittedValue = (name: string, value: string) =>
+    value === '' && savedValues?.[name] === null ? null : value
+  // The API keeps saved secrets only for the destination they were entered for.
+  const destinationChanged = fields.some(
+    (field) =>
+      field.destination &&
+      comparableDestination(submittedValue(field.name, destinationDrafts[field.name] ?? '')) !==
+        comparableDestination(savedValues?.[field.name] ?? null),
+  )
+  const isEdit = !!config
   const saveError = createConfig.error ?? updateConfig.error
   const pending = createConfig.isPending || updateConfig.isPending || removeConfig.isPending
   const handleRemove = () => {
@@ -101,10 +128,17 @@ export function ProviderConfigModal({
     if (pending) return
     if (isEdit) createConfig.reset()
     else updateConfig.reset()
-    const config: TraceConfigPayload['tracing_config'] = {}
-    for (const [key, value] of Object.entries(values))
-      config[key] = value === '' && payload?.[key] === null ? null : value
-    const body: TraceConfigPayload = { tracing_provider: type, tracing_config: config }
+    const tracingConfig: TraceConfigPayload['tracing_config'] = {}
+    for (const field of fields) {
+      const value = values[field.name] ?? ''
+      if (field.secret) {
+        // A secret left out keeps its saved value, so only a newly entered one is sent.
+        if (value !== '') tracingConfig[field.name] = value
+        continue
+      }
+      tracingConfig[field.name] = submittedValue(field.name, value)
+    }
+    const body: TraceConfigPayload = { tracing_provider: type, tracing_config: tracingConfig }
     if (!isEdit) body.activate = true
     if (resource.kind === 'agent')
       (isEdit ? updateAgentConfig : createAgentConfig).mutate(
@@ -138,594 +172,52 @@ export function ProviderConfigModal({
       >
         <DialogBody>
           <div className="space-y-4">
-            {type === 'arize' && (
-              <>
-                <Field disabled={pending} name="api_key">
+            {fields.map((field, index) => {
+              const { label, description } = field
+              const labelText =
+                typeof label === 'string' ? label : t(($) => $[label.key], { ns: 'app' })
+              const keepsSavedSecret =
+                field.secret && !destinationChanged && configuredSecrets.includes(field.name)
+              const required = field.required && !keepsSavedSecret
+              return (
+                <Field key={field.name} disabled={pending} name={field.name}>
                   <FieldLabel>
-                    API Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
+                    {labelText}
+                    {required && (
+                      <span aria-hidden className="text-text-destructive">
+                        *
+                      </span>
+                    )}
                   </FieldLabel>
                   <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    required
-                    defaultValue={payload?.api_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'API Key',
-                    })}
+                    ref={index === 0 ? firstInputRef : undefined}
+                    autoComplete={field.secret ? 'off' : undefined}
+                    type={field.type}
+                    inputMode={field.inputMode}
+                    pattern={field.pattern}
+                    maxLength={field.maxLength}
+                    required={required}
+                    defaultValue={field.secret ? '' : (savedValues?.[field.name] ?? '')}
+                    onValueChange={
+                      field.destination
+                        ? (value) =>
+                            setDestinationDrafts((drafts) => ({ ...drafts, [field.name]: value }))
+                        : undefined
+                    }
+                    placeholder={
+                      keepsSavedSecret
+                        ? t(($) => $[`${I18N_PREFIX}.configuredSecretPlaceholder`], { ns: 'app' })
+                        : (field.placeholder ??
+                          t(($) => $[`${I18N_PREFIX}.placeholder`], { ns: 'app', key: labelText }))
+                    }
                   />
+                  {description && (
+                    <FieldDescription>{t(($) => $[description], { ns: 'app' })}</FieldDescription>
+                  )}
                   <FieldError />
                 </Field>
-                <Field disabled={pending} name="space_id">
-                  <FieldLabel>
-                    Space ID
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.space_id ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'Space ID',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="project">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.project ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>Endpoint</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://otlp.arize.com"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'phoenix' && (
-              <>
-                <Field disabled={pending} name="api_key">
-                  <FieldLabel>API Key</FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    defaultValue={payload?.api_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'API Key',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="project">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.project ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>Endpoint</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://app.phoenix.arize.com"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'aliyun' && (
-              <>
-                <Field disabled={pending} name="license_key">
-                  <FieldLabel>
-                    License Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    pattern=".*\S.*"
-                    ref={firstInputRef}
-                    required
-                    defaultValue={payload?.license_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'License Key',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>
-                    Endpoint
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    required
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://tracing.arms.aliyuncs.com"
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="app_name">
-                  <FieldLabel>
-                    App Name
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input required defaultValue={payload?.app_name ?? ''} />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'tencent' && (
-              <>
-                <Field disabled={pending} name="token">
-                  <FieldLabel>
-                    Token
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    pattern=".*\S.*"
-                    ref={firstInputRef}
-                    required
-                    defaultValue={payload?.token ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'Token',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>
-                    Endpoint
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    required
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://ap-guangzhou.apm.tencentcs.com:4320"
-                  />
-                  <FieldDescription>
-                    {t(($) => $['tracing.tencent.endpointHelp'], { ns: 'app' })}
-                  </FieldDescription>
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="service_name">
-                  <FieldLabel>
-                    Service Name
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    maxLength={63}
-                    pattern="[a-z]([a-z0-9\-]*[a-z0-9])?"
-                    defaultValue={payload?.service_name ?? ''}
-                    placeholder="dify-app"
-                  />
-                  <FieldDescription>
-                    {t(($) => $['tracing.tencent.serviceNameHelp'], { ns: 'app' })}
-                  </FieldDescription>
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'weave' && (
-              <>
-                <Field disabled={pending} name="api_key">
-                  <FieldLabel>
-                    API Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    required
-                    defaultValue={payload?.api_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'API Key',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="project">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.project ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="entity">
-                  <FieldLabel>Entity</FieldLabel>
-                  <Input
-                    defaultValue={payload?.entity ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'Entity',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>Endpoint</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://trace.wandb.ai/"
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="host">
-                  <FieldLabel>Host</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    defaultValue={payload?.host ?? ''}
-                    placeholder="https://api.wandb.ai"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'langsmith' && (
-              <>
-                <Field disabled={pending} name="api_key">
-                  <FieldLabel>
-                    API Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    required
-                    defaultValue={payload?.api_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'API Key',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="project">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.project ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="endpoint">
-                  <FieldLabel>Endpoint</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
-                    defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://api.smith.langchain.com"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'langfuse' && (
-              <>
-                <Field disabled={pending} name="secret_key">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    defaultValue={payload?.secret_key ?? ''}
-                    required
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="public_key">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    required
-                    defaultValue={payload?.public_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="host">
-                  <FieldLabel>
-                    Host
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    required
-                    defaultValue={payload?.host ?? ''}
-                    placeholder="https://cloud.langfuse.com"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'opik' && (
-              <>
-                <Field disabled={pending} name="api_key">
-                  <FieldLabel>API Key</FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    ref={firstInputRef}
-                    defaultValue={payload?.api_key ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: 'API Key',
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="project">
-                  <FieldLabel>{t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}</FieldLabel>
-                  <Input
-                    defaultValue={payload?.project ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="workspace">
-                  <FieldLabel>Workspace</FieldLabel>
-                  <Input defaultValue={payload?.workspace ?? ''} placeholder="default" />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="url">
-                  <FieldLabel>Url</FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.*/api/"
-                    defaultValue={payload?.url ?? ''}
-                    placeholder="https://www.comet.com/opik/api/"
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'mlflow' && (
-              <>
-                <Field disabled={pending} name="tracking_uri">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    ref={firstInputRef}
-                    defaultValue={payload?.tracking_uri ?? ''}
-                    required
-                    placeholder="http://localhost:5000"
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="experiment_id">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    inputMode="numeric"
-                    pattern="\s*[0-9]+\s*"
-                    required
-                    defaultValue={payload?.experiment_id ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="username">
-                  <FieldLabel>{t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })}</FieldLabel>
-                  <Input
-                    defaultValue={payload?.username ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="password">
-                  <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    defaultValue={payload?.password ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
-            {type === 'databricks' && (
-              <>
-                <Field disabled={pending} name="experiment_id">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    inputMode="numeric"
-                    pattern="\s*[0-9]+\s*"
-                    ref={firstInputRef}
-                    defaultValue={payload?.experiment_id ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                    })}
-                    required
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="host">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })}
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    type="url"
-                    pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
-                    defaultValue={payload?.host ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
-                    })}
-                    required
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="client_id">
-                  <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })}</FieldLabel>
-                  <Input
-                    defaultValue={payload?.client_id ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="client_secret">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    defaultValue={payload?.client_secret ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-                <Field disabled={pending} name="personal_access_token">
-                  <FieldLabel>
-                    {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
-                  </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    defaultValue={payload?.personal_access_token ?? ''}
-                    placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                      ns: 'app',
-                      key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
-                    })}
-                  />
-                  <FieldError />
-                </Field>
-              </>
-            )}
+              )
+            })}
           </div>
           {saveError && (
             <p role="alert" className="mt-4 system-sm-regular text-text-destructive">

@@ -270,7 +270,7 @@ describe('SettingsModal', () => {
         await screen.findByText('appDebug.datasetConfig.retrieveChangeTip'),
       ).toBeInTheDocument()
 
-      await user.click(screen.getByLabelText('close-retrieval-change-tip'))
+      await user.click(screen.getByLabelText('common.operation.close'))
 
       await waitFor(() => {
         expect(

@@ -999,6 +999,7 @@ export type TraceProviderCapabilitiesResponse = {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -3524,6 +3525,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -7451,7 +7453,7 @@ export type GetAppsByAppIdTraceCapabilitiesData = {
 }
 
 export type GetAppsByAppIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 
