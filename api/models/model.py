@@ -2381,6 +2381,11 @@ class UploadFile(TypeBase):
         source_url: str = "",
         purpose: UploadFilePurpose = UploadFilePurpose.UPLOAD,
     ):
+        """Initialize metadata from admitted values without reading or writing storage.
+
+        User uploads default to UPLOAD; only trusted runtime writers select
+        WORKFLOW_OFFLOAD. Repositories own persistence and stable classification.
+        """
         self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type

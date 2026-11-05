@@ -416,6 +416,11 @@ def _build_oauth_device_service(
 def _build_file_grant_service(
     *, database_client: sessionmaker[Session], file_uploads: FileUploadGateway | None = None
 ) -> FileGrantService:
+    """Wire admitted file grants to the configured upload gateway without performing I/O.
+
+    An omitted gateway is composed here for isolated consumers/tests; production
+    shares its already-configured gateway with API, Web and Human Input uploads.
+    """
     if file_uploads is None:
         file_uploads = build_file_upload_services(
             database_client=database_client,
