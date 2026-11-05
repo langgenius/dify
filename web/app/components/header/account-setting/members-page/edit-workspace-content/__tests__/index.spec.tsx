@@ -153,7 +153,7 @@ describe('EditWorkspaceContent', () => {
 
     expect(getSaveButton()).toBeDisabled()
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(input).toHaveAccessibleDescription(/common\.errorMsg\.fieldRequired/)
   })
 
   it('should not submit when the form is submitted while save is disabled', async () => {

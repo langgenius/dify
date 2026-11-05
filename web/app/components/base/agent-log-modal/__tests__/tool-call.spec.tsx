@@ -1,23 +1,9 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '#i18n'
 import ToolCallItem from '../tool-call'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
-    <section aria-label={typeof title === 'string' ? title : undefined} data-testid="code-editor">
-      <h3>{title}</h3>
-      <div>{JSON.stringify(value)}</div>
-    </section>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: ({ type }: { type: BlockEnum }) => <div data-testid="block-icon" data-type={type} />,
-}))
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -64,16 +50,17 @@ describe('ToolCallItem', () => {
     const user = userEvent.setup()
     render(<ToolCallItem toolCall={mockToolCall} isLLM={false} />)
 
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 
     await user.click(screen.getByText('Test Tool Label'))
-    const editors = screen.getAllByTestId('code-editor')
-    expect(editors[0]).toHaveTextContent('INPUT')
-    expect(editors[0]).toHaveTextContent('{"query":"hello"}')
-    expect(editors[1]).toHaveTextContent('OUTPUT')
-    expect(editors[1]).toHaveTextContent('{"result":"world"}')
+    const editors = screen.getAllByRole('textbox')
+    expect(screen.getByText('INPUT')).toBeInTheDocument()
+    expect(JSON.parse((editors[0] as HTMLTextAreaElement).value)).toEqual({ query: 'hello' })
+    expect(screen.getByText('OUTPUT')).toBeInTheDocument()
+    expect(JSON.parse((editors[1] as HTMLTextAreaElement).value)).toEqual({ result: 'world' })
+    for (const editor of editors) expect(editor).toHaveAttribute('readonly')
     await user.click(screen.getByText('Test Tool Label'))
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should display error message when status is error', async () => {
@@ -112,15 +99,13 @@ describe('ToolCallItem', () => {
         />,
       )
       await user.click(screen.getByText('LLM'))
-      expect(screen.getByRole('heading', { name: 'OBSERVATION' })).toBeInTheDocument()
-      expect(screen.getByText('"Tool returned a result"')).toBeInTheDocument()
-      expect(
-        screen.getByRole('heading', { name: isFinal ? 'FINAL ANSWER' : 'THOUGHT' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByRole('heading', { name: isFinal ? 'THOUGHT' : 'FINAL ANSWER' }),
-      ).not.toBeInTheDocument()
-      expect(screen.getByText('"Use the result"')).toBeInTheDocument()
+      expect(screen.getByText('OBSERVATION')).toBeInTheDocument()
+      expect(screen.getAllByRole('textbox')[2]).toHaveValue(
+        JSON.stringify('Tool returned a result'),
+      )
+      expect(screen.getByText(isFinal ? 'FINAL ANSWER' : 'THOUGHT')).toBeInTheDocument()
+      expect(screen.queryByText(isFinal ? 'THOUGHT' : 'FINAL ANSWER')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('textbox')[3]).toHaveValue(JSON.stringify('Use the result'))
     },
   )
 })

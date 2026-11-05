@@ -14,6 +14,7 @@
   "upgrade.menuLabel": "Upgraden naar Agent-kennisbank",
   "upgrade.migratingDocuments": "Documenten migreren…",
   "upgrade.modelCostDescription": "Bij het upgraden verwerken modellen de documenten in deze kennisbank en verbruiken ze tokens. Meer documentinhoud betekent meestal meer verbruik en kan aanzienlijke kosten met zich meebrengen. De werkelijke kosten hangen af van de facturering van het gebruikte model.",
+  "upgrade.modelsUnavailable": "Sommige geselecteerde modellen zijn niet beschikbaar. Selecteer andere modellen en probeer het opnieuw.",
   "upgrade.start": "Upgrade starten",
   "upgrade.startFailed": "De upgrade kon niet worden gestart. Probeer het opnieuw.",
   "upgrade.statusFailed": "Upgrade mislukt",

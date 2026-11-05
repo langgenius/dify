@@ -8,18 +8,18 @@ from controllers.common.file_response import (
 
 
 class TestNormalizeMimeType:
-    def test_returns_empty_string_for_none(self):
+    def test_returns_empty_string_for_none(self) -> None:
         assert _normalize_mime_type(None) == ""
 
-    def test_returns_empty_string_for_empty_string(self):
+    def test_returns_empty_string_for_empty_string(self) -> None:
         assert _normalize_mime_type("") == ""
 
-    def test_normalizes_mime_type(self):
+    def test_normalizes_mime_type(self) -> None:
         assert _normalize_mime_type("Text/HTML; Charset=UTF-8") == "text/html"
 
 
 class TestIsHtmlContent:
-    def test_detects_html_via_mime_type(self):
+    def test_detects_html_via_mime_type(self) -> None:
         mime_type = "text/html; charset=UTF-8"
 
         result = is_html_content(
@@ -30,7 +30,7 @@ class TestIsHtmlContent:
 
         assert result is True
 
-    def test_detects_html_via_extension_argument(self):
+    def test_detects_html_via_extension_argument(self) -> None:
         result = is_html_content(
             mime_type="text/plain",
             filename=None,
@@ -39,7 +39,7 @@ class TestIsHtmlContent:
 
         assert result is True
 
-    def test_detects_html_via_filename_extension(self):
+    def test_detects_html_via_filename_extension(self) -> None:
         result = is_html_content(
             mime_type="text/plain",
             filename="report.html",
@@ -48,7 +48,7 @@ class TestIsHtmlContent:
 
         assert result is True
 
-    def test_returns_false_when_no_html_detected_anywhere(self):
+    def test_returns_false_when_no_html_detected_anywhere(self) -> None:
         """
         Missing negative test:
         - MIME type is not HTML
@@ -63,7 +63,7 @@ class TestIsHtmlContent:
 
         assert result is False
 
-    def test_returns_false_when_all_inputs_are_none(self):
+    def test_returns_false_when_all_inputs_are_none(self) -> None:
         result = is_html_content(
             mime_type=None,
             filename=None,
@@ -74,7 +74,7 @@ class TestIsHtmlContent:
 
 
 class TestEnforceDownloadForHtml:
-    def test_sets_attachment_when_filename_missing(self):
+    def test_sets_attachment_when_filename_missing(self) -> None:
         response = Response("payload", mimetype="text/html")
 
         updated = enforce_download_for_html(
@@ -89,7 +89,7 @@ class TestEnforceDownloadForHtml:
         assert response.headers["Content-Type"] == "application/octet-stream"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
-    def test_sets_headers_when_filename_present(self):
+    def test_sets_headers_when_filename_present(self) -> None:
         response = Response("payload", mimetype="text/html")
 
         updated = enforce_download_for_html(
@@ -105,7 +105,7 @@ class TestEnforceDownloadForHtml:
         assert response.headers["Content-Type"] == "application/octet-stream"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
-    def test_does_not_modify_response_for_non_html_content(self):
+    def test_does_not_modify_response_for_non_html_content(self) -> None:
         response = Response("payload", mimetype="text/plain")
 
         updated = enforce_download_for_html(

@@ -28,9 +28,9 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
@@ -184,12 +184,6 @@ class WorkflowAppGenerator(AppInputAdapter):
                 workflow=workflow,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id,
-                user_id=user.id if isinstance(user, Account) else user.session_id,
-            )
-
             inputs: Mapping[str, Any] = args["inputs"]
 
             extras = {
@@ -197,6 +191,13 @@ class WorkflowAppGenerator(AppInputAdapter):
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
             }
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
+            )
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             root_node_id = root_node_id or get_default_root_node_id(workflow.graph_dict)
             root_node_config = workflow.get_node_config_by_id(root_node_id)
@@ -222,7 +223,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,
                 call_depth=call_depth,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
             )
@@ -287,15 +288,18 @@ class WorkflowAppGenerator(AppInputAdapter):
         """
         Resume a paused workflow execution using the persisted runtime state.
 
-        ``trace_manager`` is transient and excluded from generate-entity serialization,
-        so resumed executions rebuild it here before persistence layers receive the entity.
+        ``trace_scope`` is excluded from generate-entity serialization. Recreate
+        it from the admitted app and saved correlation before resuming persistence.
         """
-        if application_generate_entity.trace_manager is None:
+        if application_generate_entity.trace_scope is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
-                    "trace_manager": TraceQueueManager(
+                    "trace_scope": create_trace_scope(
+                        tenant_id=app_model.tenant_id,
                         app_id=app_model.id,
+                        app_tracing=app_model.tracing,
                         user_id=user.id if isinstance(user, Account) else user.session_id,
+                        extras=application_generate_entity.extras,
                     )
                 }
             )

@@ -136,7 +136,7 @@ function CreateMetadataPopover() {
             className="mt-3"
             disabled={!canWrite || pending || catalogUnavailable}
           >
-            <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+            <span aria-hidden className="me-1 i-ri-add-line size-4" />
             {t(($) => $['metadata.datasetMetadata.addMetaData'], { ns: 'dataset' })}
           </Button>
         }
@@ -219,14 +219,14 @@ function MetadataItem({
             {t(($) => $[`metadata.type.${field.type}`], { ns: 'dataset' })}
           </div>
         </div>
-        <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+        <div className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
           {t(($) => $['metadata.datasetMetadata.values'], {
             ns: 'dataset',
             num: field.count,
           })}
         </div>
         {canEdit && (
-          <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
+          <div className="ms-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
             <IconButton
               size="md"
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
@@ -352,7 +352,7 @@ export function DocumentMetadataDrawer() {
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}

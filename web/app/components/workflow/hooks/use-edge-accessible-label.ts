@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'reactflow'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from '@/app/components/workflow/nodes/human-input/shared/constants'
 import { ErrorHandleTypeEnum } from '../nodes/_base/components/error-handle/types'
 import { BlockEnum } from '../types'
 
@@ -41,7 +42,7 @@ export const useEdgeAccessibleLabel = (
     }
     if (sourceData.type === BlockEnum.HumanInput) {
       branchName =
-        sourceHandleId === '__timeout'
+        sourceHandleId === HUMAN_INPUT_TIMEOUT_HANDLE
           ? t(($) => $['nodes.humanInput.timeout.title'], { ns: 'workflow' })
           : (sourceData as HumanInputNodeType).user_actions?.find(
               (action) => action.id === sourceHandleId,
