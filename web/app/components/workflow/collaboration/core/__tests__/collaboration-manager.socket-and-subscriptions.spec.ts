@@ -13,6 +13,85 @@ const { createSession, connect, transports, setup, cleanup } = createCollaborati
 beforeEach(setup)
 afterEach(cleanup)
 
+it('keeps the existing canvas blocked when an established session cannot rejoin', async () => {
+  const { manager, acknowledge } = await createSession({ nodes: [createNode('local')] })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  acknowledge('user_connect', { msg: 'not_entitled' }, 403)
+  expect(failures).toHaveBeenLastCalledWith('session_unavailable')
+  expect(manager.getNodes()).toEqual([expect.objectContaining({ id: 'local' })])
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('does not start concurrent rejoins and accepts status before the successful acknowledgement', async () => {
+  const { manager, acknowledge, receive, emit } = await createSession()
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  manager.emitCursorMove({ x: 2, y: 3, userId: 'user-1', timestamp: 2 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  expect(manager.canPersistLocalGraph()).toBe(true)
+})
+
+it.each(['before', 'after'] as const)(
+  'rejoins after status without an initial acknowledgement and ignores its stale acknowledgement %s the rejoin',
+  async (oldAckOrder) => {
+    const { manager, acknowledge, emit, receive } = await createSession({
+      role: 'pending',
+      preserveEmits: true,
+    })
+    const failures = vi.fn()
+    manager.onJoinFailure(failures)
+    const initialAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+    if (typeof initialAck !== 'function') throw new Error('Missing initial join acknowledgement')
+
+    receive('status', { isLeader: true })
+    manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+    acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+    expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+
+    if (oldAckOrder === 'before') initialAck({ msg: 'not_entitled' }, 403)
+    receive('status', { isLeader: true })
+    acknowledge('user_connect', { msg: 'connected' })
+    if (oldAckOrder === 'after') initialAck({ msg: 'not_entitled' }, 403)
+    expect(failures).toHaveBeenLastCalledWith(null)
+    expect(manager.canPersistLocalGraph()).toBe(true)
+  },
+)
+
+it('ignores a rejoin acknowledgement after the editor disconnects', async () => {
+  const { manager, acknowledge, emit, connectionId } = await createSession()
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  const rejoinAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  if (typeof rejoinAck !== 'function') throw new Error('Missing rejoin acknowledgement')
+
+  manager.disconnect(connectionId)
+  rejoinAck({ msg: 'not_entitled' }, 403)
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  expect(failures).toHaveBeenLastCalledWith(null)
+})
+
+it('waits for the new connection status before rejoining after an automatic reconnect', async () => {
+  const { manager, acknowledge, emit, receive, socket } = await createSession()
+  receive('disconnect', 'transport close')
+  socket.id = 'new-session'
+  receive('connect')
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(0)
+
+  receive('status', { isLeader: true })
+  manager.emitCursorMove({ x: 2, y: 3, userId: 'user-1', timestamp: 2 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+})
+
 it('allows local draft fallback only before the first connection', async () => {
   const { manager, receive } = await createSession({ connected: false, role: 'pending' })
   expect(manager.canUseLocalDraftFallback()).toBe(true)
@@ -160,7 +239,7 @@ it('allows a hidden page-close flush only for the sole trusted leader session', 
   expect(manager.canFlushGraphOnPageClose()).toBe(true)
 })
 
-it('deduplicates rejoin attempts and disconnects after an unauthorized rejoin', async () => {
+it('deduplicates rejoin attempts and blocks saving after an unauthorized rejoin', async () => {
   const { manager, acknowledge, emit } = await createSession()
   const cursor = { x: 1, y: 2, userId: 'user-1', timestamp: 1000 }
   manager.emitCursorMove(cursor)
@@ -169,8 +248,8 @@ it('deduplicates rejoin attempts and disconnects after an unauthorized rejoin', 
   acknowledge('mouse_move', { msg: 'unauthorized' })
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
   acknowledge('user_connect', { msg: 'unauthorized' })
-  expect(webSocketClient.disconnect).toHaveBeenCalledWith('app-1')
-  expect(manager.isConnected()).toBe(false)
+  expect(webSocketClient.disconnect).not.toHaveBeenCalled()
+  expect(manager.isConnected()).toBe(true)
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 

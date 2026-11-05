@@ -53,17 +53,14 @@ let searchParamsValue: string | null = null
 const render = (
   ui: ReactElement,
   options?: {
-    cloud?: boolean
-    plan?: 'sandbox' | 'professional' | 'team'
     collaboration?: boolean | null
   },
 ) => {
   const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
-  seedSystemFeatures(queryClient, options?.cloud ? { deployment_edition: 'CLOUD' } : {})
+  seedSystemFeatures(queryClient)
   if (options?.collaboration !== null)
     seedFeatures(queryClient, {
       workflow_collaboration_enabled: options?.collaboration ?? true,
-      ...(options?.plan ? { billing: { subscription: { plan: options.plan } } } : {}),
     })
   seedAppDetail(queryClient, appDetail)
   queryClient.setQueryData(
@@ -197,27 +194,26 @@ describe('WorkflowApp', () => {
     mockFetchRunDetail.mockReset().mockResolvedValue({ inputs: null })
   })
 
-  it.each([
-    ['sandbox', 'false'],
-    ['professional', 'true'],
-    ['team', 'true'],
-  ] as const)('initializes a Cloud %s workspace with collaboration %s', async (plan, expected) => {
-    render(<WorkflowApp />, { cloud: true, plan, collaboration: expected === 'true' })
-    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(expected)
-  })
+  it.each([false, true])(
+    'initializes the editor with collaboration capability %s',
+    async (enabled) => {
+      render(<WorkflowApp />, { collaboration: enabled })
+      expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(enabled))
+    },
+  )
 
   it.each([false, true])(
     'keeps the initial editor mode when workspace capability changes from %s',
     async (initial) => {
-      const { queryClient } = render(<WorkflowApp />, { cloud: true, collaboration: initial })
+      const { queryClient } = render(<WorkflowApp />, { collaboration: initial })
       expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
       act(() => seedFeatures(queryClient, { workflow_collaboration_enabled: !initial }))
       expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(initial))
     },
   )
 
-  it('waits for the Cloud subscription before starting the editor', async () => {
+  it('waits for workspace capabilities before starting the editor', async () => {
     let resolveFeatures!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
     fetchFeatures.mockReturnValue(
       new Promise((resolve) => {
@@ -226,7 +222,7 @@ describe('WorkflowApp', () => {
     )
     fetchDraft.mockClear()
 
-    render(<WorkflowApp />, { cloud: true, collaboration: null })
+    render(<WorkflowApp />, { collaboration: null })
     expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
     expect(fetchDraft).not.toHaveBeenCalled()
@@ -238,13 +234,13 @@ describe('WorkflowApp', () => {
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
   })
 
-  it('blocks the editor when the subscription cannot be loaded and retries in place', async () => {
+  it('blocks the editor when workspace capabilities cannot be loaded and retries in place', async () => {
     const user = userEvent.setup()
     fetchFeatures
       .mockRejectedValueOnce(new Error('billing unavailable'))
       .mockResolvedValueOnce(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }))
 
-    render(<WorkflowApp />, { cloud: true, collaboration: null })
+    render(<WorkflowApp />, { collaboration: null })
     const retry = await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
     expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.message')
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()

@@ -37,7 +37,7 @@ const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, en
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_collaboration_mode: enabled },
   })
-  const store = createWorkflowStore({ isCollaborationEnabled: enabled })
+  const store = createWorkflowStore({ initialCollaborationEnabled: enabled })
   return renderHook(hook, {
     wrapper: ({ children }) =>
       createElement(QueryWrapper, null, createElement(WorkflowContext, { value: store }, children)),

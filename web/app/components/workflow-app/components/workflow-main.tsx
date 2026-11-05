@@ -4,6 +4,7 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -64,6 +65,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     appId: null as string | null,
     isReady: false,
   })
+  const [joinFailure, setJoinFailure] = useState<
+    'denied' | 'unavailable' | 'session_unavailable' | null
+  >(null)
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
@@ -126,6 +130,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     return collaborationManager.onGraphReadyChange((isReady) => {
       setCollaborationGraphState({ appId, isReady })
     })
+  }, [appId, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+    return collaborationManager.onJoinFailure(setJoinFailure)
   }, [appId, isCollaborationEnabled])
 
   const handleWorkflowDataUpdate = useCallback(
@@ -551,18 +560,39 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"
-            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+            className={`absolute inset-0 z-50 flex items-center justify-center ${joinFailure ? '' : 'cursor-wait'}`}
           >
             <div
               role="status"
               aria-live="polite"
               className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
             >
-              <span
-                aria-hidden="true"
-                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
-              />
-              <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+              {joinFailure ? (
+                <>
+                  <span>
+                    {joinFailure === 'denied'
+                      ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
+                      : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
+                  </span>
+                  {joinFailure !== 'session_unavailable' && (
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={() => window.location.reload()}
+                    >
+                      {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                  />
+                  <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                </>
+              )}
             </div>
           </div>
         )}

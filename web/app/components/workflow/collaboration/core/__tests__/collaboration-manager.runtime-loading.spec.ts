@@ -57,7 +57,7 @@ it('keeps Loro unevaluated until a collaboration session connects', async () => 
   expect(open).not.toHaveBeenCalled()
   await connect(manager, 'app-lazy')
   expect(loroModuleState.evaluations).toBe(1)
-  expect(open).toHaveBeenCalledExactlyOnceWith('app-lazy')
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-lazy', expect.any(Function))
 })
 
 it('does not open a socket after a runtime import failure and can retry a successful import', async () => {
@@ -73,7 +73,7 @@ it('does not open a socket after a runtime import failure and can retry a succes
     vi.importActual<typeof import('../crdt-runtime')>('../crdt-runtime'),
   )
   await connect(manager, 'app-retry')
-  expect(open).toHaveBeenCalledExactlyOnceWith('app-retry')
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-retry', expect.any(Function))
 })
 
 it('shares one session between consumers awaiting the same runtime import', async () => {
@@ -85,7 +85,7 @@ it('shares one session between consumers awaiting the same runtime import', asyn
   gate.resolve()
   const [firstId, secondId] = await Promise.all([first, second])
   expect(firstId).not.toBe(secondId)
-  expect(open).toHaveBeenCalledExactlyOnceWith('app-concurrent')
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-concurrent', expect.any(Function))
   manager.disconnect(firstId)
   expect(close).not.toHaveBeenCalled()
   manager.disconnect(secondId)
@@ -99,7 +99,7 @@ it('opens only the latest workflow when the app changes while importing the runt
   const second = connect(manager, 'app-second')
   gate.resolve()
   const [firstId, secondId] = await Promise.all([first, second])
-  expect(open).toHaveBeenCalledExactlyOnceWith('app-second')
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-second', expect.any(Function))
   manager.disconnect(firstId)
   expect(close).not.toHaveBeenCalled()
   manager.disconnect(secondId)

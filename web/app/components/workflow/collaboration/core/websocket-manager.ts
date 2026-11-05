@@ -53,7 +53,7 @@ export class WebSocketClient {
     this.withCredentials = config.withCredentials !== false
   }
 
-  connect(appId: string): Socket {
+  connect(appId: string, onJoinAck?: (...ackArgs: AckArgs) => void): Socket {
     const existingSocket = this.connections.get(appId)
     if (existingSocket?.connected) return existingSocket
 
@@ -82,7 +82,7 @@ export class WebSocketClient {
     const socket = io(this.url, socketOptions)
 
     this.connections.set(appId, socket)
-    this.setupBaseEventListeners(socket, appId)
+    this.setupBaseEventListeners(socket, appId, onJoinAck)
 
     return socket
   }
@@ -130,10 +130,24 @@ export class WebSocketClient {
     return info
   }
 
-  private setupBaseEventListeners(socket: Socket, appId: string): void {
+  private setupBaseEventListeners(
+    socket: Socket,
+    appId: string,
+    onJoinAck?: (...ackArgs: AckArgs) => void,
+  ): void {
     socket.on('connect', () => {
       this.connecting.delete(appId)
-      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId })
+      const sid = socket.id
+      emitWithAuthGuard(
+        socket,
+        'user_connect',
+        { workflow_id: appId },
+        {
+          onAck: (...args) => {
+            if (socket.id === sid) onJoinAck?.(...args)
+          },
+        },
+      )
     })
 
     socket.on('disconnect', () => {

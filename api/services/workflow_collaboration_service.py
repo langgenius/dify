@@ -28,6 +28,10 @@ _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
 
 
+class WorkflowCollaborationNotEntitledError(Exception):
+    """The workspace cannot use workflow collaboration."""
+
+
 def _get_process_server_id() -> str:
     global _PROCESS_SERVER_ID, _PROCESS_SERVER_ID_PID  # pylint: disable=global-statement
 
@@ -108,7 +112,8 @@ class WorkflowCollaborationService:
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        `App.id`. Missing access returns `None`; an ineligible workspace raises
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -127,7 +132,7 @@ class WorkflowCollaborationService:
             return None
 
         if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
-            return None
+            raise WorkflowCollaborationNotEntitledError
 
         self._ensure_server_heartbeat_started()
 

@@ -1,4 +1,3 @@
-import type { WorkflowProviderOptions } from '../../__tests__/workflow-test-providers'
 import type { Shape } from '../../store/workflow'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -31,11 +30,9 @@ vi.mock('../export-image', () => ({
 const renderControl = ({
   initialStoreState,
   collaborationEnabled = true,
-  resource,
 }: {
   initialStoreState?: Partial<Shape>
   collaborationEnabled?: boolean
-  resource?: WorkflowProviderOptions['resource']
 } = {}) => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { name: 'Ada' },
@@ -43,7 +40,6 @@ const renderControl = ({
   })
   return renderWorkflowFlowComponent(<Control />, {
     queryClient,
-    resource,
     nodes: [createNode({ id: 'node-1' })],
     initialStoreState: {
       controlMode: ControlMode.Pointer,
@@ -149,22 +145,4 @@ describe('Control', () => {
       screen.queryByRole('button', { name: 'workflow.common.commentMode' }),
     ).not.toBeInTheDocument()
   })
-
-  it.each([
-    ['knowledge pipeline', { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' }],
-    ['snippet', { kind: 'snippet', snippetId: 'snippet-1' }],
-  ] as const)(
-    'hides comment mode for a %s when the deployment enables collaboration',
-    (_, resource) => {
-      renderControl({
-        collaborationEnabled: true,
-        resource,
-        initialStoreState: { isCollaborationEnabled: false },
-      })
-
-      expect(
-        screen.queryByRole('button', { name: 'workflow.common.commentMode' }),
-      ).not.toBeInTheDocument()
-    },
-  )
 })

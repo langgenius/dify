@@ -18,6 +18,7 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
 
 
 @pytest.fixture
@@ -129,6 +130,23 @@ def test_user_connect_returns_ack_when_billing_is_unavailable(
     assert response.id == 42
     assert response.data == [{"msg": "collaboration_unavailable"}, 503]
     _assert_single_event(_read_metrics(reader), "user_connect", "error")
+
+
+def test_user_connect_distinguishes_plan_rejection_from_missing_access(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server, _, _ = collaboration_server
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+
+    def not_entitled(*_args: object, **_kwargs: object) -> None:
+        raise WorkflowCollaborationNotEntitledError
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", not_entitled)
+    assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "not_entitled"}, 403)
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", lambda *_args, **_kw: None)
+    assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "unauthorized"}, 401)
 
 
 def test_user_connect_does_not_hide_unrelated_errors(

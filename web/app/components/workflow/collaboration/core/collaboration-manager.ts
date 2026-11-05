@@ -178,6 +178,12 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
+  private joinFailure: 'denied' | 'unavailable' | 'session_unavailable' | null = null
+  private joinPending = false
+  private hasJoinedRoom = false
+  private joinAttempt = 0
+  private connectionJoinAttempt = 0
+  private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
   private pendingGraphResyncBroadcast = false
   private graphViewActive: boolean | null = null
@@ -218,27 +224,74 @@ export class CollaborationManager {
     return webSocketClient.getSocket(this.currentAppId)
   }
 
+  private handleJoinAck = (...args: unknown[]): void => {
+    const [body, status] = args
+    const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
+    if (message === 'connected') {
+      this.joinPending = false
+      this.joinFailure = null
+      this.eventEmitter.emit('joinFailure', null)
+      this.emitGraphReadyState()
+      return
+    }
+    if (
+      status === 401 ||
+      body === 401 ||
+      status === 403 ||
+      body === 403 ||
+      message === 'unauthorized' ||
+      message === 'not_entitled'
+    )
+      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
+    else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
+      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
+    else return
+
+    this.joinPending = false
+    this.crdtTrusted = false
+    this.eventEmitter.emit('joinFailure', this.joinFailure)
+    this.emitGraphReadyState()
+  }
+
+  onJoinFailure(
+    callback: (failure: 'denied' | 'unavailable' | 'session_unavailable' | null) => void,
+  ): () => void {
+    const unsubscribe = this.eventEmitter.on('joinFailure', callback)
+    callback(this.joinFailure)
+    return unsubscribe
+  }
+
   private handleSessionUnauthorized = (): void => {
-    if (this.rejoinInProgress) return
+    if (
+      this.joinFailure ||
+      this.rejoinInProgress ||
+      (this.joinPending && !this.receivedConnectionStatus)
+    )
+      return
     if (!this.currentAppId) return
 
     const socket = this.getActiveSocket()
     if (!socket) return
 
     this.rejoinInProgress = true
+    this.joinPending = true
+    const attempt = ++this.joinAttempt
+    const sid = socket.id
     console.warn('Collaboration session expired, attempting to rejoin workflow.')
     emitWithAuthGuard(
       socket,
       'user_connect',
       { workflow_id: this.currentAppId },
       {
-        onAck: () => {
+        onAck: (...args) => {
+          if (
+            this.getActiveSocket() !== socket ||
+            socket.id !== sid ||
+            this.joinAttempt !== attempt
+          )
+            return
           this.rejoinInProgress = false
-        },
-        onUnauthorized: () => {
-          this.rejoinInProgress = false
-          console.error('Rejoin failed due to authorization error, forcing disconnect.')
-          this.forceDisconnect()
+          this.handleJoinAck(...args)
         },
       },
     )
@@ -689,7 +742,10 @@ export class CollaborationManager {
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
-    const socket = webSocketClient.connect(appId)
+    const socket = webSocketClient.connect(appId, (...args) => {
+      if (this.getActiveSocket() === socket && this.joinAttempt === this.connectionJoinAttempt)
+        this.handleJoinAck(...args)
+    })
     this.hasEstablishedConnection = socket.connected
 
     // Setup event listeners BEFORE any other operations
@@ -702,13 +758,27 @@ export class CollaborationManager {
     this.emitGraphReadyState()
 
     // Force user_connect if already connected
-    if (socket.connected)
+    if (socket.connected) {
+      this.joinPending = true
+      const attempt = ++this.joinAttempt
+      this.connectionJoinAttempt = attempt
+      const sid = socket.id
       emitWithAuthGuard(
         socket,
         'user_connect',
         { workflow_id: appId },
-        { onUnauthorized: this.handleSessionUnauthorized },
+        {
+          onAck: (...args) => {
+            if (
+              this.getActiveSocket() === socket &&
+              socket.id === sid &&
+              this.joinAttempt === attempt
+            )
+              this.handleJoinAck(...args)
+          },
+        },
       )
+    }
 
     return connectionId
   }
@@ -732,6 +802,12 @@ export class CollaborationManager {
     preserveConnectIntent = false,
   }: { preserveConnectIntent?: boolean } = {}): void => {
     this.localDraftFallbackActive = false
+    this.joinFailure = null
+    this.eventEmitter.emit('joinFailure', null)
+    this.joinPending = false
+    this.hasJoinedRoom = false
+    this.joinAttempt += 1
+    this.receivedConnectionStatus = false
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -805,6 +881,7 @@ export class CollaborationManager {
   }
 
   canPersistLocalGraph(): boolean {
+    if (this.joinFailure) return false
     if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
@@ -1871,10 +1948,14 @@ export class CollaborationManager {
 
     socket.on('status', (data: { isLeader: boolean }) => {
       try {
+        if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
           return
         }
+
+        this.hasJoinedRoom = true
+        this.receivedConnectionStatus = true
 
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
@@ -1920,6 +2001,9 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
+      this.joinPending = true
+      this.connectionJoinAttempt = ++this.joinAttempt
+      this.receivedConnectionStatus = false
       this.hasEstablishedConnection = true
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
@@ -1934,6 +2018,10 @@ export class CollaborationManager {
     })
 
     socket.on('disconnect', (reason) => {
+      this.joinPending = false
+      this.rejoinInProgress = false
+      this.joinAttempt += 1
+      this.receivedConnectionStatus = false
       this.clearInitialSyncRetry()
       this.cursors = {}
       this.onlineUsers = []

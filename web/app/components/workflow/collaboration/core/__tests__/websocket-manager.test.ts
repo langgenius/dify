@@ -65,6 +65,22 @@ it('connects using cookies and joins the requested workflow after connecting', (
   )
 })
 
+it('ignores an acknowledgement from a previous socket session', () => {
+  const { socket, receive, acknowledge } = createTransport('socket-old', false)
+  ioMock.mockReturnValue(socket)
+  const onJoinAck = vi.fn()
+  createClient().connect('app-auth', onJoinAck)
+  receive('connect')
+  const oldAck = vi.mocked(socket.emit).mock.calls.at(-1)?.[2]
+  socket.id = 'socket-new'
+  receive('connect')
+  acknowledge('user_connect', { msg: 'connected' })
+  expect(onJoinAck).toHaveBeenCalledOnce()
+  if (typeof oldAck !== 'function') throw new Error('Missing acknowledgement')
+  oldAck({ msg: 'not_entitled' }, 403)
+  expect(onJoinAck).toHaveBeenCalledOnce()
+})
+
 it('disconnects a specific app and reports it as unavailable', () => {
   const { socket, disconnect } = createTransport('socket-disconnect')
   ioMock.mockReturnValue(socket)

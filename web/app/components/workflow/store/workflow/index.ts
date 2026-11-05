@@ -42,7 +42,7 @@ import { createWorkflowSlice } from './workflow-slice'
 
 export type SliceFromInjection = Partial<WorkflowAppSliceShape> & Partial<RagPipelineSliceShape>
 
-export type Shape = { isCollaborationEnabled: boolean } & ChatVariableSliceShape &
+export type Shape = ChatVariableSliceShape &
   EnvVariableSliceShape &
   FormSliceShape &
   HelpLineSliceShape &
@@ -66,16 +66,15 @@ export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
 
 type CreateWorkflowStoreParams = {
   injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn
-  isCollaborationEnabled?: boolean
+  initialCollaborationEnabled?: boolean
 }
 
 export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
-  const { injectWorkflowStoreSliceFn, isCollaborationEnabled = false } = params
+  const { injectWorkflowStoreSliceFn, initialCollaborationEnabled = false } = params
 
   return createStore<Shape>()(
     temporal<Shape, [], [], WorkflowHistoryTemporalState>(
       (...args) => ({
-        isCollaborationEnabled,
         ...createChatVariableSlice(...args),
         ...createEnvVariableSlice(...args),
         ...createFormSlice(...args),
@@ -88,6 +87,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
         ...createVersionSlice(...args),
         ...createWorkflowDraftSlice(...args),
         ...createWorkflowSlice(...args),
+        isCollaborationEnabled: initialCollaborationEnabled,
         ...createInspectVarsSlice(...args),
         ...createLayoutSlice(...args),
         ...(injectWorkflowStoreSliceFn?.(...args) || ({} as SliceFromInjection)),

@@ -183,7 +183,7 @@ const WorkflowAppWrapper = () => {
   return (
     <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
       <WorkflowContextProvider
-        isCollaborationEnabled={collaboration.data}
+        initialCollaborationEnabled={collaboration.data}
         injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
       >
         <WorkflowAppWithAdditionalContext />
