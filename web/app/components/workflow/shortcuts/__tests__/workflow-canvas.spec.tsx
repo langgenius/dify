@@ -93,11 +93,13 @@ function renderCanvas({
   nodes = [selectedNode()],
   edges = [],
   readOnly = false,
+  collaborationEnabled = false,
   platform = 'windows',
 }: {
   nodes?: Node[]
   edges?: Edge[]
   readOnly?: boolean
+  collaborationEnabled?: boolean
   platform?: 'mac' | 'windows'
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '1.0.0' })
@@ -112,7 +114,7 @@ function renderCanvas({
     </HotkeysProvider>,
     {
       queryClient,
-      initialStoreState: { canvasReadOnly: readOnly },
+      initialStoreState: { canvasReadOnly: readOnly, isCollaborationEnabled: collaborationEnabled },
       historyStore: { nodes, edges },
       hooksStoreProps: { doSyncWorkflowDraft: sync },
     },
@@ -150,7 +152,7 @@ describe('Workflow canvas commands', () => {
     'owns save and mode commands only while its canvas is focused on %s',
     async (platform) => {
       const user = userEvent.setup()
-      const { store, sync } = renderCanvas({ platform })
+      const { store, sync } = renderCanvas({ platform, collaborationEnabled: true })
       const mod = platform === 'mac' ? 'Meta' : 'Control'
       focusCanvas()
 

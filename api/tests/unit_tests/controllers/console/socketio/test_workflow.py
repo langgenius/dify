@@ -10,6 +10,7 @@ from flask import Flask
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Gauge, Histogram, InMemoryMetricReader, Metric, Sum
 from socketio.packet import ACK, CONNECT_ERROR, Packet
+from sqlalchemy.orm import Session
 from werkzeug.test import EnvironBuilder
 
 from controllers.console.socketio import workflow
@@ -114,12 +115,12 @@ def test_user_connect_returns_ack_when_billing_is_unavailable(
     transport = Socket(server.eio, eio_sid)
     server.eio.sockets[eio_sid] = transport
     sid = server.manager.connect(eio_sid, "/")
-    monkeypatch.setattr(workflow.session_factory, "create_session", MagicMock())
-    monkeypatch.setattr(
-        workflow.collaboration_service,
-        "authorize_and_join_workflow_room",
-        MagicMock(side_effect=BillingUpstreamUnavailableError("billing unavailable")),
-    )
+
+    def billing_unavailable(*_args: object, **_kwargs: object) -> None:
+        raise BillingUpstreamUnavailableError("billing unavailable")
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", billing_unavailable)
 
     server._handle_event_internal(server, sid, eio_sid, ["user_connect", {"workflow_id": "wf-1"}], "/", 42)
 
@@ -135,12 +136,12 @@ def test_user_connect_does_not_hide_unrelated_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     server, _, _ = collaboration_server
-    monkeypatch.setattr(workflow.session_factory, "create_session", MagicMock())
-    monkeypatch.setattr(
-        workflow.collaboration_service,
-        "authorize_and_join_workflow_room",
-        MagicMock(side_effect=RuntimeError("unexpected error")),
-    )
+
+    def unexpected_error(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("unexpected error")
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", unexpected_error)
 
     with pytest.raises(RuntimeError, match="unexpected error"):
         server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"})
