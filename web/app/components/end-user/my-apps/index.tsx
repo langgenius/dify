@@ -1,6 +1,5 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryStates } from 'nuqs'
@@ -77,18 +76,7 @@ export default function MyApps() {
             void setFilter(next)
           }}
         />
-        {failed ? (
-          <div role="alert" className="space-y-2 system-sm-regular text-text-destructive">
-            <p>{list.error?.message || t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
-            <Button
-              onClick={() => {
-                void list.refetch()
-              }}
-            >
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
-          </div>
-        ) : loading ? (
+        {failed ? null : loading ? (
           <p role="status" className="py-8 text-center system-sm-regular text-text-tertiary">
             {t(($) => $.loading, { ns: 'common' })}
           </p>

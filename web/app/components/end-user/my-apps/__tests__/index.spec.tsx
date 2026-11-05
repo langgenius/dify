@@ -109,13 +109,14 @@ describe('MyApps account API integration', () => {
     expect(screen.queryByText('app.endUser.notConfigured')).not.toBeInTheDocument()
   })
 
-  it('stops repeated cursors and reports incomplete results rather than sorting a partial list', async () => {
+  it('stops repeated cursors without displaying an error or a partial list', async () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json(page([zebra], 'repeated')))
       .mockResolvedValueOnce(Response.json(page([alpha], 'repeated')))
     setup('?sort=name')
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
   })
@@ -281,18 +282,16 @@ describe('MyApps account API integration', () => {
     expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue('Zebra')
   })
 
-  it('shows list errors with retry rather than an empty library', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(
-        Response.json({ code: 'unavailable', message: 'Unavailable.' }, { status: 503 }),
-      )
-      .mockResolvedValueOnce(Response.json(page([])))
+  it('hides list errors without displaying a retry button or an empty library', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ code: 'unavailable', message: 'Unavailable.' }, { status: 503 }),
+    )
     setup()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable.')
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unavailable.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'app.endUser.emptyApps' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(await screen.findByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
   })
 
   it('distinguishes a filtered empty result and preserves view and sort when clearing search', async () => {
