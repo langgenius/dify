@@ -66,7 +66,7 @@ it('plays, pauses and finishes real audio through the keyboard controls', async 
 })
 
 it.fails('keeps the available waveform and playback control pointer-reachable', async () => {
-  // TODO(#ISSUE): the hidden unavailable-source overlay currently wins native hit testing.
+  // TODO(https://github.com/langgenius/dify/issues/45655): the hidden overlay wins hit testing.
   const { url } = fixture()
   const screen = await render(<AudioPlayer src={url} />)
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement

@@ -78,7 +78,7 @@ it('seeks and changes volume at native pointer positions', async () => {
 })
 
 it.fails('keeps the custom exit control available in native fullscreen', async () => {
-  // TODO(#ISSUE): only the video enters fullscreen, leaving its sibling controls outside the viewport.
+  // TODO(https://github.com/langgenius/dify/issues/45656): sibling controls stay outside fullscreen.
   await page.viewport(640, 640)
   const { screen, video } = await renderPlayer()
   const fullscreen = screen.getByRole('button', { name: 'common.operation.toggleFullscreen' })
