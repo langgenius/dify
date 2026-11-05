@@ -1,13 +1,14 @@
 from contextlib import suppress
 from http import HTTPStatus
-from typing import Literal, Never
+from typing import Literal, Never, Self
 from uuid import UUID
 
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from configs import dify_config
 from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
@@ -59,11 +60,13 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    clear_webapp_access_token_from_cookie,
     extract_console_cookie_token,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
+    set_webapp_access_token_to_cookie,
 )
 from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
@@ -75,6 +78,7 @@ from services.entities.account_login_entities import (
 )
 from services.entities.auth_entities import LoginPayloadBase
 from services.web_login_handoff import WebLoginTarget
+from services.web_login_redirect import resolve_personal_login_redirect
 from services.web_passport_service import WebPassportUnauthorizedError
 
 
@@ -134,13 +138,56 @@ class RefreshTokenPayload(BaseModel):
     )
 
 
-class WebAppAccountSessionQuery(WebLoginTarget):
+class WebAppAccountSessionQuery(BaseModel):
     mode: Literal["end_user"] = "end_user"
+    app_code: str | None = Field(default=None, min_length=1)
+    redirect_url: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Personal portal return URL, or App return URL when app_code and code_challenge are provided",
+    )
+    code_challenge: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9_-]{43}$",
+        description="S256 PKCE challenge required only when returning to an App",
+    )
+
+    @model_validator(mode="after")
+    def validate_app_handoff(self) -> Self:
+        """Accept portal redirects alone; reject incomplete App handoffs before authentication."""
+        has_app_context = self.app_code is not None or self.code_challenge is not None
+        if has_app_context and any(
+            target is None for target in (self.app_code, self.redirect_url, self.code_challenge)
+        ):
+            raise ValueError("App login handoff requires app_code, redirect_url, and code_challenge.")
+        return self
+
+    @property
+    def handoff_target(self) -> WebLoginTarget | None:
+        if self.app_code is None or self.redirect_url is None or self.code_challenge is None:
+            return None
+        return WebLoginTarget(
+            app_code=self.app_code,
+            redirect_url=self.redirect_url,
+            code_challenge=self.code_challenge,
+        )
 
 
 class WebAppAccountSessionResponse(ResponseModel):
     logged_in: bool
     redirect_url: str | None
+
+
+def _personal_portal_target(redirect_url: str | None) -> str:
+    """Return a validated portal target, defaulting to My Apps when absent.
+
+    Reject invalid supplied targets before issuing any login cookies. Both success
+    and failure preserve the Console origin and deployment base-path boundary.
+    """
+    target = resolve_personal_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
+    if target is None:
+        raise ValueError("Invalid personal portal login target.")
+    return target
 
 
 register_schema_models(
@@ -171,8 +218,9 @@ class LoginApi(Resource):
     @console_ns.doc(
         description="Called by /signin in the Account origin before showing a login form and after successful login. "
         "Reuses or refreshes the existing Account session without workspace admission. "
-        "Returns logged_in=false when authentication is needed; otherwise returns a one-use "
-        "PKCE-bound callback to the existing /webapp-signin page."
+        "Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly "
+        "WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; "
+        "App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page."
     )
     @console_ns.doc(params=query_params_from_model(WebAppAccountSessionQuery))
     @console_ns.response(200, "Existing Account session", console_ns.models[WebAppAccountSessionResponse.__name__])
@@ -182,26 +230,45 @@ class LoginApi(Resource):
         require_login_mode(LoginMode.END_USER)
         with web_login_errors():
             handoff = application_services().web_login_handoff
-            handoff.validate_target(query)
+            target = query.handoff_target
+            portal_target = None
+            if target is not None:
+                handoff.validate_target(target)
+            else:
+                portal_target = _personal_portal_target(query.redirect_url)
             access_token = extract_console_cookie_token(request)
             tokens = None
+            personal_session = None
             redirect_url = None
             if access_token:
                 with suppress(WebPassportUnauthorizedError):
-                    redirect_url = handoff.authorize(query, access_token)
+                    if target is None:
+                        personal_session = handoff.personal_session(access_token)
+                        redirect_url = portal_target
+                    else:
+                        redirect_url = handoff.authorize(target, access_token)
             if redirect_url is None and (refresh_token := extract_refresh_token(request)):
                 try:
                     tokens = application_services().accounts.authentication.refresh(
                         refresh_token, mode=LoginMode.END_USER
                     )
-                    redirect_url = handoff.authorize(query, tokens.access_token)
+                    if target is None:
+                        personal_session = handoff.personal_session(tokens.access_token)
+                        redirect_url = portal_target
+                    else:
+                        redirect_url = handoff.authorize(target, tokens.access_token)
                 except (account_errors.InvalidRefreshTokenError, WebPassportUnauthorizedError):
                     tokens = None
             data = {"logged_in": redirect_url is not None, "redirect_url": redirect_url}
             if tokens is not None:
-                return _token_response(tokens, WebAppAccountSessionResponse, data)
+                response = _token_response(tokens, WebAppAccountSessionResponse, data)
+            else:
+                response = make_response(dump_response(WebAppAccountSessionResponse, data))
+            if personal_session is not None:
+                set_webapp_access_token_to_cookie(
+                    response, personal_session.access_token, expires_at=personal_session.expires_at
+                )
         # response-contract:ignore authentication state must not be cached
-        response = make_response(dump_response(WebAppAccountSessionResponse, data))
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -264,6 +331,7 @@ class LogoutApi(Resource):
         clear_access_token_from_cookie(response)
         clear_refresh_token_from_cookie(response)
         clear_csrf_token_from_cookie(response)
+        clear_webapp_access_token_from_cookie(response)
         return response
 
 

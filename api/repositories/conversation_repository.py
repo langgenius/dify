@@ -517,7 +517,7 @@ class ConversationRepository:
             if is_pinned:
                 if pin is not None:
                     return
-                _, conversation = self._resolve(session=session, ref=ref)
+                _, conversation = self._resolve(session=session, ref=ref, lock=True)
                 session.add(
                     PinnedConversation(
                         app_id=app.id,

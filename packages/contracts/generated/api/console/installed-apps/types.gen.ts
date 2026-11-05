@@ -123,6 +123,10 @@ export type UnsupportedAudioTypeError = ErrorResponse & {
 }
 
 export type ChatMessageExplorePayload = {
+  connection_revision?: string | null
+  connections?: {
+    [key: string]: string | null
+  } | null
   conversation_id?: string | null
   files?: Array<{
     [key: string]: unknown
@@ -135,14 +139,55 @@ export type ChatMessageExplorePayload = {
   retriever_from?: string
 }
 
+export type ConnectionConfigurationInvalidError = ErrorResponse & {
+  code: 'connection_configuration_invalid'
+  status: 400
+}
+
+export type ConnectionCredentialsInvalidError = ErrorResponse & {
+  code: 'connection_credentials_invalid'
+  status: 400
+}
+
+export type ConnectionRequiredError = ErrorResponse & {
+  code: 'connection_required'
+  status: 400
+}
+
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
 }
 
+export type ConnectionNotFoundError = ErrorResponse & {
+  code: 'connection_not_found'
+  status: 404
+}
+
+export type ConnectionConflictError = ErrorResponse & {
+  code: 'connection_conflict'
+  status: 409
+}
+
+export type ConnectionReauthorizationRequiredError = ErrorResponse & {
+  code: 'connection_reauthorization_required'
+  status: 409
+}
+
+export type ConnectionRevisionChangedError = ErrorResponse & {
+  code: 'connection_revision_changed'
+  details?: ConnectionRevisionChangeDetails
+  status: 409
+}
+
 export type RateLimitError = ErrorResponse & {
   code: 'rate_limit_error'
   status: 429
+}
+
+export type CredentialCheckUnavailableError = ErrorResponse & {
+  code: 'credential_check_unavailable'
+  status: 503
 }
 
 export type SimpleResultResponse = {
@@ -164,6 +209,41 @@ export type CompletionMessageExplorePayload = {
 export type NotCompletionAppError = ErrorResponse & {
   code: 'not_completion_app'
   status: 400
+}
+
+export type EndUserConnectionListResponse = {
+  data: Array<EndUserConnectionResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type ConnectionConfigurationResponse = {
+  connections: {
+    [key: string]: EndUserConnectionResponse | null
+  }
+  reauthorization_required: boolean
+}
+
+export type InstalledConnectionConfigurationPayload = {
+  connection_revision: string
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+}
+
+export type InstalledConnectionPreflightPayload = {
+  connection_revision: string
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+}
+
+export type InstalledConnectionPreflightResponse = {
+  connection_revision: string
+  connections: Array<ConnectionPreflightStatus>
+  readonly ready: boolean
 }
 
 export type ConversationInfiniteScrollPagination = {
@@ -272,10 +352,12 @@ export type ExploreAppMetaResponse = {
   }
 }
 
-export type Parameters = {
+export type InstalledAppParametersResponse = {
   annotation_reply: {
     enabled?: boolean
   }
+  connection_requirements: Array<WebAppConnectionRequirement>
+  connection_revision: string | null
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -293,6 +375,7 @@ export type Parameters = {
     enabled?: boolean
   }
   opening_statement?: string | null
+  requires_end_user_connections: boolean
   retriever_resource: {
     enabled?: boolean
   }
@@ -621,7 +704,11 @@ export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   status: 400
 }
 
-export type WorkflowRunPayload = {
+export type InstalledAppWorkflowRunPayload = {
+  connection_revision?: string | null
+  connections?: {
+    [key: string]: string | null
+  } | null
   files?: Array<
     | {
         remote_url?: string
@@ -674,6 +761,30 @@ export type InstalledAppInfoResponse = {
   use_icon_as_answer_icon: boolean
 }
 
+export type ConnectionRevisionChangeDetails = {
+  connection_revision: string | null
+}
+
+export type EndUserConnectionResponse = {
+  account_label: string | null
+  created_at: number
+  credential_status: ConnectionCredentialStatus | null
+  credential_type: ConnectionCredentialType
+  expires_at: number | null
+  id: string
+  last_active_at: number | null
+  name: string
+  provider: string
+  updated_at: number
+}
+
+export type ConnectionPreflightStatus = {
+  check: CredentialCheckResult | null
+  connection_id: string | null
+  node_id: string
+  status: NodeConnectionStatus | null
+}
+
 export type AnyJsonValue = unknown
 
 export type ExploreMessageListItem = {
@@ -700,6 +811,19 @@ export type ExploreMessageListItem = {
   status: string
   total_price?: string | null
   readonly total_tokens: number
+}
+
+export type WebAppConnectionRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  icon: string
+  icon_dark: string | null
+  node_id: string
+  node_ids: Array<string>
+  plugin_unique_identifier: string
+  provider: string
+  provider_label: string
+  purpose: string
+  title: string
 }
 
 export type SystemParameters = {
@@ -733,6 +857,27 @@ export type AppMode =
   | 'completion'
   | 'rag-pipeline'
   | 'workflow'
+
+export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
+
+export type ConnectionCredentialType = 'api-key' | 'oauth2'
+
+export type CredentialCheckResult = {
+  checked_at: number
+  reason_code:
+    | 'credential_expired'
+    | 'credential_invalid'
+    | 'credential_revoked'
+    | 'provider_network_error'
+    | 'provider_rate_limited'
+    | 'provider_timeout'
+    | 'provider_unavailable'
+    | null
+  retryable: boolean
+  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+}
+
+export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
 
 export type AgentThought = {
   answer?: string | null
@@ -939,6 +1084,11 @@ export type InstalledAppResponseWritable = {
   last_used_at: number | null
 }
 
+export type InstalledConnectionPreflightResponseWritable = {
+  connection_revision: string
+  connections: Array<ConnectionPreflightStatus>
+}
+
 export type ExploreMessageInfiniteScrollPaginationWritable = {
   data: Array<ExploreMessageListItemWritable>
   has_more: boolean
@@ -1110,15 +1260,23 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
   400:
     | AppUnavailableError
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404: InstalledAppNotFoundError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
-  503: WebAppAccessUnavailableError | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1225,6 +1383,156 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopRespo
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse =
   PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses]
+
+export type GetInstalledAppsByInstalledAppIdConnectionsData = {
+  body?: never
+  path: {
+    installed_app_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    provider?: string
+  }
+  url: '/installed-apps/{installed_app_id}/connections'
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsErrors = {
+  400:
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsError =
+  GetInstalledAppsByInstalledAppIdConnectionsErrors[keyof GetInstalledAppsByInstalledAppIdConnectionsErrors]
+
+export type GetInstalledAppsByInstalledAppIdConnectionsResponses = {
+  200: EndUserConnectionListResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsResponse =
+  GetInstalledAppsByInstalledAppIdConnectionsResponses[keyof GetInstalledAppsByInstalledAppIdConnectionsResponses]
+
+export type GetInstalledAppsByInstalledAppIdConnectionsConfigurationData = {
+  body?: never
+  path: {
+    installed_app_id: string
+  }
+  query?: {
+    conversation_id?: string
+  }
+  url: '/installed-apps/{installed_app_id}/connections/configuration'
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsConfigurationErrors = {
+  400:
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsConfigurationError =
+  GetInstalledAppsByInstalledAppIdConnectionsConfigurationErrors[keyof GetInstalledAppsByInstalledAppIdConnectionsConfigurationErrors]
+
+export type GetInstalledAppsByInstalledAppIdConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
+  GetInstalledAppsByInstalledAppIdConnectionsConfigurationResponses[keyof GetInstalledAppsByInstalledAppIdConnectionsConfigurationResponses]
+
+export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationData = {
+  body: InstalledConnectionConfigurationPayload
+  path: {
+    installed_app_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}/connections/configuration'
+}
+
+export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationErrors = {
+  400:
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationError =
+  PutInstalledAppsByInstalledAppIdConnectionsConfigurationErrors[keyof PutInstalledAppsByInstalledAppIdConnectionsConfigurationErrors]
+
+export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
+  PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses[keyof PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses]
+
+export type PostInstalledAppsByInstalledAppIdConnectionsPreflightData = {
+  body: InstalledConnectionPreflightPayload
+  path: {
+    installed_app_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}/connections/preflight'
+}
+
+export type PostInstalledAppsByInstalledAppIdConnectionsPreflightErrors = {
+  400:
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdConnectionsPreflightError =
+  PostInstalledAppsByInstalledAppIdConnectionsPreflightErrors[keyof PostInstalledAppsByInstalledAppIdConnectionsPreflightErrors]
+
+export type PostInstalledAppsByInstalledAppIdConnectionsPreflightResponses = {
+  200: InstalledConnectionPreflightResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdConnectionsPreflightResponse =
+  PostInstalledAppsByInstalledAppIdConnectionsPreflightResponses[keyof PostInstalledAppsByInstalledAppIdConnectionsPreflightResponses]
 
 export type GetInstalledAppsByInstalledAppIdConversationsData = {
   body?: never
@@ -1558,7 +1866,7 @@ export type GetInstalledAppsByInstalledAppIdParametersError =
   GetInstalledAppsByInstalledAppIdParametersErrors[keyof GetInstalledAppsByInstalledAppIdParametersErrors]
 
 export type GetInstalledAppsByInstalledAppIdParametersResponses = {
-  200: Parameters
+  200: InstalledAppParametersResponse
 }
 
 export type GetInstalledAppsByInstalledAppIdParametersResponse =
@@ -1684,7 +1992,7 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioResponse =
   PostInstalledAppsByInstalledAppIdTextToAudioResponses[keyof PostInstalledAppsByInstalledAppIdTextToAudioResponses]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
-  body: WorkflowRunPayload
+  body: InstalledAppWorkflowRunPayload
   path: {
     installed_app_id: string
   }
@@ -1695,15 +2003,23 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
   400:
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404: InstalledAppNotFoundError | ErrorResponse
+  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
-  503: WebAppAccessUnavailableError | ErrorResponse
+  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

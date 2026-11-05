@@ -33,7 +33,7 @@ def _application_services() -> tuple[SimpleNamespace, MagicMock]:
 class TestAppParameterApi:
     def test_get_parameters(self) -> None:
         services, app_definitions = _application_services()
-        app_definitions.get_parameters.return_value = {"any": "thing"}
+        app_definitions.get_web_parameters.return_value = {"any": "thing"}
         installed_app = _installed_app()
 
         with (
@@ -43,12 +43,12 @@ class TestAppParameterApi:
             result = unwrap(module.AppParameterApi.get)(module.AppParameterApi(), _REQUEST_CONTEXT, installed_app)
 
         assert result == {"ok": True}
-        app_definitions.get_parameters.assert_called_once_with("app-1")
-        dump_response.assert_called_once_with(module.Parameters, {"any": "thing"})
+        app_definitions.get_web_parameters.assert_called_once_with("app-1", "owner-tenant")
+        dump_response.assert_called_once_with(module.InstalledAppParametersResponse, {"any": "thing"})
 
     def test_get_maps_unavailable_parameter_config_to_app_unavailable(self) -> None:
         services, app_definitions = _application_services()
-        app_definitions.get_parameters.side_effect = AppDefinitionUnavailableError
+        app_definitions.get_web_parameters.side_effect = AppDefinitionUnavailableError
 
         with (
             patch.object(module, "application_services", return_value=services),

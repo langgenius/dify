@@ -1,6 +1,7 @@
 'use client'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
@@ -10,7 +11,6 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppSourceType } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
@@ -22,7 +22,7 @@ import { isDify } from './utils'
 
 const Chatbot = () => {
   const {
-    isMobile,
+    isBelowSm,
     allowResetChat,
     appData,
     appChatListDataLoading,
@@ -45,14 +45,14 @@ const Chatbot = () => {
       <div
         className={cn(
           'flex flex-col rounded-2xl',
-          isMobile ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
+          isBelowSm ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
         )}
         style={
-          isMobile ? Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? '')) : {}
+          isBelowSm ? Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? '')) : {}
         }
       >
         <Header
-          isMobile={isMobile}
+          isBelowSm={isBelowSm}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
           customerIcon={isDify() ? difyIcon : ''}
@@ -62,7 +62,7 @@ const Chatbot = () => {
         <div
           className={cn(
             'flex grow flex-col overflow-y-auto',
-            isMobile && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
+            isBelowSm && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
           )}
         >
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
@@ -72,7 +72,7 @@ const Chatbot = () => {
         </div>
       </div>
       {/* powered by */}
-      {isMobile && (
+      {isBelowSm && (
         <div className="flex h-15 shrink-0 items-center ps-2">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
@@ -103,8 +103,7 @@ const Chatbot = () => {
 }
 
 const EmbeddedChatbotWrapper = () => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -172,7 +171,7 @@ const EmbeddedChatbotWrapper = () => {
         handleNewConversationCompleted,
         chatShouldReloadKey,
         conversationSession: supportsConnections ? conversationSession : undefined,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         allowResetChat,
         appId,

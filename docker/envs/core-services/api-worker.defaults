@@ -26,6 +26,12 @@ TRIGGER_URL=${TRIGGER_URL-http://localhost}
 ENDPOINT_URL_TEMPLATE=${ENDPOINT_URL_TEMPLATE-http://localhost/e/{hook_id}}
 # DEPLOY_ENV=PRODUCTION
 # DEPLOYMENT_EDITION=COMMUNITY
+# Defaults to true in Cloud and false in Community/Enterprise when unset. Explicit values override the edition.
+# Set false while deploying compatible readers; enable to allow explicit Account login and Passport exchange.
+# Disabling issuance keeps valid existing Passports usable. Do not roll back to incompatible readers.
+# WEBAPP_ACCOUNT_PASSPORT_ENABLED=false
+# Defaults to true in Community and false in Cloud/Enterprise. Does not control Web App access.
+# END_USER_AUTH_ALLOW_ANONYMOUS=false
 MIGRATION_ENABLED=${MIGRATION_ENABLED-true}
 # LANG=C.UTF-8
 # LC_ALL=C.UTF-8

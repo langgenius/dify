@@ -98,7 +98,7 @@ class ToolCredentialResolver(Protocol):
         provider_id: str,
         workspace_id: str,
         credential_id: str | None,
-    ) -> tuple[Mapping[str, object], CredentialType]: ...
+    ) -> tuple[Mapping[str, object], CredentialType, str]: ...
 
 
 class ToolManager:
@@ -250,7 +250,7 @@ class ToolManager:
                 )
                 if cls._credential_resolver is None:
                     raise RuntimeError("Tool credential resolver is not configured")
-                credentials, credential_type = cls._credential_resolver(
+                credentials, credential_type, resolved_credential_id = cls._credential_resolver(
                     controller=provider_controller,
                     provider_id=provider_id,
                     workspace_id=tenant_id,
@@ -263,7 +263,7 @@ class ToolManager:
                         user_id=user_id,
                         credentials=dict(credentials),
                         credential_type=credential_type,
-                        credential_id=selected_id,
+                        credential_id=resolved_credential_id,
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,

@@ -133,4 +133,9 @@ def build_end_user_connection_runtime(
 def initialize_conversation_connections(
     session: Session, context: ConnectionExecutionContext, conversation: Conversation
 ) -> None:
+    if context.workspace is not None:
+        from repositories.installed_app_connection_repository import SQLAlchemyInstalledConnectionRepository
+
+        SQLAlchemyInstalledConnectionRepository.initialize_conversation(session, context, conversation)
+        return
     EndUserConnectionRepository.initialize_conversation_selections(session, context, conversation)

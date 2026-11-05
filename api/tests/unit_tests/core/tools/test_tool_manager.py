@@ -424,6 +424,7 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
     runtime = tool.fork_tool_runtime.call_args.kwargs["runtime"]
     assert runtime.credentials == {"api_key": "secret"}
     assert runtime.credential_type == CredentialType.API_KEY
+    assert runtime.credential_id == builtin_provider.id
 
 
 @patch("services.credentials.tool_runtime_adapters.create_provider_encrypter")
@@ -511,6 +512,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     if credential_selection == "plugin-explicit":
         assert tool.fork_tool_runtime.call_args.kwargs["runtime"].credential_id == provider_id
     tool_database.session.expire_all()
+    assert tool.fork_tool_runtime.call_args.kwargs["runtime"].credential_id == provider_id
     persisted = tool_database.session.get(BuiltinToolProvider, provider_id)
     assert persisted is not None
     assert persisted.expires_at == refreshed.expires_at

@@ -142,7 +142,7 @@ function renderWorkflow({ batch = false, requiresConnections = true } = {}) {
         appSourceType: AppSourceType.webApp,
         appId: 'app',
         isWorkflow: true,
-        isPC: true,
+        isBelowMd: false,
         isCallBatchAPI: batch,
         taskId: batch ? 7 : undefined,
         completionFiles: [],

@@ -37,23 +37,16 @@ class ConversationService:
         ):
             query = query.with_for_update()
         conversation = session.scalar(query.limit(1))
-
         if not conversation:
             raise ConversationNotExistsError()
-
         return conversation
 
     @staticmethod
     def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         """Dispatch resource collection only after the lifecycle transaction commits."""
         if retired_workspace_ids:
-            enqueue_agent_resource_collection(
-                tenant_id=tenant_id,
-                workspace_ids=retired_workspace_ids,
-            )
+            enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=retired_workspace_ids)
         try:
             delete_conversation_related_data.delay(conversation_id)
         except Exception:
-            # The soft-deleted row is a durable cleanup marker picked up by the
-            # periodic sweeper, so a broker outage must not resurrect or expose it.
             logger.exception("Failed to enqueue cleanup for conversation %s", conversation_id)

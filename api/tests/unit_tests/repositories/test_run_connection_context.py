@@ -11,10 +11,15 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.orm import Session, sessionmaker
 
-from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
+from context.connection_execution import (
+    ConnectionExecutionContext,
+    ExecutionConnectionSelection,
+    WorkspaceConnectionScope,
+)
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution as LegacyExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import WorkflowRun
@@ -97,6 +102,54 @@ def test_run_choices_cannot_be_replaced(
         run = session.get(WorkflowRun, execution.id_)
         assert run is not None
         assert run.connection_context == execution.connection_context.model_dump_json()
+
+
+@pytest.mark.parametrize("creator_id", ["account", "other"])
+def test_workspace_context_persistence_checks_account_namespace(
+    execution: WorkflowExecution, sqlite_session_factory: sessionmaker[Session], creator_id: str
+) -> None:
+    assert execution.connection_context is not None
+    context = execution.connection_context.model_copy(
+        update={
+            "end_user_id": "",
+            "workspace": WorkspaceConnectionScope(
+                installed_app_id="installed", tenant_id="tenant", account_id="account"
+            ),
+        }
+    )
+    execution = execution.model_copy(update={"connection_context": context})
+    account = Account(name="Member", email="member@example.com")
+    account.id = creator_id
+    repository = SQLAlchemyWorkflowExecutionRepository(
+        session_factory=sqlite_session_factory,
+        tenant_id="tenant",
+        app_id="app",
+        user=account,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+    )
+    if creator_id != "account":
+        with pytest.raises(ValueError, match="identity"):
+            repository.save(execution)
+        with pytest.raises(ValueError, match="identity"):
+            _create_workflow_run_from_execution(
+                execution, "tenant", "app", WorkflowRunTriggeredFrom.APP_RUN, creator_id, CreatorUserRole.ACCOUNT
+            )
+        return
+
+    repository.save(execution)
+    repository.save(LegacyExecution.model_validate(execution.model_dump()))
+    with sqlite_session_factory() as session:
+        run = session.get(WorkflowRun, execution.id_)
+        assert run is not None
+        assert run.created_by_role == CreatorUserRole.ACCOUNT
+        assert run.connection_context is not None
+        assert ConnectionExecutionContext.model_validate_json(run.connection_context) == context
+    queued = _create_workflow_run_from_execution(
+        execution, "tenant", "app", WorkflowRunTriggeredFrom.APP_RUN, creator_id, CreatorUserRole.ACCOUNT
+    )
+    _update_workflow_run_from_execution(queued, execution)
+    assert queued.connection_context is not None
+    assert ConnectionExecutionContext.model_validate_json(queued.connection_context) == context
 
 
 @pytest.mark.parametrize("field", ["tenant_id", "app_id", "workflow_id", "end_user_id"])

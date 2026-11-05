@@ -47,7 +47,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
-    isMobile,
+    isBelowSm,
     isInstalledApp,
     appId,
     appMeta,
@@ -392,14 +392,14 @@ const ChatWrapper = () => {
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
-    if (isMobile) {
+    if (isBelowSm) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return null
     } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
@@ -485,13 +485,13 @@ const ChatWrapper = () => {
         chatContainerInnerClassName={cn(
           'mx-auto w-full max-w-192',
           !showIntroduction && 'pt-6',
-          isMobile && 'px-4',
+          isBelowSm && 'px-4',
         )}
         chatFooterClassName={showConnectionSignIn ? 'pb-2' : 'pb-4'}
         chatFooterInnerClassName={
           showConnectionSignIn
             ? 'mx-auto w-full max-w-196 px-2'
-            : `mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`
+            : `mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`
         }
         onSend={doSend}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}

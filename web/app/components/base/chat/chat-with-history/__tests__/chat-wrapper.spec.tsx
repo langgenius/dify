@@ -114,7 +114,7 @@ const createHistoryContextValue = (
   handleFeedback: vi.fn().mockResolvedValue(undefined),
   pinnedConversationList: [],
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,
@@ -854,11 +854,11 @@ it('rechecks connections after waiting for a paused workflow subscription before
 
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',
-  async (isMobile) => {
+  async (isBelowSm) => {
     const user = userEvent.setup()
     renderChat({
       currentConversationId: '',
-      isMobile,
+      isBelowSm,
       appParams: createChatConfigFixture({ opening_statement: 'Welcome' }),
       inputsForms: [
         { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
@@ -874,7 +874,7 @@ it.each([false, true])(
 it('hides the mobile variable form after entering an existing conversation', () => {
   const { updateContext } = renderChat({
     currentConversationId: '',
-    isMobile: true,
+    isBelowSm: true,
     inputsForms: [
       { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
     ],

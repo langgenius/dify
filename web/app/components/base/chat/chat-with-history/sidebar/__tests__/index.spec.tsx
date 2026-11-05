@@ -53,6 +53,12 @@ const appData = {
 } as ChatWithHistoryContextValue['appData']
 
 beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (new URL(url).pathname === '/api/account/profile')
+      return Response.json({ name: 'Test Account', avatar: null, avatar_url: null })
+    throw new Error(`Unexpected request: ${url}`)
+  })
   vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
   vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
     data: pinned ? pinnedConversations : conversations,
@@ -65,6 +71,7 @@ beforeEach(() => {
   vi.mocked(delConversation).mockResolvedValue(undefined)
 })
 afterEach(() => {
+  vi.restoreAllMocks()
   localStorage.removeItem(CONVERSATION_ID_INFO)
   sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   localStorage.removeItem('webappSidebarCollapse')
@@ -132,13 +139,13 @@ async function operate(
 
 describe('Conversation sidebar', () => {
   it.each([false, true])(
-    'places My apps before application information in the mobile=%s sidebar',
-    (isMobile) => {
+    'places My apps before application information in the narrow=%s sidebar',
+    async (isBelowSm) => {
       renderChatHistory(
         <WebAppEntryContext value={chatConnectionEntry}>
           <Sidebar />
         </WebAppEntryContext>,
-        { sidebarCollapsed: false, ownerProps: { isMobile } },
+        { sidebarCollapsed: false, ownerProps: { isBelowSm } },
       )
 
       const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
@@ -147,6 +154,7 @@ describe('Conversation sidebar', () => {
         navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
+      expect(await screen.findByRole('button', { name: 'Test Account' })).toBeVisible()
     },
   )
 
@@ -269,7 +277,7 @@ describe('Conversation sidebar', () => {
   })
 
   it('keeps desktop collapse actions out of the mobile sidebar', () => {
-    renderSidebar({ ownerProps: { isMobile: true } })
+    renderSidebar({ ownerProps: { isBelowSm: true } })
     expect(
       screen.queryByRole('button', { name: /layout.sidebar.(expand|collapse)Sidebar/ }),
     ).not.toBeInTheDocument()

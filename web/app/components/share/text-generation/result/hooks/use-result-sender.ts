@@ -35,7 +35,7 @@ type UseResultSenderOptions = {
   controlSend?: number
   inputs: Record<string, ResultInputValue>
   isCallBatchAPI: boolean
-  isPC: boolean
+  isBelowMd: boolean
   isWorkflow: boolean
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
@@ -63,7 +63,7 @@ export const useResultSender = ({
   controlSend,
   inputs,
   isCallBatchAPI,
-  isPC,
+  isBelowMd,
   isWorkflow,
   notify,
   onCompleted,
@@ -130,7 +130,7 @@ export const useResultSender = ({
       resetWebAppWorkflowEvents()
       runState.prepareForNewRun()
 
-      if (!isPC) {
+      if (isBelowMd) {
         onShowRes()
         onRunStart()
       }
@@ -274,7 +274,7 @@ export const useResultSender = ({
       createWebAppStreamHandlers,
       inputs,
       isCallBatchAPI,
-      isPC,
+      isBelowMd,
       isWorkflow,
       notify,
       onCompleted,

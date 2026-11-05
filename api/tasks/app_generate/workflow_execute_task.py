@@ -44,7 +44,8 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
 from services.end_user_connection_execution_adapters import validate_connection_execution
-from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError
+from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError, ConnectionRequiredError
+from services.workflow.tool_credentials import requires_end_user_connections
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_test_execution import require_workflow_test_credentials
@@ -225,6 +226,18 @@ class _AppRunner:
         session: Session,
     ):
         exec_params = self._exec_params
+        if (
+            exec_params.invoke_from == InvokeFrom.EXPLORE
+            and requires_end_user_connections(workflow.graph_dict)
+            and exec_params.connection_context is None
+        ):
+            raise ConnectionRequiredError()
+        if (
+            exec_params.connection_context is not None
+            and exec_params.connection_context.workspace is not None
+            and exec_params.invoke_from != InvokeFrom.EXPLORE
+        ):
+            raise ConnectionIdentityError()
         if exec_params.invoke_from == InvokeFrom.DEBUGGER:
             if not isinstance(user, Account):
                 raise ValueError("Builder tests require an Account.")
@@ -612,7 +625,11 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
-    if generate_entity.connection_context is not None or workflow_run.connection_context is not None:
+    if (
+        generate_entity.connection_context is not None
+        or workflow_run.connection_context is not None
+        or (generate_entity.invoke_from == InvokeFrom.EXPLORE and requires_end_user_connections(workflow.graph_dict))
+    ):
         try:
             if workflow_run.connection_context is not None:
                 try:
@@ -621,7 +638,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                     )
                 except ValueError:
                     raise ConnectionIdentityError() from None
-            assert generate_entity.connection_context is not None
+            if generate_entity.connection_context is None:
+                raise ConnectionRequiredError()
+            if (
+                generate_entity.connection_context.workspace is not None
+                and generate_entity.invoke_from != InvokeFrom.EXPLORE
+            ):
+                raise ConnectionIdentityError()
             validate_connection_execution(
                 generate_entity.connection_context,
                 app=app_model,

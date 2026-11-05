@@ -3,10 +3,10 @@ import type { InstalledAppResponse } from '@dify/contracts/api/console/installed
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { createTheme } from '../embedded-chatbot/theme/theme'
@@ -26,7 +26,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
     appChatListDataLoading,
     chatShouldReloadKey,
     conversationSession,
-    isMobile,
+    isBelowSm,
     sidebarCollapseState,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
@@ -47,21 +47,21 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
   }, [isSidebarCollapsed])
 
   useEffect(() => {
-    if (!isSidebarCollapsed || isMobile) {
+    if (!isSidebarCollapsed || isBelowSm) {
       setShowSidePanel(false)
       sidePanelHasFocusRef.current = false
       sidePanelHoveredRef.current = false
     }
     return () => clearTimeout(sidePanelBlurTimeoutRef.current)
-  }, [isSidebarCollapsed, isMobile])
+  }, [isSidebarCollapsed, isBelowSm])
 
   useDocumentTitle(site?.title || 'Chat')
 
   return (
     <div
-      className={cn('flex h-full bg-background-default-burn', isMobile && 'flex-col', className)}
+      className={cn('flex h-full bg-background-default-burn', isBelowSm && 'flex-col', className)}
     >
-      {!isMobile && (
+      {!isBelowSm && (
         <div
           inert={isSidebarCollapsed}
           className={cn(
@@ -72,9 +72,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <Sidebar toggleButtonRef={!isSidebarCollapsed ? sidebarToggleRef : undefined} />
         </div>
       )}
-      {isMobile && <HeaderInMobile />}
-      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%-56px)] p-0')}>
-        {!isMobile && isSidebarCollapsed && (
+      {isBelowSm && <HeaderInMobile />}
+      <div className={cn('relative grow p-2', isBelowSm && 'h-[calc(100%-56px)] p-0')}>
+        {!isBelowSm && isSidebarCollapsed && (
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
@@ -112,10 +112,10 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
         <div
           className={cn(
             'flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg',
-            isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
+            isBelowSm ? 'rounded-t-2xl' : 'rounded-2xl',
           )}
         >
-          {!isMobile && (
+          {!isBelowSm && (
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
@@ -140,8 +140,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   isNewAgent = false,
   renderAgentContent,
 }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -223,7 +222,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         handleNewConversationCompleted,
         chatShouldReloadKey,
         conversationSession: supportsConnections ? conversationSession : undefined,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         appId,
         handleFeedback,

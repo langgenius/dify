@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from clients.plugin.auth import PluginCredentialAuthClient
-from context.connection_execution import ConnectionExecutionContext
+from context.connection_execution import ConnectionExecutionContext, WorkspaceConnectionScope
 from core.db.session_factory import get_session_maker
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
@@ -79,6 +79,20 @@ def validate_connection_execution(
     repository: EndUserConnectionRepository,
 ) -> None:
     """Reconstruct authority after serialization without selecting a newer publication."""
+    if context.workspace is not None:
+        if not isinstance(user, Account):
+            raise ConnectionIdentityError()
+        from extensions.ext_application_services import application_services
+
+        application_services().installed_apps.connections.validate_execution(
+            context,
+            app_id=app.id,
+            tenant_id=app.tenant_id,
+            account_id=user.id,
+            workflow_id=workflow.id,
+            conversation_id=conversation_id,
+        )
+        return
     if not isinstance(user, EndUser):
         raise ConnectionIdentityError()
     identity = connection_context_from_web_passport(app=app, end_user=user)
@@ -95,3 +109,26 @@ def validate_connection_execution(
     if workflow.version == Workflow.VERSION_DRAFT:
         raise ConnectionRevisionChangedError()
     repository.validate_execution_identity(identity, conversation_id)
+
+
+def prepare_installed_connection_execution(
+    *, app: App, user: Account | EndUser, workflow: Workflow, args: Mapping[str, Any]
+) -> ConnectionExecutionContext | None:
+    required = requires_end_user_connections(workflow.graph_dict)
+    if not required and not args.get("connections") and not args.get("connection_revision"):
+        return None
+    if required and args.get("connection_revision") is None:
+        raise ConnectionConfigurationError()
+    if not isinstance(user, Account) or not args.get("_installed_app_id") or not args.get("_installed_workspace_id"):
+        raise ConnectionIdentityError()
+    if workflow.app_id != app.id or workflow.tenant_id != app.tenant_id:
+        raise ConnectionIdentityError()
+    from extensions.ext_application_services import application_services
+
+    return application_services().installed_apps.connections.prepare(
+        WorkspaceConnectionScope(
+            installed_app_id=args["_installed_app_id"], tenant_id=args["_installed_workspace_id"], account_id=user.id
+        ),
+        workflow_id=workflow.id,
+        args=args,
+    )

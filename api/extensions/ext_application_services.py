@@ -692,6 +692,7 @@ def build_application_services(
         conversation_queries=conversation_queries,
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
+        app_definitions=app_definitions,
         database_client=database_client,
         webapp_access=webapp_access,
         get_workspace_role=workspace_repository.get_account_role,
