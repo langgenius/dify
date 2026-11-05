@@ -1,5 +1,6 @@
 from datetime import datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
@@ -55,6 +56,7 @@ class _CloseTrackingSession(Session):
 
     closed = False
 
+    @override
     def close(self) -> None:
         super().close()
         self.closed = True
