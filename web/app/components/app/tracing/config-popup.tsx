@@ -17,7 +17,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useIsMutating, useQuery } from '@tanstack/react-query'
+import { useIsMutating, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -72,19 +72,18 @@ export function ConfigPopup({
           ? consoleQuery.agent.byAgentId.traceConfig.key({ type: 'mutation' })
           : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
     }) > 0
-  const { data: agentTracingEnabled } = useQuery({
+  const { data: agentTracingEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })
   // Deployment availability is independent of the application destination.
-  const agentTracingSection =
-    usesAgentTracePipeline(resource) && agentTracingEnabled !== undefined
-      ? agentTracingEnabled
-        ? chosenProvider
-          ? 'settings'
-          : null
-        : 'unavailable'
-      : null
+  const agentTracingSection = usesAgentTracePipeline(resource)
+    ? agentTracingEnabled
+      ? chosenProvider
+        ? 'settings'
+        : null
+      : 'unavailable'
+    : null
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
     configurableProviders.filter((provider) => !configs[provider]),
