@@ -1,13 +1,11 @@
-'use client'
-import ChangePasswordForm from '@/app/(auth)/forgot-password/ChangePasswordForm'
-import { useSearchParams } from '@/next/navigation'
+import ChangePasswordForm from './ChangePasswordForm'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-const ForgotPassword = () => {
-  const searchParams = useSearchParams()
-  const token = searchParams.get('token')
-
-  return token ? <ChangePasswordForm /> : <ForgotPasswordForm />
+type ForgotPasswordPageProps = {
+  searchParams: Promise<{ token?: string | string[] }>
 }
 
-export default ForgotPassword
+export default async function ForgotPassword({ searchParams }: ForgotPasswordPageProps) {
+  const { token } = await searchParams
+  return token ? <ChangePasswordForm /> : <ForgotPasswordForm />
+}

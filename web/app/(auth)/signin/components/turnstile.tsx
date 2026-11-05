@@ -141,17 +141,19 @@ export default function Turnstile({
 
   return (
     <>
-      {hasError && (
-        <Alert type="error" className="mt-3 w-full">
-          <AlertTitle>{t(($) => $['turnstile.loadError'], { ns: 'login' })}</AlertTitle>
-          <AlertActions>
-            <Button type="button" size="small" onClick={handleRetry}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
-          </AlertActions>
-        </Alert>
-      )}
-      <div ref={containerRef} className={`mt-3 h-16.25 w-full ${hasError ? 'hidden' : ''}`} />
+      <div className="mt-3 grid min-h-18.25 items-center">
+        {hasError && (
+          <Alert type="error" className="w-full">
+            <AlertTitle>{t(($) => $['turnstile.loadError'], { ns: 'login' })}</AlertTitle>
+            <AlertActions>
+              <Button type="button" size="small" onClick={handleRetry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
+        <div ref={containerRef} className={`h-16.25 w-full ${hasError ? 'hidden' : ''}`} />
+      </div>
       <Script
         key={scriptGeneration}
         id={scriptId}

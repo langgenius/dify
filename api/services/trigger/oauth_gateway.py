@@ -126,14 +126,13 @@ class OAuthProxyContextGateway:
 
 
 class TriggerOAuthBuilderGateway:
-    """Keep builder locking, ownership and masking with its existing owner.
+    """Adapt OAuth credentials to the shared subscription builder lifecycle."""
 
-    TODO: Inject the shared builder application service when the remaining
-    subscription builder endpoints are migrated.
-    """
+    def __init__(self, *, builders: TriggerSubscriptionBuilderService) -> None:
+        self._builders = builders
 
     def create(self, *, tenant_id: str, user_id: str, provider_id: TriggerProviderID) -> SubscriptionBuilderApiEntity:
-        return TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
+        return self._builders.create_trigger_subscription_builder(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
@@ -148,7 +147,7 @@ class TriggerOAuthBuilderGateway:
         credentials: Mapping[str, object],
         expires_at: int,
     ) -> None:
-        TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
+        self._builders.update_trigger_subscription_builder(
             tenant_id=context.tenant_id,
             user_id=context.user_id,
             provider_id=provider_id,

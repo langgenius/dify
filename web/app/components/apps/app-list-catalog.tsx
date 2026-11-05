@@ -15,7 +15,13 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
@@ -73,6 +79,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     onFetchNextPage: () => Promise<unknown>
     starredApps: AppPartial[]
     systemFeatures: GetSystemFeaturesResponse
+    isCollaborationEnabled: boolean
   }>
 
 function CatalogSkeleton() {
@@ -98,6 +105,7 @@ function AppListCatalogContent({
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
+  isCollaborationEnabled,
   onCreateBlank,
   onCreateLearnDify,
   onCreateTemplate,
@@ -137,7 +145,7 @@ function AppListCatalogContent({
 
   const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
     appIds: workflowOnlineUserAppIds,
-    enabled: systemFeatures.enable_collaboration_mode,
+    enabled: isCollaborationEnabled,
   })
 
   const hasResolvedFirstPage = appListPages.length > 0
@@ -370,8 +378,13 @@ export function AppListCatalog(props: AppListCatalogProps) {
     onTryLearnDify,
     scrollViewportRef,
   } = props
-  const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
-  const systemFeatures = systemFeaturesQuery.data
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: isCollaborationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      retry: false,
+      select: (features) => features.workflow_collaboration_enabled,
+    }),
+  )
   const appList = useInfiniteQuery(
     consoleQuery.apps.get.infiniteOptions({
       input: (pageParam) => ({
@@ -383,7 +396,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
-      refetchInterval: systemFeatures?.enable_collaboration_mode ? 10000 : false,
+      refetchInterval: isCollaborationEnabled ? 10000 : false,
     }),
   )
   const starredAppList = useQuery(
@@ -399,14 +412,9 @@ export function AppListCatalog(props: AppListCatalogProps) {
     }),
   )
 
-  if (systemFeatures === undefined && systemFeaturesQuery.error) throw systemFeaturesQuery.error
   if (appList.data === undefined && appList.error) throw appList.error
 
-  if (
-    systemFeatures === undefined ||
-    appList.data === undefined ||
-    (starredAppList.data === undefined && !starredAppList.error)
-  )
+  if (appList.data === undefined || (starredAppList.data === undefined && !starredAppList.error))
     return <CatalogSkeleton />
 
   return (
@@ -421,6 +429,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}
+      isCollaborationEnabled={isCollaborationEnabled}
       onCreateBlank={onCreateBlank}
       onCreateLearnDify={onCreateLearnDify}
       onCreateTemplate={onCreateTemplate}

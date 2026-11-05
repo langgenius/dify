@@ -3,13 +3,13 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import { normaliseUserCodeInput } from '../utils/user-code'
 
 type Props = {
   value: string
   onChange: (normalised: string) => void
   disabled?: boolean
-  autoFocus?: boolean
 }
 
 /**
@@ -19,7 +19,7 @@ type Props = {
  * The onChange callback receives the normalised value only — the parent does
  * not need to run validation itself.
  */
-const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
+const CodeInput: FC<Props> = ({ value, onChange, disabled }) => {
   const { t } = useTranslation(['deviceFlow'])
   const handle = useCallback(
     (raw: string) => {
@@ -41,7 +41,7 @@ const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
       className="border-components-input-border-normal w-full rounded-lg border bg-components-input-bg-normal px-4 py-3 text-center font-mono text-2xl tracking-wider text-text-primary focus:border-components-input-border-active focus:outline-none"
       value={value}
       disabled={disabled}
-      autoFocus={autoFocus}
+      ref={focusOnArrival}
       onChange={(e) => handle(e.target.value)}
     />
   )

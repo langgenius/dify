@@ -91,7 +91,6 @@ const draftResponse: FetchWorkflowDraftResponse = {
 
 function setup(mode: AppMode = 'advanced-chat') {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: false },
     appDslVersion: '0.6.0',
   })
   seedModelProviderQueries(queryClient)
