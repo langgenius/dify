@@ -59,6 +59,7 @@ export function PublisherContent({
   open,
   outputs,
   nonConflictingOutputNames,
+  outputTypeConflicts,
   publishDisabled = false,
   publishedAt,
   startNodeLimitExceeded = false,
@@ -280,6 +281,7 @@ export function PublisherContent({
           isAdd={!workflowTool.published}
           payload={workflowTool.configuration.payload}
           nonConflictingOutputNames={nonConflictingOutputNames}
+          outputTypeConflicts={outputTypeConflicts}
           onHide={workflowTool.closeDrawer}
           onCreate={workflowTool.configuration.handleCreate}
           onSave={workflowTool.configuration.handleUpdate}

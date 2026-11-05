@@ -51,11 +51,36 @@ def test_get_workflow_graph_variables_and_outputs() -> None:
 
     outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
     assert [output.variable for output in outputs] == ["answer", "score"]
-    assert outputs[0].value_type == "object"
+    # Declared as string and as object: the one schema entry has to cover both.
+    assert outputs[0].value_type == "any"
     assert outputs[1].value_type == "number"
 
     no_start = WorkflowToolConfigurationUtils.get_workflow_graph_variables({"nodes": []})
     assert no_start == []
+
+
+def _end(node_id: str, output: dict[str, object]) -> dict[str, object]:
+    return {"id": node_id, "data": {"type": "end", "outputs": [{"value_selector": [node_id, "x"], **output}]}}
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "expected"),
+    [
+        ({"variable": "result", "value_type": "any"}, {"variable": "result", "value_type": "string"}, "any"),
+        ({"variable": "result", "value_type": "string"}, {"variable": "result", "value_type": "any"}, "any"),
+        ({"variable": "result"}, {"variable": "result", "value_type": "string"}, "any"),
+        ({"variable": "result", "value_type": "string"}, {"variable": "result"}, "any"),
+        ({"variable": "result", "value_type": "string"}, {"variable": "result", "value_type": "string"}, "string"),
+    ],
+)
+def test_get_workflow_graph_output_covers_every_end_node_reusing_a_name(
+    first: dict[str, object], second: dict[str, object], expected: str
+) -> None:
+    graph = {"nodes": [_end("end-1", first), _end("end-2", second)]}
+
+    outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
+
+    assert [(output.variable, output.value_type) for output in outputs] == [("result", expected)]
 
 
 def test_check_is_synced_validation() -> None:

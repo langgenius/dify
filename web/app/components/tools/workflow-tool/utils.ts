@@ -81,6 +81,29 @@ export const getNonConflictingWorkflowOutputNames = (nodes: Node[], edges: Edge[
     .map(([name]) => name)
 }
 
+/**
+ * Repeated output names whose Output nodes are on mutually exclusive branches but declare clashing
+ * types, mapped to those types. The drawer shows the same "match the types" guidance as the checklist
+ * for them instead of asking for unique names.
+ */
+export const getWorkflowOutputTypeConflicts = (nodes: Node[], edges: Edge[]) => {
+  const result: Record<string, string[]> = {}
+  const allConflicts = getEndOutputConflicts(nodes, edges)
+  allConflicts.forEach((conflicts) => {
+    conflicts.forEach(({ variable, kind, types }) => {
+      if (kind !== 'conflictingTypes') return
+      result[variable] = [...new Set([...(result[variable] ?? []), ...(types ?? [])])].sort()
+    })
+  })
+  // A name that also loses a value somewhere is a plain duplicate; that message takes precedence.
+  allConflicts.forEach((conflicts) => {
+    conflicts.forEach(({ variable, kind }) => {
+      if (kind === 'duplicateName') delete result[variable]
+    })
+  })
+  return result
+}
+
 export const getDuplicateWorkflowOutputGroups = (
   outputParameters: WorkflowToolProviderOutputParameter[],
 ) => {

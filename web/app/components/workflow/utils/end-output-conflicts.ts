@@ -1,4 +1,6 @@
 import type { Edge, Node } from '../types'
+import { ErrorHandleTypeEnum } from '../nodes/_base/components/error-handle/types'
+import { hasAgentV2OutputRoutes } from '../nodes/agent-v2/types'
 import { BlockEnum, VarType } from '../types'
 import { normalizeWorkflowOutputName } from './variable'
 
@@ -26,10 +28,26 @@ const DEFAULT_SOURCE_HANDLE = 'source'
 const ENTRY_BRANCH_ID = '__entry__'
 
 /**
- * Upper bound on the branch combinations tracked per node. A graph busy enough to exceed it falls back
- * to "may run together", which keeps the warning rather than dropping a real conflict.
+ * Upper bound on the branch combinations tracked per node. Past it, exclusivity is judged only from the
+ * branch choices every path to a node must make (see `getRequiredChoices`).
  */
 const MAX_PATH_CONDITIONS = 64
+
+/**
+ * Node types that take exactly one of their outgoing handles per run. Every other node follows all of
+ * its outgoing edges, whatever their handles say (a stale `fail-branch` edge on a node without that
+ * error strategy still fires). Mirrors `branch_handles` in `api/services/workflow_variable_reference_validator.py`.
+ */
+const BRANCH_NODE_TYPES: BlockEnum[] = [
+  BlockEnum.IfElse,
+  BlockEnum.QuestionClassifier,
+  BlockEnum.HumanInput,
+]
+
+const selectsOneBranch = (node: Node) =>
+  BRANCH_NODE_TYPES.includes(node.data.type) ||
+  hasAgentV2OutputRoutes(node.data) ||
+  node.data.error_strategy === ErrorHandleTypeEnum.failBranch
 
 const ENTRY_NODE_TYPES: BlockEnum[] = [
   BlockEnum.Start,
@@ -60,7 +78,7 @@ type NodeReachability = {
 type ScopeGraph = {
   entryIds: string[]
   outgoing: Map<string, { handle: string; target: string }[]>
-  /** Nodes whose outgoing edges use more than one handle, so only one of them is taken per run. */
+  /** Branching nodes (see `selectsOneBranch`) whose edges use more than one handle: one is taken per run. */
   branchIds: Set<string>
 }
 
@@ -92,7 +110,13 @@ const buildScopeGraph = (nodes: Node[], edges: Edge[]): ScopeGraph => {
   })
 
   const branchIds = new Set(
-    nodeIds.filter((id) => new Set(outgoing.get(id)!.map((edge) => edge.handle)).size > 1),
+    nodes
+      .filter(
+        (node) =>
+          selectsOneBranch(node) &&
+          new Set(outgoing.get(node.id)!.map((edge) => edge.handle)).size > 1,
+      )
+      .map((node) => node.id),
   )
 
   // Nested scopes (Iteration / Loop children) and pipelines have no Start node, so fall back to the
@@ -185,6 +209,71 @@ const getReachability = (graph: ScopeGraph) => {
   return reachability
 }
 
+/** Branch nodes that can be reached again from their own outgoing edges, so may take several handles. */
+const getCyclicBranches = (graph: ScopeGraph) => {
+  const cyclic = new Set<string>()
+  graph.branchIds.forEach((branchId) => {
+    const seen = new Set<string>()
+    const stack = graph.outgoing.get(branchId)!.map((edge) => edge.target)
+    while (stack.length) {
+      const id = stack.pop()!
+      if (id === branchId) {
+        cyclic.add(branchId)
+        return
+      }
+      if (seen.has(id)) continue
+      seen.add(id)
+      graph.outgoing.get(id)?.forEach((edge) => stack.push(edge.target))
+    }
+  })
+  return cyclic
+}
+
+/**
+ * The branch decisions every path to a node makes (branch node id -> handle), computed as a dataflow
+ * intersection over incoming edges, so it needs no path enumeration and has no size limit. It proves
+ * less than the full path conditions, which is why it is only the fallback for overflowing nodes:
+ * when two Output nodes each require a different handle of the same branch, they cannot run together.
+ */
+const getRequiredChoices = (graph: ScopeGraph) => {
+  const cyclic = getCyclicBranches(graph)
+  const incoming = new Map<string, { source: string; handle: string }[]>()
+  graph.outgoing.forEach((edges, source) =>
+    edges.forEach(({ handle, target }) =>
+      incoming.set(target, [...(incoming.get(target) ?? []), { source, handle }]),
+    ),
+  )
+  const entries = new Set(graph.entryIds)
+  // Undefined means not reached yet (the top of the lattice); values only shrink, so this terminates.
+  const required = new Map<string, PathCondition>()
+  const intersect = (a: PathCondition | undefined, b: PathCondition) =>
+    a === undefined ? b : new Map([...a].filter(([branchId, handle]) => b.get(branchId) === handle))
+
+  let changed = true
+  while (changed) {
+    changed = false
+    graph.outgoing.forEach((_, nodeId) => {
+      let next: PathCondition | undefined = entries.has(nodeId)
+        ? new Map([[ENTRY_BRANCH_ID, nodeId]])
+        : undefined
+      incoming.get(nodeId)?.forEach(({ source, handle }) => {
+        const before = required.get(source)
+        if (!before) return
+        const extended = new Map(before)
+        if (graph.branchIds.has(source) && !cyclic.has(source)) extended.set(source, handle)
+        next = intersect(next, extended)
+      })
+      if (!next) return
+      const current = required.get(nodeId)
+      if (current && getConditionKey(current) === getConditionKey(next)) return
+      required.set(nodeId, next)
+      changed = true
+    })
+  }
+
+  return required
+}
+
 /** Two conditions are compatible when they never require different handles of the same branch. */
 const areConditionsCompatible = (a: PathCondition, b: PathCondition) => {
   const [smaller, larger] = a.size <= b.size ? [a, b] : [b, a]
@@ -199,14 +288,23 @@ const areConditionsCompatible = (a: PathCondition, b: PathCondition) => {
 
 /**
  * True unless every way of reaching one node contradicts every way of reaching the other. Unreachable
- * or untracked nodes also return true: without a proof of exclusivity we keep the warning.
+ * nodes also return true: without a proof of exclusivity we keep the warning.
  */
-const canRunTogether = (reachability: Map<string, NodeReachability>, aId: string, bId: string) => {
+const canRunTogether = (
+  reachability: Map<string, NodeReachability>,
+  required: () => Map<string, PathCondition>,
+  aId: string,
+  bId: string,
+) => {
   const a = reachability.get(aId)
   const b = reachability.get(bId)
 
-  if (!a || !b || a.overflow || b.overflow) return true
-  if (!a.conditions.size || !b.conditions.size) return true
+  if (!a || !b || !a.conditions.size || !b.conditions.size) return true
+  if (a.overflow || b.overflow) {
+    const requiredA = required().get(aId)
+    const requiredB = required().get(bId)
+    return !requiredA || !requiredB || areConditionsCompatible(requiredA, requiredB)
+  }
 
   for (const conditionA of a.conditions.values()) {
     for (const conditionB of b.conditions.values()) {
@@ -259,12 +357,13 @@ export const getEndOutputConflicts = (nodes: Node[], edges: Edge[]) => {
     // Keep the common case free of graph analysis: no repeated name means nothing to reconcile.
     if (!repeated) return
 
-    const reachability = getReachability(
-      buildScopeGraph(
-        nodes.filter((node) => getScopeId(node) === scopeId),
-        edges,
-      ),
+    const graph = buildScopeGraph(
+      nodes.filter((node) => getScopeId(node) === scopeId),
+      edges,
     )
+    const reachability = getReachability(graph)
+    let requiredChoices: Map<string, PathCondition> | undefined
+    const required = () => (requiredChoices ??= getRequiredChoices(graph))
 
     occurrences.forEach((entries, variable) => {
       const nodeIds = [...new Set(entries.map((entry) => entry.nodeId))]
@@ -278,7 +377,7 @@ export const getEndOutputConflicts = (nodes: Node[], edges: Edge[]) => {
         nodeIds.forEach((otherId) => {
           if (otherId === nodeId) return
 
-          if (canRunTogether(reachability, nodeId, otherId)) {
+          if (canRunTogether(reachability, required, nodeId, otherId)) {
             duplicateName = true
             return
           }

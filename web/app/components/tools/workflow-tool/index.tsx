@@ -73,6 +73,8 @@ export type WorkflowToolDrawerProps = {
   payload: WorkflowToolDrawerPayload
   /** Names verified safe by the workflow graph. Absent outside the workflow editor. */
   nonConflictingOutputNames?: string[]
+  /** Names reused on exclusive branches with clashing types, mapped to those types. Editor only. */
+  outputTypeConflicts?: Record<string, string[]>
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -124,7 +126,7 @@ const WorkflowToolDrawerFrame = ({
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
@@ -148,10 +150,13 @@ const WorkflowToolDrawerFrame = ({
 
 const WorkflowToolOutputName = React.memo(
   ({
+    conflictingTypes,
     duplicateSources,
     item,
     reservedOutputParameters,
   }: {
+    /** Set when the repeated name only clashes on type (exclusive branches). */
+    conflictingTypes?: string[]
     duplicateSources?: WorkflowToolOutputSource[]
     item: WorkflowToolProviderOutputParameter
     reservedOutputParameters: WorkflowToolProviderOutputParameter[]
@@ -164,10 +169,16 @@ const WorkflowToolOutputName = React.memo(
       { ns: 'tools' },
     )
     const sourceNodeLabel = t(($) => $['createTool.toolOutput.sourceNode'], { ns: 'tools' })
-    const duplicateOutputTip = t(($) => $['errorMsg.duplicateOutputVariable'], {
-      ns: 'workflow',
-      variable: normalizeWorkflowOutputName(item.name),
-    })
+    const duplicateOutputTip = conflictingTypes
+      ? t(($) => $['errorMsg.conflictingOutputVariableTypes'], {
+          ns: 'workflow',
+          variable: normalizeWorkflowOutputName(item.name),
+          types: conflictingTypes.join(', '),
+        })
+      : t(($) => $['errorMsg.duplicateOutputVariable'], {
+          ns: 'workflow',
+          variable: normalizeWorkflowOutputName(item.name),
+        })
     const hasReservedNameConflict =
       !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
     const hasDuplicateNameConflict = !item.reserved && !!duplicateSources
@@ -236,6 +247,7 @@ export function WorkflowToolDrawer({
   isAdd,
   payload,
   nonConflictingOutputNames,
+  outputTypeConflicts,
   onHide,
   onRemove,
   onSave,
@@ -362,7 +374,7 @@ export function WorkflowToolDrawer({
               <Field name="label" className="gap-0">
                 <FieldLabel className="py-2 text-text-primary">
                   {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                  <span aria-hidden className="ml-1 text-text-destructive">
+                  <span aria-hidden className="ms-1 text-text-destructive">
                     *
                   </span>
                 </FieldLabel>
@@ -389,11 +401,11 @@ export function WorkflowToolDrawer({
                 <FieldLabel id={toolNameLabelId} className="py-0 text-text-primary">
                   {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 </FieldLabel>
-                <span aria-hidden className="ml-1 text-text-destructive">
+                <span aria-hidden className="ms-1 text-text-destructive">
                   *
                 </span>
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ms-1 size-3.5" />
                   <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
                     {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                   </InfotipContent>
@@ -431,13 +443,13 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.name'], { ns: 'tools' })}
                       </th>
-                      <th className="w-25.5 p-2 pl-3 font-medium">
+                      <th className="w-25.5 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.method'], { ns: 'tools' })}
                       </th>
-                      <th id={`${parameterId}-description`} className="p-2 pl-3 font-medium">
+                      <th id={`${parameterId}-description`} className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -445,7 +457,7 @@ export function WorkflowToolDrawer({
                   <tbody>
                     {parameters.map((item, index) => (
                       <tr key={index} className="border-b border-divider-regular last:border-0">
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex">
                               <span
@@ -454,7 +466,7 @@ export function WorkflowToolDrawer({
                               >
                                 {item.name}
                               </span>
-                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
+                              <span className="shrink-0 ps-1 text-xs leading-4.5 text-[#ec4a0a]">
                                 {item.required
                                   ? t(($) => $['createTool.toolInput.required'], { ns: 'tools' })
                                   : ''}
@@ -488,7 +500,7 @@ export function WorkflowToolDrawer({
                             />
                           )}
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <input
                             type="text"
                             aria-labelledby={`${parameterId}-${index}-name ${parameterId}-description`}
@@ -520,10 +532,10 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.name'], { ns: 'tools' })}
                       </th>
-                      <th className="p-2 pl-3 font-medium">
+                      <th className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolOutput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -540,8 +552,11 @@ export function WorkflowToolDrawer({
                         }
                         className="border-b border-divider-regular last:border-0"
                       >
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <WorkflowToolOutputName
+                            conflictingTypes={
+                              outputTypeConflicts?.[normalizeWorkflowOutputName(item.name)]
+                            }
                             duplicateSources={duplicateOutputSourceGroups.get(
                               normalizeWorkflowOutputName(item.name),
                             )}
@@ -549,7 +564,7 @@ export function WorkflowToolDrawer({
                             reservedOutputParameters={reservedOutputParameters}
                           />
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <span className="text-[13px] leading-4.5 font-normal text-text-secondary">
                             {item.description}
                           </span>

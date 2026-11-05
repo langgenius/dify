@@ -11,6 +11,7 @@ import {
   getNonConflictingWorkflowOutputNames,
   getSourceNodeDisplayName,
   getUniqueWorkflowOutputSources,
+  getWorkflowOutputTypeConflicts,
 } from '../utils'
 
 describe('workflow output sources', () => {
@@ -67,6 +68,27 @@ describe('getNonConflictingWorkflowOutputNames', () => {
         edge('start', 'end-false'),
       ]),
     ).toEqual([])
+  })
+
+  it('maps a name reused on exclusive branches with clashing types to those types', () => {
+    const typed = [start, branch, end('end-true'), end('end-false', VarType.object)]
+    expect(getWorkflowOutputTypeConflicts(typed, edges)).toEqual({
+      result: [VarType.object, VarType.string],
+    })
+  })
+
+  it('leaves same-typed names on exclusive branches out of the type conflicts', () => {
+    expect(getWorkflowOutputTypeConflicts(nodes, edges)).toEqual({})
+  })
+
+  it('reports a name as a duplicate, not a type conflict, when the outputs can run together', () => {
+    const typed = [start, branch, end('end-true'), end('end-false', VarType.object)]
+    expect(
+      getWorkflowOutputTypeConflicts(typed, [
+        edge('start', 'end-true'),
+        edge('start', 'end-false'),
+      ]),
+    ).toEqual({})
   })
 
   it('keeps the warning when exclusive outputs have conflicting types', () => {

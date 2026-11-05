@@ -21,6 +21,7 @@ from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
+from services.workflow.output_conflicts import ConflictKind, output_conflicts
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
@@ -47,6 +48,7 @@ class IssueCode(StrEnum):
     REFERENCE_MISSING = "reference_missing"
     CONTAINER_START_MISSING = "container_start_missing"
     OUTPUT_NAME_DUPLICATE = "output_name_duplicate"
+    OUTPUT_TYPE_CONFLICT = "output_type_conflict"
     BRANCH_UNCONNECTED = "branch_unconnected"
     RESOURCE_UNAVAILABLE = "resource_unavailable"
 
@@ -110,6 +112,8 @@ class _Graph:
     nodes: Mapping[str, _Node]
     edges: Sequence[Mapping[str, Any]]
     mode: AppMode
+    # Node id -> its Iteration / Loop container id, "" at the top level.
+    parents: Mapping[str, str] = field(default_factory=dict)
 
 
 def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
@@ -225,25 +229,26 @@ def _unconnected_branch_issues(graph: _Graph) -> Iterable[GraphIssue]:
 
 
 def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
-    """End nodes share one set of workflow outputs, so the console refuses to publish a name used twice."""
-    places: dict[str, list[tuple[str, int]]] = {}
-    for node in graph.nodes.values():
-        outputs = node.data.get("outputs")
-        if node.type != BuiltinNodeTypes.END or not isinstance(outputs, list):
-            continue
-        for index, output in enumerate(outputs):
-            name = str(output.get("variable") or "").strip() if isinstance(output, Mapping) else ""
-            if name:
-                places.setdefault(name, []).append((node.id, index))
-    for name, found in places.items():
-        if len(found) < 2:
-            continue
-        for node_id, index in found:
+    """End nodes share one set of workflow outputs. Like the editor, a name may repeat only on End nodes that never
+    run together (mutually exclusive branches), and then only with one declared type."""
+    data = {node_id: node.data for node_id, node in graph.nodes.items()}
+    for conflict in output_conflicts(data, graph.edges, graph.parents):
+        loc = _data_loc(conflict.node_id, "outputs", conflict.output_index, "variable")
+        if conflict.kind is ConflictKind.DUPLICATE_NAME:
             yield GraphIssue(
                 IssueCode.OUTPUT_NAME_DUPLICATE,
-                f"Output {name!r} is used by more than one End node output; output names must be unique",
-                node_id,
-                _data_loc(node_id, "outputs", index, "variable"),
+                f"Output {conflict.variable!r} is used by End node outputs that can run in the same execution; "
+                "rename one, or move them onto mutually exclusive branches",
+                conflict.node_id,
+                loc,
+            )
+        else:
+            yield GraphIssue(
+                IssueCode.OUTPUT_TYPE_CONFLICT,
+                f"Output {conflict.variable!r} is declared as {', '.join(conflict.types)} on branches that never "
+                "run together; End nodes reusing a name must declare the same type",
+                conflict.node_id,
+                loc,
             )
 
 
@@ -320,6 +325,7 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
         nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
         edges=graph.get("edges") or [],
         mode=mode,
+        parents={node_id: str(raw.get("parentId") or "") for node_id, raw in raw_nodes.items()},
     )
     issues = [issue for check in _CHECKS for issue in check(view)]
     if resources is not None:
