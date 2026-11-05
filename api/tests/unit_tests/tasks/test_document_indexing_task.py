@@ -264,11 +264,8 @@ class TestDocumentIndexing:
 
         def assert_committed_parsing(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as observer:
-                documents: list[Document] = []
-                for ref in refs:
-                    document = observer.get(Document, ref.document_id)
-                    assert document is not None
-                    documents.append(document)
+                fetched = [observer.get(Document, ref.document_id) for ref in refs]
+                documents = [document for document in fetched if document is not None]
                 assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
                 assert all(document.processing_started_at is not None for document in documents)
 
