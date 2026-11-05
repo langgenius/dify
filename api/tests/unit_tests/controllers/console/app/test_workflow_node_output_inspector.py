@@ -22,12 +22,15 @@ the service-level tests in
 
 from __future__ import annotations
 
+import contextvars
 import json
 from collections.abc import Iterator
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from flask import has_app_context
+from sqlalchemy.orm import Session
 
 from controllers.console.app import workflow_node_output_inspector as ctrl
 from graphon.enums import WorkflowExecutionStatus
@@ -136,7 +139,8 @@ def _drain(stream: Iterator[str]) -> list[str]:
 
 def _stream(app_model, run_id) -> Iterator[str]:
     """Open the stream the way the handlers do: resolve the run first, then generate."""
-    return ctrl._stream_inspector_events(app_model, run_id, ctrl._initial_snapshot(app_model, run_id))
+    snapshot = ctrl._initial_snapshot(MagicMock(spec=Session), app_model, run_id)
+    return ctrl._stream_inspector_events(app_model, run_id, snapshot)
 
 
 def _parse(record: str) -> tuple[str, dict | None]:
@@ -220,7 +224,7 @@ def test_initial_snapshot_raises_the_404_before_the_response_exists(patch_servic
         "workflow_run_not_found", "Workflow run not found."
     )
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._initial_snapshot(app_model, run_id)
+        ctrl._initial_snapshot(MagicMock(spec=Session), app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
     assert not patch_service.node_detail.called
 
@@ -341,6 +345,59 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
     assert "failed" in err_data["message"]
 
 
+def test_stream_refreshes_nodes_after_the_app_context_is_gone(
+    patch_service: MagicMock, patch_subscribe, app_model: App, run_id: UUID
+) -> None:
+    """Flask pops the app context before it iterates a streamed body, so the refresh must
+    not depend on ``db.session``. Draining in an empty ``contextvars.Context`` reproduces
+    what the WSGI server does after the handler returns."""
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
+    patch_service.node_detail.return_value = _node_view(node_id="agent-1")
+    patch_subscribe(
+        [
+            InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+        ]
+    )
+    stream = _stream(app_model, run_id)
+
+    def drain_outside_app_context() -> list[str]:
+        assert not has_app_context()
+        return _drain(stream)
+
+    records = contextvars.Context().run(drain_outside_app_context)
+
+    assert [_parse(r)[0] for r in records] == ["snapshot", "node_changed", "workflow_run_completed"]
+    assert isinstance(patch_service.node_detail.call_args.kwargs["session"], Session)
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_read_node_detail_closes_its_session(monkeypatch: pytest.MonkeyPatch, app_model: App, fails: bool) -> None:
+    """Each stream refresh opens one session and closes it, whether ``node_detail`` returns or raises."""
+    session = MagicMock(spec=Session)
+    session.__enter__.return_value = session
+    factory = MagicMock()
+    factory.create_session.return_value = session
+    monkeypatch.setattr(ctrl, "session_factory", factory)
+    service = MagicMock()
+    if fails:
+        service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "missing")
+    else:
+        service.node_detail.return_value = _node_view()
+
+    if fails:
+        with pytest.raises(NodeOutputInspectorError):
+            ctrl._read_node_detail(service, app_model, "run-1", "agent-1")
+    else:
+        assert ctrl._read_node_detail(service, app_model, "run-1", "agent-1") == _node_view()
+
+    service.node_detail.assert_called_once_with(
+        app_model=app_model, workflow_run_id="run-1", node_id="agent-1", session=session
+    )
+    factory.create_session.assert_called_once_with()
+    session.__exit__.assert_called_once()
+
+
 def test_stream_workflow_completed_status_falls_back_to_unknown(patch_service, patch_subscribe, app_model, run_id):
     """If the pub/sub message arrives with status=None (publish race), the SSE
     payload still carries ``workflow_run_status`` with the ``unknown``
@@ -400,43 +457,43 @@ def test_inspector_not_found_relays_codes_the_contract_does_not_know():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_serve_snapshot_happy_path(patch_service, app_model, run_id):
+def test_serve_snapshot_happy_path(patch_service, unbound_session: Session, app_model, run_id):
     """Returns the snapshot view as JSON-serialisable dict."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
-    result = ctrl._serve_snapshot(app_model, run_id)
+    result = ctrl._serve_snapshot(unbound_session, app_model, run_id)
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
     patch_service.snapshot_workflow_run.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), session=ANY
+        app_model=app_model, workflow_run_id=str(run_id), session=unbound_session
     )
 
 
-def test_serve_snapshot_translates_inspector_error_to_404(patch_service, app_model, run_id):
+def test_serve_snapshot_translates_inspector_error_to_404(patch_service, unbound_session: Session, app_model, run_id):
     """``NodeOutputInspectorError`` becomes the controller's 404 wrapper with
     the specific ``error_code`` preserved."""
     patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError("workflow_run_not_found", "no such run")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_snapshot(app_model, run_id)
+        ctrl._serve_snapshot(unbound_session, app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
 
 
-def test_serve_node_detail_happy_path(patch_service, app_model, run_id):
+def test_serve_node_detail_happy_path(patch_service, unbound_session: Session, app_model, run_id):
     patch_service.node_detail.return_value = _node_view(node_id="agent-1")
-    result = ctrl._serve_node_detail(app_model, run_id, "agent-1")
+    result = ctrl._serve_node_detail(unbound_session, app_model, run_id, "agent-1")
     assert result["node_id"] == "agent-1"
     patch_service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=ANY
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=unbound_session
     )
 
 
-def test_serve_node_detail_translates_inspector_error(patch_service, app_model, run_id):
+def test_serve_node_detail_translates_inspector_error(patch_service, unbound_session: Session, app_model, run_id):
     patch_service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "missing")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_node_detail(app_model, run_id, "ghost")
+        ctrl._serve_node_detail(unbound_session, app_model, run_id, "ghost")
     assert exc.value.error_code == "node_not_in_workflow_run"
 
 
-def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
+def test_serve_output_preview_happy_path(patch_service, unbound_session: Session, app_model, run_id):
     from services.workflow.node_output_inspector_service import (
         DeclaredOutputType,
         OutputPreviewView,
@@ -449,7 +506,7 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
         status=NodeOutputStatus.READY,
         value="Hello",
     )
-    result = ctrl._serve_output_preview(app_model, run_id, "agent-1", "text")
+    result = ctrl._serve_output_preview(unbound_session, app_model, run_id, "agent-1", "text")
     assert result["value"] == "Hello"
     assert result["status"] == "ready"
     patch_service.output_preview.assert_called_once_with(
@@ -457,14 +514,14 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
         workflow_run_id=str(run_id),
         node_id="agent-1",
         output_name="text",
-        session=ANY,
+        session=unbound_session,
     )
 
 
-def test_serve_output_preview_translates_inspector_error(patch_service, app_model, run_id):
+def test_serve_output_preview_translates_inspector_error(patch_service, unbound_session: Session, app_model, run_id):
     patch_service.output_preview.side_effect = NodeOutputInspectorError("node_output_not_declared", "no such output")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_output_preview(app_model, run_id, "agent-1", "phantom")
+        ctrl._serve_output_preview(unbound_session, app_model, run_id, "agent-1", "phantom")
     assert exc.value.error_code == "node_output_not_declared"
 
 
