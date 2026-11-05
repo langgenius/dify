@@ -1,6 +1,6 @@
 import pytest
 
-from services.web_login_redirect import resolve_web_login_redirect
+from services.web_login_redirect import resolve_personal_login_redirect, resolve_web_login_redirect
 
 
 @pytest.mark.parametrize("absolute", [True, False])
@@ -56,3 +56,53 @@ def test_default_https_port_matches_browser_normalized_origin() -> None:
         "https://apps.example.com/workflow/app-code", app_web_url="https://apps.example.com:443", console_web_url=""
     )
     assert result == "https://apps.example.com:443/workflow/app-code"
+
+
+@pytest.mark.parametrize("base_path", ["", "/dify"])
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("route", ["my-apps", "connections", "connections/langgenius%2Fgoogle%2Fgmail"])
+def test_personal_redirect_preserves_target(base_path: str, absolute: bool, route: str) -> None:
+    path = f"{base_path}/{route}?sort=recent&q=a%26b#details"
+    target = f"https://console.example.com{path}" if absolute else path
+    assert resolve_personal_login_redirect(target, console_web_url=f"https://console.example.com{base_path}") == target
+
+
+@pytest.mark.parametrize("base_path", ["", "/dify"])
+def test_missing_personal_redirect_defaults_to_my_apps(base_path: str) -> None:
+    assert resolve_personal_login_redirect(None, console_web_url=f"https://console.example.com{base_path}") == (
+        f"{base_path}/my-apps"
+    )
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "",
+        "https://evil.example/connections",
+        "https://console.example.com.evil.example/connections",
+        "https://user@console.example.com/connections",
+        "https://console.example.com:444/connections",
+        "http://console.example.com/connections",
+        "https://[invalid/connections",
+        "//evil.example/connections",
+        "///evil.example/connections",
+        r"/\evil.example/connections",
+        "/%2f%2fevil.example/connections",
+        "/connections/../signin",
+        "/connections/%2e%2e",
+        "/connections/%2E",
+        "/connections/provider\n",
+        " /connections",
+        "/signin?redirect_url=/connections",
+        "/chatbot/app-code",
+        "/apps",
+        "connections",
+        "javascript:alert(1)",
+    ],
+)
+def test_personal_redirect_rejects_unsafe_or_non_personal_targets(target: str) -> None:
+    assert resolve_personal_login_redirect(target, console_web_url="https://console.example.com") is None
+
+
+def test_personal_redirect_requires_configured_base_path() -> None:
+    assert resolve_personal_login_redirect("/connections", console_web_url="https://console.example.com/dify") is None

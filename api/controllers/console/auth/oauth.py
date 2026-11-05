@@ -31,6 +31,7 @@ from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
+    set_webapp_access_token_to_cookie,
 )
 from services.account_errors import (
     AccountEmailDomainSuspendedError,
@@ -55,6 +56,7 @@ from services.entities.account_oauth_entities import (
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
+from services.web_login_redirect import resolve_personal_login_redirect
 
 
 class OAuthLoginQuery(BaseModel):
@@ -66,7 +68,9 @@ class OAuthLoginQuery(BaseModel):
     language: str | None = Field(default=None, description="Preferred interface language")
     redirect_url: str | None = Field(
         default=None,
-        description="Console page to resume after login; End User mode resumes /signin to complete the Web App handoff",
+        description="Console page to resume after login; End User mode accepts personal portal URLs, "
+        "defaults to /my-apps and can resume "
+        "/signin to complete an App handoff",
     )
 
 
@@ -129,10 +133,26 @@ def _oauth_callback_target(result: OAuthCallbackResult, requested_redirect: str 
 
 
 def _end_user_return_target(redirect_url: str | None) -> str:
+    """Preserve trusted personal or sign-in targets; fall back to My Apps on invalid input.
+
+    Preconditions: the redirect is untrusted and deployment URLs are trusted.
+    Postconditions: no external origin or path outside the configured portal and
+    sign-in routes is returned, and accepted query strings and fragments survive.
+    """
+    personal_portal = f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/my-apps"
+    if not redirect_url:
+        return personal_portal
+    personal_target = resolve_personal_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
+    if personal_target is not None:
+        return personal_target
     target = _safe_console_redirect_target(redirect_url)
-    signin = f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
-    if urllib.parse.urlsplit(target).path != urllib.parse.urlsplit(signin).path:
-        raise ValueError("End User OAuth must return to the sign-in page.")
+    parsed = urllib.parse.urlsplit(target)
+    console = urllib.parse.urlsplit(dify_config.CONSOLE_WEB_URL)
+    if (parsed.scheme or parsed.netloc) and _url_origin(target) != _url_origin(dify_config.CONSOLE_WEB_URL):
+        return personal_portal
+    base_path = console.path.rstrip("/")
+    if parsed.path != f"{base_path}/signin":
+        return personal_portal
     return target
 
 
@@ -329,6 +349,12 @@ class OAuthCallback(Resource):
 
         target_url = _oauth_callback_target(result, requested_redirect, mode)
         response = _redirect_with_console_session(result.tokens, target_url)
+        if (
+            mode == LoginMode.END_USER
+            and resolve_personal_login_redirect(target_url, console_web_url=dify_config.CONSOLE_WEB_URL) is not None
+        ):
+            session = application_services().web_login_handoff.personal_session(result.tokens.access_token)
+            set_webapp_access_token_to_cookie(response, session.access_token, expires_at=session.expires_at)
         if state_cookie is not None:
             response.delete_cookie(state_cookie)
         return response

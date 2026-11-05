@@ -1,4 +1,4 @@
-"""One-use, PKCE-bound handoff from Account sign-in to the existing Web Passport flow."""
+"""Account login sessions for the personal portal and PKCE-bound Web App handoffs."""
 
 import base64
 import hashlib
@@ -11,6 +11,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from pydantic import BaseModel, Field
 
+from services.entities.passport_entities import WebAppLoginClaims
 from services.web_identity_service import WebIdentityError, WebIdentityService
 from services.web_login_redirect import resolve_web_login_redirect
 from services.web_passport_service import (
@@ -92,12 +93,9 @@ class WebLoginHandoffService:
 
     def authorize(self, target: WebLoginTarget, access_token: str) -> str:
         redirect_url = self.validate_target(target)
-        try:
-            claims = self._identities.resolve_login(self._tokens.verify(access_token))
-        except WebIdentityError as exc:
-            raise WebPassportUnauthorizedError("Account login required.") from exc
-        if claims.token_source is not None or claims.account_id is None or claims.exp is None:
-            raise WebPassportUnauthorizedError("Account login required.")
+        claims = self._console_identity(access_token)
+        assert claims.account_id is not None
+        assert claims.exp is not None
         app = self._apps.get_active_web_app(target.app_code)
         if app is None:
             raise WebPassportNotFoundError()
@@ -125,6 +123,24 @@ class WebLoginHandoffService:
             )
         )
 
+    def personal_session(self, access_token: str) -> WebLoginSession:
+        """Exchange a verified Console identity for a same-origin personal portal cookie."""
+        if not self._enabled:
+            raise WebPassportAccountExchangeDisabledError()
+        claims = self._console_identity(access_token)
+        assert claims.account_id is not None
+        assert claims.exp is not None
+        return self._issue_login_session(account_id=claims.account_id, expires_at=claims.exp)
+
+    def _console_identity(self, access_token: str) -> WebAppLoginClaims:
+        try:
+            claims = self._identities.resolve_login(self._tokens.verify(access_token))
+        except WebIdentityError as exc:
+            raise WebPassportUnauthorizedError("Account login required.") from exc
+        if claims.token_source is not None or claims.account_id is None or claims.exp is None:
+            raise WebPassportUnauthorizedError("Account login required.")
+        return claims
+
     def redeem(self, *, app_code: str, code: str, code_verifier: str) -> WebLoginSession:
         if not self._enabled:
             raise WebPassportAccountExchangeDisabledError()
@@ -150,17 +166,20 @@ class WebLoginHandoffService:
             self._identities.require_account(grant.account_id)
         except WebIdentityError as exc:
             raise WebPassportUnauthorizedError("Account is unavailable.") from exc
+        return self._issue_login_session(account_id=grant.account_id, expires_at=grant.login_expires_at)
+
+    def _issue_login_session(self, *, account_id: str, expires_at: int) -> WebLoginSession:
         return WebLoginSession(
             access_token=self._tokens.issue(
                 {
                     "sub": "Web API Account Login",
                     "token_source": "webapp_account_login",
-                    "user_id": grant.account_id,
+                    "user_id": account_id,
                     "auth_type": "internal",
-                    "exp": grant.login_expires_at,
+                    "exp": expires_at,
                 }
             ),
-            expires_at=grant.login_expires_at,
+            expires_at=expires_at,
         )
 
     @staticmethod

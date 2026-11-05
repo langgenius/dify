@@ -253,6 +253,109 @@ def test_no_console_session_reports_logged_out(handoff: SimpleNamespace) -> None
     assert response.json == {"logged_in": False, "redirect_url": None}
 
 
+@pytest.mark.parametrize(
+    "target", [None, "/connections?q=a%26b#details", "https://console.example.com/my-apps?sort=recent"]
+)
+def test_personal_portal_login_reuses_console_session_without_app_handoff(
+    handoff: SimpleNamespace, target: str | None
+) -> None:
+    client = handoff.app.test_client()
+    client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
+    response = client.get(
+        "/console/api/login",
+        base_url="https://console.example.com",
+        query_string={"mode": "end_user", **({"redirect_url": target} if target is not None else {})},
+    )
+    assert response.status_code == 200
+    assert response.json == {"logged_in": True, "redirect_url": target or "/my-apps"}
+    assert handoff.commands.call_count == 0
+    cookie = client.get_cookie("__Host-webapp_access_token", domain="console.example.com")
+    assert cookie is not None
+    claims = handoff.signer.verify(cookie.value)
+    assert claims["token_source"] == "webapp_account_login"
+    assert claims["user_id"] == ACCOUNT_ID
+    assert claims["exp"] == handoff.signer.verify(handoff.login)["exp"]
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize("credential", ["missing", "tampered", "expired", "webapp-proof"])
+def test_personal_portal_login_rejects_invalid_console_identity(handoff: SimpleNamespace, credential: str) -> None:
+    client = handoff.app.test_client()
+    if credential != "missing":
+        token = {
+            "tampered": "invalid-token",
+            "expired": handoff.signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 1}),
+            "webapp-proof": handoff.signer.issue(webapp_login_claims()),
+        }[credential]
+        client.set_cookie("__Host-access_token", token, domain="console.example.com", secure=True)
+    response = client.get("/console/api/login?mode=end_user", base_url="https://console.example.com")
+    assert response.status_code == 200
+    assert response.json == {"logged_in": False, "redirect_url": None}
+    assert client.get_cookie("__Host-webapp_access_token", domain="console.example.com") is None
+
+
+@pytest.mark.parametrize("target", [None, "/connections/langgenius%2Fgoogle%2Fgmail?view=apps#details"])
+def test_personal_portal_login_refreshes_without_workspace(handoff: SimpleNamespace, target: str | None) -> None:
+    from unittest.mock import Mock
+
+    from services.entities.account_entities import AccountSessionTokens
+    from services.entities.account_login_entities import LoginMode
+
+    auth = Mock()
+    auth.refresh.return_value = AccountSessionTokens(handoff.login, "new-refresh", "csrf")
+    handoff.services.accounts = SimpleNamespace(authentication=auth)
+    client = handoff.app.test_client()
+    client.set_cookie("__Host-refresh_token", "old-refresh", domain="console.example.com", secure=True)
+    response = client.get(
+        "/console/api/login",
+        base_url="https://console.example.com",
+        query_string={"mode": "end_user", **({"redirect_url": target} if target is not None else {})},
+    )
+    assert response.status_code == 200
+    assert response.json == {"logged_in": True, "redirect_url": target or "/my-apps"}
+    auth.refresh.assert_called_once_with("old-refresh", mode=LoginMode.END_USER)
+    assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
+    assert client.get_cookie("__Host-refresh_token", domain="console.example.com").value == "new-refresh"
+    assert handoff.commands.call_count == 0
+
+
+def test_personal_portal_login_preserves_console_base_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    from configs import dify_config
+
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example.com/dify")
+    assert console_login._personal_portal_target(None) == "/dify/my-apps"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        {"app_code": "app-a"},
+        {"redirect_url": RETURN_URL, "code_challenge": CHALLENGE},
+        {"mode": "console"},
+    ],
+)
+def test_personal_portal_login_rejects_ambiguous_context(handoff: SimpleNamespace, query: dict[str, str]) -> None:
+    response = handoff.app.test_client().get(
+        "/console/api/login",
+        base_url="https://console.example.com",
+        query_string=query,
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/connections", "/signin", "/connections/../apps"])
+def test_personal_portal_login_rejects_unsafe_redirect_before_issuing_cookie(
+    handoff: SimpleNamespace, target: str
+) -> None:
+    client = handoff.app.test_client()
+    client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
+    response = client.get(
+        "/console/api/login", base_url="https://console.example.com", query_string={"redirect_url": target}
+    )
+    assert response.status_code == 400
+    assert response.headers.getlist("Set-Cookie") == []
+
+
 def test_wrong_proof_or_app_does_not_consume_grant(handoff: SimpleNamespace) -> None:
     service = handoff.services.web_login_handoff
     target = service.authorize(
@@ -364,6 +467,52 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
         },
     )
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize("target", [None, "/connections?sort=recent#details"])
+def test_oauth_personal_portal_sets_verified_cookie_and_logout_clears_it(
+    handoff: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, target: str | None
+) -> None:
+    from controllers.console.auth import oauth
+    from services.entities.account_entities import AccountSessionTokens
+    from services.entities.account_oauth_entities import OAuthSignInResult
+    from tests.unit_tests.controllers.console.auth.test_oauth import FakeOAuthService
+
+    apply_config_overrides(monkeypatch, ENABLE_SOCIAL_OAUTH_LOGIN=True)
+    service = FakeOAuthService(
+        callback_result=OAuthSignInResult(
+            tokens=AccountSessionTokens(handoff.login, "refresh", "csrf"), oauth_new_user=False
+        )
+    )
+    authentication = MagicMock()
+    handoff.services.accounts = SimpleNamespace(oauth=service, authentication=authentication)
+    monkeypatch.setattr(oauth, "application_services", lambda: handoff.services)
+    monkeypatch.setattr(console_login, "current_account_with_tenant_optional", lambda: (None, None))
+    client = handoff.app.test_client()
+    response = client.get(
+        "/console/api/oauth/login/github",
+        base_url="https://console.example.com",
+        query_string={"mode": "end_user", **({"redirect_url": target} if target is not None else {})},
+    )
+    assert response.status_code == 302
+    state = service.authorization_calls[0][1].state
+    response = client.get(
+        "/console/api/oauth/authorize/github",
+        base_url="https://console.example.com",
+        query_string={"code": "provider-code", "state": state},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == (target or "https://console.example.com/my-apps")
+    cookie = client.get_cookie("__Host-webapp_access_token", domain="console.example.com")
+    assert cookie is not None
+    claims = handoff.signer.verify(cookie.value)
+    assert claims["token_source"] == "webapp_account_login"
+    assert claims["user_id"] == ACCOUNT_ID
+    assert claims["exp"] == handoff.signer.verify(handoff.login)["exp"]
+    response = client.post("/console/api/logout", base_url="https://console.example.com")
+    assert response.status_code == 200
+    assert client.get_cookie("__Host-webapp_access_token", domain="console.example.com") is None
+    authentication.logout.assert_called_once_with(refresh_token="refresh")
 
 
 @pytest.mark.parametrize("failed_command", ["SET", "GET", "GETDEL"])

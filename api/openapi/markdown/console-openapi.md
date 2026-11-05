@@ -11235,16 +11235,16 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /login
-Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_code | query |  | Yes | string |
-| code_challenge | query | S256 PKCE challenge | Yes | string |
+| app_code | query |  | No | string |
+| code_challenge | query | S256 PKCE challenge required only when returning to an App | No | string |
 | mode | query |  | No | string, <br>**Default:** end_user |
-| redirect_url | query |  | Yes | string |
+| redirect_url | query | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No | string |
 
 #### Responses
 
@@ -11465,7 +11465,7 @@ Initiate OAuth login process
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
 | mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
-| redirect_url | query | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No | string |
+| redirect_url | query | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -32380,7 +32380,7 @@ Only support workflow app.
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
 | mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
-| redirect_url | string | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No |
+| redirect_url | string | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -37349,10 +37349,10 @@ The app access service is unavailable. Try again later.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_code | string |  | Yes |
-| code_challenge | string | S256 PKCE challenge | Yes |
+| app_code | string |  | No |
+| code_challenge | string | S256 PKCE challenge required only when returning to an App | No |
 | mode | string, <br>**Default:** end_user |  | No |
-| redirect_url | string |  | Yes |
+| redirect_url | string | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No |
 
 #### WebAppAccountSessionResponse
 
