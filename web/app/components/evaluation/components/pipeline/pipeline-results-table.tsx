@@ -21,7 +21,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
   const { t } = useTranslation(['evaluation'])
 
   return (
-    <div className="overflow-x-auto py-2 xl:min-h-0 xl:flex-1 xl:overflow-auto">
+    <div className="min-h-0 flex-1 overflow-auto py-2">
       <table className="min-w-full table-fixed border-collapse overflow-hidden rounded-lg">
         <colgroup>
           <col className="w-10" />
