@@ -208,6 +208,26 @@ it('cancels a scheduled canvas refresh when the save fails before it runs', asyn
   vi.useRealTimers()
 })
 
+it('rejects a delayed draft refresh after a newer save succeeds', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  const { refreshDraft, store, unmount } = renderSubject()
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).toHaveBeenCalledOnce()
+  const options = refreshDraft.mock.calls[0]?.[1]
+  expect(options?.shouldApply?.()).toBe(true)
+  store.setState({
+    draftSaveBlocked: false,
+    draftSaveVersion: store.getState().draftSaveVersion + 1,
+  })
+  expect(options?.shouldApply?.()).toBe(false)
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
+
 it('opens the node context menu and clears its target when the graph is replaced', async () => {
   const { store, eventEmitter } = renderSubject()
   fireEvent.contextMenu(screen.getByText('Transform documents'), { clientX: 24, clientY: 48 })
