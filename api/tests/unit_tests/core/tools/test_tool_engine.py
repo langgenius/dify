@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import timedelta
 from typing import Any
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, TraceCorrelation, TraceEvent
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -32,6 +35,26 @@ from core.tools.errors import (
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from services.tools.tool_engine import ToolEngine
 from tests.helpers.unit.model_factories import make_app, make_conversation
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _Recorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="u1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _message() -> Message:
@@ -337,11 +360,59 @@ def test_agent_invoke_success(unbound_session: Session, app_records):
                         message=message,
                         invoke_from=InvokeFrom.DEBUGGER,
                         agent_tool_callback=callback,
+                        trace_scope=None,
                     )
 
     assert result_text == "ok"
     assert message_files == []
     assert result_meta.error is None
+
+
+def test_agent_invoke_emits_tool_invoked_from_meta(
+    unbound_session: Session, monkeypatch: pytest.MonkeyPatch, app_records
+) -> None:
+    tool = _build_tool(with_llm_parameter=True)
+    message = _message()
+    meta = ToolInvokeMeta(
+        time_cost=1.25,
+        error="partial failure",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+    )
+    recorder = _Recorder()
+    monkeypatch.setattr(
+        ToolEngine, "_invoke", staticmethod(lambda **_kwargs: iter([tool.create_text_message("ok"), meta]))
+    )
+
+    ToolEngine.agent_invoke(
+        session=unbound_session,
+        tool=tool,
+        tool_parameters="hello",
+        user_id="u1",
+        tenant_id="tenant-1",
+        message=message,
+        invoke_from=InvokeFrom.DEBUGGER,
+        agent_tool_callback=DifyAgentCallbackHandler(),
+        trace_scope=_trace_scope(recorder),
+        records=app_records,
+    )
+
+    [event] = recorder.events
+    payload = event.payload
+    assert isinstance(payload, ToolInvoked)
+    assert payload == ToolInvoked(
+        message_id=message.id,
+        tool_name="tool-a",
+        tool_inputs={"query": "hello"},
+        tool_outputs="ok",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+        error="partial failure",
+        time_cost=1.25,
+        started_at=payload.started_at,
+        ended_at=payload.ended_at,
+    )
+    assert payload.started_at.utcoffset() == timedelta(0)
+    assert payload.ended_at.utcoffset() == timedelta(0)
+    assert payload.ended_at >= payload.started_at
 
 
 def test_agent_invoke_param_validation_error(unbound_session: Session, app_records):
@@ -360,6 +431,7 @@ def test_agent_invoke_param_validation_error(unbound_session: Session, app_recor
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool parameters validation error" in error_text
@@ -384,6 +456,7 @@ def test_agent_invoke_engine_meta_error(unbound_session: Session, app_records):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "meta failure" in error_text
@@ -429,6 +502,7 @@ def test_agent_invoke_tool_invoke_error(unbound_session: Session, app_records):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool invoke error" in error_text

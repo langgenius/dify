@@ -177,7 +177,7 @@ const originalNavigation = navigationSettings.disableMainFrameNavigation
 
 beforeEach(() => {
   navigationSettings.disableMainFrameNavigation = true
-  document.body.setAttribute('data-is-marketplace', '')
+  document.documentElement.setAttribute('data-is-marketplace', '')
   window.__marketplaceTracking__ = {
     track: mockTrackMarketplaceSiteEvent,
     rememberReferrer: vi.fn(),
@@ -190,7 +190,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete window.__marketplaceTracking__
-  document.body.removeAttribute('data-is-marketplace')
+  document.documentElement.removeAttribute('data-is-marketplace')
   navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -845,11 +845,11 @@ describe('HomeTrending', () => {
   })
 
   describe('mobile swipe', () => {
-    const stubViewport = (isMobile: boolean) =>
+    const stubViewport = (isNarrow: boolean) =>
       vi.spyOn(window, 'matchMedia').mockImplementation(
         (query) =>
           ({
-            matches: isMobile && query === '(max-width: 879px)',
+            matches: isNarrow && query === '(max-width: 879px)',
             media: query,
             onchange: null,
             addEventListener: vi.fn(),
@@ -939,10 +939,18 @@ describe('HomeTrending', () => {
     })
 
     it.each([
-      { name: 'a vertical gesture on mobile', isMobile: true, end: [270, 300] as [number, number] },
-      { name: 'touch input on desktop', isMobile: false, end: [80, 160] as [number, number] },
-    ])('stays on the current slide for $name', ({ isMobile, end }) => {
-      stubViewport(isMobile)
+      {
+        name: 'a vertical gesture on a narrow viewport',
+        isNarrow: true,
+        end: [270, 300] as [number, number],
+      },
+      {
+        name: 'touch input on a wide viewport',
+        isNarrow: false,
+        end: [80, 160] as [number, number],
+      },
+    ])('stays on the current slide for $name', ({ isNarrow, end }) => {
+      stubViewport(isNarrow)
       renderCarousel()
 
       swipe(screen.getByRole('group', { name: 'Trending' }), [[300, 120], end])

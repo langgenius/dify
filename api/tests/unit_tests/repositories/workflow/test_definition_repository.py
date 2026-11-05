@@ -11,6 +11,7 @@ from sqlalchemy import Select, event, func, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
+from core.helper.encrypter import full_mask_token
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from enums.agent import WorkflowAgentBindingType
@@ -21,7 +22,7 @@ from extensions.application_services.workflow_variables import (
 )
 from fields.workflow_fields import WorkflowResponse
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.variables import StringSegment, StringVariable
+from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringSegment, StringVariable
 from machinery.context import RequestContext
 from models import Account, App
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -38,6 +39,7 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.workflow.definition_repository import (
     WorkflowDefinitionRepository,
     WorkflowDefinitionStore,
+    workflow_record,
     workflow_snapshot,
 )
 from repositories.workflow.draft_repository import WorkflowDraftRepository
@@ -876,9 +878,7 @@ def test_use_case_notifies_only_after_real_transaction_commits(
         steps.append("retire")
 
     assert isinstance(service._drafts._retirement, NonCallableMock)
-    service._drafts._retirement.retire_unowned.side_effect = lambda **kwargs: retire(
-        CONTEXT, kwargs["agent_ids"]
-    )
+    service._drafts._retirement.retire_unowned.side_effect = lambda **kwargs: retire(CONTEXT, kwargs["agent_ids"])
 
     def notify(_app: App, **kwargs: object) -> None:
         assert "commit" in steps
@@ -2072,3 +2072,48 @@ def test_publication_repository_is_independent_of_agent_service_and_commits_requ
             assert app is not None
             assert app.workflow_id == created.id
             assert session.get(Workflow, created.id) is not None
+
+
+def test_workflow_record_preserves_variable_types_and_masks_stored_secrets(sqlite_session: Session) -> None:
+    """Project persisted variables without decrypting secrets or changing storage."""
+    stored = json.dumps(
+        {
+            "TEXT": {"name": "TEXT", "value_type": "string", "value": "hello"},
+            "COUNT": {"name": "COUNT", "value_type": "number", "value": 42},
+            "RATIO": {"name": "RATIO", "value_type": "number", "value": 1.5},
+            "TOKEN": {"name": "TOKEN", "value_type": "secret", "value": "opaque-ciphertext"},
+        }
+    )
+    workflow = make_workflow()
+    workflow._environment_variables = stored
+    sqlite_session.add(workflow)
+    sqlite_session.commit()
+
+    record = workflow_record(workflow, sqlite_session)
+    variables = {variable.name: variable for variable in record.environment_variables}
+
+    assert isinstance(variables["TEXT"], StringVariable)
+    assert variables["TEXT"].value == "hello"
+    assert isinstance(variables["COUNT"], IntegerVariable)
+    assert variables["COUNT"].value == 42
+    assert isinstance(variables["RATIO"], FloatVariable)
+    assert variables["RATIO"].value == 1.5
+    assert isinstance(variables["TOKEN"], SecretVariable)
+    assert variables["TOKEN"].value == full_mask_token()
+    assert workflow._environment_variables == stored
+    sqlite_session.refresh(workflow)
+    assert workflow._environment_variables == stored
+
+
+@pytest.mark.parametrize("stored", ["", "{}"])
+def test_workflow_record_returns_empty_environment_variables(sqlite_session: Session, stored: str) -> None:
+    """Project an empty stored environment to an empty list without rewriting it."""
+    workflow = make_workflow()
+    workflow._environment_variables = stored
+    sqlite_session.add(workflow)
+    sqlite_session.commit()
+
+    record = workflow_record(workflow, sqlite_session)
+
+    assert record.environment_variables == []
+    assert workflow._environment_variables == stored

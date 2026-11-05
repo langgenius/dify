@@ -21,7 +21,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
@@ -196,8 +196,13 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 annotation_reply=annotation_reply,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
+            )
 
             # init application generate entity
             application_generate_entity = AgentChatAppGenerateEntity(
@@ -221,7 +226,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 extras=extras,
                 call_depth=0,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
             )
 
             session.expunge_all()

@@ -4,8 +4,10 @@ from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
@@ -33,8 +35,16 @@ class DataSourceContentPreviewApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @with_current_user
+    @with_session
     @model_validate(DatasourceContentPreviewPayload)
-    def post(self, req_data: DatasourceContentPreviewPayload, current_user: Account, pipeline: Pipeline, node_id: str):
+    def post(
+        self,
+        req_data: DatasourceContentPreviewPayload,
+        session: Session,
+        current_user: Account,
+        pipeline: Pipeline,
+        node_id: str,
+    ):
         """
         Run datasource content preview
         """

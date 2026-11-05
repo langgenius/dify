@@ -33,7 +33,7 @@ class TestWorkflowConversationVariableRepository:
         db_session_with_containers.commit()
         return row
 
-    def test_should_update_conversation_variable_data_and_commit(self, db_session_with_containers: Session):
+    def test_should_update_conversation_variable_data_and_commit(self, db_session_with_containers: Session) -> None:
         conversation_id = str(uuid4())
         variable = StringVariable(id=str(uuid4()), name="topic", value="old value")
         self._create_conversation_variable(
@@ -50,7 +50,7 @@ class TestWorkflowConversationVariableRepository:
         assert row is not None
         assert row.data == updated_variable.model_dump_json()
 
-    def test_should_raise_not_found_when_variable_missing(self, db_session_with_containers: Session):
+    def test_should_raise_not_found_when_variable_missing(self, db_session_with_containers: Session) -> None:
         conversation_id = str(uuid4())
         variable = StringVariable(id=str(uuid4()), name="topic", value="value")
         updater = WorkflowConversationVariableRepository(sessionmaker(bind=db.engine))

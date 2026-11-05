@@ -1176,6 +1176,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
+                builders=application_services().workspaces.trigger_builders,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e

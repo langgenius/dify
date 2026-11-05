@@ -268,6 +268,7 @@
   "tracing.config": "กําหนดค่า",
   "tracing.configProvider.clientId": "รหัสลูกค้า OAuth",
   "tracing.configProvider.clientSecret": "รหัสลับของลูกค้า OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "กำหนดค่าแล้ว เว้นว่างไว้เพื่อคงค่าที่บันทึกไว้",
   "tracing.configProvider.databricksHost": "URL ของ Workspace ใน Databricks",
   "tracing.configProvider.experimentId": "รหัสการทดลอง",
   "tracing.configProvider.password": "รหัสผ่าน",

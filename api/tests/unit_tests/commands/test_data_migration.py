@@ -56,6 +56,7 @@ from services.data_migration.entities import (
     MigrationPackage,
     ReportContext,
 )
+from services.data_migration.import_service import ImportRequest
 from services.enterprise.rbac_service import ReplaceMemberBindings, ReplaceUserAccessPolicies
 from services.workflow.console_service import ConsoleWorkflowService
 from tests.helpers.legacy_model_type_migration import (
@@ -79,7 +80,7 @@ CLI parsing and session lifecycle without fabricating the SQLAlchemy boundary.
 
 class TestDataMigrationCommandsCases:
     @staticmethod
-    def test_export_command_requires_input_and_output():
+    def test_export_command_requires_input_and_output() -> None:
         result = CliRunner().invoke(export_migration_data, [])
 
         assert result.exit_code != 0
@@ -88,7 +89,7 @@ class TestDataMigrationCommandsCases:
         assert "--output" in result.output
 
     @staticmethod
-    def test_import_command_requires_input_and_target_tenant_or_package_metadata():
+    def test_import_command_requires_input_and_target_tenant_or_package_metadata() -> None:
         result = CliRunner().invoke(import_migration_data, [])
 
         assert result.exit_code != 0
@@ -96,11 +97,11 @@ class TestDataMigrationCommandsCases:
         assert "--input" in result.output
 
     @staticmethod
-    def test_import_command_does_not_expose_unimplemented_map_id_strategy():
+    def test_import_command_does_not_expose_unimplemented_map_id_strategy() -> None:
         assert ID_STRATEGY_CHOICES == ["preserve-id", "generate-new-id"]
 
     @staticmethod
-    def test_export_template_command_prints_scripted_json_template():
+    def test_export_template_command_prints_scripted_json_template() -> None:
         result = CliRunner().invoke(export_migration_data_template, [])
 
         assert result.exit_code == 0
@@ -120,7 +121,7 @@ class TestDataMigrationCommandsCases:
         }
 
     @staticmethod
-    def test_export_template_command_writes_output_file(tmp_path: Path):
+    def test_export_template_command_writes_output_file(tmp_path: Path) -> None:
         output_file = tmp_path / "export-template.json"
 
         result = CliRunner().invoke(export_migration_data_template, ["--output", str(output_file)])
@@ -130,7 +131,7 @@ class TestDataMigrationCommandsCases:
         assert json.loads(output_file.read_text())["apps"]["all"] is True
 
     @staticmethod
-    def test_export_template_command_requires_overwrite_for_existing_output(tmp_path: Path):
+    def test_export_template_command_requires_overwrite_for_existing_output(tmp_path: Path) -> None:
         output_file = tmp_path / "export-template.json"
         output_file.write_text("{}")
 
@@ -141,8 +142,11 @@ class TestDataMigrationCommandsCases:
 
     @staticmethod
     def test_export_command_uses_cli_owned_session(
-        monkeypatch, tmp_path: Path, sqlite_engine: Engine, workflow_application
-    ):
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        sqlite_engine: Engine,
+        workflow_application: ext_application_services.ApplicationServices,
+    ) -> None:
         captured: dict[str, object] = {}
         input_file = tmp_path / "export-config.json"
         output_file = tmp_path / "migration-package.json"
@@ -150,17 +154,17 @@ class TestDataMigrationCommandsCases:
         package = MigrationPackage.from_mapping({"metadata": {"version": "1", "source_scope": "single"}})
 
         class FakeMigrationExportService:
-            def __init__(self, *, workflow_tools, tool_providers):
+            def __init__(self, *, workflow_tools: object, tool_providers: object) -> None:
                 assert tool_providers is workflow_application.tools.tool_providers
                 assert workflow_tools is workflow_application.tools.workflows
 
-            def export(self, selection, *, session):
+            def export(self, selection: object, *, session: Session) -> ExportResult:
                 captured["session"] = session
                 captured["selection"] = selection
                 return ExportResult(package=package, report_items=[], report_context=ReportContext())
 
         class FakeMigrationPackageService:
-            def save_package(self, package_to_save, path, *, overwrite):
+            def save_package(self, package_to_save: MigrationPackage, path: str, *, overwrite: bool) -> None:
                 captured["package"] = package_to_save
                 captured["path"] = path
                 captured["overwrite"] = overwrite
@@ -184,8 +188,11 @@ class TestDataMigrationCommandsCases:
 
     @staticmethod
     def test_import_command_uses_cli_owned_session(
-        monkeypatch, tmp_path: Path, sqlite_engine: Engine, workflow_application
-    ):
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        sqlite_engine: Engine,
+        workflow_application: ext_application_services.ApplicationServices,
+    ) -> None:
         captured: dict[str, object] = {}
         input_file = tmp_path / "migration-package.json"
         input_file.write_text("{}")
@@ -207,20 +214,20 @@ class TestDataMigrationCommandsCases:
         monkeypatch.setattr(data_migration, "application_services", lambda: services)
 
         class FakeMigrationImportService:
-            def __init__(self, *, workflows, app_dsl, workflow_tools):
+            def __init__(self, *, workflows: object, app_dsl: object, workflow_tools: object) -> None:
                 assert workflow_tools is services.tools.workflows
                 from extensions.application_services.workflow import build_app_dsl_service
 
                 assert workflows is publisher
                 assert app_dsl is build_app_dsl_service
 
-            def import_package(self, request, *, session):
+            def import_package(self, request: ImportRequest, *, session: Session) -> ImportResult:
                 captured["session"] = session
                 captured["request"] = request
                 return ImportResult(report_items=[], report_context=ReportContext(target_tenant="target"))
 
         class FakeMigrationPackageService:
-            def load_package(self, path):
+            def load_package(self, path: str) -> MigrationPackage:
                 captured["path"] = path
                 return package
 
@@ -239,6 +246,7 @@ class TestDataMigrationCommandsCases:
         assert captured_session.in_transaction() is False
         assert captured["path"] == str(input_file)
         request = captured["request"]
+        assert isinstance(request, ImportRequest)
         assert request.package is package
         assert request.options_override == ImportOptions(conflict_strategy=ConflictStrategy.SKIP)
 

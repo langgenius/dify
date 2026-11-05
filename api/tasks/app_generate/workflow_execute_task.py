@@ -14,6 +14,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
+from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -517,6 +518,11 @@ def _publish_streaming_response(
     Notify the initial runner after execution finalization succeeds, even when
     streaming raises. Its fallback must not infer a second outcome from database
     state that asynchronous persistence may have changed in the meantime.
+    A normally exhausted Advanced Chat
+    stream with a published message end, no workflow start, and no errors completes through an
+    internal transport signal after all output is published. It must not invent a workflow run.
+    Other streams require a workflow terminal event; missing terminals produce a failed fallback.
+    Iteration and publish errors propagate after any applicable terminal retry or fallback.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -569,6 +575,8 @@ def _publish_streaming_response(
     topic = WorkflowEventStream.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
+    message_end_published = False
+    stream_failed = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
 
@@ -620,6 +628,7 @@ def _publish_streaming_response(
                     else:
                         payload = json.dumps(event, ensure_ascii=False, default=str)
                 except (TypeError, ValueError):
+                    stream_failed = True
                     logger.exception("error while encoding event")
                     continue
 
@@ -631,8 +640,21 @@ def _publish_streaming_response(
                     started_published = True
                 elif event_name in terminal_events:
                     terminal_published = True
+                elif event_name == "message_end":
+                    message_end_published = True
                 elif event_name == "error":
+                    stream_failed = True
                     stream_error_message = _get_error_message(event) or stream_error_message
+            if (
+                app_mode == AppMode.ADVANCED_CHAT
+                and message_end_published
+                and not started_published
+                and not terminal_published
+                and terminal_status is None
+                and not stream_failed
+            ):
+                topic.publish(STREAM_COMPLETE_SIGNAL)
+                return
         except Exception as exc:
             if not terminal_published and terminal_payload is not None:
                 logger.exception("Retrying engine terminal event publication for run %s", normalized_workflow_run_id)
