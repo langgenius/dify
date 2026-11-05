@@ -5,11 +5,11 @@ import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
 import { AgentDetailSection, AgentDetailTop } from './navigation'
 
 export function AgentDetailSidebar() {
-  const isBelowDesktop = useMediaQuery('(width < 48rem)', {})
+  const isBelowMd = useMediaQuery('(width < 48rem)', {})
 
   return (
     <DetailSidebarFrame
-      compact={isBelowDesktop}
+      compact={isBelowMd}
       renderTop={({ expand, onToggle }) => <AgentDetailTop expand={expand} onToggle={onToggle} />}
       renderSection={({ expand }) => <AgentDetailSection expand={expand} />}
     />
