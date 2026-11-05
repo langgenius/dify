@@ -145,7 +145,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         features: featuresPayload,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
+        ...(isCollaborationEnabled && !collaborationManager.canUseLocalDraftFallback()
+          ? { _is_collaborative: true }
+          : {}),
       },
     }
   }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
@@ -164,17 +166,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     // Page-close saves cannot wait for the user's consent to clear the canvas.
     if (postParams && !isEmptyGraph(postParams.params.graph)) {
       const version = workflowStore.getState().draftSaveVersion + 1
-      if (!isCollaborationEnabled)
+      const isOrdinarySave = !postParams.params._is_collaborative
+      if (isOrdinarySave)
         workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
       // oxlint-disable-next-line typescript/no-deprecated -- Existing unload transport must report conflicts before the canvas can refresh.
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
-        if (
-          !isCollaborationEnabled &&
-          response?.ok &&
-          workflowStore.getState().draftSaveVersion === version
-        )
+        if (isOrdinarySave && response?.ok && workflowStore.getState().draftSaveVersion === version)
           workflowStore.setState({ draftSaveBlocked: false })
-        else if (!isCollaborationEnabled && response?.status === 409)
+        else if (isOrdinarySave && response?.status === 409)
           toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
       })
     }
@@ -194,13 +193,15 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
+      const isOrdinarySave =
+        !isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()
       const version = workflowStore.getState().draftSaveVersion + 1
       workflowStore.setState({
         draftSaveVersion: version,
-        ...(!isCollaborationEnabled ? { draftSaveBlocked: true } : {}),
+        ...(isOrdinarySave ? { draftSaveBlocked: true } : {}),
       })
 
-      if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
+      if (!isOrdinarySave && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
         return null
       }
@@ -211,7 +212,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return (
           isMountedRef.current &&
           !getNodesReadOnly() &&
-          (!isCollaborationEnabled || collaborationManager.canPersistLocalGraph()) &&
+          (!isCollaborationEnabled ||
+            collaborationManager.canUseLocalDraftFallback() ||
+            collaborationManager.canPersistLocalGraph()) &&
           currentParams?.url === baseParams.url &&
           isEmptyGraph(currentParams.params.graph)
         )
@@ -221,7 +224,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (emptyGraph && isCollaborationEnabled) {
+      if (emptyGraph && !isOrdinarySave) {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
         const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
         const [error, draft] = await safe(
@@ -299,6 +302,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
                 },
               }
             : {}),
+        }
+
+        if (!isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
+          delete body._is_collaborative
+          workflowStore.setState({ draftSaveBlocked: true })
         }
 
         const [error, res, isDefined] = await safe(
@@ -384,6 +392,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const shouldRequestLeader =
         !emptyGraph &&
         isCollaborationEnabled &&
+        !collaborationManager.canUseLocalDraftFallback() &&
         collaborationManager.isConnected() &&
         !collaborationManager.getIsLeader() &&
         !options?.forceLocal

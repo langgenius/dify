@@ -204,6 +204,61 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('payload', () => {
+    it('uses ordinary saving for an existing disconnected collaboration fallback', async () => {
+      useCollaborationSession({
+        connected: false,
+        leader: false,
+        canPersistLocalGraph: false,
+        canUseLocalDraftFallback: true,
+      })
+      mockSyncWorkflowDraft.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_collaboration_active',
+          message: 'The workflow is being edited collaboratively.',
+          status: 409,
+        }),
+      )
+      const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+      expect(store.getState().draftSaveBlocked).toBe(true)
+      act(() => result.current.syncWorkflowDraftWhenPageClose())
+      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+        '/api/apps/app-1/workflows/draft',
+        expect.not.objectContaining({ _is_collaborative: expect.anything() }),
+        expect.any(Function),
+      )
+      const callback = mockPostWithKeepalive.mock.calls.at(-1)?.[2] as (response?: Response) => void
+      act(() => callback(new Response(null, { status: 409 })))
+      expect(store.getState().draftSaveBlocked).toBe(true)
+    })
+
+    it('uses ordinary empty-draft handling in an existing disconnected fallback', async () => {
+      useCollaborationSession({
+        connected: false,
+        leader: false,
+        canPersistLocalGraph: false,
+        canUseLocalDraftFallback: true,
+      })
+      const { result } = renderUseNodesSyncDraft({
+        isCollaborationEnabled: true,
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+    })
+
     it('saves a full draft when collaboration is disabled', async () => {
       const { result } = renderUseNodesSyncDraft({
         isCollaborationEnabled: false,
