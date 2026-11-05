@@ -2,6 +2,7 @@ import io
 import types
 from collections.abc import Callable
 from inspect import unwrap
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,7 @@ from flask import Flask
 from pydantic import ValidationError
 
 import controllers.files.plugin_file_upload as module
+from controllers.common.schema import JsonResponseWithStatus
 from controllers.files import bp as files_blueprint
 from core.workflow.file_reference import build_file_reference
 from enums import DeploymentEdition
@@ -66,6 +68,11 @@ def _valid_args() -> dict[str, object]:
         "conversation_id": "conversation-id",
         "max_size": "1024",
     }
+
+
+def _post_upload() -> JsonResponseWithStatus:
+    api = module.PluginUploadFileApi()
+    return unwrap(cast(Callable[..., object], api.post))(api)
 
 
 @pytest.fixture
