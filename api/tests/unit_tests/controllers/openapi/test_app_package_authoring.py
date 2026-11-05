@@ -368,6 +368,26 @@ def test_a_field_hint_sends_its_item_fields_and_leaves_out_none() -> None:
     assert "items" not in FieldHintRow.of(item).model_dump(mode="json", by_alias=True)
 
 
+def test_a_field_hint_sends_its_object_fields_and_leaves_out_none() -> None:
+    body_field = FieldHint(
+        loc=("body",), type="string", options=(), description=None, required=True, default=NO_DEFAULT
+    )
+    hint = FieldHint(
+        loc=("message_template",),
+        type="object",
+        options=(),
+        description=None,
+        required=True,
+        default=NO_DEFAULT,
+        fields=(body_field,),
+    )
+
+    body = FieldHintRow.of(hint).model_dump(mode="json", by_alias=True)
+
+    assert body["fields"] == [{"loc": ["body"], "type": "string", "options": [], "description": None, "required": True}]
+    assert "fields" not in FieldHintRow.of(body_field).model_dump(mode="json", by_alias=True)
+
+
 @pytest.mark.parametrize(
     ("default", "expected"), [(None, {"default": None}), ("UTC", {"default": "UTC"}), (NO_DEFAULT, {})]
 )
