@@ -1891,7 +1891,7 @@ class EvaluationService:
             data.default_metrics, evaluation_instance=evaluation_instance
         )
         success_criteria_columns = cls._get_success_criteria_columns(
-            data.default_metrics, evaluation_instance=evaluation_instance
+            data.default_metrics, target_type=target_type, evaluation_instance=evaluation_instance
         )
         expected_tool_call_columns = cls._get_expected_tool_call_columns(
             data.default_metrics, evaluation_instance=evaluation_instance
@@ -2038,9 +2038,10 @@ class EvaluationService:
         cls,
         default_metrics: Sequence[DefaultMetric | Mapping[str, Any]],
         *,
+        target_type: str,
         evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> list[EvaluationTemplateColumn]:
-        """Build optional node-scoped success-criteria columns for Agent task metrics."""
+        """Build Agent success-criteria columns, unscoped for standalone Agent apps."""
         filtered_metrics = cls.filter_console_default_metrics(default_metrics)
         if not filtered_metrics:
             return []
@@ -2054,7 +2055,11 @@ class EvaluationService:
             if evaluation_instance.metric_accepts_success_criteria(metric.metric) is not True:
                 continue
             for node_info in metric.node_info_list:
-                column_name = f"{node_info.title} : success_criteria"
+                column_name = (
+                    "success_criteria"
+                    if target_type == EvaluationTargetType.AGENTS.value
+                    else f"{node_info.title} : success_criteria"
+                )
                 if column_name in seen:
                     continue
                 seen.add(column_name)
@@ -2598,6 +2603,7 @@ class EvaluationService:
         - ``index,<input...>,expected_output`` for the legacy single-reference flow
         - ``index,<input...>,<node_title> : expected_output`` for node-specific references
         - ``index,<input...>,<node_title> : expected_tool_calls`` for Agent trace references
+        - ``index,<input...>,success_criteria`` for standalone Agent success requirements
         - ``index,<input...>,<node_title> : success_criteria`` for optional Agent success requirements
 
         Column parsing treats the *last* ``:`` as the separator between the
