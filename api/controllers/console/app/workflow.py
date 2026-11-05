@@ -34,6 +34,7 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
+    DraftWorkflowCollaborationActive,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
 )
@@ -98,7 +99,12 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowCollaborationActiveError,
+    WorkflowHashNotEqualError,
+    WorkflowNotFoundError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
@@ -632,7 +638,7 @@ class DraftWorkflowApi(Resource):
         )
         return response
 
-    @error_responses(DraftWorkflowNotSync)
+    @error_responses(DraftWorkflowNotSync, DraftWorkflowCollaborationActive)
     @setup_required
     @login_required
     @account_initialization_required
@@ -706,7 +712,10 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                reject_active_collaboration=True,
             )
+        except WorkflowCollaborationActiveError as caught_error:
+            raise DraftWorkflowCollaborationActive() from caught_error
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
         except VariableError as e:

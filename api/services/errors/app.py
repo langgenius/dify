@@ -26,6 +26,10 @@ class WorkflowHashNotEqualError(Exception):
     pass
 
 
+class WorkflowCollaborationActiveError(Exception):
+    """A non-collaborative draft save conflicts with an active collaboration room."""
+
+
 class DraftChangedError(Exception):
     """The draft no longer matches the export an overwrite is based on."""
 

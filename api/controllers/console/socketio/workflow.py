@@ -12,7 +12,7 @@ from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.workflow_collaboration_service import WorkflowCollaborationService, WorkflowCollaborationUnavailableError
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -78,6 +78,8 @@ def handle_user_connect(sid, data):
             result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
+        return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationUnavailableError:
         return {"msg": "collaboration_unavailable"}, 503
     if not result:
         return {"msg": "unauthorized"}, 401

@@ -26,6 +26,7 @@ import {
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
+import { toast } from '@/app/notifications'
 import { API_PREFIX } from '@/config'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -160,9 +161,22 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     // Page-close saves cannot wait for the user's consent to clear the canvas.
-    if (postParams && !isEmptyGraph(postParams.params.graph))
-      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+    if (postParams && !isEmptyGraph(postParams.params.graph)) {
+      const version = workflowStore.getState().draftSaveVersion + 1
+      if (!isCollaborationEnabled)
+        workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
+        if (
+          !isCollaborationEnabled &&
+          response?.ok &&
+          workflowStore.getState().draftSaveVersion === version
+        )
+          workflowStore.setState({ draftSaveBlocked: false })
+        else if (!isCollaborationEnabled && response?.status === 409)
+          toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+      })
+    }
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore, t])
 
   const performLocalSync = useCallback(
     async (
@@ -279,6 +293,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             : {}),
         }
 
+        const version = workflowStore.getState().draftSaveVersion + 1
+        workflowStore.setState({ draftSaveVersion: version })
         const [error, res, isDefined] = await safe(
           consoleClient.apps.byAppId.workflows.draft.post(
             { params: { app_id: baseParams.appId }, body },
@@ -289,12 +305,22 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           const { isWorkflowDataLoaded } = workflowStore.getState()
           if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+          if (isDefined && error.code === 'draft_workflow_collaboration_active') {
+            if (!workflowStore.getState().draftSaveBlocked)
+              toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+            workflowStore.setState({ draftSaveBlocked: true })
+          } else if (
+            isDefined &&
+            error.code === 'draft_workflow_not_sync' &&
+            !notRefreshWhenSyncError
+          )
             handleRefreshWorkflowDraft(true)
           callback?.onError?.()
           return null
         }
 
+        if (workflowStore.getState().draftSaveVersion === version)
+          workflowStore.setState({ draftSaveBlocked: false })
         setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()

@@ -412,12 +412,16 @@ export const Workflow: FC<WorkflowProps> = memo(
         // broadcast a rollback to everyone. A trusted CRDT remains authoritative when empty.
         const collaborationConnected = collaborationManager.isConnected()
         if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
+        const canRefresh = () => !workflowStore.getState().draftSaveBlocked
+        if (!canRefresh()) return
 
         if (collaborationConnected) {
           collaborationManager.refreshGraphSynchronously()
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
+          setTimeout(() => {
+            if (canRefresh()) handleRefreshWorkflowDraft(false, { shouldApply: canRefresh })
+          }, 500)
         }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])

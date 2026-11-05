@@ -16,7 +16,7 @@ from sqlalchemy import Engine as _workflow_agent_preview_identity_Engine
 from sqlalchemy import event, func, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -35,6 +35,7 @@ from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
 from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -73,7 +74,12 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    TriggerNodeLimitExceededError,
+    WorkflowCollaborationActiveError,
+    WorkflowHashNotEqualError,
+)
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
@@ -86,6 +92,7 @@ from services.workflow_service import (
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -568,6 +575,104 @@ class TestWorkflowServiceCases:
             assert workflow.graph_dict == graph
             assert workflow.features_dict == features
             assert workflow.updated_by == account.id
+
+        @pytest.mark.parametrize(
+            ("room", "guard_enabled", "graph_only", "rejected"),
+            [
+                ("active", True, False, True),
+                ("empty", True, False, False),
+                ("stale", True, False, False),
+                ("mixed", True, False, True),
+                ("no_mapping", True, False, True),
+                ("no_server_id", True, False, True),
+                ("active", False, False, False),
+                ("active", True, True, False),
+            ],
+        )
+        def test_sync_draft_workflow_guards_console_full_saves_during_collaboration(
+            self,
+            workflow_service: WorkflowService,
+            sqlite_session: Session,
+            redis_transport: tuple[RedisClientWrapper, MagicMock],
+            monkeypatch: pytest.MonkeyPatch,
+            room: str,
+            guard_enabled: bool,
+            graph_only: bool,
+            rejected: bool,
+        ) -> None:
+            from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+
+            client, commands = redis_transport
+            commands.side_effect = RedisState().execute
+            monkeypatch.setattr("repositories.workflow_collaboration_repository.redis_client", client)
+            repository = WorkflowCollaborationRepository()
+            if room != "empty":
+                repository.set_session_info(
+                    "app-123",
+                    {
+                        "sid": "sid-1",
+                        "user_id": "user-1",
+                        "username": "Alice",
+                        "avatar": None,
+                        "connected_at": 1,
+                        **({} if room == "no_server_id" else {"server_id": "worker-1"}),
+                    },
+                )
+            if room == "active":
+                repository.refresh_server_heartbeat("worker-1")
+            if room == "mixed":
+                repository.set_session_info(
+                    "app-123",
+                    {
+                        "sid": "sid-2",
+                        "user_id": "user-2",
+                        "username": "Bob",
+                        "avatar": None,
+                        "connected_at": 2,
+                        "server_id": "worker-2",
+                    },
+                )
+                repository.refresh_server_heartbeat("worker-2")
+            if room == "no_mapping":
+                client.delete(repository.sid_key("sid-1"))
+
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+            sqlite_session.add(workflow)
+            sqlite_session.commit()
+            old_graph = workflow.graph
+            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+            statements: list[str] = []
+
+            @event.listens_for(sqlite_session, "do_orm_execute")
+            def capture_statement(execute_state: ORMExecuteState) -> None:
+                statements.append(str(execute_state.statement.compile(dialect=postgresql.dialect())))
+
+            def save() -> Workflow:
+                return workflow_service.sync_draft_workflow(
+                    app_model=app,
+                    graph=graph,
+                    features={"file_upload": {"enabled": False}},
+                    unique_hash=workflow.unique_hash,
+                    account=TestWorkflowAssociatedDataFactory.create_account(),
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=sqlite_session,
+                    commit=False,
+                    sync_agent_bindings=False,
+                    graph_only=graph_only,
+                    reject_active_collaboration=guard_enabled,
+                )
+
+            if rejected:
+                with pytest.raises(WorkflowCollaborationActiveError):
+                    save()
+                assert workflow.graph == old_graph
+            else:
+                result = save()
+                assert result.graph_dict == graph
+
+            assert "FOR UPDATE" in statements[0]
 
         def test_sync_draft_workflow_collaborative_save_preserves_environment_variables_and_locks_row(
             self, workflow_service: WorkflowService, sqlite_session: Session

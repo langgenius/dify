@@ -1379,6 +1379,18 @@ export const zSyncDraftWorkflowResponse = z.object({
 })
 
 /**
+ * DraftWorkflowCollaborationActiveError
+ *
+ * The workflow is being edited collaboratively. Your changes were not saved.
+ */
+export const zDraftWorkflowCollaborationActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_collaboration_active'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * DraftWorkflowNotSyncError
  *
  * Workflow graph might have been modified, please refresh and resubmit.

@@ -93,12 +93,14 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
+    WorkflowCollaborationActiveError,
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
@@ -427,6 +429,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        reject_active_collaboration: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -439,13 +442,24 @@ class WorkflowService:
         graph-only saves preserve independently persisted draft fields, while
         an explicit per-ID environment patch is merged with the graph.
 
+        When requested by the console, a full draft save is rejected under the
+        row lock while a collaboration room has sessions owned by live workers, or sessions of unknown ownership.
+
         :raises WorkflowHashNotEqualError
+        :raises WorkflowCollaborationActiveError
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+
+        if (
+            reject_active_collaboration
+            and not graph_only
+            and WorkflowCollaborationRepository().has_active_sessions(app_model.id)
+        ):
+            raise WorkflowCollaborationActiveError()
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()

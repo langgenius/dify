@@ -131,10 +131,11 @@ class WorkflowCollaborationRepository:
         except (TypeError, json.JSONDecodeError):
             return None
 
-    def delete_session(self, workflow_id: str, sid: str) -> None:
+    def delete_session(self, workflow_id: str, sid: str, *, server_id: str | None = None) -> None:
         mapping = self.get_sid_mapping(sid)
-        if mapping and (server_id := mapping.get("server_id")):
-            self._redis.hdel(self.server_sessions_key(server_id), sid)
+        owner_server_id = (mapping.get("server_id") if mapping else None) or server_id
+        if owner_server_id:
+            self._redis.hdel(self.server_sessions_key(owner_server_id), sid)
         self._redis.hdel(self.workflow_key(workflow_id), sid)
         self._redis.delete(self.sid_key(sid))
 
@@ -152,6 +153,20 @@ class WorkflowCollaborationRepository:
             if decoded:
                 decoded_sids.append(decoded)
         return decoded_sids
+
+    def has_active_sessions(self, workflow_id: str) -> bool:
+        """Check room members by worker heartbeat, conservatively retaining unknown ownership.
+
+        Callers coordinating a draft save with room admission must hold the draft row lock.
+        A missing SID mapping or server id cannot prove that a session is inactive.
+        Redis errors propagate so an uncertain room never permits a conflicting save.
+        """
+        for sid in self.get_session_sids(workflow_id):
+            mapping = self.get_sid_mapping(sid)
+            server_id = mapping.get("server_id") if mapping else None
+            if not server_id or self.server_heartbeat_exists(server_id):
+                return True
+        return False
 
     def list_sessions(self, workflow_id: str) -> list[WorkflowSessionInfo]:
         sessions_json = self._redis.hgetall(self.workflow_key(workflow_id))

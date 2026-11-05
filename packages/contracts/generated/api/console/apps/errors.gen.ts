@@ -498,6 +498,14 @@ const zDraftWorkflowNotExistError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zDraftWorkflowCollaborationActiveError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('draft_workflow_collaboration_active'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zDraftWorkflowNotSyncError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -1210,6 +1218,10 @@ export const get80Errors = {
 
 export const post64Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
+  draft_workflow_collaboration_active: {
+    status: 409,
+    data: zDraftWorkflowCollaborationActiveError,
+  },
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
 

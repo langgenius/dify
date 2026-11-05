@@ -4630,7 +4630,7 @@ Sync draft workflow configuration
 | 400 | Invalid workflow configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DraftWorkflowCollaborationActiveError](#draftworkflowcollaborationactiveerror)<br>[DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/conversation-variables
@@ -25382,6 +25382,14 @@ The uploaded file for file documents; Notion and website documents repeat their 
 | tokens | integer |  | No |
 | total_segments | integer |  | No |
 | word_count | integer |  | No |
+
+#### DraftWorkflowCollaborationActiveError
+
+The workflow is being edited collaboratively. Your changes were not saved.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DraftWorkflowCollaborationActiveError |  | The workflow is being edited collaboratively. Your changes were not saved. |  |
 
 #### DraftWorkflowNodeRunPayload
 

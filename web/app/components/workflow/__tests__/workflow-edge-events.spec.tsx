@@ -149,6 +149,7 @@ function renderSubject({
   // Workflow's host supplies persistence through this public hooks-store contract.
   const saveDraft = vi.fn<HooksStoreShape['doSyncWorkflowDraft']>().mockResolvedValue(undefined)
   const saveOnClose = vi.fn<HooksStoreShape['syncWorkflowDraftWhenPageClose']>()
+  const refreshDraft = vi.fn<HooksStoreShape['handleRefreshWorkflowDraft']>()
   const subject = (props: Partial<WorkflowProps> = {}) => (
     <NuqsTestingAdapter>
       <WorkflowEventProvider value={{ eventEmitter }}>
@@ -171,10 +172,38 @@ function renderSubject({
     hooksStoreProps: {
       doSyncWorkflowDraft: saveDraft,
       syncWorkflowDraftWhenPageClose: saveOnClose,
+      handleRefreshWorkflowDraft: refreshDraft,
     },
   })
-  return { ...view, eventEmitter, saveDraft, saveOnClose, subject, graph }
+  return { ...view, eventEmitter, saveDraft, saveOnClose, refreshDraft, subject, graph }
 }
+
+it('does not replace a canvas when a draft save has failed', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  const { refreshDraft, unmount } = renderSubject({ initialStoreState: { draftSaveBlocked: true } })
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
+
+it('cancels a scheduled canvas refresh when the save fails before it runs', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  const { refreshDraft, store, unmount } = renderSubject()
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  store.setState({ draftSaveBlocked: true })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(refreshDraft).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  vi.useRealTimers()
+})
 
 it('opens the node context menu and clears its target when the graph is replaced', async () => {
   const { store, eventEmitter } = renderSubject()

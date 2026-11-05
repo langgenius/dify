@@ -14,6 +14,7 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.helpers.unit.config_override import config_overrides_context
@@ -45,8 +46,12 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, Workflow.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
+        session.add(Workflow(id="draft-1", tenant_id="t-1", app_id="wf-1", type=WorkflowType.WORKFLOW,
+                             version=Workflow.VERSION_DRAFT, graph='{"nodes": [], "edges": []}',
+                             _features='{}', created_by="u-1"))
+        session.commit()
         yield session
 
 

@@ -278,6 +278,7 @@ describe('useNodesSyncDraft', () => {
           expect(mockPostWithKeepalive).toHaveBeenCalledWith(
             '/api/apps/app-1/workflows/draft',
             expectedPayload,
+            expect.any(Function),
           )
         canvasNodes.forEach((node) => expect(node.data).toHaveProperty('memory', memory))
       },
@@ -311,6 +312,7 @@ describe('useNodesSyncDraft', () => {
       expect(mockPostWithKeepalive).toHaveBeenCalledWith(
         '/api/apps/app-1/workflows/draft',
         expectedPayload,
+        expect.any(Function),
       )
     })
 
@@ -936,6 +938,36 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('failures and skipped saves', () => {
+    it('protects the canvas while a keepalive save is pending or fails', () => {
+      const { result, store } = renderUseNodesSyncDraft()
+      act(() => result.current.syncWorkflowDraftWhenPageClose())
+      expect(store.getState().draftSaveBlocked).toBe(true)
+      const callback = mockPostWithKeepalive.mock.calls.at(-1)?.[2] as (response?: Response) => void
+      act(() => callback(new Response(null, { status: 409 })))
+      expect(store.getState().draftSaveBlocked).toBe(true)
+    })
+
+    it('keeps the local draft protected after a collaboration conflict until a save succeeds', async () => {
+      mockSyncWorkflowDraft.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_collaboration_active',
+          message: 'The workflow is being edited collaboratively.',
+          status: 409,
+        }),
+      )
+      const { result, store } = renderUseNodesSyncDraft()
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(store.getState().draftSaveBlocked).toBe(true)
+      expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+      mockSyncWorkflowDraft.mockResolvedValueOnce({ hash: 'new-hash', updated_at: 1 })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(store.getState().draftSaveBlocked).toBe(false)
+    })
+
     it.each([
       {
         scenario: 'an out-of-date draft',
@@ -1077,6 +1109,7 @@ describe('useNodesSyncDraft', () => {
           graph: { nodes: [savedStartNode], edges: [], viewport: { x: 1, y: 2, zoom: 3 } },
           hash: 'hash-123',
         }),
+        expect.any(Function),
       )
     })
 

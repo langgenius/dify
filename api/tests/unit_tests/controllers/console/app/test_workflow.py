@@ -19,7 +19,7 @@ from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import DraftWorkflowCollaborationActive, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import ConvertToWorkflowApi
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
@@ -374,6 +374,31 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+        assert sync_draft_workflow.call_args.kwargs["reject_active_collaboration"] is True
+
+    @staticmethod
+    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+    def test_sync_draft_workflow_maps_collaboration_conflict(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, content_type: str
+    ) -> None:
+        class ActiveRoomService:
+            def sync_draft_workflow(self, **_kwargs: object) -> None:
+                raise workflow_module.WorkflowCollaborationActiveError()
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", ActiveRoomService)
+        api = workflow_module.DraftWorkflowApi()
+        handler = inspect.unwrap(api.post)
+        with app.test_request_context(
+            "/apps/app/workflows/draft",
+            method="POST",
+            data=json.dumps({"graph": {"nodes": [{"id": "1"}], "edges": []}, "features": {}, "hash": "h"}),
+            content_type=content_type,
+        ):
+            with pytest.raises(DraftWorkflowCollaborationActive) as error:
+                handler(api, _account(), app_model=_workflow_app())
+
+        assert error.value.code == 409
+        assert error.value.error_code == "draft_workflow_collaboration_active"
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])

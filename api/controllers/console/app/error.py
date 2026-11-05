@@ -128,6 +128,12 @@ class DraftWorkflowNotSync(BaseHTTPException):
     code = 409
 
 
+class DraftWorkflowCollaborationActive(BaseHTTPException):
+    error_code = "draft_workflow_collaboration_active"
+    description = "The workflow is being edited collaboratively. Your changes were not saved."
+    code = 409
+
+
 class TracingConfigNotFoundError(BaseHTTPException):
     error_code = "trace_config_not_found"
     description = "Tracing configuration not found."
