@@ -295,6 +295,7 @@ def test_failed_admission_marks_unstarted_message_as_error(admission: Admission)
         query="hello",
         files=[],
         user_id=admission.guest.id,
+        user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
         stream=False,
     )

@@ -143,7 +143,7 @@ export default function CheckCode() {
           onValueChange={setCode}
           maxLength={6}
           className="mt-1"
-          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
+          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' })}
         />
         <Button type="submit" loading={loading} className="my-3 w-full" variant="primary">
           {t(($) => $['checkCode.verify'], { ns: 'login' })}

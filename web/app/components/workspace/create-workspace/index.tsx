@@ -5,11 +5,23 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
+import { basePath } from '@/utils/var'
 
 export default function CreateWorkspace() {
   const { t } = useTranslation(['common'])
+  const createWorkspace = useMutation(
+    consoleQuery.workspaces.activate.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: () => {
+        window.location.assign(`${basePath}/`)
+      },
+    }),
+  )
+  const submitting = createWorkspace.isPending || createWorkspace.isSuccess
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -21,12 +33,12 @@ export default function CreateWorkspace() {
           {t(($) => $['workspace.create.description'], { ns: 'common' })}
         </p>
       </div>
-      <Form
+      <Form<{ workspaceName: string }>
         className="flex flex-col gap-6"
         validationMode="onBlur"
-        onSubmit={(event) => {
-          // Creation stays on this page until the workspace API is available.
-          event.preventDefault()
+        onFormSubmit={({ workspaceName }) => {
+          if (submitting) return
+          createWorkspace.mutate({ body: { name: workspaceName.trim() } })
         }}
       >
         <Field
@@ -49,17 +61,25 @@ export default function CreateWorkspace() {
           </FieldLabel>
           <Input
             required
+            maxLength={255}
+            readOnly={submitting}
             autoComplete="organization"
             className="h-9 rounded-lg px-3.5 system-md-regular"
             placeholder={t(($) => $['workspace.create.namePlaceholder'], { ns: 'common' })}
           />
           <FieldError>{t(($) => $['workspace.create.nameRequired'], { ns: 'common' })}</FieldError>
         </Field>
+        {createWorkspace.error && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {createWorkspace.error.message || t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         <div className="flex flex-col items-center gap-2">
           <Button
             type="submit"
             variant="primary"
             size="large"
+            loading={submitting}
             className="h-auto min-h-9 w-full py-2 whitespace-normal"
           >
             {t(($) => $['workspace.create.continue'], { ns: 'common' })}

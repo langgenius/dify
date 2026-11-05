@@ -25,6 +25,7 @@ class ConversationService:
         session: Session,
         lock: bool = False,
     ):
+        """Read current ownership or raise; write callers may lock against history migration."""
         statement = select(Conversation).where(
             Conversation.id == conversation_id, *conversation_owner_scope(app_model.id, user)
         )

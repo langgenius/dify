@@ -505,6 +505,8 @@ class ConversationRepository:
                     )
                 role = CreatorUserRole.END_USER
                 actor_id = ref.end_user_id
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and app.mode == AppMode.ADVANCED_CHAT:
+                    self._resolve(session=session, ref=ref, lock=True)
             pin = session.scalar(
                 select(PinnedConversation)
                 .where(
@@ -533,6 +535,7 @@ class ConversationRepository:
 
     @classmethod
     def _resolve(cls, *, session: Session, ref: ConversationRef, lock: bool = False) -> tuple[App, Conversation]:
+        """Resolve current ownership; write callers lock Webapp conversations against migration."""
         if isinstance(ref, InstalledAppConversationRef):
             app = cls._get_app(session=session, installed_app=ref.installed_app)
             conversation = cls._get_conversation(

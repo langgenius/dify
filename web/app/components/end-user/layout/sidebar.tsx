@@ -6,6 +6,7 @@ import MainNavLink from '@/app/components/main-nav/components/nav-link'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import AccountMenu from './account-menu'
+import BuildAppLink from './build-app-link'
 
 const navigationItems = [
   {
@@ -58,8 +59,13 @@ export default function Sidebar() {
           />
         ))}
       </nav>
-      <div className="flex items-center gap-2 md:mt-auto md:px-2 md:py-3">
-        <AccountMenu />
+      <div className="md:mt-auto">
+        <div className="px-2 pb-1">
+          <BuildAppLink />
+        </div>
+        <div className="flex items-center gap-2 md:px-2 md:py-3">
+          <AccountMenu />
+        </div>
       </div>
     </div>
   )

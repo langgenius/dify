@@ -1,38 +1,67 @@
 'use client'
 
-import type { EndUserApp, RemoveAppRequest } from './model'
+import { Button } from '@langgenius/dify-ui/button'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
 import { useQueryStates } from 'nuqs'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { webAppQuery } from '@/service/webapp'
+import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import EmptyState from '../empty-state'
 import AppGrid from './app-grid'
-import { selectApps } from './model'
+import { sortApps } from './model'
 import { myAppsQueryParsers } from './query-params'
-import RemoveAppDialog from './remove-app-dialog'
 import MyAppsToolbar from './toolbar'
 
-export type MyAppsProps = {
-  apps: readonly EndUserApp[]
-  getAppHref: (app: EndUserApp) => string
-  onToggleStar: (id: string) => void
-  onRemoveApp: (request: RemoveAppRequest) => void | Promise<void>
-}
-
-export default function MyApps({ apps, getAppHref, onToggleStar, onRemoveApp }: MyAppsProps) {
-  const { t, i18n } = useTranslation(['app'])
+export default function MyApps() {
+  const { t, i18n } = useTranslation(['app', 'common'])
   const [filter, setFilter] = useQueryStates(myAppsQueryParsers)
-  const [removal, setRemoval] = useState<RemoveAppRequest | null>(null)
-  const [removalOpen, setRemovalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const removalSucceededRef = useRef(false)
-  const visibleApps = selectApps(apps, filter, i18n.language)
-  const noSearchResults = apps.length > 0 && visibleApps.length === 0 && !!filter.q.trim()
-  const emptyTitle = noSearchResults
-    ? t(($) => $['endUser.noResults'], { ns: 'app' })
-    : t(($) => $['endUser.emptyApps'], { ns: 'app' })
-  const emptyDescription = noSearchResults
-    ? t(($) => $['endUser.noResultsDescription'], { ns: 'app' })
-    : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
+  const name = useDebounce(filter.q.trim(), { wait: 300 })
+  const authSession = useSyncExternalStore(
+    subscribeWebAppAuthSession,
+    getWebAppAuthSessionSnapshot,
+    getWebAppAuthSessionSnapshot,
+  )
+  const views = { all: 'recent', starred: 'favorites' } as const
+  const view = views[filter.view]
+  const listInput = (cursor: string | undefined) => ({
+    query: { view, name: name || undefined, cursor, limit: 100 },
+  })
+  const list = useInfiniteQuery(
+    webAppQuery.me.apps.get.infiniteOptions({
+      input: listInput,
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage, _pages, cursor, cursors) => {
+        const next = lastPage.has_more ? lastPage.next_cursor : null
+        return next && next !== cursor && !cursors.includes(next) ? next : undefined
+      },
+      queryKey: [
+        ...webAppQuery.me.apps.get.key({ type: 'infinite', input: listInput(undefined) }),
+        authSession,
+      ],
+      context: { authSession, silent: true },
+      retry: false,
+      staleTime: 0,
+      gcTime: 0,
+    }),
+  )
+  const { hasNextPage, isFetching, isError, fetchNextPage } = list
+  useEffect(() => {
+    if (hasNextPage && !isFetching && !isError) void fetchNextPage().catch(() => {})
+  }, [hasNextPage, isFetching, isError, fetchNextPage])
+
+  const incompletePage = !!list.data?.pages.at(-1)?.has_more && !list.hasNextPage
+  const failed = list.isError || incompletePage
+  const loading = list.isPending || (!list.isError && list.hasNextPage) || name !== filter.q.trim()
+  const apps = sortApps(
+    list.data?.pages.flatMap((page) => page.data) ?? [],
+    filter.sort,
+    i18n.language,
+  )
+  const noSearchResults = !!name
+
   return (
     <>
       <header className="min-h-15.5 px-5 pt-3.5 pb-4 sm:px-8">
@@ -48,31 +77,38 @@ export default function MyApps({ apps, getAppHref, onToggleStar, onRemoveApp }: 
             void setFilter(next)
           }}
         />
-        {visibleApps.length > 0 ? (
-          <AppGrid
-            apps={visibleApps}
-            getAppHref={getAppHref}
-            onToggleStar={onToggleStar}
-            onRemove={(request) => {
-              removalSucceededRef.current = false
-              setRemoval(request)
-              setRemovalOpen(true)
-            }}
-          />
+        {failed ? (
+          <div role="alert" className="space-y-2 system-sm-regular text-text-destructive">
+            <p>{list.error?.message || t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+            <Button
+              onClick={() => {
+                void list.refetch()
+              }}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : loading ? (
+          <p role="status" className="py-8 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $.loading, { ns: 'common' })}
+          </p>
+        ) : apps.length > 0 ? (
+          <AppGrid apps={apps} authSession={authSession} />
         ) : (
-          <EmptyState title={emptyTitle} description={emptyDescription} />
+          <EmptyState
+            title={
+              noSearchResults
+                ? t(($) => $['endUser.noResults'], { ns: 'app' })
+                : t(($) => $['endUser.emptyApps'], { ns: 'app' })
+            }
+            description={
+              noSearchResults
+                ? t(($) => $['endUser.noResultsDescription'], { ns: 'app' })
+                : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
+            }
+          />
         )}
       </div>
-      <RemoveAppDialog
-        request={removal}
-        open={removalOpen}
-        finalFocus={() => (removalSucceededRef.current ? (searchInputRef.current ?? true) : true)}
-        onCancel={() => setRemovalOpen(false)}
-        onConfirm={async (request) => {
-          await onRemoveApp(request)
-          removalSucceededRef.current = true
-        }}
-      />
     </>
   )
 }

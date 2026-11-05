@@ -7,9 +7,11 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event, inspect, select, text, update
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
+from configs import dify_config
 from core.agent.workspace import AgentWorkspaceNotFoundError
 from fields.conversation_fields import Conversation as CompletionResponse
 from fields.conversation_fields import ConversationResponseSource, ConversationWithSummary
@@ -2035,3 +2037,57 @@ def test_failed_database_write_rolls_back_workspace_and_binding_retirement(
     finally:
         with sqlite_session_factory.begin() as session:
             session.execute(text("DROP TRIGGER reject_conversation_deletion"))
+
+
+@pytest.mark.parametrize("account_login_enabled", [False, True])
+@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.CHAT])
+@pytest.mark.parametrize("operation", ["rename", "delete", "pin", "unpin"])
+def test_end_user_history_writes_lock_current_ownership_for_migration(
+    sqlite_session_factory: sessionmaker[Session],
+    installation: InstalledAppRef,
+    monkeypatch: pytest.MonkeyPatch,
+    account_login_enabled: bool,
+    mode: AppMode,
+    operation: str,
+) -> None:
+    monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", account_login_enabled)
+    with sqlite_session_factory.begin() as session:
+        session.execute(update(App).where(App.id == installation.app_id).values(mode=mode))
+        owner = EndUser(
+            tenant_id=installation.app_owner_tenant_id,
+            app_id=installation.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(owner)
+        session.flush()
+        conversation = _conversation(session, installation)
+        conversation.mode = mode
+        conversation.from_source = ConversationFromSource.API
+        conversation.from_account_id = None
+        conversation.from_end_user_id = owner.id
+    ref = EndUserConversationRef(
+        tenant_id=installation.app_owner_tenant_id,
+        app_id=installation.app_id,
+        end_user_id=owner.id,
+        conversation_id=conversation.id,
+    )
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    statements: list[str] = []
+
+    def record(state: ORMExecuteState) -> None:
+        statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+
+    event.listen(sqlite_session_factory, "do_orm_execute", record)
+    try:
+        if operation == "rename":
+            repository.rename(ref=ref, name="Renamed", updated_at=_TIME)
+        elif operation == "delete":
+            repository.delete(ref=ref)
+        else:
+            repository.set_pinned(ref=ref, is_pinned=operation == "pin")
+    finally:
+        event.remove(sqlite_session_factory, "do_orm_execute", record)
+    assert any("FOR UPDATE OF conversations" in statement for statement in statements) is (
+        account_login_enabled and mode == AppMode.ADVANCED_CHAT
+    )

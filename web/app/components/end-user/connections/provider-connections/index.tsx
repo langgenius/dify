@@ -5,8 +5,10 @@ import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useGetLanguage } from '@/context/i18n'
 import { getAvatarInitial } from '@/utils/avatar'
 import EmptyState from '../../empty-state'
+import { getConnectionProviderLabel } from '../model'
 import LinkedAppsDialog from './linked-apps-dialog'
 import RemoveConnectionDialog from './remove-connection-dialog'
 
@@ -31,14 +33,14 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
         <div className="flex min-w-0 items-center gap-2">
           <Avatar size="sm" aria-hidden>
             <AvatarFallback className="bg-components-icon-bg-blue-soft system-sm-semibold text-text-accent">
-              {getAvatarInitial(connection.name)}
+              {getAvatarInitial(connection.account_label ?? connection.name)}
             </AvatarFallback>
           </Avatar>
           <span
             id={connectionLabelId}
             className="min-w-0 system-sm-semibold leading-4.5 wrap-anywhere text-text-secondary"
           >
-            {connection.name}
+            {connection.account_label ?? connection.name}
           </span>
         </div>
       </th>
@@ -46,7 +48,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
         <LinkedAppsDialog connection={connection} connectionLabelId={connectionLabelId} />
       </td>
       <td className="px-2 py-4 align-middle system-sm-regular text-text-secondary">
-        {connection.type === 'oauth'
+        {connection.connection_type === 'oauth2'
           ? t(($) => $['endUser.oauthAccount'], { ns: 'app' })
           : t(($) => $['endUser.apiKey'], { ns: 'app' })}
       </td>
@@ -56,7 +58,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
           tone="destructive"
           onClick={(event) => onRequestRemoval(connection, event.currentTarget)}
         >
-          {connection.type === 'oauth'
+          {connection.connection_type === 'oauth2'
             ? t(($) => $['endUser.disconnect'], { ns: 'app' })
             : t(($) => $['endUser.deleteKey'], { ns: 'app' })}
         </Button>
@@ -67,6 +69,8 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
 
 export default function ProviderConnections({ provider, connections, onRemove }: Props) {
   const { t } = useTranslation(['app'])
+  const language = useGetLanguage()
+  const name = getConnectionProviderLabel(provider, language)
   const [removal, setRemoval] = useState<EndUserConnection | null>(null)
   const [removalOpen, setRemovalOpen] = useState(false)
   const removalTriggerRef = useRef<HTMLButtonElement | null>(null)
@@ -78,7 +82,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
       <div className="overflow-x-auto rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
         <table className="w-full min-w-180 table-fixed border-collapse has-[caption:focus-visible]:inset-ring-2 has-[caption:focus-visible]:inset-ring-state-accent-solid">
           <caption ref={captionRef} tabIndex={-1} className="sr-only">
-            {provider.name}
+            {name}
           </caption>
           <colgroup>
             <col className="w-76" />
@@ -106,7 +110,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
             {connections.length > 0 ? (
               connections.map((connection) => (
                 <ConnectionRow
-                  key={connection.id}
+                  key={connection.key}
                   connection={connection}
                   onRequestRemoval={(connection, trigger) => {
                     removalTriggerRef.current = trigger
@@ -123,7 +127,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
                     title={t(($) => $['endUser.noProviderConnections'], { ns: 'app' })}
                     description={t(($) => $['endUser.noProviderConnectionsDescription'], {
                       ns: 'app',
-                      provider: provider.name,
+                      provider: name,
                     })}
                   />
                 </td>

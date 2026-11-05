@@ -47,6 +47,7 @@
   "endUser.all": "Tutte",
   "endUser.apiKey": "Chiave API",
   "endUser.appActions": "Altre azioni per {{name}}",
+  "endUser.buildYourOwnApp": "Crea la tua app",
   "endUser.connection": "Connessione",
   "endUser.connectionActions": "Azioni",
   "endUser.connectionType": "Tipo",

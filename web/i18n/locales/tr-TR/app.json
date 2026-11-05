@@ -47,6 +47,7 @@
   "endUser.all": "Tümü",
   "endUser.apiKey": "API anahtarı",
   "endUser.appActions": "{{name}} için diğer işlemler",
+  "endUser.buildYourOwnApp": "Kendi uygulamanızı oluşturun",
   "endUser.connection": "Bağlantı",
   "endUser.connectionActions": "İşlemler",
   "endUser.connectionType": "Tür",

@@ -1,4 +1,4 @@
-import MyAppsDemo from '@/app/components/end-user/my-apps/demo'
+import MyApps from '@/app/components/end-user/my-apps'
 import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
@@ -6,5 +6,5 @@ export function generateMetadata() {
 }
 
 export default function Page() {
-  return <MyAppsDemo />
+  return <MyApps />
 }

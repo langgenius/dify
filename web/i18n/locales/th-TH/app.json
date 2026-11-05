@@ -47,6 +47,7 @@
   "endUser.all": "ทั้งหมด",
   "endUser.apiKey": "คีย์ API",
   "endUser.appActions": "การดำเนินการเพิ่มเติมสำหรับ {{name}}",
+  "endUser.buildYourOwnApp": "สร้างแอปของคุณเอง",
   "endUser.connection": "การเชื่อมต่อ",
   "endUser.connectionActions": "การดำเนินการ",
   "endUser.connectionType": "ประเภท",

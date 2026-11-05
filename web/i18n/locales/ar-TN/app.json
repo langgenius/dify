@@ -47,6 +47,7 @@
   "endUser.all": "الكل",
   "endUser.apiKey": "مفتاح API",
   "endUser.appActions": "المزيد من الإجراءات لـ {{name}}",
+  "endUser.buildYourOwnApp": "أنشئ تطبيقك الخاص",
   "endUser.connection": "الاتصال",
   "endUser.connectionActions": "الإجراءات",
   "endUser.connectionType": "النوع",

@@ -1,22 +1,13 @@
-export type ConnectionProvider = {
-  id: string
-  name: string
-  description: string
-  iconClassName: string
-}
+import type {
+  ConsumerConnectionProviderResponse,
+  ConsumerConnectionResponse,
+} from '@dify/contracts/api/web/types.gen'
 
-export type LinkedApp = {
-  id: string
-  name: string
-  description: string
-  icon: string
-  iconBackground: string
-  href: string
-}
+export type ConnectionProvider = Pick<ConsumerConnectionProviderResponse, 'provider'> &
+  Partial<Pick<ConsumerConnectionProviderResponse, 'icon' | 'icon_dark' | 'label'>>
 
-export type EndUserConnection = {
-  id: string
-  name: string
-  type: 'oauth' | 'api-key'
-  apps: readonly LinkedApp[]
+export type EndUserConnection = ConsumerConnectionResponse
+
+export function getConnectionProviderLabel(provider: ConnectionProvider, language: string) {
+  return provider.label?.[language] || provider.label?.en_US || provider.provider
 }

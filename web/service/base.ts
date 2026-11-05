@@ -283,6 +283,8 @@ type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse)
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
+  /** Account-wide Web APIs authenticate with the login Cookie, without an App Passport. */
+  isWebAppAccountAPI?: boolean
   isMarketplaceAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
@@ -1292,6 +1294,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     if (requestGuard?.isActive() === false) return Promise.reject(err)
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
+      if (otherOptionsForBaseFetch.isWebAppAccountAPI) return Promise.reject(err)
 
       const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
       if (!err.data) {

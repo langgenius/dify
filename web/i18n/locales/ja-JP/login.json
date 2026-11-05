@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "パスワードをリセットするためにメールアドレスを入力してください。パスワードのリセット方法に関する指示が記載されたメールを送信します。",
   "go": "Dify へ移動",
   "goToInit": "アカウントを初期化していない場合は、初期化ページに移動してください",
-  "hidePassword": "パスワードを非表示",
   "history.add": "すべての会話を移行",
   "history.addAndContinue": "移行して続行",
   "history.addDescription": "サインイン中にこれらの会話にアクセスできます。",

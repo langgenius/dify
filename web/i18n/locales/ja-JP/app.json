@@ -47,6 +47,7 @@
   "endUser.all": "すべて",
   "endUser.apiKey": "API キー",
   "endUser.appActions": "{{name}} のその他の操作",
+  "endUser.buildYourOwnApp": "自分のアプリを作成",
   "endUser.connection": "接続",
   "endUser.connectionActions": "操作",
   "endUser.connectionType": "種類",

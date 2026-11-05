@@ -139,6 +139,7 @@ class ConversationVariableRepository(ConversationVariableQuery):
     def _variables(
         *, session: Session, ref: EndUserConversationRef, lock: bool = False
     ) -> Select[tuple[ConversationVariable]]:
+        """Require current ownership, locking it for writes before returning the scoped variable query."""
         owner = (
             select(Conversation.id)
             .join(App, App.id == Conversation.app_id)

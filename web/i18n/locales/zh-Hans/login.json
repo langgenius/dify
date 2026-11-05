@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件，包含如何重置密码的说明。",
   "go": "跳转至 Dify",
   "goToInit": "如果您还没有初始化账户，请前往初始化页面",
-  "hidePassword": "隐藏密码",
   "history.add": "迁移全部对话",
   "history.addAndContinue": "迁移并继续",
   "history.addDescription": "登录后即可访问这些对话。",

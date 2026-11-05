@@ -1188,8 +1188,8 @@ def persist_migration_history(harness: ClaimHarness, owner: WebConnectionContext
 
 
 def test_full_passport_claim_preserves_provenance_and_transfers_history_access(harness: ClaimHarness) -> None:
-    from models.enums import CreatorUserRole
-    from models.model import MessageFeedback
+    from models.enums import CreatorUserRole, FeedbackRating
+    from models.model import Message, MessageFeedback
     from models.web import PinnedConversation, SavedMessage
     from models.workflow import WorkflowRun
     from repositories.conversation_access import (
@@ -1197,14 +1197,16 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         may_read_conversation_run,
         require_web_message_access,
     )
+    from repositories.conversation_repository import ConversationRepository
     from repositories.conversation_variable_repository import ConversationVariableRepository
     from repositories.message_repository import MessageRepository
     from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
     from services.app_ref_service import AppRef, MessageRef
     from services.audio_service import AudioService
-    from services.conversation_service import ConversationService
     from services.entities.conversation_entities import EndUserConversationRef
+    from services.entities.message_entities import MessageEndUser
     from services.errors.conversation import ConversationNotExistsError
+    from services.errors.message import MessageNotExistsError
     from services.saved_message_service import SavedMessageActor
 
     base = harness.oauth.base
@@ -1224,36 +1226,51 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         assert app is not None
         assert guest is not None
         assert account is not None
-        assert (
-            ConversationService.get_conversation(app, conversation_id, account, session=session).id == conversation_id
+        conversations = ConversationRepository(session_factory=base.sessions)
+        account_ref = EndUserConversationRef(
+            app_id=app.id,
+            tenant_id=app.tenant_id,
+            end_user_id=account.id,
+            conversation_id=conversation_id,
         )
-        assert ConversationService.get_conversation(app, existing_id, account, session=session).id == existing_id
+        guest_ref = replace(account_ref, end_user_id=guest.id)
+        assert conversations.get(ref=account_ref).id == conversation_id
+        assert conversations.get(ref=replace(account_ref, conversation_id=existing_id)).id == existing_id
         with pytest.raises(ConversationNotExistsError):
-            ConversationService.get_conversation(app, conversation_id, guest, session=session)
-        message = MessageRepository._get_message(
-            session, app_id=app.id, source="api", account_id=None, end_user_id=account.id, message_id=message_id
+            conversations.get(ref=guest_ref)
+        messages = MessageRepository(session_factory=base.sessions)
+        page = messages.get_message_page(
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            actor=MessageEndUser(end_user_id=account.id),
+            conversation_id=conversation_id,
+            first_id=None,
+            limit=10,
+            installed_app=None,
         )
+        assert page.data[0].record.id == message_id
+        message = session.get(Message, message_id)
         assert message is not None
         assert message.from_end_user_id == guest.id
         assert (
             session.scalar(sa.select(MessageFeedback.from_end_user_id).where(MessageFeedback.message_id == message_id))
             == account.id
         )
-        variables = ConversationVariableRepository(session_factory=base.sessions).get_page(
-            ref=EndUserConversationRef(
-                app_id=app.id, tenant_id=app.tenant_id, end_user_id=account.id, conversation_id=conversation_id
-            ),
-            limit=10,
-            last_id=None,
-            variable_name=None,
-        )
-        assert variables.data[0].variable.value == "state"
-        assert (
-            MessageRepository._get_message(
-                session, app_id=app.id, source="api", account_id=None, end_user_id=guest.id, message_id=message_id
+        variables = ConversationVariableRepository(session_factory=base.sessions)
+        variable_page = variables.get_page(ref=account_ref, last_id=None, limit=10, variable_name=None)
+        assert variable_page.data[0].variable.value == "state"
+        with pytest.raises(ConversationNotExistsError):
+            variables.get_page(ref=guest_ref, last_id=None, limit=10, variable_name=None)
+        with pytest.raises(ConversationNotExistsError):
+            messages.get_message_page(
+                app_id=app.id,
+                app_owner_tenant_id=app.tenant_id,
+                actor=MessageEndUser(end_user_id=guest.id),
+                conversation_id=conversation_id,
+                first_id=None,
+                limit=10,
+                installed_app=None,
             )
-            is None
-        )
         assert (
             AudioService._get_message_by_ref(
                 session, MessageRef(AppRef(app.tenant_id, app.id), message_id, end_user_id=account.id)
@@ -1293,6 +1310,29 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         assert run is not None
         assert run.created_by_role == CreatorUserRole.END_USER
         assert run.created_by == guest.id
+    feedback = messages.set_feedback(
+        app_id=base.context.app_id,
+        app_owner_tenant_id=base.context.tenant_id,
+        actor=MessageEndUser(end_user_id=harness.account.end_user_id),
+        message_id=message_id,
+        rating=FeedbackRating.DISLIKE,
+        content="Updated after migration",
+        app_wide=False,
+        installed_app=None,
+    )
+    assert feedback is not None
+    assert feedback.from_end_user_id == harness.account.end_user_id
+    with pytest.raises(MessageNotExistsError):
+        messages.set_feedback(
+            app_id=base.context.app_id,
+            app_owner_tenant_id=base.context.tenant_id,
+            actor=MessageEndUser(end_user_id=base.context.end_user_id),
+            message_id=message_id,
+            rating=FeedbackRating.LIKE,
+            content=None,
+            app_wide=False,
+            installed_app=None,
+        )
     saved = SQLAlchemySavedMessageRepository(session_factory=base.sessions)
     assert (
         saved.pagination_by_last_id(
@@ -1570,21 +1610,31 @@ def test_migration_excludes_app_modes_without_supported_run_tracking(harness: Cl
 
 
 @pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize("operation", ["rename", "feedback", "unsave", "save"])
 def test_history_write_locks_are_skipped_without_account_login(
-    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch, enabled: bool
+    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch, enabled: bool, operation: str
 ) -> None:
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.orm import ORMExecuteState
 
     from configs import dify_config
+    from models.enums import FeedbackRating
+    from repositories.conversation_repository import ConversationRepository
     from repositories.message_repository import MessageRepository
     from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
-    from services.conversation_service import ConversationService
+    from services.entities.conversation_entities import EndUserConversationRef
+    from services.entities.message_entities import MessageEndUser
     from services.saved_message_service import SavedMessageActor
 
     base = harness.oauth.base
     conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
     monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", enabled)
+    if operation == "save":
+        SQLAlchemySavedMessageRepository(session_factory=base.sessions).delete(
+            app_id=base.context.app_id,
+            actor=SavedMessageActor.end_user(base.context.end_user_id),
+            message_id=message_id,
+        )
     statements: list[str] = []
 
     def record(state: ORMExecuteState) -> None:
@@ -1593,35 +1643,36 @@ def test_history_write_locks_are_skipped_without_account_login(
 
     event.listen(Session, "do_orm_execute", record)
     try:
-        with base.sessions() as session:
-            app = session.get(App, base.context.app_id)
-            guest = session.get(EndUser, base.context.end_user_id)
-            assert app is not None
-            assert guest is not None
-            ConversationService.get_conversation(app, conversation_id, guest, session=session, lock=True)
-            assert (
-                MessageRepository._get_message(
-                    session,
-                    app_id=app.id,
-                    source="api",
-                    account_id=None,
-                    end_user_id=guest.id,
-                    message_id=message_id,
-                    lock=enabled,
-                )
-                is not None
+        if operation == "rename":
+            ConversationRepository(session_factory=base.sessions).rename(
+                ref=EndUserConversationRef(
+                    app_id=base.context.app_id,
+                    tenant_id=base.context.tenant_id,
+                    end_user_id=base.context.end_user_id,
+                    conversation_id=conversation_id,
+                ),
+                name="Renamed history",
+                updated_at=None,
             )
-        saved = SQLAlchemySavedMessageRepository(session_factory=base.sessions)
-        saved.delete(
-            app_id=base.context.app_id,
-            actor=SavedMessageActor.end_user(base.context.end_user_id),
-            message_id=message_id,
-        )
-        saved.save(
-            app_id=base.context.app_id,
-            actor=SavedMessageActor.end_user(base.context.end_user_id),
-            message_id=message_id,
-        )
+        elif operation == "feedback":
+            MessageRepository(session_factory=base.sessions).set_feedback(
+                app_id=base.context.app_id,
+                app_owner_tenant_id=base.context.tenant_id,
+                actor=MessageEndUser(end_user_id=base.context.end_user_id),
+                message_id=message_id,
+                rating=FeedbackRating.LIKE,
+                content=None,
+                app_wide=False,
+                installed_app=None,
+            )
+        else:
+            saved = SQLAlchemySavedMessageRepository(session_factory=base.sessions)
+            mutation = saved.delete if operation == "unsave" else saved.save
+            mutation(
+                app_id=base.context.app_id,
+                actor=SavedMessageActor.end_user(base.context.end_user_id),
+                message_id=message_id,
+            )
     finally:
         event.remove(Session, "do_orm_execute", record)
     assert any("FOR UPDATE" in statement for statement in statements) is enabled

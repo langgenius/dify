@@ -47,6 +47,7 @@
   "endUser.all": "Усі",
   "endUser.apiKey": "Ключ API",
   "endUser.appActions": "Інші дії для {{name}}",
+  "endUser.buildYourOwnApp": "Створити власний застосунок",
   "endUser.connection": "Підключення",
   "endUser.connectionActions": "Дії",
   "endUser.connectionType": "Тип",

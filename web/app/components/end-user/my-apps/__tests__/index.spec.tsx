@@ -1,44 +1,46 @@
+import type { ConsumerAppResponse, ConsumerAppsResponse } from '@dify/contracts/api/web/types.gen'
 import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { EndUserApp, RemoveAppRequest } from '../model'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { useState } from 'react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { startWebAppAccountSession } from '@/service/webapp-auth'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createTestQueryClient } from '@/test/query-client'
 import MyApps from '..'
 
-const alpha: EndUserApp = {
-  id: 'alpha',
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
+
+const alpha: ConsumerAppResponse = {
+  id: '11111111-1111-4111-8111-111111111111',
   name: 'Alpha Assistant',
   description: 'Draft articles',
-  mode: 'chat',
-  icon: { icon: '🤖', icon_type: 'emoji', icon_background: '#D5F5F6' },
-  starred: false,
-  connectionStatus: 'ready',
-  lastUsedAt: 100,
-}
-const beta: EndUserApp = {
-  ...alpha,
-  id: 'beta',
-  name: 'Beta Research',
-  description: 'Compare reports',
   mode: 'advanced-chat',
-  starred: true,
-  lastUsedAt: 200,
+  icon: '🤖',
+  icon_type: 'emoji',
+  icon_background: '#D5F5F6',
+  app_code: 'alpha-app',
+  is_favorite: false,
+  last_used_at: 100,
 }
-const zebra: EndUserApp = {
+const zebra: ConsumerAppResponse = {
   ...alpha,
-  id: 'zebra',
+  id: '22222222-2222-4222-8222-222222222222',
   name: 'Zebra Workflow',
-  description: 'Research finance',
   mode: 'workflow',
-  starred: true,
-  lastUsedAt: 300,
+  app_code: 'zebra-app',
+  is_favorite: true,
+  last_used_at: 200,
 }
-const apps: readonly EndUserApp[] = [alpha, beta, zebra]
-const appHref = 'https://agent-app.dify.dev/workflow/RWv44MH1ypIb8gs8'
-const appLabel = (key: string, app: EndUserApp) =>
+const page = (
+  data: ConsumerAppResponse[],
+  next_cursor: string | null = null,
+): ConsumerAppsResponse => ({
+  data,
+  next_cursor,
+  has_more: next_cursor !== null,
+})
+const appLabel = (key: string, app: ConsumerAppResponse) =>
   `app.endUser.${key}:${JSON.stringify({ name: app.name })}`
 const appNames = () => {
   const list = screen.queryByRole('list')
@@ -48,292 +50,275 @@ const appNames = () => {
         .map((heading) => heading.textContent)
     : []
 }
+const queryClients: ReturnType<typeof createTestQueryClient>[] = []
 
-const setup = ({
-  initialApps = apps,
-  searchParams = '',
-  onRemoveApp = vi.fn<(request: RemoveAppRequest) => void | Promise<void>>(),
-}: {
-  initialApps?: readonly EndUserApp[]
-  searchParams?: string
-  onRemoveApp?: ReturnType<typeof vi.fn<(request: RemoveAppRequest) => void | Promise<void>>>
-} = {}) => {
-  const getAppHref = (_app: EndUserApp) => appHref
-  const onToggleStar = vi.fn<(id: string) => void>()
+function setup(searchParams = '') {
+  const queryClient = createTestQueryClient()
+  queryClients.push(queryClient)
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const Harness = () => {
-    const [items, setItems] = useState(initialApps)
-    return (
-      <MyApps
-        apps={items}
-        getAppHref={getAppHref}
-        onToggleStar={(id) => {
-          onToggleStar(id)
-          setItems((current) =>
-            current.map((app) => (app.id === id ? { ...app, starred: !app.starred } : app)),
-          )
-        }}
-        onRemoveApp={async (request) => {
-          await onRemoveApp(request)
-          setItems((current) => current.filter((app) => app.id !== request.app.id))
-        }}
-      />
-    )
-  }
-  // Persist URL writes when a parent callback updates the controlled app list.
-  const rendered = render(
+  const rendered = renderWithConsoleQuery(
     <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      <Harness />
+      <MyApps />
     </NuqsTestingAdapter>,
+    { queryClient, accountProfile: null, currentWorkspace: null },
   )
-  return { ...rendered, onUrlUpdate, onToggleStar, onRemoveApp }
+  return { ...rendered, onUrlUpdate }
 }
 
-const openRemoval = async (
-  user: ReturnType<typeof userEvent.setup>,
-  app: EndUserApp,
-  deleteChats: boolean,
-) => {
-  await user.click(screen.getByRole('button', { name: appLabel('appActions', app) }))
-  await user.click(
-    await screen.findByRole('menuitem', {
-      name: deleteChats ? 'app.endUser.removeAndDeleteChats' : 'app.endUser.removeFromList',
-    }),
-  )
-  return screen.findByRole('alertdialog', {
-    name: deleteChats ? 'app.endUser.deleteChatsTitle' : appLabel('removeTitle', app),
-  })
-}
+beforeEach(() => {
+  window.history.replaceState({}, '', '/my-apps')
+})
+afterEach(() => {
+  for (const queryClient of queryClients.splice(0)) queryClient.clear()
+  vi.restoreAllMocks()
+})
 
-describe('MyApps', () => {
-  it.each([
-    { sort: 'name', label: 'app.endUser.nameAscending', expectedNames: [beta.name, zebra.name] },
-    {
-      sort: 'name-desc',
-      label: 'app.endUser.nameDescending',
-      expectedNames: [zebra.name, beta.name],
-    },
-  ])(
-    'restores view, search and $sort sorting from the URL with native app links',
-    ({ sort, label, expectedNames }) => {
-      const { onUrlUpdate } = setup({
-        searchParams: `?view=starred&sort=${sort}&q=%20RESEARCH%20`,
-      })
-
-      expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-      expect(screen.getByRole('combobox', { name: 'app.endUser.sortBy' })).toHaveTextContent(label)
-      expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
-        ' RESEARCH ',
-      )
-      expect(appNames()).toEqual(expectedNames)
-      expect(onUrlUpdate).not.toHaveBeenCalled()
-
-      for (const name of expectedNames) {
-        const link = screen.getByRole('link', { name })
-        expect(link).toHaveAttribute('href', appHref)
-        expect(link).not.toHaveAttribute('target')
-      }
-    },
-  )
-
-  it('clears a search without resetting Starred or sorting, then restores All while preserving unrelated URL state', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate } = setup({ searchParams: '?unrelated=keep' })
-    expect(appNames()).toEqual([zebra.name, beta.name, alpha.name])
-    await user.click(screen.getByRole('combobox', { name: 'app.endUser.sortBy' }))
-    await user.click(await screen.findByRole('option', { name: 'app.endUser.nameAscending' }))
-    expect(appNames()).toEqual([alpha.name, beta.name, zebra.name])
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('sort')).toBe('name'),
-    )
-
-    await user.click(screen.getByRole('radio', { name: 'app.endUser.starred' }))
-    expect(appNames()).toEqual([beta.name, zebra.name])
-    const search = screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })
-    await user.type(search, 'REPORT')
-    expect(appNames()).toEqual([beta.name])
-    await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('q')).toBe('REPORT'))
-    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('view')).toBe('starred')
-
-    await user.clear(search)
-    await user.type(search, 'not present')
-    expect(screen.getByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
-    expect(screen.getByText('app.endUser.noResultsDescription')).toBeVisible()
-    expect(screen.queryByRole('heading', { name: 'app.endUser.emptyApps' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-
-    expect(search).toHaveValue('')
-    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-    expect(appNames()).toEqual([beta.name, zebra.name])
-    await waitFor(() => {
-      const params = onUrlUpdate.mock.lastCall?.[0].searchParams
-      expect(params?.has('q')).toBe(false)
-      expect(params?.get('view')).toBe('starred')
-      expect(params?.get('sort')).toBe('name')
-      expect(params?.get('unrelated')).toBe('keep')
+describe('MyApps account API integration', () => {
+  it('consumes all cursor pages before applying name sorting and opens actual Webapps', async () => {
+    let finishSecondPage!: (response: Response) => void
+    const secondPage = new Promise<Response>((resolve) => {
+      finishSecondPage = resolve
+    })
+    const requests: URL[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      requests.push(url)
+      return url.searchParams.has('cursor') ? secondPage : Response.json(page([zebra], 'next-page'))
+    })
+    setup('?sort=name')
+    await waitFor(() => expect(requests).toHaveLength(2))
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.queryByRole('link', { name: zebra.name })).not.toBeInTheDocument()
+    await act(async () => {
+      finishSecondPage(Response.json(page([alpha])))
     })
 
-    await user.click(screen.getByRole('radio', { name: 'app.endUser.all' }))
-    expect(screen.getByRole('radio', { name: 'app.endUser.all' })).toBeChecked()
-    expect(appNames()).toEqual([alpha.name, beta.name, zebra.name])
-    await waitFor(() => {
-      const params = onUrlUpdate.mock.lastCall?.[0].searchParams
-      expect(params?.has('q')).toBe(false)
-      expect(params?.has('view')).toBe(false)
-      expect(params?.get('sort')).toBe('name')
-      expect(params?.get('unrelated')).toBe('keep')
-    })
+    expect(await screen.findByRole('link', { name: alpha.name })).toHaveAttribute(
+      'href',
+      '/chat/alpha-app',
+    )
+    expect(screen.getByRole('link', { name: zebra.name })).toHaveAttribute(
+      'href',
+      '/workflow/zebra-app',
+    )
+    expect(appNames()).toEqual([alpha.name, zebra.name])
+    expect(requests[0]?.pathname).toMatch(/\/me\/apps$/)
+    expect(requests[0]?.searchParams.get('view')).toBe('recent')
+    expect(requests[1]?.searchParams.get('cursor')).toBe('next-page')
+    expect(screen.getByRole('button', { name: appLabel('appActions', alpha) })).toBeVisible()
+    expect(screen.queryByText('app.endUser.notConfigured')).not.toBeInTheDocument()
   })
 
-  it('shows an empty app library before search or Starred empty states when the dataset is empty', () => {
-    setup({ initialApps: [], searchParams: '?view=starred&sort=name-desc&q=not+present' })
-
-    expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
-    expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
-    expect(screen.queryByRole('heading', { name: 'app.endUser.noResults' })).not.toBeInTheDocument()
-    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
-      'not present',
-    )
-    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-    expect(screen.getByRole('combobox', { name: 'app.endUser.sortBy' })).toHaveTextContent(
-      'app.endUser.nameDescending',
-    )
-  })
-
-  it('selects descending names without clearing the current Starred view or search', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate } = setup({ searchParams: '?view=starred&sort=name&q=RESEARCH' })
-    expect(appNames()).toEqual([beta.name, zebra.name])
-    const sort = screen.getByRole('combobox', { name: 'app.endUser.sortBy' })
-    await user.click(sort)
-    await user.click(await screen.findByRole('option', { name: 'app.endUser.nameDescending' }))
-
-    expect(sort).toHaveTextContent('app.endUser.nameDescending')
-    expect(appNames()).toEqual([zebra.name, beta.name])
-    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
-      'RESEARCH',
-    )
-    await waitFor(() => {
-      const params = onUrlUpdate.mock.lastCall?.[0].searchParams
-      expect(params?.get('sort')).toBe('name-desc')
-      expect(params?.get('view')).toBe('starred')
-      expect(params?.get('q')).toBe('RESEARCH')
-    })
-  })
-
-  it('adds a starred app to Starred and removes it immediately when unstarred', async () => {
-    const user = userEvent.setup()
-    const { onToggleStar, onRemoveApp } = setup({ initialApps: [alpha] })
-    await user.click(screen.getByRole('button', { name: appLabel('starApp', alpha) }))
-    expect(screen.getByRole('button', { name: appLabel('unstarApp', alpha) })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    await user.click(screen.getByRole('radio', { name: 'app.endUser.starred' }))
-    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-    expect(appNames()).toEqual([alpha.name])
-    expect(screen.getByRole('link', { name: alpha.name })).toHaveAttribute('href', appHref)
-
-    await user.click(screen.getByRole('button', { name: appLabel('unstarApp', alpha) }))
-
-    expect(onToggleStar).toHaveBeenNthCalledWith(1, alpha.id)
-    expect(onToggleStar).toHaveBeenNthCalledWith(2, alpha.id)
-    expect(onRemoveApp).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
-    expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
+  it('stops repeated cursors and reports incomplete results rather than sorting a partial list', async () => {
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(page([zebra], 'repeated')))
+      .mockResolvedValueOnce(Response.json(page([alpha], 'repeated')))
+    setup('?sort=name')
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(fetch).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
   })
 
-  it.each([false, true])(
-    'confirms removal with deleteChats=%s from the corresponding menu action',
-    async (deleteChats) => {
-      const user = userEvent.setup()
-      const { onRemoveApp, onToggleStar } = setup({ initialApps: [alpha] })
-      const dialog = await openRemoval(user, alpha, deleteChats)
-      if (deleteChats) {
-        expect(dialog).toHaveAccessibleDescription(/app\.endUser\.deleteChatsDescription/)
-        expect(within(dialog).getByText(appLabel('deleteChatsDescription', alpha))).toBeVisible()
-        expect(within(dialog).getByText('app.endUser.deleteChatsDisclaimer')).toBeVisible()
-      } else {
-        expect(dialog).toHaveAccessibleDescription('app.endUser.removeDescription')
-        expect(
-          within(dialog).queryByText('app.endUser.deleteChatsDisclaimer'),
-        ).not.toBeInTheDocument()
-      }
-      expect(onRemoveApp).not.toHaveBeenCalled()
+  it('restores Starred, search and sorting from URL and delegates name search to the server', async () => {
+    const requests: URL[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      requests.push(new URL(input instanceof Request ? input.url : String(input)))
+      return Response.json(page([alpha, zebra].map((app) => ({ ...app, is_favorite: true }))))
+    })
+    setup('?view=starred&sort=name-desc&q=a')
 
-      await user.click(
-        within(dialog).getByRole('button', {
-          name: deleteChats ? 'app.endUser.removeAndDeleteChats' : 'app.endUser.removeFromList',
-        }),
-      )
-
-      await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      expect(onRemoveApp).toHaveBeenCalledExactlyOnceWith({ app: alpha, deleteChats })
-      expect(onToggleStar).not.toHaveBeenCalled()
-      expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
-      await waitFor(() =>
-        expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveFocus(),
-      )
-    },
-  )
-
-  it('restores focus to the second app actions when cancelled after a successful removal', async () => {
-    const user = userEvent.setup()
-    const { onRemoveApp } = setup({ initialApps: [alpha, beta] })
-    const firstDialog = await openRemoval(user, alpha, false)
-    await user.click(
-      within(firstDialog).getByRole('button', { name: 'app.endUser.removeFromList' }),
-    )
-    await waitFor(() => expect(firstDialog).not.toBeInTheDocument())
-
-    const trigger = screen.getByRole('button', { name: appLabel('appActions', beta) })
-    const secondDialog = await openRemoval(user, beta, true)
-    await user.click(within(secondDialog).getByRole('button', { name: 'common.operation.cancel' }))
-
-    await waitFor(() => expect(secondDialog).not.toBeInTheDocument())
-    expect(onRemoveApp).toHaveBeenCalledExactlyOnceWith({ app: alpha, deleteChats: false })
-    expect(appNames()).toEqual([beta.name])
-    expect(screen.getByRole('link', { name: beta.name })).toHaveAttribute('href', appHref)
-    await waitFor(() => expect(trigger).toHaveFocus())
+    await screen.findByRole('link', { name: alpha.name })
+    expect(requests[0]?.searchParams.get('view')).toBe('favorites')
+    expect(requests[0]?.searchParams.get('name')).toBe('a')
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue('a')
+    expect(appNames()).toEqual([zebra.name, alpha.name])
   })
 
-  it('keeps a failed removal open for retry and prevents duplicate submissions while pending', async () => {
+  it('saves favorites before refreshing cards and blocks duplicate star submissions', async () => {
     const user = userEvent.setup()
-    let rejectRemoval!: (error: Error) => void
-    const pendingRemoval = new Promise<void>((_resolve, reject) => {
-      rejectRemoval = reject
+    let finishFavorite!: (response: Response) => void
+    const saving = new Promise<Response>((resolve) => {
+      finishFavorite = resolve
     })
-    const onRemoveApp = vi
-      .fn<(request: RemoveAppRequest) => Promise<void>>()
-      .mockReturnValueOnce(pendingRemoval)
-      .mockResolvedValueOnce(undefined)
-    setup({ initialApps: [alpha], onRemoveApp })
-    const dialog = await openRemoval(user, alpha, false)
-    const confirm = within(dialog).getByRole('button', { name: 'app.endUser.removeFromList' })
-    await user.click(confirm)
-    expect(confirm).toHaveAttribute('aria-disabled', 'true')
-    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
-    await user.click(confirm)
-    expect(onRemoveApp).toHaveBeenCalledOnce()
+    let starred = false
+    const changes: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.method === 'PUT') {
+        changes.push(request)
+        return saving
+      }
+      if (request.method === 'DELETE') {
+        changes.push(request)
+        starred = false
+        return new Response(null, { status: 204 })
+      }
+      return Response.json(page([{ ...alpha, is_favorite: starred }]))
+    })
+    setup()
+    const button = await screen.findByRole('button', { name: appLabel('starApp', alpha) })
+    await user.click(button)
+    await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    await user.click(button)
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.url).toMatch(new RegExp(`/me/apps/${alpha.id}/favorite$`))
+    await act(async () => {
+      starred = true
+      finishFavorite(new Response(null, { status: 204 }))
+    })
+    expect(
+      await screen.findByRole('button', { name: appLabel('unstarApp', alpha) }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: appLabel('unstarApp', alpha) }))
+    expect(await screen.findByRole('button', { name: appLabel('starApp', alpha) })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(changes.map((request) => request.method)).toEqual(['PUT', 'DELETE'])
+  })
+
+  it('keeps favorite state unchanged after a failed save and permits retry', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      return request.method === 'PUT'
+        ? Response.json(
+            { code: 'invalid_param', message: 'Cannot save favorite.' },
+            { status: 400 },
+          )
+        : Response.json(page([alpha]))
+    })
+    setup()
+    await user.click(await screen.findByRole('button', { name: appLabel('starApp', alpha) }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Cannot save favorite.')
+    expect(screen.getByRole('button', { name: appLabel('starApp', alpha) })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('removes an app only after the request succeeds and prevents concurrent card actions', async () => {
+    const user = userEvent.setup()
+    let finishRemoval!: (response: Response) => void
+    const removing = new Promise<Response>((resolve) => {
+      finishRemoval = resolve
+    })
+    let removed = false
+    const changes: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.method === 'DELETE') {
+        changes.push(request)
+        return removing
+      }
+      return Response.json(page(removed ? [zebra] : [alpha, zebra]))
+    })
+    setup()
+    const actions = await screen.findByRole('button', { name: appLabel('appActions', alpha) })
+    await user.click(actions)
+    expect(
+      screen.queryByRole('menuitem', { name: 'app.endUser.removeAndDeleteChats' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+
+    await waitFor(() => expect(actions).toBeDisabled())
+    const star = screen.getByRole('button', { name: appLabel('starApp', alpha) })
+    expect(star).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('link', { name: alpha.name })).toBeVisible()
+    await user.click(actions)
+    await user.click(star)
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.url).toMatch(new RegExp(`/me/apps/${alpha.id}$`))
+    expect(changes[0]?.method).toBe('DELETE')
+    expect(await changes[0]?.text()).toBe('')
 
     await act(async () => {
-      rejectRemoval(new Error('Removal failed'))
-      await pendingRemoval.catch(() => {})
+      removed = true
+      finishRemoval(new Response(null, { status: 204 }))
     })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('app.endUser.removeError')
-    expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
-    expect(confirm).toHaveFocus()
-    await user.click(confirm)
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('link', { name: zebra.name })).toBeVisible()
+  })
 
-    await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    expect(onRemoveApp).toHaveBeenCalledTimes(2)
-    expect(onRemoveApp).toHaveBeenLastCalledWith({ app: alpha, deleteChats: false })
-    expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
-    await waitFor(() =>
-      expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveFocus(),
-    )
+  it('keeps a starred app after removal fails and allows retry without changing the filter', async () => {
+    const user = userEvent.setup()
+    let attempts = 0
+    const reads: URL[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.method === 'DELETE') {
+        attempts += 1
+        return attempts === 1
+          ? Response.json(
+              { code: 'invalid_param', message: 'Cannot remove this app.' },
+              { status: 400 },
+            )
+          : new Response(null, { status: 204 })
+      }
+      reads.push(new URL(request.url))
+      return Response.json(page(attempts < 2 ? [zebra] : []))
+    })
+    setup('?view=starred&q=Zebra&sort=name')
+    await user.click(await screen.findByRole('button', { name: appLabel('appActions', zebra) }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Cannot remove this app.')
+    expect(screen.getByRole('link', { name: zebra.name })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: appLabel('appActions', zebra) }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.endUser.removeFromList' }))
+    expect(await screen.findByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: zebra.name })).not.toBeInTheDocument()
+    expect(attempts).toBe(2)
+    expect(reads).toHaveLength(2)
+    expect(reads[1]?.searchParams.get('view')).toBe('favorites')
+    expect(reads[1]?.searchParams.get('name')).toBe('Zebra')
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue('Zebra')
+  })
+
+  it('shows list errors with retry rather than an empty library', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ code: 'unavailable', message: 'Unavailable.' }, { status: 503 }),
+      )
+      .mockResolvedValueOnce(Response.json(page([])))
+    setup()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable.')
+    expect(screen.queryByRole('heading', { name: 'app.endUser.emptyApps' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+  })
+
+  it('distinguishes a filtered empty result and preserves view and sort when clearing search', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json(page([])))
+    const { onUrlUpdate } = setup('?view=starred&sort=name-desc&q=missing&unrelated=keep')
+    expect(await screen.findByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(await screen.findByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+    await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('q')).toBe(false))
+    const params = onUrlUpdate.mock.lastCall?.[0].searchParams
+    expect(params?.get('view')).toBe('starred')
+    expect(params?.get('sort')).toBe('name-desc')
+    expect(params?.get('unrelated')).toBe('keep')
+  })
+
+  it('drops previous account rows when the cookie account session changes', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(page([alpha])))
+      .mockResolvedValueOnce(Response.json(page([zebra])))
+    setup()
+    await screen.findByRole('link', { name: alpha.name })
+    await act(async () => {
+      startWebAppAccountSession()
+    })
+    expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: zebra.name })).toBeVisible()
   })
 })

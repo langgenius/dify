@@ -89,9 +89,8 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' }) || ''
-  const deleteConversationContent =
-    t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''
+  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' })
+  const deleteConversationContent = t(($) => $['chat.deleteConversation.content'], { ns: 'share' })
 
   return (
     <div
