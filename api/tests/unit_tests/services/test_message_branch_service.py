@@ -145,7 +145,7 @@ def test_ambiguous_legacy_timestamps_roll_back_all_edges(branch: BranchConversat
         branch.resolve(middle)
     with branch.factory() as session:
         rows = session.execute(select(Message.id, Message.parent_message_id).where(Message.id.in_((first, middle))))
-        assert dict(rows.all()) == {first: UUID_NIL, middle: UUID_NIL}
+        assert {row.id: row.parent_message_id for row in rows.all()} == {first: UUID_NIL, middle: UUID_NIL}
 
 
 def test_mixed_web_and_service_history_is_materialized_without_rewriting_explicit_edges(
@@ -158,6 +158,21 @@ def test_mixed_web_and_service_history_is_materialized_without_rewriting_explici
     assert branch.resolve(web_child).message_ids == (web_root, api_turn, web_child)
     with branch.factory() as session:
         assert session.scalar(select(Message.parent_message_id).where(Message.id == api_turn)) == web_root
+
+
+def test_legacy_edge_rejects_ambiguous_explicit_predecessor_bucket(branch: BranchConversation) -> None:
+    """A later nil turn cannot choose arbitrarily between two earlier same-time roots."""
+    roots = [branch.add(query=f"root {i}", parent=None) for i in range(2)]
+    target = branch.add(query="legacy", parent=UUID_NIL, index=1)
+    with pytest.raises(ValueError, match="ambiguous"):
+        branch.resolve(target)
+    with branch.factory() as session:
+        rows = session.execute(select(Message.id, Message.parent_message_id))
+        assert {row.id: row.parent_message_id for row in rows.all()} == {
+            roots[0]: None,
+            roots[1]: None,
+            target: UUID_NIL,
+        }
 
 
 def test_long_legacy_admission_uses_batched_metadata_and_preserves_queries(branch: BranchConversation) -> None:

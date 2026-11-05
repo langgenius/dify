@@ -1365,65 +1365,20 @@ class TestAdvancedChatAppGeneratorInternals:
         assert app_config.additional_features.show_retrieve_source is True
         assert captured["application_generate_entity"].query == "hello"
 
-    def test_generate_service_api_sets_parent_message_id(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    def test_service_api_explicit_parent_requires_admission_adapter(self, unbound_session: Session) -> None:
+        """An unconfigured internal caller cannot bypass explicit branch admission."""
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-
-        app_config = WorkflowUIBasedAppConfig(
-            tenant_id="tenant",
-            app_id="app",
-            app_mode=AppMode.ADVANCED_CHAT,
-            additional_features=AppAdditionalFeatures(),
-            variables=[],
-            workflow_id="workflow-id",
-        )
-
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
-            lambda app_model, workflow: app_config,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
-            lambda features_dict, is_vision=False: None,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
-            lambda **kwargs: SimpleNamespace(),
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-            lambda **kwargs: SimpleNamespace(),
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=sqlite_engine, session=unbound_session),
-        )
-
-        captured = {}
-
-        def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
-
-        monkeypatch.setattr(generator, "_generate", _fake_generate)
-
-        app_model = _app_generator_make_app()
-        workflow = _app_generator_make_workflow()
-        user = _make_end_user(end_user_id="end-user", session_id="session")
-
-        generator.generate(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            workflow_run_id="run-id",
-            streaming=False,
-            session=unbound_session,
-        )
-
-        assert captured["application_generate_entity"].parent_message_id == UUID_NIL
+        with pytest.raises(ValueError, match="selection is not configured"):
+            generator.generate(
+                app_model=_app_generator_make_app(),
+                workflow=_app_generator_make_workflow(),
+                user=_make_end_user(),
+                args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
+                invoke_from=InvokeFrom.SERVICE_API,
+                workflow_run_id="run-id",
+                streaming=False,
+                session=unbound_session,
+            )
 
 
 class TestAdvancedChatAppGeneratorResume:

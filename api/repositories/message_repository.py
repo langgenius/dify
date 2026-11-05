@@ -117,7 +117,12 @@ class MessageRepository:
             ids = [row.id for row in rows]
             if not rows or rows[-1].next_parent is not None and len(rows) <= 500:
                 raise ValueError("Message branch is unavailable in this conversation.")
-            if any(row.parent_message_id == UUID_NIL and row.timestamp_count > 1 for row in rows):
+            ambiguous_timestamps = {row.id for row in rows if row.timestamp_count > 1}
+            if any(
+                row.parent_message_id == UUID_NIL
+                and (row.id in ambiguous_timestamps or row.next_parent in ambiguous_timestamps)
+                for row in rows
+            ):
                 raise ValueError("Legacy message timestamps are ambiguous; select an explicit branch or a new root.")
             if len(set(ids)) != len(ids):
                 raise ValueError("Message branch contains a cycle.")

@@ -18,7 +18,7 @@ class RecordingBranchModel(LargeLanguageModel):
     fail: bool = False
 
     @override
-    def get_model_schema(self, model: str, credentials: dict[str, object]) -> AIModelEntity:
+    def get_model_schema(self, model: str, credentials: dict[str, object] | None = None) -> AIModelEntity:
         """Expose a chat model without provider or credential I/O."""
         return AIModelEntity(
             model=model,
