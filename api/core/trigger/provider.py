@@ -397,7 +397,12 @@ class PluginTriggerProviderController:
         self, subscription: Subscription, credentials: Mapping[str, str], credential_type: CredentialType
     ) -> Subscription:
         """
-        Refresh a trigger subscription through plugin runtime
+        Refresh a validated subscription through the plugin runtime.
+
+        Missing or null constructor parameters mean the plugin did not replace
+        them. Preserve the existing parameters in that case without mutating the
+        input or response. Explicit values and all other response fields still
+        undergo Subscription validation; plugin and validation errors propagate.
 
         :param subscription: Subscription metadata
         :param credentials: Provider credentials
@@ -415,7 +420,11 @@ class PluginTriggerProviderController:
             credential_type=credential_type,
         )
 
-        return Subscription.model_validate(response.subscription)
+        refreshed_subscription = dict(response.subscription)
+        if refreshed_subscription.get("parameters") is None:
+            refreshed_subscription["parameters"] = dict(subscription.parameters)
+
+        return Subscription.model_validate(refreshed_subscription)
 
 
 __all__ = ["PluginTriggerProviderController"]
