@@ -330,7 +330,7 @@ const normalizeAgentTool = (
 }
 
 const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
     consoleQuery.workspaces.current.toolProviders.get.queryOptions({
@@ -616,7 +616,7 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
             <div className="flex size-full shrink-0 flex-col sm:w-1/2">
               <Config />
             </div>
-            {!isMobile && (
+            {!isBelowSm && (
               <div
                 className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
                 style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}

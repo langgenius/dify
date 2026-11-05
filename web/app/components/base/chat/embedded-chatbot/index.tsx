@@ -20,7 +20,7 @@ import { isDify } from './utils'
 
 const Chatbot = () => {
   const {
-    isMobile,
+    isBelowSm,
     allowResetChat,
     appData,
     appChatListDataLoading,
@@ -42,14 +42,14 @@ const Chatbot = () => {
       <div
         className={cn(
           'flex flex-col rounded-2xl',
-          isMobile ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
+          isBelowSm ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
         )}
         style={
-          isMobile ? Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? '')) : {}
+          isBelowSm ? Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? '')) : {}
         }
       >
         <Header
-          isMobile={isMobile}
+          isBelowSm={isBelowSm}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
           customerIcon={isDify() ? difyIcon : ''}
@@ -59,7 +59,7 @@ const Chatbot = () => {
         <div
           className={cn(
             'flex grow flex-col overflow-y-auto',
-            isMobile && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
+            isBelowSm && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
           )}
         >
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
@@ -67,7 +67,7 @@ const Chatbot = () => {
         </div>
       </div>
       {/* powered by */}
-      {isMobile && (
+      {isBelowSm && (
         <div className="flex h-15 shrink-0 items-center ps-2">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
@@ -98,7 +98,7 @@ const Chatbot = () => {
 }
 
 const EmbeddedChatbotWrapper = () => {
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -160,7 +160,7 @@ const EmbeddedChatbotWrapper = () => {
         handleChangeConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         allowResetChat,
         appId,

@@ -251,7 +251,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       <FloatRightContainer
         panelClassName="justify-start! overflow-y-auto!"
         showClose
-        isMobile={isBelowSm}
+        presentation={isBelowSm ? 'drawer' : 'inline'}
         isOpen={!isBelowSm || isResultDrawerOpen}
         onClose={closeResultDrawer}
         title={panelTitle}

@@ -22,7 +22,7 @@ type IMainProps = {
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
-  const isPC = !useMediaQuery('(width < 48rem)', {})
+  const isBelowMd = useMediaQuery('(width < 48rem)', {})
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(
@@ -122,7 +122,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     <div
       className={cn(
         'bg-background-default-burn',
-        isPC ? 'flex' : 'flex-col',
+        isBelowMd ? 'flex-col' : 'flex',
         isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
       )}
     >
@@ -134,7 +134,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         inputs={inputs}
         inputsRef={inputsRef}
         isInstalledApp={isInstalledApp}
-        isPC={isPC}
+        isBelowMd={isBelowMd}
         isWorkflow={isWorkflow}
         onBatchSend={handleRunBatch}
         onInputsChange={updateInputs}
@@ -167,7 +167,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         handleSaveMessage={handleSaveMessage}
         inputs={inputs}
         isCallBatchAPI={isCallBatchAPI}
-        isPC={isPC}
+        isBelowMd={isBelowMd}
         isShowResultPanel={isShowResultPanel}
         isWorkflow={isWorkflow}
         moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}

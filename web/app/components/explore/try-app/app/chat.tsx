@@ -28,7 +28,7 @@ type Props = Readonly<{
 
 const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const { t } = useTranslation(['explore', 'share', 'common'])
-  const isMobile = useMediaQuery('(width < 40rem)', {})
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
   const theme = createTheme(
     chatData.appData?.site?.chat_color_theme ?? null,
@@ -51,7 +51,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
         {
           ...chatData,
           disableFeedback: true,
-          isMobile,
+          isBelowSm,
           theme,
         } as EmbeddedChatbotContextValue
       }

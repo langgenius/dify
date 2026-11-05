@@ -27,7 +27,7 @@ export type EmbeddedChatbotContextValue = {
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
-  isMobile: boolean
+  isBelowSm: boolean
   isInstalledApp: boolean
   appSourceType: AppSourceType
   allowResetChat: boolean
@@ -67,7 +67,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleChangeConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,

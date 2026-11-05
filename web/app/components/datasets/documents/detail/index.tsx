@@ -444,7 +444,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             showClose
             isOpen={showMetadata}
             onClose={() => setShowMetadata(false)}
-            isMobile={isBelowSm}
+            presentation={isBelowSm ? 'drawer' : 'inline'}
             panelClassName="justify-start!"
           >
             {metadataPanel &&
