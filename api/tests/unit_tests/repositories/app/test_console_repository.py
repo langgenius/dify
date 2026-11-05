@@ -411,7 +411,7 @@ def test_invalid_consumer_usage_does_not_record_first_app_time(
                 update(EndUser).where(EndUser.id == base.context.end_user_id).values(type=EndUserType.SERVICE_API)
             )
         elif mismatch == "mode":
-            session.execute(update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHAT))
+            session.execute(update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHANNEL))
         elif mismatch == "status":
             session.execute(
                 update(Account).where(Account.id == identity.account_id).values(status=AccountStatus.BANNED)

@@ -56,7 +56,13 @@ from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.app_tracing_config_service import AppTraceSettings
-from services.consumer_service import ConsumerApp, ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
+from services.consumer_service import (
+    CONSUMER_APP_MODES,
+    ConsumerApp,
+    ConsumerAppNotFoundError,
+    ConsumerAppsQuery,
+    ConsumerIdentity,
+)
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppAgentBinding,
@@ -132,6 +138,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
     @staticmethod
     def _consumer_query(identity: ConsumerIdentity, *, require_relation: bool) -> sa.Select[ConsumerAppRow]:
+        """Build published WebApp candidates for an admitted Account without executing SQL.
+
+        Personal state is owner-scoped; callers must still enforce access policy.
+        Only supported modes with an active Site and publication can be returned.
+        """
         stmt = (
             select(App, Site.code, AccountWebApp.favorited_at, AccountWebApp.last_used_at, AccountWebApp.removed_at)
             .join(Site, Site.app_id == App.id)
@@ -146,7 +157,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
             .where(
                 App.status == AppStatus.NORMAL,
-                App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                App.mode.in_(CONSUMER_APP_MODES),
                 App.enable_site.is_(True),
                 Site.status == AppStatus.NORMAL,
                 Site.code.is_not(None),
@@ -303,6 +314,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def record_consumer_usage(
         self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, end_user_id: str, used_at: datetime
     ) -> None:
+        """Persist accepted supported WebApp use for the complete Browser owner chain.
+
+        Invalid owners and modes are no-ops. A bounded transaction preserves the
+        latest App use, earliest Account use and explicit removal ordering.
+        """
         with self._session_factory.begin() as session:
             if not self._active_consumer_account(session, identity):
                 return
@@ -315,7 +331,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.type == EndUserType.BROWSER,
-                    App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                    App.mode.in_(CONSUMER_APP_MODES),
                 )
             )
             if exists is None:
@@ -336,6 +352,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
 
     def remove(self, identity: ConsumerIdentity, app_id: str) -> None:
+        """Hide an active Account's personal entry without deleting execution data.
+
+        An owned supported Browser identity can seed a removal before first use.
+        Unknown Apps are no-ops; inactive Accounts raise ConsumerAppNotFoundError.
+        """
         removed_at = naive_utc_now()
         with self._session_factory.begin() as session:
             if not self._active_consumer_account(session, identity):
@@ -353,7 +374,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                         EndUser.account_id == identity.account_id,
                         EndUser.app_id == app_id,
                         EndUser.type == EndUserType.BROWSER,
-                        App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                        App.mode.in_(CONSUMER_APP_MODES),
                     )
                 )
             if tenant_id is None:

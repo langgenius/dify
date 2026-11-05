@@ -3,16 +3,25 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
 from libs.passport import PassportService
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+)
 from models.end_user_connection import EndUserConnection
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun, WorkflowType
+from models.model import App, AppMode, AppModelConfig
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.consumer_adapters import PluginConsumerConnectionProviders
@@ -27,6 +36,55 @@ from tests.helpers.unit.config_override import apply_config_overrides
 
 def consumer_connection_key(connection: EndUserConnection | ConnectionSummary) -> UUID:
     return UUID(connection.id)
+
+
+def publish_consumer_app(base: ConnectionHarness, mode: AppMode) -> None:
+    """Publish an existing fixture App in a supported mode using real owned artifacts.
+
+    The fixture must own an App and published Workflow. Non-workflow modes clear
+    the Workflow pointer so Connection readiness is not inferred from stale data.
+    Unsupported modes raise ValueError and roll back all changes.
+    """
+    with base.sessions.begin() as session:
+        app = session.get_one(App, base.context.app_id)
+        app.mode = mode
+        if mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+            workflow = session.get_one(Workflow, base.workflow_id)
+            workflow.type = WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW
+        elif mode in (AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT):
+            app.workflow_id = None
+            config = AppModelConfig(app_id=app.id)
+            session.add(config)
+            session.flush()
+            app.app_model_config_id = config.id
+        elif mode == AppMode.AGENT:
+            app.workflow_id = None
+            agent = Agent(
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                name="Consumer Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+            )
+            snapshot = AgentConfigSnapshot(
+                id=str(uuid4()), tenant_id=app.tenant_id, agent_id=agent.id, version=1, config_snapshot={}
+            )
+            agent.active_config_snapshot_id = snapshot.id
+            session.add_all(
+                [
+                    agent,
+                    snapshot,
+                    AgentConfigRevision(
+                        tenant_id=app.tenant_id,
+                        agent_id=agent.id,
+                        current_snapshot_id=snapshot.id,
+                        revision=1,
+                        operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                    ),
+                ]
+            )
+        else:
+            raise ValueError("Unsupported consumer App mode")
 
 
 def new_consumer_run(base: ConnectionHarness, *, created_at: datetime) -> WorkflowRun:
