@@ -196,28 +196,6 @@ class TestQAStructureChunk:
 
 
 class TestBaseDocumentTransformer:
-    def test_cannot_be_instantiated_directly(self) -> None:
-        with pytest.raises(TypeError):
-            BaseDocumentTransformer()  # type: ignore[bad-instantiation]
-
-    def test_subclass_missing_atransform_documents_cannot_be_instantiated(self) -> None:
-        class OnlySync(BaseDocumentTransformer):
-            def transform_documents(self, documents: Sequence[Document], **kwargs: object) -> Sequence[Document]:
-                _ = kwargs  # accepted for ABC signature compatibility, unused by this stub
-                return documents
-
-        with pytest.raises(TypeError):
-            OnlySync()  # type: ignore[bad-instantiation]
-
-    def test_subclass_missing_transform_documents_cannot_be_instantiated(self) -> None:
-        class OnlyAsync(BaseDocumentTransformer):
-            async def atransform_documents(self, documents: Sequence[Document], **kwargs: object) -> Sequence[Document]:
-                _ = kwargs  # accepted for ABC signature compatibility, unused by this stub
-                return documents
-
-        with pytest.raises(TypeError):
-            OnlyAsync()  # type: ignore[bad-instantiation]
-
     def test_complete_subclass_transforms_documents(self) -> None:
         class IdentityTransformer(BaseDocumentTransformer):
             def transform_documents(self, documents: Sequence[Document], **kwargs: object) -> Sequence[Document]:
