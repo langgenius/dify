@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -241,7 +241,7 @@ def _load_balancing_config(
 
 
 @contextmanager
-def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Iterator[None]:
+def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Generator[None]:
     """Fail one table operation while production still owns a real transaction."""
 
     def fail_target(_conn, _cursor, statement, _parameters, _context, _executemany):
@@ -256,7 +256,7 @@ def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Iterator[N
 
 
 @contextmanager
-def _mock_cache_boundaries() -> Iterator[tuple[Mock, Mock]]:
+def _mock_cache_boundaries() -> Generator[tuple[Mock, Mock]]:
     with (
         patch("core.entities.provider_configuration.ProviderCredentialsCache") as credentials_cache,
         patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as configuration_cache,

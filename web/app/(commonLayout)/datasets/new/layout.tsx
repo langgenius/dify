@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { getKnowledgeFsFeatures } from '@/features/knowledge-fs-availability/server'
 import { redirect } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
 
 export default async function Layout({ children }: { children: ReactNode }) {
-  const knowledgeFsFeatures = await getKnowledgeFsFeatures()
+  const features = await consoleClient.features.get()
 
-  if (!knowledgeFsFeatures.enabled) redirect('/datasets')
+  if (!features.enable_knowledge_fs) redirect('/datasets')
 
   return children
 }

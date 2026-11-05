@@ -25,6 +25,9 @@ const nonFrontendIgnores = [
 ]
 
 const generatedIgnores = [
+  // Preserve the retained Enterprise OpenAPI snapshots verbatim.
+  'packages/contracts/generated/enterprise/openapi.gen.json',
+  'packages/contracts/generated/enterprise-app-deploy/openapi.gen.json',
   '**/.next/**',
   '**/.vinext/**',
   '**/coverage/**',

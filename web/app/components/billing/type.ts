@@ -1,20 +1,25 @@
 type DocumentProcessingPriority = 'standard' | 'priority' | 'top-priority'
+type WorkflowExecutionSpeed = 'standard' | 'faster' | 'priority'
+
+type PlanQuota = {
+  count: number
+  perMonth: boolean
+}
 
 export type PlanInfo = {
   level: number
   price: number
-  modelProviders: string
-  teamWorkspace: number
+  messageRequest: PlanQuota
   teamMembers: number
   buildApps: number
   documents: number
   vectorSpace: string
-  documentsUploadQuota: number
   documentsRequestQuota: number
-  apiRateLimit: number
   documentProcessingPriority: DocumentProcessingPriority
-  logHistory: number
-  messageRequest: number
-  triggerEvents: number
+  triggerEvents: PlanQuota | 'unlimited'
+  startNodes: number | 'unlimited'
+  workflowExecution: WorkflowExecutionSpeed
   annotatedResponse: number
+  logHistory: number | 'unlimited'
+  apiRateLimit: number | 'unlimited'
 }

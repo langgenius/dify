@@ -25,15 +25,9 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -42,6 +36,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
@@ -204,7 +199,9 @@ function VersionRow({
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
@@ -249,8 +246,10 @@ function VersionRow({
           setRenameOpen(false)
           invalidateVersions()
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.renameVersionFailed']))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['skillManagement.detail.renameVersionFailed']),
+          )
         },
       },
     )
@@ -315,18 +314,18 @@ function VersionRow({
               </span>
             </span>
           </button>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
+          <Menu modal={false}>
+            <MenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
               className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-46">
-              <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
+            </MenuTrigger>
+            <MenuContent align="end" className="w-46">
+              <MenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
-              </DropdownMenuItem>
-              <DropdownMenuItem
+              </MenuItem>
+              <MenuItem
                 onClick={() => {
                   setVersionName(version.version_name)
                   setPublishNote(version.publish_note)
@@ -334,17 +333,17 @@ function VersionRow({
                 }}
               >
                 {versionInfoLabel}
-              </DropdownMenuItem>
+              </MenuItem>
               {!version.is_latest && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                  <MenuSeparator />
+                  <MenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                     {tCommon(($) => $['operation.delete'])}
-                  </DropdownMenuItem>
+                  </MenuItem>
                 </>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>

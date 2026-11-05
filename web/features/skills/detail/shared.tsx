@@ -1485,11 +1485,14 @@ function updateSkillListCache(
 }
 
 function refetchSkillDetail(skillId: string) {
-  return consoleClient.workspaces.current.skills.bySkillId.get({
-    params: {
-      skill_id: skillId,
+  return consoleClient.workspaces.current.skills.bySkillId.get(
+    {
+      params: {
+        skill_id: skillId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 export async function refreshSkillDetailAfterConflict(

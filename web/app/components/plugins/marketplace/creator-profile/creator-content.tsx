@@ -10,13 +10,13 @@ import type {
 } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { parseAsStringEnum, useQueryStates } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from '#i18n'
@@ -161,8 +161,8 @@ export default function CreatorContent({
         </h2>
 
         <div className="flex h-8 items-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Menu>
+            <MenuTrigger
               aria-label={`${t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })} ${selectedSort.label}`}
               className="flex h-8 items-center rounded-lg px-2 hover:bg-state-base-hover"
             >
@@ -171,28 +171,28 @@ export default function CreatorContent({
               </span>
               <span className="system-sm-medium text-text-secondary">{selectedSort.label}</span>
               <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="min-w-[176px] p-1">
-              <DropdownMenuRadioGroup<CreatorSortField>
+            </MenuTrigger>
+            <MenuContent className="min-w-[176px]">
+              <MenuRadioGroup<CreatorSortField>
                 value={sortField}
                 onValueChange={(nextField) => {
                   void setSort({ sort_by: nextField, sort_order: sortOrder })
                 }}
               >
                 {sortOptions.map((option) => (
-                  <DropdownMenuRadioItem<CreatorSortField>
+                  <MenuRadioItem<CreatorSortField>
                     key={option.value}
                     value={option.value}
                     closeOnClick
                     className="justify-between px-3 pr-2 system-md-regular text-text-primary"
                   >
                     {option.label}
-                    <DropdownMenuRadioItemIndicator className="ml-2" />
-                  </DropdownMenuRadioItem>
+                    <MenuRadioItemIndicator className="ml-2" />
+                  </MenuRadioItem>
                 ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </MenuRadioGroup>
+            </MenuContent>
+          </Menu>
 
           <div className="mx-1 h-4 w-px bg-divider-regular" />
           <button

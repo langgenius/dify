@@ -1,13 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
@@ -28,7 +22,7 @@ type ItemProps = {
 
 const SelectItem: FC<ItemProps> = ({ text, type, value, iconClassName, onClick }) => {
   return (
-    <DropdownMenuItem
+    <MenuItem
       closeOnClick
       className="h-8 rounded-lg px-3 text-text-primary"
       onClick={() => onClick(value)}
@@ -39,7 +33,7 @@ const SelectItem: FC<ItemProps> = ({ text, type, value, iconClassName, onClick }
         <InputVarTypeIcon type={type!} className="size-4 text-text-secondary" />
       )}
       <div className="ml-2 truncate text-xs text-text-primary">{text}</div>
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -49,9 +43,9 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
     onChange(value)
   }
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<OperationButton operation="add" />} />
-      <DropdownMenuContent
+    <Menu>
+      <MenuTrigger render={<OperationButton operation="add" />} />
+      <MenuContent
         sideOffset={8}
         alignOffset={-2}
         className="min-w-48 rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
@@ -88,7 +82,7 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
             onClick={handleChange}
           ></SelectItem>
         </div>
-        <DropdownMenuSeparator className="my-0" />
+        <MenuSeparator className="my-0" />
         <div className="p-1">
           <SelectItem
             iconClassName={'i-custom-vender-solid-development-api-connection'}
@@ -97,8 +91,8 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
             onClick={handleChange}
           ></SelectItem>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(SelectVarType)

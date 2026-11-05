@@ -28,7 +28,7 @@ import { openOAuthPopup } from '@/hooks/use-oauth'
 import { consoleQuery } from '@/service/console'
 import { selectToolProviderTools } from '../../utils/query-select'
 import ListLoading from './list-loading'
-import OperationDropdown from './operation-dropdown'
+import OperationMenu from './operation-menu'
 import ToolItem from './tool-item'
 
 type Props = Readonly<{
@@ -176,7 +176,7 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="flex gap-1">
             {canManageMCP && (
-              <OperationDropdown
+              <OperationMenu
                 onEdit={() => onEdit(detail.id)}
                 onRemove={() => onDelete(detail.id)}
               />

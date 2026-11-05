@@ -313,7 +313,7 @@ export const zConversationCursorNotFoundError = zErrorResponse.and(
 /**
  * ConversationNotFoundError
  *
- * The conversation was not found for this account and app.
+ * The conversation was not found for this user and app.
  */
 export const zConversationNotFoundError = zErrorResponse.and(
   z.object({
@@ -476,13 +476,6 @@ export const zTextToAudioPayload = z.object({
 })
 
 /**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * ProviderNotSupportTextToSpeechError
  *
  * Provider does not support text to speech.
@@ -616,6 +609,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -1239,6 +1237,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -1640,7 +1639,9 @@ export const zPostInstalledAppsByInstalledAppIdTextToAudioPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = zAudioBinaryResponse
+export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
 

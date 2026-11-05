@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import OperationDropdown from './detail/operation-dropdown'
+import OperationMenu from './detail/operation-menu'
 
 type Props = Readonly<{
   currentProvider?: ToolWithProvider
@@ -108,7 +108,7 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
             isOperationShow && 'block',
           )}
         >
-          <OperationDropdown
+          <OperationMenu
             inCard
             onOpenChange={setIsOperationShow}
             onEdit={() => onEdit(data.id)}

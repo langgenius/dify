@@ -50,7 +50,7 @@ const families = [
     },
     async choose(screen: Awaited<ReturnType<typeof render>>) {
       await screen
-        .getByRole('button', { name: 'Thursday, January 16th, 2025', exact: true })
+        .getByRole('button', { name: '16: Thursday, January 16th, 2025', exact: true })
         .click()
     },
   },
@@ -99,7 +99,7 @@ const families = [
     },
     async choose(screen: Awaited<ReturnType<typeof render>>) {
       await screen
-        .getByRole('button', { name: 'Thursday, January 16th, 2025', exact: true })
+        .getByRole('button', { name: '16: Thursday, January 16th, 2025', exact: true })
         .click()
       await screen.getByRole('button', { name: 'OK', exact: true }).click()
     },
@@ -169,7 +169,7 @@ it.each(families)(
         <button type="submit">Submit booking</button>
       </Form>,
     )
-    const trigger = screen.getByRole('button', { name: 'Departure', exact: true })
+    const trigger = screen.getByRole('button', { name: /^Departure Select / })
     await expect.element(trigger).not.toHaveAttribute('aria-invalid', 'true')
     await screen.getByRole('button', { name: 'Submit booking' }).click()
     expect(submitted).not.toHaveBeenCalled()
@@ -199,7 +199,7 @@ it.each(families)(
     expect(stateOf(screen)).toMatchObject({ focused: true, dirty: false, touched: false })
     const commitButton = screen
       .getByRole('button', {
-        name: family.name === 'DatePicker' ? 'Thursday, January 16th, 2025' : 'OK',
+        name: family.name === 'DatePicker' ? '16: Thursday, January 16th, 2025' : 'OK',
         exact: true,
       })
       .element()
@@ -478,9 +478,33 @@ it('validates on leaving the complete picker, not when focus enters its portalle
     .getByRole('listbox', { name: 'Hour' })
     .getByRole('option', { name: '2', exact: true })
     .click()
+  let restoreFocus: FrameRequestCallback | undefined
+  const animationFrame = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementationOnce((callback) => {
+      restoreFocus = callback
+      return 0
+    })
+  try {
+    await userEvent.tab({ shift: true })
+    // Let blur timers run while the browser is waiting to render the focus-restoration frame.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(restoreFocus).toBeDefined()
+    expect(validate).not.toHaveBeenCalled()
+    expect(stateOf(screen)).toMatchObject({ touched: false, focused: true })
+  } finally {
+    animationFrame.mockRestore()
+    restoreFocus?.(performance.now())
+  }
+  await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
+  await userEvent.tab()
+  await expect
+    .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '2' }))
+    .toHaveFocus()
   expect(validate).not.toHaveBeenCalled()
   expect(stateOf(screen)).toMatchObject({ dirty: false, touched: false, focused: true })
-  await screen.getByRole('button', { name: 'Next field' }).click()
+  await screen.getByText('Next field', { exact: true }).click()
+  await expect.element(screen.getByRole('button', { name: 'Next field' })).toHaveFocus()
   expect(validate).toHaveBeenCalledExactlyOnceWith('13:30', { departure: '13:30' })
   await expect.element(screen.getByText('Choose another time.', { exact: true })).toBeVisible()
   const trigger = screen.getByRole('button', { name: /^Departure / })
@@ -594,7 +618,7 @@ it('revalidates a required field after a committed selection', async () => {
   await screen.getByRole('button', { name: 'Submit booking' }).click()
   await expect.element(screen.getByText('Departure is required.', { exact: true })).toBeVisible()
   expect(submitted).not.toHaveBeenCalled()
-  await screen.getByRole('button', { name: 'Departure', exact: true }).click()
+  await screen.getByRole('button', { name: 'Departure Select date', exact: true }).click()
   await userEvent.keyboard('{Enter}')
   await expect
     .element(screen.getByText('Departure is required.', { exact: true }))
@@ -657,7 +681,7 @@ it('keeps dirty tied to the committed controlled value when its owner declines r
   await families[0]!.choose(screen)
   await screen.getByRole('button', { name: 'Reset booking' }).click()
   await expect.element(screen.getByRole('button', { name: 'Departure Jan 16, 2025' })).toBeVisible()
-  expect(stateOf(screen)).toMatchObject({ dirty: true, touched: false })
+  await expect.poll(() => stateOf(screen)).toMatchObject({ dirty: true, touched: false })
   expect(
     new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).get(
       'departure',
@@ -687,7 +711,9 @@ it('clears reset feedback without removing required validation on the next submi
   await screen.getByRole('button', { name: 'Submit booking' }).click()
   expect(submitted).not.toHaveBeenCalled()
   await expect.element(screen.getByText('Departure is required.', { exact: true })).toBeVisible()
-  await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
+  await expect
+    .element(screen.getByRole('button', { name: 'Departure Select date', exact: true }))
+    .toHaveFocus()
 })
 
 it('clears Field custom validity on reset and validates the restored value on the next submit', async () => {
@@ -734,7 +760,9 @@ it('integrates native invalid events with Field without marking an unchanged val
   expect(submitted).not.toHaveBeenCalled()
   await expect.element(screen.getByText('Departure is required.', { exact: true })).toBeVisible()
   expect(stateOf(screen)).toMatchObject({ touched: true, dirty: false, valid: false })
-  await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
+  await expect
+    .element(screen.getByRole('button', { name: 'Departure Select date', exact: true }))
+    .toHaveFocus()
 })
 
 it('ignores a pending validation result after reset', async () => {
@@ -857,8 +885,10 @@ it('keeps Clear inside the field focus boundary while dismissing an open popup',
     </Form>,
   )
   await screen.getByRole('button', { name: /^Departure / }).click()
-  await screen.getByRole('button', { name: 'Clear departure' }).click()
-  await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
+  await screen.getByLabelText('Clear departure', { exact: true }).click()
+  await expect
+    .element(screen.getByRole('button', { name: 'Departure Select date', exact: true }))
+    .toHaveFocus()
   expect(validate).not.toHaveBeenCalled()
   expect(stateOf(screen)).toMatchObject({ touched: false, focused: true, filled: false })
 })

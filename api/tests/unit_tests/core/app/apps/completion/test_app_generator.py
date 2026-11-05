@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -16,10 +18,28 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
-from services.errors.app import MoreLikeThisDisabledError
-from services.errors.message import MessageNotExistsError
 
 TABLES = (AppModelConfig, Conversation, Message)
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app1",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 @pytest.fixture
@@ -36,7 +56,6 @@ def generator(mocker: MockerFixture):
     mocker.patch.object(module.threading, "Thread", return_value=thread)
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
     generate_entity = mocker.patch.object(
         module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
     )
@@ -156,7 +175,17 @@ class TestCompletionAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_success_no_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_success_no_file_config(
+        self, generator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        trace_scope = _trace_scope()
+        scope_requests: list[dict[str, object]] = []
+
+        def create_trace_scope(**kwargs: object) -> TraceScope:
+            scope_requests.append(kwargs)
+            return trace_scope
+
+        monkeypatch.setattr(module, "create_trace_scope", create_trace_scope)
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
         to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
@@ -215,7 +244,12 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        extras = generator.generate_entity.call_args.kwargs["extras"]
+        assert extras == {"trace_session_id": "session-1"}
+        assert generator.generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert scope_requests == [
+            {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
+        ]
         module.file_factory.build_from_mappings.assert_not_called()
         load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
@@ -330,146 +364,6 @@ class TestCompletionAppGenerator:
         )
 
         assert get_app_config.call_args.kwargs["override_config_dict"] == override_config
-
-    def test_generate_more_like_this_message_not_found(self, generator, sqlite_session: Session):
-        _persist_message(sqlite_session, app_id="other-app")
-
-        with pytest.raises(MessageNotExistsError):
-            generator.generate_more_like_this(
-                session=sqlite_session,
-                app_model=_build_app_model(),
-                message_id="msg",
-                user=_build_user(),
-                invoke_from=InvokeFrom.WEB_APP,
-            )
-
-    def test_generate_more_like_this_disabled(self, generator, sqlite_session: Session):
-        app_model = _build_app_model()
-        current_config = AppModelConfig(app_id=app_model.id, more_like_this='{"enabled": false}')
-        sqlite_session.add(current_config)
-        sqlite_session.flush()
-        app_model.app_model_config_id = current_config.id
-        _persist_message(sqlite_session)
-
-        with pytest.raises(MoreLikeThisDisabledError):
-            generator.generate_more_like_this(
-                session=sqlite_session,
-                app_model=app_model,
-                message_id="msg",
-                user=_build_user(),
-                invoke_from=InvokeFrom.WEB_APP,
-            )
-
-    def test_generate_more_like_this_app_model_config_missing(self, generator, sqlite_session: Session):
-        app_model = _build_app_model()
-        app_model.app_model_config_id = None
-
-        _persist_message(sqlite_session)
-
-        with pytest.raises(MoreLikeThisDisabledError):
-            generator.generate_more_like_this(
-                session=sqlite_session,
-                app_model=app_model,
-                message_id="msg",
-                user=_build_user(),
-                invoke_from=InvokeFrom.WEB_APP,
-            )
-
-    def test_generate_more_like_this_message_config_none(self, generator, sqlite_session: Session):
-        app_model = _build_app_model()
-        current_config = AppModelConfig(app_id=app_model.id, more_like_this='{"enabled": true}')
-        sqlite_session.add(current_config)
-        sqlite_session.flush()
-        app_model.app_model_config_id = current_config.id
-        _persist_message(sqlite_session)
-
-        with pytest.raises(ValueError, match="Message app_model_config is None"):
-            generator.generate_more_like_this(
-                session=sqlite_session,
-                app_model=app_model,
-                message_id="msg",
-                user=_build_user(),
-                invoke_from=InvokeFrom.WEB_APP,
-            )
-
-    def test_generate_more_like_this_success(self, generator, mocker: MockerFixture, sqlite_session: Session):
-        app_model = _build_app_model()
-        app_model_config = AppModelConfig(app_id=app_model.id, more_like_this='{"enabled": true}')
-        sqlite_session.add(app_model_config)
-        sqlite_session.flush()
-        app_model.app_model_config_id = app_model_config.id
-        _persist_message(sqlite_session, app_model_config=app_model_config)
-        to_dict = mocker.patch.object(
-            AppModelConfig,
-            "to_dict",
-            return_value={
-                "model": {"completion_params": {"temperature": 0.1}},
-                "file_upload": {"enabled": True},
-            },
-        )
-        annotation_reply = {"enabled": False}
-        load_annotation_reply_config = mocker.patch.object(
-            module,
-            "load_annotation_reply_config",
-            return_value=annotation_reply,
-        )
-        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
-        build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings")
-
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
-        get_app_config = mocker.patch.object(
-            module.CompletionAppConfigManager,
-            "get_app_config",
-            return_value=app_config,
-        )
-        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
-
-        mocker.patch.object(
-            generator,
-            "_init_generate_records",
-            return_value=(
-                Conversation(
-                    id="conv",
-                    app_id="app1",
-                    mode=AppMode.COMPLETION,
-                    name="Conversation",
-                    _inputs={},
-                    from_source=ConversationFromSource.CONSOLE,
-                ),
-                Message(
-                    id="msg",
-                    app_id="app1",
-                    conversation_id="conv",
-                    _inputs={},
-                    query="q",
-                    message={},
-                    message_unit_price=Decimal(0),
-                    answer="",
-                    answer_unit_price=Decimal(0),
-                    currency="USD",
-                    from_source=ConversationFromSource.CONSOLE,
-                ),
-            ),
-        )
-        mocker.patch.object(generator, "_handle_response", return_value="response")
-        mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
-
-        result = generator.generate_more_like_this(
-            session=sqlite_session,
-            app_model=app_model,
-            message_id="msg",
-            user=_build_user(),
-            invoke_from=InvokeFrom.WEB_APP,
-            stream=True,
-        )
-
-        assert result == "converted"
-        load_annotation_reply_config.assert_called_once_with(sqlite_session, app_model.id)
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-        assert generator.generate_entity.call_args.kwargs["inputs"] == {"a": 1}
-        override_dict = get_app_config.call_args.kwargs["override_config_dict"]
-        assert override_dict["model"]["completion_params"]["temperature"] == 0.9
-        build_from_mappings.assert_not_called()
 
     @pytest.mark.parametrize(
         ("error", "should_publish"),

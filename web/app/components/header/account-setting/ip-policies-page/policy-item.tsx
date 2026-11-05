@@ -13,14 +13,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -121,11 +115,11 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
       </div>
       <div role="cell" className={`${policyActionsColClassName} pointer-events-none relative`}>
         {canMutate && (
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <Menu open={menuOpen} onOpenChange={setMenuOpen}>
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <DropdownMenuTrigger
+                  <MenuTrigger
                     render={
                       <IconButton
                         size="md"
@@ -145,8 +139,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent className="min-w-35">
-              <DropdownMenuItem
+            <MenuContent align="end" className="min-w-35">
+              <MenuItem
                 disabled={!canMutate}
                 className="system-sm-semibold text-text-secondary"
                 onClick={() => {
@@ -155,9 +149,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 }}
               >
                 {t(($) => $['operation.edit'], { ns: 'common' })}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem
                 disabled={!canMutate}
                 variant="destructive"
                 className="system-sm-semibold"
@@ -172,9 +166,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 }}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         )}
       </div>
       <AlertDialog

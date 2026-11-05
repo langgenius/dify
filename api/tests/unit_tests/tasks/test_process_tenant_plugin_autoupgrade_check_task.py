@@ -17,9 +17,9 @@ MODULE = "tasks.process_tenant_plugin_autoupgrade_check_task"
 def _make_plugin(
     plugin_id: str,
     version: str,
-    source=PluginInstallationSource.Marketplace,
+    source: PluginInstallationSource = PluginInstallationSource.Marketplace,
     category: PluginCategory = PluginCategory.Tool,
-):
+) -> SimpleNamespace:
     """Build a minimal stand-in for a PluginInstallation entry returned by manager.list_plugins."""
     return SimpleNamespace(
         plugin_id=plugin_id,
@@ -43,14 +43,14 @@ def _make_manifest(plugin_id: str, latest_version: str) -> MarketplacePluginSnap
 
 def _run_task(
     *,
-    plugins: list,
+    plugins: list[SimpleNamespace],
     manifests: list[MarketplacePluginSnapshot],
-    strategy_setting=TenantPluginAutoUpgradeStrategySetting.LATEST,
-    upgrade_mode=TenantPluginAutoUpgradeMode.ALL,
-    exclude_plugins=None,
-    include_plugins=None,
-    category=None,
-):
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting = TenantPluginAutoUpgradeStrategySetting.LATEST,
+    upgrade_mode: TenantPluginAutoUpgradeMode = TenantPluginAutoUpgradeMode.ALL,
+    exclude_plugins: list[str] | None = None,
+    include_plugins: list[str] | None = None,
+    category: PluginCategory | str | None = None,
+) -> tuple[MagicMock, list[tuple[str, str, str]]]:
     """
     Execute the celery task synchronously with mocks for the plugin manager,
     the marketplace cache and PluginService.upgrade_plugin_with_marketplace.
@@ -61,7 +61,7 @@ def _run_task(
 
     upgrade_calls: list[tuple[str, str, str]] = []
 
-    def _record_upgrade(tenant_id, original, new):
+    def _record_upgrade(tenant_id: str, original: str, new: str) -> None:
         upgrade_calls.append((tenant_id, original, new))
 
     with (
@@ -97,7 +97,7 @@ class TestUpgradeCallsMarketplaceService:
     "package file not found" and the upgrade silently never completed.
     """
 
-    def test_upgrade_routes_through_plugin_service(self):
+    def test_upgrade_routes_through_plugin_service(self) -> None:
         plugin = _make_plugin("acme/foo", "1.0.0")
         manifest = _make_manifest("acme/foo", "1.0.1")
 
@@ -106,7 +106,7 @@ class TestUpgradeCallsMarketplaceService:
         upgrade_mock.assert_called_once()
         assert calls == [("tenant-1", plugin.plugin_unique_identifier, manifest.latest_package_identifier)]
 
-    def test_does_not_call_manager_upgrade_plugin_directly(self):
+    def test_does_not_call_manager_upgrade_plugin_directly(self) -> None:
         """Locks in that we never go back to the broken path that bypassed download/upload."""
         plugin = _make_plugin("acme/foo", "1.0.0")
         manifest = _make_manifest("acme/foo", "1.0.1")
@@ -136,7 +136,7 @@ class TestUpgradeCallsMarketplaceService:
 
 
 class TestStrategySetting:
-    def test_disabled_strategy_skips_everything(self):
+    def test_disabled_strategy_skips_everything(self) -> None:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.1")],
@@ -144,7 +144,7 @@ class TestStrategySetting:
         )
         upgrade_mock.assert_not_called()
 
-    def test_fix_only_upgrades_patch_version(self):
+    def test_fix_only_upgrades_patch_version(self) -> None:
         upgrade_mock, calls = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.5")],
@@ -153,7 +153,7 @@ class TestStrategySetting:
         upgrade_mock.assert_called_once()
         assert calls[0][2].endswith(":1.0.5@cafe1234")
 
-    def test_fix_only_skips_minor_bump(self):
+    def test_fix_only_skips_minor_bump(self) -> None:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.1.0")],
@@ -161,7 +161,7 @@ class TestStrategySetting:
         )
         upgrade_mock.assert_not_called()
 
-    def test_fix_only_skips_major_bump(self):
+    def test_fix_only_skips_major_bump(self) -> None:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "2.0.0")],
@@ -169,7 +169,7 @@ class TestStrategySetting:
         )
         upgrade_mock.assert_not_called()
 
-    def test_latest_strategy_skips_when_versions_equal(self):
+    def test_latest_strategy_skips_when_versions_equal(self) -> None:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.0")],
             manifests=[_make_manifest("acme/foo", "1.0.0")],
@@ -179,7 +179,7 @@ class TestStrategySetting:
 
 
 class TestUpgradeMode:
-    def test_mode_all_upgrades_every_marketplace_plugin(self):
+    def test_mode_all_upgrades_every_marketplace_plugin(self) -> None:
         plugins = [
             _make_plugin("acme/foo", "1.0.0"),
             _make_plugin("acme/bar", "2.0.0"),
@@ -199,7 +199,7 @@ class TestUpgradeMode:
         upgraded_ids = sorted(c[1] for c in calls)
         assert upgraded_ids == sorted(p.plugin_unique_identifier for p in plugins)
 
-    def test_mode_all_skips_non_marketplace_sources(self):
+    def test_mode_all_skips_non_marketplace_sources(self) -> None:
         plugins = [
             _make_plugin("acme/foo", "1.0.0"),
             _make_plugin("acme/bar", "2.0.0", source=PluginInstallationSource.Github),
@@ -218,7 +218,7 @@ class TestUpgradeMode:
         assert upgrade_mock.call_count == 1
         assert calls[0][1] == plugins[0].plugin_unique_identifier
 
-    def test_mode_partial_only_upgrades_included_plugins(self):
+    def test_mode_partial_only_upgrades_included_plugins(self) -> None:
         plugins = [
             _make_plugin("acme/foo", "1.0.0"),
             _make_plugin("acme/bar", "2.0.0"),
@@ -238,7 +238,7 @@ class TestUpgradeMode:
         assert upgrade_mock.call_count == 1
         assert calls[0][1] == plugins[0].plugin_unique_identifier
 
-    def test_mode_exclude_skips_excluded_plugins(self):
+    def test_mode_exclude_skips_excluded_plugins(self) -> None:
         plugins = [
             _make_plugin("acme/foo", "1.0.0"),
             _make_plugin("acme/bar", "2.0.0"),
@@ -258,7 +258,7 @@ class TestUpgradeMode:
         assert upgrade_mock.call_count == 1
         assert calls[0][1] == plugins[0].plugin_unique_identifier
 
-    def test_category_strategy_only_upgrades_matching_category(self):
+    def test_category_strategy_only_upgrades_matching_category(self) -> None:
         plugins = [
             _make_plugin("acme/model-provider", "1.0.0", category=PluginCategory.Model),
             _make_plugin("acme/tool-provider", "1.0.0", category=PluginCategory.Tool),
@@ -280,7 +280,7 @@ class TestUpgradeMode:
 
 
 class TestErrorIsolation:
-    def test_one_plugin_failure_does_not_block_others(self):
+    def test_one_plugin_failure_does_not_block_others(self) -> None:
         plugins = [
             _make_plugin("acme/foo", "1.0.0"),
             _make_plugin("acme/bar", "2.0.0"),
@@ -294,7 +294,7 @@ class TestErrorIsolation:
 
         seen: list[str] = []
 
-        def _upgrade(tenant_id, original, new):
+        def _upgrade(tenant_id: str, original: str, new: str) -> None:
             seen.append(original)
             if "foo" in original:
                 raise RuntimeError("boom")
@@ -321,7 +321,7 @@ class TestErrorIsolation:
         assert any("bar" in s for s in seen)
 
 
-def _make_declaration(plugin_id: str, latest_version: str):
+def _make_declaration(plugin_id: str, latest_version: str) -> SimpleNamespace:
     """Minimal stand-in for a MarketplacePluginDeclaration returned by the batch API."""
     org, name = plugin_id.split("/", 1)
     return SimpleNamespace(
@@ -339,7 +339,14 @@ class TestManifestCacheFallback:
     the check must fall back to the batch API instead of silently skipping the upgrade.
     """
 
-    def _fetch(self, plugin_ids, *, cached, declarations=None, batch_error=None):
+    def _fetch(
+        self,
+        plugin_ids: list[str],
+        *,
+        cached: dict[str, str],
+        declarations: list[SimpleNamespace] | None = None,
+        batch_error: Exception | None = None,
+    ) -> tuple[list[MarketplacePluginSnapshot], MagicMock, MagicMock]:
         from tasks.process_tenant_plugin_autoupgrade_check_task import (
             marketplace_batch_fetch_plugin_manifests,
         )
@@ -361,7 +368,7 @@ class TestManifestCacheFallback:
 
         return result, batch_mock, redis_mock
 
-    def test_cache_hits_do_not_touch_the_marketplace(self):
+    def test_cache_hits_do_not_touch_the_marketplace(self) -> None:
         """The whole point of the snapshot: a warm cache must not generate any request."""
         key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo"
         cached = {key: _make_manifest("langgenius/foo", "1.1.0").model_dump_json()}
@@ -371,7 +378,7 @@ class TestManifestCacheFallback:
         assert [r.latest_version for r in result] == ["1.1.0"]
         batch_mock.assert_not_called()
 
-    def test_empty_snapshot_falls_back_to_batch_api(self):
+    def test_empty_snapshot_falls_back_to_batch_api(self) -> None:
         """Regression: an empty global snapshot used to skip every plugin silently."""
         result, batch_mock, _ = self._fetch(
             ["langgenius/foo"],
@@ -383,7 +390,7 @@ class TestManifestCacheFallback:
         assert [r.plugin_id for r in result] == ["langgenius/foo"]
         assert [r.latest_version for r in result] == ["1.2.0"]
 
-    def test_fallback_results_are_cached(self):
+    def test_fallback_results_are_cached(self) -> None:
         _, _, redis_mock = self._fetch(
             ["langgenius/foo"],
             cached={},
@@ -393,7 +400,7 @@ class TestManifestCacheFallback:
         cached_keys = [call.args[0] for call in redis_mock.setex.call_args_list]
         assert "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo" in cached_keys
 
-    def test_plugins_unknown_to_the_marketplace_are_negatively_cached(self):
+    def test_plugins_unknown_to_the_marketplace_are_negatively_cached(self) -> None:
         """Avoid re-asking about a plugin the marketplace does not serve on every cycle."""
         _, _, redis_mock = self._fetch(["langgenius/ghost"], cached={}, declarations=[])
 
@@ -402,7 +409,7 @@ class TestManifestCacheFallback:
         assert key == "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/ghost"
         assert value == "null"
 
-    def test_negatively_cached_plugins_are_not_refetched(self):
+    def test_negatively_cached_plugins_are_not_refetched(self) -> None:
         key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/ghost"
 
         result, batch_mock, _ = self._fetch(["langgenius/ghost"], cached={key: "null"})
@@ -410,7 +417,7 @@ class TestManifestCacheFallback:
         assert result == []
         batch_mock.assert_not_called()
 
-    def test_marketplace_failure_keeps_cached_results(self):
+    def test_marketplace_failure_keeps_cached_results(self) -> None:
         """A failing batch call must not lose the plugins the snapshot did cover."""
         key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo"
         cached = {key: _make_manifest("langgenius/foo", "1.1.0").model_dump_json()}

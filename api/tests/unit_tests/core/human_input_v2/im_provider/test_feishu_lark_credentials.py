@@ -1,0 +1,117 @@
+import pytest
+from pydantic import ValidationError
+
+from controllers.console.human_input_v2.providers import (
+    FeishuCredentialsInput as FeishuCredentialRequest,
+)
+from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+
+
+@pytest.mark.parametrize(
+    ("resolved_type", "provider"),
+    [
+        (FeishuCredentials, IMProvider.FEISHU),
+        (LarkCredentials, IMProvider.LARK),
+    ],
+)
+def test_resolved_credentials_are_strict_frozen_and_secret_safe(
+    resolved_type: type[FeishuCredentials] | type[LarkCredentials],
+    provider: IMProvider,
+) -> None:
+    credentials = resolved_type.model_validate(
+        {
+            "provider": provider,
+            "app_id": "cli_sanitized_app",
+            "app_secret": "sanitized-app-secret",
+            "verification_token": "sanitized-verification-token",
+            "encrypt_key": "sanitized-encrypt-key",
+        }
+    )
+
+    rendered = repr(credentials)
+    assert "sanitized-app-secret" not in rendered
+    assert "sanitized-verification-token" not in rendered
+    assert "sanitized-encrypt-key" not in rendered
+    with pytest.raises(ValidationError) as validation_error:
+        resolved_type.model_validate(
+            {
+                "provider": provider,
+                "app_id": "cli_sanitized_app",
+                "app_secret": "",
+                "verification_token": "sanitized-verification-token",
+                "encrypt_key": "sanitized-encrypt-key",
+            }
+        )
+    assert "sanitized-verification-token" not in str(validation_error.value)
+    assert "sanitized-encrypt-key" not in str(validation_error.value)
+    with pytest.raises(ValidationError):
+        resolved_type.model_validate({**credentials.model_dump(), "unexpected": "value"})
+    pytest.raises(ValidationError, setattr, credentials, "app_id", "changed")
+
+
+def test_feishu_request_projection_requires_and_maps_complete_credentials() -> None:
+    request = FeishuCredentialRequest.model_validate(
+        {
+            "provider": IMProvider.FEISHU,
+            "app_id": "cli_new_app",
+            "app_secret": "new-app-secret",
+            "verification_token": "new-verification-token",
+            "encrypt_key": None,
+        }
+    )
+
+    resolved = request.to_owner_credentials()
+
+    assert resolved == FeishuCredentials(
+        provider=IMProvider.FEISHU,
+        app_id="cli_new_app",
+        app_secret="new-app-secret",
+        verification_token="new-verification-token",
+        encrypt_key=None,
+    )
+
+
+def test_lark_request_projection_applies_new_and_cleared_secrets() -> None:
+    request = LarkCredentialRequest.model_validate(
+        {
+            "provider": IMProvider.LARK,
+            "app_id": "cli_new_app",
+            "app_secret": "new-app-secret",
+            "verification_token": None,
+            "encrypt_key": "new-encrypt-key",
+        }
+    )
+
+    resolved = request.to_owner_credentials()
+
+    assert resolved == LarkCredentials(
+        provider=IMProvider.LARK,
+        app_id="cli_new_app",
+        app_secret="new-app-secret",
+        verification_token=None,
+        encrypt_key="new-encrypt-key",
+    )
+
+
+def test_retention_marker_is_rejected_by_the_canonical_request() -> None:
+    with pytest.raises(ValidationError):
+        LarkCredentialRequest.model_validate(
+            {
+                "provider": IMProvider.LARK,
+                "app_id": "cli_sanitized_app",
+                "app_secret": {"tag": "preserve_original_value"},
+                "verification_token": None,
+                "encrypt_key": None,
+            }
+        )
+
+
+def test_credential_schemas_remain_explicitly_aligned() -> None:
+    logical_fields = {"provider", "app_id", "app_secret", "verification_token", "encrypt_key"}
+
+    assert set(FeishuCredentialRequest.model_fields) == logical_fields
+    assert set(LarkCredentialRequest.model_fields) == logical_fields
+    assert set(FeishuCredentials.model_fields) == logical_fields
+    assert set(LarkCredentials.model_fields) == logical_fields

@@ -23,69 +23,8 @@ export const zErrorResponse = z.object({
  */
 export const zKnowledgeFsFeaturesResponse = z.object({
   agent_enabled: z.boolean(),
-  enabled: z.boolean(),
   upload_enabled: z.boolean(),
 })
-
-/**
- * KnowledgeFsInvalidRequestError
- *
- * Agent Knowledge Base request is invalid.
- */
-export const zKnowledgeFsInvalidRequestError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_invalid_request'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * KnowledgeFsAccessDeniedError
- *
- * Agent Knowledge Base operation is not allowed.
- */
-export const zKnowledgeFsAccessDeniedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_access_denied'),
-    status: z.literal(403),
-  }),
-)
-
-/**
- * KnowledgeFsRequestRejectedError
- *
- * Agent Knowledge Base request was rejected.
- */
-export const zKnowledgeFsRequestRejectedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_request_rejected'),
-    status: z.literal(422),
-  }),
-)
-
-/**
- * KnowledgeFsOperationUnavailableError
- *
- * Agent Knowledge Base operation is not available.
- */
-export const zKnowledgeFsOperationUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_operation_unavailable'),
-    status: z.literal(503),
-  }),
-)
-
-/**
- * KnowledgeFsUpstreamUnavailableError
- *
- * Agent Knowledge Base is unavailable.
- */
-export const zKnowledgeFsUpstreamUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_upstream_unavailable'),
-    status: z.literal(503),
-  }),
-)
 
 /**
  * KnowledgeFSInitialSourcePreviewJobCreateResponse
@@ -94,42 +33,6 @@ export const zKnowledgeFsInitialSourcePreviewJobCreateResponse = z.object({
   job_id: z.string(),
   status: z.literal('pending').optional().default('pending'),
 })
-
-/**
- * KnowledgeFsConflictError
- *
- * Agent Knowledge Base operation conflicts with the current resource state.
- */
-export const zKnowledgeFsConflictError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_conflict'),
-    status: z.literal(409),
-  }),
-)
-
-/**
- * KnowledgeFsSpaceNotFoundError
- *
- * Agent Knowledge Base was not found.
- */
-export const zKnowledgeFsSpaceNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_space_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
- * KnowledgeFsResourceNotFoundError
- *
- * Agent Knowledge Base resource was not found.
- */
-export const zKnowledgeFsResourceNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_resource_not_found'),
-    status: z.literal(404),
-  }),
-)
 
 /**
  * KnowledgeFSResolvedDocumentReferenceResponse
@@ -145,30 +48,6 @@ export const zKnowledgeFsResolvedDocumentReferenceResponse = z.object({
 export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
   upload_id: z.string().min(1).max(255),
 })
-
-/**
- * KnowledgeFsRequestTooLargeError
- *
- * Agent Knowledge Base request is too large.
- */
-export const zKnowledgeFsRequestTooLargeError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_request_too_large'),
-    status: z.literal(413),
-  }),
-)
-
-/**
- * KnowledgeFsRateLimitExceededError
- *
- * Agent Knowledge Base request rate limit exceeded.
- */
-export const zKnowledgeFsRateLimitExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('knowledge_fs_rate_limit_exceeded'),
-    status: z.literal(429),
-  }),
-)
 
 /**
  * KnowledgeFSDocumentReindexPayload
@@ -746,250 +625,6 @@ export const zKnowledgeFsResearchTaskPlanPayload = z.object({
   topK: z.int().gte(1).lte(50).nullish(),
 })
 
-export const zJsonValue = z.unknown()
-
-/**
- * KnowledgeFSInitialSourcePreviewPayload
- */
-export const zKnowledgeFsInitialSourcePreviewPayload = z.object({
-  credentialId: z.string().min(1).max(255),
-  datasource: z.string().min(1).max(255),
-  kind: z.enum(['online_document', 'online_drive']),
-  parameters: z.record(z.string(), zJsonValue).optional(),
-  pluginId: z.string().min(1).max(255),
-  provider: z.string().min(1).max(255),
-  providerDisplayName: z.string().min(1).max(255).nullish(),
-})
-
-/**
- * KnowledgeFSInitialWebsiteSourcePreviewPayload
- */
-export const zKnowledgeFsInitialWebsiteSourcePreviewPayload = z.object({
-  credentialId: z.string().min(1).max(255),
-  datasource: z.string().min(1).max(255),
-  kind: z.literal('website_crawl'),
-  parameters: z.record(z.string(), zJsonValue).optional(),
-  pluginId: z.string().min(1).max(255),
-  provider: z.string().min(1).max(255),
-  providerDisplayName: z.string().min(1).max(255).nullish(),
-})
-
-/**
- * KnowledgeFSInitialSourcePreviewDocumentResponse
- */
-export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
-  last_edited_time: z.string().nullish(),
-  name: z.string(),
-  page_id: z.string(),
-  provider_item_id: z.string(),
-  type: z.string(),
-  workspace_id: z.string(),
-  workspace_name: z.string().nullish(),
-})
-
-/**
- * KnowledgeFSInitialSourcePreviewFileResponse
- */
-export const zKnowledgeFsInitialSourcePreviewFileResponse = z.object({
-  bucket: z.string().nullish(),
-  id: z.string(),
-  mime_type: z.string().nullish(),
-  name: z.string(),
-  provider_item_id: z.string(),
-  size: z.int().gte(0),
-  type: z.string(),
-})
-
-/**
- * KnowledgeFSInitialSourcePreviewPageResponse
- */
-export const zKnowledgeFsInitialSourcePreviewPageResponse = z.object({
-  description: z.string().nullish(),
-  page_id: z.string().nullish(),
-  source_url: z.string(),
-  title: z.string().nullish(),
-})
-
-/**
- * KnowledgeFSInitialSourcePreviewResponse
- */
-export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
-  configuration_fingerprint: z.string().nullish(),
-  documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
-  files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
-  kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
-  next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
-  pages: z.array(zKnowledgeFsInitialSourcePreviewPageResponse).optional(),
-})
-
-/**
- * KnowledgeFSInitialSourcePreviewJobResponse
- */
-export const zKnowledgeFsInitialSourcePreviewJobResponse = z.object({
-  job_id: z.string(),
-  result: zKnowledgeFsInitialSourcePreviewResponse.nullish(),
-  status: z.enum(['canceled', 'completed', 'failed', 'pending', 'running']),
-})
-
-/**
- * KnowledgeFSModelIntent
- */
-export const zKnowledgeFsModelIntent = z.object({
-  model: z.string().min(1).max(255),
-  plugin_id: z.string().min(1).max(255),
-  provider: z.string().min(1).max(255),
-})
-
-/**
- * KnowledgeFSSpaceCreateMemberPayload
- */
-export const zKnowledgeFsSpaceCreateMemberPayload = z.object({
-  account_id: z.string().min(1).max(255),
-  role: z.literal('viewer'),
-})
-
-/**
- * KnowledgeFSControlSpaceVisibility
- */
-export const zKnowledgeFsControlSpaceVisibility = z.enum([
-  'all_team_members',
-  'only_me',
-  'partial_members',
-])
-
-/**
- * KnowledgeFSSpaceUpdatePayload
- */
-export const zKnowledgeFsSpaceUpdatePayload = z.object({
-  description: z.string().max(2000).nullish(),
-  icon: z
-    .string()
-    .max(72)
-    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
-    .nullish(),
-  icon_background: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .nullish(),
-  name: z.string().min(1).max(40).nullish(),
-  visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
-})
-
-/**
- * KnowledgeFSControlSpaceState
- */
-export const zKnowledgeFsControlSpaceState = z.enum([
-  'active',
-  'deleted',
-  'deleting',
-  'error',
-  'provisioning',
-])
-
-/**
- * KnowledgeFSSpaceCreateResponse
- */
-export const zKnowledgeFsSpaceCreateResponse = z.object({
-  control_space_id: z.string(),
-  model_setup_required: z.boolean(),
-  operation_id: z.string(),
-  state: zKnowledgeFsControlSpaceState,
-})
-
-/**
- * KnowledgeFSProductPermission
- *
- * Product-level capability of a caller on one Agent Knowledge Base.
- *
- * These values are what the console returns as ``permission_keys`` so the web can gate
- * its UI. Enterprise RBAC is not evaluated in this vocabulary: Agent Knowledge Bases reuse
- * the Classic Knowledge Base (``dataset_*``) permission points, and each capability is
- * granted when the caller holds the dataset permission it maps to (see
- * :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
- */
-export const zKnowledgeFsProductPermission = z.enum([
-  'knowledge_space_access_config',
-  'knowledge_space_create',
-  'knowledge_space_delete',
-  'knowledge_space_document_write',
-  'knowledge_space_edit',
-  'knowledge_space_query',
-  'knowledge_space_read',
-])
-
-/**
- * KnowledgeFSTechnicalSummary
- */
-export const zKnowledgeFsTechnicalSummary = z.object({
-  description: z.string().nullish(),
-  document_count: z.int().gte(0).optional().default(0),
-  icon: z.string().nullish(),
-  icon_background: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .nullish(),
-  index_state: z.string().nullish(),
-  knowledge_space_id: z.string(),
-  last_job_state: z.string().nullish(),
-  model_profile: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string(),
-  revision: z.int().gte(0),
-  slug: z.string(),
-})
-
-/**
- * KnowledgeFSSpaceDetailResponse
- */
-export const zKnowledgeFsSpaceDetailResponse = z.object({
-  control_space_id: z.string(),
-  created_at: z.iso.datetime(),
-  knowledge_space_id: z.string().nullable(),
-  owner_account_id: z.string(),
-  permission_keys: z.array(zKnowledgeFsProductPermission),
-  resource_version: z.int(),
-  state: zKnowledgeFsControlSpaceState,
-  technical_status: z.enum(['available', 'not_ready', 'unavailable']),
-  technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
-  updated_at: z.iso.datetime(),
-  visibility: zKnowledgeFsControlSpaceVisibility,
-})
-
-/**
- * KnowledgeFSAppSpaceJoinType
- */
-export const zKnowledgeFsAppSpaceJoinType = z.enum(['agent', 'workflow'])
-
-/**
- * KnowledgeFSAppBindingPayload
- */
-export const zKnowledgeFsAppBindingPayload = z.object({
-  app_id: z.string().min(1),
-  caller_kind: zKnowledgeFsAppSpaceJoinType,
-})
-
-/**
- * KnowledgeFSAppSpaceJoinStatus
- */
-export const zKnowledgeFsAppSpaceJoinStatus = z.enum(['active', 'revoked'])
-
-/**
- * KnowledgeFSAppBindingResponse
- */
-export const zKnowledgeFsAppBindingResponse = z.object({
-  app_id: z.string(),
-  caller_kind: zKnowledgeFsAppSpaceJoinType,
-  id: z.string(),
-  revision: z.int(),
-  status: zKnowledgeFsAppSpaceJoinStatus,
-})
-
-/**
- * KnowledgeFSAppBindingListResponse
- */
-export const zKnowledgeFsAppBindingListResponse = z.object({
-  data: z.array(zKnowledgeFsAppBindingResponse),
-})
-
 /**
  * KnowledgeFSPublicFailureResponse
  */
@@ -1137,6 +772,136 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     .regex(/^[A-Za-z0-9._:-]{1,128}$/)
     .nullish(),
 })
+
+/**
+ * KnowledgeFsInvalidRequestError
+ *
+ * Agent Knowledge Base request is invalid.
+ */
+export const zKnowledgeFsInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_request'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * KnowledgeFsAccessDeniedError
+ *
+ * Agent Knowledge Base operation is not allowed.
+ */
+export const zKnowledgeFsAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_access_denied'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestRejectedError
+ *
+ * Agent Knowledge Base request was rejected.
+ */
+export const zKnowledgeFsRequestRejectedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_rejected'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(422),
+  }),
+)
+
+/**
+ * KnowledgeFsOperationUnavailableError
+ *
+ * Agent Knowledge Base operation is not available.
+ */
+export const zKnowledgeFsOperationUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_operation_unavailable'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * KnowledgeFsUpstreamUnavailableError
+ *
+ * Agent Knowledge Base is unavailable.
+ */
+export const zKnowledgeFsUpstreamUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upstream_unavailable'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * KnowledgeFsConflictError
+ *
+ * Agent Knowledge Base operation conflicts with the current resource state.
+ */
+export const zKnowledgeFsConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_conflict'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * KnowledgeFsSpaceNotFoundError
+ *
+ * Agent Knowledge Base was not found.
+ */
+export const zKnowledgeFsSpaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_space_not_found'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * KnowledgeFsResourceNotFoundError
+ *
+ * Agent Knowledge Base resource was not found.
+ */
+export const zKnowledgeFsResourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_resource_not_found'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestTooLargeError
+ *
+ * Agent Knowledge Base request is too large.
+ */
+export const zKnowledgeFsRequestTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_too_large'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * KnowledgeFsRateLimitExceededError
+ *
+ * Agent Knowledge Base request rate limit exceeded.
+ */
+export const zKnowledgeFsRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_rate_limit_exceeded'),
+    details: zKnowledgeFsPublicFailureResponse.optional(),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * KnowledgeFSDocumentCompilationJobResponse
@@ -1441,6 +1206,250 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
   error: z.string().nullish(),
   failure: zKnowledgeFsPublicFailureResponse.nullish(),
   valid: z.boolean(),
+})
+
+export const zJsonValue = z.unknown()
+
+/**
+ * KnowledgeFSInitialSourcePreviewPayload
+ */
+export const zKnowledgeFsInitialSourcePreviewPayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.enum(['online_document', 'online_drive']),
+  parameters: z.record(z.string(), zJsonValue).optional(),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * KnowledgeFSInitialWebsiteSourcePreviewPayload
+ */
+export const zKnowledgeFsInitialWebsiteSourcePreviewPayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.literal('website_crawl'),
+  parameters: z.record(z.string(), zJsonValue).optional(),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewDocumentResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
+  last_edited_time: z.string().nullish(),
+  name: z.string(),
+  page_id: z.string(),
+  provider_item_id: z.string(),
+  type: z.string(),
+  workspace_id: z.string(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewFileResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewFileResponse = z.object({
+  bucket: z.string().nullish(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  provider_item_id: z.string(),
+  size: z.int().gte(0),
+  type: z.string(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewPageResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewPageResponse = z.object({
+  description: z.string().nullish(),
+  page_id: z.string().nullish(),
+  source_url: z.string(),
+  title: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
+  configuration_fingerprint: z.string().nullish(),
+  documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
+  files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
+  kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
+  next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
+  pages: z.array(zKnowledgeFsInitialSourcePreviewPageResponse).optional(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewJobResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewJobResponse = z.object({
+  job_id: z.string(),
+  result: zKnowledgeFsInitialSourcePreviewResponse.nullish(),
+  status: z.enum(['canceled', 'completed', 'failed', 'pending', 'running']),
+})
+
+/**
+ * KnowledgeFSModelIntent
+ */
+export const zKnowledgeFsModelIntent = z.object({
+  model: z.string().min(1).max(255),
+  plugin_id: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSSpaceCreateMemberPayload
+ */
+export const zKnowledgeFsSpaceCreateMemberPayload = z.object({
+  account_id: z.string().min(1).max(255),
+  role: z.literal('viewer'),
+})
+
+/**
+ * KnowledgeFSControlSpaceVisibility
+ */
+export const zKnowledgeFsControlSpaceVisibility = z.enum([
+  'all_team_members',
+  'only_me',
+  'partial_members',
+])
+
+/**
+ * KnowledgeFSSpaceUpdatePayload
+ */
+export const zKnowledgeFsSpaceUpdatePayload = z.object({
+  description: z.string().max(2000).nullish(),
+  icon: z
+    .string()
+    .max(72)
+    .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
+    .nullish(),
+  icon_background: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
+  name: z.string().min(1).max(40).nullish(),
+  visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
+})
+
+/**
+ * KnowledgeFSControlSpaceState
+ */
+export const zKnowledgeFsControlSpaceState = z.enum([
+  'active',
+  'deleted',
+  'deleting',
+  'error',
+  'provisioning',
+])
+
+/**
+ * KnowledgeFSSpaceCreateResponse
+ */
+export const zKnowledgeFsSpaceCreateResponse = z.object({
+  control_space_id: z.string(),
+  model_setup_required: z.boolean(),
+  operation_id: z.string(),
+  state: zKnowledgeFsControlSpaceState,
+})
+
+/**
+ * KnowledgeFSProductPermission
+ *
+ * Product-level capability of a caller on one Agent Knowledge Base.
+ *
+ * These values are what the console returns as ``permission_keys`` so the web can gate
+ * its UI. Enterprise RBAC is not evaluated in this vocabulary: Agent Knowledge Bases reuse
+ * the Classic Knowledge Base (``dataset_*``) permission points, and each capability is
+ * granted when the caller holds the dataset permission it maps to (see
+ * :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
+ */
+export const zKnowledgeFsProductPermission = z.enum([
+  'knowledge_space_access_config',
+  'knowledge_space_create',
+  'knowledge_space_delete',
+  'knowledge_space_document_write',
+  'knowledge_space_edit',
+  'knowledge_space_query',
+  'knowledge_space_read',
+])
+
+/**
+ * KnowledgeFSTechnicalSummary
+ */
+export const zKnowledgeFsTechnicalSummary = z.object({
+  description: z.string().nullish(),
+  document_count: z.int().gte(0).optional().default(0),
+  icon: z.string().nullish(),
+  icon_background: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
+  index_state: z.string().nullish(),
+  knowledge_space_id: z.string(),
+  last_job_state: z.string().nullish(),
+  model_profile: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string(),
+  revision: z.int().gte(0),
+  slug: z.string(),
+})
+
+/**
+ * KnowledgeFSSpaceDetailResponse
+ */
+export const zKnowledgeFsSpaceDetailResponse = z.object({
+  control_space_id: z.string(),
+  created_at: z.iso.datetime(),
+  knowledge_space_id: z.string().nullable(),
+  owner_account_id: z.string(),
+  permission_keys: z.array(zKnowledgeFsProductPermission),
+  resource_version: z.int(),
+  state: zKnowledgeFsControlSpaceState,
+  technical_status: z.enum(['available', 'not_ready', 'unavailable']),
+  technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
+  updated_at: z.iso.datetime(),
+  visibility: zKnowledgeFsControlSpaceVisibility,
+})
+
+/**
+ * KnowledgeFSAppSpaceJoinType
+ */
+export const zKnowledgeFsAppSpaceJoinType = z.enum(['agent', 'workflow'])
+
+/**
+ * KnowledgeFSAppBindingPayload
+ */
+export const zKnowledgeFsAppBindingPayload = z.object({
+  app_id: z.string().min(1),
+  caller_kind: zKnowledgeFsAppSpaceJoinType,
+})
+
+/**
+ * KnowledgeFSAppSpaceJoinStatus
+ */
+export const zKnowledgeFsAppSpaceJoinStatus = z.enum(['active', 'revoked'])
+
+/**
+ * KnowledgeFSAppBindingResponse
+ */
+export const zKnowledgeFsAppBindingResponse = z.object({
+  app_id: z.string(),
+  caller_kind: zKnowledgeFsAppSpaceJoinType,
+  id: z.string(),
+  revision: z.int(),
+  status: zKnowledgeFsAppSpaceJoinStatus,
+})
+
+/**
+ * KnowledgeFSAppBindingListResponse
+ */
+export const zKnowledgeFsAppBindingListResponse = z.object({
+  data: z.array(zKnowledgeFsAppBindingResponse),
 })
 
 /**
@@ -4050,6 +4059,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.objec
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
   limit: z.int().gte(1).lte(100).optional().default(50),
+  query: z.string().max(200).optional(),
+  status: z.enum(['disabled', 'failed', 'processing', 'queued', 'ready']).optional(),
 })
 
 /**

@@ -4,6 +4,16 @@ import type { DocumentDetailResponse } from '@dify/contracts/api/console/dataset
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -14,6 +24,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -26,7 +37,6 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -52,12 +62,17 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 )
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const deletion = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const { data: currentUserId } = useSuspenseQuery({
@@ -76,7 +91,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditDocument = datasetACLCapabilities.canEdit
-  const [showMetadata, setShowMetadata] = useState(!isMobile)
+  const [isMetadataPanelOpen, setIsMetadataPanelOpen] = useState(true)
+  const [isMetadataDrawerOpen, setIsMetadataDrawerOpen] = useState(false)
+  const showMetadata = isBelowSm ? isMetadataDrawerOpen : isMetadataPanelOpen
+  const setShowMetadata = isBelowSm ? setIsMetadataDrawerOpen : setIsMetadataPanelOpen
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
   const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
@@ -86,7 +104,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
-    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions(),
+    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress(
@@ -111,7 +131,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   }
 
   const { mutateAsync: segmentBatchImport } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
@@ -262,6 +284,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       archived: documentDetail?.archived || false,
       id: documentId,
       data_source_type: documentDetail?.data_source_type || '',
+      data_source_info: documentDetail?.data_source_info,
       doc_form: documentDetail?.doc_form || '',
     }),
     [
@@ -270,6 +293,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentDetail?.archived,
       documentId,
       documentDetail?.data_source_type,
+      documentDetail?.data_source_info,
       documentDetail?.doc_form,
     ],
   )
@@ -285,7 +309,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const metadataPanel = docDetail && (
     <Metadata
-      className={cn(isMobile && 'mt-3 mr-2')}
+      className={cn(isBelowSm && 'me-2 mt-3')}
       datasetId={datasetId}
       documentId={documentId}
       docDetail={docDetail}
@@ -304,7 +328,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
-        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 ps-3 pe-4">
           <button
             type="button"
             aria-label={backButtonLabel}
@@ -358,6 +382,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
+              onDelete={() => setDeleteOpen(true)}
               className="w-50!"
               canEdit={canEditDocument}
               canDownload={datasetACLCapabilities.canDocumentDownload}
@@ -370,7 +395,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               aria-label={metadataToggleLabel}
               aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className="ml-2"
+              className="ms-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -395,7 +420,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className={cn(
                 'flex h-full min-w-0 grow flex-col',
                 !embedding && isFullDocMode && 'relative px-11 pt-4',
-                !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5',
+                !embedding && !isFullDocMode && 'relative ps-5 pe-11 pt-3',
               )}
             >
               {embedding ? (
@@ -419,11 +444,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             showClose
             isOpen={showMetadata}
             onClose={() => setShowMetadata(false)}
-            isMobile={isMobile}
+            presentation={isBelowSm ? 'drawer' : 'inline'}
             panelClassName="justify-start!"
           >
             {metadataPanel &&
-              (isMobile ? (
+              (isBelowSm ? (
                 metadataPanel
               ) : (
                 <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">
@@ -444,6 +469,57 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           onConfirm={runBatch}
           docForm={documentDetail?.doc_form as ChunkingMode}
         />
+        <AlertDialog
+          open={deleteOpen}
+          onOpenChange={(open, details) => {
+            if (!open && deletion.isPending) {
+              details.cancel()
+              return
+            }
+            setDeleteOpen(open)
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) deletion.reset()
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
+              </AlertDialogDescription>
+              {deletion.isError && (
+                <p role="alert" className="text-text-destructive">
+                  {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                </p>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton disabled={deletion.isPending}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                loading={deletion.isPending}
+                onClick={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { dataset_id: datasetId }, query: { document_id: [documentId] } },
+                    {
+                      onSuccess: () => {
+                        setDeleteOpen(false)
+                        backToPrev()
+                      },
+                    },
+                  )
+                }}
+              >
+                {t(($) => $['operation.sure'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DocumentContext.Provider>
   )

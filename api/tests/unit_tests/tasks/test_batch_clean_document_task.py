@@ -49,7 +49,7 @@ def cleanup_rows(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> tu
     return dataset_id, document_id, tenant_id
 
 
-def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple[str, str, str]):
+def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple[str, str, str]) -> None:
     dataset_id, document_id, tenant_id = cleanup_rows
 
     with (
@@ -68,7 +68,7 @@ def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple
     schedule_refresh.assert_called_once_with(tenant_id)
 
 
-def test_failed_vector_cleanup_does_not_schedule_billing_refresh(cleanup_rows: tuple[str, str, str]):
+def test_failed_vector_cleanup_does_not_schedule_billing_refresh(cleanup_rows: tuple[str, str, str]) -> None:
     dataset_id, document_id, _tenant_id = cleanup_rows
 
     with (
@@ -164,7 +164,9 @@ def test_batch_cleanup_keeps_only_the_leased_legacy_source_file(
     storage.delete.assert_called_once_with(deletable_file_key)
 
 
-def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, str, str], sqlite_session: Session):
+def test_cleans_segment_attachment_bindings_and_files(
+    cleanup_rows: tuple[str, str, str], sqlite_session: Session
+) -> None:
     dataset_id, document_id, tenant_id = cleanup_rows
     segment = sqlite_session.query(DocumentSegment).filter_by(document_id=document_id).one()
     attachment = UploadFile(

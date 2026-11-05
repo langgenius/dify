@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Tworzenie nowego interfejsu API wiedzy zewnętrznej",
   "creatorFilter.creators": "Twórcy",
   "creatorFilter.maxCreators": "Maksymalna liczba twórców",
-  "datasetDeleted": "Wiedza usunięta",
   "datasetUsedByApp": "Ta wiedza jest wykorzystywana przez niektóre aplikacje. Aplikacje nie będą już mogły korzystać z tej Wiedzy, a wszystkie konfiguracje podpowiedzi i logi zostaną trwale usunięte.",
   "defaultRetrievalTip": "Pobieranie wielu ścieżek jest używane domyślnie. Wiedza jest pobierana z wielu baz wiedzy, a następnie ponownie klasyfikowana.",
   "deleteDatasetConfirmContent": "Usunięcie Wiedzy jest nieodwracalne. Użytkownicy nie będą już mieli dostępu do Twojej Wiedzy, a wszystkie konfiguracje i logi zostaną trwale usunięte.",

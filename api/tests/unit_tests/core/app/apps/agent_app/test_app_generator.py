@@ -8,6 +8,8 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
@@ -15,14 +17,16 @@ from sqlalchemy.orm import Session
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
+from core.app.apps.agent_app.app_config_manager import AgentAppConfig
 from core.app.apps.agent_app.app_generator import (
     AgentAppGenerator,
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
     QueueLLMChunkEvent,
@@ -51,6 +55,7 @@ from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
     AgentWorkspaceService,
 )
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
 """Unit tests for AgentAppGenerator.generate() and its worker thread.
@@ -64,6 +69,37 @@ manager is replaced with a no-op so the thread body can run inline.
 
 
 MODULE = "core.app.apps.agent_app.app_generator"
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app1",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _record_trace_scope_requests(monkeypatch: pytest.MonkeyPatch, trace_scope: TraceScope) -> list[dict[str, object]]:
+    requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(module, "create_trace_scope", create_trace_scope)
+    return requests
 
 
 def _app_generator_account(user_id: str = "user") -> _app_generator_Account:
@@ -217,7 +253,11 @@ class TestAppGeneratorCases:
                 == "snapshot-1"
             )
 
-        def test_generate_orchestrates_and_starts_worker(self, generator, mocker: MockerFixture):
+        def test_generate_orchestrates_and_starts_worker(
+            self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            trace_scope = _trace_scope()
+            scope_requests = _record_trace_scope_requests(monkeypatch, trace_scope)
             config = AppModelConfig(app_id="app1")
             config.id = "config-1"
             session = _session()
@@ -240,7 +280,6 @@ class TestAppGeneratorCases:
             mocker.patch(f"{MODULE}.FileUploadConfigManager.convert", return_value=file_upload_config)
             parsed_file = mocker.MagicMock()
             build_files = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[parsed_file])
-            mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
             generate_entity = mocker.patch(
                 f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
             )
@@ -284,6 +323,11 @@ class TestAppGeneratorCases:
             assert generate_entity.call_args.kwargs["files"] == [parsed_file]
             assert generate_entity.call_args.kwargs["file_upload_config"] is file_upload_config
             assert "agent_runtime_exit_intent" not in generate_entity.call_args.kwargs
+            extras = generate_entity.call_args.kwargs["extras"]
+            assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+            assert scope_requests == [
+                {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
+            ]
 
         def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
             app_model = _app_generator_app()
@@ -297,7 +341,6 @@ class TestAppGeneratorCases:
             mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
             mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
             mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-            mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
             mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
             mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
             mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
@@ -324,8 +367,9 @@ class TestAppGeneratorCases:
             assert generator._init_generate_records.call_args.kwargs["session"] is session
 
         def test_generate_does_not_include_trace_session_id_in_extras(
-            self, generator: AgentAppGenerator, mocker: MockerFixture
-        ):
+            self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            scope_requests = _record_trace_scope_requests(monkeypatch, _trace_scope())
             app_model = _app_generator_app()
             user = _app_generator_account()
 
@@ -339,7 +383,6 @@ class TestAppGeneratorCases:
                 return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
             )
             mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
-            mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
             generate_entity = mocker.patch(
                 f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
             )
@@ -357,6 +400,7 @@ class TestAppGeneratorCases:
             )
 
             assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
+            assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
 
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
@@ -506,14 +550,17 @@ class TestAppGeneratorCases:
             assert events == ["commit", "publish"]
             runner.run.assert_not_called()
 
-        def test_generate_task_stopped_is_swallowed(self, generator, mocker: MockerFixture):
+        def test_generate_task_stopped_is_swallowed(
+            self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             self._wire(generator, mocker, run_side_effect=GenerateTaskStoppedError())
+
             # A locally stopped consumer does not prove runtime cancellation. The
             # runner must hand off the typed terminal it actually observed.
-            mocker.patch(
-                "core.ops.base_trace_instance.application_tracing_hooks",
-                side_effect=AssertionError("stop intent must not invent a tracing terminal"),
-            )
+            def application_tracing_hooks() -> None:
+                raise AssertionError("stop intent must not invent a tracing terminal")
+
+            monkeypatch.setattr(module, "application_tracing_hooks", application_tracing_hooks)
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
             queue_manager.publish_error.assert_not_called()
@@ -542,15 +589,36 @@ class _FakeQueueManager:
         self.events.append(event)
 
 
-def _make_entity(query: str = "hello") -> SimpleNamespace:
-    return SimpleNamespace(
-        app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),
-        model_conf=SimpleNamespace(model="gpt-4o-mini"),
+def _make_entity(query: str) -> AgentAppGenerateEntity:
+    return AgentAppGenerateEntity(
+        task_id="task-1",
+        app_config=AgentAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.AGENT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="openai", model="gpt-4o-mini", mode="chat"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="openai", model="gpt-4o-mini", mode="chat"),
         inputs={},
+        files=[],
         query=query,
-        trace_manager=None,
         user_id="user-1",
-        invoke_from=SimpleNamespace(),
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+        trace_scope=TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        ),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snapshot-1",
     )
 
 
@@ -562,14 +630,23 @@ def _input_guards_message() -> Message:
     return make_message(message_id="msg-1")
 
 
-def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
+def _patch_moderation(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    returns: tuple[bool, dict[str, Any], str] | None = None,
+    raises: Exception | None = None,
+) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+
     class _FakeModeration:
         def check(self, **kwargs: Any):
+            calls.append(kwargs)
             if raises is not None:
                 raise raises
             return returns
 
     monkeypatch.setattr(input_moderation_mod, "InputModeration", _FakeModeration)
+    return calls
 
 
 def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply=None) -> None:
@@ -595,13 +672,14 @@ def _saved_user_query(events: list[Any]) -> str:
 class TestInputGuardsCases:
     class TestRunInputGuards:
         def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-            _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
+            moderation_calls = _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
             _patch_annotation(monkeypatch, reply=None)
             qm = _FakeQueueManager()
+            entity = _make_entity("hello")
 
             handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
                 session=sqlite_session,
-                application_generate_entity=_make_entity("hello"),
+                application_generate_entity=entity,
                 app_model=_input_guards_app(),
                 message=_input_guards_message(),
                 queue_manager=qm,
@@ -611,6 +689,9 @@ class TestInputGuardsCases:
             assert query == "hello"
             assert annotation_reply is None
             assert qm.events == []
+            assert len(moderation_calls) == 1
+            assert moderation_calls[0]["message_id"] == "msg-1"
+            assert moderation_calls[0]["trace_scope"] is entity.trace_scope
 
         def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
             _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))

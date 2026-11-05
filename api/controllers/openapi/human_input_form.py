@@ -207,7 +207,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             op=op_of(OpenApiWorkflowEventsApi.get),
             input={
                 "app_id": ctx.app.id,
-                "task_id": form.workflow_run_id,
+                "run_id": form.workflow_run_id,
                 "include_state_snapshot": True,
                 "continue_on_pause": False,
             },

@@ -1,13 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -43,8 +37,8 @@ const Actions = ({
         }
       />
       {showMoreOperations && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className={cn(
               'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
@@ -53,33 +47,33 @@ const Actions = ({
             onClick={(e) => e.stopPropagation()}
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-40">
-            <DropdownMenuItem
+          </MenuTrigger>
+          <MenuContent align="end" className="min-w-40">
+            <MenuItem
               onClick={() => {
                 openEditModal()
               }}
             >
               {t(($) => $['operations.editInfo'], { ns: 'datasetPipeline' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
+            </MenuItem>
+            <MenuItem
               onClick={() => {
                 handleExportDSL()
               }}
             >
               {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem
               variant="destructive"
               onClick={() => {
                 handleDelete()
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       )}
     </div>
   )

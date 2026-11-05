@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "DD/MM/YYYY hh:mm:ss A",
   "operation.cancel": "Anulează",
+  "operation.close": "Închide",
   "operation.now": "Acum",
   "operation.ok": "Bine",
   "operation.pickDate": "Alege o dată",

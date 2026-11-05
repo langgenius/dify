@@ -1,6 +1,53 @@
+import { settings } from '@dify/contracts/api/console/knowledge-fs/orpc.gen'
+import { validateDefinedErrors } from '@/service/console/defined-errors'
+import { createHttpError } from '@/service/http-error'
 import { settingsSaveErrorMessageKey } from '../save-error'
 
 describe('settings save error messages', () => {
+  it.each([
+    [
+      409,
+      'knowledge_fs_conflict',
+      'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+      'conflict',
+      'settings.compilationInProgress',
+    ],
+    [
+      422,
+      'knowledge_fs_request_rejected',
+      'MODEL_CREDENTIAL_INVALID',
+      'configuration',
+      'taskFailure.modelConfiguration',
+    ],
+    [
+      503,
+      'knowledge_fs_operation_unavailable',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'timeout',
+      'taskFailure.modelService',
+    ],
+  ] as const)(
+    'preserves HTTP %s %s failure guidance through the generated contract',
+    async (status, code, failureCode, category, key) => {
+      const failure = {
+        code: failureCode,
+        category,
+        retryPolicy: 'manual',
+        message: 'Private provider detail must not become UI copy',
+      }
+      const body = { code, status, message: failure.message, details: failure, failure }
+      const error = await validateDefinedErrors({ settings })({
+        context: {},
+        input: undefined,
+        path: ['settings', 'patch'],
+        next: () => Promise.reject(createHttpError(new Response(null, { status }), body)),
+      }).catch((rejected: unknown) => rejected)
+
+      expect(error).toMatchObject({ defined: true, data: { details: failure } })
+      expect(await settingsSaveErrorMessageKey(error)).toBe(key)
+    },
+  )
+
   it.each([
     ['KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS', 'settings.compilationInProgress'],
     ['KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT', 'settings.revisionConflict'],

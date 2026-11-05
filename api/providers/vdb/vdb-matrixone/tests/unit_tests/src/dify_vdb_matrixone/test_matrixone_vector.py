@@ -1,7 +1,8 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,14 +12,17 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_matrixone.matrixone_vector import MatrixoneConfig
 
-def _build_fake_mo_vector_modules():
+
+def _build_fake_mo_vector_modules() -> dict[str, FakeModule]:
     mo_vector = FakeModule("mo_vector")
     mo_vector.__path__ = []
     mo_vector_client = FakeModule("mo_vector.client")
 
     class MoVectorClient:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
             self.create_full_text_index = MagicMock()
             self.insert = MagicMock()
@@ -34,7 +38,7 @@ def _build_fake_mo_vector_modules():
 
 
 @pytest.fixture
-def matrixone_module(monkeypatch: pytest.MonkeyPatch):
+def matrixone_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_mo_vector_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -43,7 +47,7 @@ def matrixone_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _valid_config(module):
+def _valid_config(module: ModuleType) -> "MatrixoneConfig":
     return module.MatrixoneConfig(
         host="localhost",
         port=6001,
@@ -64,7 +68,7 @@ def _valid_config(module):
         ("database", "", "config database is required"),
     ],
 )
-def test_matrixone_config_validation(matrixone_module, field, value, message):
+def test_matrixone_config_validation(matrixone_module: ModuleType, field: str, value: str | int, message: str) -> None:
     values = _valid_config(matrixone_module).model_dump()
     values[field] = value
 
@@ -72,7 +76,9 @@ def test_matrixone_config_validation(matrixone_module, field, value, message):
         matrixone_module.MatrixoneConfig.model_validate(values)
 
 
-def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, monkeypatch: pytest.MonkeyPatch):
+def test_get_client_creates_full_text_index_when_cache_misses(
+    matrixone_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -88,7 +94,9 @@ def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, 
     matrixone_module.redis_client.set.assert_called_once()
 
 
-def test_get_client_skips_index_creation_when_cache_hits(matrixone_module, monkeypatch: pytest.MonkeyPatch):
+def test_get_client_skips_index_creation_when_cache_hits(
+    matrixone_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -103,7 +111,7 @@ def test_get_client_skips_index_creation_when_cache_hits(matrixone_module, monke
     matrixone_module.redis_client.set.assert_not_called()
 
 
-def test_ensure_client_initializes_client_for_decorated_methods(matrixone_module):
+def test_ensure_client_initializes_client_for_decorated_methods(matrixone_module: ModuleType) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = None
     fake_client = MagicMock()
@@ -116,7 +124,7 @@ def test_ensure_client_initializes_client_for_decorated_methods(matrixone_module
     vector._get_client.assert_called_once_with(None, False)
 
 
-def test_search_by_full_text_parses_metadata_and_applies_threshold(matrixone_module):
+def test_search_by_full_text_parses_metadata_and_applies_threshold(matrixone_module: ModuleType) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.full_text_query.return_value = [
@@ -133,7 +141,7 @@ def test_search_by_full_text_parses_metadata_and_applies_threshold(matrixone_mod
     assert vector.client.full_text_query.call_args.kwargs["filter"] == {"document_id": {"$in": ["doc-1"]}}
 
 
-def test_get_type_and_create_delegate_to_add_texts(matrixone_module):
+def test_get_type_and_create_delegate_to_add_texts(matrixone_module: ModuleType) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     fake_client = MagicMock()
     vector._get_client = MagicMock(return_value=fake_client)
@@ -148,7 +156,9 @@ def test_get_type_and_create_delegate_to_add_texts(matrixone_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_get_client_handles_full_text_index_creation_error(matrixone_module, monkeypatch: pytest.MonkeyPatch):
+def test_get_client_handles_full_text_index_creation_error(
+    matrixone_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -167,7 +177,7 @@ def test_get_client_handles_full_text_index_creation_error(matrixone_module, mon
     matrixone_module.redis_client.set.assert_not_called()
 
 
-def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pytest.MonkeyPatch):
+def test_add_texts_generates_ids_and_inserts(matrixone_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     generated_ids = iter(["generated-id-b", "generated-id-c"])
@@ -191,7 +201,7 @@ def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pyte
     assert ids_insert == ids
 
 
-def test_delete_and_metadata_methods(matrixone_module):
+def test_delete_and_metadata_methods(matrixone_module: ModuleType) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.query_by_metadata.return_value = [SimpleNamespace(id="seg-1"), SimpleNamespace(id="seg-2")]
@@ -208,7 +218,7 @@ def test_delete_and_metadata_methods(matrixone_module):
     assert vector.client.delete.call_count == 3
 
 
-def test_search_by_vector_applies_score_threshold(matrixone_module):
+def test_search_by_vector_applies_score_threshold(matrixone_module: ModuleType) -> None:
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.query.return_value = [
@@ -230,7 +240,9 @@ def test_search_by_vector_applies_score_threshold(matrixone_module):
     assert vector.client.query.call_args.kwargs["filter"] == {"document_id": {"$in": ["d-1"]}}
 
 
-def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_module, monkeypatch: pytest.MonkeyPatch):
+def test_matrixone_factory_uses_existing_or_generated_collection(
+    matrixone_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = matrixone_module.MatrixoneVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})

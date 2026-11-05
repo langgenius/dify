@@ -1,6 +1,8 @@
 from collections.abc import Generator
 
-from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.chat.generate_response_converter import (
+    ChatAppGenerateResponseConverter,
+)
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
@@ -12,7 +14,7 @@ from core.app.entities.task_entities import (
 
 
 class TestChatAppGenerateResponseConverter:
-    def test_convert_blocking_simple_response_metadata(self):
+    def test_convert_blocking_simple_response_metadata(self) -> None:
         data = ChatbotAppBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -28,7 +30,7 @@ class TestChatAppGenerateResponseConverter:
 
         assert "usage" not in response["metadata"]
 
-    def test_convert_stream_responses(self):
+    def test_convert_stream_responses(self) -> None:
         def stream() -> Generator[ChatbotAppStreamResponse]:
             yield ChatbotAppStreamResponse(
                 conversation_id="c1",
@@ -57,9 +59,12 @@ class TestChatAppGenerateResponseConverter:
 
         full = list(ChatAppGenerateResponseConverter.convert_stream_full_response(stream()))
         assert full[0] == "ping"
+        assert isinstance(full[1], dict)
         assert full[1]["event"] == "message"
+        assert isinstance(full[2], dict)
         assert full[2]["event"] == "error"
 
         simple = list(ChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert simple[0] == "ping"
+        assert isinstance(simple[-1], dict)
         assert simple[-1]["event"] == "message_end"

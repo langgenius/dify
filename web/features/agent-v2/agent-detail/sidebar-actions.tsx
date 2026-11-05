@@ -3,14 +3,8 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
 import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,8 +67,8 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               aria-label={t(($) => $['roster.moreActions'], {
@@ -88,47 +82,43 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             </IconButton>
           }
         />
-        <DropdownMenuContent className="w-max min-w-40">
+        <MenuContent align="end" className="w-max min-w-40">
           {capabilities.canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
+            <MenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {canDuplicate && (
-            <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
+            <MenuItem className="gap-2" onClick={handleDuplicateOpen}>
               <span
                 aria-hidden
                 className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {capabilities.canImportExportDSL && (
-            <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
+            <MenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
               <span
                 aria-hidden
                 className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
               />
               <span>{t(($) => $.exportAgent, { ns: 'agentV2' })}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {capabilities.canDelete &&
             (capabilities.canEdit || canDuplicate || capabilities.canImportExportDSL) && (
-              <DropdownMenuSeparator />
+              <MenuSeparator />
             )}
           {capabilities.canDelete && (
-            <DropdownMenuItem
-              variant="destructive"
-              className="gap-2"
-              onClick={() => setIsDeleteOpen(true)}
-            >
+            <MenuItem variant="destructive" className="gap-2" onClick={() => setIsDeleteOpen(true)}>
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
               <span>{tCommon(($) => $['operation.delete'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       {capabilities.canEdit && (
         <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
       )}
