@@ -160,7 +160,7 @@ const WorkflowAppWrapper = () => {
   )
   if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
 
-  if (collaboration.data === undefined && (collaboration.isPending || collaboration.isFetching)) {
+  if (collaboration.data === undefined && collaboration.isPending) {
     return (
       <div className="relative flex size-full items-center justify-center">
         <LoadingPlaceholder />

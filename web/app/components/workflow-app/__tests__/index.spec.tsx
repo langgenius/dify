@@ -238,9 +238,12 @@ describe('WorkflowApp', () => {
 
   it('blocks the editor when workspace capabilities cannot be loaded and retries in place', async () => {
     const user = userEvent.setup()
-    fetchFeatures
-      .mockRejectedValueOnce(new Error('billing unavailable'))
-      .mockResolvedValueOnce(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true }))
+    let resolveRetry!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
+    fetchFeatures.mockRejectedValueOnce(new Error('billing unavailable')).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRetry = resolve
+      }),
+    )
 
     render(<WorkflowApp />, { collaboration: null })
     const retry = await screen.findByRole('button', { name: 'common.operation.retry' })
@@ -250,10 +253,38 @@ describe('WorkflowApp', () => {
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
 
     await user.click(retry)
+    expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+    await act(async () =>
+      resolveRetry(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true })),
+    )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('true')
     expect(fetchFeatures).toHaveBeenCalledTimes(2)
   })
+
+  it.each([false, true])(
+    'keeps the editor session in mode %s when a background capability refresh fails',
+    async (enabled) => {
+      fetchFeatures.mockRejectedValue(new Error('billing unavailable'))
+      fetchDraft.mockClear()
+      const { queryClient } = render(<WorkflowApp />, { collaboration: enabled })
+      const canvas = await screen.findByRole('region', { name: 'Workflow canvas' })
+      await screen.findByRole('status', { name: 'Draft hash' })
+      const draftCalls = fetchDraft.mock.calls.length
+
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+      })
+
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe('error')
+      expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBe(canvas)
+      expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent(String(enabled))
+      expect(screen.getByRole('status', { name: 'Draft hash' })).toHaveTextContent('loaded-draft')
+      expect(fetchDraft).toHaveBeenCalledTimes(draftCalls)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps the canvas gated until the workflow draft arrives', async () => {
     let resolveDraft!: (value: ReturnType<typeof createWorkflowResponseFixture>) => void
