@@ -261,7 +261,6 @@ describe('AccountSetting', () => {
           webapp_auth: { enabled: true },
           branding: { enabled: false },
           enable_marketplace: true,
-          enable_collaboration_mode: false,
           rbac_enabled: rbacEnabled,
         },
       },

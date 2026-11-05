@@ -111,7 +111,6 @@ async function setup() {
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: [],
     appDslVersion: '0.6.0',
-    systemFeatures: { enable_collaboration_mode: false },
     features: {},
   })
   seedModelProviderQueries(queryClient)

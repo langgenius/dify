@@ -36,7 +36,6 @@ const renderControl = ({
 } = {}) => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { name: 'Ada' },
-    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
   return renderWorkflowFlowComponent(<Control />, {
     queryClient,

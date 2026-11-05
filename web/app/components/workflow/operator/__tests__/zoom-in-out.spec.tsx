@@ -17,9 +17,7 @@ const renderZoomInOut = ({
   ui?: React.ReactElement
   initialZoom?: number
 } = {}) => {
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   const doSyncWorkflowDraft = vi
     .fn<HooksStoreShape['doSyncWorkflowDraft']>()
     .mockResolvedValue(undefined)

@@ -275,9 +275,7 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
       resource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
     }: RenderPanelOptions = {},
   ) => {
-    const { queryClient } = createConsoleQueryWrapper({
-      systemFeatures: { enable_collaboration_mode: collaboration },
-    })
+    const { queryClient } = createConsoleQueryWrapper()
     seedModelProviderQueries(queryClient, [
       createModelCatalogFixture({
         provider: 'old-provider',

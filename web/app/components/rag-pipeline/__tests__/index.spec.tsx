@@ -131,9 +131,10 @@ describe('RagPipeline', () => {
     ).toBeInTheDocument()
     expect(requests.draft).not.toHaveBeenCalled()
   })
-  it('disables collaboration even when enabled for the deployment', async () => {
+  it('disables collaboration even when enabled for the workspace', async () => {
     renderPipeline('pipeline-1', {
-      systemFeatures: { deployment_edition: 'CLOUD', enable_collaboration_mode: true },
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { workflow_collaboration_enabled: true },
     })
     expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
   })

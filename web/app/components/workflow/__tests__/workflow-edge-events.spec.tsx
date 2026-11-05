@@ -130,9 +130,7 @@ function renderSubject({
   graphNodes?: WorkflowProps['nodes']
   edges?: WorkflowProps['edges']
 } = {}) {
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: true },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDslVersion(queryClient)
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {

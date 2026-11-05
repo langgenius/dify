@@ -112,9 +112,7 @@ const baseCommentDetail = (): WorkflowCommentDetail => ({
 const createSeededQueryClient = () => {
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
-  seedSystemFeatures(queryClient, {
-    enable_collaboration_mode: globalFeatureState.enableCollaboration,
-  })
+  seedSystemFeatures(queryClient)
   return queryClient
 }
 

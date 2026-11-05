@@ -34,9 +34,7 @@ const unsubscribeLeader = vi.hoisted(() => vi.fn())
 let isCollaborationEnabled = true
 
 const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, enabled: boolean) => {
-  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: enabled },
-  })
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
   const store = createWorkflowStore({ initialCollaborationEnabled: enabled })
   return renderHook(hook, {
     wrapper: ({ children }) =>

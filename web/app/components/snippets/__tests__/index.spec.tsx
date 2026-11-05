@@ -133,11 +133,14 @@ describe('SnippetPage', () => {
   )
 
   it.each(['sandbox', 'team'] as const)(
-    'disables collaboration for the %s plan when enabled for the deployment',
+    'disables collaboration for the %s workspace plan',
     async (plan) => {
       renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />, {
-        systemFeatures: { deployment_edition: 'CLOUD', enable_collaboration_mode: true },
-        features: { billing: { subscription: { plan } } },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+        features: {
+          billing: { subscription: { plan } },
+          workflow_collaboration_enabled: plan === 'team',
+        },
       })
       expect(await screen.findByLabelText('Collaboration mode')).toHaveTextContent('disabled')
     },

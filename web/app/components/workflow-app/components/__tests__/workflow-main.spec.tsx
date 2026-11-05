@@ -202,7 +202,7 @@ async function renderMain({
   triggers?: TriggerWithProvider[]
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: collaboration, enable_marketplace: false },
+    systemFeatures: { enable_marketplace: false },
   })
   seedAppDslVersion(queryClient)
   seedAppDetail(

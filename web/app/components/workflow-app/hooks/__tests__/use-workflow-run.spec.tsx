@@ -143,7 +143,6 @@ async function setup() {
   const queryClient = createConsoleQueryClient()
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     queryClient,
-    systemFeatures: { enable_collaboration_mode: false },
   })
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' }))
   queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
