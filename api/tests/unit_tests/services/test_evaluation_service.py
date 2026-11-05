@@ -438,6 +438,7 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
                 node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
             ),
         ],
+        target_type="apps",
         evaluation_instance=evaluation_instance,
     )
 
@@ -445,6 +446,42 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
         {"name": "Research Agent : success_criteria", "type": "string"},
         {"name": "Backup Agent : success_criteria", "type": "string"},
     ]
+
+
+def test_standalone_agent_template_uses_plain_success_criteria_column(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = False
+    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
+    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", MagicMock(return_value=evaluation_instance))
+
+    content, _ = EvaluationService.generate_dataset_template(
+        _agent(),
+        "agents",
+        EvaluationConfigData(
+            default_metrics=[
+                DefaultMetric(
+                    metric="task_completion",
+                    node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+                )
+            ],
+        ),
+        MagicMock(),
+    )
+    workbook = load_workbook(io.BytesIO(content))
+    worksheet = workbook.active
+
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == ["index", "query", "success_criteria"]
+
+    worksheet.cell(row=2, column=2, value="Find the weather")
+    worksheet.cell(row=2, column=3, value="Use real weather data")
+    uploaded = io.BytesIO()
+    workbook.save(uploaded)
+    items = EvaluationService._parse_dataset(uploaded.getvalue(), "dataset.xlsx")
+    assert items[0].get_success_criteria_for_node("agent-1", "Research Agent") == ["Use real weather data"]
 
 
 def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
@@ -510,7 +547,7 @@ def test_agent_custom_evaluator_reuses_native_success_criteria_column(
     assert columns == [
         {"name": "index", "type": "number"},
         {"name": "query", "type": "string"},
-        {"name": "Research Agent : success_criteria", "type": "string"},
+        {"name": "success_criteria", "type": "string"},
     ]
 
 
