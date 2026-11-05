@@ -162,7 +162,6 @@ class TestWorkflowCases:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
-        sqlite_engine: Engine,
         advisory: str,
     ) -> None:
         current_user = SimpleNamespace(id="account-1")
@@ -207,7 +206,6 @@ class TestWorkflowCases:
             "WorkflowService",
             Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
         )
-        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _: sqlite_engine))
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
@@ -245,7 +243,6 @@ class TestWorkflowCases:
             session.flush()
             raise RuntimeError("publish failed")
 
-        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _: sqlite_engine))
         service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
         monkeypatch.setattr(service, "publish_workflow", fail_after_update)
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
