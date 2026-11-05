@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Toutes les ressources",
   "personalAccessToken.allWorkspaces": "Tous les espaces de travail",
   "personalAccessToken.allowed": "Autorisé",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Déploiement d’application",
   "personalAccessToken.conflict": "Ce jeton a été modifié ailleurs. Rechargez la dernière version avant d’enregistrer.",
   "personalAccessToken.copyFailed": "Échec de la copie. Veuillez réessayer.",
   "personalAccessToken.copyNow": "Copiez-le maintenant. Vous ne pourrez plus le voir.",

@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "همه منابع",
   "personalAccessToken.allWorkspaces": "همه فضاهای کاری",
   "personalAccessToken.allowed": "مجاز",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "استقرار برنامه",
   "personalAccessToken.conflict": "این توکن در جای دیگری تغییر کرده است. پیش از ذخیره، آخرین نسخه را دوباره بارگذاری کنید.",
   "personalAccessToken.copyFailed": "کپی انجام نشد. دوباره تلاش کنید.",
   "personalAccessToken.copyNow": "همین حالا آن را کپی کنید. دیگر نمی‌توانید آن را ببینید.",

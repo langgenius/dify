@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Alle Ressourcen",
   "personalAccessToken.allWorkspaces": "Alle Arbeitsbereiche",
   "personalAccessToken.allowed": "Erlaubt",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "App-Bereitstellung",
   "personalAccessToken.conflict": "Dieses Token wurde andernorts geändert. Lade vor dem Speichern die neueste Version.",
   "personalAccessToken.copyFailed": "Kopieren fehlgeschlagen. Bitte erneut versuchen.",
   "personalAccessToken.copyNow": "Kopiere es jetzt. Du wirst es später nicht mehr sehen.",

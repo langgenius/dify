@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "Vsi viri",
   "personalAccessToken.allWorkspaces": "Vsi delovni prostori",
   "personalAccessToken.allowed": "Dovoljeno",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "Namestitev aplikacije",
   "personalAccessToken.conflict": "Ta žeton je bil spremenjen drugje. Pred shranjevanjem naložite najnovejšo različico.",
   "personalAccessToken.copyFailed": "Kopiranje ni uspelo. Poskusite znova.",
   "personalAccessToken.copyNow": "Kopirajte ga zdaj. Pozneje ga ne boste več mogli videti.",

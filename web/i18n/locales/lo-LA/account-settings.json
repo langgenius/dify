@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "ຊັບພະຍາກອນທັງໝົດ",
   "personalAccessToken.allWorkspaces": "ພື້ນທີ່ເຮັດວຽກທັງໝົດ",
   "personalAccessToken.allowed": "ອະນຸຍາດ",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "ການນຳໃຊ້ແອັບ",
   "personalAccessToken.conflict": "ໂທເຄັນນີ້ຖືກແກ້ໄຂຈາກບ່ອນອື່ນ. ກະລຸນາໂຫຼດສະບັບຫຼ້າສຸດກ່ອນບັນທຶກ.",
   "personalAccessToken.copyFailed": "ສຳເນົາບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່.",
   "personalAccessToken.copyNow": "ຄັດລອກຕອນນີ້. ທ່ານຈະບໍ່ເຫັນມັນອີກ.",

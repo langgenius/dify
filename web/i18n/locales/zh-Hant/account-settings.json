@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "所有資源",
   "personalAccessToken.allWorkspaces": "所有工作空間",
   "personalAccessToken.allowed": "允許",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "應用部署",
   "personalAccessToken.conflict": "此權杖已在其他位置修改，請重新載入最新版本後再儲存。",
   "personalAccessToken.copyFailed": "複製失敗，請重試。",
   "personalAccessToken.copyNow": "請立即複製，之後將無法再次查看。",

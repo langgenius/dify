@@ -8,11 +8,44 @@ its own allowlist to decide whether to ship the line.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
+from contextlib import suppress
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
 EVENT_APP_RUN_OPENAPI = "app.run.openapi"
 EVENT_OPENAPI_WRONG_SURFACE_DENIED = "openapi.wrong_surface_denied"
+
+# Review this list when adding audited targets; a route parameter name alone
+# must never opt request data into audit logs. Form tokens are intentionally absent.
+PERSONAL_AUDIT_TARGET_FIELDS = frozenset(
+    {
+        "app_id",
+        "workspace_id",
+        "run_id",
+        "task_id",
+        "import_id",
+        "member_id",
+        "session_id",
+        "env_id",
+        "version_id",
+        "skill_id",
+        "knowledge_space_id",
+        "credential_id",
+    }
+)
+
+
+def personal_audit_targets(targets: Mapping[str, object]) -> dict[str, str]:
+    """Return only explicitly approved UUID targets; discard other request values."""
+    result = {}
+    for key in sorted(PERSONAL_AUDIT_TARGET_FIELDS & targets.keys()):
+        value = targets[key]
+        if isinstance(value, str):
+            with suppress(ValueError):
+                result[key] = str(UUID(value))
+    return result
 
 
 def emit_app_run(

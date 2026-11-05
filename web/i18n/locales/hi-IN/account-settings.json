@@ -63,7 +63,7 @@
   "personalAccessToken.allResources": "सभी संसाधन",
   "personalAccessToken.allWorkspaces": "सभी कार्यस्थान",
   "personalAccessToken.allowed": "अनुमत",
-  "personalAccessToken.appRunner": "App Runner",
+  "personalAccessToken.appDeployment": "ऐप डिप्लॉयमेंट",
   "personalAccessToken.conflict": "यह टोकन कहीं और बदला गया है। सहेजने से पहले नवीनतम संस्करण फिर से लोड करें।",
   "personalAccessToken.copyFailed": "कॉपी नहीं हो सका। कृपया फिर से कोशिश करें।",
   "personalAccessToken.copyNow": "इसे अभी कॉपी करें। आप इसे फिर से नहीं देख पाएँगे।",
