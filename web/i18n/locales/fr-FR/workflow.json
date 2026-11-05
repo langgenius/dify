@@ -194,6 +194,7 @@
   "common.processData": "Traiter les données",
   "common.publish": "Publier",
   "common.publishAsEvaluationWorkflow": "Publier comme workflow d’évaluation",
+  "common.evaluationWorkflowDescription": "Après publication ou conversion, ce workflow peut servir d’évaluateur personnalisé dans la page d’évaluation. Il reçoit les données de test mappées ; les sorties sélectionnées deviennent des métriques utilisables dans les conditions de jugement.",
   "common.publishToMarketplace": "Publier sur le Marketplace",
   "common.publishToMarketplaceDescription": "Partager cette application avec la communauté",
   "common.publishToMarketplaceFailed": "Échec de la publication sur le Marketplace",

@@ -194,6 +194,7 @@
   "common.processData": "Process Data",
   "common.publish": "Publish",
   "common.publishAsEvaluationWorkflow": "Publish as Evaluation Workflow",
+  "common.evaluationWorkflowDescription": "After you publish or switch it, this workflow can be used as a custom evaluator on the Evaluation page. It receives mapped test data, and selected outputs become metrics you can use in judgment conditions.",
   "common.publishToMarketplace": "Publish to Marketplace",
   "common.publishToMarketplaceDescription": "List this app as a template",
   "common.publishToMarketplaceFailed": "Failed to publish to Marketplace",

@@ -194,6 +194,7 @@
   "common.processData": "数据处理",
   "common.publish": "发布",
   "common.publishAsEvaluationWorkflow": "发布为评测工作流",
+  "common.evaluationWorkflowDescription": "发布或切换后，当前工作流可在评测页面作为自定义评测器使用。评测时，它接收映射后的测试数据；选定的输出会成为评测指标，可用于设置判定条件。",
   "common.publishToMarketplace": "发布到 Marketplace",
   "common.publishToMarketplaceDescription": "将此应用作为模板上架",
   "common.publishToMarketplaceFailed": "发布到 Marketplace 失败",

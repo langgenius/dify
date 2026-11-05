@@ -194,6 +194,7 @@
   "common.processData": "Veriyi İşle",
   "common.publish": "Yayınla",
   "common.publishAsEvaluationWorkflow": "Değerlendirme iş akışı olarak yayınla",
+  "common.evaluationWorkflowDescription": "Yayınlandıktan veya dönüştürüldükten sonra bu iş akışı, değerlendirme sayfasında özel bir değerlendirici olarak kullanılabilir. Değerlendirme sırasında eşlenen test verilerini alır; seçilen çıktılar karar koşullarında kullanılabilecek metriklere dönüşür.",
   "common.publishToMarketplace": "Pazar Yeri'nde Yayınla",
   "common.publishToMarketplaceDescription": "Bu uygulamayı toplulukla paylaş",
   "common.publishToMarketplaceFailed": "Pazar Yeri'nde yayınlanamadı",

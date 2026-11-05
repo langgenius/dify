@@ -194,6 +194,7 @@
   "common.processData": "Обработка данных",
   "common.publish": "Опубликовать",
   "common.publishAsEvaluationWorkflow": "Опубликовать как оценочный процесс",
+  "common.evaluationWorkflowDescription": "После публикации или переключения этот процесс можно использовать как настраиваемый оценщик на странице оценки. Во время оценки он получает сопоставленные тестовые данные; выбранные выходные данные становятся метриками для условий оценки.",
   "common.publishToMarketplace": "Опубликовать в Marketplace",
   "common.publishToMarketplaceDescription": "Поделиться приложением с сообществом",
   "common.publishToMarketplaceFailed": "Не удалось опубликовать в Marketplace",

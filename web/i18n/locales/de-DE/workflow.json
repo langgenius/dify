@@ -194,6 +194,7 @@
   "common.processData": "Daten verarbeiten",
   "common.publish": "Veröffentlichen",
   "common.publishAsEvaluationWorkflow": "Als Evaluierungs-Workflow veröffentlichen",
+  "common.evaluationWorkflowDescription": "Nach dem Veröffentlichen oder Umstellen kann dieser Workflow auf der Evaluierungsseite als benutzerdefinierter Evaluator verwendet werden. Bei der Evaluierung erhält er zugeordnete Testdaten; ausgewählte Ausgaben werden zu Metriken, die in Beurteilungsbedingungen verwendet werden können.",
   "common.publishToMarketplace": "Im Marketplace veröffentlichen",
   "common.publishToMarketplaceDescription": "Diese App mit der Community teilen",
   "common.publishToMarketplaceFailed": "Veröffentlichung im Marketplace fehlgeschlagen",

@@ -5749,6 +5749,7 @@ export default interface Resources {
     'common.effectVarConfirm.content': 'The variable is used in other nodes. Do you still want to remove it?'
     'common.effectVarConfirm.title': 'Remove Variable'
     'common.enableJinja': 'Enable Jinja template support'
+    'common.evaluationWorkflowDescription': 'After you publish or switch it, this workflow can be used as a custom evaluator on the Evaluation page. It receives mapped test data, and selected outputs become metrics you can use in judgment conditions.'
     'common.exitVersions': 'Exit Versions'
     'common.exportImage': 'Export Image'
     'common.exportJPEG': 'Export as JPEG'

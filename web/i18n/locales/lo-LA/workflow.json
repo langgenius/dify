@@ -194,6 +194,7 @@
   "common.processData": "ປະມວນຜົນຂໍ້ມູນ",
   "common.publish": "ເຜີຍແຜ່",
   "common.publishAsEvaluationWorkflow": "ເຜີຍແຜ່ເປັນເວີກໂຟລການປະເມີນ",
+  "common.evaluationWorkflowDescription": "ຫຼັງຈາກເຜີຍແຜ່ ຫຼື ປ່ຽນເປັນເວີກໂຟລການປະເມີນ, ເວີກໂຟລນີ້ສາມາດໃຊ້ເປັນຕົວປະເມີນແບບກຳນົດເອງໃນໜ້າການປະເມີນ. ເມື່ອປະເມີນ ມັນຈະຮັບຂໍ້ມູນທົດສອບທີ່ຈັບຄູ່ໄວ້; ຜົນລັບທີ່ເລືອກຈະກາຍເປັນຕົວຊີ້ວັດທີ່ໃຊ້ໃນເງື່ອນໄຂການຕັດສິນໄດ້.",
   "common.publishToMarketplace": "ເຜີຍແຜ່ໄປຍັງ Marketplace",
   "common.publishToMarketplaceDescription": "ລົງລາຍການແອັບນີ້ເປັນແມ່ແບບ",
   "common.publishToMarketplaceFailed": "ເຜີຍແຜ່ໄປ Marketplace ບໍ່ສຳເລັດ",

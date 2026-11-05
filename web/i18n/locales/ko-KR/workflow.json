@@ -194,6 +194,7 @@
   "common.processData": "데이터 처리",
   "common.publish": "게시하기",
   "common.publishAsEvaluationWorkflow": "평가 워크플로로 게시",
+  "common.evaluationWorkflowDescription": "게시하거나 전환한 후 이 워크플로를 평가 페이지에서 사용자 지정 평가기로 사용할 수 있습니다. 평가 시 매핑된 테스트 데이터를 받고, 선택한 출력은 판정 조건에 사용할 수 있는 평가 지표가 됩니다.",
   "common.publishToMarketplace": "마켓플레이스에 게시",
   "common.publishToMarketplaceDescription": "이 앱을 커뮤니티와 공유합니다",
   "common.publishToMarketplaceFailed": "마켓플레이스 게시 실패",
