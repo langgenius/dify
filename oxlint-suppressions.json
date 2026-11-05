@@ -891,9 +891,6 @@
     }
   },
   "web/app/components/base/audio-gallery/AudioPlayer.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "jsx-a11y/media-has-caption": {
       "count": 1
     },
