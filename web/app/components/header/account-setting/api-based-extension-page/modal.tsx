@@ -109,9 +109,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.name || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.name.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldError match="valueMissing">
                 {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
@@ -123,11 +123,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.api_endpoint || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], {
-                    ns: 'common',
-                  }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldDescription>
                 <a
@@ -161,9 +159,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.api_key || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], { ns: 'common' }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldError match="valueMissing">
                 {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}

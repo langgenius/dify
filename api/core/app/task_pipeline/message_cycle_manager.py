@@ -145,6 +145,8 @@ class MessageCycleManager:
                                 conversation_id,
                                 conversation.app_id,
                                 message_id=message_id,
+                                # The request's scope keeps the caller's trace ID with the message.
+                                trace_scope=self._application_generate_entity.trace_scope,
                             )
                             redis_client.setex(cache_key, 3600, name)
                         except Exception:

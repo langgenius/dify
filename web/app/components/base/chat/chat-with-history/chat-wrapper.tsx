@@ -14,14 +14,15 @@ import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchChatList,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
+  submitHumanInputForm,
 } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -42,7 +43,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
-    isMobile,
+    isBelowSm,
     isInstalledApp,
     appId,
     appMeta,
@@ -289,15 +290,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (!(await prepareHumanInputSubmission())) return
-
-      const form = chatList
-        .flatMap((item) => item.humanInputFormDataList ?? [])
-        .find((item) => item.form_token === formToken)
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
-      else await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
-    [chatList, isInstalledApp, prepareHumanInputSubmission],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
@@ -312,9 +310,9 @@ const ChatWrapper = () => {
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent) return null
     return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
+      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
         <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <div
               ref={handleDescRef}
               className={cn(
@@ -351,18 +349,18 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+  }, [description, isBelowSm, currentConversationId, hasSent, descExpanded, showDescToggle, t])
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
-    if (isMobile) {
+    if (isBelowSm) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return null
     } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
@@ -433,9 +431,9 @@ const ChatWrapper = () => {
         speechToTextTarget={speechToTextTarget}
         chatList={messageList}
         isResponding={respondingState}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isBelowSm && 'px-4'}`}
         chatFooterClassName="pb-4"
-        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
+        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}

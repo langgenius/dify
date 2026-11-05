@@ -4802,7 +4802,7 @@ export const zSegmentUpdatePayload = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -4966,6 +4966,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
