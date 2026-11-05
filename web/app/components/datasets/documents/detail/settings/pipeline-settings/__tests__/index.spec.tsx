@@ -1,5 +1,3 @@
-import type { ComponentProps } from 'react'
-import type ChunkPreview from '../../../../create-from-pipeline/preview/chunk-preview'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
@@ -45,15 +43,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-// Preview rendering/selection has its own suite; this owner supplies the source and estimate data.
-let previewProps: ComponentProps<typeof ChunkPreview>
-vi.mock('../../../../create-from-pipeline/preview/chunk-preview', () => ({
-  default: (props: ComponentProps<typeof ChunkPreview>) => {
-    previewProps = props
-    return null
-  },
-}))
-
 const log = {
   datasource_type: DatasourceType.localFile,
   input_data: { separator: 'previous' },
@@ -137,7 +126,9 @@ it.each([true, false])(
   async (isPreview) => {
     const user = userEvent.setup()
     const response = createDeferred<{
-      data: { outputs: { total_segments: number; preview: string[]; qa_preview: never[] } }
+      data: {
+        outputs: { total_segments: number; preview: { content: string }[]; qa_preview: never[] }
+      }
     }>()
     mockRun.mockReturnValueOnce(response.promise)
     const queryClient = setup()
@@ -150,9 +141,11 @@ it.each([true, false])(
     const input = screen.getByRole('textbox', { name: /Separator/ })
     await user.clear(input)
     await user.type(input, '|||')
-    const action = screen.getByRole('button', {
-      name: isPreview ? /preview/i : 'datasetPipeline.operations.saveAndProcess',
-    })
+    const action = screen.getAllByRole('button', {
+      name: isPreview
+        ? 'datasetPipeline.addDocuments.stepTwo.previewChunks'
+        : 'datasetPipeline.operations.saveAndProcess',
+    })[0]!
     await user.click(action)
     await waitFor(() =>
       expect(mockRun).toHaveBeenCalledExactlyOnceWith({
@@ -169,15 +162,17 @@ it.each([true, false])(
       }),
     )
     await waitFor(() => expect(action).toBeDisabled())
-    expect(previewProps.isPending).toBe(isPreview)
+    if (isPreview)
+      expect(screen.queryByText('datasetCreation.stepTwo.previewChunkTip')).not.toBeInTheDocument()
     await user.click(action)
     expect(mockRun).toHaveBeenCalledOnce()
-    const outputs = { total_segments: 1, preview: ['Preview chunk'], qa_preview: [] }
+    const outputs = { total_segments: 1, preview: [{ content: 'Preview chunk' }], qa_preview: [] }
     await act(async () => response.resolve({ data: { outputs } }))
     if (isPreview) {
-      await waitFor(() =>
-        expect(previewProps.estimateData).toEqual(expect.objectContaining(outputs)),
-      )
+      expect(await screen.findByText('Preview chunk')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetCreation.stepTwo.previewChunkCount:{\"count\":1}'),
+      ).toBeInTheDocument()
       expect(mockPush).not.toHaveBeenCalled()
       expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false)
     } else {
@@ -192,8 +187,7 @@ it.each([
   [
     DatasourceType.localFile,
     { related_id: 'file-1', name: 'Guide.pdf', extension: 'pdf' },
-    'localFiles',
-    { id: 'file-1', name: 'Guide.pdf', extension: 'pdf' },
+    'Guide.pdf',
   ],
   [
     DatasourceType.websiteCrawl,
@@ -203,30 +197,18 @@ it.each([
       source_url: 'https://example.com',
       title: 'Site',
     },
-    'websitePages',
-    {
-      markdown: 'Content',
-      description: 'Summary',
-      source_url: 'https://example.com',
-      title: 'Site',
-    },
+    'Site',
   ],
   [
     DatasourceType.onlineDocument,
     { workspace_id: 'workspace-1', page: { page_id: 'page-1', page_name: 'Notion' } },
-    'onlineDocuments',
-    { workspace_id: 'workspace-1', page_id: 'page-1', page_name: 'Notion' },
+    'Notion',
   ],
-  [
-    DatasourceType.onlineDrive,
-    { id: 'drive-1', name: 'Drive', size: 100, type: 'file' },
-    'onlineDriveFiles',
-    { id: 'drive-1', name: 'Drive', size: 100, type: 'file' },
-  ],
+  [DatasourceType.onlineDrive, { id: 'drive-1', name: 'Drive', size: 100, type: 'file' }, 'Drive'],
 ] as const)(
-  'converts %s source metadata for preview',
-  async (datasourceType, datasourceInfo, field, expected) => {
+  'displays the %s source in the preview document picker',
+  async (datasourceType, datasourceInfo, name) => {
     setup({ ...log, datasource_type: datasourceType, datasource_info: datasourceInfo })
-    await waitFor(() => expect(previewProps[field]).toEqual([expected]))
+    expect(await screen.findByRole('button', { name: new RegExp(name) })).toBeInTheDocument()
   },
 )

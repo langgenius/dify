@@ -169,10 +169,12 @@ describe('Select wrappers', () => {
       const screen = await renderOpenSelect({
         rootProps: { readOnly: true },
       })
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
 
-      await expect
-        .element(screen.getByRole('combobox', { name: 'city select' }))
-        .toHaveAttribute('data-readonly')
+      await expect.element(trigger).toHaveAttribute('data-readonly')
+      expect(
+        getComputedStyle(trigger.element().querySelector('.i-ri-arrow-down-s-line')!).display,
+      ).not.toBe('none')
     })
   })
 

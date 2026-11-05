@@ -14,8 +14,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
+from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceIdentity
+from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
+from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import DifyCoreRepositoryFactory
+from core.tools.entities.common_entities import I18nObject
 from graphon.engine_events import NodeRunFailedEvent
 from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from graphon.enums import (
@@ -59,6 +65,24 @@ from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_ref_service import WorkflowRef
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
+
+
+def _datasource_runtime[T: (OnlineDocumentDatasourcePlugin, OnlineDriveDatasourcePlugin, WebsiteCrawlDatasourcePlugin)](
+    runtime_type: type[T],
+) -> T:
+    """Construct a real plugin runtime; tests replace only outbound content operations."""
+    return runtime_type(
+        entity=DatasourceEntity(
+            identity=DatasourceIdentity(
+                author="test", name="source", provider="provider", label=I18nObject(en_US="Source")
+            ),
+            description=I18nObject(en_US="Source"),
+        ),
+        runtime=DatasourceRuntime(tenant_id="tenant-1"),
+        tenant_id="tenant-1",
+        icon="icon.svg",
+        plugin_unique_identifier="test/source:1",
+    )
 
 
 def _make_service() -> RagPipelineService:
@@ -608,8 +632,7 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
         # 2. Mock DatasourceManager and Runtime
-        mock_runtime = mocker.Mock()
-        mock_runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
+        mock_runtime = _datasource_runtime(WebsiteCrawlDatasourcePlugin)
 
         # Mock the generator result for website crawl
         def mock_crawl_gen(**kwargs):
@@ -618,7 +641,7 @@ class TestRagPipelineServiceCases:
                 result=mocker.Mock(status="completed", total=10, completed=10, web_info_list=[{"title": "test"}])
             )
 
-        mock_runtime.get_website_crawl.side_effect = mock_crawl_gen
+        mocker.patch.object(mock_runtime, "get_website_crawl", side_effect=mock_crawl_gen)
 
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
@@ -691,7 +714,7 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
         # 2. Mock Runtime and results
-        mock_runtime = mocker.Mock()
+        mock_runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         def mock_doc_gen(**kwargs):
             # Yield a variable message
@@ -708,7 +731,7 @@ class TestRagPipelineServiceCases:
             )
             yield msg2
 
-        mock_runtime.get_online_document_page_content.side_effect = mock_doc_gen
+        mocker.patch.object(mock_runtime, "get_online_document_page_content", side_effect=mock_doc_gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
             return_value=mock_runtime,
@@ -1328,10 +1351,10 @@ class TestRagPipelineServiceCases:
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
-        runtime = mocker.Mock()
-        runtime.runtime = SimpleNamespace(credentials=None)
-        runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
-        runtime.get_online_document_pages.return_value = [SimpleNamespace(result=[{"id": "pg-1"}])]
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
+        mocker.patch.object(
+            runtime, "get_online_document_pages", return_value=[SimpleNamespace(result=[{"id": "pg-1"}])]
+        )
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -1385,10 +1408,10 @@ class TestRagPipelineServiceCases:
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
-        runtime = mocker.Mock()
-        runtime.runtime = SimpleNamespace(credentials=None)
-        runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
-        runtime.online_drive_browse_files.return_value = [SimpleNamespace(result=[{"name": "f1"}])]
+        runtime = _datasource_runtime(OnlineDriveDatasourcePlugin)
+        mocker.patch.object(
+            runtime, "online_drive_browse_files", return_value=[SimpleNamespace(result=[{"name": "f1"}])]
+        )
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -1675,7 +1698,7 @@ class TestRagPipelineServiceCases:
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         class _FailingIterator:
             def __iter__(self):
@@ -1684,8 +1707,7 @@ class TestRagPipelineServiceCases:
             def __next__(self):
                 raise RuntimeError("doc failed")
 
-        runtime.get_online_document_pages.return_value = _FailingIterator()
-        runtime.datasource_provider_type.return_value = "online_document"
+        mocker.patch.object(runtime, "get_online_document_pages", return_value=_FailingIterator())
 
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
@@ -1737,7 +1759,7 @@ class TestRagPipelineServiceCases:
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
 
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs):
             yield DatasourceMessage(
@@ -1745,8 +1767,7 @@ class TestRagPipelineServiceCases:
                 message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),
             )
 
-        runtime.get_online_document_page_content.side_effect = _bad_stream_generator
-        runtime.datasource_provider_type.return_value = "online_document"
+        mocker.patch.object(runtime, "get_online_document_page_content", side_effect=_bad_stream_generator)
 
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
@@ -2069,8 +2090,6 @@ class TestRagPipelineServiceCases:
     def test_run_datasource_workflow_node_handles_variable_parameter_types(
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
-        from core.datasource.entities.datasource_entities import DatasourceProviderType
-
         workflow = _make_workflow(
             graph={
                 "nodes": [
@@ -2091,13 +2110,12 @@ class TestRagPipelineServiceCases:
             }
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(WebsiteCrawlDatasourcePlugin)
 
         def crawl_gen(**kwargs):
             yield SimpleNamespace(result=SimpleNamespace(status="completed", total=1, completed=1, web_info_list=[]))
 
-        runtime.get_website_crawl.side_effect = crawl_gen
-        runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
+        mocker.patch.object(runtime, "get_website_crawl", side_effect=crawl_gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -2127,8 +2145,6 @@ class TestRagPipelineServiceCases:
     def test_run_datasource_workflow_node_online_drive_branch(
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
-        from core.datasource.entities.datasource_entities import DatasourceProviderType
-
         workflow = _make_workflow(
             graph={
                 "nodes": [
@@ -2145,13 +2161,12 @@ class TestRagPipelineServiceCases:
             }
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDriveDatasourcePlugin)
 
         def drive_gen(**kwargs):
             yield SimpleNamespace(result={"items": [1]})
 
-        runtime.online_drive_browse_files.side_effect = drive_gen
-        runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
+        mocker.patch.object(runtime, "online_drive_browse_files", side_effect=drive_gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -2201,7 +2216,7 @@ class TestRagPipelineServiceCases:
         get_draft = mocker.patch.object(
             rag_pipeline_service.execution._workflows, "get_draft_workflow", return_value=workflow
         )
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         def doc_gen(**kwargs):
             yield DatasourceMessage(
@@ -2209,7 +2224,7 @@ class TestRagPipelineServiceCases:
                 message=DatasourceMessage.VariableMessage(variable_name="x", variable_value="v", stream=False),
             )
 
-        runtime.get_online_document_page_content.side_effect = doc_gen
+        mocker.patch.object(runtime, "get_online_document_page_content", side_effect=doc_gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -2442,7 +2457,7 @@ class TestRagPipelineServiceCases:
             }
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         def gen(**kwargs):
             request = kwargs["datasource_parameters"]
@@ -2452,7 +2467,7 @@ class TestRagPipelineServiceCases:
                 message=DatasourceMessage.VariableMessage(variable_name="ok", variable_value="1", stream=False),
             )
 
-        runtime.get_online_document_page_content.side_effect = gen
+        mocker.patch.object(runtime, "get_online_document_page_content", side_effect=gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )
@@ -2494,12 +2509,12 @@ class TestRagPipelineServiceCases:
             }
         )
         mocker.patch.object(rag_pipeline_service.execution._workflows, "get_published_workflow", return_value=workflow)
-        runtime = mocker.Mock()
+        runtime = _datasource_runtime(OnlineDocumentDatasourcePlugin)
 
         def gen(**kwargs):
             yield SimpleNamespace(type="log", message=None)
 
-        runtime.get_online_document_page_content.side_effect = gen
+        mocker.patch.object(runtime, "get_online_document_page_content", side_effect=gen)
         mocker.patch(
             "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime
         )

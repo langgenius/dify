@@ -56,7 +56,7 @@ _AGENT_ID_KEY = "agent_id"
 class AppPackageManifest(BaseModel):
     """Index Agent resources by the same package references used in the workflow DSL.
 
-    Version 2 also bundles the workflows the App calls through Workflow Tools; other packages stay version 1.
+    Version 2 optionally bundles the workflows the App calls through Workflow Tools; version 1 remains readable.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -76,6 +76,7 @@ class AppPackageManifest(BaseModel):
 
     @model_validator(mode="after")
     def validate_resource_paths(self) -> Self:
+        """Return a manifest with unique resources, or reject duplicates and version 1 workflow tool bundles."""
         resources = [*self.iter_resources(), *self.workflow_tools]
         paths = [item.path.casefold() for item in [*self.apps, *resources]]
         ids = [item.id for item in resources]
@@ -83,8 +84,8 @@ class AppPackageManifest(BaseModel):
             raise ValueError("App package resources must have unique paths and ids")
         if len({tool.provider_id for tool in self.workflow_tools}) != len(self.workflow_tools):
             raise ValueError("App package workflow tools must have unique provider ids")
-        if (self.format_version == 2) != bool(self.workflow_tools):
-            raise ValueError("App package format version 2 is used exactly when workflow tools are bundled")
+        if self.format_version == 1 and self.workflow_tools:
+            raise ValueError("App package workflow tools require format version 2")
         return self
 
 
@@ -525,6 +526,10 @@ class AppPackageService(RosterAgentPackageReader):
         accept_roster_references: bool = False,
         workflow_tools: Sequence[_WorkflowToolExport],
     ) -> RosterAgentPackageExport:
+        """Return a validated version 2 archive for an App DSL and its resources.
+
+        Reject invalid content or exceeded import limits; close the output archive on failure.
+        """
         payload = dsl.encode("utf-8")
         if len(payload) > DSL_MAX_SIZE:
             raise RosterAgentPackageTooLargeError("App package DSL exceeds the size limit")
@@ -539,7 +544,7 @@ class AppPackageService(RosterAgentPackageReader):
                 ]
                 manifest = AppPackageManifest(
                     format="dify.app",
-                    format_version=2 if packaged_tools else 1,
+                    format_version=2,
                     apps=[
                         RosterAgentPackageApp(
                             path="app.yaml", size=len(payload), sha256=hashlib.sha256(payload).hexdigest()

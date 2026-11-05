@@ -9,7 +9,7 @@ handler tests use inspect.unwrap() to bypass them.
 
 import inspect
 import json
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -39,7 +39,6 @@ from controllers.inner_api.plugin.plugin import (
 )
 from core.app.apps import base_app_queue_manager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.plugin.entities.request import (
     RequestInvokeDatasource,
     RequestInvokeTextEmbedding,
@@ -154,10 +153,6 @@ def test_plugin_invokes_persisted_workflow_tool_through_composed_runtime(
     # Any fallback to the global database instead of the composed repositories must fail.
     monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    trace_queue_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
-    monkeypatch.setattr(
-        generator_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
-    )
     monkeypatch.setattr(generator_module.WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     handled = []
 

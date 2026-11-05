@@ -766,20 +766,22 @@ class _ContactService:
         page: int,
         limit: int,
         keyword: str,
-    ) -> Page[Contact]:
+    ) -> Page[ContactWithIMBindings]:
         assert tenant_id == TenantId("workspace-1")
         assert (page, limit, keyword) == (1, 20, "")
-        return Page((self.view.contact,), page, limit)
+        return Page((self.view,), page, limit)
 
     def get_contacts(self, tenant_id: TenantId, contact_ids: list[ContactId]) -> tuple[ContactWithIMBindings, ...]:
         assert tenant_id == TenantId("workspace-1")
         assert contact_ids == [self.view.contact.id]
         return (self.view,)
 
-    def get_contact_options(self, tenant_id: TenantId, contact_ids: list[ContactId]) -> tuple[Contact, ...]:
+    def get_contact_options(
+        self, tenant_id: TenantId, contact_ids: list[ContactId]
+    ) -> tuple[ContactWithIMBindings, ...]:
         assert tenant_id == TenantId("workspace-1")
         assert contact_ids == [self.view.contact.id]
-        return (self.view.contact,)
+        return (self.view,)
 
 
 def test_contact_read_handlers_preserve_current_and_editor_safe_projections(
@@ -818,8 +820,35 @@ def test_contact_read_handlers_preserve_current_and_editor_safe_projections(
     assert options["data"][0]["id"] == contact_id
     assert batch["data"][0]["id"] == contact_id
     assert batch_options["data"][0]["id"] == contact_id
+    assert options["data"][0]["im_providers"] == ["feishu"]
+    assert batch_options["data"] == options["data"]
     assert "im_bindings" not in options["data"][0]
     assert "email" not in batch["data"][0]
+
+
+@pytest.mark.parametrize("provider", list(IMProvider))
+def test_contact_options_return_distinct_effective_im_providers(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, provider: IMProvider
+) -> None:
+    service = _ContactService()
+    binding = replace(service.view.im_bindings[0], provider=provider)
+    service.view = replace(service.view, im_bindings=(binding, binding))
+    monkeypatch.setattr(_CONTROLLER_MODULE, "_contact_service", lambda _session, _tenant_id: service)
+
+    with app.test_request_context(method="GET"):
+        options = unwrap(WorkspaceContactOptionsApi.get)(WorkspaceContactOptionsApi(), object(), "workspace-1")
+    with app.test_request_context(method="GET", query_string=[("contact_ids", str(service.view.contact.id))]):
+        batch = unwrap(BatchGetContactOptionsAPI.get)(BatchGetContactOptionsAPI(), object(), "workspace-1")
+
+    assert options["data"] == batch["data"]
+    assert options["data"][0] == {
+        "id": str(service.view.contact.id),
+        "type": "workspace",
+        "name": "Reviewer",
+        "avatar_url": None,
+        "email": "reviewer@example.com",
+        "im_providers": [provider.value],
+    }
 
 
 @pytest.mark.parametrize("scope", [IMBindingScope.WORKSPACE, None])

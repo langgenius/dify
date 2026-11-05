@@ -2,7 +2,6 @@
 
 import contextvars
 from collections.abc import Iterator
-from dataclasses import dataclass
 from unittest.mock import create_autospec
 from uuid import uuid4
 
@@ -18,16 +17,16 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
-    ModelConfigWithCredentialsEntity,
 )
 from core.db import session_factory
+from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from extensions.ext_database import db
 from graphon.file import File, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.annotation_reply import AnnotationReplies
 from models.base import TypeBase
 from models.model import App, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
@@ -40,6 +39,7 @@ from services.app.generation.ports import AgentMessageRecords
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
 from services.tools.dataset.tool import DatasetRetrieverTool
 from services.tools.tool_engine import ToolEngine
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.unit_tests.core.agent.test_base_agent_runner import (
     _app_config,
@@ -48,19 +48,6 @@ from tests.unit_tests.core.agent.test_base_agent_runner import (
     _message,
     _tool_entity,
 )
-
-
-@dataclass
-class LLM:
-    def get_model_schema(self, _name: str, _credentials: dict[str, object] | None) -> AIModelEntity:
-        return AIModelEntity.model_construct(features=[ModelFeature.VISION])
-
-
-@dataclass
-class Model:
-    model_type_instance: LLM
-    model_name: str = "model"
-    credentials: dict[str, object] | None = None
 
 
 @pytest.fixture(params=[False, True], ids=["retain-after-commit", "expire-after-commit"])
@@ -125,6 +112,12 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
             ]
         )
     config = _app_config()
+    model_config = make_model_config(provider="provider", model="model", mode="chat")
+    model_config.model_schema.features = [ModelFeature.VISION]
+    model = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle, model=model_config.model, credentials={}
+    )
+    monkeypatch.setattr(model.model_type_instance, "get_model_schema", lambda *_args: model_config.model_schema)
     runner = FunctionCallAgentRunner(
         records=records,
         dataset_tools=lambda **_kwargs: [],
@@ -133,12 +126,12 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
         application_generate_entity=_app_generate(app_config=config),
         conversation=_conversation(),
         app_config=config,
-        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        model_config=model_config,
         config=AgentEntity(provider="provider", model="model", strategy=AgentEntity.Strategy.FUNCTION_CALLING),
         queue_manager=create_autospec(AppQueueManager, instance=True, spec_set=True),
         message=_message(),
         user_id="user",
-        model_instance=Model(LLM()),  # type: ignore[arg-type]
+        model_instance=model,
     )
     reads = []
 
@@ -200,6 +193,7 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
             message=_message(),
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=runner.agent_callback,
+            trace_scope=None,
         )
     assert files == []
     assert isinstance(meta, ToolInvokeMeta)

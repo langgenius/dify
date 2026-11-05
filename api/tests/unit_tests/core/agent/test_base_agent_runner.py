@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass
+from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, create_autospec
@@ -451,7 +451,7 @@ def test_save_agent_thought_serialization_fallbacks(
     real_dumps = json.dumps
 
     def dumps_side_effect(value: object, *, ensure_ascii: bool = True) -> str:
-        if value in (tool_input, observation, tool_meta) and not ensure_ascii:
+        if value in (tool_input, observation, tool_meta) and ensure_ascii is False:
             raise TypeError("fail")
         return real_dumps(value, ensure_ascii=ensure_ascii)
 
@@ -802,6 +802,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     *,
     app_records: AppGenerationRepository,
 ) -> None:
+    """Initialize with persisted thoughts and explicit ports; keep counting and tool creation session-free."""
     sqlite_session.add_all(
         [
             _thought(thought_id="thought-1", message_id="msg1"),
@@ -811,17 +812,40 @@ def test_init_uses_real_session_for_count_and_dependencies(
     )
     sqlite_session.commit()
 
-    @dataclass
-    class _CallArgs:
-        kwargs: dict[str, object]
+    dataset_tool = _tool("ds_tool", [])
 
     class _DatasetTools:
         def __init__(self) -> None:
-            self.call_args = None
+            self.calls: list[dict[str, object]] = []
 
-        def __call__(self, *args, **kwargs) -> list[str]:
-            self.call_args = _CallArgs(kwargs)
-            return ["ds_tool"]
+        def __call__(
+            self,
+            *,
+            tenant_id: str,
+            app_id: str,
+            dataset_ids: list[str],
+            retrieve_config: DatasetRetrieveConfigEntity | None,
+            return_resource: bool,
+            invoke_from: InvokeFrom,
+            hit_callback: DatasetIndexToolCallbackHandler,
+            user_id: str,
+            inputs: Mapping[str, object],
+        ) -> list[Tool]:
+            """Accept only the dataset-tools port inputs and return the configured real tool."""
+            self.calls.append(
+                {
+                    "tenant_id": tenant_id,
+                    "app_id": app_id,
+                    "dataset_ids": dataset_ids,
+                    "retrieve_config": retrieve_config,
+                    "return_resource": return_resource,
+                    "invoke_from": invoke_from,
+                    "hit_callback": hit_callback,
+                    "user_id": user_id,
+                    "inputs": inputs,
+                }
+            )
+            return [dataset_tool]
 
     get_dataset_tools = _DatasetTools()
     model_config = make_model_config(provider="provider", model="m", mode="chat")
@@ -865,9 +889,10 @@ def test_init_uses_real_session_for_count_and_dependencies(
 
     assert initialized.stream_tool_call is True
     assert initialized.files == ["file1"]
-    assert initialized.dataset_tools == ["ds_tool"]
+    assert initialized.dataset_tools == [dataset_tool]
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []
     assert initialized._workflow_runtime is workflow_runtime
-    assert "session" not in get_dataset_tools.call_args.kwargs
-    assert get_dataset_tools.call_args.kwargs["tenant_id"] == "tenant"
+    assert len(get_dataset_tools.calls) == 1
+    assert "session" not in get_dataset_tools.calls[0]
+    assert get_dataset_tools.calls[0]["tenant_id"] == "tenant"

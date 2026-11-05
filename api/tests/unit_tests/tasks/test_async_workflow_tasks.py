@@ -277,9 +277,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
         "create_workflow_node_execution_repository",
         lambda *_args, **_kwargs: node_execution_repository,
     )
-    monkeypatch.setattr(
-        async_workflow_tasks, "build_workflow_execution_dependencies", lambda *_args, **_kwargs: None
-    )
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
     monkeypatch.setattr(async_workflow_tasks, "_query_trigger_log_info", lambda *_args, **_kwargs: None)
 

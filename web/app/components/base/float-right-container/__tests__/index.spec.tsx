@@ -14,7 +14,7 @@ it('opens mobile content in a named drawer and closes it through the supplied ac
           Open panel
         </button>
         <FloatRightContainer
-          isMobile
+          presentation="drawer"
           isOpen={open}
           title="Mobile panel"
           showClose
@@ -39,7 +39,7 @@ it('opens mobile content in a named drawer and closes it through the supplied ac
 
 it('shows desktop content inline only while open', () => {
   const { rerender } = render(
-    <FloatRightContainer isMobile={false} isOpen onClose={vi.fn()} title="Drawer title">
+    <FloatRightContainer presentation="inline" isOpen onClose={vi.fn()} title="Drawer title">
       Desktop content
     </FloatRightContainer>,
   )
@@ -47,7 +47,7 @@ it('shows desktop content inline only while open', () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.queryByText('Drawer title')).not.toBeInTheDocument()
   rerender(
-    <FloatRightContainer isMobile={false} isOpen={false} onClose={vi.fn()}>
+    <FloatRightContainer presentation="inline" isOpen={false} onClose={vi.fn()}>
       Desktop content
     </FloatRightContainer>,
   )
