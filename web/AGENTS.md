@@ -20,7 +20,7 @@ Web owns application-specific requirements and consumes shared architecture guid
 - Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
 - Follow [Keyboard commands] for hotkey ownership, targets, event consumption, typed bindings, and keycap display. Keep widget and editor keyboard semantics in their local owners.
 - Follow [Accessible names and descriptions] when choosing or changing visible labels, ARIA naming, descriptions, or visually hidden text. Web owns localization and feature-specific status announcements; do not redefine the Dify UI naming contract locally.
-- For responsive layout, choose between Tailwind variants, `useMediaQuery`, and input media queries by following [Responsive layout].
+- Before switching UI by viewport width, read [Responsive layout]: one component tree, CSS for appearance, width in JavaScript only for behaviour.
 - Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Use `@langgenius/dify-ui/infotip` for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
 - For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
 - `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.

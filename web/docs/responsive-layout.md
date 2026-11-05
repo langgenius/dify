@@ -1,26 +1,17 @@
 # Responsive Layout
 
-A responsive surface keeps one component tree at every width. CSS decides what is visible and where it sits; JavaScript handles only the behaviour CSS cannot express.
+Viewport width tells how much space there is, not which device the user has. A desktop browser zoomed in is as narrow as a phone.
 
-## Choose the Owner
+A responsive surface is one component tree at every width. CSS decides how it looks at each breakpoint. JavaScript reads width only for behaviour CSS cannot express, through `@langgenius/dify-ui/use-media-query`, at the same breakpoints as Tailwind.
 
-Check in order:
+## What Goes Wrong
 
-1. Visibility, placement, spacing, and size belong to Tailwind responsive variants such as `max-sm:` and `md:`. No hook.
-1. Behaviour that depends on available width, such as whether an overlay is modal or which orientation a component uses, reads `useMediaQuery` from `@langgenius/dify-ui/use-media-query`. Write the query against the Tailwind breakpoint it mirrors, so JavaScript and CSS switch at the same pixel: `(width < 40rem)` for `sm`, `(width < 48rem)` for `md`.
-1. Differences in input rather than space, such as hover affordances or touch gestures, use `hover` and `pointer` media queries, not width.
+- **A component tree per breakpoint.** Crossing the breakpoint, including by zooming, remounts the subtree and drops focus and local state.
+- **The query copied into state**, by an Effect or as a `useState` initial value. State and screen disagree after the width changes, and a first mount during hydration only sees the wide default. See [component state] and [Effects].
+- **JavaScript and CSS switching at different widths.** The surface passes through a state neither side designed.
+- **Width used as a device check.** Flags named like `isMobile` invite assumptions about touch or hover that width cannot support; input differences follow the `hover` and `pointer` media features.
 
-## Rules
-
-- Do not render a different component tree per breakpoint. Crossing the breakpoint remounts the subtree and drops focus and local state, and zooming a desktop browser crosses it as well. When narrow screens need an overlay, keep one copy of the content and add the overlay only for narrow screens.
-- Derive from the query during render, as [component state] and [Effects] require for any value. A `useState` initial value taken from the query is fixed at first mount, which during hydration is the wide default, so it does not work either. When the narrow and wide surfaces each need open state, keep one state per surface and choose between them by the query.
-- Name the result after the breakpoint or the surface, such as `isBelowSm` or `isCompact`, not after a device. Width tells how much space there is, not what device the user has.
-- A value read once inside an event handler or an effect can call `window.matchMedia` directly. A value used for rendering goes through `useMediaQuery`.
-- On the server and during hydration the hook returns `false`, so the first render is the wide layout. Anything that must look different on narrow screens from the first paint belongs in CSS.
-
-## Existing Code
-
-Some surfaces still switch component trees by width. Do not copy them into new code; restructure them toward one tree when they are next changed.
+Some existing surfaces still switch component trees by width. They are not examples to follow.
 
 [Effects]: ../../.agents/skills/how-to-write-component/references/runtime.md
 [component state]: ../../.agents/skills/how-to-write-component/references/state.md
