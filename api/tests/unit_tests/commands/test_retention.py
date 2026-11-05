@@ -9,7 +9,7 @@ from uuid import uuid4
 import click
 import pytest
 from click.testing import CliRunner
-from sqlalchemy import Engine, event, text
+from sqlalchemy import Engine, Table, event, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -165,7 +165,7 @@ class TestArchiveWorkflowRunsCases:
         "command",
         [retention.restore_workflow_runs, retention.delete_archived_workflow_runs],
     )
-    def test_v2_archive_maintenance_rejects_explicitly_empty_tenant_ids(command):
+    def test_v2_archive_maintenance_rejects_explicitly_empty_tenant_ids(command: click.Command) -> None:
         result = CliRunner().invoke(
             command,
             ["--tenant-ids", "", "--target-month", "2025-03"],
@@ -175,7 +175,7 @@ class TestArchiveWorkflowRunsCases:
         assert "tenant-ids must not be empty" in result.output
 
     @staticmethod
-    def test_archive_tenant_id_parser_keeps_omitted_scope_unset():
+    def test_archive_tenant_id_parser_keeps_omitted_scope_unset() -> None:
         assert retention._parse_comma_separated_ids(None, param_name="tenant-ids") is None
 
     @staticmethod
@@ -183,9 +183,13 @@ class TestArchiveWorkflowRunsCases:
     def archive_db(sqlite_engine: Engine) -> ArchiveDatabase:
         """Create only the workflow tables used by archive planning."""
 
+        workflow_runs_table = WorkflowRun.__table__
+        node_executions_table = WorkflowNodeExecutionModel.__table__
+        assert isinstance(workflow_runs_table, Table)
+        assert isinstance(node_executions_table, Table)
         TypeBase.metadata.create_all(
             sqlite_engine,
-            tables=[WorkflowRun.__table__, WorkflowNodeExecutionModel.__table__],
+            tables=[workflow_runs_table, node_executions_table],
         )
         return ArchiveDatabase(
             session_maker=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
@@ -349,8 +353,10 @@ class TestArchiveWorkflowRunsCases:
             Mock(side_effect=RuntimeError("tenant plan failed")),
         )
 
+        callback = retention.archive_workflow_runs.callback
+        assert callback is not None
         with pytest.raises(click.ClickException, match="Failed to resolve workflow archive tenant plan"):
-            retention.archive_workflow_runs.callback(
+            callback(
                 tenant_ids="tenant-1",
                 tenant_prefixes=None,
                 before_days=90,
@@ -370,7 +376,7 @@ class TestArchiveWorkflowRunsCases:
     @staticmethod
     def test_delete_archived_workflow_runs_keeps_single_page_behavior_without_all_pages(
         monkeypatch: pytest.MonkeyPatch,
-    ):
+    ) -> None:
         deleter = _patch_bundle_deleter(
             monkeypatch,
             [_delete_summary(processed=2, succeeded=2, next_catalog_id=_CURSOR_1)],
@@ -389,7 +395,9 @@ class TestArchiveWorkflowRunsCases:
         assert deleter.delete_batch.call_args.kwargs["limit"] == 2
 
     @staticmethod
-    def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_all_pages_continues_until_empty_page(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         deleter = _patch_bundle_deleter(
             monkeypatch,
             [
@@ -414,7 +422,7 @@ class TestArchiveWorkflowRunsCases:
     @staticmethod
     def test_delete_archived_workflow_runs_all_pages_fetches_empty_page_after_exact_full_page(
         monkeypatch: pytest.MonkeyPatch,
-    ):
+    ) -> None:
         deleter = _patch_bundle_deleter(
             monkeypatch,
             [
@@ -433,7 +441,9 @@ class TestArchiveWorkflowRunsCases:
         assert deleter.delete_batch.call_args_list[1].kwargs["after_catalog_id"] == _CURSOR_1
 
     @staticmethod
-    def test_delete_archived_workflow_runs_all_pages_stops_at_first_failed_page(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_all_pages_stops_at_first_failed_page(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         failed_result = BundleOperationResult(
             catalog_id=_CURSOR_2,
             bundle_id="bundle-failed",
@@ -464,7 +474,7 @@ class TestArchiveWorkflowRunsCases:
     @staticmethod
     def test_delete_archived_workflow_runs_all_pages_fails_when_cursor_does_not_advance(
         monkeypatch: pytest.MonkeyPatch,
-    ):
+    ) -> None:
         deleter = _patch_bundle_deleter(
             monkeypatch,
             [_delete_summary(processed=1, succeeded=1, next_catalog_id=None)],
@@ -480,7 +490,9 @@ class TestArchiveWorkflowRunsCases:
         assert "cursor did not advance" in result.output.lower()
 
     @staticmethod
-    def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_all_pages_uses_preview_cursor_for_dry_run(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         deleter = _patch_bundle_deleter(
             monkeypatch,
             [
@@ -503,7 +515,7 @@ class TestArchiveWorkflowRunsCases:
     @staticmethod
     def test_delete_archived_workflow_runs_dry_run_failure_separates_preview_and_destructive_cursors(
         monkeypatch: pytest.MonkeyPatch,
-    ):
+    ) -> None:
         failed_result = BundleOperationResult(
             catalog_id=_CURSOR_2,
             bundle_id="bundle-failed",
@@ -546,7 +558,9 @@ class TestArchiveWorkflowRunsCases:
         assert f"destructive_retry_after_catalog_id={_CURSOR_0}" in result.output
 
     @staticmethod
-    def test_delete_archived_workflow_runs_all_pages_starts_after_explicit_cursor(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_all_pages_starts_after_explicit_cursor(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
 
         result = CliRunner().invoke(
@@ -576,7 +590,9 @@ class TestArchiveWorkflowRunsCases:
             ["--run-shard-index", "0", "--run-shard-total", "17"],
         ],
     )
-    def test_delete_archived_workflow_runs_rejects_invalid_run_shard_options(monkeypatch, shard_args):
+    def test_delete_archived_workflow_runs_rejects_invalid_run_shard_options(
+        monkeypatch: pytest.MonkeyPatch, shard_args: list[str]
+    ) -> None:
         deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
 
         result = CliRunner().invoke(
@@ -588,7 +604,9 @@ class TestArchiveWorkflowRunsCases:
         deleter.delete_batch.assert_not_called()
 
     @staticmethod
-    def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_passes_formatted_run_shard_to_service(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
 
         result = CliRunner().invoke(
@@ -616,7 +634,9 @@ class TestArchiveWorkflowRunsCases:
         assert deleter.delete_batch.call_args.kwargs["shard"] == "03-of-16"
 
     @staticmethod
-    def test_delete_archived_workflow_runs_rejects_mixed_catalog_shards_before_delete(monkeypatch: pytest.MonkeyPatch):
+    def test_delete_archived_workflow_runs_rejects_mixed_catalog_shards_before_delete(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         deleter = _patch_bundle_deleter(monkeypatch, [_delete_summary(processed=0)])
         deleter.validate_catalog_shards.side_effect = ValueError("unexpected shards: 00-of-01")
 
