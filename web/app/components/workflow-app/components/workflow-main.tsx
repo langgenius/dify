@@ -571,13 +571,16 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
               {joinFailure ? (
                 <>
                   <span role="alert">
-                    {joinFailure === 'denied'
-                      ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                      : joinFailure === 'retrying'
-                        ? t(($) => $['collaboration.joinRetrying'], { ns: 'workflow' })
-                        : t(($) => $['imPlatform.status.connection_error'], { ns: 'contacts' })}
+                    {joinFailure === 'draft_outdated'
+                      ? t(($) => $['collaboration.draftOutdated'], { ns: 'workflow' })
+                      : joinFailure === 'denied'
+                        ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
+                        : joinFailure === 'retrying'
+                          ? t(($) => $['collaboration.joinRetrying'], { ns: 'workflow' })
+                          : t(($) => $['imPlatform.status.connection_error'], { ns: 'contacts' })}
                   </span>
                   {joinFailure !== 'retrying' &&
+                    joinFailure !== 'draft_outdated' &&
                     !collaborationManager.hasJoinedCollaborationRoom() && (
                       <Button size="small" onClick={() => window.location.reload()}>
                         {t(($) => $['errorBoundary.reloadPage'], { ns: 'common' })}

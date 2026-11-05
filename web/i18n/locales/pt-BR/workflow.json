@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Conteúdo armazenado",
   "chatVariable.tips": "Dicas",
   "chatVariable.updatedAt": "Atualizado em ",
+  "collaboration.draftOutdated": "O rascunho salvo foi alterado. Sua tela atual está preservada aqui.",
   "collaboration.historyAction.generic": "Um colaborador realizou desfazer/refazer",
   "collaboration.joinDenied": "Não foi possível entrar na colaboração. Verifique seu acesso e o plano do espaço de trabalho e abra o editor novamente.",
   "collaboration.joinRetrying": "A colaboração está temporariamente indisponível. Tentando novamente…",

@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Contenuto memorizzato",
   "chatVariable.tips": "Suggerimenti",
   "chatVariable.updatedAt": "Aggiornato il ",
+  "collaboration.draftOutdated": "La bozza salvata è cambiata. La tua area di lavoro attuale viene conservata qui.",
   "collaboration.historyAction.generic": "Un collaboratore ha eseguito annulla/ripristina",
   "collaboration.joinDenied": "Impossibile partecipare alla collaborazione. Controlla i permessi di accesso e il piano dell’area di lavoro, quindi riapri l’editor.",
   "collaboration.joinRetrying": "La collaborazione è temporaneamente non disponibile. Nuovo tentativo in corso…",

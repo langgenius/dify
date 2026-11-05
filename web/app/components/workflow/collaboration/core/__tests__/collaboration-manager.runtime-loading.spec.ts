@@ -28,7 +28,7 @@ const loadManager = async () => {
   })
   vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(transport.socket)
   vi.spyOn(webSocketClient, 'isConnected').mockImplementation(() => transport.socket.connected)
-  return { manager: new CollaborationManager(), open, close }
+  return { manager: new CollaborationManager(), open, close, transport }
 }
 
 const delayRuntimeModule = () => {
@@ -90,6 +90,52 @@ it('shares one session between consumers awaiting the same runtime import', asyn
   expect(close).not.toHaveBeenCalled()
   manager.disconnect(secondId)
   expect(close).toHaveBeenCalledExactlyOnceWith('app-concurrent')
+})
+
+it('uses a draft hash that arrives while two consumers wait for the runtime', async () => {
+  const gate = delayRuntimeModule()
+  const { manager, transport } = await loadManager()
+  let hash = ''
+  const first = manager.connect('app-hash', undefined, () => hash)
+  const second = manager.connect('app-hash', undefined, () => hash)
+  hash = 'loaded-hash'
+  manager.resumeJoinWhenDraftReady('app-hash')
+  gate.resolve()
+  const [firstId, secondId] = await Promise.all([first, second])
+  expect(transport.emit).toHaveBeenCalledWith(
+    'user_connect',
+    {
+      workflow_id: 'app-hash',
+      draft_hash: 'loaded-hash',
+    },
+    expect.any(Function),
+  )
+  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  manager.disconnect(firstId)
+  manager.disconnect(secondId)
+})
+
+it('resumes a waiting join when another consumer supplies the loaded draft hash', async () => {
+  const { manager, transport } = await loadManager()
+  const firstId = await manager.connect('app-hash', undefined, () => '')
+  expect(transport.emit).not.toHaveBeenCalledWith(
+    'user_connect',
+    expect.anything(),
+    expect.anything(),
+  )
+  const secondId = await manager.connect('app-hash', undefined, () => 'loaded-hash')
+  expect(transport.emit).toHaveBeenCalledWith(
+    'user_connect',
+    {
+      workflow_id: 'app-hash',
+      draft_hash: 'loaded-hash',
+    },
+    expect.any(Function),
+  )
+  manager.resumeJoinWhenDraftReady('app-hash')
+  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  manager.disconnect(firstId)
+  manager.disconnect(secondId)
 })
 
 it('opens only the latest workflow when the app changes while importing the runtime', async () => {

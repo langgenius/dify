@@ -35,7 +35,7 @@ export type CollaborationState = {
   error?: string
 }
 
-export type JoinFailure = 'denied' | 'retrying' | 'unavailable'
+export type JoinFailure = 'denied' | 'retrying' | 'unavailable' | 'draft_outdated'
 
 type CollaborationEventType =
   | 'mouse_move'

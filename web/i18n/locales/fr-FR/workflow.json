@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Contenu stocké",
   "chatVariable.tips": "Conseils",
   "chatVariable.updatedAt": "Mis à jour le ",
+  "collaboration.draftOutdated": "Le brouillon enregistré a changé. Votre canevas actuel est conservé ici.",
   "collaboration.historyAction.generic": "Un collaborateur a effectué une annulation/une réexécution",
   "collaboration.joinDenied": "Impossible de rejoindre la collaboration. Vérifiez vos droits d’accès et l’offre de l’espace de travail, puis rouvrez l’éditeur.",
   "collaboration.joinRetrying": "La collaboration est temporairement indisponible. Nouvelle tentative…",

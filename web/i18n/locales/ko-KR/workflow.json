@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "저장된 내용",
   "chatVariable.tips": "팁",
   "chatVariable.updatedAt": "업데이트 시간: ",
+  "collaboration.draftOutdated": "저장된 초안이 변경되었습니다. 현재 캔버스는 여기에 보존되어 있습니다.",
   "collaboration.historyAction.generic": "공동 작업자가 실행 취소/다시 실행을 수행했습니다",
   "collaboration.joinDenied": "공동 편집에 참여할 수 없습니다. 접근 권한과 워크스페이스 요금제를 확인한 후 편집기를 다시 열어 주세요.",
   "collaboration.joinRetrying": "공동 편집을 일시적으로 사용할 수 없습니다. 다시 시도하는 중…",

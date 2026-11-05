@@ -14,7 +14,9 @@ import { CollectionType } from '@/app/components/tools/types'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -276,6 +278,35 @@ async function renderMain({
   return { ...view, queryClient, features, eventEmitter }
 }
 
+function useRealCollaborationTransport() {
+  for (const name of [
+    'connect',
+    'disconnect',
+    'isConnected',
+    'getIsLeader',
+    'canPersistLocalGraph',
+    'onGraphReadyChange',
+    'onJoinFailure',
+  ] as const)
+    vi.mocked(collaborationManager[name]).mockRestore()
+
+  const transport = createSocket('socket-app-1', false)
+  let active = true
+  vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
+  vi.spyOn(webSocketClient, 'getSocket').mockImplementation(() =>
+    active ? transport.socket : null,
+  )
+  vi.spyOn(webSocketClient, 'isConnected').mockImplementation(
+    () => active && transport.socket.connected,
+  )
+  vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {
+    if (!active) return
+    active = false
+    transport.receive('disconnect', 'io client disconnect')
+  })
+  return transport
+}
+
 it('shows synchronization status until the collaborative graph is ready', async () => {
   await renderMain()
   expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
@@ -287,6 +318,55 @@ it('shows synchronization status until the collaborative graph is ready', async 
     events.ready.forEach((handler) => handler(true))
   })
   expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
+})
+
+it('waits for the first draft hash, then joins without reconnecting when it changes', async () => {
+  const transport = useRealCollaborationTransport()
+  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: '' } })
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
+  act(() => transport.receive('connect'))
+  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(0)
+
+  act(() => store.getState().setSyncWorkflowDraftHash('loaded-hash'))
+  await waitFor(() =>
+    expect(transport.emit).toHaveBeenCalledWith(
+      'user_connect',
+      {
+        workflow_id: 'app-1',
+        draft_hash: 'loaded-hash',
+      },
+      expect.any(Function),
+    ),
+  )
+  act(() => store.getState().setSyncWorkflowDraftHash('newer-hash'))
+  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
+  expect(webSocketClient.disconnect).not.toHaveBeenCalled()
+})
+
+it('keeps the current canvas and blocks saving when the draft is outdated', async () => {
+  const transport = useRealCollaborationTransport()
+  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  const canvasNodes = store.getState().nodes
+  expect(canvasNodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'start' })]))
+  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
+  act(() => transport.receive('connect'))
+  expect(transport.emit).toHaveBeenCalledWith(
+    'user_connect',
+    {
+      workflow_id: 'app-1',
+      draft_hash: 'old-hash',
+    },
+    expect.any(Function),
+  )
+  act(() => transport.acknowledge('user_connect', { msg: 'draft_outdated' }, 409))
+  expect(screen.getByText('workflow.collaboration.draftOutdated')).toBeVisible()
+  expect(store.getState().nodes).toEqual(canvasNodes)
+  expect(
+    screen.queryByRole('button', { name: 'common.errorBoundary.reloadPage' }),
+  ).not.toBeInTheDocument()
+  expect(collaborationManager.getNodes()).toEqual([])
+  expect(api.saveDraft).not.toHaveBeenCalled()
+  expect(api.fetchDraft).not.toHaveBeenCalled()
 })
 
 it('shows a retry message and access guidance when the initial join is rejected', async () => {

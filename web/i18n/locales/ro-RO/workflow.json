@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "Conținut stocat",
   "chatVariable.tips": "Sfaturi",
   "chatVariable.updatedAt": "Actualizat la ",
+  "collaboration.draftOutdated": "Ciorna salvată s-a schimbat. Zona ta de lucru actuală este păstrată aici.",
   "collaboration.historyAction.generic": "Un colaborator a efectuat anulare/refacere",
   "collaboration.joinDenied": "Nu te poți alătura colaborării. Verifică accesul și abonamentul spațiului de lucru, apoi redeschide editorul.",
   "collaboration.joinRetrying": "Colaborarea este temporar indisponibilă. Se reîncearcă…",

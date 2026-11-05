@@ -323,7 +323,14 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
         resource,
         queryClient,
         nodes,
-        initialStoreState: { isCollaborationEnabled: collaboration, ...initialStoreState },
+        initialStoreState: {
+          isCollaborationEnabled: collaboration,
+          // The editor loads its draft and hash before mounting collaboration.
+          ...(collaboration
+            ? { isWorkflowDataLoaded: true, syncWorkflowDraftHash: 'draft-hash' }
+            : {}),
+          ...initialStoreState,
+        },
         hooksStoreProps: { doSyncWorkflowDraft: mockDoSyncWorkflowDraft },
         reactFlowProps: {
           nodeTypes: { custom: () => null },

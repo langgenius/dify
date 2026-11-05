@@ -109,6 +109,7 @@
   "chatVariable.storedContent": "已儲存內容",
   "chatVariable.tips": "提示",
   "chatVariable.updatedAt": "更新於 ",
+  "collaboration.draftOutdated": "已儲存的草稿發生變更，目前畫布仍保留在這裡。",
   "collaboration.historyAction.generic": "協作者執行了復原/重做操作",
   "collaboration.joinDenied": "無法加入協作。請檢查存取權限和工作區方案，然後重新開啟編輯器。",
   "collaboration.joinRetrying": "協作暫時無法使用，正在重試…",

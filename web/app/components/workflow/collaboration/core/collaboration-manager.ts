@@ -176,6 +176,8 @@ export class CollaborationManager {
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: ReactFlowStore | null = null
+  private getDraftHash: (() => string) | null = null
+  private waitingForDraftHash = false
   private isLeader = false
   private leaderId: string | null = null
   private onlineUsers: OnlineUser[] = []
@@ -260,8 +262,19 @@ export class CollaborationManager {
     this.emitGraphReadyState()
   }
 
-  private joinWorkflow(socket: Socket): void {
+  private isJoinBlocking(): boolean {
+    return this.waitingForDraftHash || this.joinPending || !!this.joinTimer || !!this.joinFailure
+  }
+
+  private joinWorkflow(socket: Socket, skipDraftHash = false): void {
     if (!this.currentAppId || !socket.connected) return
+    const draftHash = skipDraftHash ? undefined : this.getDraftHash?.()
+    if (!skipDraftHash && this.getDraftHash && !draftHash) {
+      this.waitingForDraftHash = true
+      this.emitGraphReadyState()
+      return
+    }
+    this.waitingForDraftHash = false
     this.cancelJoinAttempt()
     const attempt = this.joinAttempt
     this.joinPending = true
@@ -274,11 +287,15 @@ export class CollaborationManager {
     this.emitGraphReadyState()
     socket.emit(
       'user_connect',
-      { workflow_id: this.currentAppId },
+      { workflow_id: this.currentAppId, ...(draftHash ? { draft_hash: draftHash } : {}) },
       (body: unknown, status?: number) => {
         if (attempt !== this.joinAttempt || this.getActiveSocket() !== socket) return
         const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
-        if (status === 503 || message === 'collaboration_unavailable') {
+        if (message === 'draft_outdated') {
+          this.cancelJoinAttempt()
+          this.rejoinInProgress = false
+          this.setJoinFailure('draft_outdated')
+        } else if (status === 503 || message === 'collaboration_unavailable') {
           this.cancelJoinAttempt()
           this.setJoinFailure('retrying')
           const delay = Math.min(
@@ -287,7 +304,7 @@ export class CollaborationManager {
           )
           this.joinRetryCount += 1
           this.joinTimer = setTimeout(
-            () => this.joinWorkflow(socket),
+            () => this.joinWorkflow(socket, skipDraftHash),
             delay * (0.5 + Math.random() * 0.5),
           )
         } else if (isUnauthorizedAck(body, status)) {
@@ -307,7 +324,7 @@ export class CollaborationManager {
   }
 
   private handleSessionUnauthorized = (): void => {
-    if (this.rejoinInProgress || this.joinTimer || this.joinFailure) return
+    if (this.rejoinInProgress || this.isJoinBlocking()) return
     if (!this.currentAppId) return
 
     const socket = this.getActiveSocket()
@@ -315,6 +332,12 @@ export class CollaborationManager {
 
     this.rejoinInProgress = true
     this.joinWorkflow(socket)
+  }
+
+  resumeJoinWhenDraftReady(appId: string): void {
+    if (!this.waitingForDraftHash || this.currentAppId !== appId || !this.getDraftHash?.()) return
+    const socket = this.getActiveSocket()
+    if (socket?.connected) this.joinWorkflow(socket)
   }
 
   private sendCollaborationEvent(payload: CollaborationEventPayload): void {
@@ -730,7 +753,11 @@ export class CollaborationManager {
     return !this.isLeader || this.awaitingSnapshotImport
   }
 
-  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
+  async connect(
+    appId: string,
+    reactFlowStore?: ReactFlowStore,
+    getDraftHash?: () => string,
+  ): Promise<string> {
     const connectionId = Math.random().toString(36).substring(2, 11)
     if (this.targetAppId !== appId) {
       this.targetAppId = appId
@@ -746,6 +773,10 @@ export class CollaborationManager {
     if (this.currentAppId === appId && this.doc) {
       // Already connected to the same app, only update store if provided and we don't have one
       if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      if (getDraftHash) {
+        this.getDraftHash = getDraftHash
+        this.resumeJoinWhenDraftReady(appId)
+      }
       this.activeConnections.add(connectionId)
 
       return connectionId
@@ -759,6 +790,7 @@ export class CollaborationManager {
 
     this.hasEstablishedConnection = false
     this.currentAppId = appId
+    this.getDraftHash = getDraftHash ?? null
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
@@ -828,6 +860,8 @@ export class CollaborationManager {
     this.edgesMap = null
     this.currentAppId = null
     this.reactFlowStore = null
+    this.getDraftHash = null
+    this.waitingForDraftHash = false
     this.cursors = {}
     this.onlineUsers = []
     this.nodePanelPresence = {}
@@ -877,16 +911,12 @@ export class CollaborationManager {
 
   canRestoreGraphFromCrdt(): boolean {
     return (
-      !this.joinTimer &&
-      !this.joinFailure &&
-      this.crdtTrusted &&
-      !this.graphReloadRequired &&
-      this.doc !== null
+      !this.isJoinBlocking() && this.crdtTrusted && !this.graphReloadRequired && this.doc !== null
     )
   }
 
   canPersistLocalGraph(): boolean {
-    if (this.joinTimer || this.joinFailure) return false
+    if (this.isJoinBlocking()) return false
     if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
@@ -922,13 +952,7 @@ export class CollaborationManager {
   }
 
   canFlushGraphOnPageClose(): boolean {
-    if (
-      this.joinTimer ||
-      this.joinFailure ||
-      !this.crdtTrusted ||
-      this.graphReloadRequired ||
-      !this.isLeader
-    )
+    if (this.isJoinBlocking() || !this.crdtTrusted || this.graphReloadRequired || !this.isLeader)
       return false
     if (this.graphViewActive !== false) return true
 
@@ -962,8 +986,7 @@ export class CollaborationManager {
 
   isGraphReloadCurrent(request: GraphReloadRequest): boolean {
     return (
-      !this.joinTimer &&
-      !this.joinFailure &&
+      !this.isJoinBlocking() &&
       this.isLeader &&
       this.graphReloadRequired &&
       !this.crdtTrusted &&
@@ -2025,7 +2048,7 @@ export class CollaborationManager {
 
     socket.on('connect', () => {
       this.hasEstablishedConnection = true
-      this.joinWorkflow(socket)
+      const skipDraftHash = this.hasJoinedRoom && this.rebuildCrdtOnNextConnect
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
         this.rebuildCrdtOnNextConnect = false
@@ -2033,6 +2056,7 @@ export class CollaborationManager {
         this.awaitingSnapshotImport = false
         this.crdtTrusted = false
       }
+      this.joinWorkflow(socket, skipDraftHash)
       this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
       this.pendingInitialSync = true
