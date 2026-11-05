@@ -63,6 +63,22 @@ describe('ToolCallItem', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
+  it.each([0, false, ''])('reveals falsey JSON tool payload %j', async (payload) => {
+    const user = userEvent.setup()
+    render(
+      <ToolCallItem
+        toolCall={{ ...mockToolCall, tool_input: payload, tool_output: payload }}
+        isLLM={false}
+      />,
+    )
+
+    await user.click(screen.getByText('Test Tool Label'))
+
+    const editors = screen.getAllByRole('textbox')
+    expect(editors).toHaveLength(2)
+    for (const editor of editors) expect(editor).toHaveValue(JSON.stringify(payload))
+  })
+
   it('should display error message when status is error', async () => {
     const user = userEvent.setup()
     const errorToolCall = {
