@@ -6,6 +6,6 @@ export const testApiKeySchema: ProviderConfig[] = [
     type: 'secret-input',
     required: true,
     label: { en_US: 'share.connections.setup.apiKey' },
-    placeholder: { en_US: 'share.connections.apiKeys.newKeyPlaceholder' },
+    placeholder: { en_US: 'Enter API Key' },
   },
 ]
