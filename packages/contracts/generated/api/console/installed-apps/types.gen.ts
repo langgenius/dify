@@ -232,8 +232,6 @@ export type InstalledConnectionConfigurationPayload = {
   conversation_id?: string | null
 }
 
-export type InstalledConnectionCredentialSchemaResponse = Array<ProviderConfig>
-
 export type InstalledConnectionPreflightPayload = {
   connection_revision: string
   connections: {
@@ -777,20 +775,6 @@ export type EndUserConnectionResponse = {
   updated_at: number
 }
 
-export type ProviderConfig = {
-  default?: number | string | number | boolean | null
-  help?: I18nObject | null
-  label?: I18nObject | null
-  multiple?: boolean
-  name: string
-  options?: Array<Option> | null
-  placeholder?: I18nObject | null
-  required?: boolean
-  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: ProviderConfigType
-  url?: string | null
-}
-
 export type ConnectionPreflightStatus = {
   check: CredentialCheckResult | null
   connection_id: string | null
@@ -874,40 +858,6 @@ export type AppMode =
 export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
 
 export type ConnectionCredentialType = 'api-key' | 'oauth2'
-
-export type I18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
-}
-
-export type Option = {
-  label: I18nObject
-  value: string
-}
-
-export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
-
-export type ModelSelectorScope =
-  | 'llm'
-  | 'moderation'
-  | 'rerank'
-  | 'speech2text'
-  | 'text-embedding'
-  | 'tts'
-  | 'vision'
-
-export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
-
-export type ProviderConfigType =
-  | 'app-selector'
-  | 'array[tools]'
-  | 'boolean'
-  | 'model-selector'
-  | 'secret-input'
-  | 'select'
-  | 'text-input'
 
 export type CredentialCheckResult = {
   checked_at: number
@@ -1543,45 +1493,6 @@ export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses = 
 
 export type PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
   PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses[keyof PutInstalledAppsByInstalledAppIdConnectionsConfigurationResponses]
-
-export type GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaData = {
-  body?: never
-  path: {
-    installed_app_id: string
-  }
-  query: {
-    connection_revision: string
-    node_id: string
-  }
-  url: '/installed-apps/{installed_app_id}/connections/credential-schema'
-}
-
-export type GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaErrors = {
-  400:
-    | ConnectionConfigurationInvalidError
-    | ConnectionCredentialsInvalidError
-    | ConnectionRequiredError
-    | ErrorResponse
-  403: AccessDeniedError | ErrorResponse
-  404: ConnectionNotFoundError | InstalledAppNotFoundError | ErrorResponse
-  409:
-    | ConnectionConflictError
-    | ConnectionReauthorizationRequiredError
-    | ConnectionRevisionChangedError
-    | ErrorResponse
-  503: CredentialCheckUnavailableError | WebAppAccessUnavailableError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaError =
-  GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaErrors[keyof GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaErrors]
-
-export type GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponses = {
-  200: InstalledConnectionCredentialSchemaResponse
-}
-
-export type GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse =
-  GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponses[keyof GetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponses]
 
 export type PostInstalledAppsByInstalledAppIdConnectionsPreflightData = {
   body: InstalledConnectionPreflightPayload

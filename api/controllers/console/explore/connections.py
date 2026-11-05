@@ -6,7 +6,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from context.connection_execution import WorkspaceConnectionScope
 from controllers.common.connection_fields import ConnectionConfigurationResponse, EndUserConnectionListResponse
@@ -26,13 +26,12 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
-from core.entities.provider_entities import ProviderConfig
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import document_errors
 from libs.helper import dump_response
 from machinery.context import RequestContext
-from services.end_user_connections.contracts import ConnectionTargetInput, ListConnectionsInput
+from services.end_user_connections.contracts import ListConnectionsInput
 from services.end_user_connections.errors import ConnectionError
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightView
 from services.end_user_connections.selections import SaveConnectionConfigurationInput
@@ -95,17 +94,12 @@ class InstalledConnectionPreflightResponse(ConnectionPreflightView, ResponseMode
     pass
 
 
-class InstalledConnectionCredentialSchemaResponse(RootModel[list[ProviderConfig]]):
-    pass
-
-
 register_schema_models(console_ns, InstalledConnectionPreflightPayload, InstalledConnectionConfigurationPayload)
 register_response_schema_models(
     console_ns,
     EndUserConnectionListResponse,
     ConnectionConfigurationResponse,
     InstalledConnectionPreflightResponse,
-    InstalledConnectionCredentialSchemaResponse,
 )
 
 
@@ -183,18 +177,3 @@ class InstalledConnectionPreflightApi(Resource):
             _scope(request_context, installed_app), command
         )
         return dump_response(InstalledConnectionPreflightResponse, result)
-
-
-@console_ns.route("/installed-apps/<uuid:installed_app_id>/connections/credential-schema")
-class InstalledConnectionCredentialSchemaApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ConnectionTargetInput))
-    @console_ns.response(200, "API-key schema", console_ns.models[InstalledConnectionCredentialSchemaResponse.__name__])
-    @console_account_admission()
-    @get_installed_app
-    @installed_connection_errors
-    def get(self, request_context: RequestContext, installed_app: InstalledAppRef):
-        query = ConnectionTargetInput.model_validate(request.args.to_dict(flat=True))
-        result = application_services().installed_apps.connections.credential_schema(
-            _scope(request_context, installed_app), query
-        )
-        return dump_response(InstalledConnectionCredentialSchemaResponse, result), 200, {"Cache-Control": "no-store"}

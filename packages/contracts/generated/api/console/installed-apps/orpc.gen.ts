@@ -50,9 +50,6 @@ import {
   zGetInstalledAppsByInstalledAppIdConnectionsConfigurationPath,
   zGetInstalledAppsByInstalledAppIdConnectionsConfigurationQuery,
   zGetInstalledAppsByInstalledAppIdConnectionsConfigurationResponse,
-  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaPath,
-  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaQuery,
-  zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse,
   zGetInstalledAppsByInstalledAppIdConnectionsPath,
   zGetInstalledAppsByInstalledAppIdConnectionsQuery,
   zGetInstalledAppsByInstalledAppIdConnectionsResponse,
@@ -361,42 +358,6 @@ export const configuration = {
   put,
 }
 
-export const get2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getInstalledAppsByInstalledAppIdConnectionsCredentialSchema',
-    path: '/installed-apps/{installed_app_id}/connections/credential-schema',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaPath,
-      query: zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaQuery,
-    }),
-  )
-  .output(zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse)
-  .errors({
-    access_denied: { status: 403, data: zAccessDeniedError },
-    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-    connection_conflict: { status: 409, data: zConnectionConflictError },
-    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
-    connection_not_found: { status: 404, data: zConnectionNotFoundError },
-    connection_reauthorization_required: {
-      status: 409,
-      data: zConnectionReauthorizationRequiredError,
-    },
-    connection_required: { status: 400, data: zConnectionRequiredError },
-    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
-    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
-    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
-  })
-
-export const credentialSchema = {
-  get: get2,
-}
-
 /**
  * Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.
  */
@@ -441,7 +402,7 @@ export const preflight = {
 /**
  * List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.
  */
-export const get3 = oc
+export const get2 = oc
   .route({
     description:
       'List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.',
@@ -476,9 +437,8 @@ export const get3 = oc
   })
 
 export const connections = {
-  get: get3,
+  get: get2,
   configuration,
-  credentialSchema,
   preflight,
 }
 
@@ -584,7 +544,7 @@ export const byCId = {
   unpin,
 }
 
-export const get4 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -608,7 +568,7 @@ export const get4 = oc
   })
 
 export const conversations = {
-  get: get4,
+  get: get3,
   byCId,
 }
 
@@ -639,7 +599,7 @@ export const feedbacks = {
   post: post8,
 }
 
-export const get5 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -669,10 +629,10 @@ export const get5 = oc
   })
 
 export const moreLikeThis = {
-  get: get5,
+  get: get4,
 }
 
-export const get6 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -705,7 +665,7 @@ export const get6 = oc
   })
 
 export const suggestedQuestions = {
-  get: get6,
+  get: get5,
 }
 
 export const byMessageId = {
@@ -714,7 +674,7 @@ export const byMessageId = {
   suggestedQuestions,
 }
 
-export const get7 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -739,14 +699,14 @@ export const get7 = oc
   })
 
 export const messages = {
-  get: get7,
+  get: get6,
   byMessageId,
 }
 
 /**
  * Get app meta
  */
-export const get8 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -765,13 +725,13 @@ export const get8 = oc
   })
 
 export const meta = {
-  get: get8,
+  get: get7,
 }
 
 /**
  * Retrieve app parameters
  */
-export const get9 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -790,7 +750,7 @@ export const get9 = oc
   })
 
 export const parameters = {
-  get: get9,
+  get: get8,
 }
 
 export const delete2 = oc
@@ -815,7 +775,7 @@ export const byMessageId2 = {
   delete: delete2,
 }
 
-export const get10 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -860,7 +820,7 @@ export const post9 = oc
   })
 
 export const savedMessages = {
-  get: get10,
+  get: get9,
   post: post9,
   byMessageId: byMessageId2,
 }
@@ -984,7 +944,7 @@ export const workflows = {
   tasks,
 }
 
-export const get11 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1023,7 +983,7 @@ export const patch3 = oc
   })
 
 export const byInstalledAppId = {
-  get: get11,
+  get: get10,
   patch: patch3,
   audioToText,
   chatMessages,
@@ -1038,7 +998,7 @@ export const byInstalledAppId = {
   workflows,
 }
 
-export const get12 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1054,7 +1014,7 @@ export const get12 = oc
   })
 
 export const installedApps = {
-  get: get12,
+  get: get11,
   byInstalledAppId,
 }
 

@@ -162,5 +162,4 @@ class WorkspaceTestCredentialGateway:
             credential_type=record.credential_type.value,
             credentials=dict(tool.runtime.credentials),
             check=TestCredentialCheck(status=result.status, reason_code=result.reason_code, retryable=result.retryable),
-            checked_at=result.checked_at,
         )

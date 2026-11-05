@@ -1166,86 +1166,6 @@ export const zInstalledAppParametersResponse = z.object({
 })
 
 /**
- * I18nObject
- *
- * Model class for i18n object.
- */
-export const zI18nObject = z.object({
-  en_US: z.string(),
-  ja_JP: z.string().nullish(),
-  pt_BR: z.string().nullish(),
-  zh_Hans: z.string().nullish(),
-})
-
-/**
- * Option
- */
-export const zOption = z.object({
-  label: zI18nObject,
-  value: z.string(),
-})
-
-/**
- * AppSelectorScope
- */
-export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
-
-/**
- * ModelSelectorScope
- */
-export const zModelSelectorScope = z.enum([
-  'llm',
-  'moderation',
-  'rerank',
-  'speech2text',
-  'text-embedding',
-  'tts',
-  'vision',
-])
-
-/**
- * ToolSelectorScope
- */
-export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
-
-/**
- * ProviderConfigType
- */
-export const zProviderConfigType = z.enum([
-  'app-selector',
-  'array[tools]',
-  'boolean',
-  'model-selector',
-  'secret-input',
-  'select',
-  'text-input',
-])
-
-/**
- * ProviderConfig
- *
- * Model class for common provider settings like credentials
- */
-export const zProviderConfig = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
-  help: zI18nObject.nullish(),
-  label: zI18nObject.nullish(),
-  multiple: z.boolean().optional().default(false),
-  name: z.string(),
-  options: z.array(zOption).nullish(),
-  placeholder: zI18nObject.nullish(),
-  required: z.boolean().optional().default(false),
-  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zProviderConfigType,
-  url: z.string().nullish(),
-})
-
-/**
- * InstalledConnectionCredentialSchemaResponse
- */
-export const zInstalledConnectionCredentialSchemaResponse = z.array(zProviderConfig)
-
-/**
  * CredentialCheckResult
  */
 export const zCredentialCheckResult = z.object({
@@ -1826,21 +1746,6 @@ export const zPutInstalledAppsByInstalledAppIdConnectionsConfigurationPath = z.o
  */
 export const zPutInstalledAppsByInstalledAppIdConnectionsConfigurationResponse =
   zConnectionConfigurationResponse
-
-export const zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-export const zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaQuery = z.object({
-  connection_revision: z.uuid(),
-  node_id: z.string().min(1).max(255),
-})
-
-/**
- * API-key schema
- */
-export const zGetInstalledAppsByInstalledAppIdConnectionsCredentialSchemaResponse =
-  zInstalledConnectionCredentialSchemaResponse
 
 export const zPostInstalledAppsByInstalledAppIdConnectionsPreflightBody =
   zInstalledConnectionPreflightPayload

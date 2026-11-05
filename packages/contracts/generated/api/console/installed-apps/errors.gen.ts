@@ -421,23 +421,6 @@ export const putErrors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get2Errors = {
-  access_denied: { status: 403, data: zAccessDeniedError },
-  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-  connection_conflict: { status: 409, data: zConnectionConflictError },
-  connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
-  connection_not_found: { status: 404, data: zConnectionNotFoundError },
-  connection_reauthorization_required: {
-    status: 409,
-    data: zConnectionReauthorizationRequiredError,
-  },
-  connection_required: { status: 400, data: zConnectionRequiredError },
-  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
-  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
-  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
-}
-
 export const post6Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
@@ -455,7 +438,7 @@ export const post6Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get3Errors = {
+export const get2Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_conflict: { status: 409, data: zConnectionConflictError },
@@ -509,7 +492,7 @@ export const delete_Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get4Errors = {
+export const get3Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -525,7 +508,7 @@ export const post8Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get5Errors = {
+export const get4Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -539,7 +522,7 @@ export const get5Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get6Errors = {
+export const get5Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
@@ -557,7 +540,7 @@ export const get6Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get7Errors = {
+export const get6Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   conversation_not_found: { status: 404, data: zConversationNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -566,14 +549,14 @@ export const get7Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get8Errors = {
+export const get7Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get9Errors = {
+export const get8Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
@@ -587,7 +570,7 @@ export const delete2Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get10Errors = {
+export const get9Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
@@ -644,7 +627,7 @@ export const post12Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get11Errors = {
+export const get10Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   installed_app_unavailable: { status: 404, data: zInstalledAppUnavailableError },
@@ -657,7 +640,7 @@ export const patch3Errors = {
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 
-export const get12Errors = {
+export const get11Errors = {
   invalid_cursor: { status: 400, data: zInvalidCursorError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }

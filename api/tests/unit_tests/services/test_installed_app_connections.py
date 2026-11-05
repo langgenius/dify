@@ -21,7 +21,6 @@ from models.workflow import Workflow, WorkflowType
 from repositories.installed_app_connection_repository import SQLAlchemyInstalledConnectionRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_definition_query_service import AppDefinitionQueryService
-from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionIdentityError,
@@ -33,7 +32,6 @@ from services.end_user_connections.selections import SaveConnectionConfiguration
 from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_connections import InstalledAppConnectionService, InstalledConnectionConfiguration
-from services.workflow_test_credential_adapters import DraftTestCredentialPlanner
 from services.workflow_test_credentials import ResolvedTestCredential
 from services.workflow_test_credentials import TestCredentialCheck as CredentialCheck
 from services.workflow_test_credentials import TestCredentialUnavailableError as Unavailable
@@ -135,9 +133,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]):
         store=store,
         access=access,
         definitions=definitions,
-        planner=DraftTestCredentialPlanner(),
         credentials=gateway,
-        providers=create_autospec(PluginApiKeyCredentialGateway, instance=True),
     )
     return SimpleNamespace(
         service=service,
@@ -389,69 +385,6 @@ def test_store_save_rejects_cross_provider_and_stale_graph(harness):
         )
 
 
-@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-def test_streaming_dispatch_carries_validated_scope_but_not_request_overrides(harness, monkeypatch, mode):
-    from unittest.mock import Mock
-
-    import services.app_generate_service as generation
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from extensions import ext_application_services
-    from services.app_generate_service import AppGenerateService
-    from tasks.app_generate.workflow_execute_task import AppExecutionParams
-
-    if mode == AppMode.WORKFLOW:
-        with harness.sessions.begin() as session:
-            session.execute(update(App).where(App.id == harness.app.id).values(mode=mode))
-            session.execute(
-                update(Workflow).where(Workflow.id == harness.workflow.id).values(type=WorkflowType.WORKFLOW)
-            )
-        harness.app.mode = mode
-        harness.workflow.type = WorkflowType.WORKFLOW
-    monkeypatch.setattr(
-        ext_application_services,
-        "application_services",
-        lambda: SimpleNamespace(installed_apps=SimpleNamespace(connections=harness.service)),
-    )
-    load_workflow = Mock(return_value=harness.workflow)
-    monkeypatch.setattr(AppGenerateService, "_get_workflow", load_workflow)
-    new_payload = Mock(wraps=AppExecutionParams.new)
-    monkeypatch.setattr(AppExecutionParams, "new", new_payload)
-    for generator in (
-        generation.AdvancedChatAppGenerator,
-        generation.MessageBasedAppGenerator,
-    ):
-        monkeypatch.setattr(generator, "retrieve_events", Mock(return_value=iter(())))
-    rate_limit = Mock()
-    rate_limit.enter.return_value = "request"
-    rate_limit.generate.side_effect = lambda source, *_args, **_kwargs: source
-    with harness.sessions() as session:
-        AppGenerateService._dispatch_generate(
-            app_model=harness.app,
-            user=harness.account,
-            args={
-                "inputs": {},
-                "query": "Run",
-                "connection_revision": harness.revision,
-                "connections": {"root": harness.credential.id},
-                "workflow_id": "must-be-ignored",
-                "_installed_app_id": harness.scope.installed_app_id,
-                "_installed_workspace_id": harness.scope.tenant_id,
-            },
-            invoke_from=InvokeFrom.EXPLORE,
-            streaming=True,
-            root_node_id=None,
-            session=session,
-            rate_limit=rate_limit,
-            request_id="request",
-        )
-    assert load_workflow.call_args.args[2] is None
-    sent = new_payload.call_args.kwargs
-    assert sent["connection_context"].workspace == harness.scope
-    assert sent["connection_context"].selections[0].connection_id == harness.credential.id
-    assert sent["args"] == {"inputs": {}, "query": "Run"}
-    assert sent["invoke_from"] == InvokeFrom.EXPLORE
-
-
 def test_worker_rejects_installed_end_user_run_without_execution_context(harness):
     from unittest.mock import Mock
 
@@ -479,17 +412,3 @@ def test_missing_connection_payload_is_configuration_error_not_login_failure(har
         prepare_installed_connection_execution(
             app=harness.app, user=harness.account, workflow=harness.workflow, args={"inputs": {}}
         )
-
-
-def test_cross_workspace_installation_cannot_borrow_owner_connections(harness):
-    foreign = Tenant(name="Installing workspace")
-    with harness.sessions.begin() as session:
-        session.add_all(
-            [foreign, TenantAccountJoin(tenant_id=foreign.id, account_id=harness.account.id, role="normal")]
-        )
-        session.execute(
-            update(InstalledApp).where(InstalledApp.id == harness.scope.installed_app_id).values(tenant_id=foreign.id)
-        )
-    scope = harness.scope.model_copy(update={"tenant_id": foreign.id})
-    with pytest.raises(ConnectionConfigurationError):
-        harness.service.list_connections(scope, provider=None, cursor=None, limit=20)

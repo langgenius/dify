@@ -14,7 +14,6 @@ from repositories.installed_app_message_repository import SQLAlchemyInstalledApp
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.conversation_service import ConversationService
-from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_connections import InstalledAppConnectionService
 from services.installed_app_conversation_service import InstalledAppConversationService
@@ -24,7 +23,7 @@ from services.installed_app_message_adapters import InstalledAppMessageRuntime, 
 from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
 from services.webapp_access_query_service import WebAppAccessQueryService
-from services.workflow_test_credential_adapters import DraftTestCredentialPlanner, WorkspaceTestCredentialGateway
+from services.workflow_test_credential_adapters import WorkspaceTestCredentialGateway
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,8 +69,6 @@ def build_installed_app_services(
             store=SQLAlchemyInstalledConnectionRepository(session_factory=database_client),
             access=access,
             definitions=app_definitions,
-            planner=DraftTestCredentialPlanner(),
-            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
             credentials=WorkspaceTestCredentialGateway(
                 queries=CredentialQueryRepository(session_factory=database_client),
                 auth=PluginCredentialAuthClient(),

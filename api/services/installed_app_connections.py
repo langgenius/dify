@@ -2,8 +2,6 @@
 
 Transport vocabulary matches Web Apps; ownership and execution are deliberately
 separate. Saved selections never grant access and never contain credential values.
-Workspace selection is limited to installations in the App owner's Workspace;
-cross-Workspace installations cannot borrow the owner's credential namespace.
 """
 
 import time
@@ -18,11 +16,9 @@ from context.connection_execution import (
     ExecutionConnectionSelection,
     WorkspaceConnectionScope,
 )
-from core.entities.provider_entities import ProviderConfig
 from models.provider_ids import ToolProviderID
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
-from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
-from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ConnectionTargetInput
+from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -47,11 +43,11 @@ from services.installed_app_access_service import (
     InstalledAppRef,
 )
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_test_credential_adapters import DraftTestCredentialPlanner
 from services.workflow_test_credentials import (
     BuilderScope,
     ResolvedTestCredential,
     TestCredentialGateway,
-    TestCredentialPlanner,
     TestCredentialRequirement,
     TestCredentialUnavailableError,
 )
@@ -99,16 +95,13 @@ class InstalledAppConnectionService:
         store: InstalledConnectionStore,
         access: InstalledAppAccessService,
         definitions: AppDefinitionQueryService,
-        planner: TestCredentialPlanner,
         credentials: TestCredentialGateway,
-        providers: PluginApiKeyCredentialGateway,
     ) -> None:
         self._store = store
         self._access = access
         self._definitions = definitions
-        self._planner = planner
+        self._planner = DraftTestCredentialPlanner()
         self._credentials = credentials
-        self._providers = providers
 
     def _requirements(
         self, graph: Mapping[str, Any], node_id: str | None = None
@@ -118,36 +111,17 @@ class InstalledAppConnectionService:
             for item in self._planner.requirements(graph, node_id)
         )
 
-    def credential_schema(
-        self, scope: WorkspaceConnectionScope, query: ConnectionTargetInput
-    ) -> tuple[ProviderConfig, ...]:
-        graph = self._graph(scope)
-        self._require_revision(graph, query.connection_revision)
-        parameters = self._parameters(graph)
-        requirement = next(
-            (item for item in parameters["connection_requirements"] if item.node_id == query.node_id), None
-        )
-        if requirement is None or "api-key" not in requirement.allowed_credential_types:
-            raise ConnectionConfigurationError()
-        result = self._providers.get_schema(
-            scope.tenant_id, requirement.provider, plugin_unique_identifier=requirement.plugin_unique_identifier
-        )
-        self._require_revision(graph, query.connection_revision)
-        return result
-
     def _graph(
         self, scope: WorkspaceConnectionScope, *, workflow_id: str | None = None, conversation_id: str | None = None
     ) -> InstalledConnectionGraph:
         try:
-            installation = self._access.get_access(
+            self._access.get_access(
                 installed_app_id=scope.installed_app_id, tenant_id=scope.tenant_id, account_id=scope.account_id
             )
         except (InstalledAppAccessDeniedError, InstalledAppNotFoundError):
             raise ConnectionIdentityError() from None
         except WebAppAccessUnavailableError:
             raise ConnectionCheckUnavailableError() from None
-        if installation.app_owner_tenant_id != scope.tenant_id:
-            raise ConnectionConfigurationError()
         return self._store.graph(scope, workflow_id=workflow_id, conversation_id=conversation_id)
 
     def _parameters(self, graph: InstalledConnectionGraph) -> Mapping[str, Any]:
@@ -248,7 +222,7 @@ class InstalledAppConnectionService:
                         BuilderScope(scope.tenant_id, graph.installation.app_id, scope.account_id), requirement
                     )
                     check = CredentialCheckResult.model_validate(
-                        {**resolved.check.model_dump(), "checked_at": resolved.checked_at or int(time.time())}
+                        {**resolved.check.model_dump(), "checked_at": int(time.time())}
                     )
                     status = "connected" if check.status in {"valid", "unsupported"} else check.status
                     if check.status == "invalid" and check.reason_code in {"credential_expired", "credential_revoked"}:
@@ -390,7 +364,6 @@ class InstalledAppConnectionService:
         )
         if graph != current.graph:
             raise ConnectionRevisionChangedError()
-        self._require_revision(current, context.connection_revision)
         selected = {item.node_id: item.connection_id for item in context.selections}
         requirements = self._requirements(graph, node_id)
         if len(requirements) != 1:

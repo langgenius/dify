@@ -29,7 +29,6 @@ def transport(harness, monkeypatch: pytest.MonkeyPatch):
         (module.InstalledConnectionsApi, ""),
         (module.InstalledConnectionConfigurationApi, "/configuration"),
         (module.InstalledConnectionPreflightApi, "/preflight"),
-        (module.InstalledConnectionCredentialSchemaApi, "/credential-schema"),
     ):
         harness.api.add_resource(resource, prefix + suffix)
     now = datetime(2026, 11, 4)
@@ -60,7 +59,6 @@ def transport(harness, monkeypatch: pytest.MonkeyPatch):
             ),
         ),
     )
-    connections.credential_schema.return_value = ()
     return SimpleNamespace(
         harness=harness,
         service=connections,
@@ -129,24 +127,12 @@ def test_preflight_uses_webapp_request_and_response_contract(transport):
     assert str(transport.service.preflight.call_args.args[1].connections["root"]) == transport.summary.id
 
 
-def test_schema_uses_node_and_revision_and_is_not_cacheable(transport):
-    response = transport.client.get(
-        transport.url + "/credential-schema",
-        query_string={"connection_revision": transport.revision, "node_id": "root"},
-    )
-    assert response.status_code == 200
-    assert response.get_json() == []
-    assert response.headers["Cache-Control"] == "no-store"
-
-
-@pytest.mark.parametrize("suffix", ["", "/configuration", "/credential-schema"])
-def test_queries_require_console_admission_before_connection_lookup(transport, suffix):
+def test_queries_require_console_admission_before_connection_lookup(transport):
     transport.harness.state.allowed = False
-    response = transport.client.get(transport.url + suffix)
+    response = transport.client.get(transport.url)
     assert response.status_code == 403
     transport.service.list_connections.assert_not_called()
     transport.service.configuration.assert_not_called()
-    transport.service.credential_schema.assert_not_called()
 
 
 def test_changed_revision_preserves_webapp_error_shape(transport):
@@ -159,15 +145,10 @@ def test_changed_revision_preserves_webapp_error_shape(transport):
     assert response.get_json()["details"] == {"connection_revision": transport.revision}
 
 
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {"connections": {}},
-        {"connection_revision": "not-a-revision", "connections": {}},
-        {"connections": {"root": "not-a-credential"}},
-    ],
-)
-def test_invalid_preflight_payload_is_rejected_before_service(transport, payload):
-    response = transport.client.post(transport.url + "/preflight", json=payload)
+def test_invalid_preflight_payload_is_rejected_before_service(transport):
+    response = transport.client.post(
+        transport.url + "/preflight",
+        json={"connection_revision": transport.revision, "connections": {"root": "not-a-credential"}},
+    )
     assert response.status_code == 400
     transport.service.preflight.assert_not_called()
