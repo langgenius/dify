@@ -12,6 +12,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Spinner } from '@langgenius/dify-ui/spinner'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ApiKeyDialog from './api-key-dialog'
@@ -95,7 +96,10 @@ export default function ConfigureConnectionsDialog({
       <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle tabIndex={-1} ref={configurationTitleRef}>
-            {t(($) => $['connections.configure.title'], { ns: 'share' })}
+            <span className="flex items-center gap-2">
+              {loadState?.loading && <Spinner aria-label={t(($) => $.loading, { ns: 'common' })} />}
+              {t(($) => $['connections.configure.title'], { ns: 'share' })}
+            </span>
           </DialogTitle>
           {isResponding && (
             <DialogDescription>
@@ -119,7 +123,7 @@ export default function ConfigureConnectionsDialog({
               onRequestAddApiKey={requestAddApiKey}
               onRemove={onRemove}
             />
-            {loadState && <ConnectionLoadState {...loadState} />}
+            {loadState && <ConnectionLoadState {...loadState} loading={false} />}
           </div>
         </DialogBody>
       </DialogContent>

@@ -143,7 +143,8 @@ describe('Webapp connection setup and controls', () => {
     const view = render(tree(current, { onStart }))
     const start = screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' })
 
-    expect(start).toBeDisabled()
+    expect(start).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText('common.loading', { exact: true })).not.toBeInTheDocument()
     await user.click(start)
     expect(onStart).not.toHaveBeenCalled()
     view.rerender(

@@ -217,6 +217,8 @@ it('saves a workspace selection for the current conversation and waits for fresh
   })
   await expect.element(start).toBeDisabled()
   await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  await expect.element(screen.getByText('common.loading', { exact: true })).not.toBeInTheDocument()
+  expect(mocks.start).not.toHaveBeenCalled()
   check.resolve({
     connection_revision: 'published-revision',
     ready: true,

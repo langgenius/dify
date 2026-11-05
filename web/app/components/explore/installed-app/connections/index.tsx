@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { Spinner } from '@langgenius/dify-ui/spinner'
 import { useQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -118,11 +119,7 @@ function InstalledConnectionList({
           />
         ))}
       </ul>
-      <ConnectionLoadState
-        loading={state.status === 'loading' || state.checking}
-        error={!!state.error}
-        onRetry={state.error ? state.retry : undefined}
-      />
+      <ConnectionLoadState error={!!state.error} onRetry={state.error ? state.retry : undefined} />
     </>
   )
 }
@@ -157,7 +154,7 @@ export function InstalledConnectionSetup({
         variant="primary"
         size="large"
         disabled={!state.canConfirm || isResponding}
-        loading={state.isMutating}
+        loading={state.isMutating || state.status === 'loading' || state.checking}
         onClick={async () => {
           if (await state.confirmSelection()) onStart()
         }}
@@ -178,7 +175,14 @@ export function InstalledConnectionControls({ isResponding = false }: { isRespon
       <DialogTrigger render={<ConfigureConnectionsButton warningCount={state.warningCount} />} />
       <DialogContent className="w-160">
         <DialogHeader>
-          <DialogTitle>{t(($) => $['connections.configure.title'], { ns: 'share' })}</DialogTitle>
+          <DialogTitle>
+            <span className="flex items-center gap-2">
+              {(state.status === 'loading' || state.checking || state.isMutating) && (
+                <Spinner aria-label={t(($) => $.loading, { ns: 'common' })} />
+              )}
+              {t(($) => $['connections.configure.title'], { ns: 'share' })}
+            </span>
+          </DialogTitle>
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="space-y-3">

@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { Spinner } from '@langgenius/dify-ui/spinner'
 import { useQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -118,7 +119,6 @@ function TestConnectionList({
         ))}
       </ul>
       <ConnectionLoadState
-        loading={connections.checking}
         error={connections.error}
         onRetry={
           connections.error
@@ -133,11 +133,12 @@ function TestConnectionList({
 }
 
 export function TestConnectionSetup({ connections, isResponding }: TestConnectionsProps) {
-  const { t } = useTranslation(['share', 'plugin'])
+  const { t } = useTranslation(['share', 'plugin', 'common'])
   const titleId = useId()
   return (
     <section aria-labelledby={titleId} className="w-full max-w-140">
-      <h2 id={titleId} className="title-xl-semi-bold text-text-primary">
+      <h2 id={titleId} className="flex items-center gap-2 title-xl-semi-bold text-text-primary">
+        {connections.checking && <Spinner aria-label={t(($) => $.loading, { ns: 'common' })} />}
         {t(($) => $['connections.configure.title'], { ns: 'share' })}
       </h2>
       <p className="mt-2 system-xs-regular text-text-tertiary">
@@ -167,7 +168,14 @@ export default function TestConnections({
       )}
       <DialogContent className="w-160">
         <DialogHeader>
-          <DialogTitle>{t(($) => $['connections.configure.title'], { ns: 'share' })}</DialogTitle>
+          <DialogTitle>
+            <span className="flex items-center gap-2">
+              {connections.checking && (
+                <Spinner aria-label={t(($) => $.loading, { ns: 'common' })} />
+              )}
+              {t(($) => $['connections.configure.title'], { ns: 'share' })}
+            </span>
+          </DialogTitle>
           <DialogDescription>
             {t(($) => $['auth.appUser.testConnectionDescription'], { ns: 'plugin' })}
           </DialogDescription>

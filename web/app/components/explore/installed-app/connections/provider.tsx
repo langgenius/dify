@@ -33,13 +33,14 @@ function useConnectionData({
   reloadParameters: () => void
 }) {
   const queryClient = useQueryClient()
-  const activeSessionRef = useRef(false)
+  const scope = JSON.stringify([installedAppId, conversationId, parameters?.connection_revision])
+  const activeScopeRef = useRef<string | null>(scope)
   useEffect(() => {
-    activeSessionRef.current = true
+    activeScopeRef.current = scope
     return () => {
-      activeSessionRef.current = false
+      activeScopeRef.current = null
     }
-  }, [])
+  }, [scope])
   const params = { installed_app_id: installedAppId }
   const api = consoleQuery.installedApps.byInstalledAppId.connections
   const requirements = parameters?.connection_requirements ?? []
@@ -65,6 +66,10 @@ function useConnectionData({
         ? (cursor: string | undefined) => ({ params, query: { limit: 100, cursor } })
         : skipToken,
       initialPageParam: undefined as string | undefined,
+      queryKey: [
+        ...api.get.key({ type: 'infinite', input: { params, query: { limit: 100 } } }),
+        revision,
+      ],
       getNextPageParam: (page, _pages, cursor, cursors) => {
         const next = page.has_more ? page.next_cursor : null
         return next && next !== cursor && !cursors.includes(next) ? next : undefined
@@ -94,11 +99,27 @@ function useConnectionData({
   const save = useMutation(
     api.configuration.put.mutationOptions({
       context: { silent: true },
-      onSuccess: (result) => {
-        queryClient.setQueryData(configurationKey, result)
+      onSuccess: (result, variables) => {
+        const input = {
+          params: variables.params,
+          query: { conversation_id: variables.body.conversation_id ?? undefined },
+        }
+        const savedConfiguration = api.configuration.get.queryOptions({
+          input,
+          queryKey: [
+            ...api.configuration.get.queryKey({ input }),
+            variables.body.connection_revision,
+          ],
+        })
+        queryClient.setQueryData(savedConfiguration.queryKey, result)
       },
     }),
   )
+  const currentSave =
+    save.variables?.params.installed_app_id === installedAppId &&
+    (save.variables.body.conversation_id ?? undefined) === conversationId &&
+    save.variables.body.connection_revision === revision
+  const saving = currentSave && save.isPending
   const preflightInput = body ? { params, body } : skipToken
   const check = useQuery(
     api.preflight.post.queryOptions({
@@ -113,7 +134,7 @@ function useConnectionData({
         !configuration.isFetching &&
         list.isSuccess &&
         !list.hasNextPage &&
-        !save.isPending,
+        !saving,
       context: { silent: true },
       retry: false,
       refetchOnWindowFocus: false,
@@ -123,7 +144,7 @@ function useConnectionData({
     }),
   )
   const checking = check.isFetching
-  const preflight = !save.isPending && !checking && !check.error ? (check.data ?? null) : null
+  const preflight = !saving && !checking && !check.error ? (check.data ?? null) : null
   const ready =
     preflight?.ready === true &&
     preflight.connections.length === requirements.length &&
@@ -136,7 +157,12 @@ function useConnectionData({
           item.connection_id === selections[node_id],
       ),
     )
-  const error = parametersError ?? configuration.error ?? list.error ?? save.error ?? check.error
+  const error =
+    parametersError ??
+    configuration.error ??
+    list.error ??
+    (currentSave ? save.error : null) ??
+    check.error
   let status: 'inactive' | 'loading' | 'error' | 'ready'
   if (error) status = 'error'
   else if (!parameters) status = 'loading'
@@ -147,7 +173,7 @@ function useConnectionData({
   const canConfirm =
     status === 'ready' &&
     ready &&
-    !save.isPending &&
+    !saving &&
     !checking &&
     !configuration.isFetching &&
     !list.isFetching
@@ -163,7 +189,7 @@ function useConnectionData({
       if (!body || !canConfirm) return false
       try {
         await save.mutateAsync({ params, body })
-        return true
+        return activeScopeRef.current === scope
       } catch {
         return false
       }
@@ -173,7 +199,7 @@ function useConnectionData({
     credentials,
     preflight,
     selections,
-    isMutating: save.isPending || list.isFetching,
+    isMutating: saving || list.isFetching,
     checking,
     warningCount: requirements.filter(
       ({ node_id }) =>
@@ -183,18 +209,18 @@ function useConnectionData({
         ),
     ).length,
     onSelect: async (nodeId: string, credentialId: string) => {
-      if (!body || save.isPending || configuration.isFetching || status !== 'ready') return
+      if (!body || saving || configuration.isFetching || status !== 'ready') return
       const requirement = requirements.find((item) => item.node_id === nodeId)
       let credential = credentials.find((item) => item.id === credentialId)
       if (!credential) {
         let refreshed = await list.refetch()
-        while (refreshed.data && !refreshed.isError && activeSessionRef.current) {
+        while (refreshed.data && !refreshed.isError && activeScopeRef.current === scope) {
           const lastPage = refreshed.data.pages.at(-1)
           const nextCursor = lastPage?.has_more ? lastPage.next_cursor : null
           if (!nextCursor || refreshed.data.pageParams.includes(nextCursor)) break
           refreshed = await list.fetchNextPage()
         }
-        if (!activeSessionRef.current || refreshed.isError) return
+        if (activeScopeRef.current !== scope || refreshed.isError) return
         credential = refreshed.data?.pages
           .flatMap((page) => page.data)
           .find((item) => item.id === credentialId)
@@ -225,14 +251,6 @@ function useConnectionData({
 
 export type InstalledAppConnectionsState = ReturnType<typeof useConnectionData>
 
-function ConnectionSession({
-  children,
-  ...props
-}: Props & Parameters<typeof useConnectionData>[0]) {
-  const state = useConnectionData(props)
-  return <InstalledAppConnectionsContext value={state}>{children}</InstalledAppConnectionsContext>
-}
-
 export function InstalledAppConnectionsProvider({
   installedAppId,
   conversationId,
@@ -243,18 +261,14 @@ export function InstalledAppConnectionsProvider({
       input: { params: { installed_app_id: installedAppId } },
     }),
   )
-  return (
-    <ConnectionSession
-      key={`${installedAppId}:${conversationId ?? ''}:${parameters.data?.connection_revision ?? ''}`}
-      installedAppId={installedAppId}
-      conversationId={conversationId}
-      parameters={parameters.data}
-      parametersError={parameters.error}
-      reloadParameters={() => {
-        void parameters.refetch()
-      }}
-    >
-      {children}
-    </ConnectionSession>
-  )
+  const state = useConnectionData({
+    installedAppId,
+    conversationId,
+    parameters: parameters.data,
+    parametersError: parameters.error,
+    reloadParameters: () => {
+      void parameters.refetch()
+    },
+  })
+  return <InstalledAppConnectionsContext value={state}>{children}</InstalledAppConnectionsContext>
 }
