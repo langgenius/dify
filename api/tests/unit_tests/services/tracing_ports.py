@@ -1,7 +1,9 @@
 """In-memory tracing ports for tests; every other collaborator stays real."""
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, override
+
+# This registry holds providers with different configuration model types.
+from typing import TYPE_CHECKING, Any, Literal, override  # noqa: TID251
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_trace_sdk.egress import Egress

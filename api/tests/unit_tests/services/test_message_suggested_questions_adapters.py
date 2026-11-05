@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.events import TraceEvent
 from flask import Flask, g
 from sqlalchemy import Connection, Engine, event, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -18,7 +19,6 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.file import remote_fetcher
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
-from dify_trace_sdk.events import TraceEvent
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
@@ -235,6 +235,9 @@ def harness(
 
     def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
+        assert tenant_id == target.tenant_id
+        assert user_id is None
+        assert extras == {}
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)

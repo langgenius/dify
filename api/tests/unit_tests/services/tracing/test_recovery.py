@@ -76,13 +76,6 @@ from services.tracing.recovery import recover_terminal
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.tracing.scopes import TraceScopes
 from services.tracing.service import ApplicationTracingService
-from tests.unit_tests.core.model_fixtures import make_model_config
-from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message, make_tenant
-from tests.unit_tests.services.tracing_ports import (
-    AGENT_TRACE_SETTINGS,
-    InstalledTraceProviders,
-    WorkspaceBoundCipher,
-)
 from tests.unit_tests.core.app.apps.agent_app.test_app_runner import (
     _CancelAndWaitFailingClient,
     _ExplodingSessionStore,
@@ -92,6 +85,13 @@ from tests.unit_tests.core.app.apps.agent_app.test_app_runner import (
     _soul,
     _StoppedQueueManager,
     _UsageCancellationClient,
+)
+from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message, make_tenant
+from tests.unit_tests.services.tracing_ports import (
+    AGENT_TRACE_SETTINGS,
+    InstalledTraceProviders,
+    WorkspaceBoundCipher,
 )
 
 

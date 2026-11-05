@@ -21,12 +21,12 @@ from services.tracing.collection_ports import ScheduleTraceExport
 from services.tracing.providers import ProviderConfigCodec
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.repositories.test_application_trace_repository import Collection, batch_for, seed
 from tests.unit_tests.services.tracing_ports import (
     AGENT_TRACE_SETTINGS,
     InstalledTraceProviders,
     WorkspaceBoundCipher,
 )
-from tests.unit_tests.repositories.test_application_trace_repository import Collection, batch_for, seed
 
 BATCHES_URL = "/inner/api/agent/tracing/batches"
 INNER_API_HEADERS = {"X-Inner-Api-Key": "inner"}

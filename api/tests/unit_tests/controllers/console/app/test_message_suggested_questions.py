@@ -9,6 +9,7 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.events import TraceEvent
 from flask import Flask
 from sqlalchemy import Connection, Engine, event, func, select, text, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -20,7 +21,6 @@ from controllers.common.rbac.checks import RBACService
 from controllers.console.app import message as controller
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from dify_trace_sdk.events import TraceEvent
 from extensions.application_services.app import AppServices
 from extensions.application_services.rbac import RBACServices
 from extensions.ext_database import db
@@ -230,6 +230,9 @@ def harness(
 
     def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
+        assert tenant_id == target.tenant_id
+        assert user_id is None
+        assert extras == {}
         return provider
 
     monkeypatch.setattr(message_service.ModelManager, "for_tenant", manager)

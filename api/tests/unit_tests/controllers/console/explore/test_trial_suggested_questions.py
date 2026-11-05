@@ -8,6 +8,7 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.events import TraceEvent
 from flask import Flask, Request
 from sqlalchemy import Connection, Engine, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -21,7 +22,6 @@ import services.message_service as message_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
-from dify_trace_sdk.events import TraceEvent
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -255,6 +255,9 @@ def harness(
 
     def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
+        assert tenant_id == target.tenant_id
+        assert user_id is None
+        assert extras == {}
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)

@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.emitter import TraceScope
 from flask import Flask
 from redis import Redis
 from sqlalchemy import event, select
@@ -1821,7 +1822,8 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
 
     naming_sessions: list[Session] = []
 
-    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
+    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str, *, trace_scope: TraceScope | None) -> str:
+        assert trace_scope is None
         assert active_connections == 0
         assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
         assert (tenant_id, query, c_id, app_id) == (

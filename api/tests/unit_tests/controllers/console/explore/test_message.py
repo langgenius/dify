@@ -9,6 +9,7 @@ from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.events import TraceEvent
 from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -20,7 +21,6 @@ import services.message_service as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from dify_trace_sdk.events import TraceEvent
 from extensions.ext_database import db
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -288,6 +288,9 @@ def real_questions(
         *, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]
     ) -> _QuestionProvider:
         assert app_id == messages.harness.target_app.id
+        assert tenant_id == messages.harness.target_app.tenant_id
+        assert user_id is None
+        assert extras == {}
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)

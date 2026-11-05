@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from datetime import datetime
 
@@ -5,6 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from machinery.context import RequestContext
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository, trace_settings_from_column

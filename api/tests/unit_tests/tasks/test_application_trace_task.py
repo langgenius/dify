@@ -29,7 +29,6 @@ from services.tracing.registry import EntryPointTraceProviderCatalog
 from services.tracing.service import ApplicationTracingService
 from tasks.application_trace_task import export_application_trace, reconcile_application_traces
 from tests.unit_tests.model_factories import make_conversation, make_tenant
-from tests.unit_tests.services.tracing_ports import AGENT_TRACE_SETTINGS, WorkspaceBoundCipher
 from tests.unit_tests.repositories.test_application_trace_repository import (
     Collection,
     batch_for,
@@ -37,6 +36,7 @@ from tests.unit_tests.repositories.test_application_trace_repository import (
     seed,
     terminal,
 )
+from tests.unit_tests.services.tracing_ports import AGENT_TRACE_SETTINGS, WorkspaceBoundCipher
 
 
 def bind_worker(

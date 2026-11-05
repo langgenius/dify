@@ -18,8 +18,8 @@ from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.model_context import get_credit_usage_metadata
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
+from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager

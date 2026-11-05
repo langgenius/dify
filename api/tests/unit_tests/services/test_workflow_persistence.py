@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, override
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -99,7 +99,7 @@ the contract, not the implementation.
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _graph_event(**kwargs: Any) -> MagicMock:
+def _graph_event(**kwargs: object) -> MagicMock:
     return MagicMock(**kwargs)
 
 
@@ -215,7 +215,7 @@ class TestPersistenceInspectorPublishCases:
     @staticmethod
     def test_node_retry_publishes_retry(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
         _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
-        monkeypatch.setattr(layer, "_append_retry_history", lambda *args: None)
+        monkeypatch.setattr(layer, "_append_retry_history", lambda *_args: None)
         event = MagicMock(id="exec-1", error="rate limit")
         layer._handle_node_retry(event)
         assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "retry"}]
@@ -225,7 +225,7 @@ class TestPersistenceInspectorPublishCases:
         _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
         # Stub the inner _update_node_execution so we don't have to construct a
         # full NodeRunResult — we only want to confirm the publish happens after.
-        monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
+        monkeypatch.setattr(layer, "_update_node_execution", lambda *_args, **_kwargs: None)
         event = MagicMock(id="exec-1", node_run_result=MagicMock(), finished_at=datetime.now())
         layer._handle_node_succeeded(event)
         assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "succeeded"}]
@@ -233,7 +233,7 @@ class TestPersistenceInspectorPublishCases:
     @staticmethod
     def test_node_failed_publishes_failed(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
         _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
-        monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
+        monkeypatch.setattr(layer, "_update_node_execution", lambda *_args, **_kwargs: None)
         event = MagicMock(id="exec-1", node_run_result=MagicMock(), error="bad", finished_at=datetime.now())
         layer._handle_node_failed(event)
         assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "failed"}]
@@ -241,7 +241,7 @@ class TestPersistenceInspectorPublishCases:
     @staticmethod
     def test_node_exception_publishes_exception(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
         _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
-        monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
+        monkeypatch.setattr(layer, "_update_node_execution", lambda *_args, **_kwargs: None)
         event = MagicMock(id="exec-1", node_run_result=MagicMock(), error="oom", finished_at=datetime.now())
         layer._handle_node_exception(event)
         assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "exception"}]
@@ -250,7 +250,7 @@ class TestPersistenceInspectorPublishCases:
     def test_node_pause_requested_does_not_publish(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
         """Node pause is not an Inspector-visible state — no publish."""
         _seed_node_execution(layer, exec_id="exec-1", node_id="agent-1")
-        monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
+        monkeypatch.setattr(layer, "_update_node_execution", lambda *_args, **_kwargs: None)
         event = MagicMock(id="exec-1", node_run_result=MagicMock())
         layer._handle_node_pause_requested(event)
         assert capture_publishes["node"] == []

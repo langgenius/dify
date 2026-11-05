@@ -6,6 +6,16 @@ pipeline from Dify #44673 (`43d8c3715a9067fca7fdbe6f24a5d75732a8076e`), followed
 by the Langfuse OTLP changes in #45606. It is a pipeline upgrade, including a
 database migration, rather than a standalone provider replacement.
 
+#45606 is included through head `dea90f8a857dc43f1811eb6b021666c0732a5f11`
+(three source commits). It was still open when backported; this branch does not
+merge it into main. The hotfix retains the existing conversation-name and
+suggested-question service owners while connecting them to the new trace scopes.
+
+Use the Dockerfile's uv version, `0.8.9`, for lockfile verification and environment
+installation. Validate actual workspace package installation as well as tests:
+all nine trace distributions and ten provider entry points must load, including
+when installed with `--frozen --no-dev --no-editable` as in the image build.
+
 ## Database revision
 
 The hotfix migration is `1e1800070001`, directly after the existing hotfix head

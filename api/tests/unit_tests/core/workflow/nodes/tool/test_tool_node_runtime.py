@@ -26,7 +26,7 @@ from tests.workflow_test_utils import build_test_graph_init_params, build_test_v
 
 
 @pytest.fixture
-def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
+def runtime(sqlite_engine: Engine) -> DifyToolNodeRuntime:
     init_params = build_test_graph_init_params(
         workflow_id="workflow-id",
         graph_config={"nodes": [], "edges": []},

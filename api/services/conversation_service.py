@@ -10,8 +10,8 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import use_credit_usage_metadata
-from factories import variable_factory
 from extensions.tracing import create_trace_scope_for_app
+from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
