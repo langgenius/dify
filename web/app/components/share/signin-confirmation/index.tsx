@@ -15,7 +15,7 @@ import Link from '@/next/link'
 export type ConversationOwnershipChoice = 'add' | 'delete'
 
 type SignInConfirmationProps = {
-  email: string
+  accountName: string
   conversationCount: number
   app: Pick<
     WebSiteResponse,
@@ -24,15 +24,21 @@ type SignInConfirmationProps = {
   iconFallback?: AppIconProps['fallback']
   continueHref: string
   onConfirm?: (choice: ConversationOwnershipChoice) => void
+  isSubmitting?: boolean
+  actionError?: string
+  deleteAvailable?: boolean
 }
 
 export default function SignInConfirmation({
-  email,
+  accountName,
   conversationCount,
   app,
   iconFallback,
   continueHref,
   onConfirm,
+  isSubmitting = false,
+  actionError,
+  deleteAvailable = true,
 }: SignInConfirmationProps) {
   const { t } = useTranslation(['login'])
   const [choice, setChoice] = useState<ConversationOwnershipChoice | null>(null)
@@ -46,9 +52,17 @@ export default function SignInConfirmation({
     {
       value: 'delete',
       title: t(($) => $['history.delete'], { ns: 'login' }),
-      description: t(($) => $['history.deleteDescription'], { ns: 'login' }),
+      description: deleteAvailable
+        ? t(($) => $['history.deleteDescription'], { ns: 'login' })
+        : t(($) => $['history.deleteUnavailable'], { ns: 'login' }),
+      disabled: !deleteAvailable,
     },
-  ] satisfies Array<{ value: ConversationOwnershipChoice; title: string; description: string }>
+  ] satisfies Array<{
+    value: ConversationOwnershipChoice
+    title: string
+    description: string
+    disabled?: boolean
+  }>
 
   return (
     <div className="grid w-full max-w-130 items-center gap-8 lg:min-h-150 lg:max-w-265 lg:grid-cols-[minmax(0,520px)_1px_minmax(0,1fr)] lg:gap-12">
@@ -60,7 +74,7 @@ export default function SignInConfirmation({
         }}
       >
         <p className="body-md-regular wrap-anywhere text-text-tertiary">
-          {t(($) => $['history.signedInAs'], { ns: 'login', email })}
+          {t(($) => $['history.signedInAs'], { ns: 'login', email: accountName })}
         </p>
         <Field name="conversationOwnership" className="gap-0">
           <Fieldset className="flex flex-col gap-6">
@@ -89,6 +103,7 @@ export default function SignInConfirmation({
                 <FieldItem key={option.value}>
                   <RadioItem<ConversationOwnershipChoice>
                     value={option.value}
+                    disabled={option.disabled}
                     nativeButton
                     render={<button type="button" />}
                     aria-labelledby={`${id}-${option.value}-title`}
@@ -127,7 +142,9 @@ export default function SignInConfirmation({
         <div className="flex flex-col gap-3">
           <Button
             type="submit"
-            disabled={!choice || !onConfirm}
+            disabled={
+              !choice || !onConfirm || isSubmitting || (choice === 'delete' && !deleteAvailable)
+            }
             variant="primary"
             size="large"
             tone={choice === 'delete' ? 'destructive' : 'default'}
@@ -139,6 +156,11 @@ export default function SignInConfirmation({
                 ? t(($) => $['history.addAndContinue'], { ns: 'login' })
                 : t(($) => $['history.continue'], { ns: 'login' })}
           </Button>
+          {actionError && (
+            <p role="alert" className="system-xs-regular text-text-destructive">
+              {actionError}
+            </p>
+          )}
           <Link
             href={continueHref}
             replace

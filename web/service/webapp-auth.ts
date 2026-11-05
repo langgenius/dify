@@ -135,6 +135,26 @@ export function getAnonymousWebAppPassport(address: WebAppAddress | null) {
   return readWebAppPassport(address, 'anonymous')
 }
 
+export function getAnonymousWebAppPassports() {
+  const prefix = PASSPORT_LOCAL_STORAGE_NAME('')
+  // oxlint-disable-next-line no-restricted-globals -- Migration enumerates the anonymous credential namespace across Apps.
+  return Object.keys(localStorage)
+    .filter((key) => key.startsWith(prefix))
+    .flatMap((key) => {
+      // oxlint-disable-next-line no-restricted-globals -- Keep the storage key with the snapshot so successful claims remove only their original proof.
+      const passport = localStorage.getItem(key)
+      return passport ? [{ key, passport }] : []
+    })
+}
+
+export function removeAnonymousWebAppPassport(candidate: { key: string; passport: string }) {
+  if (!candidate.key.startsWith(PASSPORT_LOCAL_STORAGE_NAME(''))) return
+  // oxlint-disable-next-line no-restricted-globals -- A concurrent tab may have replaced this anonymous Passport while migration was running.
+  if (localStorage.getItem(candidate.key) === candidate.passport)
+    // oxlint-disable-next-line no-restricted-globals -- Only a successfully migrated snapshot can be removed.
+    localStorage.removeItem(candidate.key)
+}
+
 export function getAuthenticatedWebAppPassport(address: WebAppAddress | null) {
   return readWebAppPassport(address, 'authenticated')
 }

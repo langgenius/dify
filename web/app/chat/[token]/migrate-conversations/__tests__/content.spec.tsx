@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { fetchAppInfo } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
+import { webAppClient } from '@/service/webapp'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import MigrateConversationsContent from '../content'
@@ -17,6 +18,29 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   fetchAppInfo: vi.fn(),
+}))
+
+vi.mock('@/service/webapp', () => ({
+  webAppQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => ['webapp', 'account', 'profile'],
+          queryOptions: (options: object) => ({
+            ...options,
+            queryFn: () => webAppClient.account.profile.get(),
+          }),
+        },
+      },
+    },
+  },
+  webAppClient: {
+    account: { profile: { get: vi.fn() } },
+    migration: {
+      claimablePassports: { post: vi.fn() },
+      claim: { post: vi.fn() },
+    },
+  },
 }))
 
 const appInfo = {
@@ -33,6 +57,23 @@ const appInfo = {
 
 beforeEach(() => {
   vi.mocked(fetchAppInfo).mockReset()
+  vi.mocked(webAppClient.account.profile.get).mockResolvedValue({
+    name: 'Reader',
+    avatar: null,
+    avatar_url: null,
+  })
+  vi.mocked(webAppClient.migration.claimablePassports.post).mockResolvedValue({
+    data: [
+      {
+        index: 0,
+        app_code: 'current-app',
+        app_name: 'Research Assistant',
+        conversation_count: 3,
+        connection_count: 0,
+      },
+    ],
+  })
+  localStorage.setItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'), 'anonymous-current')
   window.history.replaceState({}, '', '/chat/current-app/migrate-conversations')
 })
 
@@ -57,7 +98,7 @@ it('loads the current WebApp metadata instead of another app or the preview data
     </QueryClientProvider>,
   )
 
-  expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Previous App' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'login.history.continue' })).not.toBeInTheDocument()
 
@@ -67,7 +108,7 @@ it('loads the current WebApp metadata instead of another app or the preview data
   expect(screen.getByText(appInfo.site.description)).toBeInTheDocument()
   expect(screen.getByText('🔬')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'login.history.continue' })).toBeDisabled()
-  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Writing Assistant' })).not.toBeInTheDocument()
 })
 
@@ -81,11 +122,11 @@ it('shows a load failure instead of confirmation actions when the WebApp cannot 
   )
 
   expect(await screen.findByText('share.common.appUnknownError')).toBeInTheDocument()
-  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'login.history.continue' })).not.toBeInTheDocument()
 })
 
-it('keeps history actions unavailable and preserves all passports when deferring to the original chat', async () => {
+it('keeps anonymous passports when deferring to the original chat', async () => {
   const user = userEvent.setup()
   const passports = [
     [PASSPORT_LOCAL_STORAGE_NAME('current-app'), 'anonymous-current'],
@@ -110,9 +151,8 @@ it('keeps history actions unavailable and preserves all passports when deferring
 
     await screen.findByRole('heading', { name: appInfo.site.title })
     await user.click(screen.getByRole('radio', { name: 'login.history.add' }))
-    expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'login.history.delete' }))
-    expect(screen.getByRole('button', { name: 'login.history.deleteAndContinue' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'login.history.delete' })).toBeDisabled()
 
     const notNow = screen.getByRole('link', { name: 'login.history.notNow' })
     expect(notNow).toHaveAttribute('href', '/chat/current-app?conversationId=existing-chat')
@@ -121,4 +161,45 @@ it('keeps history actions unavailable and preserves all passports when deferring
   } finally {
     for (const [key] of passports) localStorage.removeItem(key)
   }
+})
+
+it('claims all eligible anonymous data, retains the account Passport, and returns to the original App', async () => {
+  const user = userEvent.setup()
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  window.history.replaceState(
+    {},
+    '',
+    '/chat/current-app/migrate-conversations?redirect_url=%2Fchat%2Fcurrent-app%3FconversationId%3Dexisting-chat',
+  )
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+  vi.mocked(webAppClient.migration.claim.post).mockResolvedValueOnce({
+    data: [
+      {
+        status: 'success',
+        index: 0,
+        app_code: 'current-app',
+        access_token: 'account-passport',
+        claimed_connections: 0,
+        claimed_conversations: 3,
+        stop_requested_run_count: 0,
+      },
+    ],
+  })
+
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  await user.click(await screen.findByRole('radio', { name: 'login.history.add' }))
+  await user.click(screen.getByRole('button', { name: 'login.history.addAndContinue' }))
+
+  expect(webAppClient.migration.claim.post).toHaveBeenCalledWith(
+    { body: { passports: ['anonymous-current'] } },
+    { context: { silent: true } },
+  )
+  expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
+  expect(localStorage.getItem(AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
+  expect(replace).toHaveBeenCalledWith('/chat/current-app?conversationId=existing-chat')
 })
