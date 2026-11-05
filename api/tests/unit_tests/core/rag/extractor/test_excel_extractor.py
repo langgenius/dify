@@ -92,6 +92,98 @@ def _get_upload_files(session_maker: sessionmaker[Session]) -> list[UploadFile]:
 
 
 class TestExcelExtractor:
+    @pytest.mark.parametrize("etl_type", ["dify", "Unstructured"])
+    def test_upload_entry_keeps_trailing_images_and_excludes_invalid_anchors(
+        self,
+        etl_type: str,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        database_session_maker: sessionmaker[Session],
+    ) -> None:
+        """A stored upload yields its trailing image once, within header bounds.
+
+        Use the normal upload entry with native filesystem storage and SQLite.
+        Re-extraction must preserve source bytes and reuse the derived asset;
+        drawings above the header or outside its columns remain excluded.
+        """
+        from datetime import datetime
+        from io import BytesIO
+        from uuid import uuid4
+
+        from openpyxl import Workbook
+        from openpyxl.drawing.image import Image as WorksheetImage
+        from PIL import Image
+
+        import core.rag.extractor.extract_processor as processor_module
+        from core.rag.extractor.extract_processor import ExtractProcessor
+        from extensions.storage.opendal_storage import OpenDALStorage
+        from extensions.storage.storage_type import StorageType
+        from models.enums import CreatorUserRole
+
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append([None, None, None])
+        sheet.append([None, None, None])
+        sheet.append([None, None, None])
+        sheet.append(["Question", "Answer", "Image"])
+        sheet.append(["Q1", "A1"])
+        for anchor, color in [("C1", "red"), ("C12", "green"), ("D30", "blue")]:
+            image_stream = BytesIO()
+            Image.new("RGB", (2, 2), color).save(image_stream, format="PNG")
+            image_stream.seek(0)
+            sheet.add_image(WorksheetImage(image_stream), anchor)
+        source_stream = BytesIO()
+        workbook.save(source_stream)
+        workbook.close()
+        source_bytes = source_stream.getvalue()
+
+        local_storage = OpenDALStorage("fs", root=str(tmp_path / "storage"))
+        source_key = "uploads/source.xlsx"
+        local_storage.save(source_key, source_bytes)
+        monkeypatch.setattr(excel_module, "storage", local_storage)
+        monkeypatch.setattr(processor_module, "storage", local_storage)
+        apply_config_overrides(monkeypatch, ETL_TYPE=etl_type, FILES_URL="http://files.local", STORAGE_TYPE="opendal")
+        source = UploadFile(
+            tenant_id=str(uuid4()),
+            storage_type=StorageType.OPENDAL,
+            key=source_key,
+            name="source.xlsx",
+            size=len(source_bytes),
+            extension="xlsx",
+            mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            created_by=str(uuid4()),
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_at=datetime(2026, 1, 1),
+            used=False,
+        )
+        with database_session_maker() as session:
+            session.add(source)
+            session.commit()
+
+        first = ExtractProcessor.load_from_upload_file(source)
+        first_uploads = _get_upload_files(database_session_maker)
+        second = ExtractProcessor.load_from_upload_file(source)
+        second_uploads = _get_upload_files(database_session_maker)
+
+        images = [upload for upload in second_uploads if upload.id != source.id]
+        assert len(images) == 1
+        image = images[0]
+        assert "_r12_c3_" in image.key
+        assert image.tenant_id == source.tenant_id
+        assert image.created_by == source.created_by
+        expected = [
+            '"Question":"Q1";"Answer":"A1";"Image":""',
+            f'"Question":"";"Answer":"";"Image":"![image](http://files.local/files/{image.id}/file-preview)"',
+        ]
+        assert [document.page_content for document in first] == expected
+        assert [document.page_content for document in second] == expected
+        assert {upload.id for upload in first_uploads} == {upload.id for upload in second_uploads}
+        assert set(local_storage.scan("")) == {source_key, image.key}
+        assert local_storage.load_once(source_key) == source_bytes
+        with Image.open(BytesIO(local_storage.load_once(image.key))) as stored_image:
+            assert stored_image.getpixel((0, 0)) == (0, 128, 0)
+
     def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch):
         sheet_with_data = _FakeSheet(
             header_rows=[("Name", "Link")],

@@ -76,7 +76,14 @@ class ExcelExtractor(BaseExtractor):
 
     @override
     def extract(self) -> list[Document]:
-        """Load from Excel file in xls or xlsx format using Pandas and openpyxl."""
+        """Extract rows from a readable XLS/XLSX file, propagating parser errors.
+
+        XLSX image extraction requires tenant, user, and source-upload IDs.
+        Include nonempty data rows through the last eligible image anchor;
+        images above the header or outside recognized columns stay excluded.
+        Derived assets retain their deterministic keys across retries, and
+        the XLSX workbook is closed even if parsing or persistence fails.
+        """
         documents = []
         file_extension = os.path.splitext(self._file_path)[-1].lower()
 
