@@ -22,6 +22,7 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
   createConsoleQueryWrapper,
@@ -370,6 +371,15 @@ it('keeps the current canvas and blocks saving when the draft is outdated', asyn
   expect(open).toHaveBeenCalledWith('/app/app-1/workflow', '_blank', 'noopener,noreferrer')
   expect(window.location.href).toBe(originalLocation)
   expect(store.getState().nodes).toEqual(canvasNodes)
+  api.fetchDraft.mockClear()
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
+  })
+  expect(api.fetchDraft).not.toHaveBeenCalled()
+  expect(store.getState().nodes).toEqual(canvasNodes)
   expect(collaborationManager.getNodes()).toEqual([])
   expect(api.saveDraft).not.toHaveBeenCalled()
   expect(api.fetchDraft).not.toHaveBeenCalled()
@@ -408,7 +418,10 @@ it.each([
       transport.receive('disconnect', 'io client disconnect')
     })
 
-    await renderMain({ nodes: [], initialStoreState: { showOnboarding: true } })
+    const { store } = await renderMain({
+      nodes: [],
+      initialStoreState: { showOnboarding: true, syncWorkflowDraftHash: 'loaded-hash' },
+    })
     await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
     act(() => transport.receive('connect'))
     expect(screen.getByTestId('collaboration-graph-loading')).toBeVisible()
@@ -417,6 +430,15 @@ it.each([
       expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument(),
     )
 
+    if (status === 503) {
+      api.saveDraft.mockRejectedValue(
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_collaboration_active',
+          message: 'The workflow is being edited collaboratively.',
+          status: 409,
+        }),
+      )
+    }
     const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
     await user.click(
       within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
@@ -429,6 +451,19 @@ it.each([
       conversation_variables: expect.any(Array),
     })
     expect(body).not.toHaveProperty('_is_collaborative')
+    if (status === 503) {
+      const localNodes = store.getState().nodes
+      expect(localNodes).toHaveLength(1)
+      api.fetchDraft.mockClear()
+      vi.useFakeTimers()
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+      act(() => document.dispatchEvent(new Event('visibilitychange')))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      expect(api.fetchDraft).not.toHaveBeenCalled()
+      expect(store.getState().nodes).toEqual(localNodes)
+    }
   },
 )
 
