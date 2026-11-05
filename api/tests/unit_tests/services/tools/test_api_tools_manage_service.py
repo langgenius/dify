@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import Mock
 
 import pytest
@@ -9,29 +9,60 @@ from services.tools import api_tools_manage_service
 from services.tools.api_tools_manage_service import ApiToolManageService
 
 
+class _QueryResult:
+    def __init__(self, rows: list[object]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[object]:
+        return self._rows
+
+
+class _RecordedSession:
+    """A session that answers ``scalar`` and ``scalars`` from prepared rows."""
+
+    def __init__(self, rows: list[object] | None = None, scalar_value: object = None) -> None:
+        self._rows = rows or []
+        self._scalar_value = scalar_value
+
+    def scalars(self, *_: object) -> _QueryResult:
+        return _QueryResult(self._rows)
+
+    def scalar(self, *_: object) -> object:
+        return self._scalar_value
+
+
 class _RecordingSessionMaker:
     """Stands in for ``sessionmaker``: every ``begin()`` yields the next prepared session and records it."""
 
-    def __init__(self, sessions: list[Mock]) -> None:
+    def __init__(self, sessions: list[_RecordedSession]) -> None:
         self._pending = list(sessions)
-        self.opened: list[Mock] = []
+        self.opened: list[_RecordedSession] = []
 
     def __call__(self, *_: object, **__: object) -> "_RecordingSessionMaker":
         return self
 
     @contextmanager
-    def begin(self) -> Generator[Mock]:
+    def begin(self) -> Generator[_RecordedSession]:
         session = self._pending.pop(0)
         self.opened.append(session)
         yield session
 
 
-def _patch_database(monkeypatch: pytest.MonkeyPatch, sessions: list[Mock]) -> _RecordingSessionMaker:
+class _Database:
+    """The ``db`` the service sees: an engine to build sessions from, and a global session that must stay unused."""
+
+    engine = object()
+
+    @staticmethod
+    def session() -> None:
+        raise AssertionError("db.session() must not be used")
+
+
+def _patch_database(monkeypatch: pytest.MonkeyPatch, sessions: list[_RecordedSession]) -> _RecordingSessionMaker:
     """Route sessions through ``_RecordingSessionMaker`` and fail on any use of the global scoped session."""
     maker = _RecordingSessionMaker(sessions)
-    global_session = Mock(side_effect=AssertionError("db.session() must not be used"))
     monkeypatch.setattr(api_tools_manage_service, "sessionmaker", maker)
-    monkeypatch.setattr(api_tools_manage_service, "db", SimpleNamespace(engine=object(), session=global_session))
+    monkeypatch.setattr(api_tools_manage_service, "db", _Database)
     return maker
 
 
@@ -65,27 +96,81 @@ def test_get_api_tool_provider_remote_schema_uses_ssrf_proxy_get(
     mock_parser.assert_called_once_with(schema)
 
 
+@dataclass
+class _Provider:
+    name: str
+
+
+class _UserProvider:
+    def __init__(self) -> None:
+        self.tools: list[object] = []
+        self.labels: list[str] = []
+
+
+class _ProviderController:
+    def get_tools(self, **_: object) -> list[object]:
+        return []
+
+
 def test_list_api_tools_passes_an_explicit_session_per_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    providers = [Mock(name="provider-a"), Mock(name="provider-b")]
-    loader = Mock()
-    loader.scalars.return_value.all.return_value = providers
-    lookup_sessions = [Mock(name="lookup-a"), Mock(name="lookup-b")]
+    providers = [_Provider("provider-a"), _Provider("provider-b")]
+    loader = _RecordedSession(rows=providers)
+    lookup_sessions = [_RecordedSession(), _RecordedSession()]
     maker = _patch_database(monkeypatch, [loader, *lookup_sessions])
 
-    controller = Mock()
-    controller.get_tools.return_value = []
-    to_user_provider = Mock(side_effect=lambda *_, **__: SimpleNamespace(tools=[], labels=[]))
+    received_sessions: list[object] = []
+
+    def to_user_provider(*_: object, **kwargs: object) -> _UserProvider:
+        received_sessions.append(kwargs["session"])
+        return _UserProvider()
+
     transform = api_tools_manage_service.ToolTransformService
-    monkeypatch.setattr(transform, "api_provider_to_controller", Mock(return_value=controller))
+    monkeypatch.setattr(transform, "api_provider_to_controller", lambda **_: _ProviderController())
     monkeypatch.setattr(transform, "api_provider_to_user_provider", to_user_provider)
-    monkeypatch.setattr(transform, "repack_provider", Mock())
-    monkeypatch.setattr(api_tools_manage_service.ToolLabelManager, "get_tool_labels", Mock(return_value=[]))
+    monkeypatch.setattr(transform, "repack_provider", lambda **_: None)
+    monkeypatch.setattr(api_tools_manage_service.ToolLabelManager, "get_tool_labels", lambda *_: [])
 
     result = ApiToolManageService.list_api_tools("tenant-1")
 
     assert len(result) == 2
     assert maker.opened == [loader, *lookup_sessions]
-    assert [call.kwargs["session"] for call in to_user_provider.call_args_list] == lookup_sessions
+    assert received_sessions == lookup_sessions
+
+
+class _Tool:
+    def fork_tool_runtime(self, **_: object) -> "_Tool":
+        return self
+
+    def validate_credentials(self, *_: object) -> str:
+        return "ok"
+
+
+class _PreviewController:
+    """Records the session ``from_db`` is given and serves a tool that validates."""
+
+    from_db_sessions: list[object] = []
+
+    @classmethod
+    def from_db(cls, *_: object, session: object) -> "_PreviewController":
+        cls.from_db_sessions.append(session)
+        return cls()
+
+    def load_bundled_tools(self, *_: object) -> None:
+        pass
+
+    def validate_credentials_format(self, *_: object) -> None:
+        pass
+
+    def get_tool(self, *_: object) -> _Tool:
+        return _Tool()
+
+
+class _Encrypter:
+    def decrypt(self, credentials: dict[str, object]) -> dict[str, object]:
+        return dict(credentials)
+
+    def mask_plugin_credentials(self, *_: object) -> dict[str, object]:
+        return {}
 
 
 def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -97,22 +182,12 @@ def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeyp
         "paths": {"/thing": {"get": {"operationId": "getThing", "responses": {"200": {"description": "ok"}}}}}
     }
     """
-    provider_lookup = Mock()
-    provider_lookup.scalar.return_value = None  # no saved provider: a placeholder one is built from the schema
-    controller_session = Mock(name="controller-session")
+    provider_lookup = _RecordedSession(scalar_value=None)  # no saved provider: a placeholder is built from the schema
+    controller_session = _RecordedSession()
     maker = _patch_database(monkeypatch, [provider_lookup, controller_session])
-
-    controller = Mock()
-    controller.get_tool.return_value.fork_tool_runtime.return_value.validate_credentials.return_value = "ok"
-    controller_class = Mock()
-    controller_class.from_db.return_value = controller
-    monkeypatch.setattr(api_tools_manage_service, "ApiToolProviderController", controller_class)
-    encrypter = Mock()
-    encrypter.decrypt.side_effect = lambda credentials: dict(credentials)
-    encrypter.mask_plugin_credentials.return_value = {}
-    monkeypatch.setattr(
-        api_tools_manage_service, "create_tool_provider_encrypter", Mock(return_value=(encrypter, Mock()))
-    )
+    _PreviewController.from_db_sessions = []
+    monkeypatch.setattr(api_tools_manage_service, "ApiToolProviderController", _PreviewController)
+    monkeypatch.setattr(api_tools_manage_service, "create_tool_provider_encrypter", lambda **_: (_Encrypter(), None))
 
     result = ApiToolManageService.test_api_tool_preview(
         tenant_id="tenant-1",
@@ -126,4 +201,4 @@ def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeyp
 
     assert result == {"result": "ok"}
     assert maker.opened == [provider_lookup, controller_session]
-    assert controller_class.from_db.call_args.kwargs["session"] is controller_session
+    assert _PreviewController.from_db_sessions == [controller_session]
