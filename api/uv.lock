@@ -1932,10 +1932,14 @@ version = "0.0.1"
 source = { editable = "providers/trace/trace-langfuse" }
 dependencies = [
     { name = "langfuse" },
+    { name = "opentelemetry-proto" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langfuse", specifier = ">=4.2.0,<5.0.0" }]
+requires-dist = [
+    { name = "langfuse", specifier = ">=4.2.0,<5.0.0" },
+    { name = "opentelemetry-proto" },
+]
 
 [[package]]
 name = "dify-trace-langsmith"

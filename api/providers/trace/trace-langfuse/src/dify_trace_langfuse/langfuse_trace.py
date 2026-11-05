@@ -1,21 +1,19 @@
+import base64
+import hashlib
 import logging
 import os
+import re
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from typing import override
+from typing import Any, override
 
 import httpx
 from langfuse import __version__ as langfuse_version
-from langfuse.api import (
-    CreateGenerationBody,
-    CreateSpanBody,
-    IngestionEvent_GenerationCreate,
-    IngestionEvent_SpanCreate,
-    IngestionEvent_TraceCreate,
-    LangfuseAPI,
-    TraceBody,
-)
-from langfuse.api.commons.types.usage import Usage
+from langfuse.api import LangfuseAPI
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -45,8 +43,67 @@ from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
+from services.tracing.provider_common import json_value, nanos, utc
 
 logger = logging.getLogger(__name__)
+
+OTEL_TRACES_PATH = "/api/public/otel/v1/traces"
+INGESTION_VERSION_HEADER = {"x-langfuse-ingestion-version": "4"}
+SERVICE_NAME = "dify"
+_HEX32 = re.compile(r"[0-9a-f]{32}")
+
+
+def _otel_trace_id(key: str) -> bytes:
+    """Matches later Dify versions, so IDs survive an upgrade."""
+    candidate = key.replace("-", "").lower()
+    if _HEX32.fullmatch(candidate) and int(candidate, 16):
+        return bytes.fromhex(candidate)
+    digest = hashlib.sha256(f"dify-trace:{key}".encode()).digest()[:16]
+    return digest if any(digest) else bytes(15) + b"\x01"
+
+
+def _otel_span_id(key: str) -> bytes:
+    digest = hashlib.sha256(f"dify-application-span:{key}".encode()).digest()[:8]
+    return digest if any(digest) else bytes(7) + b"\x01"
+
+
+def _random_span_id() -> bytes:
+    # The version nibble of a UUID4 keeps these bytes nonzero.
+    return uuid.uuid4().bytes[:8]
+
+
+def _json(value: Any) -> str | None:
+    return None if value is None else json_value(value)
+
+
+def _prefixed(prefix: str, metadata: Mapping[str, Any] | None) -> dict[str, Any]:
+    return {f"{prefix}.{key}": value for key, value in (metadata or {}).items()}
+
+
+def _attribute(key: str, value: object) -> KeyValue:
+    if isinstance(value, bool):
+        encoded = AnyValue(bool_value=value)
+    elif isinstance(value, int):
+        encoded = AnyValue(int_value=value)
+    elif isinstance(value, float):
+        encoded = AnyValue(double_value=value)
+    elif isinstance(value, str):
+        encoded = AnyValue(string_value=value)
+    else:
+        encoded = AnyValue(string_value=json_value(value))
+    return KeyValue(key=key, value=encoded)
+
+
+def _observation_attributes(data: LangfuseSpan | LangfuseGeneration, observation_type: str) -> dict[str, Any]:
+    return {
+        "langfuse.observation.type": observation_type,
+        "langfuse.observation.input": _json(data.input),
+        "langfuse.observation.output": _json(data.output),
+        "langfuse.observation.level": data.level,
+        "langfuse.observation.status_message": data.status_message,
+        "langfuse.version": data.version,
+        **_prefixed("langfuse.observation.metadata", data.metadata),
+    }
 
 
 class LangFuseDataTrace(BaseTraceInstance):
@@ -68,6 +125,13 @@ class LangFuseDataTrace(BaseTraceInstance):
             httpx_client=self._http_client,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+        token = base64.b64encode(f"{langfuse_config.public_key}:{langfuse_config.secret_key}".encode()).decode()
+        self._otel_url = f"{langfuse_config.host.rstrip('/')}{OTEL_TRACES_PATH}"
+        self._otel_headers = {
+            "Authorization": f"Basic {token}",
+            "Content-Type": "application/x-protobuf",
+            **INGESTION_VERSION_HEADER,
+        }
 
     def close(self) -> None:
         client = getattr(self, "_http_client", None)
@@ -127,20 +191,8 @@ class LangFuseDataTrace(BaseTraceInstance):
         metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
 
         if trace_info.message_id:
+            # The message trace task of the same run sends this trace's root.
             trace_id = trace_info.trace_id or trace_info.message_id
-            name = TraceTaskName.MESSAGE_TRACE
-            trace_data = LangfuseTrace(
-                id=trace_id,
-                user_id=user_id,
-                name=name,
-                input=dict(trace_info.workflow_run_inputs),
-                output=dict(trace_info.workflow_run_outputs),
-                metadata=metadata,
-                session_id=trace_info.conversation_id,
-                tags=["message", "workflow"],
-                version=trace_info.workflow_run_version,
-            )
-            self.add_trace(langfuse_trace_data=trace_data)
             workflow_span_data = LangfuseSpan(
                 id=trace_info.workflow_run_id,
                 name=TraceTaskName.WORKFLOW_TRACE,
@@ -165,6 +217,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                 session_id=trace_info.conversation_id,
                 tags=["workflow"],
                 version=trace_info.workflow_run_version,
+                start_time=trace_info.start_time,
+                end_time=trace_info.end_time,
             )
             self.add_trace(langfuse_trace_data=trace_data)
 
@@ -334,6 +388,8 @@ class LangFuseDataTrace(BaseTraceInstance):
             version=None,
             release=None,
             public=None,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
         )
         self.add_trace(langfuse_trace_data=trace_data)
 
@@ -445,12 +501,15 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_generation_trace_data = LangfuseTrace(
+            id=trace_info.conversation_id,
             name=TraceTaskName.GENERATE_NAME_TRACE,
             input=trace_info.inputs,
             output=trace_info.outputs,
             user_id=trace_info.tenant_id,
             metadata=trace_info.metadata,
             session_id=trace_info.conversation_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
         )
 
         self.add_trace(langfuse_trace_data=name_generation_trace_data)
@@ -466,61 +525,96 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.add_span(langfuse_span_data=name_generation_span_data)
 
-    def _make_event_id(self) -> str:
-        return str(uuid.uuid4())
+    def _send(
+        self,
+        *,
+        trace_key: str,
+        span_id: bytes,
+        parent_span_id: bytes | None,
+        name: str | None,
+        start_time: datetime | None,
+        end_time: datetime | None,
+        is_error: bool,
+        attributes: Mapping[str, Any],
+    ) -> None:
+        client = self._http_client
+        if client is None:
+            raise RuntimeError("Langfuse client is closed")
+        start_ns = nanos(start_time or datetime.now(UTC))
+        request = ExportTraceServiceRequest()
+        resource_spans = request.resource_spans.add()
+        resource_spans.resource.attributes.append(_attribute("service.name", SERVICE_NAME))
+        scope_spans = resource_spans.scope_spans.add()
+        scope_spans.scope.name = SERVICE_NAME
+        span = scope_spans.spans.add(
+            trace_id=_otel_trace_id(trace_key),
+            span_id=span_id,
+            parent_span_id=parent_span_id or b"",
+            name=name or "",
+            kind=Span.SPAN_KIND_INTERNAL,
+            start_time_unix_nano=start_ns,
+            end_time_unix_nano=max(nanos(end_time), start_ns) if end_time else start_ns,
+        )
+        span.status.code = Status.STATUS_CODE_ERROR if is_error else Status.STATUS_CODE_OK
+        span.attributes.extend(_attribute(key, value) for key, value in attributes.items() if value is not None)
+        client.post(self._otel_url, headers=self._otel_headers, content=request.SerializeToString()).raise_for_status()
 
-    def _now_iso(self) -> str:
-        return datetime.now(UTC).isoformat()
+    def _send_observation(self, data: LangfuseSpan | LangfuseGeneration, attributes: Mapping[str, Any]) -> None:
+        # Without a parent, the observation sits under the trace root.
+        trace_key = data.trace_id or str(uuid.uuid4())
+        self._send(
+            trace_key=trace_key,
+            span_id=_otel_span_id(data.id) if data.id else _random_span_id(),
+            parent_span_id=_otel_span_id(data.parent_observation_id or trace_key),
+            name=data.name,
+            start_time=data.start_time,
+            end_time=data.end_time,
+            is_error=data.level == LevelEnum.ERROR,
+            attributes=attributes,
+        )
 
     def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
-        data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}
+        """OpenTelemetry has no trace record, so the trace becomes its root span."""
+        data = langfuse_trace_data or LangfuseTrace()
+        trace_key = data.id or str(uuid.uuid4())
         try:
-            body = TraceBody(
-                id=data.get("id"),
-                name=data.get("name"),
-                user_id=data.get("user_id"),
-                input=data.get("input"),
-                output=data.get("output"),
-                metadata=data.get("metadata"),
-                session_id=data.get("session_id"),
-                version=data.get("version"),
-                release=data.get("release"),
-                tags=data.get("tags"),
-                public=data.get("public"),
+            self._send(
+                trace_key=trace_key,
+                span_id=_otel_span_id(trace_key),
+                parent_span_id=None,
+                name=data.name,
+                start_time=data.start_time,
+                end_time=data.end_time,
+                is_error=False,
+                attributes={
+                    "langfuse.trace.name": data.name,
+                    "langfuse.user.id": data.user_id,
+                    "langfuse.session.id": data.session_id,
+                    "langfuse.trace.tags": data.tags,
+                    "langfuse.trace.public": data.public,
+                    "langfuse.version": data.version,
+                    "langfuse.release": data.release,
+                    "langfuse.observation.type": "span",
+                    "langfuse.observation.input": _json(data.input),
+                    "langfuse.observation.output": _json(data.output),
+                    **_prefixed("langfuse.trace.metadata", data.metadata),
+                },
             )
-            event = IngestionEvent_TraceCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}") from e
 
     def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
-        data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
+        data = langfuse_span_data or LangfuseSpan()
         try:
-            body = CreateSpanBody(
-                id=data.get("id"),
-                trace_id=data.get("trace_id"),
-                name=data.get("name"),
-                start_time=data.get("start_time"),
-                end_time=data.get("end_time"),
-                input=data.get("input"),
-                output=data.get("output"),
-                metadata=data.get("metadata"),
-                level=data.get("level"),
-                status_message=data.get("status_message"),
-                parent_observation_id=data.get("parent_observation_id"),
-                version=data.get("version"),
+            self._send_observation(
+                data,
+                {
+                    **_observation_attributes(data, "span"),
+                    "langfuse.user.id": data.user_id,
+                    "langfuse.session.id": data.session_id,
+                },
             )
-            event = IngestionEvent_SpanCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}") from e
@@ -531,45 +625,32 @@ class LangFuseDataTrace(BaseTraceInstance):
         span.end(**format_span_data)
 
     def add_generation(self, langfuse_generation_data: LangfuseGeneration | None = None):
-        data = filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
+        data = langfuse_generation_data or LangfuseGeneration()
         try:
-            usage_data = data.pop("usage", None)
-            usage = None
-            if usage_data:
-                usage = Usage(
-                    input=usage_data.get("input", 0) or 0,
-                    output=usage_data.get("output", 0) or 0,
-                    total=usage_data.get("total", 0) or 0,
-                    unit=usage_data.get("unit"),
-                    input_cost=usage_data.get("inputCost"),
-                    output_cost=usage_data.get("outputCost"),
-                    total_cost=usage_data.get("totalCost"),
+            attributes = {
+                **_observation_attributes(data, "generation"),
+                "langfuse.observation.model.name": data.model,
+                "langfuse.observation.model.parameters": _json(data.model_parameters),
+                "langfuse.observation.completion_start_time": (
+                    utc(data.completion_start_time).isoformat() if data.completion_start_time else None
+                ),
+            }
+            usage = data.usage
+            if usage is not None:
+                attributes["langfuse.observation.usage_details"] = json_value(
+                    {"input": usage.input or 0, "output": usage.output or 0, "total": usage.total or 0}
                 )
-
-            body = CreateGenerationBody(
-                id=data.get("id"),
-                trace_id=data.get("trace_id"),
-                name=data.get("name"),
-                start_time=data.get("start_time"),
-                end_time=data.get("end_time"),
-                model=data.get("model"),
-                model_parameters=data.get("model_parameters"),
-                input=data.get("input"),
-                output=data.get("output"),
-                usage=usage,
-                metadata=data.get("metadata"),
-                level=data.get("level"),
-                status_message=data.get("status_message"),
-                parent_observation_id=data.get("parent_observation_id"),
-                version=data.get("version"),
-                completion_start_time=data.get("completion_start_time"),
-            )
-            event = IngestionEvent_GenerationCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
+                costs = {
+                    key: float(value)
+                    for key, value in (
+                        ("input", usage.inputCost),
+                        ("output", usage.outputCost),
+                        ("total", usage.totalCost),
+                    )
+                    if value is not None
+                }
+                attributes["langfuse.observation.cost_details"] = json_value(costs) if costs else None
+            self._send_observation(data, attributes)
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}") from e

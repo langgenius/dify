@@ -40,12 +40,7 @@ def _dt() -> datetime:
 
 
 @pytest.fixture
-def langfuse_config():
-    return LangfuseConfig(public_key="pk-123", secret_key="sk-123", host="https://cloud.langfuse.com")
-
-
-@pytest.fixture
-def trace_instance(langfuse_config, monkeypatch: pytest.MonkeyPatch):
+def trace_instance(langfuse_config, otel_sink, monkeypatch: pytest.MonkeyPatch):
     # Mock Langfuse client to avoid network calls
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.LangfuseAPI", lambda **kwargs: mock_client)
@@ -232,19 +227,15 @@ def test_workflow_trace_with_message_id(
 
     trace_instance.workflow_trace(trace_info)
 
-    # Verify add_trace (Workflow Level)
-    trace_instance.add_trace.assert_called_once()
-    trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
-    assert trace_data.id == "trace-1"
-    assert trace_data.name == TraceTaskName.MESSAGE_TRACE
-    assert "message" in trace_data.tags
-    assert "workflow" in trace_data.tags
+    # The message trace task sends the shared root of a chatflow trace.
+    trace_instance.add_trace.assert_not_called()
 
     # Verify add_span (Workflow Run Span)
     assert trace_instance.add_span.call_count >= 1
     # First span should be workflow run span because message_id is present
     workflow_span = trace_instance.add_span.call_args_list[0][1]["langfuse_span_data"]
     assert workflow_span.id == "run-1"
+    assert workflow_span.trace_id == "trace-1"
     assert workflow_span.name == TraceTaskName.WORKFLOW_TRACE
 
     # Verify Generation for LLM node
@@ -577,37 +568,13 @@ def test_generate_name_trace(trace_instance):
     trace_instance.add_span.assert_called_once()
 
     trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
+    assert trace_data.id == "conv-1"
     assert trace_data.name == TraceTaskName.GENERATE_NAME_TRACE
     assert trace_data.user_id == "tenant-1"
+    assert (trace_data.start_time, trace_data.end_time) == (trace_info.start_time, trace_info.end_time)
 
     span_data = trace_instance.add_span.call_args[1]["langfuse_span_data"]
     assert span_data.trace_id == "conv-1"
-
-
-def test_add_trace_success(trace_instance):
-    data = LangfuseTrace(id="t1", name="trace")
-    trace_instance.add_trace(data)
-    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
-
-
-def test_add_trace_error(trace_instance):
-    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
-    data = LangfuseTrace(id="t1", name="trace")
-    with pytest.raises(ValueError, match="LangFuse Failed to create trace: error"):
-        trace_instance.add_trace(data)
-
-
-def test_add_span_success(trace_instance):
-    data = LangfuseSpan(id="s1", name="span", trace_id="t1")
-    trace_instance.add_span(data)
-    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
-
-
-def test_add_span_error(trace_instance):
-    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
-    data = LangfuseSpan(id="s1", name="span", trace_id="t1")
-    with pytest.raises(ValueError, match="LangFuse Failed to create span: error"):
-        trace_instance.add_span(data)
 
 
 def test_update_span(trace_instance):
@@ -615,19 +582,6 @@ def test_update_span(trace_instance):
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     trace_instance.update_span(span, data)
     span.end.assert_called_once()
-
-
-def test_add_generation_success(trace_instance):
-    data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
-    trace_instance.add_generation(data)
-    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
-
-
-def test_add_generation_error(trace_instance):
-    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
-    data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
-    with pytest.raises(ValueError, match="LangFuse Failed to create generation: error"):
-        trace_instance.add_generation(data)
 
 
 def test_update_generation(trace_instance):
