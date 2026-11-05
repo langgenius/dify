@@ -161,6 +161,15 @@ class SQLAlchemyMetadataRepository:
             }
             if metadata_ids != set(fields):
                 raise MetadataResourceNotFoundError("Metadata not found.")
+            for operation in operations:
+                for value in operation.metadata_list:
+                    field = fields[value.id]
+                    if field.type in ("number", "time") and value.value is not None:
+                        try:
+                            float(value.value)
+                        except (TypeError, ValueError):
+                            raise ValueError(f"Metadata '{field.name}' must be a number.") from None
+
             document_ids = {operation.document_id for operation in operations}
             documents = {
                 row.id: row

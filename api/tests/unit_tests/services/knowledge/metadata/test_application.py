@@ -1,7 +1,7 @@
 from datetime import datetime
 from operator import itemgetter
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -394,6 +394,47 @@ class TestMetadataServiceSessionBoundaryCases:
                 {"existing": "kept", "author": "Alice"} if partial else {"author": "Alice"}
             )
             assert len(session.scalars(select(DatasetMetadataBinding)).all()) == 1
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("field_type", "value", "accepted"),
+        [
+            ("number", "abc", False),
+            ("time", "2025-01-01", False),
+            ("number", "2025", True),
+            ("number", 2025, True),
+            ("number", None, True),
+            ("string", "abc", True),
+        ],
+    )
+    def test_number_and_time_values_must_be_numeric(
+        metadata_service: MetadataService,
+        sqlite_session_factory: sessionmaker[Session],
+        field_type: Literal["string", "number", "time"],
+        value: str | int | None,
+        accepted: bool,
+    ) -> None:
+        field = metadata_service.create_metadata(REF, MetadataArgs(type=field_type, name="year"), actor_id="actor")
+        args = MetadataOperationData(
+            operation_data=[
+                DocumentMetadataOperation(
+                    document_id=DOCUMENT_ID,
+                    metadata_list=[MetadataDetail(id=field.id, name="year", value=value)],
+                    partial_update=True,
+                )
+            ]
+        )
+
+        if accepted:
+            metadata_service.update_documents_metadata(REF, args, actor_id="actor")
+        else:
+            with pytest.raises(ValueError, match="must be a number"):
+                metadata_service.update_documents_metadata(REF, args, actor_id="actor")
+
+        with sqlite_session_factory() as session:
+            document = session.get(Document, DOCUMENT_ID)
+            assert document is not None
+            assert document.doc_metadata == ({"year": value} if accepted else None)
 
     @staticmethod
     @pytest.mark.parametrize("foreign", ["dataset", "document", "metadata"])
