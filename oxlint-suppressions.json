@@ -489,11 +489,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/configuration/configuration-view/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app/configuration/dataset-config/context-var/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -995,11 +990,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/chat/chat-with-history/sidebar/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -1443,11 +1433,6 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/linked-apps-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
@@ -2137,11 +2122,6 @@
     }
   },
   "web/app/components/datasets/create/step-two/components/parent-child-options.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create/step-two/components/preview-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -3713,19 +3693,11 @@
     }
   },
   "web/app/components/share/text-generation/text-generation-result-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/share/text-generation/text-generation-sidebar.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
     }
   },
   "web/app/components/signin/countdown.tsx": {
