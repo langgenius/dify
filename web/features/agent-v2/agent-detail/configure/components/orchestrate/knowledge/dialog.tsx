@@ -45,6 +45,7 @@ import { useClassicKnowledgeCatalog } from './classic-catalog'
 import { ClassicKnowledgeSettings } from './classic-settings'
 
 type Props = {
+  workflowNodeId?: string
   open: boolean
   knowledgeFsEnabled: boolean
   initialBindings: AgentKnowledgeRetrievalItem[]
@@ -214,6 +215,7 @@ function CatalogState({
 
 /** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
 function AgentKnowledgeRetrievalForm({
+  workflowNodeId,
   initialBindings: bindings,
   knowledgeFsEnabled,
   onConfirm,
@@ -578,6 +580,7 @@ function AgentKnowledgeRetrievalForm({
                         </Field>
                         {!item.controlSpaceId && (
                           <ClassicKnowledgeSettings
+                            workflowNodeId={workflowNodeId}
                             item={item}
                             onChange={(patch) => update(item.id, patch)}
                             errors={submitted ? errors : undefined}
@@ -614,6 +617,7 @@ function AgentKnowledgeRetrievalForm({
 
 /** The composer changes only on explicit confirmation. */
 export function AgentKnowledgeRetrievalDialog({
+  workflowNodeId,
   open,
   initialBindings,
   knowledgeFsEnabled,
@@ -628,6 +632,7 @@ export function AgentKnowledgeRetrievalDialog({
           growing would re-center it and slide the list under the pointer. */}
       <DialogContent initialFocus={filterRef} className="h-[min(40rem,80dvh)] w-xl overflow-hidden">
         <AgentKnowledgeRetrievalForm
+          workflowNodeId={workflowNodeId}
           initialBindings={initialBindings}
           knowledgeFsEnabled={knowledgeFsEnabled}
           filterRef={filterRef}
