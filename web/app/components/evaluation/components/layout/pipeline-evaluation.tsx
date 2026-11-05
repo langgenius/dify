@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useEvaluationStore } from '../../store'
 import HistoryTab from '../batch-test-panel/history-tab'
+import ConditionsSection from '../conditions-section'
 import EvaluationConfigActions from '../config-actions'
 import EvaluationFrameworkSelector from '../evaluation-framework-selector'
 import JudgeModelSelector from '../judge-model-selector'
@@ -26,7 +27,7 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default xl:flex-row xl:overflow-hidden">
-      <div className="flex shrink-0 flex-col border-b border-divider-subtle bg-background-default xl:min-h-0 xl:w-[450px] xl:border-r xl:border-b-0">
+      <div className="flex shrink-0 flex-col border-b border-divider-subtle bg-background-default xl:min-h-0 xl:w-[450px] xl:border-e xl:border-b-0">
         <div className="px-6 pt-4 pb-2">
           <SectionHeader
             title={t(($) => $.title)}
@@ -47,7 +48,7 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
           />
         </div>
 
-        <div className="px-6 pt-3 pb-4">
+        <div className="px-6 pt-3 pb-4 xl:max-h-[70%] xl:overflow-y-auto">
           <div className="space-y-3">
             <section>
               <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
@@ -63,6 +64,8 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
             </section>
 
             <PipelineMetricsSection resourceType={resourceType} resourceId={resourceId} />
+
+            <ConditionsSection resourceType={resourceType} resourceId={resourceId} />
 
             <PipelineBatchActions resourceType={resourceType} resourceId={resourceId} />
           </div>

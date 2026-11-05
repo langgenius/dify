@@ -32,15 +32,12 @@ import {
 
 type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
-export const DEFAULT_PIPELINE_METRIC_THRESHOLD = 0.85
 export const EVALUATION_TEMPLATE_FILE_NAMES: Record<EvaluationResourceType, string> = {
   agents: 'agent-evaluation-template.xlsx',
   apps: 'workflow-evaluation-template.xlsx',
   snippets: 'snippet-evaluation-template.xlsx',
   datasets: 'dataset-evaluation-template.xlsx',
 }
-
-const PIPELINE_LOGICAL_OPERATOR: JudgmentConfig['logicalOperator'] = 'and'
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 
@@ -178,48 +175,6 @@ const normalizeVariableSelector = (value: string[] | undefined): [string, string
     : null
 }
 
-const getConditionNumericValue = (value: EvaluationJudgmentCondition['value']) => {
-  if (typeof value === 'number') return value
-
-  if (typeof value !== 'string') return null
-
-  const parsedValue = Number(value)
-  return Number.isFinite(parsedValue) ? parsedValue : null
-}
-
-const getPipelineMetricThreshold = (
-  metric: EvaluationMetric,
-  resourceId: string,
-  config: EvaluationConfigResponse,
-) => {
-  const matchingCondition = (config.judgment_config?.conditions ?? []).find((condition) => {
-    const variableSelector = normalizeVariableSelector(condition.variable_selector)
-    return (
-      variableSelector?.[0] === resourceId &&
-      variableSelector[1] === metric.optionId &&
-      condition.comparison_operator === '≥'
-    )
-  })
-
-  return (
-    getConditionNumericValue(matchingCondition?.value) ??
-    metric.threshold ??
-    DEFAULT_PIPELINE_METRIC_THRESHOLD
-  )
-}
-
-const normalizePipelineMetrics = (
-  resourceId: string,
-  config: EvaluationConfigResponse,
-  metrics: EvaluationMetric[],
-) => {
-  return metrics.map((metric) => ({
-    ...metric,
-    valueType: 'number' as const,
-    threshold: getPipelineMetricThreshold(metric, resourceId, config),
-  }))
-}
-
 const getNormalizedConditionValue = (
   operator: ComparisonOperator,
   previousValue: EvaluationJudgmentCondition['value'] | number | null | undefined,
@@ -239,11 +194,13 @@ const getNormalizedConditionValue = (
 const normalizeConditionItem = (
   value: EvaluationJudgmentCondition,
   metrics: EvaluationMetric[],
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ): JudgmentConditionItem | null => {
   const variableSelector = normalizeVariableSelector(value.variable_selector)
   if (!variableSelector) return null
 
-  const metricOption = buildConditionMetricOptions(metrics).find(
+  const metricOption = buildConditionMetricOptions(metrics, resourceType, resourceId).find(
     (option) =>
       option.variableSelector[0] === variableSelector[0] &&
       option.variableSelector[1] === variableSelector[1],
@@ -274,13 +231,15 @@ const createEmptyJudgmentConfig = (): JudgmentConfig => {
 const normalizeJudgmentConfig = (
   config: EvaluationConfigResponse,
   metrics: EvaluationMetric[],
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ): JudgmentConfig => {
   const rawJudgmentConfig: EvaluationJudgmentConfig | null | undefined = config.judgment_config
 
   if (!rawJudgmentConfig) return createEmptyJudgmentConfig()
 
   const conditions = (rawJudgmentConfig.conditions ?? [])
-    .map((condition) => normalizeConditionItem(condition, metrics))
+    .map((condition) => normalizeConditionItem(condition, metrics, resourceType, resourceId))
     .filter((condition): condition is JudgmentConditionItem => !!condition)
 
   return {
@@ -323,7 +282,6 @@ export function getConditionValue(
 export function createBuiltinMetric(
   metric: MetricOption,
   nodeInfoList: NodeInfo[] = [],
-  threshold = DEFAULT_PIPELINE_METRIC_THRESHOLD,
 ): EvaluationMetric {
   return {
     id: createId('metric'),
@@ -332,7 +290,6 @@ export function createBuiltinMetric(
     label: metric.label,
     description: metric.description,
     valueType: metric.valueType,
-    threshold,
     nodeInfoList,
   }
 }
@@ -389,9 +346,11 @@ export function createCustomMetric(): EvaluationMetric {
 
 export const buildConditionItem = (
   metrics: EvaluationMetric[],
+  resourceType: EvaluationResourceType,
+  resourceId: string,
   variableSelector?: [string, string] | null,
 ): JudgmentConditionItem => {
-  const metricOptions = buildConditionMetricOptions(metrics)
+  const metricOptions = buildConditionMetricOptions(metrics, resourceType, resourceId)
   const metricOption = variableSelector
     ? (metricOptions.find(
         (option) =>
@@ -414,8 +373,10 @@ export const buildConditionItem = (
 export const syncJudgmentConfigWithMetrics = (
   judgmentConfig: JudgmentConfig,
   metrics: EvaluationMetric[],
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ): JudgmentConfig => {
-  const metricOptions = buildConditionMetricOptions(metrics)
+  const metricOptions = buildConditionMetricOptions(metrics, resourceType, resourceId)
 
   return {
     logicalOperator: judgmentConfig.logicalOperator,
@@ -467,9 +428,7 @@ export const buildStateFromEvaluationConfig = (
   const customMetrics = supportsCustomMetrics(resourceType)
     ? normalizeCustomMetric(config.customized_metrics)
     : []
-  const metrics = isPipelineResourceType(resourceType)
-    ? normalizePipelineMetrics(resourceId, config, defaultMetrics)
-    : [...defaultMetrics, ...customMetrics]
+  const metrics = [...defaultMetrics, ...customMetrics]
 
   return {
     ...buildInitialState(resourceType),
@@ -479,9 +438,7 @@ export const buildStateFromEvaluationConfig = (
         ? encodeModelSelection(config.evaluation_model_provider, config.evaluation_model)
         : null,
     metrics,
-    judgmentConfig: isPipelineResourceType(resourceType)
-      ? createEmptyJudgmentConfig()
-      : normalizeJudgmentConfig(config, metrics),
+    judgmentConfig: normalizeJudgmentConfig(config, metrics, resourceType, resourceId),
   }
 }
 
@@ -537,38 +494,17 @@ const buildCustomizedMetricsPayload = (
   }
 }
 
-const buildPipelineJudgmentConfigPayload = (
-  resource: EvaluationResourceState,
-  resourceId: string,
-): EvaluationConfigPayload['judgment_config'] => {
-  const conditions = resource.metrics
-    .filter((metric): metric is EvaluationMetric & { kind: 'builtin' } => metric.kind === 'builtin')
-    .map((metric) => {
-      return {
-        variable_selector: [resourceId, metric.optionId],
-        comparison_operator: '≥' as const,
-        value: String(metric.threshold ?? DEFAULT_PIPELINE_METRIC_THRESHOLD),
-      }
-    })
-
-  if (!conditions.length) return null
-
-  return {
-    logical_operator: PIPELINE_LOGICAL_OPERATOR,
-    conditions,
-  }
-}
-
 const buildJudgmentConfigPayload = (
   resource: EvaluationResourceState,
   resourceType: EvaluationResourceType,
   resourceId: string,
 ): EvaluationConfigPayload['judgment_config'] => {
-  if (isPipelineResourceType(resourceType))
-    return buildPipelineJudgmentConfigPayload(resource, resourceId)
-
   const conditions = resource.judgmentConfig.conditions
-    .filter((condition) => !!condition.variableSelector)
+    .filter(
+      (condition) =>
+        !!condition.variableSelector &&
+        (resourceType !== 'datasets' || condition.variableSelector[0] === resourceId),
+    )
     .map((condition) => {
       const [scope, metricName] = condition.variableSelector!
       const customMetric = resource.metrics.find(
@@ -715,8 +651,10 @@ export const isEvaluationRunnable = (state: EvaluationResourceState) => {
 export const getAllowedOperators = (
   metrics: EvaluationMetric[],
   variableSelector: [string, string] | null,
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ) => {
-  const metricOption = buildConditionMetricOptions(metrics).find(
+  const metricOption = buildConditionMetricOptions(metrics, resourceType, resourceId).find(
     (option) =>
       option.variableSelector[0] === variableSelector?.[0] &&
       option.variableSelector[1] === variableSelector?.[1],

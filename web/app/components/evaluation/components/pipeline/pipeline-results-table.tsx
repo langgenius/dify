@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import {
   formatValue,
   getIsItemPassed,
-  getMetricTextClassName,
   getMetricValue,
   getQueryContent,
 } from './pipeline-results-utils'
@@ -35,22 +34,22 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
         </colgroup>
         <thead>
           <tr className="bg-background-section">
-            <th className="h-7 rounded-l-lg" />
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            <th className="h-7 rounded-s-lg" />
+            <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['results.columns.query'])}
             </th>
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['results.columns.expected'])}
             </th>
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['results.columns.actual'])}
             </th>
             {metricColumns.map((column, index) => (
               <th
                 key={column.id}
                 className={cn(
-                  'h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary',
-                  index === metricColumns.length - 1 && 'rounded-r-lg',
+                  'h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary',
+                  index === metricColumns.length - 1 && 'rounded-e-lg',
                 )}
               >
                 {column.label}
@@ -69,7 +68,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
             ))}
           {!isLoading &&
             items.map((item) => {
-              const isPassed = getIsItemPassed(item, metricColumns)
+              const isPassed = getIsItemPassed(item)
               const actualOutput = item.error ?? item.actual_output
 
               return (
@@ -116,10 +115,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                     return (
                       <td
                         key={column.id}
-                        className={cn(
-                          'h-10 px-3 py-3 align-top system-sm-regular',
-                          getMetricTextClassName(metricValue, column),
-                        )}
+                        className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary"
                       >
                         {formatValue(metricValue)}
                       </td>

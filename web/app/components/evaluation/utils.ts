@@ -5,6 +5,7 @@ import type {
   ConditionMetricOptionGroup,
   ConditionMetricValueType,
   EvaluationMetric,
+  EvaluationResourceType,
 } from './types'
 
 export const TAB_CLASS_NAME = 'flex-1 rounded-lg px-3 py-2 text-left system-sm-medium'
@@ -87,9 +88,24 @@ export const getDefaultComparisonOperator = (
 
 export const buildConditionMetricOptions = (
   metrics: EvaluationMetric[],
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ): ConditionMetricOption[] => {
   return metrics.flatMap((metric) => {
     if (metric.kind === 'builtin') {
+      if (resourceType === 'datasets') {
+        return [
+          {
+            id: `${resourceId}:${metric.optionId}`,
+            kind: metric.kind,
+            groupLabel: metric.label,
+            itemLabel: metric.label,
+            valueType: metric.valueType,
+            variableSelector: [resourceId, metric.optionId] as [string, string],
+          },
+        ]
+      }
+
       return (metric.nodeInfoList ?? []).map((nodeInfo) => {
         return {
           id: `${nodeInfo.node_id}:${metric.optionId}`,

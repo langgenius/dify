@@ -82,16 +82,32 @@ describe('evaluation store utils', () => {
     })
   })
 
-  it('serializes dataset judgments with the dataset id and no node ids', () => {
+  it('serializes combined dataset judgments with the dataset id and no node ids', () => {
     const resource = createResource({
       judgeModelId: 'openai::gpt-4o-mini',
       metrics: [
-        createBuiltinMetric(
-          resolveMetricOption('context-precision'),
-          [{ node_id: 'stale-node-id', title: 'Retriever', type: 'knowledge-retrieval' }],
-          0.9,
-        ),
+        createBuiltinMetric(resolveMetricOption('context-precision'), [
+          { node_id: 'stale-node-id', title: 'Retriever', type: 'knowledge-retrieval' },
+        ]),
+        createBuiltinMetric(resolveMetricOption('context-recall')),
       ],
+      judgmentConfig: {
+        logicalOperator: 'or',
+        conditions: [
+          {
+            id: 'condition-1',
+            variableSelector: ['dataset-1', 'context-precision'],
+            comparisonOperator: '≥',
+            value: '0.9',
+          },
+          {
+            id: 'condition-2',
+            variableSelector: ['dataset-1', 'context-recall'],
+            comparisonOperator: '>',
+            value: '0.6',
+          },
+        ],
+      },
     })
 
     expect(buildEvaluationConfigPayload(resource, 'datasets', 'dataset-1')).toEqual({
@@ -104,18 +120,79 @@ describe('evaluation store utils', () => {
           value_type: 'number',
           node_info_list: [],
         },
+        {
+          metric: 'context-recall',
+          value_type: 'number',
+          node_info_list: [],
+        },
       ],
       customized_metrics: null,
       judgment_config: {
-        logical_operator: 'and',
+        logical_operator: 'or',
         conditions: [
           {
             variable_selector: ['dataset-1', 'context-precision'],
             comparison_operator: '≥',
             value: '0.9',
           },
+          {
+            variable_selector: ['dataset-1', 'context-recall'],
+            comparison_operator: '>',
+            value: '0.6',
+          },
         ],
       },
+    })
+  })
+
+  it('does not create implicit conditions for selected dataset metrics', () => {
+    const resource = createResource({
+      judgeModelId: 'openai::gpt-4o-mini',
+      metrics: [createBuiltinMetric(resolveMetricOption('context-precision'))],
+    })
+
+    expect(
+      buildEvaluationConfigPayload(resource, 'datasets', 'dataset-1')?.judgment_config,
+    ).toBeNull()
+  })
+
+  it('restores saved dataset conditions for editing', () => {
+    const resource = buildStateFromEvaluationConfig('datasets', 'dataset-1', {
+      default_metrics: [
+        { metric: 'context-precision', value_type: 'number', node_info_list: [] },
+        { metric: 'context-recall', value_type: 'number', node_info_list: [] },
+      ],
+      judgment_config: {
+        logical_operator: 'or',
+        conditions: [
+          {
+            variable_selector: ['dataset-1', 'context-precision'],
+            comparison_operator: '≥',
+            value: '0.85',
+          },
+          {
+            variable_selector: ['dataset-1', 'context-recall'],
+            comparison_operator: '<',
+            value: '0.6',
+          },
+        ],
+      },
+    })
+
+    expect(resource.judgmentConfig).toMatchObject({
+      logicalOperator: 'or',
+      conditions: [
+        {
+          variableSelector: ['dataset-1', 'context-precision'],
+          comparisonOperator: '≥',
+          value: '0.85',
+        },
+        {
+          variableSelector: ['dataset-1', 'context-recall'],
+          comparisonOperator: '<',
+          value: '0.6',
+        },
+      ],
     })
   })
 
@@ -199,7 +276,7 @@ describe('evaluation store utils', () => {
   it('defaults legacy configurations to Ragas and restores a saved framework', () => {
     expect(buildStateFromEvaluationConfig('apps', 'app-1', {}).evaluationFramework).toBe('ragas')
 
-    const savedConfig = { default_metrics: [], evaluation_framework: 'deepeval' }
+    const savedConfig = { default_metrics: [], evaluation_framework: 'deepeval' as const }
     expect(buildStateFromEvaluationConfig('apps', 'app-1', savedConfig).evaluationFramework).toBe(
       'deepeval',
     )

@@ -59,12 +59,6 @@ type EvaluationStore = {
     nodeInfoList?: NodeInfo[],
     metricOption?: MetricOption,
   ) => void
-  updateMetricThreshold: (
-    resourceType: EvaluationResourceType,
-    resourceId: string,
-    metricId: string,
-    threshold: number,
-  ) => void
   addCustomMetric: (resourceType: EvaluationResourceType, resourceId: string) => void
   removeMetric: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
   setCustomMetricWorkflow: (
@@ -306,23 +300,14 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
               judgmentConfig: syncJudgmentConfigWithMetrics(
                 currentResource.judgmentConfig,
                 metrics,
+                resourceType,
+                resourceId,
               ),
             }
           },
         ),
       }
     })
-  },
-  updateMetricThreshold: (resourceType, resourceId, metricId, threshold) => {
-    set((state) => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => ({
-        ...resource,
-        metrics: updateMetric(resource.metrics, metricId, (metric) => ({
-          ...metric,
-          threshold,
-        })),
-      })),
-    }))
   },
   addCustomMetric: (resourceType, resourceId) => {
     set((state) => ({
@@ -334,7 +319,12 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(
+            resource.judgmentConfig,
+            metrics,
+            resourceType,
+            resourceId,
+          ),
         }
       }),
     }))
@@ -347,7 +337,12 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(
+            resource.judgmentConfig,
+            metrics,
+            resourceType,
+            resourceId,
+          ),
         }
       }),
     }))
@@ -375,7 +370,12 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(
+            resource.judgmentConfig,
+            metrics,
+            resourceType,
+            resourceId,
+          ),
         }
       }),
     }))
@@ -415,7 +415,12 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(
+            resource.judgmentConfig,
+            metrics,
+            resourceType,
+            resourceId,
+          ),
         }
       }),
     }))
@@ -457,7 +462,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           ...resource.judgmentConfig,
           conditions: [
             ...resource.judgmentConfig.conditions,
-            buildConditionItem(resource.metrics, variableSelector),
+            buildConditionItem(resource.metrics, resourceType, resourceId, variableSelector),
           ],
         },
       })),
@@ -479,9 +484,18 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
   updateConditionMetric: (resourceType, resourceId, conditionId, variableSelector) => {
     set((state) => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
-        const allowedOperators = getAllowedOperatorsFromUtils(resource.metrics, variableSelector)
+        const allowedOperators = getAllowedOperatorsFromUtils(
+          resource.metrics,
+          variableSelector,
+          resourceType,
+          resourceId,
+        )
         const comparisonOperator = allowedOperators[0] ?? 'is'
-        const metricOption = buildConditionMetricOptions(resource.metrics).find(
+        const metricOption = buildConditionMetricOptions(
+          resource.metrics,
+          resourceType,
+          resourceId,
+        ).find(
           (option) =>
             option.variableSelector[0] === variableSelector[0] &&
             option.variableSelector[1] === variableSelector[1],
@@ -520,7 +534,11 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
               conditions: currentResource.judgmentConfig.conditions.map((condition) => {
                 if (condition.id !== conditionId) return condition
 
-                const metricOption = buildConditionMetricOptions(currentResource.metrics).find(
+                const metricOption = buildConditionMetricOptions(
+                  currentResource.metrics,
+                  resourceType,
+                  resourceId,
+                ).find(
                   (option) =>
                     option.variableSelector[0] === condition.variableSelector?.[0] &&
                     option.variableSelector[1] === condition.variableSelector?.[1],
@@ -615,8 +633,10 @@ export const useIsEvaluationConfigDirty = (
 export const getAllowedOperators = (
   metrics: EvaluationResourceState['metrics'],
   variableSelector: [string, string] | null,
+  resourceType: EvaluationResourceType,
+  resourceId: string,
 ) => {
-  return getAllowedOperatorsFromUtils(metrics, variableSelector)
+  return getAllowedOperatorsFromUtils(metrics, variableSelector, resourceType, resourceId)
 }
 
 export const isCustomMetricConfigured = (metric: EvaluationResourceState['metrics'][number]) => {

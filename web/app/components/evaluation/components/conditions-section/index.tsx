@@ -13,25 +13,31 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
   const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const conditionMetricOptions = useMemo(
-    () => buildConditionMetricOptions(resource.metrics),
-    [resource.metrics],
+    () => buildConditionMetricOptions(resource.metrics, resourceType, resourceId),
+    [resource.metrics, resourceType, resourceId],
   )
   const groupedConditionMetricOptions = useMemo(
     () => groupConditionMetricOptions(conditionMetricOptions),
     [conditionMetricOptions],
   )
   const canAddCondition = conditionMetricOptions.length > 0
+  let emptyMessage: string = t(($) => $['conditions.emptyDescription'])
+  if (resourceType === 'datasets') {
+    emptyMessage = canAddCondition
+      ? t(($) => $['conditions.emptyTitle'])
+      : t(($) => $['conditions.selectFieldFirst'])
+  }
 
   return (
     <section className="max-w-[700px] py-4">
       <InlineSectionHeader
         title={t(($) => $['conditions.title'])}
-        tooltip={t(($) => $['conditions.description'])}
+        tooltip={resourceType === 'datasets' ? undefined : t(($) => $['conditions.description'])}
       />
       <div className="mt-2 space-y-4">
         {resource.judgmentConfig.conditions.length === 0 && (
           <div className="rounded-xl bg-background-section px-3 py-3 system-xs-regular text-text-tertiary">
-            {t(($) => $['conditions.emptyDescription'])}
+            {emptyMessage}
           </div>
         )}
         {resource.judgmentConfig.conditions.length > 0 && (

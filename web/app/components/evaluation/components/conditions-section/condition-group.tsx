@@ -78,7 +78,7 @@ const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps
   if (metric.kind === 'builtin' && metric.nodeInfo) {
     return (
       <div className="flex min-w-0 items-center px-1">
-        <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 pr-1.5 pl-[5px] shadow-xs">
+        <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 ps-[5px] pe-1.5 shadow-xs">
           <span className="truncate system-xs-medium text-text-secondary">
             {getMetricVariableLabel(metric.variableSelector[1])}
           </span>
@@ -101,7 +101,7 @@ const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps
 
   return (
     <div className="flex min-w-0 items-center px-1">
-      <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 pr-1.5 pl-[5px] shadow-xs">
+      <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 ps-[5px] pe-1.5 shadow-xs">
         <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
         <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.valueType}</span>
       </div>
@@ -146,7 +146,7 @@ const ConditionMetricSelect = ({
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="truncate">{option.itemLabel}</span>
-                  <span className="ml-auto shrink-0 system-xs-medium text-text-quaternary">
+                  <span className="ms-auto shrink-0 system-xs-medium text-text-quaternary">
                     {t(($) => $[getConditionMetricValueTypeTranslationKey(option.valueType)])}
                   </span>
                 </div>
@@ -248,8 +248,8 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
   const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const metricOptions = useMemo(
-    () => buildConditionMetricOptions(resource.metrics),
-    [resource.metrics],
+    () => buildConditionMetricOptions(resource.metrics, resourceType, resourceId),
+    [resource.metrics, resourceType, resourceId],
   )
   const logicalOperator = resource.judgmentConfig.logicalOperator
   const logicalLabels = {
@@ -270,19 +270,19 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
 
   return (
     <div className="rounded-2xl border border-divider-subtle bg-components-card-bg p-4">
-      <div className={cn('relative', hasMultipleConditions && 'pl-[48px]')}>
+      <div className={cn('relative', hasMultipleConditions && 'ps-[48px]')}>
         {hasMultipleConditions && (
-          <div className="absolute top-0 bottom-0 left-0 w-[48px]">
-            <div className="absolute top-4 bottom-4 left-[34px] w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep" />
-            <div className="absolute top-1/2 right-0 h-[29px] w-4 -translate-y-1/2 bg-components-card-bg" />
+          <div className="absolute inset-s-0 top-0 bottom-0 w-[48px]">
+            <div className="absolute inset-s-[34px] top-4 bottom-4 w-2.5 rounded-s-[8px] border border-e-0 border-divider-deep" />
+            <div className="absolute inset-e-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-components-card-bg" />
             <button
               type="button"
               aria-label={logicalLabels[logicalOperator]}
-              className="absolute top-1/2 right-1 flex h-[21px] -translate-y-1/2 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs select-none"
+              className="absolute inset-e-1 top-1/2 flex h-[21px] -translate-y-1/2 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs select-none"
               onClick={toggleLogicalOperator}
             >
               {logicalLabels[logicalOperator]}
-              <span aria-hidden="true" className="ml-0.5 i-ri-loop-left-line h-3 w-3" />
+              <span aria-hidden="true" className="ms-0.5 i-ri-loop-left-line h-3 w-3" />
             </button>
           </div>
         )}
@@ -295,13 +295,15 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
             const allowedOperators = getAllowedOperators(
               resource.metrics,
               condition.variableSelector,
+              resourceType,
+              resourceId,
             )
             const showValue = !!metric && requiresConditionValue(condition.comparisonOperator)
 
             return (
               <div key={condition.id} className="flex items-start overflow-hidden rounded-lg">
                 <div className="min-w-0 flex-1 rounded-lg bg-components-input-bg-normal">
-                  <div className="flex items-center gap-0 pr-1">
+                  <div className="flex items-center gap-0 pe-1">
                     <div className="min-w-0 flex-1 py-1">
                       <ConditionMetricSelect
                         metric={metric}
@@ -333,7 +335,7 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                     </div>
                   )}
                 </div>
-                <div className="pt-1 pl-1">
+                <div className="ps-1 pt-1">
                   <IconButton
                     size="lg"
                     tone="destructive"
