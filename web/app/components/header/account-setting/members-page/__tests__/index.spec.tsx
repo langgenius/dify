@@ -337,38 +337,28 @@ describe('MembersPage', () => {
     expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
-  it('refreshes the members list when a closed role editor unmounts before success', async () => {
+  it('closes member details once a pending role save succeeds', async () => {
     const user = userEvent.setup()
-    let resolveSave!: (value: { result: string }) => void
-    updateRoles.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveSave = resolve
-        }),
-    )
-    const { queryClient } = await renderMembersPage()
-    await user.click(screen.getByRole('button', { name: /members\.memberActions: Admin User/ }))
-    await user.click(screen.getByRole('menuitem', { name: /members\.editRole/ }))
-    await user.click(await screen.findByRole('option', { name: /Next role/ }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    const save = updateRoles.getMockImplementation()!
+    let resolveSave!: () => void
+    updateRoles.mockImplementationOnce(async (input) => {
+      await new Promise<void>((resolve) => {
+        resolveSave = resolve
+      })
+      return save(input)
+    })
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
     await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    const beforeRequests = membersRequest.mock.calls.length
-    accounts = accounts.filter((account) => account.id !== '2')
-    await queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.members.get.key(),
-    })
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', { name: /members\.memberActions: Admin User/ }),
-      ).not.toBeInTheDocument(),
-    )
+    expect(dialog).toBeInTheDocument()
     await act(async () => {
-      resolveSave({ result: 'success' })
+      resolveSave()
     })
-    await waitFor(() =>
-      expect(membersRequest.mock.calls.length).toBeGreaterThan(beforeRequests + 1),
-    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(
+      await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText('Next role'),
+    ).toBeInTheDocument()
   })
 
   it('opens ownership transfer from the owner action without opening member details', async () => {

@@ -3,6 +3,7 @@ import type {
   AccountWithRoleResponse,
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -45,7 +46,6 @@ import InvitationResultsContent from './invitation-results-content'
 import { InviteModal } from './invite-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
-import { useUpdateMemberRoles } from './use-update-member-roles'
 
 const MembersPageContent = () => {
   const { t } = useTranslation([
@@ -114,16 +114,28 @@ const MembersPageContent = () => {
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { submitAsync: updateRolesOfMember, isPending: isSavingMember } = useUpdateMemberRoles(
-    systemFeatures.rbac_enabled,
-    () => detailsDialogHandle.close(),
+  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
+      context: { silent: true },
+    }),
   )
+
+  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
+    const roleIds = systemFeatures.rbac_enabled
+      ? roles.map((role) => role.id)
+      : roles.slice(0, 1).map((role) => role.id)
+
+    return updateRolesOfMember({
+      params: { member_id: member.id },
+      body: { role_ids: roleIds },
+    })
+  }
 
   return (
     <Dialog
       handle={detailsDialogHandle}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -424,7 +436,7 @@ const MembersPageContent = () => {
                 }
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onClose={() => detailsDialogHandle.close()}
-                onAssignSubmit={(roles) => updateRolesOfMember(member.id, roles)}
+                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
               />
             )}
           </DialogContent>

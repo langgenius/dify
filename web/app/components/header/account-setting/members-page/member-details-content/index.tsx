@@ -112,12 +112,13 @@ const MemberDetailsContent = ({
     setSaveFailed(false)
     try {
       await onAssignSubmit(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
+      onClose()
     } catch {
       setSaveFailed(true)
     } finally {
       setIsSaving(false)
     }
-  }, [allowMultipleRoles, isSaving, onAssignSubmit, selectedRoles])
+  }, [allowMultipleRoles, isSaving, onAssignSubmit, onClose, selectedRoles])
 
   return (
     <>

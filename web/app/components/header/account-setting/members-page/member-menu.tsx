@@ -4,12 +4,13 @@ import type { Role } from '@/models/access-control'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesContent from './assign-roles-content'
 import TransferOwnershipContent from './transfer-ownership-content'
-import { useUpdateMemberRoles } from './use-update-member-roles'
 
 type MemberMenuProps = {
   member: AccountWithRoleResponse
@@ -46,11 +47,15 @@ const MemberMenu = ({
     : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const {
-    submit: updateRolesOfMember,
+    mutate: updateRolesOfMember,
     isPending: isSavingRoles,
     isError: roleSaveFailed,
     reset: resetRoleSave,
-  } = useUpdateMemberRoles(allowMultipleRoles, () => setAssignModalOpen(false))
+  } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
   const handleOpenAssignRoles = () => {
     resetRoleSave()
@@ -59,7 +64,14 @@ const MemberMenu = ({
 
   const handleAssignRolesSubmit = (roles: Role[]) => {
     if (isSavingRoles) return
-    updateRolesOfMember(member.id, roles)
+    const roleIds = allowMultipleRoles
+      ? roles.map((role) => role.id)
+      : roles.slice(0, 1).map((role) => role.id)
+
+    updateRolesOfMember(
+      { params: { member_id: member.id }, body: { role_ids: roleIds } },
+      { onSuccess: () => setAssignModalOpen(false) },
+    )
   }
 
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
