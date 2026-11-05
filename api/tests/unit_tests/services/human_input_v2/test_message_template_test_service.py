@@ -25,6 +25,7 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input_v2.entities import RequestUrlCountError
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -698,9 +699,20 @@ def test_blank_rendered_subject_is_rejected(context: _Context, subject: str) -> 
     context.gateway.send_message.assert_not_called()
 
 
-@pytest.mark.parametrize("body", ["\n", "Body", "{{#url#}} {{#url#}}"])
-def test_body_without_exactly_one_request_url_is_refused_before_sending(context: _Context, body: str) -> None:
+@pytest.mark.parametrize(("body", "found"), [("\n", 0), ("Body", 0), ("{{#url#}} {{#url#}}", 2)])
+def test_body_without_exactly_one_request_url_is_refused_naming_the_placeholder(
+    context: _Context, body: str, found: int
+) -> None:
     context.template("Review", body)
+    with pytest.raises(MessageTemplateTestError) as refused:
+        context.send()
+    assert str(refused.value) == str(RequestUrlCountError(body))
+    assert f"Request URL {{{{#url#}}}} exactly once, found {found}" in str(refused.value)
+    context.gateway.send_message.assert_not_called()
+
+
+def test_a_node_invalid_for_another_reason_keeps_the_generic_refusal(context: _Context) -> None:
+    context.template("Review", "Body {{#url#}}", version="1")
     with pytest.raises(MessageTemplateTestError, match="valid message template"):
         context.send()
     context.gateway.send_message.assert_not_called()
