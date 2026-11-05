@@ -50,9 +50,12 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
           </Button>
         }
       />
-      <PopoverContent className="w-[360px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]">
-        <div className="flex min-h-[560px] flex-col bg-components-panel-bg">
-          <div className="border-b border-divider-subtle bg-background-section-burn px-2 py-2">
+      <PopoverContent
+        align="start"
+        className="h-[560px] max-h-(--available-height) w-[360px] max-w-(--available-width) overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
+      >
+        <div className="flex h-full min-h-0 flex-col bg-components-panel-bg">
+          <div className="shrink-0 border-b border-divider-subtle bg-background-section-burn px-2 py-2">
             <SearchInput
               value={query}
               placeholder={t(($) => $['metrics.searchNodeOrMetrics'])}
@@ -60,7 +63,7 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
             />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {isRemoteLoading && (
               <div className="space-y-3 px-3 py-4" data-testid="evaluation-metric-loading">
                 {['metric-skeleton-1', 'metric-skeleton-2', 'metric-skeleton-3'].map((key) => (
