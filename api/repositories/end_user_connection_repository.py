@@ -85,6 +85,35 @@ class EndUserConnectionRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._sessions = session_factory
 
+    def delete_app_selections_batch(self, *, tenant_id: str, app_id: str, batch_size: int) -> int:
+        """Remove a deleted App's choices, preserving credentials and consent.
+
+        Accept trusted tenant/App IDs and a positive batch_size after App deletion
+        commits. Lock and delete at most batch_size rows per selection table in
+        one transaction. Return the deleted count, including zero on redelivery;
+        failures roll back the entire batch and propagate to the caller.
+        """
+        if batch_size <= 0:
+            raise ValueError("Connection cleanup batch size must be positive.")
+        deleted = 0
+        with self._sessions.begin() as session:
+            for selection in (AppConnection, SessionConnection):
+                scope = (selection.tenant_id == tenant_id, selection.app_id == app_id)
+                selection_ids = session.scalars(
+                    sa.select(selection.id).where(*scope).order_by(selection.id).limit(batch_size).with_for_update()
+                ).all()
+                if selection_ids:
+                    result = cast(
+                        CursorResult,
+                        session.execute(
+                            sa.delete(selection)
+                            .where(*scope, selection.id.in_(selection_ids))
+                            .execution_options(synchronize_session=False)
+                        ),
+                    )
+                    deleted += result.rowcount
+        return deleted
+
     def account_connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         with self._sessions() as session:
             tenant_id = session.scalar(
