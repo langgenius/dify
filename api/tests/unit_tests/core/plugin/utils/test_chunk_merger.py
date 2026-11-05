@@ -10,14 +10,14 @@ from graphon.file import File, FileTransferMethod, FileType
 
 
 class TestChunkMerger:
-    def test_file_chunk_initialization(self):
+    def test_file_chunk_initialization(self) -> None:
         """Test FileChunk initialization."""
         chunk = FileChunk(1024)
         assert chunk.bytes_written == 0
         assert chunk.total_length == 1024
         assert len(chunk.data) == 1024
 
-    def test_merge_blob_chunks_with_single_complete_chunk(self):
+    def test_merge_blob_chunks_with_single_complete_chunk(self) -> None:
         """Test merging a single complete blob chunk."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -43,7 +43,7 @@ class TestChunkMerger:
         # The buffer should contain the complete data
         assert result[0].message.blob[:10] == b"HelloWorld"
 
-    def test_merge_blob_chunks_with_multiple_files(self):
+    def test_merge_blob_chunks_with_multiple_files(self) -> None:
         """Test merging chunks from multiple files."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -81,7 +81,7 @@ class TestChunkMerger:
         # Check that both files are properly merged
         assert all(r.type == ToolInvokeMessage.MessageType.BLOB for r in result)
 
-    def test_merge_blob_chunks_passes_through_non_blob_messages(self):
+    def test_merge_blob_chunks_passes_through_non_blob_messages(self) -> None:
         """Test that non-blob messages pass through unchanged."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -113,7 +113,7 @@ class TestChunkMerger:
         assert isinstance(result[2].message, ToolInvokeMessage.TextMessage)
         assert result[2].message.text == "World"
 
-    def test_merge_blob_chunks_file_too_large(self):
+    def test_merge_blob_chunks_file_too_large(self) -> None:
         """Test that error is raised when file exceeds max size."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -131,7 +131,7 @@ class TestChunkMerger:
             list(merge_blob_chunks(mock_generator(), max_file_size=1000))
         assert "File is too large" in str(exc_info.value)
 
-    def test_merge_blob_chunks_chunk_too_large(self):
+    def test_merge_blob_chunks_chunk_too_large(self) -> None:
         """Test that error is raised when chunk exceeds max chunk size."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -147,7 +147,7 @@ class TestChunkMerger:
             list(merge_blob_chunks(mock_generator(), max_chunk_size=8192))
         assert "File chunk is too large" in str(exc_info.value)
 
-    def test_merge_blob_chunks_with_agent_invoke_message(self):
+    def test_merge_blob_chunks_with_agent_invoke_message(self) -> None:
         """Test that merge_blob_chunks works with AgentInvokeMessage."""
 
         def mock_generator() -> Generator[AgentInvokeMessage]:
@@ -171,7 +171,7 @@ class TestChunkMerger:
         assert isinstance(result[0], AgentInvokeMessage)
         assert result[0].type == AgentInvokeMessage.MessageType.BLOB
 
-    def test_merge_blob_chunks_preserves_meta(self):
+    def test_merge_blob_chunks_preserves_meta(self) -> None:
         """Test that meta information is preserved in merged messages."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -187,7 +187,7 @@ class TestChunkMerger:
         assert len(result) == 1
         assert result[0].meta == {"key": "value"}
 
-    def test_merge_blob_chunks_custom_limits(self):
+    def test_merge_blob_chunks_custom_limits(self) -> None:
         """Test merge_blob_chunks with custom size limits."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -221,7 +221,7 @@ class TestChunkMerger:
         with pytest.raises(ValueError, match="File is too large which reached the limit of 0\\.000286102294921875MB"):
             list(merge_blob_chunks(mock_generator2(), max_file_size=300))
 
-    def test_merge_blob_chunks_data_integrity(self):
+    def test_merge_blob_chunks_data_integrity(self) -> None:
         """Test that merged chunks exactly match the original data."""
         # Create original data
         original_data = b"This is a test message that will be split into chunks for testing purposes."
@@ -255,7 +255,7 @@ class TestChunkMerger:
         # Verify the merged data exactly matches the original
         assert result[0].message.blob == original_data
 
-    def test_merge_blob_chunks_empty_chunk(self):
+    def test_merge_blob_chunks_empty_chunk(self) -> None:
         """Test handling of empty chunks."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -288,7 +288,7 @@ class TestChunkMerger:
         # The final blob should contain "Hello" followed by "World"
         assert result[0].message.blob[:10] == b"HelloWorld"
 
-    def test_merge_blob_chunks_single_chunk_file(self):
+    def test_merge_blob_chunks_single_chunk_file(self) -> None:
         """Test file that arrives as a single complete chunk."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -310,7 +310,7 @@ class TestChunkMerger:
         assert isinstance(result[0].message, ToolInvokeMessage.BlobMessage)
         assert result[0].message.blob == b"Single Data"
 
-    def test_merge_blob_chunks_concurrent_files(self):
+    def test_merge_blob_chunks_concurrent_files(self) -> None:
         """Test that chunks from different files are properly separated."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -358,7 +358,7 @@ class TestChunkMerger:
         expected = {b"First file content", b"Second file data", b"Third file"}
         assert blobs == expected
 
-    def test_merge_blob_chunks_exact_buffer_size(self):
+    def test_merge_blob_chunks_exact_buffer_size(self) -> None:
         """Test that data fitting exactly in buffer works correctly."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -392,7 +392,7 @@ class TestChunkMerger:
         assert len(result[0].message.blob) == 100
         assert result[0].message.blob == b"X" * 100
 
-    def test_merge_blob_chunks_large_file_simulation(self):
+    def test_merge_blob_chunks_large_file_simulation(self) -> None:
         """Test handling of a large file split into many chunks."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -433,7 +433,7 @@ class TestChunkMerger:
             chunk = merged_data[chunk_start:chunk_end]
             assert all(b == expected_byte for b in chunk), f"Chunk {i} has incorrect data"
 
-    def test_merge_blob_chunks_sequential_order_required(self):
+    def test_merge_blob_chunks_sequential_order_required(self) -> None:
         """
         Test note: The current implementation assumes chunks arrive in sequential order.
         Out-of-order chunks would need additional logic to handle properly.
@@ -465,7 +465,7 @@ class TestChunkMerger:
 
 
 class TestConverter:
-    def test_convert_parameters_to_plugin_format_with_single_file_and_selector(self):
+    def test_convert_parameters_to_plugin_format_with_single_file_and_selector(self) -> None:
         file_param = File(
             tenant_id="tenant-1",
             file_type=FileType.IMAGE,
@@ -498,7 +498,7 @@ class TestConverter:
         assert converted["selector"]["provider_id"] == "org/plugin/provider"
         assert converted["plain"] == 123
 
-    def test_convert_parameters_to_plugin_format_with_lists_and_passthrough_values(self):
+    def test_convert_parameters_to_plugin_format_with_lists_and_passthrough_values(self) -> None:
         file_one = File(
             tenant_id="tenant-1",
             file_type=FileType.DOCUMENT,
@@ -530,10 +530,11 @@ class TestConverter:
             tool_parameters={},
         )
 
+        empty_list: list[object] = []
         params = {
             "files": [file_one, file_two],
             "selectors": [selector_one, selector_two],
-            "empty_list": [],
+            "empty_list": empty_list,
             "mixed_list": [file_one, "raw"],
             "none_value": None,
         }
@@ -549,7 +550,7 @@ class TestConverter:
         assert converted["mixed_list"] == [file_one, "raw"]
         assert converted["none_value"] is None
 
-    def test_merge_blob_chunks_rejects_declared_size_above_limit(self):
+    def test_merge_blob_chunks_rejects_declared_size_above_limit(self) -> None:
         """A declared total_length above the limit is rejected before allocation."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:
@@ -563,7 +564,7 @@ class TestConverter:
         with pytest.raises(ValueError, match="File is too large"):
             list(merge_blob_chunks(mock_generator(), max_file_size=1024))
 
-    def test_merge_blob_chunks_rejects_absurd_declared_size(self):
+    def test_merge_blob_chunks_rejects_absurd_declared_size(self) -> None:
         """An absurd declared total_length raises ValueError, not MemoryError/OverflowError."""
 
         def mock_generator() -> Generator[ToolInvokeMessage]:

@@ -1,17 +1,6 @@
 import { screen } from '@testing-library/react'
-import * as React from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ResultPanel from '../result'
-
-// Code editing is independently covered; keep the status widget real to verify API status mapping.
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
-    <div data-testid="code-editor">
-      <div data-testid="code-editor-title">{title}</div>
-      <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
-    </div>
-  ),
-}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -39,8 +28,12 @@ describe('ResultPanel', () => {
 
     expect(screen.getByText('INPUT')).toBeInTheDocument()
     expect(screen.getByText('OUTPUT')).toBeInTheDocument()
-    expect(screen.getByText(JSON.stringify(mockProps.inputs))).toBeInTheDocument()
-    expect(screen.getByText(JSON.stringify(mockProps.outputs))).toBeInTheDocument()
+    const editors = screen.getAllByRole('textbox') as HTMLTextAreaElement[]
+    expect(editors.map((editor) => JSON.parse(editor.value))).toEqual([
+      mockProps.inputs,
+      mockProps.outputs,
+    ])
+    editors.forEach((editor) => expect(editor).toHaveAttribute('readonly'))
     expect(screen.getByText('User Name')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('appLog.status.succeeded')
     expect(screen.getByRole('status')).toHaveTextContent('1.235s')

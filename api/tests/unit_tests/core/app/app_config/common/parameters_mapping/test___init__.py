@@ -21,6 +21,15 @@ type _DefaultedFeatureKey = Literal[
 class TestGetParametersFromFeatureDict:
     """Test suite for get_parameters_from_feature_dict"""
 
+    @pytest.mark.parametrize(
+        ("features", "enabled"),
+        [({}, False), ({"show_thoughts": None}, False), ({"show_thoughts": {"enabled": True}}, True)],
+    )
+    def test_show_thoughts_parameters(self, features: dict[str, object], enabled: bool) -> None:
+        result = parameters_mapping.get_parameters_from_feature_dict(features_dict=features, user_input_form=[])
+
+        assert result["show_thoughts"] == {"enabled": enabled}
+
     @pytest.fixture
     def mock_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Override file limits on the shared typed config."""

@@ -50,8 +50,19 @@ _SLACK_CREDENTIALS = {
 }
 
 
+@pytest.fixture(scope="module")
+def console_app() -> Flask:
+    """One app with the whole console blueprint, which takes a few hundred milliseconds to register."""
+    application = Flask(__name__)
+    LoginManager().init_app(application)
+    application.config["TESTING"] = False
+    application.config["RESTX_ERROR_404_HELP"] = False
+    application.register_blueprint(console_bp)
+    return application
+
+
 @pytest.fixture
-def wire_app(monkeypatch: pytest.MonkeyPatch) -> Flask:
+def wire_app(console_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Flask:
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-1"
     account.role = TenantAccountRole.OWNER
@@ -64,13 +75,7 @@ def wire_app(monkeypatch: pytest.MonkeyPatch) -> Flask:
         "controllers.console.wraps.current_account_with_tenant",
         lambda: AccountWithTenant(account=account, tenant_id="workspace-1"),
     )
-
-    application = Flask(__name__)
-    LoginManager().init_app(application)
-    application.config["TESTING"] = False
-    application.config["RESTX_ERROR_404_HELP"] = False
-    application.register_blueprint(console_bp)
-    return application
+    return console_app
 
 
 def test_console_blueprint_registers_only_the_canonical_channel_routes(wire_app: Flask) -> None:
