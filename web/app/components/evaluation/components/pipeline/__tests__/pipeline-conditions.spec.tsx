@@ -4,7 +4,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEvaluationStore } from '../../../store'
 import ConditionsSection from '../../conditions-section'
-import PipelineMetricsSection from '../pipeline-metrics-section'
+import FixedMetricsSection from '../../fixed-metrics-section'
 
 describe('knowledge evaluation conditions', () => {
   it('adds a judgment condition for a selected metric and removes it when the metric is deselected', async () => {
@@ -21,18 +21,19 @@ describe('knowledge evaluation conditions', () => {
 
     renderWithConsoleQuery(
       <>
-        <PipelineMetricsSection resourceType="datasets" resourceId="dataset-1" />
+        <FixedMetricsSection resourceType="datasets" resourceId="dataset-1" />
         <ConditionsSection resourceType="datasets" resourceId="dataset-1" />
       </>,
       { queryClient },
     )
 
-    const metric = await screen.findByRole('button', { name: /Context Precision/ })
+    const metric = await screen.findByRole('checkbox', { name: /Context Precision/ })
     const addCondition = screen.getByRole('button', { name: 'evaluation.conditions.addCondition' })
     expect(addCondition).toBeDisabled()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
 
     await user.click(metric)
+    expect(metric).toBeChecked()
     expect(addCondition).toBeEnabled()
     expect(screen.queryByText('evaluation.pipeline.passIf')).not.toBeInTheDocument()
 
@@ -41,6 +42,7 @@ describe('knowledge evaluation conditions', () => {
     expect(screen.getByRole('spinbutton')).toBeInTheDocument()
 
     await user.click(metric)
+    expect(metric).not.toBeChecked()
     expect(addCondition).toBeDisabled()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })

@@ -7,9 +7,9 @@ import BatchTestPanel from '../batch-test-panel'
 import ConditionsSection from '../conditions-section'
 import EvaluationConfigActions from '../config-actions'
 import EvaluationFrameworkSelector from '../evaluation-framework-selector'
+import FixedMetricsSection from '../fixed-metrics-section'
 import JudgeModelSelector from '../judge-model-selector'
 import MetricSection from '../metric-section'
-import PipelineMetricsSection from '../pipeline/pipeline-metrics-section'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
 
 const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps) => {
@@ -53,8 +53,8 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
             </div>
           </section>
           <div className="max-w-[700px] border-b border-divider-subtle" />
-          {resourceType === 'datasets' ? (
-            <PipelineMetricsSection resourceType={resourceType} resourceId={resourceId} />
+          {resourceType === 'datasets' || resourceType === 'agents' ? (
+            <FixedMetricsSection resourceType={resourceType} resourceId={resourceId} />
           ) : (
             <MetricSection resourceType={resourceType} resourceId={resourceId} />
           )}
