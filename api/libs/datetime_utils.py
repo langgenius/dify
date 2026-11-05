@@ -74,7 +74,9 @@ def parse_time_range(
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:
     """
     Parse time range strings and convert to UTC datetime objects.
-    Handles DST ambiguity and non-existent times gracefully.
+    Ambiguous times use ``is_dst=False``. Non-existent local times shift
+    forward by the actual timezone offset change, preserving their position
+    within the gap.
 
     Args:
         start: Start time string (YYYY-MM-DD HH:MM)
@@ -82,10 +84,12 @@ def parse_time_range(
         tzname: Timezone name
 
     Returns:
-        tuple: (start_datetime_utc, end_datetime_utc)
+        tuple: (start_datetime_utc, end_datetime_utc), with None for empty bounds.
+            Non-empty bounds are timezone-aware UTC datetimes with start <= end.
 
     Raises:
-        ValueError: When time range is invalid or start > end
+        ValueError: When a time format is invalid or the parsed start > end.
+        pytz.UnknownTimeZoneError: When tzname is not a recognized timezone.
     """
     tz = pytz.timezone(tzname)
     utc = pytz.utc
@@ -104,8 +108,9 @@ def parse_time_range(
         except pytz.AmbiguousTimeError:
             return tz.localize(dt, is_dst=False).astimezone(utc)
         except pytz.NonExistentTimeError:
-            dt += datetime.timedelta(hours=1)
-            return tz.localize(dt, is_dst=None).astimezone(utc)
+            # Use the pre-transition offset, then normalize to shift forward
+            # by the actual gap size while preserving the position within it.
+            return tz.normalize(tz.localize(dt, is_dst=False)).astimezone(utc)
 
     start_dt = _parse(start, "start")
     end_dt = _parse(end, "end")

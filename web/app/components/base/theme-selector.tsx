@@ -11,6 +11,7 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { useTheme } from 'next-themes'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const THEMES = ['light', 'dark', 'system'] as const
@@ -20,14 +21,25 @@ const isTheme = (value: string): value is Theme => {
   return (THEMES as readonly string[]).includes(value)
 }
 
+const subscribeToNothing = () => () => {}
+
+const useIsHydrated = () =>
+  useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  )
+
 export default function ThemeSelector() {
   const direction = useDirection()
   const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
+  const isHydrated = useIsHydrated()
   const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 
   const getCurrentIcon = () => {
-    switch (theme) {
+    if (!isHydrated) return <span aria-hidden className="size-4" />
+    switch (currentTheme) {
       case 'light':
         return <span aria-hidden className="i-ri-sun-line size-4 text-text-tertiary" />
       case 'dark':
