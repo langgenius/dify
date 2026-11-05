@@ -1,9 +1,12 @@
+from collections.abc import Callable
 from types import SimpleNamespace
 
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.agent import PluginAgentClient
+
+_Transformer = Callable[[dict[str, object]], dict[str, object]]
 
 
 def _agent_provider(name: str = "agent") -> SimpleNamespace:
@@ -17,13 +20,14 @@ def _agent_provider(name: str = "agent") -> SimpleNamespace:
 
 
 class TestPluginAgentClient:
-    def test_fetch_agent_strategy_providers(self, mocker: MockerFixture):
+    def test_fetch_agent_strategy_providers(self, mocker: MockerFixture) -> None:
         client = PluginAgentClient()
         provider = _agent_provider("remote")
 
-        def fake_request(method, path, type_, **kwargs):
-            transformer = kwargs["transformer"]
-            payload = {
+        def fake_request(
+            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
+        ) -> list[SimpleNamespace]:
+            payload: dict[str, object] = {
                 "data": [
                     {
                         "declaration": {
@@ -33,8 +37,16 @@ class TestPluginAgentClient:
                     }
                 ]
             }
-            transformed = transformer(payload)
-            assert transformed["data"][0]["declaration"]["strategies"][0]["identity"]["provider"] == "remote"
+            assert transformer(payload) == {
+                "data": [
+                    {
+                        "declaration": {
+                            "identity": {"name": "remote"},
+                            "strategies": [{"identity": {"provider": "remote"}}],
+                        }
+                    }
+                ]
+            }
             return [provider]
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -45,16 +57,19 @@ class TestPluginAgentClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.strategies[0].identity.provider == "org/plugin/remote"
 
-    def test_fetch_agent_strategy_provider(self, mocker: MockerFixture):
+    def test_fetch_agent_strategy_provider(self, mocker: MockerFixture) -> None:
         client = PluginAgentClient()
         provider = _agent_provider("provider")
 
-        def fake_request(method, path, type_, **kwargs):
-            transformer = kwargs["transformer"]
-            assert transformer({"data": None}) == {"data": None}
-            payload = {"data": {"declaration": {"strategies": [{"identity": {"provider": "old"}}]}}}
-            transformed = transformer(payload)
-            assert transformed["data"]["declaration"]["strategies"][0]["identity"]["provider"] == "provider"
+        def fake_request(
+            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
+        ) -> SimpleNamespace:
+            skipped: dict[str, object] = {"data": None}
+            assert transformer(skipped) == skipped
+            payload: dict[str, object] = {"data": {"declaration": {"strategies": [{"identity": {"provider": "old"}}]}}}
+            assert transformer(payload) == {
+                "data": {"declaration": {"strategies": [{"identity": {"provider": "provider"}}]}}
+            }
             return provider
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -65,7 +80,7 @@ class TestPluginAgentClient:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.strategies[0].identity.provider == "org/plugin/provider"
 
-    def test_invoke_merges_chunks_and_passes_context(self, mocker: MockerFixture):
+    def test_invoke_merges_chunks_and_passes_context(self, mocker: MockerFixture) -> None:
         client = PluginAgentClient()
         stream_mock = mocker.patch.object(
             client, "_request_with_plugin_daemon_response_stream", return_value=iter(["raw"])

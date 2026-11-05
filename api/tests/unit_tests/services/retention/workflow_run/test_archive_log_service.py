@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 from collections.abc import Sequence
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 
 import pytest
 
@@ -92,7 +92,7 @@ class FakeTaskStore:
         self.fail_reads = fail_reads
         self.lock_calls: list[tuple[str, str]] = []
 
-    def lock(self, *, tenant_id: str, download_id: str):
+    def lock(self, *, tenant_id: str, download_id: str) -> AbstractContextManager[None]:
         self.lock_calls.append((tenant_id, download_id))
         return nullcontext()
 
@@ -334,7 +334,7 @@ def test_create_download_marks_matching_claim_failed_when_dispatch_fails() -> No
     records = (_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024),)
     task_store = FakeTaskStore()
 
-    def dispatch(_task: WorkflowRunArchiveDownloadTask) -> None:
+    def dispatch(task: WorkflowRunArchiveDownloadTask) -> None:
         raise RuntimeError("broker unavailable")
 
     result = _service(records=records, tasks=task_store, dispatcher=dispatch).create_download(
@@ -393,7 +393,7 @@ def test_create_download_claims_dispatch_once() -> None:
         dispatched_tasks.append(task)
         concurrent_results.append(service.create_download(_CONTEXT, year=2025, month=3))
 
-    def sign_download_url(_storage_key: str, *, expires_in: int, filename: str) -> str:
+    def sign_download_url(storage_key: str, *, expires_in: int, filename: str) -> str:
         assert expires_in > 0
         assert filename
         return "unused"

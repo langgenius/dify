@@ -53,7 +53,7 @@ const plugin = createMarketplacePluginFixture()
 describe('CardWrapper', () => {
   afterEach(() => {
     delete window.__marketplaceTracking__
-    document.body.removeAttribute('data-is-marketplace')
+    document.documentElement.removeAttribute('data-is-marketplace')
   })
 
   const renderCardWrapper = (
@@ -116,7 +116,7 @@ describe('CardWrapper', () => {
     const user = userEvent.setup()
     const track = vi.fn()
     const rememberReferrer = vi.fn()
-    document.body.setAttribute('data-is-marketplace', '')
+    document.documentElement.setAttribute('data-is-marketplace', '')
     window.__marketplaceTracking__ = {
       track,
       rememberReferrer,
