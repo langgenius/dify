@@ -25,20 +25,25 @@ from __future__ import annotations
 import contextvars
 import json
 from collections.abc import Iterator
+from inspect import unwrap
+from typing import override
 from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
 from flask import has_app_context
-from sqlalchemy.orm import Session
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app import workflow_node_output_inspector as ctrl
+from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
 from models import App, AppMode
 from models.model import IconType
 from services.workflow.inspector_events import InspectorMessage
 from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorError,
+    NodeOutputInspectorService,
     NodeOutputStatus,
     NodeOutputsView,
     NodeStatus,
@@ -139,7 +144,8 @@ def _drain(stream: Iterator[str]) -> list[str]:
 
 def _stream(app_model, run_id) -> Iterator[str]:
     """Open the stream the way the handlers do: resolve the run first, then generate."""
-    snapshot = ctrl._initial_snapshot(MagicMock(spec=Session), app_model, run_id)
+    with session_factory.create_session() as session:
+        snapshot = ctrl._initial_snapshot(session, app_model, run_id)
     return ctrl._stream_inspector_events(app_model, run_id, snapshot)
 
 
@@ -217,14 +223,16 @@ def test_stream_fast_path_each_terminal_status(patch_service, app_model, run_id)
         assert events == ["snapshot", "workflow_run_completed"], terminal
 
 
-def test_initial_snapshot_raises_the_404_before_the_response_exists(patch_service, app_model, run_id):
+def test_initial_snapshot_raises_the_404_before_the_response_exists(
+    patch_service, unbound_session: Session, app_model, run_id
+):
     """A missing run must be an HTTP 404. The handlers resolve the snapshot before building the
     streaming ``Response``; raising inside the generator would arrive after the 200 went out."""
     patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError(
         "workflow_run_not_found", "Workflow run not found."
     )
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._initial_snapshot(MagicMock(spec=Session), app_model, run_id)
+        ctrl._initial_snapshot(unbound_session, app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
     assert not patch_service.node_detail.called
 
@@ -372,18 +380,31 @@ def test_stream_refreshes_nodes_after_the_app_context_is_gone(
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_read_node_detail_closes_its_session(monkeypatch: pytest.MonkeyPatch, app_model: App, fails: bool) -> None:
-    """Each stream refresh opens one session and closes it, whether ``node_detail`` returns or raises."""
-    session = MagicMock(spec=Session)
-    session.__enter__.return_value = session
-    factory = MagicMock()
-    factory.create_session.return_value = session
-    monkeypatch.setattr(ctrl, "session_factory", factory)
-    service = MagicMock()
-    if fails:
-        service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "missing")
-    else:
-        service.node_detail.return_value = _node_view()
+def test_read_node_detail_closes_its_session(
+    unbound_session_factory: sessionmaker[Session], app_model: App, fails: bool
+) -> None:
+    """Each stream refresh opens one session and closes it, whether ``node_detail`` returns or raises.
+
+    ``unbound_session_factory`` is installed as the global factory. ``node_detail`` adds a
+    transient probe row to the session it receives; ``Session.close`` expunges every row, so a
+    probe without a session afterwards shows that the refresh session was closed.
+    """
+    probe = App(id="probe-app", tenant_id="tenant-1", name="probe", mode=AppMode.WORKFLOW)
+    received: list[tuple[App, str, str, Session]] = []
+
+    class ProbingService(NodeOutputInspectorService):
+        @override
+        def node_detail(
+            self, *, app_model: App, workflow_run_id: str, node_id: str, session: Session
+        ) -> NodeOutputsView:
+            received.append((app_model, workflow_run_id, node_id, session))
+            session.add(probe)
+            assert sa_inspect(probe).session is session
+            if fails:
+                raise NodeOutputInspectorError("node_not_in_workflow_run", "missing")
+            return _node_view(node_id=node_id)
+
+    service = ProbingService()
 
     if fails:
         with pytest.raises(NodeOutputInspectorError):
@@ -391,11 +412,8 @@ def test_read_node_detail_closes_its_session(monkeypatch: pytest.MonkeyPatch, ap
     else:
         assert ctrl._read_node_detail(service, app_model, "run-1", "agent-1") == _node_view()
 
-    service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id="run-1", node_id="agent-1", session=session
-    )
-    factory.create_session.assert_called_once_with()
-    session.__exit__.assert_called_once()
+    assert [call[:3] for call in received] == [(app_model, "run-1", "agent-1")]
+    assert sa_inspect(probe).session is None
 
 
 def test_stream_workflow_completed_status_falls_back_to_unknown(patch_service, patch_subscribe, app_model, run_id):
@@ -526,13 +544,97 @@ def test_serve_output_preview_translates_inspector_error(patch_service, unbound_
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Note: the Resource ``.get`` methods themselves (6 REST + 2 SSE) are
-# 1-line delegators to the helpers above. They can't be called directly in a
-# unit test because their decorator stack (``@setup_required`` /
-# ``@login_required`` / ``@account_initialization_required`` /
-# ``@get_app_model``) needs a real Flask request context + DB-backed account.
-# The integration test in
-# ``tests/e2e_tests/middleware/services/test_node_output_inspector_service.py``
-# (and the E2E driver in /tmp/e2e_inspector_sse_published.py) exercise them
-# through the HTTP stack.
+# Resource handlers — called past their decorator stack
 # ──────────────────────────────────────────────────────────────────────────────
+#
+# ``@setup_required`` / ``@login_required`` / ``@get_app_model`` need a real request
+# and account, so these tests unwrap the handlers and pass the session that
+# ``with_session`` would inject. The HTTP stack is covered by
+# ``tests/e2e_tests/middleware/services/test_node_output_inspector_service.py``.
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputsApi, ctrl.WorkflowPublishedRunNodeOutputsApi],
+)
+def test_snapshot_handlers_pass_the_injected_session(
+    patch_service: MagicMock, unbound_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
+
+    result = unwrap(resource_cls.get)(resource_cls(), unbound_session, app_model=app_model, run_id=run_id)
+
+    assert result["workflow_run_id"] == str(run_id)
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=unbound_session
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputDetailApi, ctrl.WorkflowPublishedRunNodeOutputDetailApi],
+)
+def test_node_detail_handlers_pass_the_injected_session(
+    patch_service: MagicMock, unbound_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    patch_service.node_detail.return_value = _node_view(node_id="agent-1")
+
+    result = unwrap(resource_cls.get)(
+        resource_cls(), unbound_session, app_model=app_model, run_id=run_id, node_id="agent-1"
+    )
+
+    assert result["node_id"] == "agent-1"
+    patch_service.node_detail.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=unbound_session
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputPreviewApi, ctrl.WorkflowPublishedRunNodeOutputPreviewApi],
+)
+def test_output_preview_handlers_pass_the_injected_session(
+    patch_service: MagicMock, unbound_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    from services.workflow.node_output_inspector_service import DeclaredOutputType, OutputPreviewView
+
+    patch_service.output_preview.return_value = OutputPreviewView(
+        node_id="agent-1",
+        output_name="text",
+        type=DeclaredOutputType.STRING,
+        status=NodeOutputStatus.READY,
+        value="Hello",
+    )
+
+    result = unwrap(resource_cls.get)(
+        resource_cls(), unbound_session, app_model=app_model, run_id=run_id, node_id="agent-1", output_name="text"
+    )
+
+    assert result["value"] == "Hello"
+    patch_service.output_preview.assert_called_once_with(
+        app_model=app_model,
+        workflow_run_id=str(run_id),
+        node_id="agent-1",
+        output_name="text",
+        session=unbound_session,
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputEventsApi, ctrl.WorkflowPublishedRunNodeOutputEventsApi],
+)
+def test_event_handlers_resolve_the_snapshot_with_the_injected_session(
+    patch_service: MagicMock, unbound_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    """The snapshot is read through the handler's session before the stream starts."""
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="succeeded")
+
+    response = unwrap(resource_cls.get)(resource_cls(), unbound_session, app_model=app_model, run_id=run_id)
+
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=unbound_session
+    )
+    assert response.mimetype == "text/event-stream"
+    events = [_parse(r)[0] for r in response.response]
+    assert events == ["snapshot", "workflow_run_completed"]
