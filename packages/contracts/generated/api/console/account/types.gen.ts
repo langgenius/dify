@@ -329,13 +329,13 @@ export type AccountIntegrateResponse = {
 }
 
 export type PersonalAccessTokenResourceResponse = {
-  app_runners?: Array<PersonalAccessTokenResourceResponse>
+  app_deployments?: Array<PersonalAccessTokenResourceResponse>
   available: boolean
   display_name: string
   parent_app_id?: string | null
   reason: string | null
   resource_id: string
-  resource_type: 'app' | 'app_runner' | 'dataset'
+  resource_type: 'app' | 'app_deployment' | 'dataset'
   workspace_id: string
   workspace_name: string
 }
@@ -376,7 +376,7 @@ export type PersonalAccessTokenWorkspaceScopePayload = {
 
 export type PersonalAccessTokenResourcePayload = {
   resource_id: string
-  resource_type: 'app' | 'app_runner' | 'dataset'
+  resource_type: 'app' | 'app_deployment' | 'dataset'
 }
 
 export type AccountResponseWritable = {

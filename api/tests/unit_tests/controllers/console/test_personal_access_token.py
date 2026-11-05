@@ -241,8 +241,8 @@ def test_created_pat_persists_only_the_secret_digest(
     with sqlite_session_factory() as session:
         stored = session.get(PersonalAccessToken, token["id"])
         assert stored is not None
-        assert stored.secret_digest == hashlib.sha256(token["secret"].encode()).hexdigest()
-        assert stored.secret_ciphertext == b""
+        assert len(stored.secret_digest) == 64
+        assert stored.secret_digest != hashlib.sha256(token["secret"].encode()).hexdigest()
 
 
 def test_expired_pat_remains_visible_but_cannot_authenticate(
@@ -718,9 +718,10 @@ def test_pat_with_app_access_can_stop_message_tasks_but_still_requires_app_acces
     assert client.post(f"/openapi/v1/apps/{app.id}/tasks/{uuid4()}:stop", headers=headers).status_code == 401
 
 
-def test_pat_can_read_its_own_form_but_cannot_read_or_submit_another_accounts_form(
+def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import json
 
@@ -729,7 +730,10 @@ def test_pat_can_read_its_own_form_but_cannot_read_or_submit_another_accounts_fo
     from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
     from models.model import AppMode
     from models.workflow import WorkflowRun, WorkflowType
+    from services.human_input_service import resume_app_execution
 
+    resumed: list[dict[str, object]] = []
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **kwargs: resumed.append(kwargs))
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
     app = make_app(app_id=str(uuid4()), tenant_id=workspace.id, mode=AppMode.WORKFLOW)
@@ -772,7 +776,13 @@ def test_pat_can_read_its_own_form_but_cannot_read_or_submit_another_accounts_fo
                     app_id=app.id,
                     workflow_run_id=run_id,
                     node_id="approval",
-                    form_definition=json.dumps({"form_content": "Approve?", "rendered_content": "Approve?"}),
+                    form_definition=json.dumps(
+                        {
+                            "form_content": "Approve?",
+                            "rendered_content": "Approve?",
+                            "user_actions": [{"id": "approve", "title": "Approve"}],
+                        }
+                    ),
                     rendered_content="Approve?",
                     expiration_time=datetime(2099, 1, 1),
                 )
@@ -796,13 +806,21 @@ def test_pat_can_read_its_own_form_but_cannot_read_or_submit_another_accounts_fo
     own = client.get(f"{base}/{form_tokens[0]}", headers=headers)
     assert own.status_code == 200, own.get_json()
     assert own.get_json()["form_content"] == "Approve?"
-    assert client.get(f"{base}/{form_tokens[1]}", headers=headers).status_code == 404
+    assert client.get(f"{base}/{form_tokens[1]}", headers=headers).status_code == 200
     assert (
         client.post(
             f"{base}/{form_tokens[1]}:submit", json={"action": "approve", "inputs": {}}, headers=headers
         ).status_code
-        == 404
+        == 200
     )
+    assert len(resumed) == 1
+    with sqlite_session_factory() as session:
+        submitted = session.get(HumanInputForm, form_id)
+        assert submitted is not None
+        assert submitted.submission_user_id == account.id
+        assert submitted.selected_action_id == "approve"
+    # Possession of a form token does not grant access to its run history.
+    assert client.get(f"/openapi/v1/apps/{app.id}/runs/{run_id}/events", headers=headers).status_code == 404
     edited = client.patch(
         f"{BASE}/{token['id']}",
         json={
@@ -981,6 +999,23 @@ def test_disabling_the_holder_rejects_bearer_requests_and_browser_token_access(
 def test_invalid_scopes_never_create_a_token(client: FlaskClient, scope: dict[str, object]) -> None:
     response = client.post(BASE, json={"name": "invalid", **scope})
     assert response.status_code == 400, response.get_json()
+    assert client.get(BASE).get_json()["total"] == 0
+
+
+def test_legacy_app_runner_resource_type_is_rejected(client: FlaskClient) -> None:
+    response = client.post(
+        BASE,
+        json={
+            "name": "legacy-resource-type",
+            "resource_scope": {
+                "mode": "selected",
+                "resources": [
+                    {"resource_type": "app_runner", "resource_id": "00000000-0000-0000-0000-000000000001"},
+                ],
+            },
+        },
+    )
+    assert response.status_code == 422, response.get_json()
     assert client.get(BASE).get_json()["total"] == 0
 
 
@@ -1665,7 +1700,7 @@ def _runner_payload(*ids: str):
         "name": "Runner grants",
         "resource_scope": {
             "mode": "selected",
-            "resources": [{"resource_type": "app_runner", "resource_id": id} for id in ids],
+            "resources": [{"resource_type": "app_deployment", "resource_id": id} for id in ids],
         },
         "workspace_scope": {"mode": "none"},
     }
@@ -1679,7 +1714,7 @@ def test_runner_uses_distinct_deployment_ids_and_ignores_runtime_and_api_switche
         runner["resource_id"]
         for app in candidates.get_json()["data"]
         if app["resource_type"] == "app"
-        for runner in app["app_runners"]
+        for runner in app["app_deployments"]
     }
     assert runners == set(ids)
     assert client.post(BASE, json=_runner_payload(environment_id)).status_code == 403
@@ -1846,9 +1881,11 @@ def test_configuration_reuses_list_visibility_for_candidates_and_save(
     workspace = make_tenant(tenant_id=str(uuid4()))
     ids = [str(uuid4()), str(uuid4())]
     resources = [
-        make_app(app_id=resource_id, tenant_id=workspace.id, maintainer=account.id)
+        make_app(app_id=resource_id, tenant_id=workspace.id, maintainer=account.id if visibility == "own" else "other")
         if resource_type == "app"
-        else make_dataset(dataset_id=resource_id, tenant_id=workspace.id, maintainer=account.id)
+        else make_dataset(
+            dataset_id=resource_id, tenant_id=workspace.id, maintainer=account.id if visibility == "own" else "other"
+        )
         for resource_id in ids
     ]
     with sqlite_session_factory.begin() as session:
@@ -1879,8 +1916,13 @@ def test_configuration_reuses_list_visibility_for_candidates_and_save(
         "unrestricted": visibility != "restricted",
         "resource_ids": [ids[0]] if visibility == "restricted" else [],
     }
-    # Maintainers retain their own resources even with restricted whitelist or no preview grant.
-    expected = set(ids)
+    expected = (
+        set(ids)
+        if visibility in {"preview", "own"}
+        else {ids[0]}
+        if visibility in {"override", "restricted"}
+        else set()
+    )
     if visibility == "run_only":
         domain.transport.response = {"allowed": True}
     candidates = client.get("/console/api/account/personal-access-token-resources")
@@ -1908,6 +1950,9 @@ def test_configuration_reuses_list_visibility_for_candidates_and_save(
         if resource_id in expected:
             token_id = response.get_json()["id"]
             assert client.get(f"{BASE}/{token_id}").get_json()["token"]["status"] == "active"
+
+    for resource_id in set(ids) - expected:
+        _assert_hidden_resource_cannot_be_added(client, resource_type, resource_id)
 
 
 @pytest.mark.parametrize(
@@ -1949,6 +1994,8 @@ def test_knowledge_candidates_reuse_legacy_list_member_visibility(
     response = client.get("/console/api/account/personal-access-token-resources")
     expected = {ids[3]} if role == TenantAccountRole.DATASET_OPERATOR else set(ids[:2] + [ids[3]])
     assert {r["resource_id"] for r in response.get_json()["data"]} == expected
+    for resource_id in set(ids) - expected:
+        _assert_hidden_resource_cannot_be_added(client, "dataset", resource_id)
 
 
 @pytest.mark.parametrize("kind", ["app", "dataset"])
@@ -2025,7 +2072,7 @@ def test_mixed_app_dataset_and_runner_selections_are_saved_and_edited_independen
     selections = [
         {"resource_type": "app", "resource_id": apps[0].id},
         {"resource_type": "dataset", "resource_id": apps[0].id},
-        {"resource_type": "app_runner", "resource_id": deployment_ids[0]},
+        {"resource_type": "app_deployment", "resource_id": deployment_ids[0]},
     ]
     created = client.post(
         BASE,
@@ -2060,3 +2107,72 @@ def test_mixed_app_dataset_and_runner_selections_are_saved_and_edited_independen
     assert {(row["resource_type"], row["resource_id"]) for row in reloaded["resources"]} == {
         (row["resource_type"], row["resource_id"]) for row in selections[1:]
     }
+
+
+def _assert_hidden_resource_cannot_be_added(client: FlaskClient, resource_type: str, resource_id: str) -> None:
+    """A hidden candidate must not create a snapshot or mutate an existing PAT."""
+    token = client.post(BASE, json={"name": "unchanged"}).get_json()
+    token_url = f"{BASE}/{token['id']}"
+    original = client.get(token_url).get_json()
+    count = client.get(BASE).get_json()["total"]
+    scope = {"mode": "selected", "resources": [{"resource_type": resource_type, "resource_id": resource_id}]}
+    created = client.post(BASE, json={"name": "forbidden", "resource_scope": scope})
+    assert created.status_code == 403, created.get_json()
+    assert client.get(BASE).get_json()["total"] == count
+    updated = client.patch(
+        token_url,
+        json={
+            "name": "forbidden",
+            "version": token["version"],
+            "resource_scope": scope,
+            "workspace_scope": {"mode": "all"},
+        },
+    )
+    assert updated.status_code == 403, updated.get_json()
+    assert client.get(token_url).get_json() == original
+
+
+@pytest.mark.parametrize(
+    "attack", ["unkeyed_digest", "reassign_account", "copy_verifier", "wrong_secret", "rotate_key", "missing_key"]
+)
+def test_pat_hmac_rejects_forgery_and_account_reassignment(
+    client: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    attack: str,
+) -> None:
+    import hashlib
+
+    from models.personal_access_token import PersonalAccessToken
+
+    token = client.post(BASE, json={"name": "protected"}).get_json()
+    secret = token["secret"]
+    headers = {CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER]}
+    with sqlite_session_factory.begin() as session:
+        stored = session.get(PersonalAccessToken, token["id"])
+        assert stored is not None
+        if attack in {"unkeyed_digest", "wrong_secret"}:
+            secret = secret[:-43] + "A" * 43
+            if attack == "unkeyed_digest":
+                stored.secret_digest = hashlib.sha256(secret.encode()).hexdigest()
+        elif attack == "reassign_account":
+            victim = make_account(account_id=str(uuid4()), tenant=None)
+            session.add(victim)
+            stored.account_id = victim.id
+        elif attack == "copy_verifier":
+            new_id = str(uuid4())
+            stored.id = new_id
+            secret = f"dpat_{new_id.replace('-', '')}_{secret[-43:]}"
+            token["id"] = new_id
+    if attack == "rotate_key":
+        apply_config_overrides(monkeypatch, SECRET_KEY="different-server-key")
+    elif attack == "missing_key":
+        apply_config_overrides(monkeypatch, SECRET_KEY="")
+    headers["Authorization"] = f"Bearer {secret}"
+    assert client.get("/openapi/v1/workspaces", headers=headers).status_code == (
+        503 if attack == "missing_key" else 401
+    )
+    with sqlite_session_factory() as session:
+        stored = session.get(PersonalAccessToken, token["id"])
+        assert stored is not None
+        assert stored.last_used_at is None

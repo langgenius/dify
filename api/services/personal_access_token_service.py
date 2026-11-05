@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import secrets
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
+from uuid import UUID
 
+from configs import dify_config
 from constants.oauth_bearer import TokenType
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from libs.datetime_utils import naive_utc_now
@@ -47,6 +50,10 @@ class PersonalAccessTokenInvalidError(Exception):
     """A bearer does not identify a live PAT and active holder."""
 
 
+class PersonalAccessTokenSigningKeyUnavailableError(Exception):
+    """The server signing key must be initialized before issuing or verifying PATs."""
+
+
 @dataclass(frozen=True, slots=True)
 class PersonalAccessTokenGrant:
     """Discovery filters: None leaves that domain unrestricted by the PAT;
@@ -60,7 +67,7 @@ class PersonalAccessTokenGrant:
 
 @dataclass(frozen=True, slots=True)
 class PersonalAccessTokenResourceRef:
-    resource_type: Literal["app", "dataset", "app_runner"]
+    resource_type: Literal["app", "dataset", "app_deployment"]
     resource_id: str
 
 
@@ -86,7 +93,7 @@ class PersonalAccessTokenResourceView:
     parent_app_id: str | None = None
     display_name_snapshot: str = ""
     workspace_name_snapshot: str = ""
-    app_runners: tuple[PersonalAccessTokenResourceView, ...] = ()
+    app_deployments: tuple[PersonalAccessTokenResourceView, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,7 +191,9 @@ class PersonalAccessTokenStore(Protocol):
 
     def get(self, account_id: str, token_id: str) -> PersonalAccessTokenRecord: ...
 
-    def find_by_digest(self, digest: str, *, now: datetime) -> PersonalAccessTokenRecord | None: ...
+    def authenticate(
+        self, token_id: str, *, now: datetime, verify: Callable[[str, str], bool]
+    ) -> PersonalAccessTokenRecord | None: ...
 
     def revoke(self, account_id: str, token_id: str) -> None: ...
 
@@ -270,9 +279,9 @@ class PersonalAccessTokenService:
                     token=self.details(context, token_id=previous.id).token,
                     secret=None,
                 )
-        validated = self._validate_app_runner_resources(context.account_id, scopes, existing=frozenset())
+        validated = self._validate_added_resources(context, scopes, existing=frozenset())
         token_id = str(uuidv7())
-        secret = f"{TokenType.PERSONAL_ACCESS.prefix}{secrets.token_urlsafe(32)}"
+        secret = f"{TokenType.PERSONAL_ACCESS.prefix}{UUID(token_id).hex}_{secrets.token_urlsafe(32)}"
         now = naive_utc_now()
         summary = PersonalAccessTokenSummary(
             id=token_id,
@@ -289,7 +298,7 @@ class PersonalAccessTokenService:
             PersonalAccessTokenRecord(
                 summary=summary,
                 account_id=context.account_id,
-                secret_digest=hashlib.sha256(secret.encode()).hexdigest(),
+                secret_digest=self._secret_digest(secret, token_id=token_id, account_id=context.account_id),
                 creation_key=creation_key,
                 creation_fingerprint=fingerprint,
                 scopes=scopes,
@@ -318,12 +327,42 @@ class PersonalAccessTokenService:
         return self._tokens.count_tokens(context.account_id)
 
     def authenticate(self, secret: str) -> PersonalAccessTokenRecord:
+        """Verify a live PAT's account-bound HMAC before recording authenticated usage.
+
+        The public token ID is only a lookup hint. The database cannot forge a
+        verifier or reassign a token without the server key stored outside it.
+        """
         if not secret.startswith(TokenType.PERSONAL_ACCESS.prefix) or len(secret) > 128:
             raise PersonalAccessTokenInvalidError()
-        record = self._tokens.find_by_digest(hashlib.sha256(secret.encode()).hexdigest(), now=naive_utc_now())
+        token_id_text, separator, entropy = secret.removeprefix(TokenType.PERSONAL_ACCESS.prefix).partition("_")
+        if not separator or len(entropy) != 43:
+            raise PersonalAccessTokenInvalidError()
+        try:
+            token_id = str(UUID(token_id_text))
+        except ValueError:
+            raise PersonalAccessTokenInvalidError() from None
+
+        def verify(account_id: str, digest: str) -> bool:
+            expected = self._secret_digest(secret, token_id=token_id, account_id=account_id)
+            return hmac.compare_digest(expected.encode("ascii"), digest.encode("utf-8"))
+
+        record = self._tokens.authenticate(token_id, now=naive_utc_now(), verify=verify)
         if record is None:
             raise PersonalAccessTokenInvalidError()
         return record
+
+    @staticmethod
+    def _secret_digest(secret: str, *, token_id: str, account_id: str) -> str:
+        """Bind the verifier to this PAT and account using the initialized server key.
+
+        Domain separation prevents reuse across other SECRET_KEY consumers.
+        Rotating SECRET_KEY invalidates existing PATs; no unkeyed fallback exists.
+        """
+        key = dify_config.SECRET_KEY
+        if not key:
+            raise PersonalAccessTokenSigningKeyUnavailableError()
+        message = json.dumps(["dify.pat.v1", token_id, account_id, secret], separators=(",", ":")).encode()
+        return hmac.new(key.encode(), message, hashlib.sha256).hexdigest()
 
     def authorize(
         self,
@@ -395,7 +434,7 @@ class PersonalAccessTokenService:
         # references; switching workspace must not revoke an existing selection.
         by_workspace: dict[str, list[PersonalAccessTokenResourceView]] = {}
         for resource in resources:
-            if resource.available and resource.resource_type != "app_runner":
+            if resource.available and resource.resource_type != "app_deployment":
                 by_workspace.setdefault(resource.workspace_id, []).append(resource)
         for workspace_id, selected in by_workspace.items():
             context = RequestContext(
@@ -410,7 +449,7 @@ class PersonalAccessTokenService:
                 )
             )
         return {
-            (r.resource_type, r.resource_id): r.resource_type == "app_runner"
+            (r.resource_type, r.resource_id): r.resource_type == "app_deployment"
             or (r.resource_type, r.resource_id) in visible
             for r in resources
             if r.available
@@ -434,9 +473,9 @@ class PersonalAccessTokenService:
                 if resource.resource_type == "app":
                     resource = replace(
                         resource,
-                        app_runners=tuple(runners_by_app.get(resource.resource_id, ())),
+                        app_deployments=tuple(runners_by_app.get(resource.resource_id, ())),
                     )
-                if resource.resource_type != "app_runner" or not resource.available:
+                if resource.resource_type != "app_deployment" or not resource.available:
                     projected.append(resource)
                     continue
                 if resource.workspace_id != deployments.current_workspace_id:
@@ -494,7 +533,7 @@ class PersonalAccessTokenService:
     def _deployment_snapshot(
         self, account_id: str, details: tuple[PersonalAccessTokenDetails, ...]
     ) -> PersonalAccessTokenDeploymentSnapshot | None:
-        if any(r.resource_type in ("app", "app_runner") for row in details for r in row.resources):
+        if any(r.resource_type in ("app", "app_deployment") for row in details for r in row.resources):
             return self._deployments.snapshot(account_id)
         return None
 
@@ -514,8 +553,8 @@ class PersonalAccessTokenService:
         validated = ()
         if scopes is not None:
             self._validate_scopes(scopes)
-            validated = self._validate_app_runner_resources(
-                context.account_id,
+            validated = self._validate_added_resources(
+                context,
                 scopes,
                 existing=frozenset((r.resource_type, r.resource_id) for r in original.resources),
             )
@@ -575,7 +614,7 @@ class PersonalAccessTokenService:
                 if runner.parent_app_id in app_ids:
                     runners_by_app.setdefault(runner.parent_app_id, []).append(runner)
             page = tuple(
-                replace(resource, app_runners=tuple(runners_by_app.get(resource.resource_id, ())))
+                replace(resource, app_deployments=tuple(runners_by_app.get(resource.resource_id, ())))
                 if resource.resource_type == "app"
                 else resource
                 for resource in page
@@ -717,27 +756,48 @@ class PersonalAccessTokenService:
             cursor + limit if len(candidates) > limit else None,
         )
 
-    def _validate_app_runner_resources(
+    def _validate_added_resources(
         self,
-        account_id: str,
+        context: AccountRequestContext,
         scopes: PersonalAccessTokenScopes,
         *,
         existing: frozenset[tuple[str, str]],
     ) -> tuple[PersonalAccessTokenResourceView, ...]:
+        """Resolve new grants through candidate visibility before any token write.
+
+        Existing grants may retain their snapshots after access loss. Every newly
+        added app, dataset or deployment must be visible to this account; missing
+        references fail without persisting names, scopes or token changes.
+        """
         added = frozenset((r.resource_type, r.resource_id) for r in scopes.resources) - existing
         if not added:
             return ()
-        runner_refs = {ref for ref in added if ref[0] == "app_runner"}
-        if not runner_refs:
-            return ()
-        selected = {
-            (resource.resource_type, resource.resource_id): resource
-            for resource in self._deployments.snapshot(account_id).resources
-            if (resource.resource_type, resource.resource_id) in runner_refs
-        }
-        if selected.keys() != runner_refs:
+        resource_refs = frozenset(ref for ref in added if ref[0] in {"app", "dataset"})
+        selected: dict[tuple[str, str], PersonalAccessTokenResourceView] = {}
+        if resource_refs:
+            for workspace in self._tokens.workspace_candidates(context.account_id, keyword=None):
+                workspace_context = RequestContext(
+                    request_id=context.request_id,
+                    trace_id=context.trace_id,
+                    account_id=context.account_id,
+                    active_workspace_id=workspace.workspace_id,
+                )
+                selected.update(
+                    ((resource.resource_type, resource.resource_id), resource)
+                    for resource in self._list_selected_resources(
+                        workspace_context, workspace_name=workspace.display_name, resource_refs=resource_refs
+                    )
+                )
+        deployment_refs = {ref for ref in added if ref[0] == "app_deployment"}
+        if deployment_refs:
+            selected.update(
+                ((resource.resource_type, resource.resource_id), resource)
+                for resource in self._deployments.snapshot(context.account_id).resources
+                if (resource.resource_type, resource.resource_id) in deployment_refs
+            )
+        if selected.keys() != added:
             raise PersonalAccessTokenAccessDeniedError("Selected resource is unavailable.")
-        return tuple(selected[ref] for ref in sorted(runner_refs))
+        return tuple(selected[ref] for ref in sorted(added))
 
     @staticmethod
     def _validate_scopes(scopes: PersonalAccessTokenScopes) -> None:

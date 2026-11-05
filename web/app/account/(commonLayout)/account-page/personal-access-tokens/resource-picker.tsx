@@ -45,7 +45,7 @@ export default function ResourcePicker({
   for (const page of query.data?.pages ?? []) {
     for (const resource of page.data) {
       candidates.set(`${resource.resource_type}:${resource.resource_id}`, resource)
-      for (const runner of resource.app_runners ?? [])
+      for (const runner of resource.app_deployments ?? [])
         candidates.set(`${runner.resource_type}:${runner.resource_id}`, runner)
     }
   }
@@ -54,7 +54,7 @@ export default function ResourcePicker({
   const apps = values.filter((resource) => resource.resource_type === 'app')
   const datasets = values.filter((resource) => resource.resource_type === 'dataset')
   const orphanedRunners = values.filter(
-    (resource) => resource.resource_type === 'app_runner' && !resource.parent_app_id,
+    (resource) => resource.resource_type === 'app_deployment' && !resource.parent_app_id,
   )
   const visibleApps = filter === 'dataset' ? [] : apps
   const visibleDatasets = filter === 'app' ? [] : datasets
@@ -98,7 +98,7 @@ export default function ResourcePicker({
               {displayName}
             </TooltipTrigger>
             <TooltipContent>
-              {resource.resource_type === 'app_runner' ? 'deployment_id' : 'ID'}:{' '}
+              {resource.resource_type === 'app_deployment' ? 'deployment_id' : 'ID'}:{' '}
               {resource.resource_id}
             </TooltipContent>
           </Tooltip>
@@ -106,8 +106,8 @@ export default function ResourcePicker({
             <p className="system-xs-regular break-words text-text-tertiary">
               {resource.resource_type === 'dataset'
                 ? t(($) => $['resourceAccessToken.tabKnowledgeBases'])
-                : resource.resource_type === 'app_runner'
-                  ? t(($) => $['personalAccessToken.appRunner'])
+                : resource.resource_type === 'app_deployment'
+                  ? t(($) => $['personalAccessToken.appDeployment'])
                   : t(($) => $['resourceAccessToken.tabApps'])}{' '}
               · {resource.workspace_name}
             </p>
@@ -214,9 +214,9 @@ export default function ResourcePicker({
                         app,
                         true,
                         t(($) => $['metadata.datasetMetadata.builtIn'], { ns: 'dataset' }),
-                        (app.app_runners ?? []).length === 0,
+                        (app.app_deployments ?? []).length === 0,
                       )}
-                      {(app.app_runners ?? []).map((runner, index, runners) =>
+                      {(app.app_deployments ?? []).map((runner, index, runners) =>
                         renderResource(
                           runner,
                           true,

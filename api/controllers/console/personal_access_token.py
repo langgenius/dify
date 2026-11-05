@@ -27,12 +27,13 @@ from services.personal_access_token_service import (
     PersonalAccessTokenNotFoundError,
     PersonalAccessTokenResourceRef,
     PersonalAccessTokenScopes,
+    PersonalAccessTokenSigningKeyUnavailableError,
     PersonalAccessTokenUpdateConflictError,
 )
 
 
 class PersonalAccessTokenResourcePayload(BaseModel):
-    resource_type: Literal["app", "dataset", "app_runner"]
+    resource_type: Literal["app", "dataset", "app_deployment"]
     resource_id: UUID
 
 
@@ -105,7 +106,7 @@ class PersonalAccessTokenResponse(ResponseModel):
 
 
 class PersonalAccessTokenResourceResponse(ResponseModel):
-    resource_type: Literal["app", "dataset", "app_runner"]
+    resource_type: Literal["app", "dataset", "app_deployment"]
     resource_id: str
     workspace_id: str
     display_name: str
@@ -113,7 +114,7 @@ class PersonalAccessTokenResourceResponse(ResponseModel):
     available: bool
     reason: str | None
     parent_app_id: str | None = None
-    app_runners: list["PersonalAccessTokenResourceResponse"] = Field(default_factory=list)
+    app_deployments: list["PersonalAccessTokenResourceResponse"] = Field(default_factory=list)
 
 
 class PersonalAccessTokenWorkspaceResponse(ResponseModel):
@@ -177,7 +178,9 @@ def _token_errors() -> Generator[None]:
     try:
         yield
     except PersonalAccessTokenCatalogUnavailableError:
-        raise ServiceUnavailable("App Runner configuration is temporarily unavailable.") from None
+        raise ServiceUnavailable("App deployment configuration is temporarily unavailable.") from None
+    except PersonalAccessTokenSigningKeyUnavailableError:
+        raise ServiceUnavailable("Personal access token signing key is unavailable.") from None
     except PersonalAccessTokenNotFoundError:
         raise NotFound("Personal access token not found.") from None
     except PersonalAccessTokenExpiredError:

@@ -537,13 +537,13 @@ export const zAccountIntegrateListResponse = z.object({
  * PersonalAccessTokenResourceResponse
  */
 export const zPersonalAccessTokenResourceResponse = z.object({
-  app_runners: z.array(z.lazy((): any => zPersonalAccessTokenResourceResponse)).optional(),
+  app_deployments: z.array(z.lazy((): any => zPersonalAccessTokenResourceResponse)).optional(),
   available: z.boolean(),
   display_name: z.string(),
   parent_app_id: z.string().nullish(),
   reason: z.string().nullable(),
   resource_id: z.string(),
-  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+  resource_type: z.enum(['app', 'app_deployment', 'dataset']),
   workspace_id: z.string(),
   workspace_name: z.string(),
 })
@@ -629,7 +629,7 @@ export const zPersonalAccessTokenWorkspaceScopePayload = z.object({
  */
 export const zPersonalAccessTokenResourcePayload = z.object({
   resource_id: z.uuid(),
-  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+  resource_type: z.enum(['app', 'app_deployment', 'dataset']),
 })
 
 /**

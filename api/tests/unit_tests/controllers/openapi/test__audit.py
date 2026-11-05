@@ -3,7 +3,7 @@ from typing import Protocol, cast
 
 import pytest
 
-from controllers.openapi._audit import EVENT_APP_RUN_OPENAPI, emit_app_run
+from controllers.openapi._audit import EVENT_APP_RUN_OPENAPI, emit_app_run, personal_audit_targets
 
 
 class _AuditLogRecord(Protocol):
@@ -18,6 +18,22 @@ class _AuditLogRecord(Protocol):
 
 def test_event_constant() -> None:
     assert EVENT_APP_RUN_OPENAPI == "app.run.openapi"
+
+
+def test_personal_audit_targets_exclude_unreviewed_fields_even_with_uuid_values() -> None:
+    value = "00000000-0000-4000-8000-000000000001"
+    assert personal_audit_targets(
+        {
+            "app_id": value,
+            "workspace_id": value,
+            "run_id": value,
+            "future_secret_id": value,
+            "form_token": value,
+            "secret": value,
+            "task_id": "not-a-uuid",
+            "import_id": None,
+        }
+    ) == {"app_id": value, "workspace_id": value, "run_id": value}
 
 
 def test_emit_app_run_logs_with_audit_extra(caplog: pytest.LogCaptureFixture) -> None:

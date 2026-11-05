@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import partial, wraps
 from typing import Any
-from uuid import UUID
 
 from flask import request
 from werkzeug.exceptions import HTTPException, NotFound, Unauthorized
@@ -11,7 +10,7 @@ from werkzeug.exceptions import HTTPException, NotFound, Unauthorized
 from configs import dify_config
 from constants.oauth_bearer import TokenType
 from controllers.openapi import api
-from controllers.openapi._audit import emit_personal_request
+from controllers.openapi._audit import emit_personal_request, personal_audit_targets
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.personal_access import authenticate_personal_token
 from controllers.openapi.auth.pipelines import pipeline_for_subject
@@ -107,23 +106,14 @@ class AuthRouter:
                 raise
             finally:
                 if auth.token_type is TokenType.PERSONAL_ACCESS:
-                    # Route templates and UUID-only identifiers prevent raw request
-                    # data, form tokens, headers or secrets entering audit records.
-                    target_ids = {}
+                    # Only reviewed target fields with UUID values enter audit records.
                     targets = {"workspace_id": request.args.get("workspace_id"), **(request.view_args or {})}
-                    for key, value in targets.items():
-                        if not key.endswith("_id"):
-                            continue
-                        try:
-                            target_ids[key] = str(UUID(str(value)))
-                        except ValueError:
-                            continue
                     emit_personal_request(
                         token_id=str(auth.token_id),
                         account_id=str(auth.account_id),
                         operation=spec.catalog.op,
                         target_route=request.url_rule.rule if request.url_rule else "",
-                        target_ids=target_ids,
+                        target_ids=personal_audit_targets(targets),
                         http_status=status,
                         streaming=spec.catalog.kind is Kind.SSE,
                         trace_id=get_trace_id(),

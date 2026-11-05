@@ -43,7 +43,7 @@ def test_long_deployment_name_survives_creation_edit_and_parent_deletion(db_sess
     deployment_id = str(uuid4())
     name = f"{app.name} / Production"
     resource = PersonalAccessTokenResourceView(
-        resource_type="app_runner",
+        resource_type="app_deployment",
         resource_id=deployment_id,
         workspace_id=workspace.id,
         display_name=name,
@@ -56,7 +56,7 @@ def test_long_deployment_name_survives_creation_edit_and_parent_deletion(db_sess
     )
     scopes = PersonalAccessTokenScopes(
         resource_mode="selected",
-        resources=(PersonalAccessTokenResourceRef("app_runner", deployment_id),),
+        resources=(PersonalAccessTokenResourceRef("app_deployment", deployment_id),),
         workspace_mode="none",
     )
     created = repository.create(

@@ -3,7 +3,7 @@
 import uuid
 
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 
 from constants.oauth_bearer import TokenType
 from constants.personal_access_token import PersonalAccessTokenPolicy
@@ -18,6 +18,7 @@ from services.personal_access_token_service import (
     PersonalAccessTokenAccessDeniedError,
     PersonalAccessTokenInvalidError,
     PersonalAccessTokenNotFoundError,
+    PersonalAccessTokenSigningKeyUnavailableError,
 )
 
 
@@ -27,6 +28,8 @@ def authenticate_personal_token(secret: str) -> AuthContext:
         record = application_services().personal_access_tokens.authenticate(secret)
     except PersonalAccessTokenInvalidError:
         raise Unauthorized("invalid bearer") from None
+    except PersonalAccessTokenSigningKeyUnavailableError:
+        raise ServiceUnavailable("Personal access token signing key is unavailable.") from None
     return AuthContext(
         token_type=TokenType.PERSONAL_ACCESS,
         account_id=uuid.UUID(record.account_id),

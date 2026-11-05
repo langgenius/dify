@@ -10,7 +10,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from constants.oauth_bearer import Scope, TokenType
+from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
@@ -40,12 +40,10 @@ from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from extensions.ext_application_services import application_services
 from libs.helper import to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
-from services.openapi_execution_service import OpenApiExecutionNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -91,20 +89,6 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
         raise HumanInputFormNotFound()
 
 
-def _ensure_personal_form_owner(form, ctx: Context) -> None:
-    if not isinstance(ctx.subject, AccountSubject) or ctx.subject.auth.token_type is not TokenType.PERSONAL_ACCESS:
-        return
-    try:
-        application_services().openapi_executions.require_workflow_owner(
-            run_id=form.workflow_run_id,
-            tenant_id=ctx.app.tenant_id,
-            app_id=ctx.app.id,
-            account_id=ctx.account.id,
-        )
-    except OpenApiExecutionNotFoundError:
-        raise HumanInputFormNotFound() from None
-
-
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
@@ -136,7 +120,6 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, ctx.app)
-        _ensure_personal_form_owner(form, ctx)
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
@@ -188,7 +171,6 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, ctx.app)
-        _ensure_personal_form_owner(form, ctx)
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None

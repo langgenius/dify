@@ -23,8 +23,6 @@ class PersonalAccessToken(DefaultFieldsDCMixin, TypeBase):
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     secret_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False, repr=False)
-    # Legacy storage column retained for existing databases; new PAT secrets are never persisted.
-    secret_ciphertext: Mapped[bytes] = mapped_column(sa.LargeBinary, nullable=False, repr=False)
     secret_last_four: Mapped[str] = mapped_column(sa.String(4), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
     resource_scope_mode: Mapped[str] = mapped_column(sa.String(16), default="all")
@@ -40,7 +38,7 @@ class PersonalAccessTokenResource(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "personal_access_token_resources"
     __table_args__ = (
         sa.UniqueConstraint("token_id", "resource_type", "resource_id", name="personal_access_token_resource_unique"),
-        sa.CheckConstraint("resource_type IN ('app', 'dataset', 'app_runner')", name="pat_resource_type"),
+        sa.CheckConstraint("resource_type IN ('app', 'dataset', 'app_deployment')", name="pat_resource_type"),
         sa.Index("personal_access_token_resource_token_idx", "token_id"),
     )
 
