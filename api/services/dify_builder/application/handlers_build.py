@@ -808,7 +808,7 @@ def _graph_not_applied(
     body: BuilderText,
     reply_text: BuilderText,
 ) -> StepResult:
-    """apply_repair refused the generated graph and wrote nothing: say why and
+    """Reconciliation or apply_repair refused the graph and wrote nothing: say why and
     keep the plan approvable (re-approving regenerates the graph).
 
     The unchanged draft needs no graph notification."""
@@ -822,20 +822,14 @@ def _graph_not_applied(
 
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
-    builds: drive apply_repair once with all create_node/connect intents
+    builds: drive apply_repair once with the reconciled generated intents
     (one committed graph notification via env.emit_canvas), summarize the applied
     changes in assistant text, and transition to build.execution.
 
-    Idempotent by construction (final-review fix, Important #1): a loop-back
-    from review collects a new adjustment request; retry after revert reuses the
-    prior request. Neither resets the already-built graph. Re-walking resource
-    discovery -> confirm_resources -> approve_plan then
-    calls build_nodes() again, which always proposes the SAME fixed node ids
-    -- so before applying, drop any create_node/connect intent that already
-    exists in the current draft graph. Everything survives the first build
-    (nothing exists yet); a re-approve after a loop-back filters everything
-    out (it all already exists), so apply_repair([]) is a no-op rather than
-    raising on a colliding node id.
+    On reapproval, generated configuration updates same-type nodes owned by
+    this session through set_node_config. Identical configuration and existing
+    connections no-op. Foreign ID collisions and unsupported type/containment
+    replacements refuse the whole batch before applying anything.
 
     Continue adjusting collects changes through the requirements gate, keeping
     the original goal, selected resources and draft. A replacement plan still
@@ -923,42 +917,17 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     progress.activate("build-validate-graph")
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
-    to_apply = build_intents_for_draft(current_graph, intents, mode=env.dify.get_app_mode(s.app_id, turn.actor))
-
-    # A FIRST build of this session that would apply no node at all has not
-    # built anything. The draft already carries a PREVIOUS graph under the same
-    # generated ids -- the generator always emits node1, node2, ... -- so
-    # _already_present filtered every create against nodes this session never
-    # built, matching on id alone (an existing node2:llm swallows a planned
-    # node2:parameter-extractor). Reporting "graph built" here would claim a
-    # canvas the user never got: the empty-build false-success failure, one
-    # level further in than the zero-create-intents guard above.
-    #
-    # The loop-back re-approve this filter exists for is the opposite case and
-    # must still no-op silently -- there ``built_node_ids`` names the nodes
-    # this session built, so it never reaches this branch.
-    if not fc.built_node_ids and not any(intent.op == "create_node" for intent in to_apply):
-        progress.fail_step("build-validate-graph")
-        execution = progress.finish(status="error")
-        turn_items = append_assistant(
-            env,
-            s,
-            fc,
-            copy_text(BuilderCopyId.REPLIES_I_DIDN_T_APPLY_ANYTHING_THE),
-            execution=execution,
-            turn_id=progress.operation_id,
-        )
-        return StepResult(
-            next=PcState.BUILD_PLAN_APPROVAL,
-            context=fc,
-            items=turn_items,
-        )
-
     progress.activate("build-apply-graph")
     confirmed_resources: dict[str, Any] = {}
     if any(item.startswith("agent:") for item in selected_resource_ids):
         confirmed_resources["confirmed_resource_ids"] = selected_resource_ids
     try:
+        to_apply = build_intents_for_draft(
+            current_graph,
+            intents,
+            mode=env.dify.get_app_mode(s.app_id, turn.actor),
+            built_node_ids=fc.built_node_ids,
+        )
         result = env.dify.apply_repair(
             s.app_id,
             turn.actor,
@@ -983,7 +952,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             reply_text=(copy_text(BuilderCopyId.REPLIES_I_DIDN_T_APPLY_THE_WORKFLOW)),
         )
     except ValueError as exc:
-        # graph_ops refused an intent (e.g. "node not found") before the
+        # Draft reconciliation or graph_ops refused an intent before the
         # startability check ever ran. Nothing was written either, so the
         # same recovery -- but "can't start" would send the user hunting for
         # a broken node that does not exist.
