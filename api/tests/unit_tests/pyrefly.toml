@@ -270,7 +270,6 @@ project-excludes = [
   "models/test_model.py",
   "models/test_dataset.py",
   "models/test_tools.py",
-  "models/test_workflow.py",
   "services/agent/test_dsl_service.py",
   "services/agent/test_roster_service.py",
   "../helpers/unit/services/controller_api.py",
