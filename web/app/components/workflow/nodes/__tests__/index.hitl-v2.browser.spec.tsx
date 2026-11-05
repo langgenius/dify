@@ -89,7 +89,6 @@ it('replaces the visible panel configuration on migration and undo without closi
   const { queryClient } = createConsoleQueryWrapper({
     queryClient: createChannelsQueryClient([]),
     appDslVersion: '0.6.0',
-    systemFeatures: { enable_collaboration_mode: false },
   })
   onTestFinished(() => queryClient.clear())
   seedAccountProfileQuery(queryClient)

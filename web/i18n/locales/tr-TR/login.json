@@ -25,6 +25,7 @@
   "enterYourName": "Lütfen kullanıcı adınızı giriniz",
   "error.emailEmpty": "E-posta adresi gereklidir",
   "error.emailInValid": "Geçerli bir e-posta adresi girin",
+  "error.initPasswordIncorrect": "Başlatma parolası yanlış.",
   "error.invalidEmailOrPassword": "Geçersiz e-posta veya şifre.",
   "error.invalidSSOProtocol": "Geçersiz SSO protokolü",
   "error.nameEmpty": "İsim gereklidir",

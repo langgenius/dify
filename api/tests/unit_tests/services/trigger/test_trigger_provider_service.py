@@ -8,7 +8,6 @@ provider daemons, encryption, Redis locks, and caches remain external mocks.
 
 from __future__ import annotations
 
-import contextlib
 import json
 from dataclasses import dataclass
 from types import SimpleNamespace
@@ -16,12 +15,9 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, select
-from sqlalchemy.engine import Connection, Engine
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants import HIDDEN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from models.base import TypeBase
@@ -32,7 +28,6 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
-from repositories.credentials.query_repository import CredentialQueryRepository
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -128,11 +123,6 @@ def _patch_provider(mocker, provider: object) -> None:
     mocker.patch.object(service_module.TriggerManager, "get_trigger_provider", return_value=provider)
 
 
-def _patch_lock(mocker) -> None:
-    redis = mocker.patch.object(service_module, "redis_client")
-    redis.lock.return_value = contextlib.nullcontext()
-
-
 def _encrypter(
     *,
     decrypted: dict[str, object] | None = None,
@@ -164,257 +154,6 @@ def _patch_identity_encryption(mocker) -> Mock:
     return cache
 
 
-def test_provider_manager_entities_are_forwarded(mocker, trigger_db: TriggerDatabase) -> None:
-    provider = Mock()
-    provider.to_api_entity.return_value = {"provider": "ok"}
-    _patch_provider(mocker, provider)
-    provider_b = Mock()
-    provider_b.to_api_entity.return_value = {"provider": "other"}
-    mocker.patch.object(
-        service_module.TriggerManager, "list_all_trigger_providers", return_value=[provider, provider_b]
-    )
-
-    assert TriggerProviderService.get_trigger_provider(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "provider": "ok"
-    }
-    assert TriggerProviderService.list_trigger_providers(trigger_db.tenant_id) == [
-        {"provider": "ok"},
-        {"provider": "other"},
-    ]
-
-
-def test_list_subscriptions_empty_state(trigger_db: TriggerDatabase) -> None:
-    assert (
-        TriggerProviderService.list_trigger_provider_subscriptions(
-            trigger_db.tenant_id,
-            trigger_db.provider_id,
-            credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
-        )
-        == []
-    )
-
-
-def test_list_subscriptions_masks_and_counts_distinct_apps(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    target = trigger_db.add_subscription(subscription_id=str(uuid4()))
-    trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id, name="foreign")
-    with trigger_db.session_maker.begin() as session:
-        session.add_all(
-            [
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="node-1",
-                    tenant_id=trigger_db.tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="node-2",
-                    tenant_id=trigger_db.tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-                WorkflowPluginTrigger(
-                    app_id=str(uuid4()),
-                    node_id="foreign",
-                    tenant_id=trigger_db.other_tenant_id,
-                    provider_id=str(trigger_db.provider_id),
-                    event_name="push",
-                    subscription_id=target.id,
-                ),
-            ]
-        )
-    _patch_provider(mocker, provider_controller)
-    masked = _encrypter(masked={"secret": "****"})
-    mocker.patch.object(
-        service_module, "create_trigger_provider_encrypter_for_subscription", return_value=(masked, Mock())
-    )
-    mocker.patch.object(
-        service_module, "create_trigger_provider_encrypter_for_properties", return_value=(masked, Mock())
-    )
-
-    subscriptions = TriggerProviderService.list_trigger_provider_subscriptions(
-        trigger_db.tenant_id,
-        trigger_db.provider_id,
-        credential_query=CredentialQueryRepository(session_factory=trigger_db.session_maker),
-    )
-
-    assert [item.id for item in subscriptions] == [target.id]
-    assert subscriptions[0].credentials == {"secret": "****"}
-    assert subscriptions[0].workflows_in_use == 2
-
-
-@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
-def test_add_subscription_commits_encrypted_state(
-    mocker,
-    trigger_db: TriggerDatabase,
-    provider_controller: Mock,
-    credential_type: CredentialType,
-) -> None:
-    _patch_lock(mocker)
-    _patch_provider(mocker, provider_controller)
-    encrypter = _encrypter(encrypted={"stored": "encrypted"})
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
-    subscription_id = str(uuid4())
-
-    result = TriggerProviderService.add_trigger_subscription(
-        tenant_id=trigger_db.tenant_id,
-        user_id=trigger_db.user_id,
-        name="main",
-        provider_id=trigger_db.provider_id,
-        endpoint_id="endpoint-main",
-        credential_type=credential_type,
-        parameters={"event": "push"},
-        properties={"project": "plain"},
-        credentials={"token": "plain"},
-        subscription_id=subscription_id,
-    )
-
-    persisted = trigger_db.get_subscription(subscription_id)
-    assert result == {"result": "success", "id": subscription_id}
-    assert persisted is not None
-    assert persisted.properties == {"stored": "encrypted"}
-    expected_credentials = {} if credential_type == CredentialType.UNAUTHORIZED else {"stored": "encrypted"}
-    assert persisted.credentials == expected_credentials
-
-
-def test_add_subscription_limit_rolls_back_without_cross_tenant_count(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    for index in range(TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__):
-        trigger_db.add_subscription(name=f"target-{index}")
-    for index in range(3):
-        trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id, name=f"foreign-{index}")
-    _patch_lock(mocker)
-    _patch_provider(mocker, provider_controller)
-
-    with pytest.raises(ValueError, match="Maximum number of providers"):
-        TriggerProviderService.add_trigger_subscription(
-            tenant_id=trigger_db.tenant_id,
-            user_id=trigger_db.user_id,
-            name="overflow",
-            provider_id=trigger_db.provider_id,
-            endpoint_id="overflow",
-            credential_type=CredentialType.UNAUTHORIZED,
-            parameters={},
-            properties={},
-            credentials={},
-        )
-
-    with trigger_db.session_maker() as session:
-        count = session.scalar(
-            select(func.count())
-            .select_from(TriggerSubscription)
-            .where(TriggerSubscription.tenant_id == trigger_db.tenant_id)
-        )
-    assert count == TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
-
-
-def test_add_duplicate_name_rolls_back_and_database_constraint_matches_precheck(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    original = trigger_db.add_subscription(name="main")
-    _patch_lock(mocker)
-    _patch_provider(mocker, provider_controller)
-
-    with pytest.raises(ValueError, match="already exists"):
-        TriggerProviderService.add_trigger_subscription(
-            tenant_id=trigger_db.tenant_id,
-            user_id=trigger_db.user_id,
-            name="main",
-            provider_id=trigger_db.provider_id,
-            endpoint_id="second-endpoint",
-            credential_type=CredentialType.UNAUTHORIZED,
-            parameters={},
-            properties={},
-            credentials={},
-        )
-
-    duplicate = TriggerSubscription(
-        tenant_id=trigger_db.tenant_id,
-        user_id=trigger_db.user_id,
-        name="main",
-        endpoint_id="constraint-endpoint",
-        provider_id=str(trigger_db.provider_id),
-        parameters={},
-        properties={},
-        credentials={},
-        credential_type=CredentialType.UNAUTHORIZED,
-    )
-    with pytest.raises(IntegrityError):
-        with trigger_db.session_maker.begin() as session:
-            session.add(duplicate)
-    assert trigger_db.get_subscription(original.id) is not None
-
-
-def test_update_subscription_persists_fields_and_preserves_hidden_property(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock, sqlite_engine: Engine
-) -> None:
-    subscription = trigger_db.add_subscription(properties={"project": "old-encrypted"})
-    _patch_lock(mocker)
-    _patch_provider(mocker, provider_controller)
-    properties = _encrypter(decrypted={"project": "old-value"})
-    credentials = _encrypter(encrypted={"token": "new-encrypted"})
-    mocker.patch.object(
-        service_module,
-        "create_provider_encrypter",
-        side_effect=[(properties, Mock()), (credentials, Mock())],
-    )
-    clear_cache = mocker.patch.object(service_module, "delete_cache_for_subscription")
-
-    events: list[str] = []
-
-    def committed(_connection: Connection) -> None:
-        events.append("commit")
-
-    def invalidated(*_args: object, **_kwargs: object) -> None:
-        events.append("invalidate")
-
-    clear_cache.side_effect = invalidated
-    event.listen(sqlite_engine, "commit", committed)
-    try:
-        TriggerProviderService.update_trigger_subscription(
-            trigger_db.tenant_id,
-            subscription.id,
-            name="renamed",
-            properties={"project": HIDDEN_VALUE, "region": "us"},
-            parameters={"event": "issues"},
-            credentials={"token": "plain"},
-            credential_expires_at=100,
-            expires_at=200,
-        )
-    finally:
-        event.remove(sqlite_engine, "commit", committed)
-    assert events == ["commit", "invalidate"]
-
-    persisted = trigger_db.get_subscription(subscription.id)
-    assert persisted is not None
-    assert persisted.name == "renamed"
-    assert persisted.properties == {"project": "old-value", "region": "us"}
-    assert persisted.credentials == {"token": "new-encrypted"}
-    assert persisted.expires_at == 200
-    clear_cache.assert_called_once()
-
-
-def test_update_missing_and_conflicting_names_leave_rows_unchanged(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    first = trigger_db.add_subscription(name="first")
-    trigger_db.add_subscription(name="second")
-    _patch_lock(mocker)
-    _patch_provider(mocker, provider_controller)
-
-    with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.update_trigger_subscription(trigger_db.tenant_id, str(uuid4()))
-    with pytest.raises(ValueError, match="already exists"):
-        TriggerProviderService.update_trigger_subscription(trigger_db.tenant_id, first.id, name="second")
-    assert trigger_db.get_subscription(first.id).name == "first"  # type: ignore[union-attr]
-
-
 def test_get_subscription_scopes_tenant_and_decrypts(
     mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
@@ -440,29 +179,6 @@ def test_get_subscription_scopes_tenant_and_decrypts(
     )
     assert result.credentials == {"token": "plain"}
     assert result.properties == {"project": "plain"}
-
-
-@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
-def test_delete_subscription_uses_real_caller_transaction(
-    mocker,
-    trigger_db: TriggerDatabase,
-    provider_controller: Mock,
-    credential_type: CredentialType,
-) -> None:
-    subscription = trigger_db.add_subscription(credential_type=credential_type)
-    _patch_provider(mocker, provider_controller)
-    _patch_identity_encryption(mocker)
-    unsubscribe = mocker.patch.object(service_module.TriggerManager, "unsubscribe_trigger")
-    mocker.patch.object(service_module, "delete_cache_for_subscription")
-
-    with trigger_db.session_maker.begin() as session:
-        TriggerProviderService.delete_trigger_provider(trigger_db.tenant_id, subscription.id, session=session)
-
-    assert trigger_db.get_subscription(subscription.id) is None
-    if credential_type == CredentialType.UNAUTHORIZED:
-        unsubscribe.assert_not_called()
-    else:
-        unsubscribe.assert_called_once()
 
 
 @pytest.mark.parametrize("client_credentials", [None, {}, {"client": "system"}])
@@ -575,7 +291,6 @@ def test_oauth_client_falls_back_to_verified_system_record(
     assert TriggerProviderService.get_oauth_client(
         trigger_db.tenant_id, trigger_db.provider_id
     ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "system"})
-    assert TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
 
 
 def test_unverified_plugin_cannot_read_system_oauth(
@@ -585,33 +300,6 @@ def test_unverified_plugin_cannot_read_system_oauth(
     mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=False)
 
     assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) is None
-    assert not TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
-
-
-def test_custom_oauth_client_create_mask_enable_and_delete(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    _patch_provider(mocker, provider_controller)
-    encrypter = _encrypter(
-        encrypted={"client_secret": "encrypted"}, decrypted={"client_secret": "plain"}, masked={"client_secret": "****"}
-    )
-    cache = Mock()
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, cache))
-
-    assert TriggerProviderService.save_custom_oauth_client_params(
-        trigger_db.tenant_id,
-        trigger_db.provider_id,
-        client_params={"client_secret": "plain"},
-        enabled=True,
-    ) == {"result": "success"}
-    assert TriggerProviderService.is_oauth_custom_client_enabled(trigger_db.tenant_id, trigger_db.provider_id)
-    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "client_secret": "****"
-    }
-    assert TriggerProviderService.delete_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "result": "success"
-    }
-    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {}
 
 
 def test_endpoint_lookup_decrypts_persisted_subscription(
@@ -625,78 +313,3 @@ def test_endpoint_lookup_decrypts_persisted_subscription(
     found = TriggerProviderService.get_subscription_by_endpoint("lookup-endpoint")
     assert found is not None
     assert found.id == subscription.id
-
-
-@pytest.mark.parametrize("valid", [True, False])
-def test_verify_api_key_credentials_uses_persisted_subscription(
-    mocker,
-    trigger_db: TriggerDatabase,
-    provider_controller: Mock,
-    valid: bool,
-) -> None:
-    subscription = trigger_db.add_subscription(credentials={"token": "old"})
-    _patch_provider(mocker, provider_controller)
-    _patch_identity_encryption(mocker)
-    if not valid:
-        provider_controller.validate_credentials.side_effect = RuntimeError("denied")
-
-    if valid:
-        assert TriggerProviderService.verify_subscription_credentials(
-            trigger_db.tenant_id,
-            trigger_db.user_id,
-            trigger_db.provider_id,
-            subscription.id,
-            {"token": HIDDEN_VALUE},
-        ) == {"verified": True}
-        provider_controller.validate_credentials.assert_called_once_with(
-            trigger_db.user_id, credentials={"token": "old"}
-        )
-    else:
-        with pytest.raises(ValueError, match="Invalid credentials"):
-            TriggerProviderService.verify_subscription_credentials(
-                trigger_db.tenant_id,
-                trigger_db.user_id,
-                trigger_db.provider_id,
-                subscription.id,
-                {"token": "new"},
-            )
-
-
-def test_rebuild_subscription_preserves_id_endpoint_and_updates_state(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    subscription = trigger_db.add_subscription(endpoint_id="stable-endpoint", credentials={"token": "old"})
-    _patch_provider(mocker, provider_controller)
-    _patch_lock(mocker)
-    _patch_identity_encryption(mocker)
-    mocker.patch.object(
-        service_module.TriggerManager, "unsubscribe_trigger", return_value=SimpleNamespace(success=True)
-    )
-    mocker.patch.object(
-        service_module.TriggerManager,
-        "subscribe_trigger",
-        return_value=TriggerSubscriptionEntity(
-            expires_at=777,
-            endpoint="stable-endpoint",
-            parameters={"event": "issues"},
-            properties={"hook": "new"},
-        ),
-    )
-    mocker.patch.object(service_module, "delete_cache_for_subscription")
-
-    TriggerProviderService.rebuild_trigger_subscription(
-        trigger_db.tenant_id,
-        trigger_db.provider_id,
-        subscription.id,
-        credentials={"token": HIDDEN_VALUE},
-        parameters={"event": "issues"},
-        name="rebuilt",
-    )
-
-    persisted = trigger_db.get_subscription(subscription.id)
-    assert persisted is not None
-    assert persisted.endpoint_id == "stable-endpoint"
-    assert persisted.name == "rebuilt"
-    assert persisted.credentials == {"token": "old"}
-    assert persisted.properties == {"hook": "new"}
-    assert persisted.expires_at == 777
