@@ -2,6 +2,7 @@ import json
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
+from http import HTTPStatus
 from io import BytesIO
 from typing import Final, Protocol, cast
 
@@ -18,10 +19,13 @@ from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
+    NodeNotFound,
+    NotWebhookTrigger,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
     VersionNotFound,
+    WebhookNotFound,
 )
 from controllers.openapi._hints import cursor_after, next_page_hint
 from controllers.openapi._models import (
@@ -35,6 +39,7 @@ from controllers.openapi._models import (
     RunListResponse,
     VersionListQuery,
     VersionListResponse,
+    WebhookResponse,
 )
 from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.app_workflow import (
@@ -44,12 +49,15 @@ from controllers.openapi.app_workflow import (
     AppRunNodeListApi,
     AppVersionListApi,
     AppVersionRestoreApi,
+    AppWebhookApi,
     env_variable_rows,
     run_draft_node,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from core.helper import encrypter
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_application_services import ApplicationServices
@@ -61,6 +69,7 @@ from libs.oauth_bearer import AuthContext
 from models.account import Account, Tenant
 from models.enums import AppStatus, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
+from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
@@ -758,3 +767,99 @@ def test_run_list_lists_trigger_started_runs_only_when_asked(
 def test_run_list_refuses_a_trigger_source_outside_the_app_runs(triggered_from: str) -> None:
     with pytest.raises(ValidationError):
         RunListQuery.model_validate({"triggered_from": triggered_from})
+
+
+_WEBHOOK_NODE: Final[Mapping[str, object]] = {
+    "id": "hook",
+    "data": {"type": TRIGGER_WEBHOOK_NODE_TYPE, "title": "Webhook", "method": "post"},
+}
+_WEBHOOK_ID: Final = "abcdefghijklmnopqrstuvwx"
+
+
+def _add_webhook_record(session: Session, node_id: str) -> None:
+    session.add(
+        WorkflowWebhookTrigger(
+            app_id=APP_ID, tenant_id=WORKSPACE_ID, node_id=node_id, webhook_id=_WEBHOOK_ID, created_by=ACCOUNT_ID
+        )
+    )
+    session.commit()
+
+
+def _describe_webhook(
+    app: Flask, ctx: Context, monkeypatch: pytest.MonkeyPatch, services: ApplicationServices, node_id: str
+) -> WebhookResponse:
+    monkeypatch.setattr(app_workflow, "application_services", lambda: services)
+    api = AppWebhookApi()
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/webhooks/{node_id}"):
+        response = api.get.__handler__(api, ctx, APP_ID, node_id)  # type: ignore[attr-defined]
+    assert isinstance(response, WebhookResponse)
+    return response
+
+
+def test_describe_webhook_gives_the_trigger_node_its_addresses(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+    _add_webhook_record(sqlite_session, "hook")
+
+    response = _describe_webhook(app, ctx, monkeypatch, account_application_services, "hook")
+
+    assert response == WebhookResponse(
+        node_id="hook",
+        webhook_url=generate_webhook_trigger_endpoint(_WEBHOOK_ID),
+        webhook_debug_url=generate_webhook_trigger_endpoint(_WEBHOOK_ID, debug=True),
+    )
+
+
+def test_describe_webhook_of_a_node_the_draft_lacks_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+
+    with pytest.raises(NodeNotFound):
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "typo")
+
+
+def test_describe_webhook_of_a_node_that_is_no_webhook_trigger_names_its_type(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_code_node_graph("shorten"))
+
+    with pytest.raises(NotWebhookTrigger) as raised:
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "shorten")
+
+    assert raised.value.code == HTTPStatus.BAD_REQUEST
+    assert "code" in str(raised.value.description)
+
+
+def test_describe_webhook_of_a_trigger_without_an_address_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+
+    with pytest.raises(WebhookNotFound):
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "hook")
