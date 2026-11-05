@@ -42,6 +42,29 @@
       "count": 1
     }
   },
+  "web/app/(auth)/device/components/code-input.tsx": {
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "web/app/(auth)/device/page.tsx": {
+    "dify/require-disable-directive-description": {
+      "count": 5
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "web/app/(auth)/init/InitPasswordPopup.tsx": {
+    "typescript/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(auth)/signin/normal-form.tsx": {
+    "@tanstack/query/prefer-query-options": {
+      "count": 1
+    }
+  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -83,9 +106,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
@@ -6106,24 +6126,6 @@
       "count": 3
     }
   },
-  "web/app/device/_header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/device/components/code-input.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/device/page.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 5
-    },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/education/apply/applied-education-content.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -6132,49 +6134,6 @@
   "web/app/education/user-info.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
-    }
-  },
-  "web/app/init/InitPasswordPopup.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/reset-password/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/reset-password/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/signin/_header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/signin/_locale-menu.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/signin/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/signin/normal-form.tsx": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/signup/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
