@@ -43,6 +43,7 @@ def test_workflow_collaboration_feature_uses_the_loaded_plan(
     billing_calls: list[str] = []
 
     def fill_billing(features: FeatureModel, tenant_id: str, exclude_vector_space: bool = False) -> None:
+        assert exclude_vector_space is False
         billing_calls.append(tenant_id)
         features.billing.subscription.plan = plan
 

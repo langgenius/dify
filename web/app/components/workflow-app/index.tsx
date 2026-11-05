@@ -146,7 +146,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
 const WorkflowAppWrapper = () => {
   const { appId } = useParams<{ appId: string }>()
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const collaboration = useQuery({
     ...consoleQuery.features.get.queryOptions(),
     retry: false,

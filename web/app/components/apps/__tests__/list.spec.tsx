@@ -5,6 +5,7 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -42,6 +43,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({}),
       'apps.get': api.apps,
       'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,
