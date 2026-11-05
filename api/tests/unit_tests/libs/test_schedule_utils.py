@@ -822,6 +822,59 @@ class TestRegressionEnhanced(unittest.TestCase):
                 assert result == expected, f"12h conversion failed: {time_str}"
 
 
+class TestCronExpressionWhitespaceTolerance(unittest.TestCase):
+    """Regression tests for surrounding whitespace in cron expressions.
+
+    See https://github.com/langgenius/dify/issues/45609 - the expression was
+    stripped only for the 5-field count, so the ``startswith("@")`` check and
+    the ``croniter()`` call both received the original, unstripped value.
+    Predefined expressions copied from a UI or a config value carrying a
+    trailing space failed validation or were rejected by croniter.
+    """
+
+    def setUp(self):
+        """Set up test with fixed time."""
+        self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
+
+    def test_predefined_expression_with_leading_whitespace(self):
+        """A leading space must not make the 5-field validation reject @expressions."""
+        result = calculate_next_run_at(" @daily", "UTC", self.base_time)
+        assert result is not None
+        assert result.hour == 0
+        assert result.minute == 0
+        assert result > self.base_time
+
+    def test_predefined_expression_with_trailing_whitespace(self):
+        """A trailing space must not be handed to croniter verbatim."""
+        result = calculate_next_run_at("@daily ", "UTC", self.base_time)
+        assert result is not None
+        assert result.hour == 0
+        assert result.minute == 0
+        assert result > self.base_time
+
+    def test_predefined_expression_surrounded_by_whitespace(self):
+        """Whitespace on both sides is ignored for predefined expressions."""
+        result = calculate_next_run_at("  @weekly  ", "UTC", self.base_time)
+        assert result is not None
+        assert result.weekday() == 6  # Sunday
+        assert result.hour == 0
+        assert result.minute == 0
+
+    def test_five_field_expression_with_surrounding_whitespace(self):
+        """Whitespace around a standard 5-field expression is ignored."""
+        result = calculate_next_run_at(" 30 14 * * 1-5 ", "UTC", self.base_time)
+        assert result is not None
+        assert result.hour == 14
+        assert result.minute == 30
+        assert result.weekday() in [0, 1, 2, 3, 4]
+        assert result > self.base_time
+
+    def test_whitespace_only_expression_is_still_rejected(self):
+        """An expression that is only whitespace keeps the ValueError contract."""
+        with pytest.raises(ValueError, match="must have exactly 5 fields"):
+            calculate_next_run_at("   ", "UTC", self.base_time)
+
+
 if __name__ == "__main__":
     # Import timedelta for the test
     from datetime import timedelta
