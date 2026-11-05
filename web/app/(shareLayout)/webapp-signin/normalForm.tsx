@@ -125,40 +125,27 @@ const NormalForm = () => {
           )}
           {hasEmailLogin && (
             <>
-              {systemFeatures.enable_email_code_login && authType === 'code' && (
-                <>
-                  <MailAndCodeAuth />
-                  {systemFeatures.enable_email_password_login && (
-                    <div
-                      className="cursor-pointer py-1 text-center"
-                      onClick={() => {
-                        updateAuthType('password')
-                      }}
-                    >
-                      <span className="system-xs-medium text-components-button-secondary-accent-text">
-                        {t(($) => $.usePassword, { ns: 'login' })}
-                      </span>
-                    </div>
-                  )}
-                </>
+              {authType === 'code' ? (
+                <MailAndCodeAuth />
+              ) : (
+                <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
               )}
-              {systemFeatures.enable_email_password_login && authType === 'password' && (
-                <>
-                  <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
-                  {systemFeatures.enable_email_code_login && (
-                    <div
-                      className="cursor-pointer py-1 text-center"
-                      onClick={() => {
-                        updateAuthType('code')
-                      }}
-                    >
-                      <span className="system-xs-medium text-components-button-secondary-accent-text">
-                        {t(($) => $.useVerificationCode, { ns: 'login' })}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
+              {systemFeatures.enable_email_code_login &&
+                systemFeatures.enable_email_password_login && (
+                  <button
+                    type="button"
+                    className="w-full cursor-pointer py-1 text-center"
+                    onClick={() => {
+                      updateAuthType(authType === 'code' ? 'password' : 'code')
+                    }}
+                  >
+                    <span className="system-xs-medium text-components-button-secondary-accent-text">
+                      {authType === 'code'
+                        ? t(($) => $.usePassword, { ns: 'login' })
+                        : t(($) => $.useVerificationCode, { ns: 'login' })}
+                    </span>
+                  </button>
+                )}
             </>
           )}
           {allMethodsAreDisabled && (
