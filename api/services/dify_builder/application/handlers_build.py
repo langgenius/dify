@@ -551,6 +551,12 @@ def _knowledge_requirements(fc: DifyBuilderContext) -> dict[str, Any]:
 
 
 def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """Offer an actor-bound goal decision without authorizing retrieval or a build.
+
+    The current resource selection must already be checked. Preserve its
+    discovery preferences and replace the resource-confirmation gate with this
+    explicit retain/waive form; only a validated waiver may request a new plan.
+    """
     chinese = fc.reply_language.lower().startswith("zh")
     options = (
         ["保留知识库检索目标，等待后续能力", "明确修改原目标，放弃本次知识库检索及依赖检索的引用"]
@@ -583,10 +589,12 @@ def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         variant="build_requirements",
         title="确认知识库目标" if chinese else "Confirm the knowledge goal",
         description=(
-            "本期可以发现和选择知识库，但不能执行检索。未选择知识库并不代表您同意更改原目标，请明确选择。"
+            "本期可以发现和选择知识库，但不能生成、绑定或执行知识检索，也不能完成依赖检索的回答与引用。"
+            "尚未生成或执行工作流。未选择知识库并不代表您同意更改原目标，请明确选择。"
             if chinese
             else (
-                "This phase can discover knowledge bases but cannot execute retrieval. "
+                "This phase can discover knowledge bases but cannot generate, bind or execute retrieval, "
+                "or complete answers and citations that depend on it. No workflow has been generated or executed. "
                 "An empty selection does not waive your original goal; choose explicitly."
             )
         ),
@@ -597,6 +605,12 @@ def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
 
 def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """Apply only the current actor's explicit choice; retain keeps its form open.
+
+    Repeated retain choices append no new message and perform no cognition or
+    workflow operations. Keeping the pending nonce lets the user later choose
+    a goal change through the same current form, with ordinary version checks.
+    """
     pending = fc.resource_selection.get("knowledge_decision_pending")
     payload = turn.action.payload if turn.action and isinstance(turn.action.payload, dict) else {}
     if (
@@ -612,10 +626,13 @@ def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     if not isinstance(options, list) or len(options) != 2 or value not in options:
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
     choice = "retain" if value == options[0] else "waive"
+    previous = fc.resource_selection.get("knowledge_scope_decision")
+    if choice == "retain" and isinstance(previous, dict) and previous.get("card_key") == key:
+        if previous.get("choice") == "retain":
+            return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
     decision = {**pending, "choice": choice, "user_choice": value}
     fc.resource_selection["knowledge_scope_decision"] = decision
     if choice == "retain":
-        fc.resource_selection.pop("knowledge_decision_pending", None)
         fc.resource_selection["blocked_capability"] = "knowledge_retrieval_phase_two"
         return _knowledge_wait(env, s, fc)
     amendment = (
@@ -649,6 +666,11 @@ def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 def _knowledge_wait(
     env: Env, s: Session, fc: DifyBuilderContext, *, unavailable: bool = False, execution: Any = None
 ) -> StepResult:
+    """Explain the capability block while preserving the current decision gate.
+
+    A pending retain/waive form stays actionable; an invalid resource selection
+    stays at resource selection. Neither path authorizes planning or execution.
+    """
     chinese = fc.reply_language.lower().startswith("zh")
     if unavailable:
         message = (
@@ -671,7 +693,12 @@ def _knowledge_wait(
             )
         )
     items = append_assistant(env, s, fc, message, execution=execution)
-    return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc, items=items)
+    waiting_state = (
+        PcState.BUILD_GOAL_ANALYSIS
+        if fc.resource_selection.get("knowledge_decision_pending")
+        else PcState.BUILD_RESOURCE_RECOMMENDATION
+    )
+    return StepResult(next=waiting_state, context=fc, items=items)
 
 
 def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -765,7 +792,8 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             "blocked_capability": "knowledge_retrieval_phase_two",
         }
         progress.fail_step("build-bind-resources")
-        return _knowledge_wait(env, s, fc, execution=progress.finish(status="error"))
+        progress.finish(status="error")
+        return _ask_knowledge_decision(env, turn, s, fc)
     store_plan(fc, plan)
     decision = fc.resource_selection.get("knowledge_scope_decision") if _knowledge_waived(fc) else None
     fc.resource_selection = {
@@ -1094,6 +1122,13 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
+    from services.dify_builder.test_input_continuity import validate_supplied_values
+
+    try:
+        validate_runtime_inputs(schema, inputs)
+        validate_supplied_values(schema, inputs, require_all=False)
+    except (ValueError, TypeError) as exc:
+        return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
     if stale_effects:
         return input_gate_result(
@@ -1103,13 +1138,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             schema,
             inputs,
             PcState.BUILD_AWAIT_TESTDATA,
-            copy_text(BuilderCopyId.TEST_EFFECTS_CHANGED),
+            copy_text(stale_effects),
             actor=turn.actor,
         )
-    try:
-        validate_runtime_inputs(schema, inputs)
-    except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,
