@@ -29,6 +29,7 @@ from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariable
 from models.dataset import Dataset, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.workflow.execution.contracts import WorkflowRunEntry
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +230,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         )
 
     @override
-    def handle_event(self, workflow_entry: WorkflowEntry, event: EngineEvent, **kwargs) -> None:
+    def handle_event(self, workflow_entry: WorkflowRunEntry, event: EngineEvent, **kwargs) -> None:
         self._update_document_status(
             event,
             workspace_id=self._dataset_workspace_id,

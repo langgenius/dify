@@ -6,11 +6,11 @@ from types import MappingProxyType
 from typing import override
 
 from core.app.entities.queue_entities import NodeExecutionSnapshot
-from core.workflow.node_runtime import resolve_dify_run_context
 from graphon.engine.layer import Layer
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.nodes.base.node import Node
+from services.workflow.execution.adapters.node_runtime import resolve_dify_run_context
 
 
 class WorkflowRunIndex(Layer):
