@@ -496,15 +496,11 @@ it.each([
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
-const location = () => `${window.location.pathname}${window.location.search}`
+const currentUrl = () => `${window.location.pathname}${window.location.search}`
 
 it.each([
   ['', '/apps?create=blank', 'app.types.advanced'],
-  [
-    '?category=workflow',
-    '/apps?category=workflow&create=blank&mode=workflow',
-    'app.types.workflow',
-  ],
+  ['?category=workflow', '/apps?category=workflow&create=blank', 'app.types.workflow'],
 ])(
   'opens blank creation from the menu over the list on %s and closes back to it',
   async (searchParams, href, appType) => {
@@ -512,14 +508,14 @@ it.each([
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
     await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
     const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-    await waitFor(() => expect(location()).toBe(href))
+    await waitFor(() => expect(currentUrl()).toBe(href))
     expect(within(dialog).getByRole('heading', { name: appType, level: 4 })).toBeInTheDocument()
     expect(api.push).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    await waitFor(() => expect(location()).toBe(`/apps${searchParams}`))
+    await waitFor(() => expect(currentUrl()).toBe(`/apps${searchParams}`))
   },
 )
 
@@ -546,7 +542,7 @@ it.each([
 
   await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
-  await waitFor(() => expect(location()).toBe('/apps'))
+  await waitFor(() => expect(currentUrl()).toBe('/apps'))
 })
 
 it('opens blank creation from the first empty state', async () => {
@@ -555,7 +551,7 @@ it('opens blank creation from the first empty state', async () => {
   await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
   const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
-  await waitFor(() => expect(location()).toBe('/apps?create=blank'))
+  await waitFor(() => expect(currentUrl()).toBe('/apps?create=blank'))
 })
 
 it('switches between blank and template creation in one history entry', async () => {
@@ -565,15 +561,15 @@ it('switches between blank and template creation in one history entry', async ()
   const blank = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   await user.click(within(blank).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
   const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  await waitFor(() => expect(location()).toBe('/apps?create=template'))
+  await waitFor(() => expect(currentUrl()).toBe('/apps?create=template'))
 
   await user.click(within(templates).getByRole('button', { name: /app.newApp.startFromBlank/ }))
   const blankAgain = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-  await waitFor(() => expect(location()).toBe('/apps?create=blank'))
+  await waitFor(() => expect(currentUrl()).toBe('/apps?create=blank'))
 
   await user.click(within(blankAgain).getByRole('button', { name: 'Close' }))
   await waitFor(() => expect(blankAgain).not.toBeInTheDocument())
-  await waitFor(() => expect(location()).toBe('/apps'))
+  await waitFor(() => expect(currentUrl()).toBe('/apps'))
 })
 
 it('opens DSL import with the file dropped on the app list', async () => {

@@ -40,11 +40,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
-  const [dslDialog, setDSLDialog] = useState<Extract<AppListCreationDialog, { type: 'dsl' }>>()
-  // Closing returns to the entry the dialog was opened from, so Back does not reopen it.
+  // DSL import has no URL; it holds the file dropped on the list, if any.
+  const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
+  // Whether this list pushed the history entry of the open creation dialog.
   const pushedCreationEntryRef = useRef(false)
-  const creationDialog: AppListCreationDialog =
-    dslDialog ?? (creationQuery.create ? { type: creationQuery.create } : null)
+  const creationDialog: AppListCreationDialog = dslImport
+    ? { type: 'dsl', ...dslImport }
+    : creationQuery.create && { type: creationQuery.create }
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
@@ -57,7 +59,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     (file: File) => {
       if (!canCreateApp) return
 
-      setDSLDialog({ type: 'dsl', droppedFile: file })
+      setDSLImport({ droppedFile: file })
     },
     [canCreateApp],
   )
@@ -105,32 +107,36 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  const openCreationQuery = (create: 'blank' | 'template') => {
-    if (!canCreateApp) return
-    // Switching between blank and template creation keeps a single history entry.
-    const switching = creationQuery.create !== null
-    if (!switching) pushedCreationEntryRef.current = true
-    void setCreationQuery(
-      { create, mode: create === 'blank' && category !== 'all' ? category : null },
-      { history: switching ? 'replace' : 'push' },
-    )
-  }
-  const openCreateBlankModal = () => openCreationQuery('blank')
-  const openCreateTemplateDialog = () => openCreationQuery('template')
-  const closeCreationDialog = () => {
-    if (dslDialog) {
-      setDSLDialog(undefined)
-      return
-    }
-    if (pushedCreationEntryRef.current) {
+  // Opening pushes a history entry and switching between blank and template replaces it,
+  // so closing (or Back) returns to the list in one step. Blank creation defaults to the
+  // selected category; `mode` is only for links from elsewhere.
+  const openCreationDialog = useCallback(
+    (create: 'blank' | 'template') => {
+      if (!canCreateApp) return
+      const switching = creationQuery.create !== null
+      if (!switching) pushedCreationEntryRef.current = true
+      void setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
+    },
+    [canCreateApp, creationQuery.create, setCreationQuery],
+  )
+  const openCreateBlankModal = useCallback(() => openCreationDialog('blank'), [openCreationDialog])
+  const openCreateTemplateDialog = useCallback(
+    () => openCreationDialog('template'),
+    [openCreationDialog],
+  )
+  const closeCreationDialog = useCallback(() => {
+    if (dslImport) {
+      setDSLImport(null)
+    } else if (pushedCreationEntryRef.current) {
       pushedCreationEntryRef.current = false
       window.history.back()
-      return
+    } else {
+      // Opened from a link or a reload: clear the query without leaving the page.
+      void setCreationQuery(null, { history: 'replace' })
     }
-    void setCreationQuery(null, { history: 'replace' })
-  }
+  }, [dslImport, setCreationQuery])
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setDSLDialog({ type: 'dsl' })
+    if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
