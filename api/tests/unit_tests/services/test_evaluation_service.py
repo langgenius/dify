@@ -50,6 +50,7 @@ from models.workflow import (
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
 from services.variable_truncator import VariableTruncator
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_upload_file
 
 
@@ -2165,7 +2166,11 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
     )
     generator = MagicMock()
     generator.generate.return_value = {"workflow_run_id": "workflow-run-1"}
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator", MagicMock(return_value=generator))
+    generator_cls = MagicMock(return_value=generator)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator", generator_cls)
+    execution_identity = object()
+    build_identity = MagicMock(return_value=execution_identity)
+    monkeypatch.setattr("services.workflow_execution_identity.build_workflow_execution_identity", build_identity)
 
     result = EvaluationService._run_single_target(
         session=session,
@@ -2186,6 +2191,8 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
     assert generator.generate.call_args.kwargs["workflow"] is workflow
     assert generator.generate.call_args.kwargs["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
     assert generator.generate.call_args.kwargs["capture_agent_evaluation_trace"] is True
+    generator_cls.assert_called_once_with(execution_driver=WorkflowRunAgg.run)
+    assert generator.generate.call_args.kwargs["execution_identity"] is execution_identity
 
 
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(

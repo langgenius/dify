@@ -2431,7 +2431,7 @@ class EvaluationService:
         ``target_type``:
 
         * ``"snippets"`` → :meth:`SnippetGenerateService.run_published`
-        * ``"apps"`` → :meth:`WorkflowAppGenerator().generate` (blocking mode)
+        * ``"apps"`` → :meth:`WorkflowAppGenerator.generate` (blocking mode)
 
         :returns: The blocking response mapping from the workflow engine.
         :raises ValueError: If the target itself is invalid or missing.
@@ -2440,6 +2440,8 @@ class EvaluationService:
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
+        from services.workflow_execution_identity import build_workflow_execution_identity
+        from services.workflow_run_agg import WorkflowRunAgg
 
         if target_type == EvaluationTargetType.SNIPPETS.value:
             from services.snippet_generate_service import SnippetGenerateService
@@ -2508,7 +2510,8 @@ class EvaluationService:
                     f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
-            response: Mapping[str, object] = WorkflowAppGenerator().generate(
+            response: Mapping[str, object] = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                execution_identity=build_workflow_execution_identity(service_account),
                 app_model=app,
                 workflow=workflow,
                 user=service_account,
