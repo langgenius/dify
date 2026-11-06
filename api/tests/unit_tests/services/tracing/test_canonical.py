@@ -7,12 +7,13 @@ from pathlib import Path
 
 import pytest
 from dify_trace_sdk.ids import span_id_for, trace_id_for
-from dify_trace_sdk.model import SpanKind, SpanStatus
+from dify_trace_sdk.model import Cost, SpanKind, SpanStatus, TokenUsage
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from services.tracing.canonical import CanonicalTraceBuilder, message_trace_id
 from services.tracing.records import (
+    GenerateNameTraceInfo,
     MessageTraceInfo,
     PromptGenerationTraceInfo,
     ToolTraceInfo,
@@ -337,6 +338,40 @@ def test_tool_call_joins_its_message_trace_as_a_fragment() -> None:
     assert span.span_id == span_id_for("event:event-1")
     assert span.parent_span_id == trace.parent.span_id
     assert (span.name, span.kind, span.inputs, span.outputs) == ("web_search", SpanKind.TOOL, {"q": "dify"}, "results")
+
+
+def _title_record(*, message_data: TraceMessage | None) -> GenerateNameTraceInfo:
+    return GenerateNameTraceInfo(
+        message_id=message_data.id if message_data is not None else None,
+        message_data=message_data,
+        conversation_id=CONVERSATION_ID,
+        tenant_id="tenant-1",
+        inputs="title prompt",
+        outputs="Dify overview",
+        start_time=STARTED_AT + timedelta(seconds=3),
+        end_time=STARTED_AT + timedelta(seconds=4),
+        metadata={"trace_event_id": "event-title"},
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+        prompt_tokens=120,
+        completion_tokens=15,
+        total_tokens=135,
+        total_price=0.0021,
+        currency="USD",
+    )
+
+
+@pytest.mark.parametrize("message_data", [_message(), None], ids=["in-message", "standalone"])
+def test_conversation_naming_is_a_priced_llm_call_in_its_conversation(message_data: TraceMessage | None) -> None:
+    trace = CanonicalTraceBuilder().build(_title_record(message_data=message_data))
+
+    assert trace is not None
+    assert trace.session_id == CONVERSATION_ID
+    (span,) = trace.spans
+    assert (span.name, span.kind) == ("generate_name", SpanKind.LLM)
+    assert (span.model_name, span.model_provider) == ("gpt-4o-mini", "openai")
+    assert span.usage == TokenUsage(prompt_tokens=120, completion_tokens=15, total_tokens=135)
+    assert span.cost == Cost(amount=0.0021, currency="USD")
 
 
 def test_auxiliary_record_without_event_id_is_not_exported() -> None:

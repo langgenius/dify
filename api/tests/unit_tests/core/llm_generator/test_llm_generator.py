@@ -205,7 +205,17 @@ class TestLlmGeneratorCases:
         ) -> None:
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Test Conversation Name"})
+            mock_response.usage = LLMUsage.empty_usage().model_copy(
+                update={
+                    "prompt_tokens": 120,
+                    "completion_tokens": 15,
+                    "total_tokens": 135,
+                    "total_price": Decimal("0.0021"),
+                }
+            )
             mock_model_instance.invoke_llm.return_value = mock_response
+            mock_model_instance.provider = "openai"
+            mock_model_instance.model_name = "gpt-4o-mini"
             recorder = _Recorder()
             scope = TraceScope(
                 emitter=recorder,
@@ -236,6 +246,13 @@ class TestLlmGeneratorCases:
                 name="Test Conversation Name",
                 started_at=payload.started_at,
                 ended_at=payload.ended_at,
+                model_provider="openai",
+                model_name="gpt-4o-mini",
+                prompt_tokens=120,
+                completion_tokens=15,
+                total_tokens=135,
+                total_price=0.0021,
+                currency="USD",
             )
             assert payload.ended_at >= payload.started_at
 

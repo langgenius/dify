@@ -173,6 +173,13 @@ class ToolTraceInfo(BaseTraceInfo):
 class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: str | None
     tenant_id: str
+    model_provider: str | None = None
+    model_name: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    total_price: float | None = None
+    currency: str | None = None
 
 
 class PromptGenerationTraceInfo(BaseTraceInfo):
