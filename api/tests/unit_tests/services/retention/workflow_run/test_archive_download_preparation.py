@@ -15,7 +15,11 @@ import pyarrow.parquet as pq
 import pytest
 
 from libs.archive_storage import ArchiveStorage
-from services.retention.workflow_run.archive_bundle_index import ARCHIVE_BUNDLE_ROOT_PREFIX, ArchiveBundleManifest
+from services.retention.workflow_run.archive_bundle_index import (
+    ARCHIVE_BUNDLE_ROOT_PREFIX,
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+)
 from services.retention.workflow_run.archive_deletion_task import WorkflowRunArchiveDeletionStatus
 from services.retention.workflow_run.archive_download_preparation import (
     WorkflowRunArchiveDownloadPreparer,
@@ -74,7 +78,7 @@ class FakeTaskCache:
             return self.task
         return None
 
-    def lock(self, *, tenant_id: str, download_id: str):
+    def lock(self, *, tenant_id: str, download_id: str) -> nullcontext[None]:
         return nullcontext()
 
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
@@ -161,12 +165,12 @@ def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE
         max_run_id="run-b",
         archived_at="2026-06-25T08:00:00+00:00",
         tables={
-            table_name: {
-                "row_count": 1,
-                "checksum": hashlib.md5(payload).hexdigest(),
-                "size_bytes": len(payload),
-                "object_key": f"{object_prefix}/{table_name}.parquet",
-            }
+            table_name: ArchiveBundleTableManifestEntry(
+                row_count=1,
+                checksum=hashlib.md5(payload).hexdigest(),
+                size_bytes=len(payload),
+                object_key=f"{object_prefix}/{table_name}.parquet",
+            )
             for table_name, payload in table_payloads.items()
         },
         run_ids=["run-a", "run-b"],
@@ -340,7 +344,9 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
     assert cache.saved_tasks[-1].status == WorkflowRunArchiveDownloadStatus.READY
     assert archive_storage.put_objects == {}
 
-    archive_payload = download_storage.put_objects[result.storage_key]
+    storage_key = result.storage_key
+    assert storage_key is not None
+    archive_payload = download_storage.put_objects[storage_key]
     with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
         names = set(archive.namelist())
         assert names == {
