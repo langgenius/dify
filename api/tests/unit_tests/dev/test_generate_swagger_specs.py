@@ -532,6 +532,22 @@ def test_account_login_discovery_is_web_bootstrap_only(generated_specs: list[Pat
             assert "account_login_url" not in system_features_schema["properties"]
 
 
+def test_webapp_url_discovery_is_console_bootstrap_only(generated_specs: list[Path]):
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        if spec_name == "console-openapi.json":
+            assert "webapp_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["webapp_url"]["type"] == "string"
+            assert "default" not in system_features_schema["properties"]["webapp_url"]
+        else:
+            assert "webapp_url" not in system_features_schema["properties"]
+
+
 def test_generate_specs_writes_get_operations_without_request_bodies(generated_specs: list[Path]):
     for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
