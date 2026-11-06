@@ -15,6 +15,7 @@ from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.tools.entities.tool_entities import ToolEntity
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from models import agent as agent_models
 from models.agent_config_entities import AgentSoulToolsConfig
 from runtime_contracts.builder.native.contracts import (
     DispatchPermit,
@@ -340,7 +341,7 @@ def test_same_permit_validation_does_not_claim_or_spend(
     before = deepcopy(snapshot_facts())
     permit_before = permit.model_dump(mode="json")
 
-    from services.dify_builder.native_testing.repository import OwnedNativeTest
+    from services.dify_builder.native_testing.repository import NativeBinding, NativeBindingResolver, OwnedNativeTest
 
     owned = OwnedNativeTest(
         ref=ref,
@@ -371,7 +372,21 @@ def test_same_permit_validation_does_not_claim_or_spend(
         lambda _permit: ref.model_copy(update={"invocation_id": "foreign"}) if change == "owner" else ref,
     )
     monkeypatch.setattr(service, "_attempt", lambda *_args: attempt)
-    monkeypatch.setattr(service, "_binding", lambda *_args: trusted)
+
+    def binding_for_validation(
+        selected_session: Session,
+        selected_owned: OwnedNativeTest,
+        selected_intent: EffectIntent,
+        *,
+        resolver: NativeBindingResolver | None = None,
+    ) -> NativeBinding:
+        assert selected_session is session
+        assert selected_owned is owned
+        assert selected_intent == effect
+        assert resolver is loader.resolver
+        return trusted
+
+    monkeypatch.setattr(service, "_binding", binding_for_validation)
     monkeypatch.setattr(service, "_claim", lambda *_args: pytest.fail("validation spent a second permit"))
     monkeypatch.setattr(
         service, "claim_dispatch", lambda **_kwargs: pytest.fail("validation consumed a physical dispatch claim")
@@ -420,6 +435,8 @@ def test_marked_request_builder_stops_missing_ref_before_metadata() -> None:
         node_execution_id="execution",
         variable_pool=VariablePool(),
         binding=WorkflowAgentNodeBinding(
+            workflow_version="draft",
+            binding_type=agent_models.WorkflowAgentBindingType.ROSTER_AGENT,
             id="binding",
             tenant_id="tenant",
             app_id="app",
@@ -429,7 +446,13 @@ def test_marked_request_builder_stops_missing_ref_before_metadata() -> None:
             current_snapshot_id="snapshot",
             node_job_config=WorkflowNodeJobConfig(),
         ),
-        agent=Agent(id="agent", tenant_id="tenant", name="Agent"),
+        agent=Agent(
+            scope=agent_models.AgentScope.ROSTER,
+            source=agent_models.AgentSource.ROSTER,
+            id="agent",
+            tenant_id="tenant",
+            name="Agent",
+        ),
         snapshot=AgentConfigSnapshot(
             id="snapshot", tenant_id="tenant", agent_id="agent", version=1, config_snapshot=AgentSoulConfig()
         ),
@@ -526,7 +549,7 @@ def test_private_native_routes_require_existing_service_auth(path: str) -> None:
     from flask import Flask
 
     from controllers.inner_api import bp
-    from tests.unit_tests.controllers.inner_api.test_agent_tools import _agent_inner_auth
+    from tests.unit_tests.controllers.inner_api.agent.test_tools import _agent_inner_auth
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -978,8 +1001,8 @@ def test_endpoint_lineage_requires_exact_envelope_before_physical_owner_refusal(
 
 def test_actual_llm_endpoint_rejects_known_native_omission_before_prepare(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.agent_llm_inner_service import AgentLLMInnerService
-    from tests.unit_tests.config_override import config_overrides_context
-    from tests.unit_tests.controllers.inner_api.test_agent_llm import _flask_app
+    from tests.helpers.unit.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.agent.test_llm import _flask_app
     from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
         encoded,
     )
@@ -1022,13 +1045,13 @@ def test_private_claim_route_refuses_repeated_requests_without_consuming_permit(
     from controllers.inner_api import bp
     from controllers.inner_api.agent import native_testing as controller
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-    from tests.unit_tests.config_override import config_overrides_context
-    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
-        encoded,
-    )
-    from tests.unit_tests.controllers.inner_api.test_agent_tools import (
+    from tests.helpers.unit.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.agent.test_tools import (
         _agent_inner_auth,
         _headers,
+    )
+    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
+        encoded,
     )
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
         intent,
@@ -1123,7 +1146,7 @@ def test_native_refresh_cas_rechecks_detached_snapshot_before_write(
         CredentialAccessSnapshot,
         OAuthClientSnapshot,
     )
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     snapshot = BuilderCredentialSnapshot(
         reference=CredentialReference(
