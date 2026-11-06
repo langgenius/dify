@@ -357,5 +357,24 @@ describe('VideoPlayer', () => {
       fireEvent.click(volumeSlider, { clientX: 200 })
       expect(video.volume).toBe(1)
     })
+
+    it('resets playback state when the source changes', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(<VideoPlayer src={mockSrc} />)
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+
+      fireEvent.loadedMetadata(video)
+      Object.defineProperty(video, 'currentTime', { configurable: true, value: 42 })
+      fireEvent.timeUpdate(video)
+      await user.click(getPlayButton())
+
+      expect(getPauseButton()).toBeInTheDocument()
+      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:42 / 01:40')
+
+      rerender(<VideoPlayer src="next-video.mp4" />)
+
+      expect(getPlayButton()).toBeInTheDocument()
+      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:00 / 00:00')
+    })
   })
 })
