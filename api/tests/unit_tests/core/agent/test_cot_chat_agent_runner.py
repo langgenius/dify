@@ -2,9 +2,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
+from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from models.model import Conversation, Message
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.agent.conftest import (
     DummyAgentConfig,
     DummyAppConfig,
@@ -42,24 +49,43 @@ class DummyUnit:
         return self._final
 
 
-class DummyRunner(CotChatAgentRunner):
-    """Test double that avoids BaseAgentRunner's heavy DB/model constructor."""
-
-    def __init__(self) -> None:
-        # Use a plain __init__ (init fn) rather than bypassing via __new__,
-        # so the instance is fully initialised by the constructor.
-        self._instruction = "test_instruction"
-        self._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
-        self._query = "user query"
-        self._agent_scratchpad = []
-        self.files = []
-        self.application_generate_entity = DummyGenerateEntity()
-        self._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
-
-
 @pytest.fixture
-def runner() -> DummyRunner:
-    return DummyRunner()
+def runner(
+    sqlite_session: Session,
+    agent_records: tuple[Conversation, Message],
+    agent_generate_entity: AgentChatAppGenerateEntity,
+    agent_queue_manager: MessageBasedAppQueueManager,
+) -> CotChatAgentRunner:
+    """Run production initialization before selecting prompt-organization inputs."""
+    conversation, message = agent_records
+    app_config = agent_generate_entity.app_config
+    assert isinstance(app_config, AgentChatAppConfig)
+    assert app_config.agent is not None
+    runner = CotChatAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
+        session=sqlite_session,
+        tenant_id=app_config.tenant_id,
+        application_generate_entity=agent_generate_entity,
+        conversation=conversation,
+        app_config=app_config,
+        model_config=agent_generate_entity.model_conf,
+        config=app_config.agent,
+        queue_manager=agent_queue_manager,
+        message=message,
+        user_id=agent_generate_entity.user_id,
+        model_instance=ModelInstance(
+            provider_model_bundle=agent_generate_entity.model_conf.provider_model_bundle,
+            model=agent_generate_entity.model_conf.model,
+        ),
+    )
+    runner._instruction = "test_instruction"
+    runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
+    runner._query = "user query"
+    runner._agent_scratchpad = []
+    runner.files = []
+    runner.application_generate_entity = DummyGenerateEntity()
+    runner._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
+    return runner
 
 
 class TestOrganizeSystemPrompt:
