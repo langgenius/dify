@@ -31,6 +31,7 @@ type Props = Readonly<{
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
   selectedDatasets?: DatasetDetailWithPartialMembersResponse[]
   isInWorkflow?: boolean
+  preserveRetrievalMode?: boolean
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
@@ -43,6 +44,7 @@ const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
   isInWorkflow,
+  preserveRetrievalMode = false,
   singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
   onSingleRetrievalModelChange = noopModelChange,
   onSingleRetrievalModelParamsChange = noopParamsChange,
@@ -57,7 +59,7 @@ const ConfigContent: FC<Props> = ({
   const type = datasetConfigs.retrieval_model
 
   useEffect(() => {
-    if (type === RETRIEVE_TYPE.oneWay) {
+    if (!preserveRetrievalMode && type === RETRIEVE_TYPE.oneWay) {
       onChange(
         {
           ...datasetConfigs,
@@ -66,7 +68,7 @@ const ConfigContent: FC<Props> = ({
         isInWorkflow,
       )
     }
-  }, [type, datasetConfigs, isInWorkflow, onChange])
+  }, [type, datasetConfigs, isInWorkflow, onChange, preserveRetrievalMode])
 
   const {
     modelList: rerankModelList,
@@ -210,7 +212,7 @@ const ConfigContent: FC<Props> = ({
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex flex-col items-center py-1">
-            <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
+            <div className="me-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
             <Separator decorative variant="gradient" className="m-0" />
@@ -253,7 +255,7 @@ const ConfigContent: FC<Props> = ({
                   <Infotip>
                     <InfotipTrigger
                       aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
-                      className="ml-0.5 size-3.5"
+                      className="ms-0.5 size-3.5"
                     />
                     <InfotipContent
                       aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
@@ -278,12 +280,12 @@ const ConfigContent: FC<Props> = ({
                 )}
                 <div
                   id={rerankLabelId}
-                  className="ml-1 system-sm-semibold leading-8 text-text-secondary"
+                  className="ms-1 system-sm-semibold leading-8 text-text-secondary"
                 >
                   {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
                 </div>
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ml-1" />
+                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ms-1" />
                   <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
                     {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })}
                   </InfotipContent>

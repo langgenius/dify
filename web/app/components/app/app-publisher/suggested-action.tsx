@@ -12,7 +12,6 @@ type SuggestedActionButton = {
 type SuggestedActionProps = PropsWithChildren<{
   icon?: ReactNode
   link?: string
-  external?: boolean
   disabled?: boolean
   focusableWhenDisabled?: boolean
   description?: ReactNode
@@ -25,7 +24,6 @@ type SuggestedActionProps = PropsWithChildren<{
 const SuggestedAction = ({
   icon,
   link,
-  external = false,
   disabled = false,
   focusableWhenDisabled = false,
   description,
@@ -138,9 +136,9 @@ const SuggestedAction = ({
         {content}
       </button>
     )
-  } else if (external) {
+  } else {
     mainAction = (
-      <a
+      <Link
         href={link}
         target="_blank"
         rel="noreferrer"
@@ -148,12 +146,6 @@ const SuggestedAction = ({
         onClick={onClick}
         {...accessibilityProps}
       >
-        {content}
-      </a>
-    )
-  } else {
-    mainAction = (
-      <Link href={link} className={interactiveClassName} onClick={onClick} {...accessibilityProps}>
         {content}
       </Link>
     )

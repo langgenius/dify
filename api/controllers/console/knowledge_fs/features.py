@@ -14,7 +14,6 @@ from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class KnowledgeFSFeaturesResponse(ResponseModel):
-    enabled: bool
     upload_enabled: bool
     agent_enabled: bool
 
@@ -24,7 +23,7 @@ register_response_schema_models(console_ns, KnowledgeFSFeaturesResponse)
 
 @console_ns.route("/knowledge-fs/features")
 class KnowledgeFSFeaturesApi(Resource):
-    @console_ns.doc(description="Get which Agent Knowledge Base surfaces this deployment offers")
+    @console_ns.doc(description="Get which Agent Knowledge Base capabilities this deployment offers")
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base availability",

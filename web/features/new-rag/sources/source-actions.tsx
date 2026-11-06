@@ -15,19 +15,20 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLinkItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'
@@ -93,7 +94,11 @@ export function SourceActions({
         result = await mutation()
       } catch (error) {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.sourcesErrorDescription))
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : (getErrorMessage(error) ?? t(($) => $.sourcesErrorDescription)),
+        )
         try {
           await queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -167,13 +172,16 @@ export function SourceActions({
       'toggle',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: {
-              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-              status: source.status === 'disabled' ? 'active' : 'disabled',
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: {
+                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+                status: source.status === 'disabled' ? 'active' : 'disabled',
+              },
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
             },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+            { context: { silent: true } },
+          ),
         ),
       (updatedSource) => {
         const nextSyncWorkflow =
@@ -194,10 +202,13 @@ export function SourceActions({
       'edit',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: values,
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: values,
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            },
+            { context: { silent: true } },
+          ),
           { useResponseStatus: true },
         ),
       acceptSourceSnapshot,
@@ -208,12 +219,15 @@ export function SourceActions({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
-          body: { expectedRevision: source.version },
-          headers: { 'Idempotency-Key': createIdempotencyKey() },
-          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          query: { documents: 'keep' },
-        })
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete(
+          {
+            body: { expectedRevision: source.version },
+            headers: { 'Idempotency-Key': createIdempotencyKey() },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            query: { documents: 'keep' },
+          },
+          { context: { silent: true } },
+        )
       },
       () => removeSourceFromList(source.id),
     )
@@ -239,8 +253,8 @@ export function SourceActions({
           {tCommon(($) => $['operation.retry'])}
         </Button>
       )}
-      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger
+      <Menu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+        <MenuTrigger
           aria-label={t(($) => $.sourceActions, { ns: 'knowledgeSources', name: source.name })}
           disabled={Boolean(pendingAction)}
           className="flex size-7 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:text-text-disabled"
@@ -252,10 +266,10 @@ export function SourceActions({
               pendingAction ? 'i-ri-loader-4-line animate-spin' : 'i-ri-more-fill',
             )}
           />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-50">
+        </MenuTrigger>
+        <MenuContent align="end" className="w-50">
           {canSync && (
-            <DropdownMenuItem
+            <MenuItem
               onClick={() => void (syncAction === 'retry' ? retrySource() : syncSource())}
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
@@ -263,10 +277,10 @@ export function SourceActions({
               {syncAction === 'retry'
                 ? tCommon(($) => $['operation.retry'])
                 : t(($) => $.syncNow, { ns: 'knowledgeSources' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {sourceUri && (
-            <DropdownMenuLinkItem
+            <MenuLinkItem
               render={
                 <a
                   aria-label={t(($) => $.openSource)}
@@ -279,19 +293,16 @@ export function SourceActions({
             >
               <span aria-hidden className="i-ri-external-link-line size-4" />
               {t(($) => $.openSource)}
-            </DropdownMenuLinkItem>
+            </MenuLinkItem>
           )}
           {canEdit && (
-            <DropdownMenuItem
-              onClick={openEditDialog}
-              className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            >
+            <MenuItem onClick={openEditDialog} className="mb-px h-7 gap-2 px-2 system-sm-medium">
               <span aria-hidden className="i-ri-edit-line size-4" />
               {tCommon(($) => $['operation.edit'])}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {canToggle && (
-            <DropdownMenuItem
+            <MenuItem
               onClick={() => void toggleSource()}
               className="h-7 gap-2 px-2 system-sm-medium"
             >
@@ -307,14 +318,14 @@ export function SourceActions({
               {source.status === 'disabled'
                 ? t(($) => $.enable, { ns: 'dataset' })
                 : t(($) => $.disableSource)}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {canRemove && (
             <>
               {(canEdit || canSync || canToggle || sourceUri) && (
-                <DropdownMenuSeparator className="my-px" />
+                <MenuSeparator className="my-px" />
               )}
-              <DropdownMenuItem
+              <MenuItem
                 onClick={() => {
                   setMenuOpen(false)
                   setRemoveDialogOpen(true)
@@ -324,11 +335,11 @@ export function SourceActions({
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 {t(($) => $.removeSource, { ns: 'knowledgeSources' })}
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <SourceEditDialog
         controlSpaceId={knowledgeSpaceId}
         onEdit={editSource}

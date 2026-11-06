@@ -4,6 +4,7 @@ from collections.abc import Generator
 from typing import Any, override
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool import Tool
@@ -29,12 +30,14 @@ class _DummyTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        del session
         yield self.create_text_message("ok")
 
 
@@ -63,7 +66,7 @@ def _provider_identity() -> ToolProviderIdentity:
     )
 
 
-def test_tool_provider_controller_get_credentials_schema_returns_deep_copy():
+def test_tool_provider_controller_get_credentials_schema_returns_deep_copy() -> None:
     entity = ToolProviderEntity(
         identity=_provider_identity(),
         credentials_schema=[ProviderConfig(type=ProviderConfigType.TEXT_INPUT, name="api_key", required=False)],
@@ -76,14 +79,14 @@ def test_tool_provider_controller_get_credentials_schema_returns_deep_copy():
     assert controller.entity.credentials_schema[0].name == "api_key"
 
 
-def test_tool_provider_controller_default_provider_type():
+def test_tool_provider_controller_default_provider_type() -> None:
     entity = ToolProviderEntity(identity=_provider_identity(), credentials_schema=[])
     controller = _DummyController(entity=entity)
 
     assert controller.provider_type == ToolProviderType.BUILT_IN
 
 
-def test_validate_credentials_format_covers_required_default_and_type_rules():
+def test_validate_credentials_format_covers_required_default_and_type_rules() -> None:
     select_options = [ProviderConfig.Option(value="opt-a", label=I18nObject(en_US="A"))]
     entity = ToolProviderEntity(
         identity=_provider_identity(),

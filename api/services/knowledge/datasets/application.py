@@ -31,13 +31,13 @@ class DatasetVisibility:
     unrestricted: bool = True
     whitelist_ids: Sequence[str] = ()
 
-    def list_scope(self, *, rbac_enabled: bool) -> tuple[list[str] | None, bool]:
+    def list_scope(self, *, rbac_enabled: bool) -> list[str] | None:
         if not rbac_enabled:
-            return None, False
-        # A restricted whitelist always takes precedence over default grants,
-        # resource overrides and the creator's own-dataset fallback.
+            return None
+        # Maintainers always retain visibility of their own datasets. The
+        # whitelist takes precedence over grants only for other datasets.
         if not self.unrestricted:
-            return sorted(set(self.whitelist_ids)), False
+            return sorted(set(self.whitelist_ids))
         read_keys = {"dataset.preview", "dataset.acl.preview", "dataset.full_access"}
         default_read = bool(
             read_keys.intersection(self.default_permissions) or read_keys.intersection(self.workspace_permissions)
@@ -47,7 +47,7 @@ class DatasetVisibility:
             if default_read
             else sorted(key for key, grants in self.overrides.items() if read_keys.intersection(grants))
         )
-        return ids, "dataset.create_and_management" in self.workspace_permissions
+        return ids
 
 
 class DatasetOperations(Protocol):
@@ -55,7 +55,7 @@ class DatasetOperations(Protocol):
 
     def visibility(self, context: RequestContext) -> DatasetVisibility: ...
     def list_datasets(
-        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
+        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None
     ) -> DatasetPage: ...
     def embedding_models(self, workspace_id: str) -> set[str]: ...
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
@@ -107,8 +107,8 @@ class DatasetApplicationService:
 
     def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
         visibility = self._operations.visibility(context)
-        ids, include_own = visibility.list_scope(rbac_enabled=self._rbac_enabled)
-        result = self._operations.list_datasets(context, query, ids, include_own)
+        ids = visibility.list_scope(rbac_enabled=self._rbac_enabled)
+        result = self._operations.list_datasets(context, query, ids)
         models = self._operations.embedding_models(context.active_workspace_id)
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))

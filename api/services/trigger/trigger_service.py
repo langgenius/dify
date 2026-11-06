@@ -54,7 +54,7 @@ class TriggerService:
         node_data = TriggerEventNodeData.model_validate(node_config["data"], from_attributes=True)
         request = TriggerHttpRequestCachingService.get_request(event.request_id)
         payload = TriggerHttpRequestCachingService.get_payload(event.request_id)
-        # invoke triger
+        # invoke trigger
         provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
             tenant_id, TriggerProviderID(subscription.provider_id)
         )

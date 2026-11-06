@@ -13,13 +13,13 @@ type Props = Readonly<{
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
   const { t } = useTranslation(['common', 'share'])
-  const { isMobile, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
+  const { isBelowSm, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
     useChatWithHistoryContext()
 
   if (allInputsHidden || inputsForms.length === 0) return null
 
   return (
-    <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
+    <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
       <div
         className={cn(
           'w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
@@ -30,7 +30,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           className={cn(
             'flex items-center gap-3 rounded-t-2xl px-6 py-4',
             !collapsed && 'border-b border-divider-subtle',
-            isMobile && 'px-4 py-3',
+            isBelowSm && 'px-4 py-3',
           )}
         >
           <span aria-hidden className="i-custom-public-other-message-3-fill size-6 shrink-0" />
@@ -59,12 +59,12 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           )}
         </div>
         {!collapsed && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <InputsFormContent />
           </div>
         )}
         {!collapsed && !currentConversationId && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <Button
               variant="primary"
               className="w-full"

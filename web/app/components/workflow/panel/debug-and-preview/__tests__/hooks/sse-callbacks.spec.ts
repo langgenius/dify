@@ -1,72 +1,156 @@
-// oxlint-disable-next-line no-restricted-imports -- The SSE boundary fixture uses the transport callback contract; it does not issue HTTP requests.
-import type { IOtherOptions } from '@/service/base'
-import { act } from '@testing-library/react'
+import type { useWorkflowRun } from '../../../../hooks/use-workflow-run'
+import type { Shape as WorkflowStoreShape } from '@/app/components/workflow/store/workflow'
+import type { VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   baseRunningData,
   renderWorkflowFlowHook as renderHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useSetWorkflowVarsWithValue as useFetchWorkflowInspectVars } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+  VarType,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { useChat } from '../../hooks'
 
-const mockHandleRun = vi.fn()
-const mockNotify = vi.fn()
-const mockFetchInspectVars = vi.fn()
-const mockInvalidAllLastRun = vi.fn()
-const mockSubmitHumanInputForm = vi.fn()
-const mockSseGet = vi.fn()
+type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
+type RunCallbacks = NonNullable<Parameters<HandleRun>[1]>
 
-vi.mock('@/service/base', () => ({
-  sseGet: (...args: unknown[]) => mockSseGet(...args),
+const { fetchAllInspectVars, fetchLastRun } = vi.hoisted(() => ({
+  fetchAllInspectVars: vi.fn(),
+  fetchLastRun: vi.fn(),
 }))
+const mockHandleRun = vi.fn<HandleRun>()
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': (...args: unknown[]) =>
+        fetchLastRun(...args),
+    }),
+  }
+})
 
-vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: (...args: unknown[]) => mockNotify(...args),
-  },
-}))
-
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  fetchAllInspectVars: (...args: unknown[]) => fetchAllInspectVars(...args),
 }))
 
 // Event fixtures omit unrelated protocol fields while preserving the real callback names.
 type EventFixture<T> = T extends object ? { [K in keyof T]?: EventFixture<T[K]> } : T
 type SSECallbacks = {
-  [K in keyof IOtherOptions]-?: NonNullable<IOtherOptions[K]> extends (...args: infer A) => infer R
+  [K in keyof RunCallbacks]-?: NonNullable<RunCallbacks[K]> extends (...args: infer A) => infer R
     ? (...args: { [I in keyof A]: EventFixture<A[I]> }) => R
     : never
+}
+
+const inspectNode = createNode({
+  id: 'node-1',
+  data: {
+    type: BlockEnum.Code,
+    title: 'Code',
+    outputs: { answer: { type: VarType.string } },
+    _runningStatus: NodeRunningStatus.Succeeded,
+  },
+})
+
+const inspectVar: VarInInspect = {
+  id: 'var-1',
+  type: 'node',
+  name: 'answer',
+  description: 'Answer',
+  selector: ['node-1', 'answer'],
+  value_type: VarType.string,
+  value: 'completed',
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: null,
+}
+
+type FetchInspectVars = ReturnType<typeof useFetchWorkflowInspectVars>['fetchInspectVars']
+
+function useChatWithRealInspector(
+  config: Parameters<typeof useChat>[0],
+  registerFetchInspectVars: (fetchInspectVars: FetchInspectVars) => void,
+) {
+  const { fetchInspectVars } = useFetchWorkflowInspectVars()
+  useQuery({
+    ...consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+      input: { params: { app_id: 'app-1', node_id: 'node-1' } },
+    }),
+    staleTime: Infinity,
+  })
+  useLayoutEffect(() => {
+    registerFetchInspectVars(fetchInspectVars)
+  }, [fetchInspectVars, registerFetchInspectVars])
+  return useChat(config)
 }
 
 describe('useChat – handleSend SSE callbacks', () => {
   let capturedCallbacks: SSECallbacks
 
   beforeEach(() => {
-    vi.clearAllMocks()
     mockHandleRun.mockReset()
+    fetchAllInspectVars.mockReset().mockResolvedValue([inspectVar])
+    fetchLastRun.mockReset().mockResolvedValue({ id: 'last-run-2', status: 'succeeded' })
     mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
       capturedCallbacks = callbacks as SSECallbacks
     })
   })
 
-  function setupAndSend(config: Parameters<typeof useChat>[0] = {}) {
-    const hook = renderHook(() => useChat(config), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  function renderChat(
+    config: Parameters<typeof useChat>[0] = {},
+    initialStoreState: Partial<WorkflowStoreShape> = {},
+  ) {
+    let realFetchInspectVars: FetchInspectVars = async () => undefined
+    const fetchInspectVars: FetchInspectVars = (params) => realFetchInspectVars(params)
+    const registerFetchInspectVars = (nextFetchInspectVars: FetchInspectVars) => {
+      realFetchInspectVars = nextFetchInspectVars
+    }
+    const { queryClient } = createConsoleQueryWrapper()
+    seedToolProviders(queryClient, {
+      builtInTools: [],
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
     })
+    queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+    const lastRunKey =
+      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryKey({
+        input: { params: { app_id: 'app-1', node_id: 'node-1' } },
+      })
+    queryClient.setQueryData(lastRunKey, { id: 'last-run-1', status: 'succeeded' })
+
+    return {
+      ...renderHook(() => useChatWithRealInspector(config, registerFetchInspectVars), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        nodes: [inspectNode],
+        queryClient,
+        initialStoreState,
+        hooksStoreProps: { handleRun: mockHandleRun, fetchInspectVars },
+      }),
+      lastRunKey,
+      queryClient,
+    }
+  }
+
+  function setupAndSend(
+    config: Parameters<typeof useChat>[0] = {},
+    initialStoreState: Parameters<typeof renderChat>[1] = {},
+  ) {
+    const hook = renderChat(config, initialStoreState)
     act(() => {
       hook.result.current.handleSend(
         { query: 'test' },
@@ -206,27 +290,46 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   describe('onCompleted', () => {
-    it('should call fetchInspectVars and invalidAllLastRun when not paused', async () => {
-      const { result } = setupAndSend()
+    it('refreshes real inspector state and invalidates cached last-run data when not paused', async () => {
+      const { lastRunKey, queryClient, result, store } = setupAndSend()
       expect(result.current.isResponding).toBe(true)
       await act(async () => {
         await capturedCallbacks.onCompleted(false)
       })
       expect(result.current.isResponding).toBe(false)
-      expect(mockFetchInspectVars).toHaveBeenCalledWith({})
-      expect(mockInvalidAllLastRun).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(store.getState().nodesWithInspectVars).toEqual([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [expect.objectContaining({ id: 'var-1', value: 'completed' })],
+          }),
+        ]),
+      )
+      await waitFor(() =>
+        expect(queryClient.getQueryData(lastRunKey)).toEqual({
+          id: 'last-run-2',
+          status: 'succeeded',
+        }),
+      )
     })
 
-    it('should not call fetchInspectVars when workflow is paused', async () => {
-      const { store, result } = setupAndSend()
-      store.setState({
-        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Paused } }),
-      })
+    it('leaves inspector and last-run data unchanged when workflow is paused', async () => {
+      const { lastRunKey, queryClient, result, store } = setupAndSend(
+        {},
+        {
+          workflowRunningData: baseRunningData({
+            result: { status: WorkflowRunningStatus.Paused },
+          }),
+        },
+      )
       await act(async () => {
         await capturedCallbacks.onCompleted(false)
       })
-      expect(mockFetchInspectVars).not.toHaveBeenCalled()
-      expect(mockInvalidAllLastRun).not.toHaveBeenCalled()
+      expect(store.getState().nodesWithInspectVars).toEqual([])
+      expect(queryClient.getQueryData(lastRunKey)).toEqual({
+        id: 'last-run-1',
+        status: 'succeeded',
+      })
       expect(result.current.isResponding).toBe(false)
     })
 
@@ -277,10 +380,7 @@ describe('useChat – handleSend SSE callbacks', () => {
           onCancel(cancelSuggested)
           return Promise.resolve({ data: ['suggestion1'] })
         })
-      const hook = renderHook(
-        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-      )
+      const hook = renderChat({ suggested_questions_after_answer: { enabled: true } })
 
       mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
         capturedCallbacks = callbacks as SSECallbacks
@@ -306,10 +406,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should set suggestedQuestions to empty array when fetch fails', async () => {
       const mockGetSuggested = vi.fn().mockRejectedValue(new Error('fail'))
-      const hook = renderHook(
-        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-      )
+      const hook = renderChat({ suggested_questions_after_answer: { enabled: true } })
 
       mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
         capturedCallbacks = callbacks as SSECallbacks

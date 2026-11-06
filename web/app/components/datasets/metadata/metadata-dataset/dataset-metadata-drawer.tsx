@@ -64,7 +64,7 @@ type ItemProps = {
   disabled?: boolean
   payload: MetadataItemWithValueLength
   onRename?: () => void
-  onDelete?: () => void
+  onDelete?: () => Promise<void>
 }
 const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
   const { t } = useTranslation(['common', 'dataset'])
@@ -77,10 +77,19 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
   const deleteBtnRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
-  const handleDelete = useCallback(() => {
-    deleteActionsRef.current?.close()
-    onDelete?.()
-  }, [onDelete])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const handleDelete = useCallback(async () => {
+    if (isDeleting) return
+    setIsDeleting(true)
+    try {
+      await onDelete?.()
+      deleteActionsRef.current?.close()
+    } catch {
+      // The owner reports the failure; keep the dialog open so the user can retry.
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [isDeleting, onDelete])
 
   return (
     <div
@@ -120,7 +129,12 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
             >
               <span className="i-ri-edit-line size-4" aria-hidden="true" />
             </IconButton>
-            <AlertDialog actionsRef={deleteActionsRef}>
+            <AlertDialog
+              actionsRef={deleteActionsRef}
+              onOpenChange={(open, details) => {
+                if (!open && isDeleting && details.reason !== 'imperative-action') details.cancel()
+              }}
+            >
               <AlertDialogTrigger
                 ref={deleteBtnRef}
                 render={
@@ -146,10 +160,10 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancelButton>
+                  <AlertDialogCancelButton disabled={isDeleting}>
                     {t(($) => $['operation.cancel'], { ns: 'common' })}
                   </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton onClick={handleDelete}>
+                  <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
                     {t(($) => $['operation.confirm'], { ns: 'common' })}
                   </AlertDialogConfirmButton>
                 </AlertDialogFooter>
@@ -232,7 +246,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}

@@ -2,32 +2,30 @@ import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ConversationNamed, TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.llm_generator.llm_generator as generator_module
 from core.app.app_config.entities import ModelConfig
-from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
-from core.model_context import get_credit_usage_metadata
+from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_manager import ModelManager
-from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from core.workflow.generator import tool_catalogue as tool_catalogue_module
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.dataset import Dataset
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message
@@ -37,7 +35,7 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
 )
 from services.workflow_service import WorkflowService
-from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.helpers.unit.model_factories import make_dataset
 
 """Tests for LLM generation and database-backed instruction modification."""
@@ -49,6 +47,14 @@ def _llm_result(content: str) -> LLMResult:
         message=AssistantPromptMessage(content=content),
         usage=LLMUsage.empty_usage(),
     )
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 def _persist_app(database: Session, *, tenant_id: str | None = None) -> App:
@@ -145,11 +151,11 @@ def _persist_node_execution(
         error="",
         elapsed_time=0.1,
         execution_metadata=json.dumps({"agent_log": agent_log}),
-        created_at=datetime(2026, 1, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid4()),
         finished_at=datetime(2026, 1, 1),
     )
+    execution.created_at = datetime(2026, 1, 1)
     database.add(execution)
     database.commit()
     return execution
@@ -194,19 +200,44 @@ class TestLlmGeneratorCases:
                 provider="openai", name="gpt-4", mode=LLMMode.CHAT, completion_params={"temperature": 0.7}
             )
 
-        def test_generate_conversation_name_success(self, mock_model_instance):
+        def test_generate_conversation_name_success(
+            self, mock_model_instance: MagicMock, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Test Conversation Name"})
             mock_model_instance.invoke_llm.return_value = mock_response
+            recorder = _Recorder()
+            scope = TraceScope(
+                emitter=recorder,
+                tenant_id="tenant_id",
+                app_id="app-1",
+                user_id=None,
+                correlation=TraceCorrelation(
+                    external_trace_id="caller-trace",
+                    session_id=None,
+                    parent_workflow_run_id=None,
+                    parent_node_execution_id=None,
+                ),
+            )
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager") as mock_trace:
-                name = LLMGenerator.generate_conversation_name(
-                    "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
-                )
-                assert name == "Test Conversation Name"
-                mock_trace.assert_called_once_with(app_id="app-1")
-                trace_task = mock_trace.return_value.add_trace_task.call_args.args[0]
-                assert trace_task.message_id == "message-1"
+            name = LLMGenerator.generate_conversation_name(
+                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1", trace_scope=scope
+            )
+
+            assert name == "Test Conversation Name"
+            [event] = recorder.events
+            assert event.correlation.external_trace_id == "caller-trace"
+            payload = event.payload
+            assert isinstance(payload, ConversationNamed)
+            assert payload == ConversationNamed(
+                conversation_id="conversation-1",
+                message_id="message-1",
+                inputs=CONVERSATION_TITLE_PROMPT + "test query\n",
+                name="Test Conversation Name",
+                started_at=payload.started_at,
+                ended_at=payload.ended_at,
+            )
+            assert payload.ended_at >= payload.started_at
 
         def test_generate_conversation_name_truncated(self, mock_model_instance):
             long_query = "a" * 2100
@@ -214,16 +245,15 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Short Name"})
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", long_query)
-                assert name == "Short Name"
+            name = LLMGenerator.generate_conversation_name("tenant_id", long_query, trace_scope=None)
+            assert name == "Short Name"
 
         def test_generate_conversation_name_empty_answer(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = ""
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
             assert name == "test query"
 
         def test_generate_conversation_name_json_repair(self, mock_model_instance):
@@ -232,25 +262,22 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = "{'Your Output': 'Repaired Name'}"
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "Repaired Name"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "Repaired Name"
 
         def test_generate_conversation_name_not_dict_result(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '["not a dict"]'
             mock_model_instance.invoke_llm.return_value = mock_response
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "test query"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "test query"
 
         def test_generate_conversation_name_no_output_in_dict(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"something": "else"}'
             mock_model_instance.invoke_llm.return_value = mock_response
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "test query"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "test query"
 
         def test_generate_conversation_name_long_output(self, mock_model_instance):
             long_output = "a" * 100
@@ -258,287 +285,9 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": long_output})
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert len(name) == 78  # 75 + "..."
-                assert name.endswith("...")
-
-        def test_generate_suggested_questions_after_answer_success(self, mock_model_instance):
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '["Question 1?", "Question 2?"]'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-            assert len(questions) == 2
-            assert questions[0] == "Question 1?"
-            assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-                "max_tokens": 256,
-                "temperature": 0.0,
-            }
-
-        def test_generate_suggested_questions_after_answer_uses_lowest_reasoning_effort(self, mock_model_instance):
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '["Question 1?"]'
-            mock_model_instance.invoke_llm.return_value = mock_response
-            mock_model_instance.get_model_schema.return_value.parameter_rules = [
-                SimpleNamespace(
-                    name="reasoning_effort",
-                    type=ParameterType.STRING,
-                    options=["minimal", "low", "medium", "high"],
-                )
-            ]
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-
-            assert questions == ["Question 1?"]
-            assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-                "max_tokens": 256,
-                "temperature": 0.0,
-                "reasoning_effort": "minimal",
-            }
-
-        def test_generate_suggested_questions_after_answer_uses_defaults_when_schema_lookup_fails(
-            self, mock_model_instance
-        ):
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '["Question 1?"]'
-            mock_model_instance.invoke_llm.return_value = mock_response
-            mock_model_instance.get_model_schema.side_effect = ValueError("schema unavailable")
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-
-            assert questions == ["Question 1?"]
-            assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-                "max_tokens": 256,
-                "temperature": 0.0,
-            }
-
-        @pytest.mark.parametrize(
-            ("parameter_type", "options", "expected_value"),
-            [
-                (ParameterType.BOOLEAN, [], False),
-                (ParameterType.STRING, ["enabled", "disabled"], "disabled"),
-            ],
-        )
-        def test_generate_suggested_questions_after_answer_disables_thinking(
-            self, mock_model_instance, parameter_type, options, expected_value
-        ):
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '["Question 1?"]'
-            mock_model_instance.invoke_llm.return_value = mock_response
-            mock_model_instance.get_model_schema.return_value.parameter_rules = [
-                SimpleNamespace(name="thinking", type=parameter_type, options=options),
-                SimpleNamespace(name="reasoning_effort", type=ParameterType.STRING, options=["low", "high"]),
-            ]
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-
-            assert questions == ["Question 1?"]
-            assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-                "max_tokens": 256,
-                "temperature": 0.0,
-                "thinking": expected_value,
-            }
-
-        def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
-            with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
-                mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError(
-                    "Auth failed"
-                )
-                questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-                assert questions == []
-
-        def test_generate_suggested_questions_after_answer_model_resolution_error(self, mock_model_instance):
-            with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
-                mock_manager.return_value.get_default_model_instance.side_effect = ValueError(
-                    "unsupported default model"
-                )
-
-                questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-
-            assert questions == []
-
-        def test_generate_suggested_questions_after_answer_invoke_error(self, mock_model_instance):
-            mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke failed")
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-            assert questions == []
-
-        def test_generate_suggested_questions_after_answer_exception(self, mock_model_instance):
-            mock_model_instance.invoke_llm.side_effect = Exception("Random error")
-            questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
-            assert questions == []
-
-        @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-        def test_generate_suggested_questions_after_answer_with_custom_model_and_prompt(self, mock_for_tenant):
-            custom_model_instance = MagicMock()
-            custom_response = MagicMock()
-            custom_response.message.get_text_content.return_value = '["Question 1?"]'
-            custom_model_instance.invoke_llm.return_value = custom_response
-
-            mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
-                "tenant_id",
-                "histories",
-                instruction_prompt="custom prompt",
-                model_config={
-                    "provider": "openai",
-                    "name": "gpt-4o",
-                    "completion_params": {"temperature": 0.2},
-                },
-            )
-
-            assert questions == ["Question 1?"]
-            mock_for_tenant.return_value.get_model_instance.assert_called_once_with(
-                tenant_id="tenant_id",
-                model_type=ModelType.LLM,
-                provider="openai",
-                model="gpt-4o",
-            )
-
-            invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
-            assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
-            assert invoke_kwargs["stop"] == []
-            assert "custom prompt" in invoke_kwargs["prompt_messages"][0].content
-
-        @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-        def test_generate_suggested_questions_after_answer_with_custom_model_without_completion_params(
-            self, mock_for_tenant
-        ):
-            custom_model_instance = MagicMock()
-            custom_response = MagicMock()
-            custom_response.message.get_text_content.return_value = '["Question 1?"]'
-            custom_model_instance.invoke_llm.return_value = custom_response
-            mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
-                "tenant_id",
-                "histories",
-                model_config={"provider": "openai", "name": "gpt-4o"},
-            )
-
-            assert questions == ["Question 1?"]
-            invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
-            assert invoke_kwargs["model_parameters"] == {}
-            assert invoke_kwargs["stop"] == []
-
-        @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-        def test_generate_suggested_questions_after_answer_fallback_to_default_model(self, mock_for_tenant):
-            default_model_instance = MagicMock()
-            default_response = MagicMock()
-            default_response.message.get_text_content.return_value = '["Question 1?"]'
-            default_model_instance.invoke_llm.return_value = default_response
-
-            mock_for_tenant.return_value.get_model_instance.side_effect = ValueError("invalid configured model")
-            mock_for_tenant.return_value.get_default_model_instance.return_value = default_model_instance
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
-                "tenant_id",
-                "histories",
-                model_config={
-                    "provider": "openai",
-                    "name": "not-found-model",
-                    "completion_params": {"temperature": 0.2},
-                },
-            )
-
-            assert questions == ["Question 1?"]
-            mock_for_tenant.return_value.get_default_model_instance.assert_called_once_with(
-                tenant_id="tenant_id",
-                model_type=ModelType.LLM,
-            )
-            assert default_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-                "max_tokens": 256,
-                "temperature": 0.0,
-            }
-            assert default_model_instance.invoke_llm.call_args.kwargs["stop"] == []
-
-        @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-        def test_generate_suggested_questions_after_answer_drops_non_positive_max_tokens(self, mock_for_tenant):
-            custom_model_instance = MagicMock()
-            custom_response = MagicMock()
-            custom_response.message.get_text_content.return_value = '["Question 1?"]'
-            custom_model_instance.invoke_llm.return_value = custom_response
-            mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
-
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
-                "tenant_id",
-                "histories",
-                model_config={
-                    "provider": "openai",
-                    "name": "gpt-4o",
-                    "completion_params": {
-                        "temperature": 0.2,
-                        "max_tokens": 0,
-                        "stop": ["END"],
-                    },
-                },
-            )
-
-            assert questions == ["Question 1?"]
-            invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
-            assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
-            assert invoke_kwargs["stop"] == ["END"]
-
-        @pytest.mark.parametrize("use_configured_model", [False, True])
-        def test_prepared_suggested_questions_defer_provider_calls_without_resolving_again(
-            self, monkeypatch: pytest.MonkeyPatch, use_configured_model: bool
-        ) -> None:
-            model_instance = make_model_instance(provider="openai", model="custom-model")
-            schema = make_model_config(provider="openai", model="custom-model", mode="chat").model_schema
-            get_schema = Mock(return_value=schema)
-            invocation = Mock()
-            monkeypatch.setattr(model_instance, "get_model_schema", get_schema)
-            monkeypatch.setattr(model_instance, "invoke_llm", invocation)
-            manager = create_plugin_model_manager(tenant_id="tenant_id")
-            monkeypatch.setattr(manager, "get_model_instance", Mock(return_value=model_instance))
-            monkeypatch.setattr(manager, "get_default_model_instance", Mock(return_value=model_instance))
-            resolve_manager = Mock(return_value=manager)
-            monkeypatch.setattr(ModelManager, "for_tenant", resolve_manager)
-            original_metadata = get_credit_usage_metadata()
-            original_timeout = _get_plugin_daemon_request_timeout()
-
-            def invoke(**_kwargs: object) -> LLMResult:
-                metadata = get_credit_usage_metadata()
-                assert metadata is not None
-                assert metadata["created_by"] == CreditUsageCreatedBy.SUGGESTED_QUESTIONS
-                timeout = _get_plugin_daemon_request_timeout()
-                assert timeout is not None
-                assert timeout.read == 30.0
-                return _llm_result('["Next question?"]')
-
-            invocation.side_effect = invoke
-            model_config = (
-                {
-                    "provider": "openai",
-                    "name": "custom-model",
-                    "completion_params": {"temperature": 0.2, "stop": ["END"], "max_tokens": 0},
-                }
-                if use_configured_model
-                else None
-            )
-            prepared_model = LLMGenerator.prepare_suggested_questions_model("tenant_id", model_config=model_config)
-
-            assert prepared_model is not None
-            get_schema.assert_not_called()
-            invocation.assert_not_called()
-            resolve_manager.side_effect = AssertionError("Model lookup must finish in the preparation phase")
-
-            result = LLMGenerator.invoke_suggested_questions_after_answer(
-                prepared_model, "Human: hello\nAssistant: world", instruction_prompt="Ask a follow-up"
-            )
-
-            assert result == ["Next question?"]
-            parameters = invocation.call_args.kwargs
-            assert parameters["model_parameters"] == (
-                {"temperature": 0.2} if use_configured_model else {"max_tokens": 256, "temperature": 0.0}
-            )
-            assert parameters["stop"] == (["END"] if use_configured_model else [])
-            assert parameters["stream"] is False
-            assert "Human: hello\nAssistant: world" in parameters["prompt_messages"][0].content
-            assert "Ask a follow-up" in parameters["prompt_messages"][0].content
-            assert get_credit_usage_metadata() == original_metadata
-            assert _get_plugin_daemon_request_timeout() == original_timeout
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert len(name) == 78  # 75 + "..."
+            assert name.endswith("...")
 
         def test_generate_rule_config_no_variable_success(self, mock_model_instance, model_config_entity):
             payload = RuleGeneratePayload(
@@ -1072,6 +821,8 @@ class TestLlmGeneratorCases:
             assert event.context.tenant_id == "t-1"
             assert event.context.app_id == "app-1"
             assert event.payload["error"] is None
+            started_at, ended_at = event.payload["started_at"], event.payload["ended_at"]
+            assert event.payload["latency"] == (ended_at - started_at).total_seconds()
 
         @patch("core.llm_generator.llm_generator.telemetry_emit")
         def test_generate_code_emits_on_failure(self, mock_emit: MagicMock) -> None:

@@ -12,6 +12,11 @@ existing interaction variants when adding error styles so call-site overrides ke
 Disabled surfaces take precedence over invalid and read-only appearance. Keep invalid state and
 error associations intact while limiting error colors to enabled controls.
 
+Read-only locks the value, not the control. It stays focusable, keeps its indicators and drops
+hover feedback without looking disabled. Its popup opens for browsing; choosing a value and the
+parts that only commit or clear one are unavailable. Expose it with `aria-readonly`, never
+`aria-disabled`.
+
 Where supported by the upstream part, `className(state)` and `style(state)` read that part's state.
 At call sites, before using a callback or React state to calculate styles, check whether data attributes or CSS
 variables already express the requirement. When direct state access is needed, add a short comment
@@ -98,14 +103,14 @@ outline handling at their call sites. A package-wide interaction contract can ha
 owner; visual similarity alone is not a reason to share constants. Keep component-specific selectors local.
 
 Controls own their focus indicator, so callers never write one. That includes every trigger that
-opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
+opens a surface (Popover, Menu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
 share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
 (Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
 
 Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
 groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
 keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
-the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+the indicator, because their checked fill is the indicator color. `MenuInputGroup` is the
 exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
 highlight, so the group draws the ring on that state and drops it once the arrow keys move the
 highlight into the list.

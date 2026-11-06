@@ -1,9 +1,8 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { renderI18nObject } from '@/i18n/metadata'
-import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
@@ -14,21 +13,21 @@ type ProviderIconProps = {
   className?: string
 }
 const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const language = useLanguage()
   const lightIconUrl = provider.icon_small ? renderI18nObject(provider.icon_small, language) : ''
   const darkIconUrl = provider.icon_small_dark
     ? renderI18nObject(provider.icon_small_dark, language)
     : ''
-  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
+  const iconUrl = theme === 'dark' ? darkIconUrl || lightIconUrl : lightIconUrl
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
       <div className={cn('py-1.75', className)}>
-        {theme === Theme.dark && (
+        {theme === 'dark' && (
           <span aria-hidden className="i-custom-public-llm-anthropic-light h-2.5 w-22.5" />
         )}
-        {theme === Theme.light && (
+        {theme === 'light' && (
           <span aria-hidden className="i-custom-public-llm-anthropic-dark h-2.5 w-22.5" />
         )}
       </div>

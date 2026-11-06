@@ -1,13 +1,13 @@
 import type { Locale } from '@/i18n'
 import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { languages } from '@/i18n/language'
 
 const supportedLanguages = languages.filter((language) => language.supported)
@@ -25,8 +25,8 @@ export default function LocaleMenu({
     selectedLanguage?.value === 'en-US' ? selectedLanguage.prompt_name : selectedLanguage?.name
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <button
             type="button"
@@ -38,22 +38,22 @@ export default function LocaleMenu({
         {/* oxlint-disable-next-line dify/require-title-for-truncated-text -- The language menu exposes the full selected label through pointer, keyboard, and touch. */}
         <span className="truncate">{selectedLanguageName}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent dir={direction} className="max-h-80 w-60 overflow-y-auto">
-        <DropdownMenuRadioGroup<Locale>
+      </MenuTrigger>
+      <MenuContent dir={direction} className="max-h-80 w-60 overflow-y-auto">
+        <MenuRadioGroup<Locale>
           value={locale}
           onValueChange={(value) => {
             onChange(value)
           }}
         >
           {supportedLanguages.map((language) => (
-            <DropdownMenuRadioItem<Locale> key={language.value} value={language.value} closeOnClick>
+            <MenuRadioItem<Locale> key={language.value} value={language.value} closeOnClick>
               <span className="grow">{language.name}</span>
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }

@@ -4,16 +4,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuEmpty,
-  DropdownMenuFilterProvider,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuItem,
-  DropdownMenuList,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuEmpty,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuList,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -56,16 +56,16 @@ function AddAccessSubjectMenuContent({
 
   return (
     <>
-      <DropdownMenuInputGroup>
+      <MenuInputGroup>
         <span
           aria-hidden="true"
           className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
         />
-        <DropdownMenuInput
+        <MenuInput
           aria-label={t(($) => $['operation.search'], { ns: 'common' })}
           placeholder={t(($) => $['placeholder.search'], { ns: 'common' })}
         />
-      </DropdownMenuInputGroup>
+      </MenuInputGroup>
       {error && (
         <div role="alert" className="px-3 py-2 system-sm-regular text-text-tertiary">
           {t(($) => $['api.actionFailed'], { ns: 'common' })}
@@ -73,19 +73,17 @@ function AddAccessSubjectMenuContent({
       )}
       {isLoading && <LoadingPlaceholder className="h-20 p-1" />}
       {!isLoading && !error && (
-        <DropdownMenuEmpty>
-          {t(($) => $['accessRule.noAvailableMembers'], { ns: 'permission' })}
-        </DropdownMenuEmpty>
+        <MenuEmpty>{t(($) => $['accessRule.noAvailableMembers'], { ns: 'permission' })}</MenuEmpty>
       )}
       {/* ARIA requires a `menu` that has no items yet because they are loading to be marked busy. */}
-      <DropdownMenuList aria-busy={isLoading || undefined}>
+      <MenuList aria-busy={isLoading || undefined}>
         {members.map((member) => {
           const isAdded = existingAccountIdSet.has(member.id)
           const isUpdating = updatingAccountId === member.id
           const memberName = member.name || member.email
 
           return (
-            <DropdownMenuItem
+            <MenuItem
               key={member.id}
               // The query matches the name and email, not the row's action text.
               label={`${member.name || ''} ${member.email || ''}`}
@@ -119,10 +117,10 @@ function AddAccessSubjectMenuContent({
               ) : (
                 <span className="shrink-0 system-xs-medium text-text-accent">{`+ ${addLabel}`}</span>
               )}
-            </DropdownMenuItem>
+            </MenuItem>
           )
         })}
-      </DropdownMenuList>
+      </MenuList>
     </>
   )
 }
@@ -137,9 +135,9 @@ function AddAccessSubjectMenu({
   const isLoadingExisting = existingAccountIds === undefined
 
   return (
-    <DropdownMenuFilterProvider>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+    <MenuFilterProvider>
+      <Menu>
+        <MenuTrigger
           disabled={disabled}
           render={
             <Button
@@ -152,8 +150,8 @@ function AddAccessSubjectMenu({
         >
           <span className="i-ri-add-line size-3.5" aria-hidden />
           <span>{t(($) => $['operation.add'], { ns: 'common' })}</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </MenuTrigger>
+        <MenuContent
           sideOffset={8}
           aria-label={t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })}
           className="w-86 max-w-[calc(100vw-32px)]"
@@ -165,9 +163,9 @@ function AddAccessSubjectMenu({
               onAddAccessSubject={onAddAccessSubject}
             />
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </DropdownMenuFilterProvider>
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
   )
 }
 

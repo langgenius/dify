@@ -71,5 +71,16 @@ it.each([BlockEnum.HumanInput, BlockEnum.Tool])(
     const updated = form('n1', { form_content: 'Updated instructions' })
     send(updated)
     expect(store.getState().workflowRunningData!.humanInputFormDataList).toEqual([updated, second])
+
+    const parallel = form('n1', {
+      form_id: 'parallel-form-n1',
+      form_content: 'Approval for another iteration item',
+    })
+    send(parallel)
+    expect(store.getState().workflowRunningData!.humanInputFormDataList).toEqual([
+      updated,
+      second,
+      parallel,
+    ])
   },
 )

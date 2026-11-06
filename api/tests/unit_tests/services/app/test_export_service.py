@@ -79,7 +79,7 @@ def test_selected_workflow_ownership_and_publication(
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT if selector in {"draft", "default_draft"} else "published",
                 graph='{"nodes": [], "edges": []}',
-                features="{}",
+                _features="{}",
                 created_by="account-id",
             )
         )

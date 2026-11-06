@@ -1,13 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -39,8 +34,8 @@ const Operation: FC<Props> = ({
     queueMicrotask(action)
   }, [])
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -55,8 +50,8 @@ const Operation: FC<Props> = ({
         }
         onClick={(e) => e.stopPropagation()}
       />
-      <DropdownMenuContent className="min-w-30" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem
+      <MenuContent align="end" className="min-w-30" onClick={(e) => e.stopPropagation()}>
+        <MenuItem
           className="gap-2 px-2 system-md-regular"
           onClick={(e) => {
             e.stopPropagation()
@@ -74,9 +69,9 @@ const Operation: FC<Props> = ({
               ? t(($) => $['sidebar.action.unpin'], { ns: 'explore' })
               : t(($) => $['sidebar.action.pin'], { ns: 'explore' })}
           </span>
-        </DropdownMenuItem>
+        </MenuItem>
         {isShowRenameConversation && (
-          <DropdownMenuItem
+          <MenuItem
             className="gap-2 px-2 system-md-regular"
             onClick={(e) => {
               e.stopPropagation()
@@ -85,10 +80,10 @@ const Operation: FC<Props> = ({
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
             <span className="grow">{t(($) => $['sidebar.action.rename'], { ns: 'explore' })}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {isShowDelete && (
-          <DropdownMenuItem
+          <MenuItem
             variant="destructive"
             className="gap-2 px-2 system-md-regular"
             onClick={(e) => {
@@ -98,10 +93,10 @@ const Operation: FC<Props> = ({
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
             <span className="grow">{t(($) => $['sidebar.action.delete'], { ns: 'explore' })}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(Operation)

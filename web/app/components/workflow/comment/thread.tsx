@@ -17,12 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -402,7 +397,7 @@ function CommentThreadComponent({
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
 
-  // Close dropdown when scrolling
+  // Close menu when scrolling
   useEffect(() => {
     const container = messageListRef.current
     if (!container || !activeReplyMenuId) return
@@ -573,20 +568,20 @@ function CommentThreadComponent({
         <div ref={messageListRef} className="relative mt-2 flex-1 overflow-y-auto px-4 pb-4">
           <div className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
             {isOwnComment && !isCommentEditing && (
-              <DropdownMenu
+              <Menu
                 open={activeReplyMenuId === comment.id}
                 onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
               >
-                <DropdownMenuTrigger
+                <MenuTrigger
                   className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                   aria-label={t(($) => $['comments.aria.commentActions'], {
                     ns: 'workflowComments',
                   })}
                 >
                   <RiMoreFill className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-36 backdrop-blur-[10px]">
-                  <DropdownMenuItem
+                </MenuTrigger>
+                <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
+                  <MenuItem
                     className="px-3"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -594,9 +589,9 @@ function CommentThreadComponent({
                     }}
                   >
                     {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
             )}
             {isCommentEditing ? (
               <div className="flex gap-3 pt-1">
@@ -655,13 +650,13 @@ function CommentThreadComponent({
                     className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <DropdownMenu
+                      <Menu
                         open={activeReplyMenuId === reply.id}
                         onOpenChange={(open) => {
                           setActiveReplyMenuId(open ? reply.id : null)
                         }}
                       >
-                        <DropdownMenuTrigger
+                        <MenuTrigger
                           ref={(element: HTMLButtonElement | null) => {
                             if (element) replyMenuTriggersRef.current.set(reply.id, element)
                             else replyMenuTriggersRef.current.delete(reply.id)
@@ -673,9 +668,13 @@ function CommentThreadComponent({
                           })}
                         >
                           <RiMoreFill className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-36 backdrop-blur-[10px]" data-reply-menu>
-                          <DropdownMenuItem
+                        </MenuTrigger>
+                        <MenuContent
+                          align="end"
+                          className="w-36 backdrop-blur-[10px]"
+                          data-reply-menu
+                        >
+                          <MenuItem
                             onClick={(event) => {
                               event.stopPropagation()
                               handleStartEdit(reply)
@@ -684,8 +683,8 @@ function CommentThreadComponent({
                             {t(($) => $['comments.actions.editReply'], {
                               ns: 'workflowComments',
                             })}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                          </MenuItem>
+                          <MenuItem
                             variant="destructive"
                             onClick={(event) => {
                               event.stopPropagation()
@@ -700,9 +699,9 @@ function CommentThreadComponent({
                             {t(($) => $['comments.actions.deleteReply'], {
                               ns: 'workflowComments',
                             })}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </MenuItem>
+                        </MenuContent>
+                      </Menu>
                     )}
                     {isReplyEditing ? (
                       <div className="flex gap-3 pt-1">

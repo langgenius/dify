@@ -16,6 +16,7 @@ from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from services.entities.notification_entities import NotificationItem, NotificationResult
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -38,6 +39,10 @@ def test_get_notification_validates_language_query_and_serializes_result(
     query_string: dict[str, str],
     expected_language: str,
 ) -> None:
+    """Preconditions: The account is admitted and the service returns a notification.
+
+    Postconditions: The handler returns HTTP 200, serializes the notification, and preserves the request context.
+    """
     service = Mock()
     service.get_active.return_value = NotificationResult(
         should_show=True,
@@ -67,7 +72,7 @@ def test_get_notification_validates_language_query_and_serializes_result(
         app.test_request_context("/notification", query_string=query_string),
         patch("controllers.console.notification.application_services", return_value=services),
     ):
-        result, status = api.get()
+        result, status = narrowed(api.get(), tuple)
 
     assert status == 200
     assert result == {

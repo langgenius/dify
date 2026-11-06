@@ -1,7 +1,9 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 
 export type AgentVersionFilter = 'all' | 'onlyYours'
@@ -40,26 +42,31 @@ export function VersionFilter({
   const { t } = useTranslation(['agentV2'])
   const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const isFiltering = filterValue !== 'all'
+  const filterLabel = t(($) => $['agentDetail.versionHistory.filter'])
 
   return (
     <Popover>
-      <PopoverTrigger
-        nativeButton={false}
-        render={
-          <button
-            type="button"
-            aria-label={t(($) => $['agentDetail.versionHistory.filter'])}
-            className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
-              isFiltering
-                ? 'bg-state-accent-active-alt text-text-accent'
-                : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            )}
-          >
-            <span aria-hidden className="i-ri-filter-3-line size-4" />
-          </button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <IconButton
+                  aria-label={filterLabel}
+                  className={cn(
+                    'shrink-0',
+                    isFiltering &&
+                      'bg-state-accent-active-alt text-text-accent hover:bg-state-accent-active-alt hover:text-text-accent',
+                  )}
+                >
+                  <span aria-hidden className="i-ri-filter-3-line size-4" />
+                </IconButton>
+              }
+            />
+          }
+        />
+        <TooltipContent>{filterLabel}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="end"
         sideOffset={4}

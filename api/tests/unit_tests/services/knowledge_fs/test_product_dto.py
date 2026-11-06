@@ -30,6 +30,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGrepResponse,
     KnowledgeFSListQuery,
     KnowledgeFSListResponse,
+    KnowledgeFSLogicalDocumentListQuery,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
@@ -1979,3 +1980,16 @@ def test_every_sync_policy_entry_point_applies_the_same_custom_interval_rules(
         payload_type.model_validate({"enabled": True, "mode": "custom", **extra})
     with pytest.raises(ValidationError, match="customIntervalSeconds is only valid"):
         payload_type.model_validate({"enabled": True, "mode": "manual", "customIntervalSeconds": 3_600, **extra})
+
+
+def test_logical_document_search_query_normalizes_and_validates_filters() -> None:
+    query = KnowledgeFSLogicalDocumentListQuery.model_validate(
+        {"query": "  report  ", "status": "processing", "cursor": "next", "limit": "25"}
+    )
+    assert query.query == "report"
+    assert query.status == "processing"
+    assert query.limit == 25
+    assert KnowledgeFSLogicalDocumentListQuery(query="  ").query is None
+    for payload in ({"status": "running"}, {"query": "x" * 201}, {"limit": 101}):
+        with pytest.raises(ValidationError):
+            KnowledgeFSLogicalDocumentListQuery.model_validate(payload)

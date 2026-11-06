@@ -19,7 +19,7 @@ const member: AccountWithRoleResponse = {
   status: 'active',
 }
 
-const renderMemberRow = () => {
+const renderMemberRow = (onRemove = vi.fn()) => {
   renderWithConsoleQuery(
     <Dialog<AccountWithRoleResponse>>
       {({ payload }) => (
@@ -27,6 +27,7 @@ const renderMemberRow = () => {
           <table>
             <tbody>
               <MemberRow
+                onRemove={onRemove}
                 member={member}
                 roles={[{ id: 'role-1', name: 'Editor' }]}
                 isCurrentUser={false}
@@ -82,24 +83,16 @@ describe('MemberRow details entry points', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('keeps member menu and its portaled confirmation separate from details', async () => {
+  it('requests removal without opening member details', async () => {
     const user = userEvent.setup()
-    renderMemberRow()
-    await user.click(
-      screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ }),
-    )
-    expect(screen.getByRole('menu')).toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const onRemove = vi.fn()
+    renderMemberRow(onRemove)
+    const trigger = screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ })
+    await user.click(trigger)
     await user.click(
       screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
     )
-    const confirmation = screen.getByRole('alertdialog')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(
-      within(confirmation).getByText('workspaceMembers.members.removeFromTeamConfirmDescription'),
-    )
-    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(screen.getByRole('row'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

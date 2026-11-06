@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -13,6 +13,7 @@ class HumanInputFormDefinition(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     form_id: str
+    form_version: Literal["1", "2"] = "1"
     node_id: str
     node_title: str
     form_content: str
