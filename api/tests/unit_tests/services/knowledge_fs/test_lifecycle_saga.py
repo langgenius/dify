@@ -366,19 +366,23 @@ def test_revoke_is_acknowledged_after_matching_space_deletion_without_remote_cal
     indirect=True,
 )
 @pytest.mark.parametrize(
-    ("remote_error_code", "expected_completed", "expected_status"),
+    ("remote_error_code", "proof_case", "expected_completed", "expected_status"),
     [
-        ("CAPABILITY_SPACE_DELETED", True, KnowledgeFSLifecycleOutboxStatus.SUCCEEDED),
-        ("KNOWLEDGE_FS_HTTP_409", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "valid", True, KnowledgeFSLifecycleOutboxStatus.SUCCEEDED),
+        ("KNOWLEDGE_FS_HTTP_409", "valid", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "event_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "space_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "delete_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
     ],
 )
 def test_only_typed_remote_deletion_settles_revoke_while_local_delete_is_pending(
     sqlite_session: Session,
     remote_error_code: str,
+    proof_case: str,
     expected_completed: bool,
     expected_status: KnowledgeFSLifecycleOutboxStatus,
 ) -> None:
-    """A KFS terminal proof can cover REVOKE; an unrelated conflict remains retryable."""
+    """A typed KFS response settles only a REVOKE bound to the original DELETE intent."""
 
     session_maker = _session_maker(sqlite_session)
     now = datetime(2026, 7, 21, 12, 0)
@@ -403,6 +407,10 @@ def test_only_typed_remote_deletion_settles_revoke_while_local_delete_is_pending
         delete = session.get(KnowledgeFSLifecycleOutbox, deletion.outbox.id)
         assert delete is not None
         delete.next_attempt_at = now + timedelta(hours=1)
+        if proof_case == "delete_mismatch":
+            stored_space = session.get(KnowledgeFSControlSpace, control_space.id)
+            assert stored_space is not None
+            stored_space.lifecycle_operation_id = "different-delete-operation"
         revoke = KnowledgeFSLifecycleOutbox(
             tenant_id="tenant-1",
             control_space_id=control_space.id,
@@ -413,9 +421,13 @@ def test_only_typed_remote_deletion_settles_revoke_while_local_delete_is_pending
                 schema_version=1,
                 idempotency_key="revoke-1",
                 expected_revision=2,
-                event_id="30000000-0000-4000-8000-000000000001",
+                event_id=(
+                    "30000000-0000-4000-8000-000000000002"
+                    if proof_case == "event_mismatch"
+                    else "30000000-0000-4000-8000-000000000001"
+                ),
                 grant_id="20000000-0000-4000-8000-000000000001",
-                knowledge_space_id="space-1",
+                knowledge_space_id="space-2" if proof_case == "space_mismatch" else "space-1",
                 principal="dify-account:member-1",
                 reason_code="workspace_rbac_role_changed",
                 revoke_sequence=4,

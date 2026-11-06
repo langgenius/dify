@@ -539,22 +539,27 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
 
 
 @pytest.mark.parametrize(
-    ("response_code", "expected_error_code"),
+    ("response_code", "invalid_json", "expected_error_code"),
     [
-        ("CAPABILITY_SPACE_DELETED", "CAPABILITY_SPACE_DELETED"),
-        ("CAPABILITY_REVOKE_CONFLICT", "KNOWLEDGE_FS_HTTP_409"),
+        ("CAPABILITY_SPACE_DELETED", False, "CAPABILITY_SPACE_DELETED"),
+        ("CAPABILITY_REVOKE_CONFLICT", False, "KNOWLEDGE_FS_HTTP_409"),
+        ("CAPABILITY_SPACE_DELETED", True, "KNOWLEDGE_FS_HTTP_409"),
     ],
 )
 def test_revoke_distinguishes_completed_space_deletion_from_other_conflicts(
-    monkeypatch: pytest.MonkeyPatch, response_code: str, expected_error_code: str
+    monkeypatch: pytest.MonkeyPatch, response_code: str, invalid_json: bool, expected_error_code: str
 ) -> None:
-    """Only the typed deleted-Space response receives a distinct retry reason."""
+    """Only valid JSON carrying the typed deleted-Space code receives a distinct retry reason."""
 
     issuer = RecordingCapabilityIssuer(token="revoke-capability")
-    response = httpx.Response(
-        409,
-        json={"code": response_code, "error": "Capability revoke conflicts with durable state"},
-        headers={"Content-Type": "application/json"},
+    response = (
+        httpx.Response(409, text="{", headers={"Content-Type": "application/json"})
+        if invalid_json
+        else httpx.Response(
+            409,
+            json={"code": response_code, "error": "Capability revoke conflicts with durable state"},
+            headers={"Content-Type": "application/json"},
+        )
     )
     monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
