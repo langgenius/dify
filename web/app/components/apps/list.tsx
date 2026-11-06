@@ -20,6 +20,14 @@ import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
 import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } from './query-params'
 
+// Marks a creation history entry that the list pushed over its own entry, so closing can
+// go back to it. It lives in history.state because Back and Forward restore it with the entry.
+const PUSHED_CREATION_ENTRY = 'difyPushedAppCreation'
+const isPushedCreationEntry = () =>
+  (window.history.state as Record<string, unknown> | null)?.[PUSHED_CREATION_ENTRY] === true
+const markPushedCreationEntry = () =>
+  window.history.replaceState({ ...window.history.state, [PUSHED_CREATION_ENTRY]: true }, '')
+
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
@@ -42,8 +50,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
   // DSL import has no URL; it holds the file dropped on the list, if any.
   const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
-  // Whether this list pushed the history entry of the open creation dialog.
-  const pushedCreationEntryRef = useRef(false)
   const creationDialog: AppListCreationDialog = dslImport
     ? { type: 'dsl', ...dslImport }
     : creationQuery.create && { type: creationQuery.create }
@@ -111,24 +117,28 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   // so closing (or Back) returns to the list in one step. Blank creation defaults to the
   // selected category; `mode` is only for links from elsewhere.
   const openCreationDialog = useCallback(
-    (create: 'blank' | 'template') => {
+    async (create: 'blank' | 'template') => {
       if (!canCreateApp) return
       const switching = creationQuery.create !== null
-      if (!switching) pushedCreationEntryRef.current = true
-      void setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
+      // Replacing the entry drops its state, so carry the mark over when switching.
+      const pushed = !switching || isPushedCreationEntry()
+      await setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
+      if (pushed) markPushedCreationEntry()
     },
     [canCreateApp, creationQuery.create, setCreationQuery],
   )
-  const openCreateBlankModal = useCallback(() => openCreationDialog('blank'), [openCreationDialog])
+  const openCreateBlankModal = useCallback(
+    () => void openCreationDialog('blank'),
+    [openCreationDialog],
+  )
   const openCreateTemplateDialog = useCallback(
-    () => openCreationDialog('template'),
+    () => void openCreationDialog('template'),
     [openCreationDialog],
   )
   const closeCreationDialog = useCallback(() => {
     if (dslImport) {
       setDSLImport(null)
-    } else if (pushedCreationEntryRef.current) {
-      pushedCreationEntryRef.current = false
+    } else if (isPushedCreationEntry()) {
       window.history.back()
     } else {
       // Opened from a link or a reload: clear the query without leaving the page.
