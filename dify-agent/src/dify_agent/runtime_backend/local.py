@@ -7,6 +7,8 @@ same pair without maintaining a resource catalog.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import posixpath
 import re
@@ -18,6 +20,10 @@ import httpx2 as httpx
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol, ShellctlJobStatus
+from dify_agent.protocol.execution_binding import InspectExecutionBindingRequest, InspectExecutionBindingResponse
+from dify_agent.protocol.native_testing import NativeDTO
+from typing import Literal
+
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -38,6 +44,7 @@ from dify_agent.runtime_backend.shellctl import (
     ShellctlRuntimeLease,
     create_shellctl_lease,
     run_shellctl_control_command,
+    run_shellctl_inspection_command,
 )
 from shellctl.client.sdk import ShellctlClient, ShellctlClientError
 from shellctl.shared.schemas import NativeScopeHandle, NativeScopeSpec
@@ -199,6 +206,60 @@ class LocalExecutionBindingBackend:
             raise
         finally:
             await _close_best_effort(lease, resource_ref=binding_ref)
+
+    async def inspect_binding(self, request: InspectExecutionBindingRequest) -> InspectExecutionBindingResponse:
+        """Probe exact ordinary paths read-only; ambiguity never proves absence.
+
+        Preconditions: trusted configured roots and caller-selected physical refs.
+        Postconditions: no binding lifecycle operation; only bounded coherent
+        filesystem evidence is returned. One five-second absolute budget starts
+        before lease construction, reserves one second for bounded sanitized
+        cleanup, and makes any probe/cleanup timeout or failure uncertain.
+        """
+        deadline = asyncio.get_running_loop().time() + 5.0
+        selection = request.model_dump()
+        try:
+            binding_id, workspace_id = _parse_local_binding_ref(request.binding_ref)
+            if workspace_id != request.workspace_ref:
+                raise ValueError("workspace identity mismatch")
+        except ValueError:
+            return InspectExecutionBindingResponse(
+                **selection, adapter="local", state="uncertain", evidence_code="identity_mismatch"
+            )
+        expected = dict(
+            **selection,
+            home_root=self.materialized_home_root,
+            workspace_root=self.workspace_root,
+            home_path=self._home_dir(binding_id),
+            workspace_path=self._workspace_dir(workspace_id),
+        )
+        try:
+            lease = self._control_lease(request.binding_ref)
+        except Exception:
+            return InspectExecutionBindingResponse(
+                **selection, adapter="local", state="uncertain", evidence_code="probe_unavailable"
+            )
+        try:
+            script = "python3 -c " + shlex.quote(_LOCAL_INSPECTION_PROBE) + " " + shlex.quote(json.dumps(expected))
+            result = await run_shellctl_inspection_command(lease, script, deadline=deadline, cleanup_budget=1.0)
+            if result.exit_code != 0 or len(result.output.encode("utf-8")) > 8192:
+                raise ValueError("invalid probe")
+            evidence = _LocalInspectionEvidence.model_validate_json(result.output)
+            if evidence.model_dump(exclude={"evidence_code"}) != expected:
+                raise ValueError("probe identity mismatch")
+            code = evidence.evidence_code
+            state = (
+                "usable" if code == "paths_present" else ("definitively_gone" if code == "path_absent" else "uncertain")
+            )
+            return InspectExecutionBindingResponse(**selection, adapter="local", state=state, evidence_code=code)
+        except ValueError:
+            return InspectExecutionBindingResponse(
+                **selection, adapter="local", state="uncertain", evidence_code="invalid_probe"
+            )
+        except Exception:
+            return InspectExecutionBindingResponse(
+                **selection, adapter="local", state="uncertain", evidence_code="probe_unavailable"
+            )
 
     async def read_job_status(self, binding_ref: str, job_id: str) -> ShellctlJobStatus:
         """Read only; do not acquire, validate paths, refresh, or release a Binding."""
@@ -432,3 +493,86 @@ class LocalNativeScopeClient:
 
     def job_client(self, handle: NativeScopeHandle) -> ShellctlClient:
         return ShellctlClient(base_url=self.endpoint, token=self.auth_token, native_scope=handle)
+
+
+class _LocalInspectionEvidence(NativeDTO):
+    binding_ref: str
+    workspace_ref: str
+    home_root: str
+    workspace_root: str
+    home_path: str
+    workspace_path: str
+    evidence_code: Literal["paths_present", "path_absent", "root_unavailable", "path_ambiguous"]
+
+
+# Fixed read-only program. No request can supply code or alter the selected paths.
+# Roots and every existing ancestor must be real accessible directories; only
+# exact lstat ENOENT/ENOTDIR below validated roots counts as absence.
+_LOCAL_INSPECTION_PROBE = r"""
+import errno
+import json
+import os
+import stat
+import sys
+
+value = json.loads(sys.argv[1])
+
+def open_root(path):
+    if not path.startswith("/") or os.path.normpath(path) != path or path == "/":
+        raise ValueError("ambiguous configured root")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    fd = os.open("/", flags)
+    try:
+        for part in path.split("/")[1:]:
+            next_fd = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+            info = os.fstat(fd)
+            if not info.st_mode & 0o444 or not info.st_mode & 0o111:
+                raise PermissionError("inaccessible root")
+        with os.scandir(fd) as entries:
+            next(entries, None)
+        return fd
+    except (OSError, ValueError):
+        os.close(fd)
+        raise
+
+def probe():
+    roots = []
+    try:
+        try:
+            for key in ("home_root", "workspace_root"):
+                roots.append(open_root(value[key]))
+        except (OSError, ValueError):
+            return "root_unavailable"
+        states = []
+        for key, root_key, fd in zip(("home_path", "workspace_path"), ("home_root", "workspace_root"), roots):
+            if os.path.dirname(value[key]) != value[root_key]:
+                return "path_ambiguous"
+            try:
+                info = os.stat(os.path.basename(value[key]), dir_fd=fd, follow_symlinks=False)
+                usable = (stat.S_ISDIR(info.st_mode) and info.st_mode & 0o444 and info.st_mode & 0o111
+                          and os.access(os.path.basename(value[key]), os.R_OK | os.X_OK, dir_fd=fd, follow_symlinks=False))
+                states.append("present" if usable else "uncertain")
+            except OSError as error:
+                states.append("missing" if error.errno in (errno.ENOENT, errno.ENOTDIR) else "uncertain")
+        try:
+            for key, fd in zip(("home_root", "workspace_root"), roots):
+                current = open_root(value[key])
+                try:
+                    old, new = os.fstat(fd), os.fstat(current)
+                    if (old.st_dev, old.st_ino) != (new.st_dev, new.st_ino):
+                        return "root_unavailable"
+                finally:
+                    os.close(current)
+        except (OSError, ValueError):
+            return "root_unavailable"
+        if "uncertain" in states:
+            return "path_ambiguous"
+        return "path_absent" if "missing" in states else "paths_present"
+    finally:
+        for fd in roots:
+            os.close(fd)
+
+print(json.dumps(dict(value, evidence_code=probe()), sort_keys=True))
+"""

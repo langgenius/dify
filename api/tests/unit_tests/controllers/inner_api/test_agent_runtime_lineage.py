@@ -28,7 +28,7 @@ from runtime_contracts.builder.native.agent_contracts import (
 )
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.agent_operations import AgentOperationService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.services.dify_builder import native_owner_fixtures as operation_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import resolved_context
 
@@ -203,7 +203,8 @@ def test_actual_native_identity_with_all_body_markers_removed_refuses_before_ser
         "native-testing/prepared-config",
     }
     assert response.status_code == (400 if initial_control else 409)
-    assert phase == ([] if initial_control else ["backend"])
+    # The exact read-result exception validates its bounded body before any I/O.
+    assert phase == ([] if initial_control or path == "native-testing/read-result" else ["backend"])
     assert all(counter.call_count == 0 for counter in counters)
 
 
@@ -239,7 +240,7 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
 
-    from tests.unit_tests.controllers.inner_api.test_knowledge_retrieval import _payload
+    from tests.unit_tests.controllers.inner_api.knowledge.test_retrieval import _payload
     from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
 
     lineage, _principal, transport, phase = owner(parent=False)

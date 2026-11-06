@@ -7,7 +7,6 @@ never admits another parent or child execution.
 
 import logging
 from collections.abc import Callable
-from datetime import UTC
 from typing import Literal
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -122,6 +121,457 @@ class ConfirmedAgentCommands:
     def _root_ref(self, *, actor, request_id):
         return self.api.lifecycle._root_ref(actor, request_id)
 
+    def _inspect_recovery_binding(self, *, binding_ref, workspace_ref):
+        """Read exact binding health; uncertainty never grants allocation authority."""
+        from dify_agent.client import DifyAgentClientError
+        from dify_agent.protocol import InspectExecutionBindingRequest, InspectExecutionBindingResponse
+
+        request = InspectExecutionBindingRequest(binding_ref=binding_ref, workspace_ref=workspace_ref)
+        try:
+            inspection = InspectExecutionBindingResponse.model_validate(
+                self.backend.client.inspect_execution_binding_sync(request).model_dump(mode="json")
+            )
+        except (DifyAgentClientError, ValueError, OSError):
+            raise BuilderExecutionPolicyError("native_agent_recovery_absence_unproven") from None
+        if (inspection.binding_ref, inspection.workspace_ref) != (binding_ref, workspace_ref):
+            raise BuilderExecutionPolicyError("native_agent_recovery_inspection_mismatch")
+        return inspection
+
+    def prepare_recovery_for_interaction(self, *, ref, expected_parent_generation, idempotency_key):
+        """Prepare one fresh wait for authenticated confirm/resume, never a decision.
+
+        Existing reserved/allocated attempts reuse the exact durable allocation;
+        creating/unknown cannot create again. A ready record alone stays fenced
+        until the actual SDK receipt and exact checkpoint/event are acknowledged.
+        Returns None for a usable ordinary binding or the fully checked fresh
+        pending proof; no grant, permit, generation or parent checkpoint changes.
+        """
+        from dify_agent.client import DifyAgentClientError
+        from dify_agent.protocol.confirmed_recovery import (
+            InstallConfirmedRecoverySuccessorReceipt,
+            InstallConfirmedRecoverySuccessorRequest,
+        )
+        from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+        from dify_agent.runtime.native_continuation import NativeContinuationConflict
+
+        from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+        store = self.api.store
+        owned = self.loader.load(ref=ref)
+        if owned.generation != TypeAdapter(Counter).validate_python(expected_parent_generation):
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        record = recovery_record(owned.bindings)
+        if record is None and owned.state != "waiting":
+            return None
+        if record is None:
+            record = self.reserve_confirmed_recovery_attempt(
+                ref=ref, expected_parent_generation=expected_parent_generation, idempotency_key=idempotency_key
+            )
+        if record is None:
+            return None
+        if record.parent_generation != expected_parent_generation:
+            with self.loader.session_factory() as session:
+                current = invocation_state(session, ref, owned.tenant_id)
+                continuation = session.scalar(
+                    owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                        NativeContinuation.checkpoint_id == current.checkpoint_id
+                    )
+                )
+                if continuation is None:
+                    raise BuilderExecutionPolicyError("native_agent_recovery_replacement_unsupported")
+                checkpoint = CheckpointRef(
+                    checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
+                )
+            chain = store.load_recovery_checkpoint_state(ref=ref, checkpoint=checkpoint)
+            if chain is None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+            successor = chain.graph.relation.successor
+            inspection = self._inspect_recovery_binding(
+                binding_ref=successor.binding_ref, workspace_ref=successor.workspace_ref
+            )
+            if inspection.state != "usable":
+                raise BuilderExecutionPolicyError("native_agent_recovery_replacement_unsupported")
+            store.load_recovery_checkpoint_state(ref=ref, checkpoint=checkpoint)
+            return None
+        if record.phase == "reserved":
+            record = self.allocate_reserved_recovery(ref=ref, expected=record)
+        if record.phase == "allocated":
+            try:
+                selection = self.prepare_recovery_selection(ref=ref, expected=record)
+                record = store.finalize_recovery_successor(ref=ref, selection=selection)
+            except NativeContinuationConflict:
+                store.block_recovery_allocation(ref=ref, expected=record)
+                raise BuilderExecutionPolicyError("native_agent_recovery_reconstruction_drift") from None
+            except BuilderExecutionPolicyError as error:
+                if error.reason_code in {
+                    "native_revision_drift",
+                    "native_agent_pin_mismatch",
+                    "native_credential_drift",
+                    "native_expired",
+                    "native_scope_revoked",
+                    "native_agent_owner_mismatch",
+                    "native_agent_config_mismatch",
+                    "native_agent_checkpoint_mismatch",
+                }:
+                    store.block_recovery_allocation(ref=ref, expected=record)
+                raise
+        if record.phase != "ready" or record.successor_object_ref is None or record.successor_digest is None:
+            raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+        evidence = store.load_result(ref=ref, result_ref=record.evidence_object_ref)
+        if not isinstance(evidence, dict):
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        original = CheckpointRef.model_validate(evidence["parent_checkpoint"])
+        if record.successor_wait_ref is not None:
+            return store.load_recovery_pending_proof(ref=ref, original_checkpoint=original)
+        from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef
+
+        parent = AgentParentNodeRef.model_validate(evidence["parent_node"])
+        relation = store.load_selected_recovery(ref=ref, parent_node=parent)
+        if relation is None:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        if record.sdk_receipt_ref is None:
+            # Repeating this exact install reads the SDK's atomically retained receipt.
+            # It never repeats physical allocation or infers ACK from runtime identity.
+            try:
+                receipt = InstallConfirmedRecoverySuccessorReceipt.model_validate(
+                    self.backend.client.install_confirmed_recovery_successor_sync(
+                        InstallConfirmedRecoverySuccessorRequest(
+                            successor=relation,
+                            successor_object_ref=record.successor_object_ref,
+                            successor_digest=record.successor_digest,
+                        )
+                    ).model_dump(mode="json")
+                )
+            except (DifyAgentClientError, ValueError, OSError):
+                raise BuilderExecutionPolicyError("native_agent_recovery_handshake_unavailable") from None
+            record = store.acknowledge_recovery_sdk_receipt(ref=ref, expected=record, receipt=receipt)
+        else:
+            receipt = InstallConfirmedRecoverySuccessorReceipt.model_validate(
+                store.load_result(ref=ref, result_ref=record.sdk_receipt_ref)
+            )
+        try:
+            selected = self.backend.client.read_native_checkpoint_sync(
+                relation.agent_run_id,
+                ReadNativeCheckpointRequest(
+                    ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
+                    expected_generation=receipt.agent_generation,
+                    waiting_event_id=receipt.waiting_event_id,
+                    config_ref=receipt.config_ref,
+                    config_digest=receipt.config_digest,
+                ),
+            )
+        except (DifyAgentClientError, ValueError, OSError):
+            raise BuilderExecutionPolicyError("native_agent_recovery_handshake_unavailable") from None
+        return store.acknowledge_recovery_wait(
+            ref=ref, expected=record, receipt=receipt, checkpoint=selected.checkpoint, event=selected.waiting_event
+        )
+
+    def reserve_confirmed_recovery_attempt(self, *, ref, expected_parent_generation, idempotency_key):
+        """Prove exact Local loss and reserve once for an authenticated interaction.
+
+        Uses existing durable parent pause, current checkpoint, protected owner
+        and SDK pure validator; inspection/crypto/RBAC occur outside SQL writers.
+        A usable binding returns None; refusal allocates nothing.
+        """
+        from uuid import uuid4
+
+        from dify_agent.protocol.confirmed_recovery import AgentRecoveryBinding
+        from dify_agent.protocol.native_testing import AgentCheckpointRef
+        from dify_agent.runtime.confirmed_recovery import validate_recovery_eligibility
+        from dify_agent.runtime.native_continuation import NativeContinuationConflict
+
+        from models.agent import AgentHomeSnapshot, AgentWorkspaceBinding
+        from services.dify_builder.native_testing.agent_recovery import reserve_recovery_attempt
+        from services.dify_builder.native_testing.agent_recovery_state import (
+            AgentRecoveryAttemptIdentity,
+            AgentRecoveryRecord,
+            recovery_attempt_id,
+        )
+
+        store = self.api.store
+        context = store.load_context(ref=ref)
+        if context.generation != TypeAdapter(Counter).validate_python(expected_parent_generation):
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        paused = self.continuation.read_parent_pause(ref=ref)
+        reasons = {
+            reason.message if isinstance(reason, SchedulingPause) else None
+            for reason in paused.runtime.graph_execution.pause_reasons
+        }
+        if reasons != {"agent_tool_approval"}:
+            raise BuilderExecutionPolicyError("native_agent_recovery_ineligible")
+        with self.loader.session_factory() as session:
+            request = session.get(DifyBuilderExecutionRequest, ref.request_id)
+            if request is None:
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            checkpoint, generation = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
+        payload = store.read_checkpoint(ref=ref, checkpoint=checkpoint)
+        if payload.generation != generation or len(payload.agent_associations) != 1:
+            raise BuilderExecutionPolicyError("native_agent_single_workspace_limit")
+        wait = payload.agent_associations[0]
+        if wait.parent_node.execution_id not in {
+            node.execution_id for node in paused.runtime.graph_execution.node_executions.values()
+        }:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        protected = store.load_agent_association(ref=ref, parent_node=wait.parent_node, wait=wait)
+        selected = self.continuation._selected(
+            ref=ref,
+            association=protected.association,
+            generation=wait.agent_generation,
+            event_id=wait.backend_wait_event_id,
+        )
+        if canonical_digest(selected.checkpoint.model_dump(mode="json")) != wait.checkpoint_digest:
+            raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
+        self.continuation._pending(ref=ref, parent_node=wait.parent_node, checkpoint=selected.checkpoint)
+        prepared = store._agent_prepare(
+            ref=ref, parent_node=wait.parent_node, writing=False, expected_generation=generation
+        )
+        config = store._agent_prepared_config(prepared, protected.association.config_ref)
+        workspace = prepared.workspace
+        inspection = self._inspect_recovery_binding(
+            binding_ref=workspace.backend_binding_ref, workspace_ref=workspace.backend_workspace_ref
+        )
+        if inspection.state == "usable":
+            return None
+        if (inspection.adapter, inspection.state, inspection.evidence_code) != (
+            "local",
+            "definitively_gone",
+            "path_absent",
+        ):
+            raise BuilderExecutionPolicyError("native_agent_recovery_absence_unproven")
+        try:
+            validate_recovery_eligibility(
+                store.recovery_config_request(
+                    config=config.config,
+                    parent=wait.parent_node,
+                    create_idempotency_key=selected.checkpoint.create_idempotency_key,
+                ),
+                selected.checkpoint,
+            )
+        except NativeContinuationConflict:
+            raise BuilderExecutionPolicyError("native_agent_recovery_ineligible") from None
+        predecessor = AgentRecoveryBinding(
+            binding_id=workspace.binding_id,
+            workspace_id=workspace.workspace_id,
+            binding_ref=workspace.backend_binding_ref,
+            workspace_ref=workspace.backend_workspace_ref,
+            workspace_generation=workspace.workspace_generation,
+            association_object_ref=protected.association_object_ref,
+            config_ref=config.config_ref,
+            config_digest=config.config_digest,
+        )
+        identity = AgentRecoveryAttemptIdentity(
+            invocation_id=ref.invocation_id,
+            parent_execution_id=wait.parent_node.execution_id,
+            predecessor_binding_id=workspace.binding_id,
+            predecessor_checkpoint_digest=wait.checkpoint_digest,
+            predecessor_workspace_generation=workspace.workspace_generation,
+        )
+        home_digest, home_ref = None, None
+        with self.loader.session_factory() as session:
+            binding = session.get(AgentWorkspaceBinding, workspace.binding_id)
+            if binding is None:
+                raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+            allocation_agent_id = binding.agent_id
+            if workspace.home_snapshot_id is not None:
+                home = session.get(AgentHomeSnapshot, workspace.home_snapshot_id)
+                if home is None:
+                    raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
+                home_digest = store.recovery_home_digest(home)
+                home_ref = home.snapshot_ref
+        attempt = recovery_attempt_id(identity)
+        evidence = {
+            "parent_node": wait.parent_node.model_dump(mode="json"),
+            "wait": wait.model_dump(mode="json"),
+            "parent_checkpoint": checkpoint.model_dump(mode="json"),
+            "pause_id": paused.pause_id,
+            "pause_state_object_key": paused.state_object_key,
+            "native_run_id": paused.native_run_id,
+            "inspection": inspection.model_dump(mode="json"),
+            "agent_run_id": protected.association.agent_run_id,
+            "pending_ids": [call.pending_operation_id for call in selected.checkpoint.pending_calls],
+            "allocation_owner": {
+                "tenant_id": context.tenant_id,
+                "agent_id": allocation_agent_id,
+                "home_snapshot_id": workspace.home_snapshot_id,
+                "home_snapshot_ref": home_ref,
+                "home_snapshot_digest": home_digest,
+            },
+        }
+        receipt = store.prepare_object(
+            ref=ref,
+            tenant_id=context.tenant_id,
+            kind="result",
+            logical_key="agent-recovery:" + attempt + ":evidence",
+            payload=evidence,
+        )
+        proposed = AgentRecoveryRecord(
+            identity=identity,
+            attempt_id=attempt,
+            predecessor=predecessor,
+            predecessor_checkpoint=AgentCheckpointRef(
+                checkpoint_id=wait.checkpoint_object_ref, payload_digest=wait.checkpoint_digest
+            ),
+            parent_generation=generation,
+            agent_generation=wait.agent_generation,
+            reserved_binding_id=str(uuid4()),
+            reserved_workspace_id=str(uuid4()),
+            next_workspace_generation=workspace.workspace_generation + 1,
+            input_digest=wait.parent_node.input_digest,
+            definition_digest=prepared.resource_digest,
+            home_snapshot_id=workspace.home_snapshot_id,
+            home_snapshot_digest=home_digest,
+            interaction_idempotency_digest=canonical_digest(TypeAdapter(ID).validate_python(idempotency_key)),
+            phase="reserved",
+            evidence_object_ref=receipt.id,
+            allocation_receipt_ref=None,
+            successor_object_ref=None,
+            successor_digest=None,
+            sdk_receipt_ref=None,
+            successor_wait_ref=None,
+        )
+        store._agent_refresh_access(prepared)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            store._agent_recheck(session, owned, scope, prepared, writing=False)
+            store.recheck_recovery_wait(
+                session=session, owned=owned, prepared=prepared, evidence=evidence, expected=proposed
+            )
+            current_checkpoint = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
+            if current_checkpoint != (checkpoint, generation):
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            selected_evidence = store.acknowledge_object(session, receipt)
+            proposed = AgentRecoveryRecord.model_validate(
+                {**proposed.model_dump(), "evidence_object_ref": selected_evidence.id}
+            )
+            record, _inserted = reserve_recovery_attempt(
+                session=session, tenant_id=owned.tenant_id, ref=ref, proposed=proposed
+            )
+            return record
+
+    def prepare_recovery_selection(self, *, ref, expected):
+        """Compose inert fresh pending and protected graph before the separate handoff.
+
+        Existing operations owner performs fresh assessment. The store separately
+        validates every staged row/snapshot and acknowledges stable dependencies.
+        No physical create, SDK install, grant or continuation occurs here.
+        """
+        from services.dify_builder.native_testing.agent_operations import AgentOperationService
+
+        operations = self.continuation.operations
+        if not isinstance(operations, AgentOperationService):
+            raise BuilderExecutionPolicyError("native_agent_operation_unavailable")
+        pending = operations.stage_recovery_pending(ref=ref, expected=expected)
+        return self.api.store.prepare_recovery_selection(ref=ref, expected=expected, pending=pending)
+
+    def allocate_reserved_recovery(self, *, ref, expected):
+        """One creating winner issues exactly one ordinary create outside all SQL.
+
+        Reconnects never reissue creation. An uncertain result becomes unknown;
+        an incurred ACK is retained after revocation and permits only local finalize.
+        """
+        from dify_agent.protocol import CreateExecutionBindingRequest, CreateExecutionBindingResponse
+
+        from services.dify_builder.native_testing.agent_recovery import (
+            RecoveryAllocationReceipt,
+            claim_recovery_allocation,
+            recovery_record,
+        )
+
+        store = self.api.store
+        prepared, evidence = store.prepare_recovery_attempt(ref=ref, expected=expected)
+        owner = evidence["allocation_owner"]
+        request = CreateExecutionBindingRequest(
+            tenant_id=prepared.context.tenant_id,
+            agent_id=owner["agent_id"],
+            binding_id=expected.reserved_binding_id,
+            workspace_id=expected.reserved_workspace_id,
+            existing_workspace_ref=None,
+            home_snapshot_ref=owner["home_snapshot_ref"],
+        )
+        store._agent_refresh_access(prepared)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            store._agent_recheck(session, owned, scope, prepared, writing=False)
+            store.recheck_recovery_wait(
+                session=session, owned=owned, prepared=prepared, evidence=evidence, expected=expected
+            )
+            creating = claim_recovery_allocation(session=session, tenant_id=owned.tenant_id, ref=ref, expected=expected)
+            if creating is None:
+                current = recovery_record(owned.bindings)
+                if current is None:
+                    raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+                return current
+        try:
+            response = CreateExecutionBindingResponse.model_validate(
+                self.backend.client.create_execution_binding_sync(request).model_dump(mode="json")
+            )
+            return store.acknowledge_recovery_allocation(
+                ref=ref,
+                expected=creating,
+                receipt=RecoveryAllocationReceipt(attempt_id=creating.attempt_id, request=request, response=response),
+            )
+        except Exception:
+            store.mark_recovery_allocation_unknown(ref=ref, expected=creating)
+            raise BuilderExecutionPolicyError("native_agent_recovery_allocation_unknown") from None
+
+    def capture_session_snapshot_identity(
+        self,
+        *,
+        parent_node,
+        parent_generation,
+        agent_run_id,
+        agent_generation,
+        binding,
+    ):
+        """Capture before stream and verify the exact SDK identity after SQL ownership.
+
+        Runtime read is outside every writer. The second store capture rechecks
+        the original tuple after transport; a later generation cannot relabel it.
+        """
+        from dify_agent.protocol.native_testing import AgentParentNodeRef as WireParent
+        from dify_agent.protocol.native_testing import AgentRuntimeIdentity, ReadAgentRuntimeIdentity
+
+        values = {
+            "parent_node": parent_node,
+            "parent_generation": parent_generation,
+            "agent_run_id": agent_run_id,
+            "agent_generation": agent_generation,
+            "binding": binding,
+        }
+        original = self.api.store.capture_confirmed_snapshot_identity(**values)
+        actual = AgentRuntimeIdentity.model_validate(
+            self.backend.client.read_run_identity_sync(
+                agent_run_id,
+                ReadAgentRuntimeIdentity(
+                    parent_node=WireParent.model_validate(parent_node.model_dump(mode="json")),
+                    request_digest=binding.config_digest,
+                ),
+            ).model_dump(mode="json")
+        )
+        if (
+            actual.run_id,
+            actual.execution_mode,
+            actual.native_test_profile,
+            actual.parent_node,
+            actual.request_digest,
+            actual.agent_generation,
+        ) != (
+            original.agent_run_id,
+            "builder_test",
+            "confirmed",
+            WireParent.model_validate(original.parent_node.model_dump(mode="json")),
+            original.binding.config_digest,
+            original.agent_generation,
+        ):
+            raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+        if self.api.store.capture_confirmed_snapshot_identity(**values) != original:
+            raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+        return original
+
+    def save_session_snapshot(self, *, identity, session_scope, snapshot) -> None:
+        """Delegate confirmed persistence to the existing root transaction owner."""
+        self.api.store.save_confirmed_session_snapshot(
+            identity=identity, session_scope=session_scope, snapshot=snapshot
+        )
+
     def prepare_wait(self, **values):
         return self.continuation.prepare_wait(**values)
 
@@ -198,96 +648,29 @@ class ConfirmedAgentCommands:
             return None
         if len(matches) != 1:
             raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
-        return self.api.store.load_agent_association(ref=ref, parent_node=parent_node, wait=matches[0])
+        from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+        record = recovery_record(self.loader.load(ref=ref).bindings)
+        wait = matches[0]
+        if record is not None:
+            evidence = self.api.store.load_result(ref=ref, result_ref=record.evidence_object_ref)
+            if not isinstance(evidence, dict):
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            chain = self.api.store.load_recovery_pending_chain(
+                ref=ref, original_checkpoint=CheckpointRef.model_validate(evidence["parent_checkpoint"])
+            )
+            if chain is None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+            if wait == chain.graph.predecessor_wait:
+                wait = chain.proof.selection.wait
+        return self.api.store.load_agent_association(ref=ref, parent_node=parent_node, wait=wait)
 
     def _waiting_binding_checkpoint(self, *, session, ref, request):
         """Current approval wait only; completed historical effects remain valid."""
+        from services.dify_builder.native_testing.agent_recovery import waiting_confirmed_checkpoint
+
         owned, scope = self.loader._load(session, ref=ref, lock=False)
-        state = invocation_state(session, ref, owned.tenant_id)
-        invocation = session.scalar(owner_query(NativeTestInvocation, ref, owned.tenant_id))
-        expires_at = scope.expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=UTC)
-        current = session.scalar(
-            select(DifyBuilderExecutionRequest.id)
-            .where(
-                DifyBuilderExecutionRequest.tenant_id == owned.tenant_id,
-                DifyBuilderExecutionRequest.actor_id == owned.actor_id,
-                DifyBuilderExecutionRequest.session_id == owned.session_id,
-                DifyBuilderExecutionRequest.test_input_id == owned.test_input_id,
-                DifyBuilderExecutionRequest.context["policy_version"].as_string() == ref.policy_version,
-            )
-            .order_by(DifyBuilderExecutionRequest.created_at.desc(), DifyBuilderExecutionRequest.id.desc())
-            .limit(1)
-        )
-        if (
-            current != request.id
-            or owned.state != "waiting"
-            or not scope.task_approved
-            or scope.cancelled
-            or expires_at <= utc_now()
-            or state.parent_invocation_id is not None
-            or state.state != "waiting"
-            or state.wait_reason not in {"approval", "configuration", "interaction"}
-            or not state.pending_ids
-            or state.cancellation_key is not None
-            or state.outcome is not None
-            or invocation is None
-            or not invocation.active
-            or "_agent_confirmed_workspace_v1" not in invocation.bindings
-        ):
-            raise BuilderExecutionPolicyError("native_state_conflict")
-        for model, condition in (
-            (NativeEffectOperation, NativeEffectOperation.state.in_(("claimed", "unknown"))),
-            (NativeEffectOutcome, NativeEffectOutcome.outcome == "unknown"),
-            (NativeDispatch, NativeDispatch.state.in_(("queued", "published", "claimed", "unknown"))),
-            (NativeInvocationState, NativeInvocationState.state == "unknown"),
-        ):
-            if (
-                session.scalar(
-                    select(model.id)
-                    .where(model.tenant_id == owned.tenant_id, model.request_id == ref.request_id, condition)
-                    .limit(1)
-                )
-                is not None
-            ):
-                raise BuilderExecutionPolicyError("native_state_conflict")
-        # A physical claim without a durable completed/failed outcome is in flight.
-        settled = (
-            select(NativeEffectOutcome.id)
-            .where(
-                NativeEffectOutcome.tenant_id == owned.tenant_id,
-                NativeEffectOutcome.request_id == ref.request_id,
-                NativeEffectOutcome.attempt_id == NativeEffectDispatchClaim.attempt_id,
-                NativeEffectOutcome.operation_id == NativeEffectDispatchClaim.operation_id,
-                NativeEffectOutcome.outcome.in_(("completed", "failed")),
-            )
-            .exists()
-        )
-        if (
-            session.scalar(
-                select(NativeEffectDispatchClaim.id)
-                .where(
-                    NativeEffectDispatchClaim.tenant_id == owned.tenant_id,
-                    NativeEffectDispatchClaim.request_id == ref.request_id,
-                    ~settled,
-                )
-                .limit(1)
-            )
-            is not None
-        ):
-            raise BuilderExecutionPolicyError("native_state_conflict")
-        continuation = session.scalar(
-            owner_query(NativeContinuation, ref, owned.tenant_id).where(
-                NativeContinuation.checkpoint_id == state.checkpoint_id,
-                NativeContinuation.generation == state.generation,
-            )
-        )
-        if continuation is None:
-            raise BuilderExecutionPolicyError("checkpoint_unavailable")
-        return CheckpointRef(
-            checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
-        ), state.generation
+        return waiting_confirmed_checkpoint(session=session, ref=ref, request=request, owned=owned, scope=scope)
 
     def keep_alive_waiting_binding(self, *, actor, session_id, request_id) -> bool:
         """Health-only retention; never renew authority, recover, or replace a binding.
@@ -718,6 +1101,34 @@ class ConfirmedAgentCommands:
         idempotency_key,
     ):
         self._request(actor=actor, session_id=session_id, request_id=request_id)
+        if decision == "deny":
+            from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+            ref = self._root_ref(actor=actor, request_id=request_id)
+            if ConfirmedAgentCancellation(self).deny_recovery(
+                ref=ref,
+                pending_operation_id=pending_operation_id,
+                scope_digest=scope_digest,
+                expected_version=expected_version,
+                idempotency_key=idempotency_key,
+            ):
+                return self.cancel(
+                    actor=actor,
+                    session_id=session_id,
+                    request_id=request_id,
+                    idempotency_key=canonical_digest({"deny": idempotency_key}),
+                )
+        if decision == "confirm":
+            ref = self._root_ref(actor=actor, request_id=request_id)
+            proof = self.prepare_recovery_for_interaction(
+                ref=ref,
+                expected_parent_generation=self.loader.load(ref=ref).generation,
+                idempotency_key=idempotency_key,
+            )
+            if proof is not None and pending_operation_id not in {
+                entry.pending_id for entry in proof.selection.approvals
+            }:
+                return self.api.get(actor=actor, session_id=session_id, request_id=request_id)
         receipt = self.api.decide(
             actor=actor,
             session_id=session_id,
@@ -740,7 +1151,18 @@ class ConfirmedAgentCommands:
         return receipt
 
     def resume(self, *, actor, session_id, request_id, expected_generation, idempotency_key):
-        self._request(actor=actor, session_id=session_id, request_id=request_id)
+        request = self._request(actor=actor, session_id=session_id, request_id=request_id)
+        # Only a current approval wait can initiate replacement. Running outbox
+        # redeliveries retain the ordinary lifecycle's idempotent resume owner.
+        if request.state == "waiting":
+            ref = self._root_ref(actor=actor, request_id=request_id)
+            proof = self.prepare_recovery_for_interaction(
+                ref=ref, expected_parent_generation=expected_generation, idempotency_key=idempotency_key
+            )
+            if proof is not None:
+                current = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
+                if not current.can_resume:
+                    return current
         receipt = self.api.lifecycle.resume(
             actor=actor, request_id=request_id, expected_generation=expected_generation, idempotency_key=idempotency_key
         )
@@ -859,6 +1281,16 @@ class ConfirmedAgentCommands:
         if len(waits) != 1:
             raise BuilderExecutionPolicyError("native_agent_checkpoint_unavailable")
         wait = waits[0]
+        recovery = self.api.store.load_recovery_checkpoint_state(ref=ref, checkpoint=checkpoint)
+        if recovery is not None and checkpoint == recovery.proof.selection.original_checkpoint:
+            selection = recovery.proof.selection
+            if (
+                wait != recovery.graph.predecessor_wait
+                or selection.wait.parent_node != parent_node
+                or context.generation != selection.parent_generation + 1
+            ):
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            wait = selection.wait
         protected = self.api.store.load_agent_association(ref=ref, parent_node=parent_node, wait=wait)
         if self._continuation_observed(protected=protected):
             return protected
@@ -965,6 +1397,13 @@ class ConfirmedAgentCommands:
         except Exception:
             logger.warning("Confirmed Agent cancellation preparation unavailable")
         self.api.lifecycle.cancel(actor=actor, request_id=request_id, idempotency_key=idempotency_key)
+        try:
+            # Recovery ACKs share the revoked SQL root. Capture their final
+            # retained chain now, so an install winning before revocation
+            # cannot strand a preparation of the earlier partial graph.
+            ConfirmedAgentCancellation(self).prepare_recovery(ref=ref)
+        except Exception:
+            logger.warning("Confirmed Agent cancellation preparation remains unproven")
         if not children:
             try:
                 children = list(ConfirmedAgentCancellation(self).retry_children(ref=ref))

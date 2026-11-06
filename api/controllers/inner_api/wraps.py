@@ -230,18 +230,45 @@ def agent_runtime_api_only(boundary: str):
                 caller = raw.get("caller", raw)
                 if not isinstance(caller, dict):
                     raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
-                context = lineage.resolve(
-                    principal=principal,
-                    selection=selection,
-                    boundary=boundary,
-                    caller=caller,
+                recovery_read = None
+                if boundary == "native-result-read":
+                    from dify_agent.protocol.native_testing import MAX_AGENT_CONTROL_BYTES, AgentReadResultPayload
+
+                    from controllers.inner_api.agent.native_testing import _parse
+
+                    try:
+                        payload = _parse(AgentReadResultPayload, limit=MAX_AGENT_CONTROL_BYTES)
+                    except ValueError:
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch") from None
+                    recovery_read = lineage.read_recovery_result(
+                        principal=principal, selection=selection, payload=payload
+                    )
+                context = (
+                    recovery_read
+                    if recovery_read is not None
+                    else lineage.resolve(
+                        principal=principal,
+                        selection=selection,
+                        boundary="native-control" if boundary == "native-result-read" else boundary,
+                        caller=caller,
+                    )
                 )
                 if context is None:
                     if (
-                        boundary in {"prepare-run", "prepared-config", "native-control", "native-settlement"}
+                        boundary
+                        in {
+                            "prepare-run",
+                            "prepared-config",
+                            "native-control",
+                            "native-settlement",
+                            "native-result-read",
+                        }
                         or raw.get("native_dispatch") is not None
                         or "X-Dify-Agent-Dispatch" in request.headers
                     ):
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+                elif recovery_read is not None:
+                    if raw.get("ref") != recovery_read.ref.model_dump(mode="json"):
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                 elif boundary == "config":
                     from controllers.inner_api.agent.runtime_selection import parse_agent_config_dispatch
@@ -267,7 +294,7 @@ def agent_runtime_api_only(boundary: str):
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                     if boundary == "prepared-config" and raw.get("config_ref") != context.config.config_ref:
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
-                elif boundary in {"native-control", "native-settlement"}:
+                elif boundary in {"native-control", "native-settlement", "native-result-read"}:
                     if raw.get("ref") != context.ref.model_dump(mode="json"):
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                 elif boundary in {

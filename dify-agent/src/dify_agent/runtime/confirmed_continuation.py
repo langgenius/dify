@@ -5,6 +5,8 @@ carry references and SDK call history, never credentials or client decisions.
 This owner makes no test-scope or hidden child-continuation isolation claim.
 """
 
+import hashlib
+
 from dataclasses import dataclass
 from typing import cast
 
@@ -27,7 +29,15 @@ from dify_agent.protocol.native_testing import (
     NativeTestCapabilities,
     executable_request_digest,
 )
+from dify_agent.protocol.confirmed_recovery import (
+    AgentRecoveryReconstruction,
+    AgentRecoverySuccessor,
+    InstallConfirmedRecoverySuccessorRequest,
+)
+from dify_agent.protocol.native_continuation import MAX_CHECKPOINT_RESPONSE_BYTES
+from dify_agent.protocol.native_testing import AgentPreparedConfigResponse
 from dify_agent.protocol.schemas import CreateRunRequest
+from dify_agent.runtime.confirmed_recovery import validate_recovery_checkpoint, validate_recovery_configs
 from dify_agent.runtime.native_continuation import (
     AgentCheckpoint,
     NativeContinuation,
@@ -168,6 +178,71 @@ class ConfirmedNativeContinuationOwner:
         continuation.capabilities.append(NativeEffectsCapability(session))
         return continuation
 
+    async def prepare_confirmed_recovery_successor(
+        self, *, request: InstallConfirmedRecoverySuccessorRequest, predecessor: AgentCheckpoint
+    ) -> AgentCheckpoint:
+        """Read the SQL-selected immutable relation; no permission or effect is replayed.
+
+        The API read owner admits only its selected recovery refs under the exact
+        predecessor identity, current pins and unexpired scope. It must refuse
+        any mapped operation with an attempt or physical claim. This route-local
+        read admission never authorizes prepare/claim/result/session mutations.
+        """
+        relation = request.successor
+        identity = current_runtime_identity()
+        if (
+            identity.execution_mode != "builder_test"
+            or identity.native_test_profile != "confirmed"
+            or identity.run_id != relation.agent_run_id
+            or identity.parent_node != relation.parent_node
+            or identity.agent_generation != relation.expected_agent_generation
+            or identity.request_digest != relation.predecessor.config_digest
+        ):
+            raise NativeContinuationConflict("confirmed recovery identity mismatch")
+        client = self._client(relation.parent_node.ref)
+
+        async def read(ref: str):
+            return await client.read_result(
+                payload=AgentReadResultPayload(ref=relation.parent_node.ref, result_ref=ref),
+                response_limit=MAX_CHECKPOINT_RESPONSE_BYTES,
+            )
+
+        protected = AgentRecoverySuccessor.model_validate(await read(request.successor_object_ref))
+        if protected != relation:
+            raise NativeContinuationConflict("confirmed recovery relation mismatch")
+        manifest_value = await read(relation.reconstruction_object_ref)
+        AgentRecoveryReconstruction.model_validate(manifest_value)
+        if hashlib.sha256(canonical_effect_json(manifest_value)).hexdigest() != relation.reconstruction_digest:
+            raise NativeContinuationConflict("confirmed recovery reconstruction mismatch")
+        successor_value = await read(relation.successor_checkpoint.checkpoint_id)
+        if (
+            hashlib.sha256(canonical_effect_json(successor_value)).hexdigest()
+            != relation.successor_checkpoint.payload_digest
+        ):
+            raise NativeContinuationConflict("confirmed recovery checkpoint mismatch")
+        checkpoint = AgentCheckpoint.model_validate(successor_value)
+        if (
+            hashlib.sha256(canonical_effect_json(predecessor.model_dump(mode="json"))).hexdigest()
+            != relation.predecessor_checkpoint.payload_digest
+        ):
+            raise NativeContinuationConflict("confirmed recovery predecessor mismatch")
+        validate_recovery_checkpoint(relation, predecessor, checkpoint)
+        configs = []
+        for binding in (relation.predecessor, relation.successor):
+            config = AgentPreparedConfigResponse.model_validate(await read(binding.config_ref))
+            if (config.parent_node, config.config_ref, config.config_digest) != (
+                relation.parent_node,
+                binding.config_ref,
+                binding.config_digest,
+            ) or not isinstance(config.config, dict):
+                raise NativeContinuationConflict("confirmed recovery config mismatch")
+            parsed = CreateRunRequest.model_validate(config.config)
+            if executable_request_digest(parsed) != binding.config_digest:
+                raise NativeContinuationConflict("confirmed recovery config mismatch")
+            configs.append(parsed)
+        validate_recovery_configs(relation, configs[0], configs[1], checkpoint)
+        return checkpoint
+
     async def prepare(self, *, run_id: str, request: CreateRunRequest) -> NativeContinuation:
         if (
             request.native_test_profile != "confirmed"
@@ -233,6 +308,22 @@ class ConfirmedNativeContinuationOwner:
             config_digest=checkpoint.config_digest,
             request=request,
         )
+        recovery_generations = {
+            p.intent.key.occurrence_path[2]
+            for p in checkpoint.pending_calls
+            if len(p.intent.key.occurrence_path) == 5 and p.intent.key.occurrence_path[1] == "recovery"
+        }
+        if recovery_generations:
+            if len(recovery_generations) != 1 or any(
+                len(p.intent.key.occurrence_path) != 5
+                or p.intent.key.occurrence_path[:2] != (identity.parent_node.execution_id, "recovery")
+                for p in checkpoint.pending_calls
+            ):
+                raise NativeContinuationConflict("confirmed recovery pending mismatch")
+            generation = next(iter(recovery_generations))
+            if not generation.isdecimal() or str(int(generation)) != generation or int(generation) < 1:
+                raise NativeContinuationConflict("confirmed recovery pending mismatch")
+            continuation.recovery_workspace_generation = int(generation)
         continuation.generation = checkpoint.generation
         continuation.create_idempotency_key = checkpoint.create_idempotency_key
         continuation.history = checkpoint.history

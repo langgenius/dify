@@ -999,7 +999,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(
             )
 
     auth = ComponentAuthorization()
-    monkeypatch.setattr(authorization_module, "EffectAuthorizationService", lambda _loader: auth)
+    monkeypatch.setattr(authorization_module, "EffectAuthorizationService", lambda _loader, **_kwargs: auth)
     private: dict[str, JsonValue] = {}
     checkpoints: dict[str, NativeCheckpointPayload] = {}
     sends: list[tuple[str, str]] = []
