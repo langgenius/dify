@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 from threading import Event, Lock, Thread
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import Select
 
 from core.rag.datasource.keyword.jieba import jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba
@@ -251,6 +252,76 @@ def test_search_preserves_ranking_and_document_filters(runtime: KeywordRuntime) 
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-2", "node-1"]
     documents = keyword.search("alpha beta", session=runtime.session, top_k=2, document_ids_filter=["document-1"])
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-1"]
+
+
+@pytest.mark.parametrize(("document_ids_filter", "expects_match"), [(["document-1"], True), ([], False)])
+def test_filtered_search_projects_candidates_and_materializes_only_scoped_top_k_matches(
+    runtime: KeywordRuntime,
+    document_ids_filter: list[str],
+    expects_match: bool,
+) -> None:
+    """Project candidate IDs, then materialize only scoped top-k segment rows.
+
+    Precondition: the matched node ID also exists outside the active tenant,
+    dataset, and document. Postcondition: only the owned top-k row enters the
+    session, while an empty document filter materializes no segment rows.
+    """
+    owned_unmatched, owned_match = segment("node-1"), segment("node-2")
+    wrong_document = segment("node-2")
+    wrong_document.document_id = "document-2"
+    wrong_tenant = segment("node-2", tenant_id="tenant-2")
+    wrong_dataset = segment("node-2")
+    wrong_dataset.dataset_id = "dataset-2"
+    runtime.session.add_all([owned_unmatched, owned_match, wrong_document, wrong_tenant, wrong_dataset])
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts(
+        [
+            Document(page_content="alpha", metadata={"doc_id": "node-1"}),
+            Document(page_content="alpha beta", metadata={"doc_id": "node-2"}),
+        ],
+        runtime.session,
+    )
+    runtime.session.commit()
+    owned_match_id = owned_match.id
+    runtime.session.expunge_all()
+
+    segment_reads: list[Select[tuple[object, ...]]] = []
+    loaded_segments: list[DocumentSegment] = []
+
+    def capture_segment_reads(state: ORMExecuteState) -> None:
+        """Record segment SELECTs from the session event without changing execution."""
+        if (
+            state.is_select
+            and isinstance(state.statement, Select)
+            and any(description.get("entity") is DocumentSegment for description in state.statement.column_descriptions)
+        ):
+            segment_reads.append(state.statement)
+
+    def capture_loaded_segments(_session: Session, instance: object) -> None:
+        """Record full segment objects materialized by this session."""
+        if isinstance(instance, DocumentSegment):
+            loaded_segments.append(instance)
+
+    event.listen(runtime.session, "do_orm_execute", capture_segment_reads)
+    event.listen(runtime.session, "loaded_as_persistent", capture_loaded_segments)
+    try:
+        documents = keyword.search(
+            "alpha beta",
+            session=runtime.session,
+            top_k=1,
+            document_ids_filter=document_ids_filter,
+        )
+    finally:
+        event.remove(runtime.session, "do_orm_execute", capture_segment_reads)
+        event.remove(runtime.session, "loaded_as_persistent", capture_loaded_segments)
+
+    assert len(segment_reads) == 2
+    candidate_read, matched_segment_read = segment_reads
+    assert len(candidate_read.column_descriptions) == 1
+    assert candidate_read.column_descriptions[0]["expr"] is DocumentSegment.index_node_id
+    assert matched_segment_read.column_descriptions[0]["expr"] is DocumentSegment
+    assert [document.metadata["doc_id"] for document in documents] == (["node-2"] if expects_match else [])
+    assert [loaded_segment.id for loaded_segment in loaded_segments] == ([owned_match_id] if expects_match else [])
 
 
 def test_delete_removes_the_database_record_and_file(runtime: KeywordRuntime) -> None:
