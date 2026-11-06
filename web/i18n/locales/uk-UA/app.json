@@ -70,7 +70,7 @@
   "gotoAnything.actions.searchApplications": "Пошук додатків",
   "gotoAnything.actions.slashDesc": "Виконуйте команди, такі як /theme, /lang",
   "gotoAnything.actions.slashTitle": "Команди",
-  "gotoAnything.actions.themeCategoryDesc": "Змінити тему",
+  "gotoAnything.actions.themeCategoryDesc": "Змінити вигляд",
   "gotoAnything.actions.themeDarkDesc": "Використовуйте темний вигляд",
   "gotoAnything.actions.themeLightDesc": "Використовуйте світлий вигляд",
   "gotoAnything.actions.themeSystemDesc": "Дотримуйтесь зовнішнього вигляду вашої операційної системи",
