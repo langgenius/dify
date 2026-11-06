@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
@@ -94,7 +94,14 @@ class ImagePreviewApi(Resource):
         except UnsupportedFileTypeServiceError as error:
             raise UnsupportedFileTypeError() from error
 
-        return Response(delivery.content, mimetype=delivery.file.mime_type)
+        response = Response(delivery.content, mimetype=delivery.file.mime_type)
+        harden_served_file(
+            response,
+            mime_type=delivery.file.mime_type,
+            filename=delivery.file.name,
+            extension=delivery.file.extension,
+        )
+        return response
 
 
 @files_ns.route("/<uuid:file_id>/file-preview")
@@ -144,7 +151,7 @@ class FilePreviewApi(Resource):
         if is_svg:
             response.headers["X-Content-Type-Options"] = "nosniff"
 
-        enforce_download_for_html(
+        harden_served_file(
             response,
             mime_type=file.mime_type,
             filename=file.name,
@@ -180,4 +187,11 @@ class WorkspaceWebappLogoApi(Resource):
         except UnsupportedFileTypeServiceError as error:
             raise UnsupportedFileTypeError() from error
 
-        return Response(delivery.content, mimetype=delivery.file.mime_type)
+        response = Response(delivery.content, mimetype=delivery.file.mime_type)
+        harden_served_file(
+            response,
+            mime_type=delivery.file.mime_type,
+            filename=delivery.file.name,
+            extension=delivery.file.extension,
+        )
+        return response
