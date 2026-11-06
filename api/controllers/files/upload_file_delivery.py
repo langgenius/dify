@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import enforce_download_for_html, requested_byte_range, slice_content_for_range
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
@@ -131,11 +131,26 @@ class FilePreviewApi(Resource):
     @staticmethod
     def _build_response(*, delivery: UploadFileDelivery, as_attachment: bool) -> Response:
         file = delivery.file
-        response = Response(delivery.content, mimetype=file.mime_type, direct_passthrough=True, headers={})
-        if file.mime_type in _RANGE_MEDIA_TYPES:
+        byte_range = requested_byte_range(file.mime_type, file.size, _RANGE_MEDIA_TYPES)
+        if byte_range == "unsatisfiable":
+            response = Response(status=416)
+            response.headers["Content-Range"] = f"bytes */{file.size}"
             response.headers["Accept-Ranges"] = "bytes"
-        if file.size > 0:
-            response.headers["Content-Length"] = str(file.size)
+            return response
+        if byte_range is not None:
+            start, end = byte_range
+            response = Response(
+                slice_content_for_range(delivery.content, start, end), status=206, mimetype=file.mime_type, headers={}
+            )
+            response.headers["Content-Range"] = f"bytes {start}-{end}/{file.size}"
+            response.headers["Accept-Ranges"] = "bytes"
+            response.headers["Content-Length"] = str(end - start + 1)
+        else:
+            response = Response(delivery.content, mimetype=file.mime_type, direct_passthrough=True, headers={})
+            if file.mime_type in _RANGE_MEDIA_TYPES:
+                response.headers["Accept-Ranges"] = "bytes"
+            if file.size > 0:
+                response.headers["Content-Length"] = str(file.size)
         is_svg = _is_svg_content(file.mime_type, file.name, file.extension)
         if as_attachment or is_svg:
             encoded_filename = quote(file.name)
