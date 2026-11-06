@@ -3,9 +3,9 @@ import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { marketplaceQuery } from '@/service/marketplace'
 import { downloadBlob } from '@/utils/download'
 
@@ -20,7 +20,7 @@ type Props = Readonly<{
 
 function OperationMenu({ marketplace, open, onOpenChange, author, name, version }: Props) {
   const { t } = useTranslation(['common'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const downloadMutation = useMutation(
     marketplaceQuery.downloadPlugin.mutationOptions({

@@ -8,7 +8,7 @@ const props = {
   infoLabel: 'Custom Evaluator',
   infoDescription: 'A custom evaluator uses a published evaluation workflow.',
   createLabel: 'Create workflow',
-  createHref: '/apps?category=workflow&create=workflow',
+  createHref: '/apps?create=blank&mode=workflow',
 }
 
 it('explains custom evaluators and opens workflow creation separately from adding a metric', async () => {

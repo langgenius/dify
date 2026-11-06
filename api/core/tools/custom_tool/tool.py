@@ -176,7 +176,11 @@ class ApiTool(Tool):
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
     ) -> httpx.Response:
         """
-        do http request depending on api bundle
+        Send an HTTP request using the API bundle and supplied parameters.
+
+        For application/x-www-form-urlencoded, list/tuple values become repeated
+        fields; other values keep their existing string representation. Invalid
+        required parameters raise before dispatch.
         """
         method = method.lower()
 
@@ -268,7 +272,13 @@ class ApiTool(Tool):
             if headers["Content-Type"] == "application/json":
                 body = json.dumps(body)
             elif headers["Content-Type"] == "application/x-www-form-urlencoded":
-                body = urlencode(body)
+                body = urlencode(
+                    [
+                        (name, item)
+                        for name, value in body.items()
+                        for item in (value if isinstance(value, (list, tuple)) else [value])
+                    ]
+                )
             else:
                 body = body
 
