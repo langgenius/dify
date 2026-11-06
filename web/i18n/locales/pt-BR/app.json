@@ -169,8 +169,6 @@
   "newApp.appCreated": "Aplicativo criado",
   "newApp.appDescriptionPlaceholder": "Digite a descrição do aplicativo",
   "newApp.appNamePlaceholder": "Dê um nome para o seu aplicativo",
-  "newApp.buildFromBlank": "Criar do zero",
-  "newApp.builderDescription": "Com <builderIcon/> App Builder ou manualmente",
   "newApp.captionDescription": "Descrição",
   "newApp.captionName": "Ícone e nome do aplicativo",
   "newApp.caution": "Cuidado",

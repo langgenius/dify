@@ -4,10 +4,10 @@
 </g>
 <defs>
 <radialGradient id="paint0_radial_0_525" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(7.96924 8) rotate(90) scale(8 7.96924)">
-<stop stop-color="#0033FF"/>
-<stop offset="0.55" stop-color="#0026E6" stop-opacity="0.85"/>
-<stop offset="0.8" stop-color="#0033FF" stop-opacity="0.4"/>
-<stop offset="1" stop-color="#0033FF" stop-opacity="0.08"/>
+<stop stop-color="currentColor"/>
+<stop offset="0.55" stop-color="currentColor" stop-opacity="0.85"/>
+<stop offset="0.8" stop-color="currentColor" stop-opacity="0.4"/>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.08"/>
 </radialGradient>
 </defs>
 </svg>

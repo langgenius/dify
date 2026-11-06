@@ -116,10 +116,7 @@ function StarterContent({
                 ? t(($) => $['newApp.starter.workflowTitle'], { ns: 'app' })
                 : t(($) => $['newApp.starter.chatflowTitle'], { ns: 'app' })}
             </h2>
-            <span
-              aria-hidden
-              className="i-custom-public-app-builder-builder-mark size-7.5 shrink-0"
-            />
+            <span aria-hidden className="builder-brand-mark size-7.5 shrink-0" />
           </div>
           <div className="group overflow-hidden rounded-[14px] bg-background-section-burn p-1 focus-within:bg-state-accent-active">
             {/* Keep the frame above the toolbar background so its border stays continuous. */}
