@@ -427,6 +427,25 @@ describe('Workflow canvas commands', () => {
     await waitFor(() => expect(canvasNodeIds()).toEqual(['node-2']))
   })
 
+  it('applies an empty graph snapshot on undo and redo', async () => {
+    const user = userEvent.setup()
+    const { store } = renderCanvas()
+    focusCanvas()
+
+    await user.keyboard('{Delete}')
+    expect(canvasNodeIds()).toEqual([])
+    await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+
+    await user.keyboard('{Control>}z{/Control}')
+    expect(canvasNodeIds()).toEqual(['node-1*'])
+    focusCanvas()
+    await user.keyboard('{Control>}y{/Control}')
+    expect(canvasNodeIds()).toEqual([])
+    focusCanvas()
+    await user.keyboard('{Control>}z{/Control}')
+    expect(canvasNodeIds()).toEqual(['node-1*'])
+  })
+
   it('deletes a selected edge without deleting unselected nodes', async () => {
     const user = userEvent.setup()
     const nodes = [
