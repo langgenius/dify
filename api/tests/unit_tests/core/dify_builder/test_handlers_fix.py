@@ -1676,3 +1676,107 @@ def test_checklist_diagnosis_and_repair_use_persisted_reply_language(mocker: pyt
 
     assert diagnose.call_args.kwargs["reply_language"] == "zh-Hans"
     assert propose.call_args.kwargs["reply_language"] == "zh-Hans"
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "none",
+        "running",
+        "unknown",
+        "cancelled",
+        "succeeded",
+        "mutable",
+        "foreign-session",
+        "foreign-task",
+        "no-native",
+        "policy-refusal",
+        "stale-execution",
+        "stale-graph",
+        "unbound",
+        "wrong-native",
+        "unsealed",
+        "simulated",
+        "wrong-kind",
+        "failed-unknown-proof",
+        "blocked-native",
+    ],
+)
+def test_re_fix_selects_only_current_owned_known_native_failure(invalid: str) -> None:
+    """Re-fix changes diagnostic provenance, never launches or rewrites the original Run."""
+    from runtime_contracts.builder.execution import BuilderExecutionRefusal
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, repo = _new_env()
+    session = _session(id="session", current_state=PcState.FIX_AWAIT_DECISION)
+    original = Run(id="original", kind="original-failed", status="failed", immutable=True)
+    repo.save_run(session.id, original)
+    latest = Run(
+        id="verify",
+        kind="verify",
+        status="failed",
+        dify_run_id="native-verify",
+        immutable=True,
+        origin_task_id="task",
+        inputs_ref="verified-input",
+        verification=successful_verification(env.fake_dify),
+    )
+    assert latest.verification is not None
+    assert latest.verification.execution_evidence is not None
+    latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+        update={
+            "safety_outcome": "native_failed",
+            "native_run_id": "native-verify",
+        }
+    )
+    if invalid == "wrong-native":
+        latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+            update={"native_run_id": "other-native"}
+        )
+    elif invalid == "unsealed":
+        latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+            update={"sealed": False}
+        )
+    elif invalid == "simulated":
+        latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+            update={"simulated_node_ids": ["parser"]}
+        )
+    elif invalid == "blocked-native":
+        latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+            update={"blocked_node_ids": ["parser"]}
+        )
+    elif invalid == "failed-unknown-proof":
+        latest.verification.execution_evidence = latest.verification.execution_evidence.model_copy(
+            update={"safety_outcome": "execution_evidence_unknown"}
+        )
+    elif invalid == "wrong-kind":
+        latest.kind = "original-failed"
+    elif invalid in {"running", "cancelled", "succeeded"}:
+        latest.status = invalid
+    elif invalid == "unknown":
+        latest.status, latest.error = "running", TRUNCATED_STREAM_ERROR
+    elif invalid == "mutable":
+        latest.immutable = False
+    elif invalid == "foreign-task":
+        latest.origin_task_id = "another-task"
+    elif invalid == "no-native":
+        latest.dify_run_id = ""
+    elif invalid == "policy-refusal":
+        latest.execution_refusal = BuilderExecutionRefusal(reason_code="execution_permission_denied")
+    elif invalid == "stale-execution":
+        latest.verification.execution_revision = "old"
+    elif invalid == "stale-graph":
+        latest.verification.executed_graph_revision = "old"
+    elif invalid == "unbound":
+        latest.verification = None
+    repo.save_run("another-session" if invalid == "foreign-session" else session.id, latest)
+    context = DifyBuilderContext(failed_run_id="original", verify_run_id="verify", logical_task_id="task")
+    before = repo.get_run("original")
+    result = handle_await_decision(env, Turn(action=Action(kind="re_fix"), actor=_actor()), session, context)
+    assert result.next == PcState.FIX_DIAGNOSE
+    assert result.context is not None
+    assert result.context.failed_run_id == ("verify" if invalid == "none" else "original")
+    assert result.context.retained_test_input_ref == ("verified-input" if invalid == "none" else "")
+    assert result.context.test_input_ref == ""
+    assert result.run is None
+    assert repo.get_run("original") == before
