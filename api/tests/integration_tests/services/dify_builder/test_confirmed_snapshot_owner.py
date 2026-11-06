@@ -26,7 +26,7 @@ from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 import httpx
@@ -165,6 +165,14 @@ def pinned_home(request: pytest.FixtureRequest) -> bool:
     return request.param
 
 
+@pytest.fixture(params=["local"])
+def inspection_adapter(request: pytest.FixtureRequest) -> Literal["local", "enterprise"]:
+    if request.param == "enterprise":
+        return "enterprise"
+    assert request.param == "local"
+    return "local"
+
+
 @pytest.fixture
 def protected_owner(
     ephemeral_postgres: Engine,
@@ -172,6 +180,7 @@ def protected_owner(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     pinned_home: bool,
+    inspection_adapter: Literal["local", "enterprise"],
 ) -> Generator[ProtectedOwner]:
     """Compose real SQL owner, FS storage and RSA provider; restore globals on exit."""
     from sqlalchemy import Table
@@ -285,7 +294,9 @@ def protected_owner(
         binding_id=binding_id,
         workspace_id=workspace_id,
         backend_binding_ref="binding-" + binding_id,
-        backend_workspace_ref="workspace-" + workspace_id,
+        backend_workspace_ref=("binding-" + binding_id)
+        if inspection_adapter == "enterprise"
+        else "workspace-" + workspace_id,
         pinned_snapshot_id=pin_id,
         home_snapshot_id=home_id,
         workspace_generation=0,
@@ -661,7 +672,13 @@ def runtime_owner(protected_owner: ProtectedOwner, redis_endpoint: tuple[str, in
                 "request_digest": prepared.config_digest,
             }
         )
-        claim = portal.call(lambda: store.claim_run(selection=selection, identity=identity))
+        record, _created = portal.call(
+            lambda: store.create_run_idempotent(
+                idempotency_key=selection.idempotency_key,
+                request_fingerprint=selection.request_digest,
+                identity=identity,
+            )
+        )
         base_url = "http://127.0.0.1:" + str(listener.getsockname()[1])
         http_client = resources.enter_context(httpx.Client())
         client = resources.enter_context(Client(base_url=base_url, sync_http_client=http_client))
@@ -691,9 +708,7 @@ def runtime_owner(protected_owner: ProtectedOwner, redis_endpoint: tuple[str, in
             INNER_API_KEY_FOR_PLUGIN="different-plugin",
             INNER_API_KEY="different-inner",
         ):
-            yield RuntimeOwner(
-                store, http, client, claim.record.run_id, http_client, base_url, recovery_selection, requests
-            )
+            yield RuntimeOwner(store, http, client, record.run_id, http_client, base_url, recovery_selection, requests)
             assert not any(
                 method == "POST" and (path == "/runs" or path.endswith("/continue")) for method, path in requests
             )
@@ -1177,6 +1192,7 @@ def allocated_successor(
     substitution: str,
     model_pending: bool = False,
     core_tool_pending: bool = False,
+    inspection_adapter: Literal["local", "enterprise"] = "local",
 ) -> AllocatedRecovery:
     """Acknowledge actual immutable graph bytes for the unactivated finalizer only.
 
@@ -1301,9 +1317,9 @@ def allocated_successor(
         "inspection": {
             "binding_ref": workspace.backend_binding_ref,
             "workspace_ref": workspace.backend_workspace_ref,
-            "adapter": "local",
+            "adapter": inspection_adapter,
             "state": "definitively_gone",
-            "evidence_code": "path_absent",
+            "evidence_code": "sandbox_not_found" if inspection_adapter == "enterprise" else "path_absent",
         },
         "agent_run_id": runtime.run_id,
         "pending_ids": [pending_id],
@@ -4068,3 +4084,26 @@ def test_recovery_denial_preserves_existing_decision_idempotency(
         assert scope is not None
         assert not scope.cancelled
     assert runtime.client.get_run_sync(runtime.run_id).status == "waiting"
+
+
+@pytest.mark.parametrize("inspection_adapter", ["enterprise"], indirect=True)
+def test_enterprise_absence_keeps_protected_recovery_eligibility_without_grants(
+    protected_owner: ProtectedOwner, runtime_owner: RuntimeOwner
+) -> None:
+    """Seeded allocation evidence exercises real protected reload, not Dev recovery."""
+    owner, runtime = protected_owner, runtime_owner
+    allocated = allocated_successor(
+        owner, runtime, substitution="none", model_pending=True, inspection_adapter="enterprise"
+    )
+    prepared, evidence = owner.api.store.prepare_recovery_attempt(ref=owner.parent.ref, expected=allocated.expected)
+    assert prepared.workspace.backend_binding_ref == prepared.workspace.backend_workspace_ref
+    assert evidence["inspection"] == {
+        "binding_ref": prepared.workspace.backend_binding_ref,
+        "workspace_ref": prepared.workspace.backend_workspace_ref,
+        "adapter": "enterprise",
+        "state": "definitively_gone",
+        "evidence_code": "sandbox_not_found",
+    }
+    with owner.api.sessions() as session:
+        assert session.scalar(select(NativeEffectGrant.id)) is None
+        assert session.scalar(select(NativeEffectAttempt.id)) is None

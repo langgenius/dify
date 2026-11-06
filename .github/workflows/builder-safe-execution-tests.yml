@@ -44,6 +44,7 @@ on:
       - 'api/tests/fixtures/workflow/builder_restricted/**'
       - '.github/workflows/builder-safe-execution-tests.yml'
       - '.github/scripts/builder-confirmed-tool-units.py'
+      - '.github/scripts/builder-confirmed-recovery.py'
       # Confirmed Tool owners: controllers, Tool/OAuth/plugin, config, credentials, worker and sweeper.
       - 'api/controllers/console/dify_builder*.py'
       - 'api/controllers/console/wraps.py'
@@ -1013,6 +1014,15 @@ jobs:
               }
           }.items():
               EXPECTED.setdefault(module, {}).update(functions)
+          # Qualified exact Enterprise absence: real HTTP and spoofed-evidence coverage.
+          EXPECTED["tests.local.dify_agent.server.test_binding_inspection"].update({
+              "test_enterprise_absence_evidence_requires_coupled_refs": 1,
+              "test_enterprise_inspection_has_one_shared_total_deadline": 2,
+              "test_enterprise_inspection_keeps_one_escaped_control_plane_identifier": 3,
+              "test_enterprise_inspection_refuses_ambiguous_identifiers_without_http": 9,
+              "test_enterprise_inspection_requires_exact_control_plane_absence": 20,
+              "test_inspection_rejects_spoofed_cross_adapter_absence": 5
+          })
           REPORT = "builder-native-agent.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime_backend/test_binding_inspection_deadline.py', 'tests/local/dify_agent/server/test_binding_inspection.py', 'tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
