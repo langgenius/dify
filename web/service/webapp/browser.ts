@@ -4,7 +4,7 @@ import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
 import { basePath as appBasePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports -- The generated Web client preserves the existing public auth and access guard transport.
-import { buildSigninUrlWithRedirect, request } from '../base'
+import { request } from '../base'
 import { validateDefinedErrors } from '../console/defined-errors'
 import { isUnauthorizedError } from '../http-error'
 import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
@@ -14,12 +14,7 @@ function parseAccountSignin(raw: string | null) {
   if (!raw) return null
   try {
     const url = new URL(raw, window.location.origin)
-    return ['http:', 'https:'].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      url.pathname.endsWith('/signin')
-      ? url
-      : null
+    return ['http:', 'https:'].includes(url.protocol) ? url : null
   } catch {
     return null
   }
@@ -68,20 +63,19 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
           window.location.pathname.replace(/\/$/, '') === `${appBasePath}/my-apps`
         ) {
           const returnLocation = window.location.href
-          let loginUrl: string | null
-          try {
-            const { webAppClient } = await import('./index')
-            const features = await webAppClient.systemFeatures.get(undefined, {
+          const { webAppClient } = await import('./index')
+          const features = await webAppClient.systemFeatures
+            .get(undefined, {
               context: { silent: true },
             })
-            loginUrl = features.account_login_url
-          } catch {
-            loginUrl = buildSigninUrlWithRedirect()
-          }
+            .catch(() => {
+              assertCurrentAccount()
+              throw error
+            })
           assertCurrentAccount()
           if (window.location.href !== returnLocation)
             throw new DOMException('The personal portal page changed.', 'AbortError')
-          const signin = parseAccountSignin(loginUrl)
+          const signin = parseAccountSignin(features.account_login_url)
           if (signin) {
             const consolePrefix = signin.pathname.slice(0, -'/signin'.length)
             signin.searchParams.set('is_end_user', '1')

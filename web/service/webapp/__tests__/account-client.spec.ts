@@ -250,29 +250,26 @@ describe('generated account Web App client', () => {
     expectAccountRequest(...fetch.mock.calls[0]!, '/system-features', 'GET')
   })
 
-  it.each([
-    null,
-    'javascript:alert(1)',
-    'https://user:password@accounts.example/signin',
-    'https://accounts.example/not-signin',
-    'https://[invalid/signin',
-  ])('does not redirect when the configured login URL is %s', async (account_login_url) => {
-    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(new Response(null, { status: 401 }))
-      .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url }))
+  it.each([null, 'javascript:alert(1)', 'https://[invalid/signin'])(
+    'does not redirect when the configured login URL is %s',
+    async (account_login_url) => {
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+        .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url }))
 
-    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+      await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
 
-    expect(replace).not.toHaveBeenCalled()
-  })
+      expect(replace).not.toHaveBeenCalled()
+    },
+  )
 
-  it('keeps the existing sign-in fallback when public configuration cannot be fetched', async () => {
+  it('accepts the relative sign-in URL returned when no Console URL is configured', async () => {
     window.history.replaceState({}, '', '/my-apps?view=starred#apps')
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
-      .mockRejectedValueOnce(new TypeError('Network unavailable'))
+      .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url: '/signin' }))
 
     await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
 
@@ -285,6 +282,38 @@ describe('generated account Web App client', () => {
     expect(signin.searchParams.has('app_code')).toBe(false)
     expect(signin.searchParams.has('code_challenge')).toBe(false)
   })
+
+  it.each(['network', 'server'] as const)(
+    'preserves the original unauthorized error without redirecting after a bootstrap %s failure',
+    async (failure) => {
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          Response.json(
+            { code: 'unauthorized', message: 'Account session expired.', status: 401 },
+            { status: 401 },
+          ),
+        )
+      if (failure === 'network') fetch.mockRejectedValueOnce(new TypeError('Network unavailable'))
+      else
+        fetch.mockResolvedValueOnce(
+          Response.json(
+            { code: 'internal_server_error', message: 'Bootstrap unavailable.', status: 500 },
+            { status: 500 },
+          ),
+        )
+
+      await expect(webAppClient.me.apps.get()).rejects.toMatchObject({
+        status: 401,
+        message: 'Account session expired.',
+      })
+
+      expect(fetch).toHaveBeenCalledTimes(2)
+      expectAccountRequest(...fetch.mock.calls[1]!, '/system-features', 'GET')
+      expect(replace).not.toHaveBeenCalled()
+    },
+  )
 
   it.each(['account change', 'leaving My apps'] as const)(
     'ignores pending sign-in configuration after %s',
