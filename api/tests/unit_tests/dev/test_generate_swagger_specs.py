@@ -495,6 +495,7 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
 
 def test_system_features_specs_exclude_backend_only_fields(generated_specs: list[Path]):
     excluded_fields = {
+        "enable_collaboration_mode",
         "enable_trial_app",
         "is_allow_create_workspace",
         "max_plugin_package_size",

@@ -51,6 +51,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -1191,6 +1192,12 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserDynamicOptions)
     def get(self, req_data: ParserDynamicOptions, tenant_id: str, current_user: Account):
+        """Fetch options for an admitted workspace caller.
+
+        Preconditions: admission and request-model validation succeeded.
+        Postconditions: valid sibling values and the workspace builder query reach
+        the service together; malformed values fail before plugin dispatch.
+        """
         try:
             parameter_values = _parse_parameter_values_query(req_data.parameter_values)
             options = PluginParameterService.get_dynamic_select_options(
@@ -1203,6 +1210,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
                 parameter_values=parameter_values,
+                builders=application_services().workspaces.trigger_builders,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e

@@ -39,7 +39,7 @@ export function StructureOutput({ className, value, onChange, readOnly }: Props)
       <div className="flex justify-between">
         <div className="flex items-center leading-4.5">
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
-          <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
+          <div className="ms-2 system-xs-regular text-text-tertiary">object</div>
         </div>
         {!readOnly && (
           <DialogTrigger
@@ -72,7 +72,7 @@ export function StructureOutput({ className, value, onChange, readOnly }: Props)
       {!readOnly && (
         <Dialog handle={dialogHandle}>
           <DialogContent
-            className="h-[calc(100dvh-32px)] max-h-200 w-full max-w-240 overflow-hidden"
+            className="h-200 w-240 overflow-hidden"
             finalFocus={hasSchema ? configureButtonRef : undefined}
           >
             <JsonSchemaConfig defaultSchema={value?.schema} onSave={handleChange} />

@@ -18,8 +18,8 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { API_PREFIX } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMarketplace } from '@/features/marketplace/client'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import useTheme from '@/hooks/use-theme'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Badge from '../../base/badge'
 import Verified from '../base/badges/verified'
@@ -44,7 +44,7 @@ const PluginItem: FC<Props> = ({
   plugin,
 }) => {
   const { t } = useTranslation(['plugin'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const selectedPluginID = usePluginPageContext((v) =>
     v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,
   )
@@ -150,14 +150,14 @@ const PluginItem: FC<Props> = ({
               width={40}
             />
           </div>
-          <div className="ml-3 w-0 grow">
+          <div className="ms-3 w-0 grow">
             <div className="flex h-5 items-center">
               <div id={titleId} className="min-w-0">
                 <Title title={title} />
               </div>
               {verified && (
                 <Verified
-                  className="ml-0.5 size-4"
+                  className="ms-0.5 size-4"
                   text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
                 />
               )}
@@ -169,7 +169,7 @@ const PluginItem: FC<Props> = ({
                       ns: 'plugin',
                       minimalDifyVersion: declarationMeta.minimum_dify_version ?? '0.0.0',
                     })}
-                    className="relative z-20 ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
+                    className="relative z-20 ms-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
@@ -182,7 +182,7 @@ const PluginItem: FC<Props> = ({
                 </Popover>
               )}
               <Badge
-                className="ml-1 shrink-0"
+                className="ms-1 shrink-0"
                 text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
                 hasRedCornerMark={
                   source === PluginSource.marketplace &&
@@ -193,11 +193,11 @@ const PluginItem: FC<Props> = ({
             </div>
             <div className="relative flex h-4 min-w-0 items-center">
               <Description
-                className="min-w-0 flex-1 group-focus-within/plugin-item:pr-20 group-hover/plugin-item:pr-20 [@media(hover:none)]:pr-20"
+                className="min-w-0 flex-1 group-focus-within/plugin-item:pe-20 group-hover/plugin-item:pe-20 [@media(hover:none)]:pe-20"
                 text={descriptionText}
                 descriptionLineRows={1}
               />
-              <div className="pointer-events-none absolute top-1/2 right-0 z-20 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/plugin-item:pointer-events-auto group-focus-within/plugin-item:opacity-100 group-hover/plugin-item:pointer-events-auto group-hover/plugin-item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
+              <div className="pointer-events-none absolute inset-e-0 top-1/2 z-20 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/plugin-item:pointer-events-auto group-focus-within/plugin-item:opacity-100 group-hover/plugin-item:pointer-events-auto group-hover/plugin-item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
                 <Action
                   pluginUniqueIdentifier={plugin_unique_identifier}
                   installationId={installation_id}
@@ -303,7 +303,7 @@ const PluginItem: FC<Props> = ({
       </div>
       {/* BG Effect for Deprecated Plugin */}
       {source === PluginSource.marketplace && marketplace && isDeprecated && (
-        <div className="absolute -right-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
+        <div className="absolute -inset-e-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
   )

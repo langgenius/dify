@@ -10,7 +10,7 @@ from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 
 
 class PluginParameterService:
@@ -37,9 +37,18 @@ class PluginParameterService:
         credential_id: str | None,
         provider_type: Literal["tool", "trigger"],
         parameter_values: Mapping[str, Any] | None = None,
+        *,
+        builders: TriggerSubscriptionBuilderQuery,
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options for a plugin parameter.
+
+        Preconditions: the caller supplies an admitted tenant/user, a tool or trigger
+        provider, and the application-owned builder query. Sibling values, when
+        present, are validated form values.
+        Postconditions: options use credentials scoped to the tenant and provider
+        and the exact plugin package; sibling values reach the daemon unchanged.
+        Missing or foreign trigger capabilities fail before plugin dispatch.
 
         Args:
             tenant_id: The tenant ID.
@@ -62,7 +71,7 @@ class PluginParameterService:
             case "trigger":
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(
+                    subscription = builders.get_subscription_builder(
                         tenant_id=tenant_id,
                         user_id=user_id,
                         provider_id=TriggerProviderID(provider_name),
