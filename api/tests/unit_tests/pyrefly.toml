@@ -264,7 +264,6 @@ project-excludes = [
   "libs/test_schedule_utils.py",
   "libs/test_external_api.py",
   "migrations/versions/test_2025_07_02_2332-1c9ba48be8e4_add_uuidv7_function_in_sql.py",
-  "models/test_model.py",
   "services/agent/test_dsl_service.py",
   "services/agent/test_roster_service.py",
   "../helpers/unit/services/controller_api.py",
