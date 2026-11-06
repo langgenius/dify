@@ -10,7 +10,7 @@ from dify_trace_sdk.events import TraceEvent
 from dify_trace_sdk.provider import TraceProvider
 
 from core.helper.encrypter import obfuscated_token
-from extensions.tracing import ApplicationTracingHooks
+from extensions.tracing import AgentAppTracingContext, ApplicationTracingHooks, WorkflowAgentTracingContext
 from services.app_tracing_config_service import AppTraceSettings
 from services.tracing.adapters import StoredPolicyTraceScopes, WorkspaceTracingSecretCipher
 from services.tracing.collection import AgentTraceSettings
@@ -26,9 +26,7 @@ from services.tracing.registry import EntryPointTraceProviderCatalog
 from services.tracing.scopes import TraceScopes, TracingPolicyQuery
 
 if TYPE_CHECKING:
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 
 AGENT_TRACE_SETTINGS = AgentTraceSettings(
     enabled=True,
@@ -115,21 +113,21 @@ class RecordingTracingHooks(ApplicationTracingHooks):
 
     def __init__(self, tracing: ApplicationTracingContext | None) -> None:
         self.tracing = tracing
-        self.agent_apps: list[AgentAppRuntimeBuildContext] = []
-        self.workflow_agents: list[tuple[WorkflowAgentRuntimeBuildContext, str | None]] = []
+        self.agent_apps: list[AgentAppTracingContext] = []
+        self.workflow_agents: list[tuple[WorkflowAgentTracingContext, str | None]] = []
         self.frozen_runs: list[tuple[str, str, object]] = []
         """(workflow_id, workflow_run_id, conversation_id) of each frozen run."""
         self.terminals: list[tuple[str, str, str]] = []
         """(app_id, message_id, outcome) of each captured Agent app terminal."""
 
     @override
-    def prepare_agent_app(self, context: "AgentAppRuntimeBuildContext") -> ApplicationTracingContext | None:
+    def prepare_agent_app(self, context: AgentAppTracingContext) -> ApplicationTracingContext | None:
         self.agent_apps.append(context)
         return self.tracing
 
     @override
     def prepare_workflow_agent(
-        self, context: "WorkflowAgentRuntimeBuildContext", conversation_id: str | None
+        self, context: WorkflowAgentTracingContext, conversation_id: str | None
     ) -> ApplicationTracingContext | None:
         self.workflow_agents.append((context, conversation_id))
         return self.tracing
