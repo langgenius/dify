@@ -206,6 +206,7 @@ export class CollaborationManager {
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
+  private pageSessionId: string | null = null
   private joinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
@@ -248,7 +249,7 @@ export class CollaborationManager {
     return webSocketClient.getSocket(this.currentAppId)
   }
 
-  private handleJoinAck = (...args: unknown[]): void => {
+  private handleJoinAck = (...args: unknown[]): boolean => {
     const [body, status] = args
     const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
     if (message === 'connected') {
@@ -256,18 +257,19 @@ export class CollaborationManager {
       this.joinFailure = null
       this.eventEmitter.emit('joinFailure', null)
       this.emitGraphReadyState()
-      return
+      return true
     }
     if (isUnauthorizedAck(...args) || status === 403 || body === 403 || message === 'not_entitled')
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
     else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
-    else return
+    else return false
 
     this.joinPending = false
     this.crdtTrusted = false
     this.eventEmitter.emit('joinFailure', this.joinFailure)
     this.emitGraphReadyState()
+    return false
   }
 
   onJoinFailure(callback: (failure: JoinFailure | null) => void): () => void {
@@ -282,10 +284,14 @@ export class CollaborationManager {
     this.joinPending = true
     const attempt = ++this.joinAttempt
     const sid = socket.id
+    this.pageSessionId ??= uuid4()
     emitWithAuthGuard(
       socket,
       'user_connect',
-      { workflow_id: this.currentAppId },
+      {
+        workflow_id: this.currentAppId,
+        resume: { page_id: this.pageSessionId, sequence: attempt },
+      },
       {
         onAck: (...args) => {
           if (
@@ -2057,7 +2063,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; requiresGraphReload?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
@@ -2071,10 +2077,14 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
+        if (this.isLeader && data.requiresGraphReload) this.crdtTrusted = false
 
         if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (data.requiresGraphReload ||
+            this.reconnectedWithFreshDoc ||
+            this.awaitingSnapshotImport ||
+            this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false
