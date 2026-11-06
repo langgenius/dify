@@ -264,7 +264,9 @@ def test_omitted_source_does_not_block_a_visible_unrelated_field_repair(monkeypa
     assert [(intent.args["path"], intent.args["value"]) for intent in intents] == [("title", "Updated parser")]
 
 
-def _diagnosis_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph, outputs: list[NodeOutput], evidence: dict) -> str:
+def _diagnosis_prompt(
+    monkeypatch: pytest.MonkeyPatch, graph: Graph, outputs: list[NodeOutput], evidence: dict[str, object]
+) -> str:
     prompts: list[str] = []
 
     def answer(_model: object, *, user: str, **_kwargs: object) -> dict[str, object]:

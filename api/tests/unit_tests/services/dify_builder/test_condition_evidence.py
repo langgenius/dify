@@ -1312,7 +1312,7 @@ def test_review_r2_unregistered_historical_type_cannot_prove_non_if(
 
 
 def _failed_code_format_fixture(value: object) -> tuple[Graph, list[NodeOutput]]:
-    graph = {"nodes": [{"id": "parser", "data": {"type": "code", "title": "Parser"}}], "edges": []}
+    graph: Graph = {"nodes": [{"id": "parser", "data": {"type": "code", "title": "Parser"}}], "edges": []}
     return graph, [NodeOutput(node_id="parser", status="failed", inputs={"private-input-name": value})]
 
 
@@ -1404,7 +1404,8 @@ def test_code_format_facts_do_not_claim_changed_bindings_or_unknown_run(drift: s
     if drift == "bindings":
         graph["nodes"][0]["data"]["variables"] = [{"variable": "different", "value_selector": ["start", "new"]}]
     elif drift == "current-missing":
-        graph["nodes"] = []
+        empty_nodes: list[dict[str, object]] = []
+        graph["nodes"] = empty_nodes
     elif drift == "current-type":
         graph["nodes"][0]["data"]["type"] = "template-transform"
     else:
