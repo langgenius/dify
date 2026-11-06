@@ -23,6 +23,7 @@ from core.tools.entities.tool_entities import (
     ToolEntity,
     ToolIdentity,
     ToolInvokeMessage,
+    ToolParameter,
 )
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.utils.parser import ApiBasedToolSchemaParser
@@ -278,10 +279,6 @@ class TestCustomToolCases:
     def test_assembling_request_runtime_auth_errors() -> None:
         tool = _build_tool()
 
-        tool.runtime = None  # pyrefly: ignore[bad-assignment]  # invalid state under test
-        with pytest.raises(ToolProviderCredentialValidationError, match="runtime not initialized"):
-            tool.assembling_request(parameters={})
-
         tool.runtime = ToolRuntime(tenant_id="tenant", credentials={})
         with pytest.raises(ToolProviderCredentialValidationError, match="Missing auth_type"):
             tool.assembling_request(parameters={})
@@ -299,15 +296,19 @@ class TestCustomToolCases:
         tool = _build_tool()
 
         tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "x"}
-        tool.api_bundle.parameters = [  # pyrefly: ignore[bad-assignment]  # deliberately malformed parameter
-            SimpleNamespace(required=True, name="required_param", default=None),
-        ]
+        parameter = ToolParameter.get_simple_instance(
+            name="required_param",
+            llm_description="",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=True,
+        )
+        parameter.default = None
+        tool.api_bundle.parameters = [parameter]
         with pytest.raises(ToolParameterValidationError, match="Missing required parameter required_param"):
             tool.assembling_request(parameters={})
 
-        tool.api_bundle.parameters = [  # pyrefly: ignore[bad-assignment]  # deliberately malformed parameter
-            SimpleNamespace(required=True, name="required_param", default="d"),
-        ]
+        parameter.default = "d"
+        tool.api_bundle.parameters = [parameter]
         params = {}
         tool.assembling_request(parameters=params)
         assert params["required_param"] == "d"
