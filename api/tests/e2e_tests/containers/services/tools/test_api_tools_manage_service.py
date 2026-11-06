@@ -897,6 +897,7 @@ class TestApiToolManageService:
 
         with pytest.raises(ValueError, match="invalid schema type"):
             ApiToolManageService.test_api_tool_preview(
+                session=db_session_with_containers,
                 tenant_id=tenant.id,
                 provider_name="provider-a",
                 tool_name="tool-a",

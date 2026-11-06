@@ -1,9 +1,11 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from services.tools import api_tools_manage_service
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -173,7 +175,7 @@ class _Encrypter:
         return {}
 
 
-def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_api_tool_preview_uses_the_session_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
     schema = """
     {
         "openapi": "3.0.0",
@@ -182,14 +184,14 @@ def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeyp
         "paths": {"/thing": {"get": {"operationId": "getThing", "responses": {"200": {"description": "ok"}}}}}
     }
     """
-    provider_lookup = _RecordedSession(scalar_value=None)  # no saved provider: a placeholder is built from the schema
-    controller_session = _RecordedSession()
-    maker = _patch_database(monkeypatch, [provider_lookup, controller_session])
+    session = _RecordedSession(scalar_value=None)  # no saved provider: a placeholder is built from the schema
+    maker = _patch_database(monkeypatch, [])
     _PreviewController.from_db_sessions = []
     monkeypatch.setattr(api_tools_manage_service, "ApiToolProviderController", _PreviewController)
     monkeypatch.setattr(api_tools_manage_service, "create_tool_provider_encrypter", lambda **_: (_Encrypter(), None))
 
     result = ApiToolManageService.test_api_tool_preview(
+        session=cast(Session, session),
         tenant_id="tenant-1",
         provider_name="demo",
         tool_name="getThing",
@@ -200,5 +202,5 @@ def test_api_tool_preview_builds_the_controller_with_an_explicit_session(monkeyp
     )
 
     assert result == {"result": "ok"}
-    assert maker.opened == [provider_lookup, controller_session]
-    assert _PreviewController.from_db_sessions == [controller_session]
+    assert maker.opened == []  # the service opens no session of its own
+    assert _PreviewController.from_db_sessions == [session]
