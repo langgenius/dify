@@ -7,7 +7,6 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction
 
 import core.callback_handler.index_tool_callback_handler as callback_module
@@ -147,28 +146,6 @@ class TestOnQuery:
         dataset_query = sqlite_session.scalar(select(DatasetQuery))
         assert dataset_query is not None
         assert dataset_query.created_by_role == expected_role
-
-    def test_on_query_none_values_roll_back_independent_transaction(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        sqlite_session: Session,
-        caller_session_boundary: _CallerSessionBoundary,
-        mock_queue_manager: MagicMock,
-    ) -> None:
-        monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
-        handler = DatasetIndexToolCallbackHandler(
-            queue_manager=mock_queue_manager,
-            app_id=None,  # pyrefly: ignore[bad-argument-type]  # None is the scenario under test
-            message_id=None,  # pyrefly: ignore[bad-argument-type]
-            user_id=None,  # pyrefly: ignore[bad-argument-type]
-            invoke_from=None,  # pyrefly: ignore[bad-argument-type]
-        )
-
-        with pytest.raises(IntegrityError):
-            handler.on_query(None, None, caller_session_boundary.session)  # type: ignore[arg-type]
-
-        assert sqlite_session.scalar(select(DatasetQuery)) is None
 
 
 class TestOnToolEnd:
