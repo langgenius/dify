@@ -1,12 +1,13 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { toPluginText } from '@/app/components/plugins/install-plugin/utils'
 import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
@@ -14,12 +15,12 @@ import PluginItem from './plugin-item'
 type ErrorPluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
-  language: Locale
+  language: PluginLanguage
   onClear: () => void
 }
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{
@@ -46,7 +47,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         version: info.latest_version,
         latest_version: info.latest_version,
         latest_package_identifier: info.latest_package_identifier,
-        label: plugin.labels,
+        label: toPluginText(plugin.labels),
         brief: {},
         description: {},
         icon: plugin.icon,

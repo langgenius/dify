@@ -1,5 +1,5 @@
 import { RiArrowRightSLine } from '@remixicon/react'
-import { useStore } from '@tanstack/react-form'
+import { useSelector } from '@tanstack/react-form'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { withForm } from '@/app/components/base/form'
@@ -14,8 +14,8 @@ const ShowAllSettings = ({ initialData, handleShowAllSettings }: ShowAllSettings
   withForm({
     defaultValues: initialData,
     render: function Render({ form }) {
-      const { t } = useTranslation()
-      const type = useStore(form.store, (state) => state.values.type)
+      const { t } = useTranslation(['appDebug'])
+      const type = useSelector(form.store, (state) => state.values.type)
 
       const hiddenFieldNames = useHiddenFieldNames(type)
 

@@ -1,14 +1,14 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
 
 type CornerLabelsProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
 }
 
 const CornerLabels = ({ dataset }: CornerLabelsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   if (!dataset.embedding_available) {
     return (

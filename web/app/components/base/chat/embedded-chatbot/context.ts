@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { ChatConfig, ChatItem, Feedback } from '../types'
+import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { Theme } from './theme/theme'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
@@ -23,17 +23,17 @@ export type EmbeddedChatbotContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
+  handleStartChat: (callback?: () => void) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
-  isMobile: boolean
+  isBelowSm: boolean
   isInstalledApp: boolean
   appSourceType: AppSourceType
   allowResetChat: boolean
   appId?: string
   disableFeedback?: boolean
-  handleFeedback: (messageId: string, feedback: Feedback) => void
+  handleFeedback: OnFeedback
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   theme?: Theme
   clearChatList?: boolean
@@ -67,11 +67,11 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleChangeConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,
-  handleFeedback: noop,
+  handleFeedback: () => Promise.resolve(),
   currentChatInstanceRef: { current: { handleStop: noop } },
   clearChatList: false,
   setClearChatList: noop,

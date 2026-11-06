@@ -1,6 +1,6 @@
 import type { CreateAppPayload, PostAppsResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConsoleClient } from './console-client'
-import { assertE2EResourceName, createE2EResourceName } from '../naming'
+import type { ConsoleClient } from './console-client.ts'
+import { assertE2EResourceName, createE2EResourceName } from '../naming.ts'
 
 export async function createTestApp(
   client: ConsoleClient,

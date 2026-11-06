@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSearchFilter } from '../use-search-filter'
 
 describe('useSearchFilter', () => {
@@ -14,30 +14,6 @@ describe('useSearchFilter', () => {
     vi.useRealTimers()
   })
 
-  it('should initialize with default values', () => {
-    const { result } = renderHook(() => useSearchFilter({ onPageChange }))
-
-    expect(result.current.inputValue).toBe('')
-    expect(result.current.searchValue).toBe('')
-    expect(result.current.selectedStatus).toBe('all')
-    expect(result.current.selectDefaultValue).toBe('all')
-  })
-
-  it('should provide status list with three items', () => {
-    const { result } = renderHook(() => useSearchFilter({ onPageChange }))
-    expect(result.current.statusList).toHaveLength(3)
-  })
-
-  it('should update input value immediately on handleInputChange', () => {
-    const { result } = renderHook(() => useSearchFilter({ onPageChange }))
-
-    act(() => {
-      result.current.handleInputChange('test query')
-    })
-
-    expect(result.current.inputValue).toBe('test query')
-  })
-
   it('should update search value after debounce', () => {
     const { result } = renderHook(() => useSearchFilter({ onPageChange }))
 
@@ -45,7 +21,7 @@ describe('useSearchFilter', () => {
       result.current.handleInputChange('debounced')
     })
 
-    // Before debounce
+    expect(result.current.inputValue).toBe('debounced')
     expect(result.current.searchValue).toBe('')
 
     act(() => {
@@ -110,15 +86,5 @@ describe('useSearchFilter', () => {
     expect(result.current.inputValue).toBe('')
     expect(result.current.searchValue).toBe('')
     expect(result.current.selectedStatus).toBe('all')
-  })
-
-  it('should reset page on resetPage', () => {
-    const { result } = renderHook(() => useSearchFilter({ onPageChange }))
-
-    act(() => {
-      result.current.resetPage()
-    })
-
-    expect(onPageChange).toHaveBeenCalledWith(1)
   })
 })

@@ -1,4 +1,4 @@
-import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
+import type { Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
   filterReferenceVars,
@@ -74,7 +74,7 @@ describe('var-reference-vars helpers', () => {
           nodeId: 'node-a',
           vars: [
             { variable: 'valid_name', type: VarType.string },
-            { variable: 'invalid-key', type: VarType.string },
+            { variable: 'invalid_another-key', type: VarType.string },
           ],
         },
         {
@@ -82,7 +82,7 @@ describe('var-reference-vars helpers', () => {
           nodeId: 'node-b',
           vars: [{ variable: 'another_value', type: VarType.string }],
         },
-      ] as NodeOutPutVar[],
+      ],
       'another',
     )
 
@@ -110,7 +110,7 @@ describe('var-reference-vars helpers', () => {
           nodeId: 'node-b',
           vars: [{ variable: 'other_value', type: VarType.string }],
         },
-      ] as NodeOutPutVar[],
+      ],
       'child',
     )
 

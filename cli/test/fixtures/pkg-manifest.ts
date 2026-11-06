@@ -10,11 +10,11 @@ const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
 
 // release-naming.mjs and release-r2-edge.mjs read their data from
 // cli/package.json. Tests spawn them against this fixture instead, so
-// assertions can name exact versions without tracking the live release.
+// assertions can name an exact version/channel without tracking the live release.
 
-// Deliberately far from any real Dify version, and min != max so "inside the
-// window" is a case distinct from either bound.
-export const FIXTURE_COMPAT = { minDify: '2.0.0', maxDify: '2.5.0' }
+export const FIXTURE_VERSION = '7.7.7'
+export const FIXTURE_CHANNEL = 'stable'
+export const FIXTURE_TAG_PREFIX = 'difyctl-v'
 
 export const FIXTURE_TARGET_IDS = [
   'linux-x64',
@@ -25,7 +25,7 @@ export const FIXTURE_TARGET_IDS = [
 ] as const
 
 const FIXTURE_RELEASE = {
-  tagPrefix: 'difyctl-v',
+  tagPrefix: FIXTURE_TAG_PREFIX,
   binName: 'difyctl',
   checksumsSuffix: '-checksums.txt',
   targets: FIXTURE_TARGET_IDS.map((id) => ({
@@ -38,16 +38,14 @@ const FIXTURE_RELEASE = {
 export type PkgManifestOverrides = {
   version?: string
   channel?: string
-  compat?: { minDify: string; maxDify: string }
 }
 
 // Returns the env additions that point a spawned script at the fixture.
 export function pkgManifestEnv(overrides: PkgManifestOverrides = {}): Record<string, string> {
   const manifest = {
-    version: overrides.version ?? '0.2.0-alpha',
+    version: overrides.version ?? FIXTURE_VERSION,
     difyctl: {
-      channel: overrides.channel ?? 'alpha',
-      compat: overrides.compat ?? FIXTURE_COMPAT,
+      channel: overrides.channel ?? FIXTURE_CHANNEL,
       release: FIXTURE_RELEASE,
     },
   }

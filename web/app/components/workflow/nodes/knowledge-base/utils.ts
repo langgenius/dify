@@ -12,20 +12,23 @@ export const isHighQualitySearchMethod = (searchMethod: RetrievalSearchMethodEnu
   )
 }
 
-export enum KnowledgeBaseValidationIssueCode {
-  chunkStructureRequired = 'chunk-structure-required',
-  chunksVariableRequired = 'chunks-variable-required',
-  indexMethodRequired = 'index-method-required',
-  embeddingModelNotConfigured = 'embedding-model-not-configured',
-  embeddingModelConfigureRequired = 'embedding-model-configure-required',
-  embeddingModelApiKeyUnavailable = 'embedding-model-api-key-unavailable',
-  embeddingModelCreditsExhausted = 'embedding-model-credits-exhausted',
-  embeddingModelDisabled = 'embedding-model-disabled',
-  embeddingModelIncompatible = 'embedding-model-incompatible',
-  retrievalSettingRequired = 'retrieval-setting-required',
-  rerankingModelRequired = 'reranking-model-required',
-  rerankingModelInvalid = 'reranking-model-invalid',
-}
+export const KnowledgeBaseValidationIssueCode = {
+  chunkStructureRequired: 'chunk-structure-required',
+  chunksVariableRequired: 'chunks-variable-required',
+  indexMethodRequired: 'index-method-required',
+  embeddingModelNotConfigured: 'embedding-model-not-configured',
+  embeddingModelConfigureRequired: 'embedding-model-configure-required',
+  embeddingModelApiKeyUnavailable: 'embedding-model-api-key-unavailable',
+  embeddingModelCreditsExhausted: 'embedding-model-credits-exhausted',
+  embeddingModelDisabled: 'embedding-model-disabled',
+  embeddingModelIncompatible: 'embedding-model-incompatible',
+  retrievalSettingRequired: 'retrieval-setting-required',
+  rerankingModelRequired: 'reranking-model-required',
+  rerankingModelInvalid: 'reranking-model-invalid',
+} as const
+
+export type KnowledgeBaseValidationIssueCode =
+  (typeof KnowledgeBaseValidationIssueCode)[keyof typeof KnowledgeBaseValidationIssueCode]
 
 type KnowledgeBaseValidationIssue = {
   code: KnowledgeBaseValidationIssueCode
@@ -157,7 +160,7 @@ export const getKnowledgeBaseValidationIssue = (
 
 export const getKnowledgeBaseValidationMessage = (
   issue: KnowledgeBaseValidationIssue | null | undefined,
-  t: TFunction,
+  t: TFunction<['common', 'workflow', 'modelProvider']>,
 ) => {
   if (!issue) return ''
 
@@ -171,15 +174,15 @@ export const getKnowledgeBaseValidationMessage = (
     case KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured:
       return t(($) => $['nodes.knowledgeBase.embeddingModelNotConfigured'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired:
-      return t(($) => $['modelProvider.selector.configureRequired'], { ns: 'common' })
+      return t(($) => $['modelProvider.selector.configureRequired'], { ns: 'modelProvider' })
     case KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable:
-      return t(($) => $['modelProvider.selector.apiKeyUnavailable'], { ns: 'common' })
+      return t(($) => $['modelProvider.selector.apiKeyUnavailable'], { ns: 'modelProvider' })
     case KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted:
-      return t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })
+      return t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'modelProvider' })
     case KnowledgeBaseValidationIssueCode.embeddingModelDisabled:
-      return t(($) => $['modelProvider.selector.disabled'], { ns: 'common' })
+      return t(($) => $['modelProvider.selector.disabled'], { ns: 'modelProvider' })
     case KnowledgeBaseValidationIssueCode.embeddingModelIncompatible:
-      return t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+      return t(($) => $['modelProvider.selector.incompatible'], { ns: 'modelProvider' })
     case KnowledgeBaseValidationIssueCode.retrievalSettingRequired:
       return t(($) => $['nodes.knowledgeBase.retrievalSettingIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.rerankingModelRequired:

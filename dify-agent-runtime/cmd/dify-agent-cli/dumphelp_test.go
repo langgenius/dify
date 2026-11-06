@@ -52,6 +52,8 @@ func TestDumpCLIHelpCoversPromptCommands(t *testing.T) {
 		"config files pull",
 		"config note pull",
 		"config note push",
+		"config prompt pull",
+		"config prompt push",
 		"config env push",
 		"config files push",
 		"config files delete",
@@ -59,6 +61,7 @@ func TestDumpCLIHelpCoversPromptCommands(t *testing.T) {
 		"config skills delete",
 		"file upload",
 		"file download",
+		"file public-url",
 	}
 	for _, key := range wantKeys {
 		if _, ok := table[key]; !ok {

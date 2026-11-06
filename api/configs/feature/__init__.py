@@ -1,6 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import (
     AliasChoices,
@@ -16,6 +17,12 @@ from pydantic import (
 from pydantic_settings import BaseSettings
 
 from .hosted_service import HostedServiceConfig
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_OAUTH_TTL_DAYS: Final = 14
+MIN_OAUTH_TTL_DAYS: Final = 1
+MAX_OAUTH_TTL_DAYS: Final = 365
 
 
 class SecurityConfig(BaseSettings):
@@ -75,6 +82,15 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
+    PASSWORD_PEPPER: str = Field(
+        description="Server-side secret mixed into account password hashes. "
+        "Leave empty to keep the legacy unpeppered hashing. "
+        "Use a high-entropy random value, e.g. `openssl rand -base64 32`. "
+        "WARNING: setting, changing, or removing this value changes every password hash, "
+        "so existing passwords will no longer verify. Do not change it casually.",
+        default="",
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """
@@ -83,7 +99,7 @@ class AppExecutionConfig(BaseSettings):
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum allowed execution time for the application in seconds",
-        default=1200,
+        default=3600,
     )
     APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Default number of concurrent active requests per app (0 for unlimited)",
@@ -409,6 +425,36 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    BILLING_API_URL: str = Field(
+        description="Internal billing and SaaS API base URL, including the API version path; Cloud edition only. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_API_SECRET_KEY: str = Field(
+        description="Shared secret sent to the billing and SaaS APIs. Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_QUOTA_API_URL: str = Field(
+        description="Optional billing API base URL for quota requests; falls back to BILLING_API_URL. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    NETWORK_ACCESS_API_URL: str = Field(
+        description="Optional internal SaaS API base URL for network access policy requests; "
+        "falls back to BILLING_API_URL",
+        default="",
+    )
+
+    NETWORK_ACCESS_TRUSTED_PROXY_CIDRS: str = Field(
+        description="Comma-separated trusted proxy CIDRs for network-access current-IP previews. "
+        "Only verified socket peers may supply X-Forwarded-For; empty disables Cloud IP previews. "
+        "Match the Gateway trust boundary and sanitize or append the client IP at the edge.",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """
@@ -450,6 +496,11 @@ class FileUploadConfig(BaseSettings):
         default=15,
     )
 
+    KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN: NonNegativeInt = Field(
+        description="Maximum allowed file size for knowledge uploads on paid cloud plans in megabytes",
+        default=15,
+    )
+
     UPLOAD_FILE_BATCH_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a single upload batch",
         default=5,
@@ -473,6 +524,41 @@ class FileUploadConfig(BaseSettings):
     UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="Maximum allowed Skill package size for uploads in megabytes",
         default=50,
+    )
+
+    SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES: PositiveInt = Field(
+        description="Maximum total uncompressed size of a Skill package in bytes",
+        default=200 * 1024 * 1024,
+    )
+
+    SKILL_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in a Skill package",
+        default=5000,
+    )
+
+    SKILL_PACKAGE_MAX_SKILL_MD_BYTES: PositiveInt = Field(
+        description="Maximum allowed SKILL.md size in bytes",
+        default=1 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_BYTES: PositiveInt = Field(
+        description="Maximum allowed Agent package size in bytes",
+        default=512 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_MANIFEST_BYTES: PositiveInt = Field(
+        description="Maximum allowed size of each Agent package YAML document in bytes",
+        default=5 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in an Agent package",
+        default=5000,
+    )
+
+    APP_PACKAGE_MAX_WORKFLOW_TOOLS: PositiveInt = Field(
+        description="Maximum number of Workflow Tool workflows bundled into one App package",
+        default=20,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
@@ -586,6 +672,16 @@ class HttpConfig(BaseSettings):
     @computed_field
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
+
+    WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
+        description=(
+            "Maximum Socket.IO / Engine.IO HTTP buffer size in bytes. "
+            "Large workflow collaboration payloads (sync_request graph snapshots) "
+            "exceed the Engine.IO default of 1 MiB and get rejected, which "
+            "disconnects the editor WebSocket. Default is 10 MiB."
+        ),
+        default=10 * 1024 * 1024,
+    )
 
     inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
         description="",
@@ -719,7 +815,8 @@ class HttpConfig(BaseSettings):
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
-        " when the app is behind a single trusted reverse proxy.",
+        " when the app is behind a single trusted reverse proxy. Restrict API access to trusted callers"
+        " and have the proxy overwrite X-Forwarded-For with the verified client IP.",
         default=False,
     )
 
@@ -805,17 +902,6 @@ class ModelLoadBalanceConfig(BaseSettings):
     )
 
 
-class BillingConfig(BaseSettings):
-    """
-    Configuration for platform billing features
-    """
-
-    BILLING_ENABLED: bool = Field(
-        description="Enable or disable billing functionality",
-        default=False,
-    )
-
-
 class UpdateConfig(BaseSettings):
     """
     Configuration for application update checks
@@ -895,7 +981,7 @@ class WorkflowConfig(BaseSettings):
 
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
-        default=1200,
+        default=3600,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
@@ -913,26 +999,10 @@ class WorkflowConfig(BaseSettings):
         default=400_000,
     )
 
-    # GraphEngine Worker Pool Configuration
-    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
-        description="Minimum number of workers per GraphEngine instance",
-        default=3,
-    )
-
+    # Engine Worker Pool Configuration
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
-        description="Maximum number of workers per GraphEngine instance",
+        description="Number of workers per Engine instance",
         default=10,
-    )
-
-    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
-        description="Queue depth threshold that triggers worker scale up",
-        default=3,
-    )
-
-    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
-        description="Seconds of idle time before scaling down workers",
-        default=5.0,
-        ge=0.1,
     )
 
 
@@ -1054,6 +1124,35 @@ class AuthConfig(BaseSettings):
         description="Enable OAuth bearer authentication (device-flow + Service API /v1/* bearer middleware).",
         default=True,
     )
+
+    OAUTH_TTL_DAYS: int = Field(
+        description="Lifetime in days of the OAuth bearer tokens the device flow issues (difyctl login). "
+        f"Values outside {MIN_OAUTH_TTL_DAYS}-{MAX_OAUTH_TTL_DAYS} are clamped; a non-integer falls back "
+        "to the default.",
+        ge=MIN_OAUTH_TTL_DAYS,
+        le=MAX_OAUTH_TTL_DAYS,
+        default=DEFAULT_OAUTH_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_ttl_days(cls, v: object) -> int:
+        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+        try:
+            value = int(str(v))
+        except ValueError:
+            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
+            return DEFAULT_OAUTH_TTL_DAYS
+        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
+        if clamped != value:
+            logger.warning(
+                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
+                value,
+                MIN_OAUTH_TTL_DAYS,
+                MAX_OAUTH_TTL_DAYS,
+                clamped,
+            )
+        return clamped
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
@@ -1296,6 +1395,13 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class SkillConfig(BaseSettings):
+    ENABLE_SKILL: bool = Field(
+        description="Enable or disable Skill feature entry points",
+        default=True,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1331,14 +1437,39 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
-    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
-        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=60,
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace_v2",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Celery queue for tracing and sandbox metering; isolate new workers during rolling upgrades.",
+    )
+    OPS_AGENT_TRACE_ENABLED: bool = Field(
+        default=False, description="Enable application-scoped Agent tracing collection and delivery."
+    )
+    OPS_AGENT_TRACE_MAX_SPANS: PositiveInt = Field(
+        default=4096, description="Maximum runtime spans per application trace."
+    )
+    OPS_AGENT_TRACE_MAX_BYTES: PositiveInt = Field(
+        default=16777216, description="Maximum runtime payload bytes per application trace."
+    )
+    OPS_AGENT_TRACE_BATCH_MAX_BYTES: PositiveInt = Field(
+        default=2097152, description="Maximum inner tracing request body bytes."
+    )
+    OPS_AGENT_TRACE_COLLECTION_TIMEOUT: PositiveInt = Field(
+        default=180, description="Seconds after terminal execution to wait for final Agent batches."
+    )
+    OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS: PositiveInt = Field(
+        default=120, description="Export lease before unconfirmed delivery becomes uncertain."
+    )
+    OPS_AGENT_TRACE_MAX_ATTEMPTS: PositiveInt = Field(
+        default=8, description="Attempts for known retryable trace export failures."
+    )
+    OPS_AGENT_TRACE_RETENTION_DAYS: PositiveInt = Field(
+        default=7, description="Retention of trace payloads and encrypted destination snapshots."
     )
 
-    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
-        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
-        default=5,
+    OPS_TRACE_EXPORT_MAX_ATTEMPTS: PositiveInt = Field(
+        default=6,
+        description="Attempts to send one trace to its provider when the provider is temporarily unavailable.",
     )
 
 
@@ -1350,6 +1481,26 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
+        description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
+        default=True,
+    )
+    ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
+        description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
+    ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
+        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        default=True,
+    )
+    CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
+        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        default=5,
+    )
+    CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        default=100,
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,
@@ -1532,6 +1683,10 @@ class LoginConfig(BaseSettings):
         description="expiry time in minutes for email code login token",
         default=5,
     )
+    EMAIL_CODE_LOGIN_MAX_ATTEMPTS: PositiveInt = Field(
+        description="maximum number of verification attempts for an email code login challenge",
+        default=5,
+    )
     ALLOW_REGISTER: bool = Field(
         description="whether to enable register",
         default=False,
@@ -1554,7 +1709,7 @@ class AccountConfig(BaseSettings):
     )
 
     EDUCATION_ENABLED: bool = Field(
-        description="whether to enable education identity",
+        description="whether to enable education identity (CLOUD deployments only)",
         default=False,
     )
 
@@ -1616,7 +1771,6 @@ class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
-    BillingConfig,
     CodeExecutionSandboxConfig,
     CreatorsPlatformConfig,
     TriggerConfig,
@@ -1642,6 +1796,7 @@ class FeatureConfig(
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
+    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,

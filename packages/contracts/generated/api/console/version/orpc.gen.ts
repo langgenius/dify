@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetVersionQuery, zGetVersionResponse } from './zod.gen'
+import { zGetVersionQuery, zGetVersionResponse } from './zod.gen.ts'
 
 /**
  * Check for application version updates.

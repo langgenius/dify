@@ -7,26 +7,30 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { InheritedTracingSummary } from '@/app/components/app/tracing/inherited-tracing-summary'
 import {
   createAgentOutputConfig,
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
-import { consoleQuery } from '@/service/client'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
   WorkflowInlineAgentConfigureWorkspace,
   WorkflowRosterAgentOrchestratePanelContent,
 } from './components/agent-orchestrate-panel-content'
+import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
@@ -38,7 +42,12 @@ import {
   useCreateInlineAgentBinding,
   useWorkflowInlineAgentDetail,
 } from './hooks'
-import { getAgentV2DeclaredOutputs } from './output-variables'
+import {
+  AGENT_V2_RESERVED_OUTPUT_NAMES,
+  getAgentV2CustomDeclaredOutputs,
+  getAgentV2DeclaredOutputs,
+  normalizeAgentV2DeclaredOutputs,
+} from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
 
 function FloatingOutputEditor({
@@ -72,7 +81,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-50 w-100"
+      className="fixed w-100"
       style={{
         left: position.left,
         top: position.top,
@@ -82,6 +91,7 @@ function FloatingOutputEditor({
         key={`${editOutputRequestKey ?? 0}-${output.name}`}
         editingIndex={isExistingOutput ? outputIndex : undefined}
         existingOutputs={outputs}
+        reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
         state={{
           ...(isExistingOutput ? { outputIndex } : {}),
           draft: createDraft(output),
@@ -110,10 +120,10 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
-  const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
+  const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] =
     useState(false)
@@ -125,16 +135,22 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
     requestKey: number
   } | null>(null)
   const [isOutputVariablesCollapsed, setIsOutputVariablesCollapsed] = useState(true)
-  const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
   )
-  const declaredOutputs = localDeclaredOutputs ?? getAgentV2DeclaredOutputs(inputs)
+  const declaredOutputs = useMemo(
+    () =>
+      normalizeAgentV2DeclaredOutputs(
+        localDeclaredOutputs ?? inputs.agent_declared_outputs ?? [],
+        inputs.agent_output_routes,
+      ),
+    [localDeclaredOutputs, inputs.agent_declared_outputs, inputs.agent_output_routes],
+  )
   const rosterAgentId =
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id
@@ -176,7 +192,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isAgentBindingPending =
     isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
-  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
+  const inlineAgentResource =
+    resource.kind === 'app' || resource.kind === 'snippet' ? resource : null
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!inlineAgentResource
   const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent =
     rosterAgentQuery.data ??
@@ -185,16 +203,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           id: inlineAgentId ?? id,
           name:
             inlineAgent?.name ||
-            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }),
+            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflowAgent' }),
           description: inlineAgent?.description,
-          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }),
+          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' }),
         }
       : undefined)
 
   useEffect(() => {
     inputsRef.current = inputs
     promptOutputNamesRef.current = extractAgentOutputNames(inputs.agent_task || '')
-  }, [inputs])
+  }, [inputs, promptOutputNamesRef])
 
   useEffect(() => {
     if (!inputs._openInlineAgentPanel || !isInlineAgentReady) return
@@ -226,8 +244,15 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       const newInputs = produce(inputsRef.current, (draft) => {
         draft.agent_task = value
         if (removedPromptOutputNames.length) {
-          const currentDeclaredOutputs = getAgentV2DeclaredOutputs(draft)
-          if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+          const currentDeclaredOutputs = getAgentV2CustomDeclaredOutputs(
+            draft.agent_declared_outputs ?? [],
+          )
+          if (
+            removedPromptOutputNames.length === 1 &&
+            addedPromptOutputNames.length === 1 &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+          ) {
             const oldName = removedPromptOutputNames[0]!
             const nextName = addedPromptOutputNames[0]!
             draft.agent_declared_outputs = currentDeclaredOutputs.map((output) =>
@@ -244,10 +269,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       inputsRef.current = newInputs
       promptOutputNamesRef.current = currentPromptOutputNames
       if (removedPromptOutputNames.length)
-        setLocalDeclaredOutputs(newInputs.agent_declared_outputs ?? [])
+        setLocalDeclaredOutputs(getAgentV2DeclaredOutputs(newInputs))
       setInputs(newInputs)
     },
-    [setInputs],
+    [setInputs, promptOutputNamesRef],
   )
 
   const handleRosterChange = useCallback(
@@ -314,7 +339,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   )
 
   const handleMakeRosterCopy = useCallback(() => {
-    if (!configsMap?.flowId || !rosterAgentId || isCopyingFromRoster) return
+    if (!rosterAgentId || isCopyingFromRoster) return
 
     const body = {
       source_agent_id: rosterAgentId,
@@ -323,11 +348,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       onSuccess: handleRosterCopySuccess,
     }
 
-    if (configsMap.flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       copyFromRosterSnippet(
         {
           params: {
-            snippet_id: configsMap.flowId,
+            snippet_id: resource.snippetId,
             node_id: id,
           },
           body,
@@ -337,11 +362,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       return
     }
 
-    if (configsMap.flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       copyFromRosterApp(
         {
           params: {
-            app_id: configsMap.flowId,
+            app_id: resource.appId,
             node_id: id,
           },
           body,
@@ -350,8 +375,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )
     }
   }, [
-    configsMap?.flowId,
-    configsMap?.flowType,
+    resource,
     copyFromRosterApp,
     copyFromRosterSnippet,
     handleRosterCopySuccess,
@@ -361,14 +385,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   ])
 
   const handleSaveInlineToRosterOpen = useCallback(() => {
-    setSaveToRosterSessionKey((key) => key + 1)
     setIsSaveToRosterDialogOpen(true)
   }, [])
 
   const handleInlineSavedToRoster = useCallback(
-    (binding: AgentComposerBindingResponse) => {
-      if (binding.binding_type !== 'roster_agent' || !binding.agent_id) return
-
+    (agentId: string) => {
       setOpenInlineAgentPanelNodeId(undefined)
       setIsInlineAgentPanelOpenedFromTrigger(false)
       setIsRosterAgentPanelOpen(true)
@@ -378,7 +399,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         delete draft._openInlineAgentPanel
         draft.agent_binding = {
           binding_type: 'roster_agent',
-          agent_id: binding.agent_id!,
+          agent_id: agentId,
         }
       })
       inputsRef.current = newInputs
@@ -525,7 +546,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setIsOutputVariablesCollapsed(false)
       const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
       let nextAgentTask = agentTask
-      let nextOutputs = outputs
+      let nextOutputs = normalizeAgentV2DeclaredOutputs(
+        outputs,
+        inputsRef.current.agent_output_routes,
+      )
       if (agentTask !== undefined) {
         const nextPromptOutputNames = extractAgentOutputNames(agentTask)
         const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(
@@ -535,11 +559,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           (name) => !promptOutputNamesRef.current.has(name),
         )
 
-        if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+        if (
+          removedPromptOutputNames.length === 1 &&
+          addedPromptOutputNames.length === 1 &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+        ) {
           const oldName = removedPromptOutputNames[0]!
           const nextName = addedPromptOutputNames[0]!
           const oldOutputIndex = previousOutputs.findIndex((output) => output.name === oldName)
-          const nextOutput = outputs.find((output) => output.name === nextName)
+          const nextOutput = nextOutputs.find((output) => output.name === nextName)
           if (oldOutputIndex >= 0 && nextOutput) {
             nextOutputs = previousOutputs.map((output, index) =>
               index === oldOutputIndex ? nextOutput : output,
@@ -547,11 +576,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           }
         }
       }
-      if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
+      if (nextAgentTask === undefined && previousOutputs.length === nextOutputs.length) {
         const renamedOutputs = previousOutputs
           .map((previousOutput, index) => ({
             oldName: previousOutput.name,
-            nextName: outputs[index]?.name,
+            nextName: nextOutputs[index]?.name,
           }))
           .filter(({ oldName, nextName }) => nextName && oldName !== nextName)
 
@@ -563,8 +592,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         }
       }
 
+      const customOutputs = getAgentV2CustomDeclaredOutputs(nextOutputs)
       const newInputs = produce(inputsRef.current, (draft) => {
-        draft.agent_declared_outputs = nextOutputs
+        draft.agent_declared_outputs = customOutputs
         if (nextAgentTask !== undefined) draft.agent_task = nextAgentTask
       })
       inputsRef.current = newInputs
@@ -582,7 +612,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         },
       )
     },
-    [handleNodeDataUpdateWithSyncDraft, id],
+    [handleNodeDataUpdateWithSyncDraft, id, promptOutputNamesRef],
   )
 
   const handleEditTaskOutput = useCallback(
@@ -618,7 +648,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         onCancel={() => setEditingOutputFromTask(null)}
         onChange={handleDeclaredOutputsChange}
       />
-      <div className="border-b border-divider-subtle">
+      {inlineAgentResource && inlineAgent && (
+        <SaveInlineAgentToRosterDialog
+          resource={inlineAgentResource}
+          initialAgent={inlineAgent}
+          nodeId={id}
+          open={isSaveToRosterDialogOpen}
+          onOpenChange={setIsSaveToRosterDialogOpen}
+          onSaved={handleInlineSavedToRoster}
+        />
+      )}
+      <div className="divide-y divide-divider-subtle">
         <AgentRosterField
           agent={
             isInlineAgentWaitingForCreation || isInlineAgentLoadError ? undefined : displayedAgent
@@ -627,7 +667,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           canOpenPanel={!isInlineAgentWaitingForCreation}
           errorMessage={
             isInlineAgentLoadError
-              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentV2' })
+              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
               : undefined
           }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
@@ -641,11 +681,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
               isInlineAgentReady || isInlineAgentPending ? (
                 <WorkflowInlineAgentConfigureWorkspace
                   agentId={inlineAgentId ?? undefined}
-                  flowId={configsMap?.flowId}
-                  flowType={configsMap?.flowType}
+                  resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
                   nodeId={id}
-                  onClose={() => handleAgentPanelOpenChange(false)}
                   onSaved={handleInlineAgentSaved}
                   onSaveInlineToRoster={
                     canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined
@@ -675,24 +713,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        <SaveInlineAgentToRosterDialog
-          key={saveToRosterSessionKey}
-          flowId={configsMap?.flowId}
-          flowType={configsMap?.flowType}
-          formKey={saveToRosterSessionKey}
-          initialAgent={inlineAgent}
-          nodeId={id}
-          open={isSaveToRosterDialogOpen}
-          onOpenChange={setIsSaveToRosterDialogOpen}
-          onSaved={handleInlineSavedToRoster}
-        />
-      </div>
-      <div
-        aria-disabled={isInlineAgentPending}
-        inert={isInlineAgentPending ? true : undefined}
-        className={isInlineAgentPending ? 'pointer-events-none' : undefined}
-      >
-        <div className="border-b border-divider-subtle">
+        <div
+          aria-disabled={isInlineAgentPending}
+          inert={isInlineAgentPending ? true : undefined}
+          className={cn(
+            'divide-y divide-divider-subtle',
+            isInlineAgentPending && 'pointer-events-none',
+          )}
+        >
           <AgentTaskField
             id={id}
             data={inputs}
@@ -701,8 +729,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
-        </div>
-        <div>
+          <AgentOutputRoutes id={id} data={inputs} />
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}
             outputs={declaredOutputs}
@@ -710,6 +737,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onChange={handleDeclaredOutputsChange}
           />
         </div>
+        {resource.kind === 'app' && (
+          <InheritedTracingSummary
+            resource={{ kind: 'app', appId: resource.appId, mode: resource.mode }}
+          />
+        )}
       </div>
     </div>
   )

@@ -73,7 +73,7 @@ function isDocsProduct(segment: string): segment is DocsProduct {
 /**
  * Convert summary to URL slug
  * e.g., "Get Knowledge Base List" -> "get-knowledge-base-list"
- * e.g., "获取知识库列表" -> "获取知识库列表"
+ * Non-Latin summaries without spaces are preserved.
  */
 function summaryToSlug(summary: string): string {
   return summary.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -367,13 +367,29 @@ function generateTypeDefinitions(
 
   // Generate product availability map for productless runtime links.
   lines.push('// Product availability for productless docs paths')
-  lines.push('export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {')
+  lines.push('export const docPathProductAvailability = {')
   for (const path of Object.keys(productAvailability).sort()) {
     const products = [...productAvailability[path]!].sort(
       (a, b) => DOCS_PRODUCTS.indexOf(a) - DOCS_PRODUCTS.indexOf(b),
     )
     lines.push(`  '${path}': [${products.map((product) => `'${product}'`).join(', ')}],`)
   }
+  lines.push('} as const satisfies Record<string, readonly DocsProduct[]>')
+  lines.push('')
+  lines.push('export type ProductlessDocPath = keyof typeof docPathProductAvailability')
+  lines.push('export type ProductlessDocPathWithAnchor =')
+  lines.push('  | ProductlessDocPath')
+  // oxlint-disable-next-line no-template-curly-in-string
+  lines.push('  | `${ProductlessDocPath}#${string}`')
+  lines.push('')
+  lines.push('export const isProductlessDocPath = (path: string): path is ProductlessDocPath =>')
+  lines.push('  Object.hasOwn(docPathProductAvailability, path)')
+  lines.push('')
+  lines.push(
+    'export const isProductlessDocPathWithAnchor = (path: string): path is ProductlessDocPathWithAnchor => {',
+  )
+  lines.push("  const pathname = path.split('#', 1)[0]")
+  lines.push('  return Boolean(pathname && isProductlessDocPath(pathname))')
   lines.push('}')
   lines.push('')
 

@@ -1,9 +1,9 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type { ModelConfig } from '../../../types'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -27,10 +27,11 @@ type Props = Readonly<{
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
+  preserveRetrievalMode?: boolean
   modal?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
-  selectedDatasets: DataSet[]
+  selectedDatasets: DatasetDetailWithPartialMembersResponse[]
 }>
 
 const RetrievalConfig: FC<Props> = ({
@@ -41,12 +42,13 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  preserveRetrievalMode,
   modal,
   rerankModalOpen,
   onRerankModelOpenChange,
   selectedDatasets,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { retrieval_mode, multiple_retrieval_config } = payload
 
   const handleOpen = useCallback(
@@ -130,16 +132,16 @@ const RetrievalConfig: FC<Props> = ({
             disabled={readonly}
             className="data-popup-open:bg-components-button-ghost-bg-hover"
           >
-            <RiEqualizer2Line className="mr-1 size-3.5" />
+            <RiEqualizer2Line className="size-3.5" />
             {t(($) => $.retrievalSettings, { ns: 'dataset' })}
           </Button>
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={0}
         alignOffset={-2}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-101 rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent
@@ -147,6 +149,7 @@ const RetrievalConfig: FC<Props> = ({
             onChange={handleChange}
             selectedDatasets={selectedDatasets}
             isInWorkflow
+            preserveRetrievalMode={preserveRetrievalMode}
             singleRetrievalModelConfig={singleRetrievalModelConfig}
             onSingleRetrievalModelChange={onSingleRetrievalModelChange}
             onSingleRetrievalModelParamsChange={onSingleRetrievalModelParamsChange}

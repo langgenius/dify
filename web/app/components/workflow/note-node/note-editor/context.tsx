@@ -1,5 +1,6 @@
 'use client'
 
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { LinkNode } from '@lexical/link'
 import { ListItemNode, ListNode } from '@lexical/list'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -65,9 +66,7 @@ type NoteEditorContextProviderProps = {
 }
 export const NoteEditorContextProvider = memo(
   ({ value, children, editable = true }: NoteEditorContextProviderProps) => {
-    const storeRef = useRef<NoteEditorStore | undefined>(undefined)
-
-    if (!storeRef.current) storeRef.current = createNoteEditorStore()
+    const storeRef = useRefWithInit(createNoteEditorStore)
 
     let initialValue = null
     try {

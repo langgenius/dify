@@ -21,7 +21,7 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
-  onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
+  onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void | Promise<void>
   onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
@@ -43,7 +43,6 @@ export type ModalContextState = {
   hasBlockingModalOpen: boolean
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
-  setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
   setShowExternalKnowledgeAPIModal: Dispatch<
@@ -65,7 +64,6 @@ export const ModalContext = createContext<ModalContextState>({
   hasBlockingModalOpen: false,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
-  setShowPricingModal: noop,
   setShowAnnotationFullModal: noop,
   setShowModelModal: noop,
   setShowExternalKnowledgeAPIModal: noop,

@@ -2,10 +2,10 @@ import logging
 from pathlib import Path
 from typing import Any, override
 
+from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
-from enums.deployment_edition import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -92,6 +92,13 @@ class DifyConfig(
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
 
+    @model_validator(mode="after")
+    def validate_knowledge_fs_production_origin(self) -> "DifyConfig":
+        if self.DEPLOY_ENV.strip().upper() == "PRODUCTION":
+            if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
+                raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
+        return self
+
     @classmethod
     @override
     def settings_customise_sources(
@@ -117,11 +124,3 @@ class DifyConfig(
                 ),
             ),
         )
-
-    @property
-    def DEPLOYMENT_EDITION(self) -> DeploymentEdition:
-        if self.EDITION == "CLOUD":
-            return DeploymentEdition.CLOUD
-        if self.ENTERPRISE_ENABLED:
-            return DeploymentEdition.ENTERPRISE
-        return DeploymentEdition.COMMUNITY

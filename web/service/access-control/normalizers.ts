@@ -3,11 +3,9 @@ import type {
   AccessPolicyResourceType,
   AccessPolicyWithBindings,
   GetAppAccessPolicyByAppIdResponse,
-  GetAppUserAccessSettingsResponse,
   GetDatasetAccessPolicyByDatasetIdResponse,
-  GetDatasetUserAccessSettingsResponse,
-  ResourceOpenScope,
   ResourceUserAccessSetting,
+  ResourceUserAccessSettingsResponse,
   Role,
 } from '@/models/access-control'
 
@@ -25,8 +23,6 @@ type GeneratedDatasetAccessMatrix =
 type GeneratedRbacRole = import('@dify/contracts/api/console/workspaces/types.gen').RbacRole
 type GeneratedRbacRoleAccount =
   import('@dify/contracts/api/console/workspaces/types.gen').RbacRoleAccount
-type GeneratedResourceOpenScope =
-  import('@dify/contracts/api/console/workspaces/types.gen').RbacResourceWhitelistScope
 type GeneratedResourceUserAccessPoliciesResponse =
   import('@dify/contracts/api/console/workspaces/types.gen').ResourceUserAccessPoliciesResponse
 type GeneratedResourceUserAccessPolicies = NonNullable<
@@ -46,7 +42,7 @@ const normalizeRoleType = (type?: string): Role['type'] => {
 }
 
 const normalizeRoleTag = (roleTag?: string): Role['role_tag'] => {
-  if (roleTag === 'owner') return 'owner'
+  if (roleTag === 'owner' || roleTag === 'admin') return roleTag
 
   return ''
 }
@@ -112,17 +108,6 @@ const isAccessPolicyWithBindings = (
   return item !== null
 }
 
-const normalizeResourceOpenScope = (scope: GeneratedResourceOpenScope): ResourceOpenScope => {
-  switch (scope) {
-    case 'all':
-      return 'all'
-    case 'only_me':
-      return 'only_me'
-    case 'specific':
-      return 'specific'
-  }
-}
-
 const normalizeAccount = (
   account: GeneratedRbacRoleAccount,
 ): ResourceUserAccessSetting['account'] => ({
@@ -139,6 +124,7 @@ const normalizeRole = (role: GeneratedRbacRole): ResourceUserAccessSetting['role
   name: role.name,
   is_builtin: role.is_builtin ?? false,
   permission_keys: role.permission_keys ?? [],
+  role_tag: normalizeRoleTag(role.role_tag),
 })
 
 const normalizeResourceUserAccessSetting = (
@@ -155,11 +141,16 @@ const normalizeResourceUserAccessSetting = (
 const normalizeResourceUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
   fallbackResourceType: AccessPolicyResourceType,
-): GetAppUserAccessSettingsResponse | GetDatasetUserAccessSettingsResponse => ({
+): ResourceUserAccessSettingsResponse | ResourceUserAccessSettingsResponse => ({
   data: (response.data ?? []).map((setting) =>
     normalizeResourceUserAccessSetting(setting, fallbackResourceType),
   ),
-  scope: normalizeResourceOpenScope(response.scope),
+  pagination: {
+    total_count: response.pagination?.total_count ?? response.data?.length ?? 0,
+    per_page: response.pagination?.per_page ?? response.data?.length ?? 0,
+    current_page: response.pagination?.current_page ?? 1,
+    total_pages: response.pagination?.total_pages ?? (response.data?.length ? 1 : 0),
+  },
 })
 
 export const normalizeAppAccessMatrix = (
@@ -182,12 +173,12 @@ export const normalizeDatasetAccessMatrix = (
 
 export const normalizeAppUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
-): GetAppUserAccessSettingsResponse => {
+): ResourceUserAccessSettingsResponse => {
   return normalizeResourceUserAccessPolicies(response, 'app')
 }
 
 export const normalizeDatasetUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
-): GetDatasetUserAccessSettingsResponse => {
+): ResourceUserAccessSettingsResponse => {
   return normalizeResourceUserAccessPolicies(response, 'dataset')
 }

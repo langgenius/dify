@@ -1,105 +1,92 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AppModeEnum } from '@/types/app'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()
 const mockToastError = vi.fn()
 
-let mockDefaultModel: {
-  model: string
-  provider: {
-    provider: string
-  }
-} | null = null
-
 let mockInstructionTemplate: { data: string } | undefined
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: mockDefaultModel,
-  }),
-}))
-
-vi.mock('@/service/use-apps', () => ({
-  useGenerateRuleTemplate: () => ({
-    data: mockInstructionTemplate,
-  }),
-}))
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: ['gpt-4.1-mini', 'gpt-4o-mini'].map((model) =>
+        createCatalogModelFixture({
+          model,
+          label: { en_US: model },
+          model_properties: { mode: 'chat' },
+        }),
+      ),
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: createDefaultModelFixture({ model: 'gpt-4.1-mini' }) },
+  )
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    {
+      initialData: {
+        data: [
+          {
+            name: 'temperature',
+            label: { en_US: 'Temperature' },
+            type: 'float',
+            default: 0.7,
+            min: 0,
+            max: 2,
+          },
+        ],
+      },
+    },
+  )
+  queryClient.setQueryData(
+    consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: 'code' } },
+    }).queryKey,
+    mockInstructionTemplate ?? { data: '' },
+  )
+  return renderWorkflowFlowComponent(
+    <EventEmitterContextProvider>{ui}</EventEmitterContextProvider>,
+    {
+      queryClient,
+    },
+  )
+})
+const instruction = () => screen.getByRole('textbox', { name: /instruction/ })
 
 vi.mock('@/service/debug', () => ({
   generateRule: (...args: unknown[]) => mockGenerateRule(...args),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({
-      setModel,
-      onCompletionParamsChange,
-    }: {
-      setModel: (value: {
-        modelId: string
-        provider: string
-        mode?: string
-        features?: string[]
-      }) => void
-      onCompletionParamsChange: (value: Record<string, unknown>) => void
-    }) => (
-      <div>
-        <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
-        >
-          change-model
-        </button>
-        <button onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
-          change-params
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('../../automatic/instruction-editor-in-workflow', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="workflow-editor">{value}</div>
-      <button onClick={() => onChange('code instruction')}>set-code-instruction</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../automatic/idea-output', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="idea-output">{value}</div>
-      <button onClick={() => onChange('code output')}>set-code-output</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../automatic/res-placeholder', () => ({
-  default: () => <div>code-result-placeholder</div>,
-}))
-
-vi.mock('../../automatic/result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; code?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="code-result-panel">
-      <div>{current.modified || current.code}</div>
-      <button onClick={onApply}>apply-code-result</button>
-    </div>
-  ),
 }))
 
 describe('GetCodeGeneratorResModal', () => {
@@ -107,19 +94,14 @@ describe('GetCodeGeneratorResModal', () => {
   const mockOnFinished = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     localStorage.clear()
     sessionStorage.clear()
-    mockDefaultModel = {
-      model: 'gpt-4.1-mini',
-      provider: {
-        provider: 'openai',
-      },
-    }
     mockInstructionTemplate = undefined
   })
 
   it('should initialize from template suggestions and persist model updates', async () => {
+    const user = userEvent.setup()
     mockInstructionTemplate = { data: 'code template' }
 
     render(
@@ -127,7 +109,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -136,23 +118,34 @@ describe('GetCodeGeneratorResModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('code template')
+      expect(instruction()).toHaveTextContent('code template')
     })
 
-    fireEvent.click(screen.getByText('change-model'))
+    await user.click(screen.getByRole('button', { name: /^gpt-4.1-mini/ }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^gpt-4o-mini/ }),
+    )
     expect(localStorage.getItem('auto-gen-model')).toContain('"name":"gpt-4o-mini"')
 
-    fireEvent.click(screen.getByText('change-params'))
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    await user.clear(screen.getByRole('spinbutton', { name: 'Temperature' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Temperature' }), '0.2')
+    await user.tab()
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.2')
   })
 
-  it('should block generation when instruction is empty', () => {
+  it('should preserve an intentionally cleared template instruction', async () => {
+    const user = userEvent.setup()
+    mockInstructionTemplate = { data: 'code template' }
+
     render(
       <GetCodeGeneratorResModal
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -160,16 +153,21 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await waitFor(() => {
+      expect(instruction()).toHaveTextContent('code template')
+    })
+    await replacePromptEditorText(instruction(), '')
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
+    expect(instruction().textContent).toBe('')
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
     )
     expect(mockGenerateRule).not.toHaveBeenCalled()
-    expect(screen.getByText('code-result-placeholder')).toBeInTheDocument()
   })
 
   it('should generate code, normalize code payloads, and apply the confirmed result', async () => {
+    const user = userEvent.setup()
     mockGenerateRule.mockResolvedValue({
       code: 'print("hello")',
     })
@@ -179,7 +177,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="completion"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -187,9 +185,12 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await user.click(instruction())
+    await user.paste('code instruction')
+    await user.click(screen.getByRole('button', { name: /generate.idealOutput/ }))
+    await user.click(screen.getByRole('textbox', { name: /generate.idealOutput/ }))
+    await user.paste('code output')
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateRule).toHaveBeenCalledWith(
@@ -200,21 +201,32 @@ describe('GetCodeGeneratorResModal', () => {
           instruction: 'code instruction',
           ideal_output: 'code output',
           language: 'python',
+          model_config: expect.objectContaining({ mode: 'completion' }),
         }),
       )
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
+      expect(screen.getByTestId('monaco-editor')).toHaveValue('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)codegen\.overwriteConfirmTitle(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
+    const confirmation = screen.getByRole('alertdialog')
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(within(confirmation).getByRole('button', { name: /operation\.cancel/ }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /generate\.apply/ }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: /operation\.confirm/,
+      }),
+    )
 
     expect(mockOnFinished).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -224,46 +236,8 @@ describe('GetCodeGeneratorResModal', () => {
     )
   })
 
-  it('should close overwrite confirmation without applying the generated code when cancelled', async () => {
-    mockGenerateRule.mockResolvedValue({
-      code: 'print("hello")',
-    })
-
-    render(
-      <GetCodeGeneratorResModal
-        flowId="flow-1"
-        nodeId="node-1"
-        currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
-        isShow
-        codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
-        onFinished={mockOnFinished}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
-    })
-
-    fireEvent.click(screen.getByText('apply-code-result'))
-    const dialog = await screen.findByRole('alertdialog')
-
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-    expect(mockOnFinished).not.toHaveBeenCalled()
-  })
-
   it('should surface service errors without creating a result version', async () => {
+    const user = userEvent.setup()
     mockGenerateRule.mockResolvedValue({
       error: 'generation failed',
       modified: 'unused',
@@ -274,7 +248,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.javascript}
         onClose={mockOnClose}
@@ -282,13 +256,14 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await user.click(instruction())
+    await user.paste('code instruction')
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('generation failed')
     })
 
-    expect(screen.queryByTestId('code-result-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument()
   })
 })

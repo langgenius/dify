@@ -3,11 +3,12 @@
 import type { ReactElement, ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -29,8 +30,8 @@ export function AgentConfigureClearSessionConfirmDialog({
   onOpenChange?: (open: boolean) => void
   onConfirm: () => boolean | void | Promise<boolean | void>
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -57,27 +58,27 @@ export function AgentConfigureClearSessionConfirmDialog({
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       {children && <AlertDialogTrigger render={children} />}
-      <AlertDialogContent backdropProps={{ forceRender: true }} className="w-100">
-        <div className="flex flex-col gap-1 p-6 pb-0">
-          <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+      <AlertDialogContent backdropProps={{ forceRender: true }}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {title ?? t(($) => $['agentDetail.configure.clearSessionConfirm.title'])}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+          <AlertDialogDescription>
             {t(($) => $['agentDetail.configure.clearSessionConfirm.description'])}
           </AlertDialogDescription>
-        </div>
-        <AlertDialogActions className="pt-6">
+        </AlertDialogHeader>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={confirmDisabled || isConfirming}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
-            disabled={confirmDisabled || isConfirming}
+            disabled={confirmDisabled}
             loading={isConfirming}
             onClick={handleConfirm}
           >
             {tCommon(($) => $['operation.confirm'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

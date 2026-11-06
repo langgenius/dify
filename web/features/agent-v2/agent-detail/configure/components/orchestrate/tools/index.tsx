@@ -1,6 +1,5 @@
 'use client'
 
-import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -13,11 +12,15 @@ import type {
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import {
@@ -26,18 +29,19 @@ import {
   setProviderToolCredentialAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { consoleQuery } from '@/service/console'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
-  useFetchPluginsInMarketPlaceByInfo,
-  useInvalidateInstalledPluginList,
-} from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-} from '@/service/use-tools'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
+  createAgentToolProviderCatalog,
+  getAgentProviderPluginId,
+  getAgentProviderToolDisplayName,
+  getAgentProviderToolIcon,
+  getLocalizedText,
+  getProviderCredentialType,
+  getProviderCredentialVariant,
+  useAgentToolPresentation,
+  useAgentToolProviderCatalog,
+} from '../../../tool-provider-catalog'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -70,6 +74,7 @@ const AgentToolItem = memo(
     onEditCliTool,
     onCredentialChange,
     onPluginInstalled,
+    defaultExpanded = false,
   }: {
     tool: DisplayAgentTool
     onConfigureAction: (target: ToolSettingTarget) => void
@@ -83,8 +88,9 @@ const AgentToolItem = memo(
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
     onPluginInstalled: () => void
+    defaultExpanded?: boolean
   }) => {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
     const handleRemoveProvider = useCallback(() => {
       onDeleteProviderTool(tool.id)
@@ -134,92 +140,6 @@ const AgentToolItem = memo(
   },
 )
 
-function useAgentToolProviderMap() {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-
-  return useMemo(() => {
-    const providers = new Map<string, ToolWithProvider>()
-    const resolvedProviderTypes = new Set<AgentProviderTool['providerType']>()
-    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
-    const customToolList = Array.isArray(customTools) ? customTools : []
-    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
-    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
-    const allProviders = [
-      ...buildInToolList,
-      ...customToolList,
-      ...workflowToolList,
-      ...mcpToolList,
-    ]
-
-    if (Array.isArray(buildInTools)) {
-      resolvedProviderTypes.add(CollectionType.builtIn)
-      resolvedProviderTypes.add('plugin')
-    }
-    if (Array.isArray(customTools)) resolvedProviderTypes.add(CollectionType.custom)
-    if (Array.isArray(workflowTools)) resolvedProviderTypes.add(CollectionType.workflow)
-    if (Array.isArray(mcpTools)) resolvedProviderTypes.add(CollectionType.mcp)
-
-    allProviders.forEach((provider) => {
-      providers.set(provider.id, provider)
-      providers.set(provider.name, provider)
-      if (provider.plugin_id) {
-        providers.set(provider.plugin_id, provider)
-        providers.set(`${provider.plugin_id}/${provider.name}`, provider)
-      }
-    })
-
-    return {
-      providerById: providers,
-      resolvedProviderTypes,
-    }
-  }, [buildInTools, customTools, workflowTools, mcpTools])
-}
-
-function getLocalizedText(text: Partial<Record<string, string>> | undefined, language: string) {
-  return text?.[language] ?? text?.en_US ?? text?.zh_Hans
-}
-
-function getProviderPluginId(tool: AgentProviderTool) {
-  if (tool.pluginId) return tool.pluginId
-
-  if (tool.providerType !== 'plugin' && tool.providerType !== CollectionType.builtIn) return ''
-
-  const providerIdSegments = tool.id.split('/')
-  if (providerIdSegments.length !== 3) return ''
-
-  return providerIdSegments.slice(0, 2).join('/')
-}
-
-function getProviderDisplayName(tool: AgentProviderTool) {
-  const providerIdSegments = tool.name.split('/').filter(Boolean)
-  return providerIdSegments.at(-1) ?? tool.name
-}
-
-function getMarketplacePluginInfo(pluginId: string) {
-  const [organization, plugin, ...remainingSegments] = pluginId.split('/')
-  if (!organization || !plugin || remainingSegments.length > 0) return undefined
-
-  return {
-    organization,
-    plugin,
-  }
-}
-
-function getProviderCredentialType(
-  provider?: ToolWithProvider,
-): AgentProviderTool['credentialType'] {
-  if (!provider) return undefined
-
-  if (Object.keys(provider.team_credentials ?? {}).length > 0) return 'api-key'
-
-  if (provider.type === CollectionType.builtIn && provider.allow_delete) return 'oauth2'
-
-  return undefined
-}
-
 function getDisplayCredentialType(
   tool: AgentProviderTool,
   providerCredentialType: AgentProviderTool['credentialType'],
@@ -232,27 +152,16 @@ function getDisplayCredentialType(
   return tool.credentialType ?? providerCredentialType
 }
 
-function getProviderCredentialVariant(
-  tool: AgentProviderTool,
-  provider: ToolWithProvider,
-  providerCredentialType: AgentProviderTool['credentialType'],
-) {
-  if (!providerCredentialType) return 'none' as const
-
-  if (tool.credentialVariant !== 'none') return tool.credentialVariant
-
-  return tool.credentialId || provider.is_team_authorization
-    ? ('authorized' as const)
-    : ('unauthorized' as const)
-}
-
 function useDisplayTools(
   tools: AgentTool[],
   providerById: Map<string, ToolWithProvider>,
   resolvedProviderTypes: Set<AgentProviderTool['providerType']>,
-  marketplacePluginById: Map<string, MarketplacePlugin>,
+  toolPresentation: {
+    language: string
+    marketplacePluginById?: ReturnType<typeof useAgentToolPresentation>['marketplacePluginById']
+  },
 ) {
-  const language = useGetLanguage()
+  const { language, marketplacePluginById } = toolPresentation
 
   return useMemo(() => {
     return tools.map((tool): DisplayAgentTool => {
@@ -261,8 +170,8 @@ function useDisplayTools(
       const provider = providerById.get(tool.id) ?? providerById.get(tool.name)
 
       if (!provider) {
-        const providerPluginId = getProviderPluginId(tool)
-        const marketplacePlugin = marketplacePluginById.get(providerPluginId)
+        const providerPluginId = getAgentProviderPluginId(tool)
+        const marketplacePlugin = marketplacePluginById?.get(providerPluginId)
 
         return {
           ...tool,
@@ -270,29 +179,25 @@ function useDisplayTools(
           pluginId: tool.pluginId ?? providerPluginId,
           pluginUniqueIdentifier:
             tool.pluginUniqueIdentifier ?? marketplacePlugin?.latest_package_identifier,
-          displayName:
-            tool.displayName ??
-            getLocalizedText(marketplacePlugin?.label ?? marketplacePlugin?.labels, language) ??
-            marketplacePlugin?.name ??
-            getProviderDisplayName(tool),
-          icon:
-            tool.icon ??
-            (marketplacePlugin && providerPluginId
-              ? getIconFromMarketPlace(providerPluginId)
-              : undefined),
+          displayName: getAgentProviderToolDisplayName({
+            language,
+            marketplacePlugin,
+            tool,
+          }),
+          icon: getAgentProviderToolIcon(tool),
         }
       }
 
       const providerToolByName = new Map(
-        provider.tools.map((providerTool) => [providerTool.name, providerTool]),
+        (provider.tools ?? []).map((providerTool) => [providerTool.name, providerTool]),
       )
       const providerCredentialType = getProviderCredentialType(provider)
 
       return {
         ...tool,
         isInstalled: true,
-        displayName: tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name,
-        icon: tool.icon ?? provider.icon,
+        displayName: getAgentProviderToolDisplayName({ language, provider, tool }),
+        icon: getAgentProviderToolIcon(tool, provider),
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType,
         allowDelete: tool.allowDelete ?? provider.allow_delete,
@@ -346,7 +251,9 @@ function AddToolMenuItem({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate system-sm-semibold text-text-secondary">{label}</span>
+          <span className="truncate system-sm-semibold text-text-secondary" title={label}>
+            {label}
+          </span>
           {badge && (
             <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {badge}
@@ -374,10 +281,10 @@ function AddToolMenu({
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
-  const { providerById } = useAgentToolProviderMap()
+  const { providerById } = useAgentToolProviderCatalog()
 
   const openToolPicker = useCallback(() => {
     setView('tool-picker')
@@ -435,16 +342,20 @@ function AddToolMenu({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <ConfigureSectionAddButton ariaLabel={t(($) => $['agentDetail.configure.tools.add'])} />
+          <ConfigureSectionAddButton
+            ariaLabel={t(($) => $['agentDetail.configure.tools.add'])}
+            className="data-popup-open:bg-state-base-hover"
+          />
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="top"
+        align="end"
         sideOffset={4}
-        popupClassName={
+        className={
           view === 'menu'
-            ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
-            : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'
+            ? 'w-70 bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+            : 'w-100 overflow-hidden border-none bg-transparent p-0 shadow-none'
         }
       >
         {view === 'menu' ? (
@@ -481,12 +392,12 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const { providerById, resolvedProviderTypes } = useAgentToolProviderMap()
+  const { providerById, resolvedProviderTypes } = useAgentToolProviderCatalog()
   const tools = useAtomValue(agentComposerToolsAtom)
   const selectedTools = useSelectedProviderTools()
   const addTools = useSetAtom(addProviderToolsAtom)
@@ -517,51 +428,26 @@ export function AgentTools() {
     [setProviderToolCredential],
   )
   const handlePluginInstalled = useCallback(() => {
-    void Promise.allSettled([invalidateAllBuiltInTools(), invalidateInstalledPluginList()])
-  }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
+    void Promise.allSettled([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+      }),
+      invalidateInstalledPluginList(PluginCategoryEnum.tool),
+    ])
+  }, [invalidateInstalledPluginList, queryClient])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),
     [tools],
   )
-  const missingMarketplacePluginInfos = useMemo(() => {
-    const pluginIds = new Set<string>()
-
-    visibleTools.forEach((tool) => {
-      if (
-        tool.kind !== 'provider' ||
-        !resolvedProviderTypes.has(tool.providerType) ||
-        providerById.has(tool.id) ||
-        providerById.has(tool.name)
-      )
-        return
-
-      const pluginId = getProviderPluginId(tool)
-      if (pluginId) pluginIds.add(pluginId)
-    })
-
-    return Array.from(pluginIds).flatMap((pluginId) => {
-      const info = getMarketplacePluginInfo(pluginId)
-      return info ? [info] : []
-    })
-  }, [providerById, resolvedProviderTypes, visibleTools])
-  const { data: missingMarketplacePluginsData } = useFetchPluginsInMarketPlaceByInfo(
-    missingMarketplacePluginInfos,
-  )
-  const marketplacePluginById = useMemo(
-    () =>
-      new Map(
-        (missingMarketplacePluginsData?.data.list ?? []).map(({ plugin }) => [
-          plugin.plugin_id,
-          plugin,
-        ]),
-      ),
-    [missingMarketplacePluginsData],
-  )
+  const toolPresentation = useAgentToolPresentation(visibleTools, {
+    providerById,
+    resolvedProviderTypes,
+  })
   const displayTools = useDisplayTools(
     visibleTools,
     providerById,
     resolvedProviderTypes,
-    marketplacePluginById,
+    toolPresentation,
   )
   /*
    * knip-ignore-start
@@ -621,7 +507,7 @@ export function AgentTools() {
     (tool: AgentCliTool) => {
       handleCliDialogSave(tool)
       if (!editingCliTool) {
-        promptAddCallbackRef.current?.(tool)
+        promptAddCallbackRef.current?.([tool])
         promptAddCallbackRef.current = undefined
       }
     },
@@ -638,7 +524,7 @@ export function AgentTools() {
     'cli',
     ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => {},
   )
-  const toolsTip = t(($) => $['agentDetail.configure.tools.tip'])
+
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetTool = settingTarget
     ? tools.find((tool) => tool.kind === 'provider' && tool.id === settingTarget.toolId)
@@ -655,9 +541,7 @@ export function AgentTools() {
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
-        tipAriaLabel={toolsTip}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly ? (
             <AddToolMenu
@@ -706,5 +590,81 @@ export function AgentTools() {
         />
       )}
     </>
+  )
+}
+
+export function AgentTemplateTools() {
+  const { t } = useTranslation(['agentV2'])
+  const language = useGetLanguage()
+  const labelId = useId()
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const visibleTools = ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')
+  const providerTypes = new Set(
+    visibleTools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
+  )
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.custom),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.workflow),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.mcp),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const catalog = useMemo(
+    () => createAgentToolProviderCatalog({ buildInTools, customTools, workflowTools, mcpTools }),
+    [buildInTools, customTools, workflowTools, mcpTools],
+  )
+  const displayTools = useDisplayTools(
+    visibleTools,
+    catalog.providerById,
+    catalog.resolvedProviderTypes,
+    { language },
+  )
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.tools.label'])}
+      labelId={labelId}
+      tip={<AgentConfigureTipContent type="tools" />}
+      panelContentClassName="flex flex-col gap-1"
+    >
+      {displayTools.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.tools.empty.title'])}
+          description={t(($) => $['agentDetail.configure.tools.empty.description'])}
+        />
+      ) : (
+        displayTools.map((tool, index) => (
+          <AgentToolItem
+            key={tool.id}
+            tool={tool.kind === 'provider' ? { ...tool, isInstalled: undefined } : tool}
+            defaultExpanded={index === 0}
+            onConfigureAction={noop}
+            onDeleteCliTool={noop}
+            onDeleteProviderTool={noop}
+            onDeleteProviderToolAction={noop}
+            onEditCliTool={noop}
+            onCredentialChange={noop}
+            onPluginInstalled={noop}
+          />
+        ))
+      )}
+    </ConfigureSection>
   )
 }

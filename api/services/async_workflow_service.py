@@ -14,7 +14,7 @@ from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
@@ -175,8 +175,22 @@ class AsyncWorkflowService:
             else:  # SANDBOX
                 task = execute_workflow_sandbox.delay(task_data_dict)
             quota_charge.commit()
-        except Exception:
+        except Exception as e:
+            # Mark the trigger log as FAILED so it does not stay PENDING when the broker
+            # or dispatcher refuses the task, then re-raise so the caller still surfaces
+            # the error.
+            trigger_log.status = WorkflowTriggerStatus.FAILED
+            trigger_log.error = f"Failed to dispatch workflow task: {e}"
+            trigger_log_repo.update(trigger_log)
+            session.commit()
             quota_charge.refund()
+            logger.exception(
+                "Failed to dispatch workflow task for tenant %s, app %s, workflow %s, trigger log %s",
+                trigger_data.tenant_id,
+                trigger_data.app_id,
+                workflow.id,
+                trigger_log.id,
+            )
             raise
 
         # 10. Update trigger log with task info

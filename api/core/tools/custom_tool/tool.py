@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union, override
+from typing import Any, override
 from urllib.parse import urlencode
 
 import httpx
@@ -26,7 +26,7 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
 
-    content: Union[str, dict]
+    content: str | dict
     is_json: bool
 
     def to_string(self) -> str:
@@ -279,7 +279,7 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        _METHOD_MAP = {
+        _method_map = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
             "post": ssrf_proxy.post,
@@ -288,9 +288,9 @@ class ApiTool(Tool):
             "patch": ssrf_proxy.patch,
         }
         method_lc = method.lower()
-        if method_lc not in _METHOD_MAP:
+        if method_lc not in _method_map:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[
+        response: httpx.Response = _method_map[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
@@ -308,6 +308,12 @@ class ApiTool(Tool):
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
     ):
+        """Convert a body value using the first supported anyOf option, without side effects.
+
+        Number options preserve fractional exponent values. Conversions raising ValueError
+        try the remaining options; exhaustion returns the input unchanged. A depleted
+        recursion budget raises before conversion.
+        """
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -317,7 +323,7 @@ class ApiTool(Tool):
                     if option["type"] == "integer" or option["type"] == "int":
                         return int(value)
                     elif option["type"] == "number":
-                        if "." in str(value):
+                        if "." in str(value) or "e" in str(value).lower():
                             return float(value)
                         else:
                             return int(value)
@@ -343,13 +349,19 @@ class ApiTool(Tool):
         return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
 
     def _convert_body_property_type(self, property: dict[str, Any], value: Any):
+        """Convert a body value according to its OpenAPI property, without side effects.
+
+        Number properties accept decimal and exponent representations while integer
+        representations keep their exact value. Conversions raising ValueError return
+        the original input; anyOf properties retain their existing option-order behavior.
+        """
         try:
             if "type" in property:
                 if property["type"] == "integer" or property["type"] == "int":
                     return int(value)
                 elif property["type"] == "number":
-                    # check if it is a float
-                    if "." in str(value):
+                    # Decimal points and exponents both denote floating-point representations.
+                    if "." in str(value) or "e" in str(value).lower():
                         return float(value)
                     else:
                         return int(value)
@@ -387,7 +399,7 @@ class ApiTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke http request
         """

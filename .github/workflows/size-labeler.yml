@@ -1,0 +1,55 @@
+name: Pull Request Size Labeler
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: size-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  label:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      # Only read PR metadata. Never check out or execute the PR's code here.
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const issue_number = context.payload.pull_request.number
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: issue_number })
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: issue_number, per_page: 100,
+            })
+            // GitHub caps this endpoint at 3,000 files; avoid labeling a partial count.
+            if (files.length !== pr.changed_files) {
+              core.warning('Skipping size label because the changed-file list is incomplete')
+              return
+            }
+            const ignoredNames = new Set(['uv.lock', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock'])
+            const changes = files
+              .filter(file => !ignoredNames.has(file.filename.split('/').pop()))
+              .reduce((total, file) => total + file.additions + file.deletions, 0)
+            // Match the descriptions of the repository's existing size labels.
+            const buckets = [
+              [10, 'size:XS'], [30, 'size:S'], [100, 'size:M'],
+              [500, 'size:L'], [1000, 'size:XL'], [Infinity, 'size:XXL'],
+            ]
+            const label = buckets.find(([limit]) => changes < limit)[1]
+            const sizeLabels = new Set(buckets.map(([, name]) => name))
+            const labels = await github.paginate(github.rest.issues.listLabelsOnIssue, {
+              owner, repo, issue_number, per_page: 100,
+            })
+            // Add first so an API error cannot leave the PR without a size label.
+            if (!labels.some(item => item.name === label)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [label] })
+            }
+            for (const item of labels) {
+              if (sizeLabels.has(item.name) && item.name !== label) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name: item.name })
+              }
+            }

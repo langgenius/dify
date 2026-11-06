@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const OutputVars: FC<Props> = ({ title, children, operations, collapsed, onCollapse }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <FieldCollapse
       title={title || t(($) => $['nodes.common.outputVars'], { ns: 'workflow' })}

@@ -17,7 +17,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectUserInput,
   onSelectTrigger,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
   const handleTriggerSelect = useCallback(
@@ -45,7 +45,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         open={showTriggerSelector}
         onOpenChange={setShowTriggerSelector}
         onSelect={handleTriggerSelect}
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         standalonePanel={TabType.Start}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,

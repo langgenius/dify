@@ -1,43 +1,41 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { RiMoreLine } from '@remixicon/react'
-import { useState } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useTranslation } from 'react-i18next'
 
 type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common'])
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger render={<Button className="size-6" variant="ghost-accent" />}>
-        <RiMoreLine className="size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={2}
-        alignOffset={-54}
-        popupClassName="w-[136px] p-1"
-      >
+    <Menu>
+      <MenuTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            size="md"
+            variant="ghost-accent"
+            className="rounded-lg"
+          >
+            <span aria-hidden className="i-ri-more-line size-4" />
+          </IconButton>
+        }
+      />
+      <MenuContent align="start" sideOffset={2} alignOffset={-54} className="w-34">
         {options.map((option) => (
-          <DropdownMenuItem
+          <MenuItem
             key={option.message_id}
             className="system-md-regular"
             onClick={() => onShowAgentOrToolLog(option)}
           >
             {option.label}
-          </DropdownMenuItem>
+          </MenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 
