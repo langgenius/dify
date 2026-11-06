@@ -203,6 +203,7 @@ FILES += [
     "api/tests/unit_tests/services/dify_builder/test_knowledge_inventory.py",
     "api/tests/unit_tests/services/dify_builder/test_knowledge_discovery.py",
     "api/tests/unit_tests/services/dify_builder/test_knowledge_source_cue.py",
+    "api/tests/unit_tests/services/dify_builder/test_knowledge_source_intent.py",
     "api/tests/unit_tests/services/dify_builder/test_requirement_provenance.py",
 ]
 # First-phase release blockers: repair evidence, initial inputs and metadata readiness.
@@ -2915,6 +2916,24 @@ knowledge_cases.update(
         "test_preflight_knowledge_selection_waits_until_waiver_then_preserves_business_clarification": 1,
     }
 )
+# Source-bound semantic intent: exact captured-negative and safety cases.
+a4_expected["tests.unit_tests.services.dify_builder.test_knowledge_source_intent"] = {
+    "test_actual_submitted_control_refreshes_intent_in_the_existing_plan_call": 2,
+    "test_analysis_preserves_fixed_grounded_source_intent_without_an_extra_call": 1,
+    "test_confirmed_bool_source_cannot_match_a_changed_numeric_value": 1,
+    "test_established_positive_cannot_be_waived_by_new_model_classification": 3,
+    "test_fixed_intent_preserves_semantic_positive_mixed_and_arbitrary_exclusions": 7,
+    "test_fresh_semantic_exclusion_does_not_override_independent_source_guards": 3,
+    "test_fresh_semantic_exclusion_reaches_both_gates_without_a_waiver": 1,
+    "test_invalid_typed_submission_does_not_refresh_or_confirm_a_default": 5,
+    "test_missing_or_malformed_semantics_keep_the_conservative_gate": 4,
+    "test_missing_or_unknown_refresh_cannot_drop_a_new_typed_source_answer": 2,
+    "test_old_planning_intent_cannot_be_rebound_after_a_new_real_answer": 1,
+    "test_planning_clarification_keeps_semantic_metadata_without_extra_calls": 1,
+    "test_retained_source_cannot_be_waived_by_semantic_exclusion": 1,
+    "test_semantic_source_survives_the_real_context_json_boundary": 1,
+    "test_stale_or_forged_exclusion_cannot_be_rebound_to_new_source": 5,
+}
 a4_expected.update(
     {
         "tests.unit_tests.core.plugin.impl.test_model_readiness": {
