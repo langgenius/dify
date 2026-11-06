@@ -492,6 +492,15 @@ forbidden_modules =
     services.agent.workspace_service
 allow_indirect_imports = True
 
+[importlinter:contract:snippet-generation-reader-boundary]
+name = Snippet generation reads workflow snapshots without repository imports
+type = forbidden
+source_modules =
+    services.snippet_generate_service
+forbidden_modules =
+    repositories
+allow_indirect_imports = True
+
 [importlinter:contract:installed-app-generation-boundary]
 name = Installed app generation service is framework and persistence neutral
 type = forbidden

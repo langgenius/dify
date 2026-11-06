@@ -1127,12 +1127,24 @@ export const byVersionId = {
   restore,
 }
 
+/**
+ * Return one page of published versions, newest first
+ *
+ * Preconditions:
+ * ``query`` has positive page and limit values from the endpoint contract.
+ * Postconditions:
+ * The draft neither appears nor consumes a page slot, and ``has_more``
+ * describes the remaining published versions only.
+ */
 export const get23 = oc
   .route({
+    description:
+      'Preconditions:\n    ``query`` has positive page and limit values from the endpoint contract.\nPostconditions:\n    The draft neither appears nor consumes a page slot, and ``has_more``\n    describes the remaining published versions only.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdVersions',
     path: '/apps/{app_id}/versions',
+    summary: 'Return one page of published versions, newest first',
     tags: ['openapi'],
   })
   .input(

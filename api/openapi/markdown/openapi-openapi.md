@@ -806,6 +806,14 @@ Upload a file to use as an input variable when running the app
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/versions
+**Return one page of published versions, newest first**
+
+Preconditions:
+    ``query`` has positive page and limit values from the endpoint contract.
+Postconditions:
+    The draft neither appears nor consumes a page slot, and ``has_more``
+    describes the remaining published versions only.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

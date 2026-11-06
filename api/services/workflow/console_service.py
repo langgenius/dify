@@ -48,8 +48,26 @@ class WorkflowDefinitions[BindingStore](Protocol):
     ) -> AbstractContextManager[WorkflowPublicationTransaction[BindingStore]]: ...
     def published(self, context: RequestContext, app_id: str) -> WorkflowRecord | None: ...
     def versions(
-        self, context: RequestContext, app_id: str, *, page: int, limit: int, user_id: str | None, named_only: bool
-    ) -> tuple[list[WorkflowRecord], bool]: ...
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool,
+        include_draft: bool = True,
+    ) -> tuple[list[WorkflowRecord], bool]:
+        """List workflow versions through the persistence boundary.
+
+        Preconditions:
+            ``page`` and ``limit`` are positive pagination values.
+        Postconditions:
+            ``include_draft=False`` excludes the draft before pagination; the default
+            retains the Console version list's draft-first behavior.
+        """
+        ...
+
     def update(
         self, context: RequestContext, app_id: str, workflow_id: str, changes: dict[str, str]
     ) -> WorkflowRecord | None: ...
@@ -157,12 +175,34 @@ class ConsoleWorkflowService[BindingStore]:
         return self._definitions.published(context, app_id)
 
     def versions(
-        self, context: RequestContext, app_id: str, *, page: int, limit: int, user_id: str | None, named_only: bool
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool,
+        include_draft: bool = True,
     ) -> tuple[list[WorkflowRecord], bool]:
+        """List versions after applying draft visibility to the persisted page query.
+
+        Preconditions:
+            ``page`` and ``limit`` are positive pagination values.
+        Postconditions:
+            Draft visibility is forwarded to the repository before pagination, and a
+            foreign ``user_id`` fails without reading versions.
+        """
         if user_id and user_id != context.account_id:
             raise NoPermissionError()
         return self._definitions.versions(
-            context, app_id, page=page, limit=limit, user_id=user_id, named_only=named_only
+            context,
+            app_id,
+            page=page,
+            limit=limit,
+            user_id=user_id,
+            named_only=named_only,
+            include_draft=include_draft,
         )
 
     def sync(self, context: RequestContext, app_id: str, command: DraftSyncCommand) -> WorkflowChange:

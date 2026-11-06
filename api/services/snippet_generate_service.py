@@ -37,7 +37,6 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
-from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.response import convert_to_event_stream
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
@@ -51,7 +50,7 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 class SnippetWorkflowReader(Protocol):
-    def get_draft_workflow(self, snippet: CustomizedSnippet) -> Workflow | None: ...
+    def get_draft_workflow(self, snippet: CustomizedSnippet) -> WorkflowSnapshot | None: ...
 
 
 class _SnippetAsApp:
@@ -178,10 +177,9 @@ class SnippetGenerateService:
         :return: Blocking response mapping or SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow_model:
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow:
             raise ValueError("Workflow not initialized")
-        workflow = workflow_snapshot(workflow_model)
 
         # Inject a virtual Start node when the graph doesn't have one.
         workflow = self._ensure_start_node(workflow, snippet)
@@ -233,13 +231,15 @@ class SnippetGenerateService:
     @classmethod
     def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
         """Inject the virtual Start node after a worker reloads a snippet workflow."""
-        snapshot = workflow_snapshot(workflow)
-        updated_snapshot = cls._ensure_start_node(snapshot, snippet)
-        if updated_snapshot.graph == snapshot.graph:
+        graph_dict = workflow.graph_dict
+        nodes: list[dict[str, Any]] = graph_dict.get("nodes", [])
+        if any(node.get("data", {}).get("type") == "start" for node in nodes):
             return workflow
 
+        modified_graph = cls._inject_virtual_start_node(graph_dict=graph_dict, input_fields=snippet.input_fields_list)
+        serialized_graph = json.dumps(modified_graph)
         make_transient(workflow)
-        workflow.graph = updated_snapshot.graph
+        workflow.graph = serialized_graph
         return workflow
 
     @classmethod
@@ -339,10 +339,9 @@ class SnippetGenerateService:
         :return: WorkflowNodeExecutionModel with execution results
         :raises ValueError: If the snippet has no draft workflow
         """
-        draft_workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
-        if not draft_workflow_model:
+        draft_workflow = self._snippets.get_draft_workflow(snippet=snippet)
+        if not draft_workflow:
             raise ValueError("Workflow not initialized")
-        draft_workflow = workflow_snapshot(draft_workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
@@ -380,10 +379,9 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow_model:
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow:
             raise ValueError("Workflow not initialized")
-        workflow = workflow_snapshot(workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
@@ -427,10 +425,9 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow_model:
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow:
             raise ValueError("Workflow not initialized")
-        workflow = workflow_snapshot(workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 

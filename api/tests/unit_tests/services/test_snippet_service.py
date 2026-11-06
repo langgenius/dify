@@ -30,8 +30,9 @@ from models.workflow import (
     WorkflowType,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
-from services.snippet_service import SnippetService
+from services.snippet_service import SnippetService, SnippetWorkflowSnapshotReader
 from services.tag_application_service import TagApplicationService
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 from tests.helpers.unit.model_factories import make_account
 
@@ -392,6 +393,35 @@ def test_get_published_workflow_returns_none_without_workflow_id() -> None:
     result = service.get_published_workflow(_snippet())
 
     assert result is None
+
+
+def test_snippet_workflow_snapshot_reader_returns_detached_snapshot(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    draft_workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []},
+        features={"file_upload": {"enabled": False}},
+    )
+    sqlite_session.add(draft_workflow)
+    sqlite_session.commit()
+    reader = SnippetWorkflowSnapshotReader(build_snippet_service(session_maker=sqlite_session_factory))
+
+    result = reader.get_draft_workflow(_snippet())
+
+    assert isinstance(result, WorkflowSnapshot)
+    assert result.id == draft_workflow.id
+    assert result.graph_dict == draft_workflow.graph_dict
+    assert result.features_dict == draft_workflow.features_dict
+
+
+def test_snippet_workflow_snapshot_reader_returns_none_when_draft_missing(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    reader = SnippetWorkflowSnapshotReader(build_snippet_service(session_maker=sqlite_session_factory))
+
+    assert reader.get_draft_workflow(_snippet()) is None
 
 
 def test_get_published_workflow_by_id_raises_for_draft(

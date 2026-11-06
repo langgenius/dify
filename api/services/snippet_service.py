@@ -34,7 +34,12 @@ from models.workflow import (
 from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.agent.workflow_binding_repository import workflow_binding_scope
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.workflow.definition_repository import WorkflowDefinitionStore, workflow_from_snapshot, workflow_record
+from repositories.workflow.definition_repository import (
+    WorkflowDefinitionStore,
+    workflow_from_snapshot,
+    workflow_record,
+    workflow_snapshot,
+)
 from repositories.workflow.snippet_publication_repository import SnippetPublicationRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_contracts import AgentSkillReader
@@ -42,7 +47,7 @@ from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError
 from services.tag_application_service import TagTargetQuery
 from services.tools.provider_queries import ToolProviders
-from services.workflow.contracts import WorkflowRecord
+from services.workflow.contracts import WorkflowRecord, WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 from services.workflow_node_execution_trace_service import (
@@ -769,3 +774,16 @@ class SnippetService:
         """
         snippet.use_count += 1
         session.add(snippet)
+
+
+class SnippetWorkflowSnapshotReader:
+    """Keep ORM workflows inside the adapter exposed to snippet generation."""
+
+    def __init__(self, snippets: SnippetService) -> None:
+        """Wrap the legacy snippet service without changing its ORM contract."""
+        self._snippets = snippets
+
+    def get_draft_workflow(self, snippet: CustomizedSnippet) -> WorkflowSnapshot | None:
+        """Return a detached snapshot while preserving a missing draft as ``None``."""
+        workflow = self._snippets.get_draft_workflow(snippet)
+        return workflow_snapshot(workflow) if workflow is not None else None
