@@ -51,6 +51,17 @@ from tests.helpers.unit.core.model_fixtures import make_model_instance
         ],
         (PermissionError("private-token"), "permission_denied"),
         (RuntimeError("private-token"), "unknown"),
+        *[
+            (RuntimeError(message), "unknown")
+            for message in (
+                "private business timeout value",
+                "private service unavailable",
+                "private connection refused",
+                "private authentication",
+                "private rate_limit",
+                "private invalid api key",
+            )
+        ],
     ],
 )
 def test_policy_wrapped_provider_reason_survives_without_retry_or_secret_projection(
@@ -148,3 +159,22 @@ def test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay(
     assert "serverless" not in json.dumps(records)
     assert "status code: 502" not in json.dumps(records)
     assert "PRIVATE" not in json.dumps(records)
+
+
+@pytest.mark.parametrize(("status", "reason"), [(401, "authentication"), (502, "service_unavailable")])
+def test_generic_wrapper_text_cannot_mask_explicit_typed_provider_cause(
+    status: int,
+    reason: diagnostics.FailureReason,
+) -> None:
+    outer = RuntimeError("private business timeout value")
+    outer.__cause__ = httpx.HTTPStatusError(
+        "private-token",
+        request=httpx.Request("POST", "https://private/?key=secret"),
+        response=httpx.Response(status),
+    )
+    records = []
+    with diagnostics.scope(records.append, "plan"):
+        diagnostics.report("provider_invocation_failed", error=outer)
+    assert records[0]["reason"] == reason
+    assert "private" not in json.dumps(records)
+    assert "secret" not in json.dumps(records)
