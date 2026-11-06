@@ -267,7 +267,6 @@ project-excludes = [
   "migrations/versions/test_2025_07_02_2332-1c9ba48be8e4_add_uuidv7_function_in_sql.py",
   "models/test_account.py",
   "models/test_model.py",
-  "models/test_dataset.py",
   "models/test_tools.py",
   "services/agent/test_dsl_service.py",
   "services/agent/test_roster_service.py",
