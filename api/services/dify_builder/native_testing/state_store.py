@@ -337,9 +337,9 @@ class NativeExecutionStateStore:
             association.agent_run_id,
             inspection.binding_ref,
             inspection.workspace_ref,
-            inspection.adapter,
+            # The DTO validates the exact adapter/evidence pair before this
+            # complete protected predecessor identity comparison.
             inspection.state,
-            inspection.evidence_code,
         ) != (
             expected.predecessor,
             expected.identity.parent_execution_id,
@@ -353,9 +353,7 @@ class NativeExecutionStateStore:
             evidence["agent_run_id"],
             predecessor.binding_ref,
             predecessor.workspace_ref,
-            "local",
             "definitively_gone",
-            "path_absent",
         ):
             raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
         checkpoint = self._agent_wait_relation(prepared, association, wait)

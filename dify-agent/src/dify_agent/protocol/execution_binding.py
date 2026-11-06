@@ -97,13 +97,14 @@ class InspectExecutionBindingRequest(NativeDTO):
 
 
 class InspectExecutionBindingResponse(InspectExecutionBindingRequest):
-    """Bounded adapter evidence; only exact Local absence can authorize recovery."""
+    """Bounded adapter evidence; absence alone never authorizes recovery."""
 
     adapter: Literal["local", "enterprise", "unsupported"]
     state: Literal["usable", "definitively_gone", "uncertain", "unsupported"]
     evidence_code: Literal[
         "paths_present",
         "path_absent",
+        "sandbox_not_found",
         "root_unavailable",
         "path_ambiguous",
         "identity_mismatch",
@@ -121,6 +122,11 @@ class InspectExecutionBindingResponse(InspectExecutionBindingRequest):
             (self.adapter == "local" and self.state == "usable" and self.evidence_code == "paths_present")
             or (self.adapter == "local" and self.state == "definitively_gone" and self.evidence_code == "path_absent")
             or (self.adapter == "enterprise" and self.state == "usable" and self.evidence_code == "health_ok")
+            or (
+                self.adapter == "enterprise"
+                and self.state == "definitively_gone"
+                and self.evidence_code == "sandbox_not_found"
+            )
             or (
                 self.adapter == "unsupported"
                 and self.state == "unsupported"
@@ -140,6 +146,8 @@ class InspectExecutionBindingResponse(InspectExecutionBindingRequest):
                 }
             )
         )
+        if self.adapter == "enterprise" and self.state in {"usable", "definitively_gone"}:
+            valid = valid and self.binding_ref == self.workspace_ref
         if not valid:
             raise ValueError("incoherent binding inspection evidence")
         return self

@@ -129,12 +129,22 @@ fixed phase/category/status fields, without raw exceptions, paths or tracebacks.
 A timed-out probe never proves remote process termination. Inspection never
 acquires, creates or destroys a Binding or Workspace.
 
-Enterprise inspects only the existing sandbox's health endpoint and requires an
-explicit healthy response. No currently established exact sandbox endpoint
-proves absence, so every health failure, including generic or sandbox-expired
-404 responses, stays uncertain. E2B, OpenShell and native test scopes are
-unsupported. Keep-alive's legacy 410 is not inspection evidence. Inspection is
-absent in anonymous migration mode. The shared confirmed-recovery relation and
+Enterprise first reads the existing sandbox's health endpoint; an exact healthy
+response returns immediately. Otherwise one GET of the exact escaped retained ID
+at `/v1/sandboxes/{id}` uses the same existing Gateway authentication and total
+five-second budget (or the shorter configured proxy timeout). Only HTTP 404 with
+integer `code: 404` and exact `reason: sandbox_not_found` in an unambiguous bounded
+error object yields `definitively_gone` / `sandbox_not_found`. Generic/proxy/job
+404, sandbox-expired, auth/transport errors, redirects and malformed/oversized or
+foreign responses remain uncertain. Ambiguous path identifiers are refused.
+Both reads cap response bodies at 4096 bytes and perform no retries. This is the
+Gateway's exact control-plane resource absence contract, backed by its initialized
+informer cache; it does not prove physical process death or absence of effects.
+Replacement still requires all protected waiting-child, scope, generation,
+reconstructibility, no-in-flight/no-unknown and fresh-consent checks. E2B,
+OpenShell and native test scopes remain unsupported. Keep-alive's legacy 410 is
+not inspection evidence. Inspection is absent in anonymous migration mode.
+The shared confirmed-recovery relation and
 handoff DTOs describe protected predecessor/successor refs and generations only;
 parsing them performs no allocation, CAS, resume, model or tool invocation.
 

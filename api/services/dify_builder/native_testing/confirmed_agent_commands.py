@@ -267,7 +267,7 @@ class ConfirmedAgentCommands:
         )
 
     def reserve_confirmed_recovery_attempt(self, *, ref, expected_parent_generation, idempotency_key):
-        """Prove exact Local loss and reserve once for an authenticated interaction.
+        """Prove exact retained-resource absence for an authenticated interaction.
 
         Uses existing durable parent pause, current checkpoint, protected owner
         and SDK pure validator; inspection/crypto/RBAC occur outside SQL writers.
@@ -332,11 +332,9 @@ class ConfirmedAgentCommands:
         )
         if inspection.state == "usable":
             return None
-        if (inspection.adapter, inspection.state, inspection.evidence_code) != (
-            "local",
-            "definitively_gone",
-            "path_absent",
-        ):
+        # The validated DTO admits only exact Local/path_absent or Enterprise/
+        # sandbox_not_found evidence; absence alone does not grant replacement.
+        if inspection.state != "definitively_gone":
             raise BuilderExecutionPolicyError("native_agent_recovery_absence_unproven")
         try:
             validate_recovery_eligibility(

@@ -26,6 +26,7 @@ EXPECTED = {
     },
     "tests.integration_tests.services.dify_builder.test_confirmed_snapshot_owner": {
         "test_actual_owned_initial_capture_and_store": 1,
+        "test_enterprise_absence_keeps_protected_recovery_eligibility_without_grants": 1,
         "test_confirmed_node_captures_before_stream_and_persists_both_terminal_branches": 4,
         "test_recovery_config_payload_wraps_acknowledged_random_receipt": 1,
         "test_actual_acknowledged_successor_graph_finalizes": 1,

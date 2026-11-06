@@ -10,9 +10,11 @@ routed through the Gateway's shellctl proxy.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from dataclasses import dataclass, field
 from http import HTTPStatus
+import json
 import logging
 import shlex
 from typing import cast
@@ -103,6 +105,38 @@ async def _gateway_request(
     try:
         payload = response.json()
     except ValueError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+async def _read_inspection_response(
+    client: httpx.AsyncClient, path: str, *, headers: dict[str, str] | None = None
+) -> tuple[int, bytes] | None:
+    """Read at most 4096 response bytes inside the caller's absolute deadline.
+
+    Inputs are fixed inspection routes and existing auth headers. Overflow closes
+    the response and returns no evidence; transport failures propagate privately.
+    """
+    async with client.stream("GET", path, headers=headers) as response:
+        body = bytearray()
+        async for chunk in response.aiter_bytes():
+            if len(body) + len(chunk) > 4096:
+                return None
+            body.extend(chunk)
+        return response.status_code, bytes(body)
+
+
+def _inspection_payload(body: bytes) -> dict[str, object] | None:
+    """Decode one bounded unambiguous object; malformed evidence remains absent."""
+
+    def unique_fields(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        if len({key for key, _ in pairs}) != len(pairs):
+            raise ValueError("ambiguous inspection response")
+        return dict(pairs)
+
+    try:
+        payload: object = json.loads(body, object_pairs_hook=unique_fields)
+    except (ValueError, UnicodeError):
         return None
     return payload if isinstance(payload, dict) else None
 
@@ -240,33 +274,66 @@ class EnterpriseExecutionBindingBackend:
             raise
 
     async def inspect_binding(self, request: InspectExecutionBindingRequest) -> InspectExecutionBindingResponse:
-        """GET exact sandbox health without acquire, retry, redirect or refresh.
+        """Inspect exact retained refs with one shared bounded read-only I/O budget.
 
-        Preconditions: ordinary coupled Binding/Workspace refs must agree.
-        Postconditions: only strict healthy output proves usability; no existing
-        documented resource-specific absence endpoint is available here, so all
-        failures (including sandbox_expired from the proxy) remain uncertain.
+        Preconditions: ordinary coupled refs identify the protected predecessor.
+        Postconditions: exact healthy output is usable; only the dedicated exact
+        sandbox GET's typed 404/code/reason proves control-plane resource absence.
+        The Gateway's initialized informer is not a physical-process/no-effect
+        guarantee. Recovery still requires the independent protected wait proof.
+        No lifecycle call, redirect or retry occurs; every ambiguity is uncertain.
         """
         selection = request.model_dump()
-        if request.binding_ref != request.workspace_ref or request.binding_ref.startswith("native:"):
+        ref = request.binding_ref
+        if (
+            ref != request.workspace_ref
+            or ref.startswith("native:")
+            or ref in {".", ".."}
+            or any(char in "/\\%" or ord(char) < 32 or ord(char) == 127 for char in ref)
+        ):
             return InspectExecutionBindingResponse(
                 **selection, adapter="enterprise", state="uncertain", evidence_code="identity_mismatch"
             )
+        budget = min(self.proxy_timeout, 5.0)
         try:
-            headers = {"X-Sandbox-Id": request.binding_ref, "X-Inner-Api-Key": self.auth_token}
-            async with httpx.AsyncClient(
-                base_url=self.gateway_endpoint.rstrip("/"),
-                headers=headers,
-                timeout=min(self.proxy_timeout, 5.0),
-                follow_redirects=False,
-            ) as client:
-                response = await client.get("/proxy/healthz")
-            if response.status_code == 200 and response.content and len(response.content) <= 4096:
-                payload: object = response.json()
-                if payload == {"status": "ok"}:
-                    return InspectExecutionBindingResponse(
-                        **selection, adapter="enterprise", state="usable", evidence_code="health_ok"
-                    )
+            async with asyncio.timeout(budget):
+                async with httpx.AsyncClient(
+                    base_url=self.gateway_endpoint.rstrip("/"),
+                    headers={"X-Inner-Api-Key": self.auth_token},
+                    timeout=budget,
+                    follow_redirects=False,
+                ) as client:
+                    try:
+                        health = await _read_inspection_response(
+                            client, "/proxy/healthz", headers={"X-Sandbox-Id": ref}
+                        )
+                        if (
+                            health is not None
+                            and health[0] == 200
+                            and _inspection_payload(health[1]) == {"status": "ok"}
+                        ):
+                            return InspectExecutionBindingResponse(
+                                **selection, adapter="enterprise", state="usable", evidence_code="health_ok"
+                            )
+                    except Exception:
+                        pass
+                    control = await _read_inspection_response(client, f"/v1/sandboxes/{quote(ref, safe='')}")
+                    if control is not None and control[0] == 404:
+                        payload = _inspection_payload(control[1])
+                        if (
+                            payload is not None
+                            and set(payload) <= {"code", "reason", "message"}
+                            and type(payload.get("code")) is int
+                            and payload["code"] == 404
+                            and payload.get("reason") == "sandbox_not_found"
+                            and ("message" not in payload or isinstance(payload["message"], str))
+                        ):
+                            return InspectExecutionBindingResponse(
+                                **selection,
+                                adapter="enterprise",
+                                state="definitively_gone",
+                                evidence_code="sandbox_not_found",
+                            )
         except Exception:
             pass
         return InspectExecutionBindingResponse(
