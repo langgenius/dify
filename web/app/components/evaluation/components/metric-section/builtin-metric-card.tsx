@@ -4,12 +4,7 @@ import type { NodeInfo } from '@dify/contracts/api/console/evaluate-target-type/
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -142,26 +137,26 @@ const BuiltinMetricCard = ({
           )}
 
           {shouldShowAddNode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
+            <Menu>
+              <MenuTrigger
                 render={
                   <button
                     type="button"
                     aria-label={t(($) => $['metrics.addNode'])}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-background-default-hover text-text-tertiary transition-colors hover:bg-state-base-hover"
-                  />
+                  >
+                    <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0" />
+                  </button>
                 }
-              >
-                <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
+              />
+              <MenuContent
                 side="bottom"
                 align="start"
                 className="w-[252px] rounded-md border-[0.5px] border-components-panel-border py-1 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
               >
                 {selectableNodeInfoList.map((nodeInfo) => {
                   return (
-                    <DropdownMenuItem
+                    <MenuItem
                       key={nodeInfo.node_id}
                       className="h-auto gap-0 rounded-md px-3 py-1.5"
                       onClick={() =>
@@ -183,11 +178,11 @@ const BuiltinMetricCard = ({
                           {nodeInfo.title}
                         </span>
                       </div>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )
                 })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </MenuContent>
+            </Menu>
           )}
         </div>
       )}

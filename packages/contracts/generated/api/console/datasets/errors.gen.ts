@@ -274,30 +274,30 @@ export const post15Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post16Errors = {
+export const post20Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }
 
-export const post17Errors = {
+export const post21Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post19Errors = {
+export const post23Errors = {
   knowledge_fs_upgrade_models_unavailable: {
     status: 422,
     data: zKnowledgeFsUpgradeModelsUnavailableError,
   },
 }
 
-export const get31Errors = {
+export const get36Errors = {
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 
-export const post23Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
+export const post27Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
 
-export const post24Errors = {
+export const post28Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }

@@ -1,12 +1,7 @@
 import type { EvaluationRunResponse } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
 import type { EvaluationResourceProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
@@ -198,22 +193,22 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                     </div>
                   </td>
                   <td className="h-10 text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
+                    <Menu>
+                      <MenuTrigger
                         render={
                           <button
                             type="button"
                             aria-label={t(($) => $['history.actions.open'])}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                             onClick={(event) => event.stopPropagation()}
-                          />
+                          >
+                            <span aria-hidden="true" className="i-ri-more-2-fill h-4 w-4" />
+                          </button>
                         }
-                      >
-                        <span aria-hidden="true" className="i-ri-more-2-fill h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-[180px] rounded-lg border-[0.5px] border-components-panel-border py-1 shadow-lg">
+                      />
+                      <MenuContent className="w-[180px] rounded-lg border-[0.5px] border-components-panel-border py-1 shadow-lg">
                         {(record.status === 'pending' || record.status === 'running') && (
-                          <DropdownMenuItem
+                          <MenuItem
                             className="gap-2"
                             disabled={evaluationActions.isCancelling}
                             onClick={(event) => {
@@ -223,10 +218,10 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                           >
                             <span aria-hidden="true" className="i-ri-stop-circle-line h-4 w-4" />
                             {t(($) => $['history.actions.cancel'])}
-                          </DropdownMenuItem>
+                          </MenuItem>
                         )}
                         {record.status === 'failed' && (
-                          <DropdownMenuItem
+                          <MenuItem
                             className="gap-2"
                             disabled={evaluationActions.isRetrying}
                             onClick={(event) => {
@@ -236,9 +231,9 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                           >
                             <span aria-hidden="true" className="i-ri-restart-line h-4 w-4" />
                             {t(($) => $['history.actions.retry'])}
-                          </DropdownMenuItem>
+                          </MenuItem>
                         )}
-                        <DropdownMenuItem
+                        <MenuItem
                           className="gap-2"
                           disabled={!record.dataset_file_id}
                           onClick={(event) => {
@@ -249,8 +244,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                         >
                           <span aria-hidden="true" className="i-ri-file-download-line h-4 w-4" />
                           {t(($) => $['history.actions.downloadTestFile'])}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
+                        </MenuItem>
+                        <MenuItem
                           className="gap-2"
                           disabled={!record.result_file_id}
                           onClick={(event) => {
@@ -261,9 +256,9 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                         >
                           <span aria-hidden="true" className="i-ri-download-2-line h-4 w-4" />
                           {t(($) => $['history.actions.downloadResultFile'])}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </MenuItem>
+                      </MenuContent>
+                    </Menu>
                   </td>
                 </tr>
               ))}

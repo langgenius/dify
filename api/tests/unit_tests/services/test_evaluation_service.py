@@ -50,7 +50,7 @@ from models.workflow import (
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
 from services.variable_truncator import VariableTruncator
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 @pytest.fixture(autouse=True)

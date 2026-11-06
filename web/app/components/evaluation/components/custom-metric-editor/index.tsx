@@ -152,7 +152,7 @@ const CustomMetricEditorCard = ({
     resourceType === 'snippets'
       ? { kind: 'snippet', snippetId: resourceId }
       : resourceType === 'apps' && currentApp && isWorkflowAppMode(currentApp.mode)
-        ? { kind: 'app', appId: resourceId, mode: currentApp.mode }
+        ? { kind: 'app', appId: resourceId, mode: currentApp.mode, collaborationEnabled: false }
         : null
   const mappingSource =
     resourceType === 'agents'

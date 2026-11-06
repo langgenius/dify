@@ -42,7 +42,6 @@ describe('PublishedGraphVariablePicker', () => {
 
     const { queryClient, wrapper } = createConsoleQueryWrapper({
       appDslVersion: '0.6.0',
-      systemFeatures: { enable_collaboration_mode: false },
     })
     seedModelProviderQueries(queryClient)
     seedToolProviders(queryClient, {
@@ -55,7 +54,12 @@ describe('PublishedGraphVariablePicker', () => {
 
     render(
       <PublishedGraphVariablePicker
-        resource={{ kind: 'app', appId: 'target-app', mode: 'workflow' }}
+        resource={{
+          kind: 'app',
+          appId: 'target-app',
+          mode: 'workflow',
+          collaborationEnabled: false,
+        }}
         nodes={[start, source]}
         edges={[createEdge({ source: 'start', target: 'source' })]}
         placeholder="Select an output variable"
