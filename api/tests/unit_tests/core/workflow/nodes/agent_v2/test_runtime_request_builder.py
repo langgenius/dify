@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import cast
@@ -36,7 +37,7 @@ from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.runtime.variable_pool import VariablePool
-from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -1684,9 +1685,9 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker():
 @pytest.mark.parametrize("supports_vision", [True, False])
 def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_models(
     monkeypatch: pytest.MonkeyPatch, supports_vision: bool
-):
-    class UploadedFilesVariablePool(FakeVariablePool):
-        def get(self, selector):
+) -> None:
+    class UploadedFilesVariablePool:
+        def get(self, selector: Sequence[str]) -> Segment | None:
             if list(selector) == ["sys", "files"]:
                 return ArrayFileSegment(
                     value=[
@@ -1710,7 +1711,10 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
                         ),
                     ]
                 )
-            return super().get(selector)
+            return FakeVariablePool().get(selector)
+
+        def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
+            return FakeVariablePool().get_by_prefix(prefix)
 
     import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
 
@@ -1719,7 +1723,7 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
     )
     converted = []
 
-    def convert(file, **_kwargs):
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
         converted.append(file.filename)
         return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
 
@@ -1728,13 +1732,14 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
     layers = _request_layers(result)
     assert converted == (["image.png"] if supports_vision else [])
-    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
-    prompt = config["text" if supports_vision else "user"]
+    config = cast(dict[str, object], layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"])
+    prompt = cast(str, config["text" if supports_vision else "user"])
     assert build_file_reference(record_id="image-1") in prompt
     assert build_file_reference(record_id="doc-1") in prompt
     if supports_vision:
-        assert len(config["files"]) == 1
-        assert config["files"][0]["delivery"] == "multimodal"
+        files = cast(list[dict[str, object]], config["files"])
+        assert len(files) == 1
+        assert files[0]["delivery"] == "multimodal"
         assert result.redacted_request["composition"]["layers"][2]["config"]["files"][0]["base64_data"] == "[REDACTED]"
 
 
