@@ -2,7 +2,6 @@ from collections.abc import Generator
 
 import pytest
 
-from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
@@ -15,6 +14,9 @@ from core.app.entities.task_entities import (
 )
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+    AdvancedChatAppGenerateResponseConverter,
+)
 
 
 class TestAdvancedChatGenerateResponseConverter:

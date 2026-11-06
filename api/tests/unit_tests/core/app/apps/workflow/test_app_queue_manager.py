@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.execution_coordinator import AppExecutionState
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
@@ -13,6 +12,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueWorkflowPausedEvent,
 )
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 
 
 class TestWorkflowAppQueueManager:

@@ -23,6 +23,7 @@ from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_engine import ToolEngine
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
+from services.workflow.execution.contracts import WorkflowRunDriver
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 from services.workflow.execution.ports import (
     ExecutionContexts,
