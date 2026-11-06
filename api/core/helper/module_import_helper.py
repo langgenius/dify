@@ -17,12 +17,12 @@ def import_module_from_source[T: (str, bytes)](
         if existed_spec:
             spec = existed_spec
             if not spec.loader:
-                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
+                raise ImportError(f"Failed to load module {module_name} from {py_file_path!r}")
         else:
             # Refer to: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
             new_spec = importlib.util.spec_from_file_location(module_name, py_file_path)
             if not new_spec or not new_spec.loader:
-                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
+                raise ImportError(f"Failed to load module {module_name} from {py_file_path!r}")
             if use_lazy_loader:
                 # Refer to: https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
                 new_spec.loader = importlib.util.LazyLoader(new_spec.loader)
@@ -62,6 +62,6 @@ def load_single_subclass_from_source(
         case 1:
             return subclasses[0]
         case 0:
-            raise Exception(f"Missing subclass of {parent_type.__name__} in {script_path!r}")
+            raise TypeError(f"Missing subclass of {parent_type.__name__} in {script_path!r}")
         case _:
-            raise Exception(f"Multiple subclasses of {parent_type.__name__} in {script_path!r}")
+            raise TypeError(f"Multiple subclasses of {parent_type.__name__} in {script_path!r}")
