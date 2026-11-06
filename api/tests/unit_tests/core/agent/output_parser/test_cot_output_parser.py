@@ -291,3 +291,61 @@ class TestCotAgentOutputParser:
         if content.lower() in {"action:", "thought:"}:
             assert "action:" not in joined.lower()
             assert "thought:" not in joined.lower()
+
+
+class TestCotAgentOutputParserJsonStringContext:
+    """Braces inside JSON string values must not move the payload boundary.
+
+    A ReAct action payload is one JSON object. String values routinely hold code,
+    templates and regular expressions, so a brace inside a string is content, not
+    structure. It must neither close the payload early nor leak into the text
+    stream, and braces outside a payload must not be buffered as payload text.
+    """
+
+    @staticmethod
+    def _actions(result: list[str | AgentScratchpadUnit.Action]) -> list[AgentScratchpadUnit.Action]:
+        return [item for item in result if isinstance(item, AgentScratchpadUnit.Action)]
+
+    @staticmethod
+    def _text(result: list[str | AgentScratchpadUnit.Action]) -> str:
+        return "".join(item for item in result if isinstance(item, str))
+
+    def test_closing_brace_inside_action_input_string(self, make_chunk, usage_dict) -> None:
+        content = '{"action": "search", "input": "close } brace"}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert self._actions(result) == [AgentScratchpadUnit.Action(action_name="search", action_input="close } brace")]
+
+    def test_escaped_quote_around_brace_in_action_input(self, make_chunk, usage_dict) -> None:
+        content = '{"action": "search", "input": "say \\"hi }\\" now"}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert self._actions(result) == [
+            AgentScratchpadUnit.Action(action_name="search", action_input='say "hi }" now')
+        ]
+
+    def test_unbalanced_opening_brace_in_action_input_keeps_following_text(self, make_chunk, usage_dict) -> None:
+        content = '{"action": "code", "input": "values = {1, 2"}\nFinal Answer: done'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert self._actions(result) == [AgentScratchpadUnit.Action(action_name="code", action_input="values = {1, 2")]
+        assert "Final Answer: done" in self._text(result)
+
+    def test_nested_input_keeps_braces_in_strings(self, make_chunk, usage_dict) -> None:
+        content = '{"action": "http", "input": {"url": "https://x/{id}", "body": {"tpl": "a}b"}}}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert self._actions(result) == [
+            AgentScratchpadUnit.Action(
+                action_name="http",
+                action_input={"url": "https://x/{id}", "body": {"tpl": "a}b"}},
+            )
+        ]
+        assert self._text(result).strip() == ""
+
+    def test_stray_closing_brace_in_prose_does_not_swallow_the_action(self, make_chunk, usage_dict) -> None:
+        content = 'the set } is empty\n{"action": "search", "input": "q"}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert self._actions(result) == [AgentScratchpadUnit.Action(action_name="search", action_input="q")]
+        assert self._text(result).strip() == "the set } is empty"

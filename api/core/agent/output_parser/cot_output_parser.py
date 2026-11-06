@@ -56,7 +56,9 @@ class CotAgentOutputParser:
         code_block_delimiter_count = 0
         in_code_block = False
         json_cache = ""
-        json_quote_count = 0
+        json_depth = 0
+        in_json_string = False
+        json_escape = False
         in_json = False
         got_json = False
 
@@ -179,33 +181,42 @@ class CotAgentOutputParser:
 
                 if not in_code_block:
                     # handle single json
-                    if delta == "{":
-                        json_quote_count += 1
-                        in_json = True
-                        last_character = delta
-                        json_cache += delta
-                    elif delta == "}":
-                        last_character = delta
-                        json_cache += delta
-                        if json_quote_count > 0:
-                            json_quote_count -= 1
-                            if json_quote_count == 0:
-                                in_json = False
-                                got_json = True
-                                index += steps
-                                continue
-                    else:
-                        if in_json:
-                            last_character = delta
-                            json_cache += delta
-
                     if got_json:
                         got_json = False
                         last_character = delta
                         yield parse_action(json_cache)
                         json_cache = ""
-                        json_quote_count = 0
-                        in_json = False
+                    if not in_json:
+                        if delta == "{":
+                            last_character = delta
+                            in_json = True
+                            json_depth = 1
+                            in_json_string = False
+                            json_escape = False
+                            json_cache = delta
+                    else:
+                        last_character = delta
+                        json_cache += delta
+                        # Braces inside a string value are content, not structure:
+                        # only an unquoted "{" or "}" may move the payload boundary.
+                        if json_escape:
+                            json_escape = False
+                        elif in_json_string:
+                            if delta == "\\":
+                                json_escape = True
+                            elif delta == '"':
+                                in_json_string = False
+                        elif delta == '"':
+                            in_json_string = True
+                        elif delta == "{":
+                            json_depth += 1
+                        elif delta == "}":
+                            json_depth -= 1
+                            if json_depth == 0:
+                                in_json = False
+                                got_json = True
+                                index += steps
+                                continue
 
                 if not in_code_block and not in_json:
                     last_character = delta
