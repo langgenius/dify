@@ -3,6 +3,7 @@ import { parseWebAppAddress } from '@/service/webapp-address'
 import { basePath } from '@/utils/var'
 
 type LoginSearchParams = Pick<URLSearchParams, 'get'>
+const RELATIVE_REDIRECT_ORIGIN = 'https://login-redirect.invalid'
 
 export function isEndUserSignIn(searchParams: LoginSearchParams) {
   return searchParams.get('is_end_user') === '1' || searchParams.get('mode') === 'end_user'
@@ -15,7 +16,7 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams) {
   if (!redirectUrl) return null
 
   try {
-    const url = new URL(redirectUrl, 'https://login-redirect.invalid')
+    const url = new URL(redirectUrl, RELATIVE_REDIRECT_ORIGIN)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
     if (url.username || url.password) return null
     const appCode = searchParams.get('app_code') || parseWebAppAddress(url.pathname)?.code
@@ -40,8 +41,10 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams) {
 function getPersonalPortalUrl(raw: string) {
   if (/[\u0000-\u0020\u007F\\]/.test(raw) || raw.startsWith('//')) return null
   try {
-    const url = new URL(raw, globalThis.location.origin)
-    if (url.origin !== globalThis.location.origin || url.username || url.password) return null
+    // Relative portal targets also need to validate during server rendering.
+    const origin = globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN
+    const url = new URL(raw, origin)
+    if (url.origin !== origin || url.username || url.password) return null
     const prefix = basePath.replace(/\/$/, '')
     if (!url.pathname.startsWith(`${prefix}/`)) return null
     const route = url.pathname.slice(prefix.length + 1)
