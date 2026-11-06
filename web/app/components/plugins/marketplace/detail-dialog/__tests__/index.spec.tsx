@@ -2,9 +2,9 @@ import type { ReactElement } from 'react'
 import type { consoleClient } from '@/service/console'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import { ThemeProvider } from '@/features/theme/provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -16,12 +16,17 @@ const mocks = vi.hoisted(() => ({
 }))
 
 // Preserve query construction while keeping the external iframe document local.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
+    },
   }
 })
 vi.mock('@/service/console', async (importOriginal) => {
@@ -62,7 +67,7 @@ describe('MarketplaceDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ThemeProvider defaultTheme="dark" enableSystem={false}>
+      <ThemeProvider defaultPreference="dark">
         <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={onOpenChange} />
       </ThemeProvider>,
     )
@@ -85,7 +90,7 @@ describe('MarketplaceDetailDialog', () => {
 
   it('installs from the embedded detail frame without opening a confirmation dialog', async () => {
     render(
-      <ThemeProvider defaultTheme="dark" enableSystem={false}>
+      <ThemeProvider defaultPreference="dark">
         <MarketplaceDetailDialog open isInstalled={false} plugin={plugin} onOpenChange={vi.fn()} />
       </ThemeProvider>,
     )
@@ -149,7 +154,7 @@ describe('MarketplaceDetailDialog', () => {
   it('does not install when the workspace lacks plugin.install', async () => {
     render(
       <PluginInstallPermissionProvider canInstallPlugin={false}>
-        <ThemeProvider defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider defaultPreference="dark">
           <MarketplaceDetailDialog
             open
             isInstalled={false}
@@ -197,7 +202,7 @@ describe('MarketplaceDetailDialog', () => {
 
     try {
       render(
-        <ThemeProvider defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider defaultPreference="dark">
           <MarketplaceDetailDialog
             open
             isInstalled={false}

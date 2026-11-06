@@ -33,7 +33,7 @@ from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.endpoint import EndpointEntityWithInstance, EndpointProviderDeclaration
 from core.plugin.impl.exc import PluginDaemonInternalServerError, PluginPermissionDeniedError
 from libs.external_api import ExternalApi
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 
 def _endpoint_entity() -> EndpointEntityWithInstance:

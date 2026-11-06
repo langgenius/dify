@@ -2,14 +2,14 @@
 
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
+import type { ResolvedTheme } from '@/features/theme/theme'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
-import { Theme } from '@/types/app'
 
 type TriggerByDisplayProps = {
   triggeredFrom: WorkflowRunTriggeredFrom
@@ -39,11 +39,11 @@ const getTriggerDisplayName = (
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
-const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
+const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: ResolvedTheme) => {
   if (!metadata) return null
 
   const icon =
-    theme === Theme.dark ? metadata.icon_dark || metadata.icon : metadata.icon || metadata.icon_dark
+    theme === 'dark' ? metadata.icon_dark || metadata.icon : metadata.icon || metadata.icon_dark
 
   if (!icon) return null
 
@@ -53,7 +53,7 @@ const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
 const getTriggerIcon = (
   triggeredFrom: WorkflowRunTriggeredFrom,
   metadata: TriggerMetadata | undefined,
-  theme: Theme,
+  theme: ResolvedTheme,
 ) => {
   switch (triggeredFrom) {
     case 'webhook':
@@ -118,7 +118,7 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   triggerMetadata,
 }) => {
   const { t } = useTranslation(['appLog'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const displayName = getTriggerDisplayName(triggeredFrom, t, triggerMetadata)
   const icon = getTriggerIcon(triggeredFrom, triggerMetadata, theme)

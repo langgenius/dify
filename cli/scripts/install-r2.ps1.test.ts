@@ -3,10 +3,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 const SCRIPT = fileURLToPath(new URL('./install-r2.ps1', import.meta.url))
 const hasPwsh = spawnSync('pwsh', ['-v'], { encoding: 'utf8' }).status === 0
+// Each test starts pwsh; cold starts on a busy CI runner can exceed the default 5 seconds.
+if (hasPwsh) vi.setConfig({ testTimeout: 15_000 })
 const d = hasPwsh ? describe : describe.skip
 
 const MANIFEST = JSON.stringify({

@@ -3,7 +3,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { VERSION_HISTORY_HOTKEY } from '../hotkeys'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
@@ -12,7 +12,7 @@ type VersionHistoryButtonProps = {
 }
 
 export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { t } = useTranslation(['workflow'])
   const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 

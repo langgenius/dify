@@ -10,13 +10,15 @@ import Link from '@/next/link'
 
 type CardProps = {
   apiBaseUrl: string
+  apiReferenceUrl?: string
   canManageApiKey: boolean
 }
 
-export function ServiceApiCard({ apiBaseUrl, canManageApiKey }: CardProps) {
+export function ServiceApiCard({ apiBaseUrl, apiReferenceUrl, canManageApiKey }: CardProps) {
   const { t } = useTranslation(['dataset'])
 
-  const apiReferenceUrl = useDatasetApiAccessUrl()
+  const datasetApiReferenceUrl = useDatasetApiAccessUrl()
+  const referenceUrl = apiReferenceUrl ?? datasetApiReferenceUrl
 
   return (
     <div className="flex w-90 flex-col rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-1">
@@ -73,7 +75,7 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey }: CardProps) {
           </span>
         </PopoverClose>
         <Link
-          href={apiReferenceUrl}
+          href={referenceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(buttonVariants({ variant: 'ghost', size: 'small' }), 'text-text-tertiary')}

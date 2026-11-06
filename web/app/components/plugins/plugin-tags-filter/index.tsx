@@ -36,7 +36,7 @@ export function PluginTagsFilter({
         <CompactTrigger tags={value} tagsMap={tagsMap} onTagsChange={onValueChange} />
       )}
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         alignOffset={-6}
         className="border-none bg-transparent shadow-none"
@@ -49,11 +49,11 @@ export function PluginTagsFilter({
                 name="tag-query"
                 autoComplete="off"
                 enterKeyHint="search"
-                aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                aria-label={t(($) => $.searchTags, { ns: 'pluginTags' })}
                 className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
                 onValueChange={setSearchText}
-                placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                placeholder={t(($) => $.searchTags, { ns: 'pluginTags' })}
               />
               <InputGroupAddon className="ps-1.75 pe-0.75">
                 <span

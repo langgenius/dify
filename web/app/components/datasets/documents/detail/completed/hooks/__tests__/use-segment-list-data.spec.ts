@@ -430,7 +430,7 @@ describe('useSegmentListData', () => {
 
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Request failed',
       })
     })
   })
@@ -507,7 +507,7 @@ describe('useSegmentListData', () => {
 
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Request failed',
       })
     })
   })

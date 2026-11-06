@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import StatusWithAction from './status-with-action'
 
@@ -30,7 +29,6 @@ const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
       query: { document_id: documentIds },
     })
     queryClient.invalidateQueries({ queryKey: autoDisableLogsQuery.queryKey })
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   return (

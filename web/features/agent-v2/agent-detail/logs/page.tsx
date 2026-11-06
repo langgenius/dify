@@ -27,9 +27,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
@@ -66,22 +65,10 @@ const getPeriodQuery = (period: PeriodKey) => {
   }
 }
 
-const parseSortValue = (value: string): AgentLogsSort => {
-  const isDescending = value.startsWith('-')
-  const field = isDescending ? value.slice(1) : value
-
-  return {
-    field: field === 'updated_at' ? 'updated_at' : 'created_at',
-    order: isDescending ? 'desc' : 'asc',
-  }
-}
-
 export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const [period, setPeriod] = useState<PeriodKey>('last7days')
   const [source, setSource] = useState<SourceFilterValue>([])
   const [keyword, setKeyword] = useState('')
@@ -199,10 +186,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
             }}
           />
 
-          <div className="ml-auto max-w-full">
+          <div className="ms-auto max-w-full">
             <Sort
-              order={sort.order === 'desc' ? '-' : ''}
-              value={sort.field}
+              value={sort}
               items={[
                 {
                   value: 'created_at',
@@ -213,9 +199,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
                   name: t(($) => $['agentDetail.logs.filters.sort.lastUpdatedTime']),
                 },
               ]}
-              onSelect={(nextSortValue) => {
+              onValueChange={(nextSortValue) => {
                 setPage(1)
-                setSort(parseSortValue(nextSortValue))
+                setSort(nextSortValue)
               }}
             />
           </div>
@@ -246,10 +232,10 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
         }}
       >
         <DrawerPortal>
-          <DrawerBackdrop className={!isMobile ? 'bg-transparent' : undefined} />
+          <DrawerBackdrop className="sm:bg-transparent" />
           <DrawerViewport>
-            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-1">
+              <DrawerContent>
                 <AgentLogDetailPanel agentId={agentId} log={selectedLog} onClose={closeLogDetail} />
               </DrawerContent>
             </DrawerPopup>

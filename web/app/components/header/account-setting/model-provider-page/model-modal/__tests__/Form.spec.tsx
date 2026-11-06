@@ -531,7 +531,7 @@ describe('Form', () => {
     ],
     [
       FormTypeEnum.appSelector,
-      'app.appSelector.label',
+      'app.appSelector.placeholder',
       { app_id: 'selected-app', inputs: {}, files: [], type: FormTypeEnum.appSelector },
     ],
     [FormTypeEnum.any, 'workflow.common.setVarValuePlaceholder', ['source', 'text']],
@@ -561,7 +561,7 @@ describe('Form', () => {
         await chooseTool(user, type === FormTypeEnum.multiToolSelector)
       if (type === FormTypeEnum.any) await user.click(await screen.findByText('text'))
       if (type === FormTypeEnum.appSelector) {
-        await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+        await user.click(screen.getAllByRole('button', { name: 'app.appSelector.placeholder' })[1]!)
         await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
       }
       if (type === FormTypeEnum.modelSelector)
@@ -713,7 +713,7 @@ describe('Form', () => {
     [FormTypeEnum.modelSelector, 'plugin.detailPanel.configureModel'],
     [FormTypeEnum.toolSelector, 'plugin.detailPanel.configureTool'],
     [FormTypeEnum.multiToolSelector, 'plugin.detailPanel.toolSelector.title'],
-    [FormTypeEnum.appSelector, 'app.appSelector.label'],
+    [FormTypeEnum.appSelector, 'app.appSelector.placeholder'],
     [FormTypeEnum.any, 'workflow.common.setVarValuePlaceholder'],
   ] as const)('shows validation feedback after a %s field changes', async (type, control) => {
     const user = userEvent.setup()
@@ -745,7 +745,7 @@ describe('Form', () => {
       await chooseTool(user, type === FormTypeEnum.multiToolSelector)
     if (type === FormTypeEnum.any) await user.click(await screen.findByText('text'))
     if (type === FormTypeEnum.appSelector) {
-      await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+      await user.click(screen.getAllByRole('button', { name: 'app.appSelector.placeholder' })[1]!)
       await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
     }
     expect(screen.getByText('common.provider.validating')).toBeInTheDocument()

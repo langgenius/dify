@@ -7,13 +7,13 @@ import { zSkillResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { detectPlatform, useHotkey } from '@tanstack/react-hotkeys'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { useReactFlow } from 'reactflow'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { ThemeProvider } from '@/features/theme/provider'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -32,15 +32,21 @@ const api = vi.hoisted(() => ({
   marketplace: vi.fn<typeof marketplaceClient.searchAdvanced>(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   push: vi.fn(),
+  refresh: vi.fn(),
+  setLocale: vi.fn<(locale: string) => Promise<void>>(),
   agentEnabled: true,
   pathname: '/',
 }))
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: (query: string) => query === '(width >= 48rem)',
+}))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: api.push }),
+  useRouter: () => ({ push: api.push, refresh: api.refresh }),
   usePathname: () => api.pathname,
   useParams: () => ({}),
 }))
+vi.mock('@/i18n/client', () => ({ setLocaleOnClient: api.setLocale }))
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => api.agentEnabled,
 }))
@@ -123,7 +129,7 @@ const plugin: MarketplacePlugin = {
   verification: { authorized_category: 'community' },
   from: 'marketplace',
 }
-const darkTheme = /app.gotoAnything.actions.themeDark/
+const darkTheme = /common.theme.dark/
 const isMac = detectPlatform() === 'mac'
 const triggerSearchShortcut = (target: HTMLElement = document.body) =>
   fireEvent.keyDown(target, { key: 'k', ctrlKey: !isMac, metaKey: isMac })
@@ -135,6 +141,7 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
     accountProfileMeta: { currentVersion: '1.0.0' },
     workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
     systemFeatures: {
+      enable_marketplace: true,
       rbac_enabled: true,
       plugin_installation_permission: {
         plugin_installation_scope: 'all',
@@ -144,9 +151,9 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
   })
   render(
     <ConsoleWrapper>
-      <ThemeProvider defaultTheme="light" enableSystem={false}>
+      <ThemeProvider defaultPreference="light">
         <GotoAnything />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ThemeProvider>
     </ConsoleWrapper>,
   )
@@ -169,12 +176,38 @@ beforeEach(() => {
   api.marketplace.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
   api.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
   api.push.mockReset()
+  api.refresh.mockReset()
+  api.setLocale.mockReset().mockResolvedValue(undefined)
   api.agentEnabled = true
   api.pathname = '/'
 })
 afterEach(() => {
   vi.restoreAllMocks()
   act(() => toast.dismiss())
+})
+
+it('switches language through the command palette before refreshing the current route', async () => {
+  const languageChange = createDeferred()
+  api.setLocale.mockReturnValueOnce(languageChange.promise)
+  const { user } = setup()
+  await user.type(await openSearch(), '/language fa-IR')
+  await user.click(await screen.findByRole('option', { name: /Farsi \(Iran\)/ }))
+  expect(api.setLocale).toHaveBeenCalledExactlyOnceWith('fa-IR')
+  expect(api.refresh).not.toHaveBeenCalled()
+  await act(async () => languageChange.resolve())
+  await waitFor(() => expect(api.refresh).toHaveBeenCalledOnce())
+  expect(api.push).not.toHaveBeenCalled()
+})
+
+it('does not refresh when a language command fails', async () => {
+  api.setLocale.mockRejectedValueOnce(new Error('Language resources unavailable'))
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { user } = setup()
+  await user.type(await openSearch(), '/language fa-IR')
+  await user.click(await screen.findByRole('option', { name: /Farsi \(Iran\)/ }))
+  await screen.findByText('common.api.actionFailed')
+  expect(api.refresh).not.toHaveBeenCalled()
+  expect(api.push).not.toHaveBeenCalled()
 })
 
 describe('search shortcut ownership', () => {
@@ -209,14 +242,14 @@ describe('search shortcut ownership', () => {
     expect(save).toHaveBeenCalledTimes(2)
   })
 
-  it('opens search, keeps the current query on a repeated shortcut, and clears it after closing', async () => {
+  it('opens search, keeps the query on a repeated shortcut, and resets term and scope after closing', async () => {
     const { user } = setup()
     const input = await openSearch()
-    expect(input).toHaveFocus()
-    await user.type(input, 'research')
+    await user.type(input, '@app research')
+    const scopedInput = screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })
     triggerSearchShortcut()
-    expect(input).toHaveValue('research')
-    expect(input).toHaveFocus()
+    expect(scopedInput).toHaveValue('research')
+    expect(scopedInput).toHaveFocus()
     await user.keyboard('{Escape}')
     await waitFor(() =>
       expect(
@@ -263,40 +296,25 @@ describe('search shortcut ownership', () => {
 })
 
 describe('real commands', () => {
-  it('lets shortcut controls select a prefix and return focus to typing', async () => {
-    const { user } = setup()
-    const input = await openSearch()
-    const commands = screen.getByRole('button', { name: 'app.gotoAnything.groups.commands' })
-    const scopes = screen.getByRole('button', { name: 'app.gotoAnything.selectSearchType' })
-    await user.tab()
-    expect(commands).toHaveFocus()
-    await user.tab()
-    expect(scopes).toHaveFocus()
-    await user.tab()
-    expect(input).toHaveFocus()
-    await user.click(commands)
-    expect(input).toHaveValue('/')
-    expect(input).toHaveFocus()
-    expect(screen.getByRole('gridcell', { name: /\/models/ })).toHaveTextContent(
-      'modelProvider.modelProvider.systemModelSettings',
-    )
-    await user.clear(input)
-    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.selectSearchType' }))
-    expect(input).toHaveValue('@')
-    expect(input).toHaveFocus()
-    expect(screen.getByRole('gridcell', { name: /@kb/ })).toHaveTextContent(
-      'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-    )
+  it('lists commands, then scopes, without search syntax on the desktop home view', async () => {
+    setup()
+    await openSearch()
+
+    const options = screen.getAllByRole('option')
+    const theme = screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ })
+    const apps = screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })
+    expect(theme).not.toHaveTextContent('/theme')
+    expect(apps).not.toHaveTextContent('@app')
+    expect(options.indexOf(theme)).toBeLessThan(options.indexOf(apps))
   })
 
-  it('commits a submenu before executing a real theme choice', async () => {
+  it('opens a command page before executing a real theme choice', async () => {
     const { user } = setup()
     const input = await openSearch()
-    await user.type(input, '/theme')
-    expect(screen.getByRole('gridcell', { name: /\/theme/ })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: darkTheme })).not.toBeInTheDocument()
-    await user.keyboard('{Enter}')
-    expect(input).toHaveValue('/theme ')
+    await user.click(
+      screen.getByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
+    )
+    expect(input).toHaveValue('')
     await user.click(await screen.findByRole('option', { name: darkTheme }))
     await waitFor(() =>
       expect(
@@ -309,12 +327,11 @@ describe('real commands', () => {
   it('executes a direct command once without a resource search', async () => {
     const { user } = setup()
     await user.type(await openSearch(), '/models')
-    await screen.findByRole('gridcell', { name: /\/models/ })
+    await screen.findByRole('option', { name: /modelProvider.modelProvider.systemModelSettings/ })
     await user.keyboard('{Enter}')
     expect(api.push).toHaveBeenCalledExactlyOnceWith(SYSTEM_MODELS_PATH)
     expect(api.apps).not.toHaveBeenCalled()
   })
-
   it('finds an action by name even when every remote provider fails', async () => {
     for (const request of [api.apps, api.datasets, api.skills, api.agents, api.marketplace])
       request.mockRejectedValue(new Error('Unavailable'))
@@ -431,26 +448,15 @@ describe('resource search', () => {
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/dataset-1/hitTesting')
   })
 
-  it.each(['chat', 'workflow'] as const)(
-    'offers %s app sections only in scoped search',
-    async (mode) => {
-      api.apps.mockResolvedValue(page([{ ...app(), mode }]))
-      const { user } = setup()
-      const input = await openSearch()
-      await user.type(input, 'research')
-      await screen.findByRole('option', { name: /Research app/ })
-      expect(screen.queryByRole('option', { name: /Research app \/ Logs/ })).not.toBeInTheDocument()
-      await user.clear(input)
-      await user.type(input, '@app research')
-      expect(
-        await screen.findByRole('option', {
-          name: new RegExp(`Research app / ${mode === 'workflow' ? 'Workflow' : 'Configuration'}`),
-        }),
-      ).toBeInTheDocument()
-      await user.click(screen.getByRole('option', { name: /Research app \/ Logs/ }))
-      expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/logs')
-    },
-  )
+  it('shows only the apps themselves when the search is scoped to apps', async () => {
+    api.apps.mockResolvedValue(page([{ ...app(), mode: 'workflow' }]))
+    const { user } = setup()
+    await user.type(await openSearch(), '@app research')
+    const appOption = await screen.findByRole('option', { name: /Research app/ })
+    expect(screen.getAllByRole('option')).toEqual([appOption])
+    await user.click(appOption)
+    expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/workflow')
+  })
 
   it('navigates the highlighted resource with the keyboard', async () => {
     api.apps.mockResolvedValue(page([app('Unique keyboard result')]))
@@ -466,7 +472,12 @@ describe('resource search', () => {
     async (options) => {
       const { user } = setup(options)
       const input = await openSearch()
-      expect(screen.queryByRole('gridcell', { name: /@skill/ })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('option', { name: 'skill.skillManagement.title' }),
+      ).not.toBeInTheDocument()
       await user.type(input, 'research')
       await waitFor(() => expect(api.apps).toHaveBeenCalled())
       expect(api.skills).not.toHaveBeenCalled()
@@ -477,10 +488,48 @@ describe('resource search', () => {
     api.agentEnabled = false
     const { user } = setup()
     const input = await openSearch()
-    expect(screen.queryByRole('gridcell', { name: /@agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: 'agentRoster.roster.title' }),
+    ).not.toBeInTheDocument()
     await user.type(input, 'research')
     await waitFor(() => expect(api.apps).toHaveBeenCalled())
     expect(api.agents).not.toHaveBeenCalled()
+  })
+
+  it('falls back to all resources when the selected scope becomes unavailable', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@agents ')
+    const scopedInput = screen.getByRole('combobox', { name: 'agentRoster.roster.title' })
+
+    api.agentEnabled = false
+    await user.type(scopedInput, 'r')
+
+    const input = screen.getByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+    expect(input).toBe(scopedInput)
+    expect(input).toHaveValue('r')
+    expect(input).toHaveFocus()
+    await user.keyboard('{Backspace}{Backspace}')
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+  })
+
+  it('leaves the scope behind when a command page opens', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@app /theme ')
+    const pageInput = await screen.findByRole('combobox', {
+      name: 'app.gotoAnything.actions.themeCategoryDesc',
+    })
+    await waitFor(() => expect(pageInput).toHaveFocus())
+
+    await user.type(pageInput, 'zzz')
+    expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+
+    await user.clear(pageInput)
+    await user.keyboard('{Backspace}')
+    expect(
+      await screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' }),
+    ).toBeInTheDocument()
   })
 
   it.each([
@@ -499,17 +548,27 @@ describe('resource search', () => {
     },
   )
 
-  it('does not send a scope prefix as a remote query', async () => {
+  it('turns a typed scope prefix into a token and sends only the term to that provider', async () => {
     const { user } = setup()
-    const input = await openSearch()
-    await user.type(input, '@')
-    await user.click(screen.getByRole('gridcell', { name: /@app/ }))
-    expect(input).toHaveValue('@app ')
-    await user.type(input, 'research')
+    await user.type(await openSearch(), '@app research')
+    expect(screen.getByRole('combobox', { name: 'app.gotoAnything.groups.apps' })).toHaveValue(
+      'research',
+    )
     await waitFor(() =>
       expect(api.apps).toHaveBeenCalledWith({ query: { page: 1, name: 'research' } }),
     )
     expect(api.apps).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists only scopes for a bare @', async () => {
+    const { user } = setup()
+    await user.type(await openSearch(), '@')
+
+    expect(screen.getByRole('option', { name: 'app.gotoAnything.groups.apps' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
+    ).not.toBeInTheDocument()
+    expect(api.apps).not.toHaveBeenCalled()
   })
 })
 
@@ -580,13 +639,17 @@ describe('pending and failed searches', () => {
     expect(screen.getByRole('option', { name: darkTheme })).toBeInTheDocument()
   })
 
-  it('keeps submenu choices visible while a new argument is being debounced', async () => {
+  it('keeps page choices visible while a new argument is being debounced', async () => {
     const { user } = setup()
     const input = await openSearch()
-    await user.type(input, '/theme')
-    await screen.findByRole('gridcell', { name: /\/theme/ })
-    await user.keyboard('{Enter}')
-    await user.type(input, 'unknown')
+    await user.type(input, '/theme ')
+    const pageInput = await screen.findByRole('combobox', {
+      name: 'app.gotoAnything.actions.themeCategoryDesc',
+    })
+    await waitFor(() => expect(pageInput).toHaveFocus())
+    expect(pageInput).toHaveValue('')
+    await screen.findByRole('option', { name: darkTheme })
+    await user.type(pageInput, 'unknown')
     expect(screen.getByRole('option', { name: darkTheme })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
     expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
@@ -615,7 +678,12 @@ describe('pending and failed searches', () => {
         'app.gotoAnything.someServicesUnavailable',
       ),
     )
-    await user.click(screen.getByRole('option', { name: /Available result/ }))
+    const result = screen.getByRole('option', { name: /Available result/ })
+    const notice = screen
+      .getAllByText('app.gotoAnything.someServicesUnavailable')
+      .find((element) => !screen.getByRole('status').contains(element))
+    expect(notice?.compareDocumentPosition(result)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    await user.click(result)
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
   })
 })

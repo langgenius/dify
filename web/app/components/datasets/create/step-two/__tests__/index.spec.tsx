@@ -8,7 +8,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { assert } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -23,6 +23,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import StepTwo from '../index'
 
 const api = vi.hoisted(() => ({
@@ -114,7 +115,7 @@ async function setup(
   const tree = (
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts require their Provider rather than React 19 context rendering.
     <DatasetDetailContext.Provider value={{ dataset }}>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <StepTwo
         dataSourceType={DataSourceType.FILE}
         files={[{ id: 'file-1', name: 'handbook.pdf', extension: 'pdf' }]}
@@ -169,7 +170,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   act(() => toast.dismiss())
-  vi.unstubAllGlobals()
+  resetViewportWidth()
 })
 
 it('keeps the chunk mode and preview while editing its delimiter with an arrow key', async () => {
@@ -188,7 +189,7 @@ it('keeps the chunk mode and preview while editing its delimiter with an arrow k
 })
 
 it('opens the mobile preview with fetched chunks and restores its trigger after closing', async () => {
-  vi.stubGlobal('innerWidth', 480)
+  setViewportWidth(480)
   const { user } = await setup()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   const trigger = screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' })
@@ -433,7 +434,7 @@ it.each([
       }),
     )
     expect(screen.getByRole('button', { name: nextName })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.getByText('common.loading').closest('[role="status"]')).toBeInTheDocument()
     expect(screen.queryByText('Previewed chunk')).not.toBeInTheDocument()
     await act(async () =>
       pending.resolve({

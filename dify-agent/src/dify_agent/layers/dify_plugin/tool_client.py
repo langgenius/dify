@@ -96,6 +96,15 @@ class DifyPluginToolInvokeMessage(BaseModel):
         data: Mapping[str, object] = Field(default_factory=dict)
         metadata: Mapping[str, object] = Field(default_factory=dict)
 
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: object) -> object:
+            # The plugin SDK's ``create_log_message`` defaults ``metadata`` to
+            # None, which the daemon serializes as ``metadata: null``. Mirror the
+            # canonical core model (ToolInvokeMessage.LogMessage) and coerce that
+            # null back to an empty mapping so the message union still resolves.
+            return value or {}
+
     class MessageType(StrEnum):
         TEXT = "text"
         IMAGE = "image"
@@ -294,6 +303,11 @@ def merge_blob_chunks(
             is_end = resp.message.end
 
             if chunk_id not in files:
+                # The declared length is plugin-controlled while the whole buffer is
+                # pre-allocated, so an oversized claim must be rejected before the
+                # allocation below rather than after it.
+                if total_length > max_file_size:
+                    raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
             if files[chunk_id].bytes_written + len(blob_data) > max_file_size:

@@ -68,10 +68,10 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
         <div className="bg-background-secondary flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
-          <div className="h-full w-1/2 border-r border-divider-regular pl-3">
+          <div className="h-full w-1/2 border-e border-divider-regular ps-3">
             {t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })}
           </div>
-          <div className="h-full w-1/2 pr-1 pl-3">
+          <div className="h-full w-1/2 ps-3 pe-1">
             {t(($) => $['mcp.modal.headerValue'], { ns: 'tools' })}
           </div>
         </div>
@@ -83,7 +83,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
               index < headersItems.length - 1 && 'border-b',
             )}
           >
-            <div className="w-1/2 border-r border-divider-regular">
+            <div className="w-1/2 border-e border-divider-regular">
               <Input
                 aria-label={t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })}
                 value={item.key}
@@ -106,7 +106,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                 <IconButton
                   aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${item.key.trim() || t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })} ${index + 1}`}
                   onClick={() => handleRemoveItem(index)}
-                  className="mr-2"
+                  className="me-2"
                 >
                   <RiDeleteBinLine aria-hidden className="size-4 text-text-destructive" />
                 </IconButton>

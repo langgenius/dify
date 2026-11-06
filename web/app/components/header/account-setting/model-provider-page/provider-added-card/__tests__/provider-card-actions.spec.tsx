@@ -7,7 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
@@ -117,7 +117,7 @@ function setup(
   const result = render(
     <ModalContextProvider>
       <ProviderCardActions {...props} />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </ModalContextProvider>,
   )
   return { ...result, user: userEvent.setup() }
@@ -284,7 +284,7 @@ it.each(['2.0.0', '0.5.0'])(
           providerLabel="Provider Plugin"
           onUpdate={onUpdate}
         />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ModalContextProvider>,
     )
     expect(within(dialog).getByText(`1.0.0 -> ${next}`)).toBeInTheDocument()

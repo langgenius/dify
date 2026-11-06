@@ -9,3 +9,20 @@
 1. **Start Debugging**: Select the desired configuration from the dropdown menu and click the green play button.
 
 Start the frontend separately using the [frontend guide](../web/README.md).
+
+## Frontend OpenAPI types
+
+After installing workspace dependencies, install the TypeScript 7 extension
+(`TypeScriptTeam.native-preview`). Copy `settings.example.json` to `settings.json`,
+or merge its three `js/ts.*` settings into your existing configuration. Open the
+repository root in a trusted workspace, then open a consuming TypeScript file so
+the language server loads the project's Content Mapper configuration.
+
+If lifecycle scripts were disabled during installation, first run
+`pnpm --filter @dify/openapi-content-mapper build`. For the repository Console
+example, run `uv sync --project api --frozen` to prepare its local schema exporter,
+then open `packages/openapi-content-mapper/examples/repository/client.ts`. The
+exported OpenAPI content stays in memory; no preparation of a specification file
+is needed. Accept the editor prompt to use the workspace TypeScript 7.1 compiler.
+Local `settings.json` remains ignored; the shared template is exercised by the
+Console language-server test.

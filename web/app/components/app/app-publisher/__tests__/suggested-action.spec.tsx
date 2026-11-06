@@ -3,13 +3,9 @@ import userEvent from '@testing-library/user-event'
 import SuggestedAction from '../suggested-action'
 
 describe('SuggestedAction', () => {
-  it('should render an enabled external link with supporting copy', () => {
+  it('should open absolute destinations in a new tab with supporting copy', () => {
     render(
-      <SuggestedAction
-        link="https://example.com/docs"
-        external
-        description="Read the documentation"
-      >
+      <SuggestedAction link="https://example.com/docs" description="Read the documentation">
         Open docs
       </SuggestedAction>,
     )
@@ -17,11 +13,12 @@ describe('SuggestedAction', () => {
     const link = screen.getByRole('link', { name: 'Open docs' })
     expect(link).toHaveAttribute('href', 'https://example.com/docs')
     expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer')
     expect(link).toHaveAccessibleDescription('Read the documentation')
     expect(screen.getByText('Read the documentation')).toBeInTheDocument()
   })
 
-  it('should render internal destinations without opening a new tab', () => {
+  it('should open internal destinations in a new tab', () => {
     render(
       <SuggestedAction link="/app/app-1/deploy" description="Push versions to environments">
         Deploy
@@ -30,7 +27,7 @@ describe('SuggestedAction', () => {
 
     const link = screen.getByRole('link', { name: 'Deploy' })
     expect(link).toHaveAttribute('href', '/app/app-1/deploy')
-    expect(link).not.toHaveAttribute('target')
+    expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAccessibleDescription('Push versions to environments')
   })
 
@@ -99,7 +96,6 @@ describe('SuggestedAction', () => {
     render(
       <SuggestedAction
         link="https://example.com/app"
-        external
         actionButton={{
           ariaLabel: 'Configure action',
           icon: <span>config</span>,
@@ -126,7 +122,6 @@ describe('SuggestedAction', () => {
     render(
       <SuggestedAction
         link="https://example.com/app"
-        external
         disabled
         actionButton={{
           ariaLabel: 'Configure action',

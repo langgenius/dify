@@ -14,7 +14,7 @@
   },
   "scripts": {
     "test": "vp test",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsrs --noEmit"
   },
   "dependencies": {
     "@eslint-react/eslint-plugin": "catalog:",
@@ -38,6 +38,7 @@
     "eslint-plugin-regexp": "catalog:",
     "eslint-plugin-storybook": "catalog:",
     "eslint-plugin-yml": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

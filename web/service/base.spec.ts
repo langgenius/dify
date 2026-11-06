@@ -283,7 +283,11 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, onNotifyError })
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
+      expect(onError).toHaveBeenCalledWith(
+        'Base model not found',
+        'model_not_found',
+        expect.objectContaining({ errorCode: 'model_not_found' }),
+      )
     })
     expect(onNotifyError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
     expect(toast.error).not.toHaveBeenCalled()
@@ -350,7 +354,11 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+      expect(onError).toHaveBeenCalledWith(
+        'Error: stream lost',
+        'stream_read_error',
+        expect.objectContaining({ errorCode: 'stream_read_error' }),
+      )
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
@@ -378,7 +386,11 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+      expect(onError).toHaveBeenCalledWith(
+        'Error: stream lost',
+        'stream_read_error',
+        expect.objectContaining({ errorCode: 'stream_read_error' }),
+      )
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).not.toHaveBeenCalled()
@@ -410,6 +422,7 @@ describe('ssePost and sseGet', () => {
       expect(onError).toHaveBeenCalledWith(
         'AbortError: BodyStreamBuffer was aborted',
         'stream_read_error',
+        expect.objectContaining({ errorCode: 'stream_read_error' }),
       )
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'AbortError: BodyStreamBuffer was aborted')

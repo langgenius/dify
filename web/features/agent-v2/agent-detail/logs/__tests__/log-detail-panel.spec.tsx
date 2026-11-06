@@ -2,43 +2,18 @@ import type {
   AgentLogConversationItemResponse,
   AgentLogMessageListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { OnFeedback } from '@/app/components/base/chat/types'
 import { Drawer } from '@langgenius/dify-ui/drawer'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
 const mocks = vi.hoisted(() => ({
-  chatProps: vi.fn(),
   feedbackMutationFn: vi.fn(),
   messagesQueryFn: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/chat/chat', () => ({
-  default: ({
-    chatList,
-    config,
-    onFeedback,
-  }: {
-    chatList: IChatItem[]
-    config?: { supportFeedback?: boolean }
-    onFeedback?: OnFeedback
-  }) => {
-    mocks.chatProps({ chatList, config, onFeedback })
-    return (
-      <button
-        onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
-      >
-        submit-feedback
-      </button>
-    )
-  },
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -61,6 +36,10 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
+      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({ status: 'not_collected' }),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': async () => ({
+        status: 'not_collected',
+      }),
       'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
     }),
   }
@@ -124,12 +103,15 @@ const webappMessages: AgentLogMessageListResponse = {
   total: 1,
 }
 
-function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMessageListResponse) {
-  mocks.messagesQueryFn.mockResolvedValue(messages)
+function renderPanel(
+  log: AgentLogConversationItemResponse,
+  messages: AgentLogMessageListResponse,
+  refreshedMessages = messages,
+) {
+  mocks.messagesQueryFn.mockResolvedValueOnce(messages).mockResolvedValue(refreshedMessages)
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
   render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -138,8 +120,6 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
       </Drawer>
     </QueryClientTestProvider>,
   )
-
-  return { invalidateQueries }
 }
 
 describe('AgentLogDetailPanel', () => {
@@ -148,56 +128,71 @@ describe('AgentLogDetailPanel', () => {
     mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
   })
 
-  it('maps user and admin feedback and submits operator feedback for webapp messages', async () => {
+  it('maps user and admin feedback and removes operator feedback for webapp messages', async () => {
     const user = userEvent.setup()
-    const { invalidateQueries } = renderPanel(webappLog, webappMessages)
+    renderPanel(webappLog, webappMessages, {
+      ...webappMessages,
+      data: [
+        {
+          ...webappMessages.data[0]!,
+          answer: 'Refreshed answer',
+          feedbacks: webappMessages.data[0]!.feedbacks?.filter(
+            (feedback) => feedback.from_source === 'user',
+          ),
+        },
+      ],
+    })
 
-    await screen.findByRole('button', { name: 'submit-feedback' })
-    expect(mocks.chatProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        config: expect.objectContaining({ supportFeedback: true }),
-        chatList: expect.arrayContaining([
-          expect.objectContaining({
-            adminFeedback: { content: 'Needs work', from_source: 'admin', rating: 'dislike' },
-            feedback: { content: 'Helpful', from_source: 'user', rating: 'like' },
-            feedbackDisabled: false,
-            id: 'message-1',
-          }),
-        ]),
+    expect(
+      await screen.findByRole('img', {
+        name: 'appLog.table.header.userRate: appLog.detail.operation.like - Helpful',
+      }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'appLog.table.header.adminRate: appLog.detail.operation.dislike',
+        pressed: true,
       }),
     )
-
-    await user.click(screen.getByRole('button', { name: 'submit-feedback' }))
-
     await waitFor(() => {
-      expect(mocks.feedbackMutationFn).toHaveBeenCalledExactlyOnceWith({
+      expect(mocks.feedbackMutationFn).toHaveBeenLastCalledWith({
         body: {
           content: undefined,
           message_id: 'message-1',
-          rating: 'like',
+          rating: null,
         },
         params: { agent_id: 'agent-1' },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
-    })
+    expect(await screen.findByText('Refreshed answer')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'appLog.table.header.adminRate: appLog.detail.operation.like',
+        pressed: false,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {
     const user = userEvent.setup()
     mocks.feedbackMutationFn.mockRejectedValue(new Error('feedback request failed'))
-    const { invalidateQueries } = renderPanel(webappLog, webappMessages)
+    renderPanel(webappLog, webappMessages)
 
-    await user.click(await screen.findByRole('button', { name: 'submit-feedback' }))
-
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'appLog.table.header.adminRate: appLog.detail.operation.dislike',
+        pressed: true,
+      }),
     )
-    expect(invalidateQueries).not.toHaveBeenCalled()
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('feedback request failed'))
+    expect(
+      screen.getByRole('button', {
+        name: 'appLog.table.header.adminRate: appLog.detail.operation.dislike',
+        pressed: true,
+      }),
+    ).toBeInTheDocument()
+    expect(mocks.messagesQueryFn).toHaveBeenCalledOnce()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 
@@ -214,14 +209,11 @@ describe('AgentLogDetailPanel', () => {
       ],
     })
 
-    await screen.findByRole('button', { name: 'submit-feedback' })
-    expect(mocks.chatProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        config: expect.objectContaining({ supportFeedback: false }),
-        chatList: expect.arrayContaining([
-          expect.objectContaining({ feedbackDisabled: true, id: 'message-1' }),
-        ]),
-      }),
-    )
+    expect(await screen.findByText('Question')).toBeInTheDocument()
+    expect(screen.getByText('Answer')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /appLog.table.header.(adminRate|userRate)/ }),
+    ).not.toBeInTheDocument()
+    expect(mocks.feedbackMutationFn).not.toHaveBeenCalled()
   })
 })

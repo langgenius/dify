@@ -1,9 +1,5 @@
-import base64
-import contextlib
 import logging
 from typing import override
-
-from bs4 import BeautifulSoup
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -14,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 class UnstructuredEmailExtractor(BaseExtractor):
     """Load eml files.
+
+    Unstructured owns MIME transfer decoding and HTML partitioning; its elements
+    already contain text and must not be decoded again.
     Args:
         file_path: Path to the file to load.
     """
@@ -34,18 +33,6 @@ class UnstructuredEmailExtractor(BaseExtractor):
             from unstructured.partition.email import partition_email
 
             elements = partition_email(filename=self._file_path)
-
-        # noinspection PyBroadException
-        with contextlib.suppress(Exception):
-            for element in elements:
-                element_text = element.text.strip()
-
-                padding_needed = 4 - len(element_text) % 4
-                element_text += "=" * padding_needed
-
-                element_decode = base64.b64decode(element_text)
-                soup = BeautifulSoup(element_decode.decode("utf-8"), "html.parser")
-                element.text = soup.get_text()
 
         from unstructured.chunking.title import chunk_by_title
 

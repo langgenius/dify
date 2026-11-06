@@ -25,7 +25,7 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
         model_id=None,
         override_model_configs=None,
         conversation_id="conversation-1",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_unit_price=Decimal(0),

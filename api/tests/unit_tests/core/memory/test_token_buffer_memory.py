@@ -1,6 +1,7 @@
 """Comprehensive SQLite-backed tests for token-buffer memory."""
 
 import json
+import re
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -13,7 +14,6 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
-import models.model as model_module
 from core.app.file_access import FileAccessControllerProtocol
 from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -26,6 +26,15 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentWorkspaceBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
@@ -63,6 +72,10 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
             Workflow.__table__,
             AppModelConfig.__table__,
             AppAnnotationSetting.__table__,
+            AgentConfigDraft.__table__,
+            AgentConfigSnapshot.__table__,
+            AgentDebugConversation.__table__,
+            AgentWorkspaceBinding.__table__,
         ],
     )
     statements: list[tuple[str, object]] = []
@@ -74,7 +87,6 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
     with Session(sqlite_engine, expire_on_commit=False) as session:
         database = Database(engine=sqlite_engine, session=session, statements=statements)
         monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: session))
-        monkeypatch.setattr(model_module, "db", database)
         yield database
     event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
@@ -146,6 +158,7 @@ def _persist_message(
     answer_tokens: int = 5,
     created_at: datetime | None = None,
     workflow_run_id: str | None = None,
+    parent_message_id: str | None = None,
 ) -> Message:
     message = Message(
         id=str(uuid4()),
@@ -154,6 +167,7 @@ def _persist_message(
         _inputs={},
         query=query,
         message={},
+        parent_message_id=parent_message_id,
         message_unit_price=Decimal(0),
         answer=answer,
         answer_tokens=answer_tokens,
@@ -161,8 +175,8 @@ def _persist_message(
         currency="USD",
         from_source=ConversationFromSource.API,
         workflow_run_id=workflow_run_id,
-        created_at=created_at or datetime.now(UTC).replace(tzinfo=None),
     )
+    message.created_at = created_at or datetime.now(UTC).replace(tzinfo=None)
     database.session.add(message)
     database.session.commit()
     return message
@@ -196,7 +210,7 @@ def _persist_workflow(database: Database, *, workflow_id: str) -> Workflow:
         type=WorkflowType.CHAT,
         version="1",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
     database.session.add(workflow)
@@ -375,6 +389,38 @@ class TestGetHistoryPromptMessages:
         assert sum("FROM apps" in sql for sql in selects) == 1
         assert len(result) == 10
 
+    def test_history_query_skips_saved_prompt_column(self, database: Database) -> None:
+        """Message.message stores each turn's full prompt, so history must neither select nor lazy-load it."""
+        mem = self._make_memory(database)
+        base_time = datetime.now(UTC).replace(tzinfo=None)
+        parent_message_id: str | None = None
+        for index in range(3):
+            parent_message_id = _persist_message(
+                database,
+                mem.conversation.id,
+                query=f"query-{index}",
+                answer=f"answer-{index}",
+                created_at=base_time + timedelta(seconds=index),
+                parent_message_id=parent_message_id,
+            ).id
+        # Reload rows from the database instead of reusing fully loaded instances from the identity map.
+        database.session.expunge_all()
+        before = len(database.statements)
+
+        result = mem.get_history_prompt_messages()
+
+        message_selects = [sql for sql, _ in database.statements[before:] if "FROM messages" in sql]
+        assert len(message_selects) == 1
+        assert re.search(r"\bmessages\.message\b", message_selects[0]) is None
+        assert [prompt.content for prompt in result] == [
+            "query-0",
+            "answer-0",
+            "query-1",
+            "answer-1",
+            "query-2",
+            "answer-2",
+        ]
+
     @pytest.mark.parametrize(
         ("token_values", "max_token_limit", "expected_length"),
         [
@@ -535,6 +581,73 @@ class TestGetHistoryPromptText:
 
 
 class TestPreparedHistory:
+    @pytest.mark.parametrize("enabled", [True, False])
+    @pytest.mark.parametrize("debug", [True, False])
+    def test_agent_attachments_use_conversation_soul(self, database: Database, enabled: bool, debug: bool) -> None:
+        """Persisted Agent settings govern both attachment roles, independently of legacy settings."""
+        conversation = _persist_conversation(database, AppMode.AGENT)
+        _enable_file_uploads(database, conversation, enabled=not enabled)
+        app = database.session.get(App, conversation.app_id)
+        assert app is not None
+        agent_id, account_id = str(uuid4()), str(uuid4())
+        snapshot = AgentConfigSnapshot(
+            tenant_id=app.tenant_id,
+            agent_id=agent_id,
+            version=1,
+            config_snapshot=AgentSoulConfig.model_validate(
+                {"app_features": {"file_upload": {"enabled": not enabled if debug else enabled}}}
+            ),
+        )
+        binding = AgentWorkspaceBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workspace_id=str(uuid4()),
+            backend_binding_ref="memory-test",
+            agent_id=agent_id,
+            agent_config_version_id=snapshot.id,
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+        conversation.agent_workspace_binding_id = binding.id
+        database.session.add_all([snapshot, binding])
+        if debug:
+            conversation.from_source = ConversationFromSource.CONSOLE
+            conversation.from_account_id = account_id
+            database.session.add_all(
+                [
+                    AgentConfigDraft(
+                        tenant_id=app.tenant_id,
+                        agent_id=agent_id,
+                        account_id=account_id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                        config_snapshot=AgentSoulConfig.model_validate(
+                            {"app_features": {"file_upload": {"enabled": enabled}}}
+                        ),
+                    ),
+                    AgentDebugConversation(
+                        tenant_id=app.tenant_id,
+                        app_id=app.id,
+                        agent_id=agent_id,
+                        account_id=account_id,
+                        conversation_id=conversation.id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    ),
+                ]
+            )
+        database.session.commit()
+        message = _persist_message(database, conversation.id)
+        user_file = _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        assistant_file = _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.ASSISTANT)
+        expected_ids = [(user_file.id,), (assistant_file.id,)] if enabled else [(), ()]
+
+        history = TokenBufferMemory.load_history(
+            conversation=conversation, app_record=app, session=database.session, message_limit=3
+        )
+        database.session.close()
+
+        assert [prompt.text for prompt in history.prompts] == ["user query", "hello"]
+        assert [tuple(file.id for file in prompt.files) for prompt in history.prompts] == expected_ids
+        assert all(prompt.image_detail == ImagePromptMessageContent.DETAIL.HIGH for prompt in history.prompts)
+
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     @pytest.mark.parametrize("detail", ["low", "high"])
     def test_load_detaches_history_before_attachment_and_token_io(

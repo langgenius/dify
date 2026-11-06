@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
-import s from '../style.module.css'
+import { getErrorMessage } from '@/utils/error-message'
 import { useIndexStatus } from './hooks'
 
 const STATUS_TEXT_COLOR_MAP: Record<StatusDotStatus, string> = {
@@ -59,9 +59,11 @@ const StatusItem = ({
   const { enabled = false, archived = false, id = '' } = detail || {}
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions(),
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
   )
-  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { mutateAsync: deleteDocuments } = useMutation(
+    documents.delete.mutationOptions({ context: { silent: true } }),
+  )
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 
@@ -76,7 +78,9 @@ const StatusItem = ({
     if (!e) {
       onUpdate?.(operationName)
     } else {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     }
   }
   const { run: handleSwitch } = useDebounceFn(
@@ -96,10 +100,11 @@ const StatusItem = ({
       className={cn(
         'flex items-center',
         reverse ? 'flex-row-reverse' : '',
-        scene === 'detail' ? s.statusItemDetail : '',
+        scene === 'detail' &&
+          'me-2 inline-flex rounded-lg border-[0.5px] border-components-button-secondary-border py-2 ps-2.5 pe-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
       )}
     >
-      <StatusDot status={statusItem.status} className={reverse ? 'ml-2' : 'mr-2'} />
+      <StatusDot status={statusItem.status} className={reverse ? 'ms-2' : 'me-2'} />
       <span
         id={statusLabelId}
         className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}
@@ -108,14 +113,14 @@ const StatusItem = ({
       </span>
       {errorMessage && (
         <Infotip>
-          <InfotipTrigger aria-labelledby={statusLabelId} className="ml-1" />
+          <InfotipTrigger aria-labelledby={statusLabelId} className="ms-1" />
           <InfotipContent aria-labelledby={statusLabelId} className="max-w-65">
             {errorMessage}
           </InfotipContent>
         </Infotip>
       )}
       {scene === 'detail' && (
-        <div className="ml-1.5 flex items-center justify-between">
+        <div className="ms-1.5 flex items-center justify-between">
           <Tooltip disabled={!archived}>
             <TooltipTrigger
               render={

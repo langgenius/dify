@@ -36,8 +36,11 @@ const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileN
     return [file]
   })
 
-export const upsertAgentFileAtom = atom(null, (_get, set, file: AgentFileNode) => {
-  set(agentComposerFilesAtom, (files) => [...removeAgentFileNode(files, file.id), file])
+export const upsertAgentFilesAtom = atom(null, (_get, set, uploadedFiles: AgentFileNode[]) => {
+  set(agentComposerFilesAtom, (files) => [
+    ...uploadedFiles.reduce((current, file) => removeAgentFileNode(current, file.id), files),
+    ...uploadedFiles,
+  ])
 })
 
 export const removeAgentFileAtom = atom(null, (_get, set, fileId: string) => {
