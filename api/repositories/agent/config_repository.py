@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.errors import AgentVersionNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 
 
 class AgentConfigRepository:
@@ -19,7 +19,14 @@ class AgentConfigRepository:
         draft_type: AgentConfigDraftType,
         account_id: str | None,
         draft_id: str | None = None,
+        for_update: bool = False,
     ) -> AgentConfigDraft | None:
+        """Read a scoped draft in the caller's transaction, returning None when absent.
+
+        With ``for_update``, lock and refresh persisted state without autoflush.
+        The caller must flush intended draft edits before requesting that refresh
+        and owns the transaction that releases the lock.
+        """
         stmt = select(AgentConfigDraft).where(
             AgentConfigDraft.tenant_id == tenant_id,
             AgentConfigDraft.agent_id == agent_id,
@@ -31,6 +38,8 @@ class AgentConfigRepository:
             stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
         if draft_id is not None:
             stmt = stmt.where(AgentConfigDraft.id == draft_id)
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @classmethod
@@ -91,15 +100,35 @@ class AgentConfigRepository:
         account_id: str | None,
         created_by: str | None,
     ) -> AgentConfigDraft:
+        """Resolve a draft for an Agent attached to the caller's session and tenant.
+
+        Preserve pending Agent edits, then lock and refresh the Agent and draft
+        before creating or rebasing from the current active snapshot. Cached
+        draft edits are discarded before they can overwrite persisted changes.
+        Raise AgentNotFoundError if the scoped Agent disappears, or
+        AgentVersionNotFoundError if a required snapshot is absent. The caller
+        owns commit or rollback, including any flushed changes on failure.
+        """
         # All draft writers lock the parent before checking for an absent draft.
         # Locking a draft query alone cannot serialize concurrent first writes.
-        session.scalar(select(Agent.id).where(Agent.tenant_id == tenant_id, Agent.id == agent.id).with_for_update())
+        # Preserve caller-owned Agent edits without flushing an older cached Draft.
+        session.flush([agent])
+        locked_agent = session.scalar(
+            select(Agent)
+            .where(Agent.tenant_id == tenant_id, Agent.id == agent.id)
+            .with_for_update()
+            .execution_options(populate_existing=True, autoflush=False)
+        )
+        if locked_agent is None:
+            raise AgentNotFoundError()
+        agent = locked_agent
         draft = cls.get_draft(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=draft_type,
             account_id=account_id,
+            for_update=True,
         )
         if draft is not None:
             if (
