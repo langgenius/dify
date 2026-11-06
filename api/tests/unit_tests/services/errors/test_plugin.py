@@ -12,6 +12,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import httpx
 import pytest
 from flask import Flask
 from sqlalchemy import Table, select
@@ -285,6 +286,44 @@ class TestUpgradePluginWithMarketplace:
 
         mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
         installer.upgrade_plugin.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "telemetry_error",
+        [
+            httpx.HTTPStatusError(
+                "404 Not Found",
+                request=httpx.Request("POST", "https://marketplace.dify.ai/api/v1/stats/plugins/install_count"),
+                response=httpx.Response(404),
+            ),
+            httpx.ConnectError("connection refused"),
+        ],
+        ids=["http_404", "connection_error"],
+    )
+    @patch("core.plugin.plugin_service.marketplace")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_marketplace_telemetry_failure_does_not_abort_cached_upgrade(
+        self,
+        mock_installer_cls: MagicMock,
+        mock_fs: MagicMock,
+        mock_marketplace: MagicMock,
+        telemetry_error: httpx.HTTPError,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        expected_result = MagicMock()
+        installer.upgrade_plugin.return_value = expected_result
+        mock_marketplace.record_install_plugin_event.side_effect = telemetry_error
+
+        with caplog.at_level("WARNING", logger="core.plugin.plugin_service"):
+            result = PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        assert result is expected_result
+        installer.upgrade_plugin.assert_called_once()
+        mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
+        assert "Failed to record plugin install event for new-uid" in caplog.text
 
     @patch("core.plugin.plugin_service.download_plugin_pkg")
     @patch("core.plugin.plugin_service.SystemFeatureService")

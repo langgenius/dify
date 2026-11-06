@@ -24,6 +24,7 @@ from mimetypes import guess_type
 from threading import Lock
 from typing import Literal, Protocol
 
+import httpx
 import zstandard
 from pydantic import BaseModel, TypeAdapter
 from redis import RedisError
@@ -1083,7 +1084,17 @@ class PluginService:
             # already downloaded, the cached pkg still has to satisfy the installation scope
             decode_response = manager.decode_plugin_from_identifier(tenant_id, new_plugin_unique_identifier)
             PluginService._check_plugin_installation_scope(decode_response.verification)
-            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
+            try:
+                marketplace.record_install_plugin_event(new_plugin_unique_identifier)
+            except httpx.HTTPError:
+                # Install count reporting is telemetry, not an upgrade prerequisite. A Marketplace
+                # outage or an identifier the catalog no longer knows about must not turn an
+                # otherwise valid cached-package upgrade into a 500.
+                logger.warning(
+                    "Failed to record plugin install event for %s",
+                    new_plugin_unique_identifier,
+                    exc_info=True,
+                )
 
         result = manager.upgrade_plugin(
             tenant_id,
