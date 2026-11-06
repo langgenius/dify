@@ -5,7 +5,7 @@ from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import insert, inspect, select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
@@ -1592,21 +1592,21 @@ class TestAppModelsCases:
         """Test suite for Site model."""
 
         def test_site_core_bulk_insert_generates_ids(self, sqlite_session: Session) -> None:
-            """Core bulk inserts generate an ID for every site row."""
+            """Bulk inserts generate an ID for every site row."""
             app_ids = [str(uuid4()), str(uuid4())]
 
-            sqlite_session.execute(
-                insert(Site),
+            sqlite_session.add_all(
                 [
-                    {
-                        "app_id": app_id,
-                        "title": f"Site {index}",
-                        "default_language": "en-US",
-                        "customize_token_strategy": CustomizeTokenStrategy.UUID,
-                    }
+                    Site(
+                        app_id=app_id,
+                        title=f"Site {index}",
+                        default_language="en-US",
+                        customize_token_strategy=CustomizeTokenStrategy.UUID,
+                    )
                     for index, app_id in enumerate(app_ids)
-                ],
+                ]
             )
+            sqlite_session.commit()
 
             site_ids = sqlite_session.scalars(select(Site.id).where(Site.app_id.in_(app_ids))).all()
             assert len(site_ids) == len(app_ids)
