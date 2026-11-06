@@ -243,19 +243,17 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          setNodes((currentNodes) =>
-            isEqual(currentNodes, importedNodes) ? currentNodes : importedNodes,
-          )
-          if (!isEqual(reactflow.getNodes(), importedNodes))
+          if (!isEqual(nodes, importedNodes)) {
+            setNodes(importedNodes)
             store.getState().setNodes(importedNodes)
-          setEdges((currentEdges) =>
-            isEqual(currentEdges, importedEdges) ? currentEdges : importedEdges,
-          )
-          if (!isEqual(store.getState().edges, importedEdges))
+          }
+          if (!isEqual(edges, importedEdges)) {
+            setEdges(importedEdges)
             store.getState().setEdges(importedEdges)
+          }
         },
       )
-    }, [reactflow, setEdges, setNodes, store])
+    }, [edges, nodes, setEdges, setNodes, store])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -414,20 +412,12 @@ export const Workflow: FC<WorkflowProps> = memo(
         // broadcast a rollback to everyone. A trusted CRDT remains authoritative when empty.
         const collaborationConnected = collaborationManager.isConnected()
         if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
-        const refreshVersion = workflowStore.getState().draftSaveVersion
-        const canRefresh = () => {
-          const { draftSaveBlocked, draftSaveVersion } = workflowStore.getState()
-          return !draftSaveBlocked && draftSaveVersion === refreshVersion
-        }
-        if (!canRefresh()) return
 
         if (collaborationConnected) {
           collaborationManager.refreshGraphSynchronously()
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
-          setTimeout(() => {
-            if (canRefresh()) handleRefreshWorkflowDraft(false, { shouldApply: canRefresh })
-          }, 500)
+          setTimeout(() => handleRefreshWorkflowDraft(), 500)
         }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])

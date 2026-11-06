@@ -1,50 +1,37 @@
 import type { CommandSearchResult } from '../types'
 import type { CommandContext, SlashCommand } from './types'
+import type { ThemePreference } from '@/features/theme/theme'
+import { isThemePreference, themeOptions } from '@/features/theme/theme'
 
-const THEME_ITEMS = [
-  {
-    id: 'system',
-    titleKey: 'gotoAnything.actions.themeSystem',
-    descKey: 'gotoAnything.actions.themeSystemDesc',
-    iconClassName: 'i-ri-computer-line',
-  },
-  {
-    id: 'light',
-    titleKey: 'gotoAnything.actions.themeLight',
-    descKey: 'gotoAnything.actions.themeLightDesc',
-    iconClassName: 'i-ri-sun-line',
-  },
-  {
-    id: 'dark',
-    titleKey: 'gotoAnything.actions.themeDark',
-    descKey: 'gotoAnything.actions.themeDarkDesc',
-    iconClassName: 'i-ri-moon-line',
-  },
-] as const
+const themeCommandDescriptionKeys = {
+  light: 'gotoAnything.actions.themeLightDesc',
+  dark: 'gotoAnything.actions.themeDarkDesc',
+  system: 'gotoAnything.actions.themeSystemDesc',
+} as const satisfies Record<ThemePreference, string>
 
 const buildThemeCommands = (query: string, context: CommandContext): CommandSearchResult[] => {
   const q = query.toLowerCase()
-  const list = THEME_ITEMS.filter(
-    (item) =>
-      !q ||
-      context
-        .t(($) => $[item.titleKey], { ns: 'app', lng: context.locale })
-        .toLowerCase()
-        .includes(q) ||
-      item.id.includes(q),
-  )
-  return list.map((item) => ({
-    id: item.id,
-    title: context.t(($) => $[item.titleKey], { ns: 'app', lng: context.locale }),
-    description: context.t(($) => $[item.descKey], { ns: 'app', lng: context.locale }),
-    type: 'command' as const,
-    icon: (
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <span aria-hidden className={`${item.iconClassName} size-4 text-text-tertiary`} />
-      </div>
-    ),
-    data: { command: 'theme', args: { value: item.id } },
-  }))
+  return themeOptions
+    .map((option) => ({
+      ...option,
+      title: context.t(($) => $[option.labelKey], { ns: 'common', lng: context.locale }),
+    }))
+    .filter((option) => !q || option.title.toLowerCase().includes(q) || option.value.includes(q))
+    .map((option) => ({
+      id: option.value,
+      title: option.title,
+      description: context.t(($) => $[themeCommandDescriptionKeys[option.value]], {
+        ns: 'app',
+        lng: context.locale,
+      }),
+      type: 'command' as const,
+      icon: (
+        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+          <span aria-hidden className={`${option.iconClassName} size-4 text-text-tertiary`} />
+        </div>
+      ),
+      data: { command: 'theme', args: { value: option.value } },
+    }))
 }
 
 /**
@@ -52,11 +39,10 @@ const buildThemeCommands = (query: string, context: CommandContext): CommandSear
  */
 export const themeCommand: SlashCommand = {
   name: 'theme',
-  description: 'Switch between light and dark themes',
+  description: 'Change appearance',
   mode: 'submenu',
   execute(args, context) {
-    const item = THEME_ITEMS.find((item) => item.id === args.value)
-    if (item) context.setTheme(item.id)
+    if (isThemePreference(args.value)) context.setThemePreference(args.value)
   },
 
   search(args: string, context) {

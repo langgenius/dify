@@ -1,7 +1,6 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
 import type { WorkflowAppMode } from '@/app/components/apps/app-type'
-import { ORPCError } from '@orpc/client'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { consoleClient } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -193,13 +192,10 @@ export const applyToCurrentApp = async ({
       { context: { silent: true } },
     )
   } catch (e) {
-    // A collaboration-room conflict is a different 409 and must not offer a hash-conflict reload.
-    if (
-      getHttpErrorStatus(e) === 409 &&
-      e instanceof ORPCError &&
-      e.code === 'draft_workflow_not_sync'
-    )
-      throw new WorkflowApplyHashCollisionError()
+    // 409 → draft was edited in another tab between our fetch and sync.
+    // Translate the HTTP error into a domain error so the caller
+    // can show a Reload affordance instead of a generic "apply failed" toast.
+    if (getHttpErrorStatus(e) === 409) throw new WorkflowApplyHashCollisionError()
     throw e
   }
 }

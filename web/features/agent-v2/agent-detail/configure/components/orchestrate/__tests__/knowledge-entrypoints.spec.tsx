@@ -42,7 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
+vi.mock('@/features/theme/hooks', () => ({ useResolvedTheme: () => 'light' }))
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
   useDocLink: () => () => 'https://docs.example.com',

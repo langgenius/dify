@@ -29,7 +29,6 @@ import {
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
-import { toast } from '@/app/notifications'
 import { API_PREFIX } from '@/config'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -58,7 +57,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
-  const collaborationConflictReportedRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
@@ -148,9 +146,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         features: featuresPayload,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        ...(isCollaborationEnabled && !collaborationManager.canUseLocalDraftFallback()
-          ? { _is_collaborative: true }
-          : {}),
+        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
   }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
@@ -167,19 +163,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const postParams = getPostParams()
 
     // Page-close saves cannot wait for the user's consent to clear the canvas.
-    if (postParams && !isEmptyGraph(postParams.params.graph)) {
-      const version = workflowStore.getState().draftSaveVersion + 1
-      const isOrdinarySave = !postParams.params._is_collaborative
-      if (isOrdinarySave)
-        workflowStore.setState({ draftSaveBlocked: true, draftSaveVersion: version })
-      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params, (response) => {
-        if (isOrdinarySave && response?.ok && workflowStore.getState().draftSaveVersion === version)
-          workflowStore.setState({ draftSaveBlocked: false })
-        else if (isOrdinarySave && response?.status === 409)
-          toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
-      })
-    }
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore, t])
+    if (postParams && !isEmptyGraph(postParams.params.graph))
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
   const performLocalSync = useCallback(
     async (
@@ -195,15 +181,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      const isOrdinarySave =
-        !isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()
-      const version = workflowStore.getState().draftSaveVersion + 1
-      workflowStore.setState({
-        draftSaveVersion: version,
-        ...(isOrdinarySave ? { draftSaveBlocked: true } : {}),
-      })
-
-      if (!isOrdinarySave && !collaborationManager.canPersistLocalGraph()) {
+      if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
         return null
       }
@@ -214,9 +192,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return (
           isMountedRef.current &&
           !getNodesReadOnly() &&
-          (!isCollaborationEnabled ||
-            collaborationManager.canUseLocalDraftFallback() ||
-            collaborationManager.canPersistLocalGraph()) &&
+          (!isCollaborationEnabled || collaborationManager.canPersistLocalGraph()) &&
           currentParams?.url === baseParams.url &&
           isEmptyGraph(currentParams.params.graph)
         )
@@ -226,7 +202,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (emptyGraph && !isOrdinarySave) {
+      if (emptyGraph && isCollaborationEnabled) {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
         const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
         const [error, draft] = await safe(
@@ -306,11 +282,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             : {}),
         }
 
-        if (!isCollaborationEnabled || collaborationManager.canUseLocalDraftFallback()) {
-          delete body._is_collaborative
-          workflowStore.setState({ draftSaveBlocked: true })
-        }
-
         const [error, res, isDefined] = await safe(
           consoleClient.apps.byAppId.workflows.draft.post(
             { params: { app_id: baseParams.appId }, body },
@@ -321,25 +292,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           const { isWorkflowDataLoaded } = workflowStore.getState()
           if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
-          if (isDefined && error.code === 'draft_workflow_collaboration_active') {
-            if (!collaborationConflictReportedRef.current) {
-              toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
-              collaborationConflictReportedRef.current = true
-            }
-            workflowStore.setState({ draftSaveBlocked: true })
-          } else if (
-            isDefined &&
-            error.code === 'draft_workflow_not_sync' &&
-            !notRefreshWhenSyncError
-          )
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft(true)
           callback?.onError?.()
           return null
         }
 
-        if (workflowStore.getState().draftSaveVersion === version)
-          workflowStore.setState({ draftSaveBlocked: false })
-        collaborationConflictReportedRef.current = false
         setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
@@ -394,7 +352,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const shouldRequestLeader =
         !emptyGraph &&
         isCollaborationEnabled &&
-        !collaborationManager.canUseLocalDraftFallback() &&
         collaborationManager.isConnected() &&
         !collaborationManager.getIsLeader() &&
         !options?.forceLocal

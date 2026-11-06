@@ -1358,11 +1358,6 @@ export type SyncDraftWorkflowResponse = {
   updated_at: number
 }
 
-export type DraftWorkflowCollaborationActiveError = ErrorResponse & {
-  code: 'draft_workflow_collaboration_active'
-  status: 409
-}
-
 export type DraftWorkflowNotSyncError = ErrorResponse & {
   code: 'draft_workflow_not_sync'
   status: 409
@@ -8484,7 +8479,7 @@ export type PostAppsByAppIdWorkflowsDraftErrors = {
   400: ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
-  409: DraftWorkflowCollaborationActiveError | DraftWorkflowNotSyncError | ErrorResponse
+  409: DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -22,7 +22,6 @@ import {
   zBindingFileDownloadUnavailableError,
   zCompletionRequestError,
   zConversationNotFoundError,
-  zDraftWorkflowCollaborationActiveError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
   zForbiddenError,
@@ -4908,10 +4907,6 @@ export const post64 = oc
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    draft_workflow_collaboration_active: {
-      status: 409,
-      data: zDraftWorkflowCollaborationActiveError,
-    },
     draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
   })
 

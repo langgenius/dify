@@ -12,14 +12,15 @@ from unittest.mock import ANY, MagicMock, Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
-from controllers.console.app.error import DraftWorkflowCollaborationActive, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import ConvertToWorkflowApi
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
@@ -160,10 +161,13 @@ class TestWorkflowCases:
     def test_publish_workflow_returns_success(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
         advisory: str,
     ) -> None:
         current_user = SimpleNamespace(id="account-1")
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
         graph = {
             "nodes": [
                 {"id": "start", "data": {"type": "start"}},
@@ -197,19 +201,11 @@ class TestWorkflowCases:
                 "format_variable_reference_errors",
                 Mock(side_effect=RuntimeError("format")),
             )
-        session = Mock()
-        session.get.return_value = app_model
         monkeypatch.setattr(
             workflow_module,
             "WorkflowService",
             Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
         )
-        monkeypatch.setattr(
-            workflow_module,
-            "sessionmaker",
-            lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
-        )
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
@@ -219,7 +215,11 @@ class TestWorkflowCases:
             )
 
         assert response["result"] == "success"
-        assert app_model.workflow_id == workflow.id
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        assert persisted_app is not None
+        assert persisted_app.workflow_id == workflow.id
+        assert persisted_app.updated_by == current_user.id
         assert isinstance(response["created_at"], int)
         if advisory == "warning":
             assert "Consumer" in response["warning"]
@@ -227,6 +227,41 @@ class TestWorkflowCases:
             assert "skipped branch" in response["warning"]
         else:
             assert "warning" not in response
+
+    @staticmethod
+    def test_publish_workflow_rolls_back_on_service_failure(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+    ) -> None:
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+
+        def fail_after_update(*, session: Session, **_kwargs: object) -> None:
+            persisted_app = session.get(_workflow_App, app_model.id)
+            assert persisted_app is not None
+            persisted_app.name = "changed"
+            session.flush()
+            raise RuntimeError("publish failed")
+
+        service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
+        monkeypatch.setattr(service, "publish_workflow", fail_after_update)
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(RuntimeError, match="publish failed"):
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_model,
+                )
+
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        assert persisted_app is not None
+        assert persisted_app.name == "Workflow App"
+        assert persisted_app.workflow_id is None
 
     @staticmethod
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
@@ -374,31 +409,6 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
-        assert sync_draft_workflow.call_args.kwargs["reject_active_collaboration"] is True
-
-    @staticmethod
-    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
-    def test_sync_draft_workflow_maps_collaboration_conflict(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, content_type: str
-    ) -> None:
-        class ActiveRoomService:
-            def sync_draft_workflow(self, **_kwargs: object) -> None:
-                raise workflow_module.WorkflowCollaborationActiveError()
-
-        monkeypatch.setattr(workflow_module, "WorkflowService", ActiveRoomService)
-        api = workflow_module.DraftWorkflowApi()
-        handler = inspect.unwrap(api.post)
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            data=json.dumps({"graph": {"nodes": [{"id": "1"}], "edges": []}, "features": {}, "hash": "h"}),
-            content_type=content_type,
-        ):
-            with pytest.raises(DraftWorkflowCollaborationActive) as error:
-                handler(api, _account(), app_model=_workflow_app())
-
-        assert error.value.code == 409
-        assert error.value.error_code == "draft_workflow_collaboration_active"
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])

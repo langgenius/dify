@@ -17,7 +17,6 @@ const mockDisconnect = vi.hoisted(() => vi.fn())
 const mockIsConnected = vi.hoisted(() => vi.fn(() => true))
 const mockEmitCursorMove = vi.hoisted(() => vi.fn())
 const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
-const mockResumeJoin = vi.hoisted(() => vi.fn())
 
 let onStateChangeCallback:
   | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
@@ -38,7 +37,7 @@ let isCollaborationEnabled = true
 const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, enabled: boolean) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
   const store = createWorkflowStore({})
-  const result = renderHook(hook, {
+  return renderHook(hook, {
     wrapper: ({ children }) =>
       createElement(
         QueryWrapper,
@@ -54,7 +53,6 @@ const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, en
         }),
       ),
   })
-  return { ...result, store }
 }
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
@@ -66,7 +64,6 @@ vi.mock('../../core/collaboration-manager', () => ({
     isConnected: () => mockIsConnected(),
     emitCursorMove: (...args: unknown[]) => mockEmitCursorMove(...args),
     getLeaderId: () => mockGetLeaderId(),
-    resumeJoinWhenDraftReady: (...args: unknown[]) => mockResumeJoin(...args),
     onStateChange: (
       callback: (state: {
         isConnected?: boolean
@@ -126,7 +123,7 @@ describe('useCollaboration', () => {
     )
 
     await waitFor(() => {
-      expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore, expect.any(Function))
+      expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
     })
 
     act(() => {
@@ -173,21 +170,6 @@ describe('useCollaboration', () => {
     expect(unsubscribePresence).toHaveBeenCalled()
     expect(unsubscribeLeader).toHaveBeenCalled()
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
-  })
-
-  it('notifies the manager when the draft hash loads without rerendering the hook', async () => {
-    let renderCount = 0
-    const { store, result } = renderCollaboration(() => {
-      renderCount += 1
-      return useCollaboration('app-1', true)
-    }, true)
-    await waitFor(() => expect(result.current.isConnected).toBe(true))
-    const previousRenders = renderCount
-    act(() => store.getState().setSyncWorkflowDraftHash('loaded-hash'))
-    expect(mockResumeJoin).toHaveBeenLastCalledWith('app-1')
-    expect(renderCount).toBe(previousRenders)
-    const getHash = mockConnect.mock.calls[0]?.[2]
-    expect(getHash?.()).toBe('loaded-hash')
   })
 
   it.each([

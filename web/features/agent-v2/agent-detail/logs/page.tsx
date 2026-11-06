@@ -234,8 +234,8 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
         <DrawerPortal>
           <DrawerBackdrop className="sm:bg-transparent" />
           <DrawerViewport>
-            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-1">
+              <DrawerContent>
                 <AgentLogDetailPanel agentId={agentId} log={selectedLog} onClose={closeLogDetail} />
               </DrawerContent>
             </DrawerPopup>

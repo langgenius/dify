@@ -16,11 +16,9 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -97,7 +95,6 @@ const events = {
   users: new Set<Parameters<Manager['onOnlineUsersUpdate']>[0]>(),
   cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
   ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
-  joinFailure: new Set<Parameters<Manager['onJoinFailure']>[0]>(),
 }
 const initialNodes = [
   createStartNode({ id: 'start', data: { title: 'Workflow entry', variables: [] } }),
@@ -168,13 +165,6 @@ beforeEach(() => {
     handler(true)
     return () => {
       events.ready.delete(handler)
-    }
-  })
-  vi.spyOn(collaborationManager, 'onJoinFailure').mockImplementation((handler) => {
-    events.joinFailure.add(handler)
-    handler(null)
-    return () => {
-      events.joinFailure.delete(handler)
     }
   })
   api.fetchDraft.mockReset().mockResolvedValue(draft())
@@ -297,16 +287,11 @@ function useRealCollaborationTransport() {
     'isConnected',
     'getIsLeader',
     'canPersistLocalGraph',
-    'refreshGraphSynchronously',
-    'onSyncRequest',
     'onGraphReadyChange',
-    'onJoinFailure',
   ] as const)
     vi.mocked(collaborationManager[name]).mockRestore()
 
   const transport = createSocket('socket-app-1', false)
-  vi.spyOn(webSocketClient, 'connect')
-  vi.spyOn(webSocketClient, 'disconnect')
   vi.spyOn(transport.socket, 'disconnect').mockImplementation(() => {
     transport.receive('disconnect', 'io client disconnect')
     return transport.socket
@@ -315,280 +300,17 @@ function useRealCollaborationTransport() {
   return transport
 }
 
-it('does not apply a generated graph before the room join is acknowledged', async () => {
-  const transport = useRealCollaborationTransport()
-  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.receive('status', { isLeader: true })
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-
-  expect(
-    await editor.apply(
-      {
-        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-      snapshot,
-    ),
-  ).toBe('unavailable')
-  expect(collaborationManager.getNodes().map((node) => node.id)).not.toContain('generated')
-  expect(api.saveDraft).not.toHaveBeenCalled()
-})
-
-it.each(['leader', 'follower'] as const)(
-  'applies a generated graph through the %s collaboration save path',
-  async (role) => {
-    const transport = useRealCollaborationTransport()
-    await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-    await waitFor(() => expect(socketIo).toHaveBeenCalled())
-    act(() => {
-      transport.receive('connect')
-      transport.acknowledge('user_connect', { msg: 'connected' })
-      // A follower must first have received a trusted graph snapshot. An established
-      // leader that loses leadership has the same trusted state without mocking Loro.
-      transport.receive('status', { isLeader: true })
-      if (role === 'follower') transport.receive('status', { isLeader: false })
-    })
-    const editor = useWorkflowGeneratorStore.getState().editor
-    if (!editor) throw new Error('Missing workflow editor')
-    const snapshot = editor.snapshot()
-    if (!snapshot) throw new Error('Missing collaboration graph')
-    const graph = {
-      nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-      edges: [],
-      viewport: { x: 0, y: 0, zoom: 1 },
-    }
-
-    let applied: Promise<string>
-    await act(async () => {
-      applied = editor.apply(graph, snapshot)
-      if (role === 'follower') {
-        await waitFor(() => expect(transport.messages('sync_request')).toHaveLength(1))
-        transport.acknowledge(
-          'sync_request',
-          { success: true, hash: 'saved-hash', updatedAt: 2 },
-          200,
-        )
-      }
-      expect(await applied).toBe('saved')
-    })
-
-    expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
-    if (role === 'leader')
-      expect(api.saveDraft).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            _is_collaborative: true,
-            graph: expect.objectContaining({
-              nodes: [expect.objectContaining({ id: 'generated' })],
-            }),
-          }),
-        }),
-        expect.anything(),
-      )
-    else {
-      expect(transport.messages('sync_request')[0]?.[1]).toMatchObject({
-        data: { graphSnapshot: expect.any(Uint8Array) },
-      })
-      const { LoroDoc } = await import('loro-crdt')
-      const saved = new LoroDoc()
-      saved.import(transport.messages('sync_request')[0]![1].data.graphSnapshot)
-      expect([...saved.getMap('nodes').keys()]).toEqual(['generated'])
-    }
-  },
-)
-
-it('applies against the CRDT even if a remote node has not rendered yet', async () => {
-  const transport = useRealCollaborationTransport()
-  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-    const current = collaborationManager.getNodes()
-    // A CRDT update can precede the animation frame that renders it in ReactFlow.
-    collaborationManager.setNodes(current, [
-      ...current,
-      createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
-    ])
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-  const graph = {
-    nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  }
-  await act(async () => expect(await editor.apply(graph, snapshot)).toBe('saved'))
-  expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
-})
-
-it('keeps the latest of two graph imports in the controlled canvas', async () => {
-  const transport = useRealCollaborationTransport()
-  const subscribe = collaborationManager.onGraphImport.bind(collaborationManager)
-  let importGraph: Parameters<typeof collaborationManager.onGraphImport>[0] | undefined
-  vi.spyOn(collaborationManager, 'onGraphImport').mockImplementation((handler) => {
-    importGraph = handler
-    return subscribe(handler)
-  })
-  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-  })
-  await waitFor(() => expect(view.container.querySelector('[data-id="start"]')).toBeInTheDocument())
-  if (!importGraph) throw new Error('Missing graph import handler')
-  act(() => {
-    importGraph?.({
-      nodes: [
-        ...initialNodes,
-        createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
-      ],
-      edges: [],
-    })
-    importGraph?.({ nodes: initialNodes, edges: [] })
-  })
-  expect(view.container.querySelector('[data-id="start"]')).toBeInTheDocument()
-  expect(view.container.querySelector('[data-id="remote"]')).not.toBeInTheDocument()
-})
-
-it('does not replace a collaborator edit made while overwrite confirmation is open', async () => {
-  const transport = useRealCollaborationTransport()
-  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-  act(() => {
-    const current = collaborationManager.getNodes()
-    collaborationManager.setNodes(current, [
-      ...current,
-      createStartNode({ id: 'remote', data: { title: 'Remote', variables: [] } }),
-    ])
-  })
-  expect(
-    await editor.apply(
-      {
-        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-      snapshot,
-    ),
-  ).toBe('changed')
-  expect(collaborationManager.getNodes().map((node) => node.id)).toContain('remote')
-  expect(api.saveDraft).not.toHaveBeenCalled()
-})
-
-it('leaves the generated graph in the editor when collaborative saving fails', async () => {
-  const transport = useRealCollaborationTransport()
-  api.saveDraft.mockRejectedValueOnce(new Error('save failed'))
-  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-  await act(async () => {
-    expect(
-      await editor.apply(
-        {
-          nodes: [
-            createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } }),
-          ],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-        snapshot,
-      ),
-    ).toBe('unsaved')
-  })
-  expect(collaborationManager.getNodes().map((node) => node.id)).toEqual(['generated'])
-})
-
-it('does not save through an editor after it unmounts', async () => {
-  const transport = useRealCollaborationTransport()
-  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-  act(() => view.unmount())
-  expect(
-    await editor.apply(
-      {
-        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-      snapshot,
-    ),
-  ).toBe('unavailable')
-  expect(api.saveDraft).not.toHaveBeenCalled()
-})
-
-it('does not save through an editor unmounted while applying a generated graph', async () => {
-  const transport = useRealCollaborationTransport()
-  const view = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  await waitFor(() => expect(socketIo).toHaveBeenCalled())
-  act(() => {
-    transport.receive('connect')
-    transport.acknowledge('user_connect', { msg: 'connected' })
-    transport.receive('status', { isLeader: true })
-  })
-  const editor = useWorkflowGeneratorStore.getState().editor
-  const snapshot = editor?.snapshot()
-  if (!editor || !snapshot) throw new Error('Missing workflow editor')
-  let result: Promise<string>
-  await act(async () => {
-    result = editor.apply(
-      {
-        nodes: [createStartNode({ id: 'generated', data: { title: 'Generated', variables: [] } })],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-      snapshot,
-    )
-    view.unmount()
-    expect(await result).toBe('unsaved')
-  })
-  expect(api.saveDraft).not.toHaveBeenCalled()
-})
-
 it.each([
   [401, 'unauthorized', 'workflow.collaboration.joinDenied'],
   [403, 'not_entitled', 'workflow.collaboration.joinDenied'],
+  [503, 'collaboration_unavailable', 'workflow.collaboration.joinUnavailable'],
 ] as const)(
   'shows the join error for a %s response and blocks saving',
   async (status, message, text) => {
     const user = userEvent.setup()
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
     const transport = useRealCollaborationTransport()
-    const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+    const { store } = await renderMain()
     const originalNodes = store.getState().nodes
     await waitFor(() => expect(socketIo).toHaveBeenCalled())
     act(() => {
@@ -607,7 +329,7 @@ it.each([
 
 it('keeps an established canvas on join failure without offering to reload it', async () => {
   const transport = useRealCollaborationTransport()
-  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  const { store } = await renderMain()
   const originalNodes = store.getState().nodes
   await waitFor(() => expect(socketIo).toHaveBeenCalled())
   act(() => {
@@ -618,7 +340,7 @@ it('keeps an established canvas on join failure without offering to reload it', 
     transport.acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
     transport.acknowledge('user_connect', { msg: 'not_entitled' }, 403)
   })
-  expect(screen.getByText('workflow.collaboration.joinDenied')).toBeVisible()
+  expect(screen.getByText('workflow.collaboration.joinUnavailable')).toBeVisible()
   expect(
     screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
   ).not.toBeInTheDocument()
@@ -628,7 +350,7 @@ it('keeps an established canvas on join failure without offering to reload it', 
 
 it('clears a join error after a successful reconnect even when status precedes the acknowledgement', async () => {
   const transport = useRealCollaborationTransport()
-  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
+  await renderMain()
   await waitFor(() => expect(socketIo).toHaveBeenCalled())
   act(() => {
     transport.receive('connect')
@@ -636,7 +358,7 @@ it('clears a join error after a successful reconnect even when status precedes t
   })
   expect(
     within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
-  ).toHaveTextContent('workflow.collaboration.joinRetrying')
+  ).toHaveTextContent('workflow.collaboration.joinUnavailable')
   act(() => {
     transport.receive('disconnect', 'transport close')
     transport.socket.id = 'socket-app-1-new'
@@ -644,7 +366,7 @@ it('clears a join error after a successful reconnect even when status precedes t
     transport.receive('status', { isLeader: true })
     transport.acknowledge('user_connect', { msg: 'connected' })
   })
-  expect(screen.queryByText('workflow.collaboration.joinRetrying')).not.toBeInTheDocument()
+  expect(screen.queryByText('workflow.collaboration.joinUnavailable')).not.toBeInTheDocument()
 })
 
 it('shows synchronization status until the collaborative graph is ready', async () => {
@@ -658,89 +380,6 @@ it('shows synchronization status until the collaborative graph is ready', async 
     events.ready.forEach((handler) => handler(true))
   })
   expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
-})
-
-it('waits for the first draft hash, then joins without reconnecting when it changes', async () => {
-  const transport = useRealCollaborationTransport()
-  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: '' } })
-  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
-  act(() => transport.receive('connect'))
-  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(0)
-
-  act(() => store.getState().setSyncWorkflowDraftHash('loaded-hash'))
-  await waitFor(() =>
-    expect(transport.emit).toHaveBeenCalledWith(
-      'user_connect',
-      {
-        workflow_id: 'app-1',
-        draft_hash: 'loaded-hash',
-      },
-      expect.any(Function),
-    ),
-  )
-  act(() => store.getState().setSyncWorkflowDraftHash('newer-hash'))
-  expect(transport.emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
-  expect(webSocketClient.disconnect).not.toHaveBeenCalled()
-})
-
-it('keeps the current canvas and blocks saving when the draft is outdated', async () => {
-  const transport = useRealCollaborationTransport()
-  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'old-hash' } })
-  const canvasNodes = store.getState().nodes
-  expect(canvasNodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'start' })]))
-  await waitFor(() => expect(webSocketClient.connect).toHaveBeenCalledWith('app-1'))
-  act(() => transport.receive('connect'))
-  expect(transport.emit).toHaveBeenCalledWith(
-    'user_connect',
-    {
-      workflow_id: 'app-1',
-      draft_hash: 'old-hash',
-    },
-    expect.any(Function),
-  )
-  act(() => transport.acknowledge('user_connect', { msg: 'draft_outdated' }, 409))
-  expect(screen.getByText('workflow.collaboration.draftOutdated')).toBeVisible()
-  expect(store.getState().nodes).toEqual(canvasNodes)
-  expect(
-    screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
-  ).not.toBeInTheDocument()
-  expect(collaborationManager.getNodes()).toEqual([])
-  expect(api.saveDraft).not.toHaveBeenCalled()
-  expect(api.fetchDraft).not.toHaveBeenCalled()
-})
-
-it('shows a retry message and access guidance when the initial join is rejected', async () => {
-  await renderMain()
-  act(() => {
-    events.ready.forEach((handler) => handler(false))
-    events.joinFailure.forEach((handler) => handler('retrying'))
-  })
-  expect(
-    within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
-  ).toHaveTextContent('workflow.collaboration.joinRetrying')
-  expect(
-    screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
-  ).not.toBeInTheDocument()
-  act(() => events.joinFailure.forEach((handler) => handler('denied')))
-  expect(
-    within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
-  ).toHaveTextContent('workflow.collaboration.joinDenied')
-  expect(screen.getByRole('button', { name: 'workflow.collaboration.reloadPage' })).toBeVisible()
-})
-
-it('shows an error without a reload button after an established session is rejected', async () => {
-  vi.spyOn(collaborationManager, 'hasJoinedCollaborationRoom').mockReturnValue(true)
-  await renderMain()
-  act(() => {
-    events.ready.forEach((handler) => handler(false))
-    events.joinFailure.forEach((handler) => handler('denied'))
-  })
-  expect(
-    within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
-  ).toHaveTextContent('workflow.collaboration.joinDenied')
-  expect(
-    screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
-  ).not.toBeInTheDocument()
 })
 
 // These are incoming collaboration-service events, not callbacks captured from UI components.

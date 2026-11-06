@@ -120,7 +120,7 @@ const DatasetItem: FC<Props> = ({
                         'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
                     )}
                   >
-                    <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
+                    <DrawerContent className="h-full">
                       <SettingsModal
                         currentDataset={payload}
                         height={settingsModalHeight}

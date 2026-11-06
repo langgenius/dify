@@ -224,11 +224,7 @@ async function base<T>(
  * standard `base()` fetch wrapper.
  * @deprecated New keepalive transports require a scoped lint exception.
  */
-export function postWithKeepalive(
-  url: string,
-  body: Record<string, unknown>,
-  onResponse?: (response?: Response) => void,
-): void {
+export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
   const headers = new Headers({
     'Content-Type': ContentType.json,
     [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
@@ -246,8 +242,7 @@ export function postWithKeepalive(
       headers,
       body: JSON.stringify(body),
     })
-    .then((response) => onResponse?.(response))
-    .catch(() => onResponse?.())
+    .catch(() => {})
 }
 
 export { base }

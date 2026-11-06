@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import IconWithTooltip from './icon-with-tooltip'
 
 type VerifiedProps = {
@@ -8,7 +8,7 @@ type VerifiedProps = {
 }
 
 const Verified: FC<VerifiedProps> = ({ className, text }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   return (
     <IconWithTooltip

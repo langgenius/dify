@@ -1,15 +1,6 @@
 'use client'
-import type { GeneratedGraph, WorkflowGeneratorIntent, WorkflowGeneratorMode } from './types'
+import type { WorkflowGeneratorIntent, WorkflowGeneratorMode } from './types'
 import { create } from 'zustand'
-
-export type WorkflowGeneratorEditor = {
-  appId: string
-  snapshot: () => Pick<GeneratedGraph, 'nodes' | 'edges'> | null
-  apply: (
-    graph: GeneratedGraph,
-    expected: Pick<GeneratedGraph, 'nodes' | 'edges'>,
-  ) => Promise<'saved' | 'unsaved' | 'changed' | 'unavailable'>
-}
 
 type WorkflowGeneratorStore = {
   isOpen: boolean
@@ -22,7 +13,6 @@ type WorkflowGeneratorStore = {
   initialInstruction: string
   /** When true the request uses `mode: 'auto'` so the planner picks Workflow vs Chatflow. */
   autoMode: boolean
-  editor: WorkflowGeneratorEditor | null
   openGenerator: (params: {
     mode: WorkflowGeneratorMode
     intent?: WorkflowGeneratorIntent
@@ -65,7 +55,6 @@ export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>((set) =>
   currentAppMode: null,
   initialInstruction: '',
   autoMode: false,
-  editor: null,
   openGenerator: ({
     mode,
     intent = 'create',

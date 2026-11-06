@@ -6,9 +6,8 @@ import type {
   OnlineUser,
 } from '../types/collaboration'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -40,11 +39,6 @@ export function useCollaboration(
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
-  const workflowStore = useWorkflowStore()
-  const getDraftHash = useCallback(
-    () => workflowStore.getState().syncWorkflowDraftHash,
-    [workflowStore],
-  )
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled || !canEdit) {
@@ -61,7 +55,7 @@ export function useCollaboration(
 
     const initCollaboration = async () => {
       try {
-        const id = await collaborationManager.connect(appId, reactFlowStore, getDraftHash)
+        const id = await collaborationManager.connect(appId, reactFlowStore)
         if (isUnmounted) {
           collaborationManager.disconnect(id)
           return
@@ -117,17 +111,7 @@ export function useCollaboration(
       cursorServiceRef.current?.stopTracking()
       if (connectionId) collaborationManager.disconnect(connectionId)
     }
-  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled, getDraftHash])
-
-  useEffect(() => {
-    if (!appId || !isCollaborationEnabled || !canEdit) return
-    const unsubscribe = workflowStore.subscribe((state, previousState) => {
-      if (state.syncWorkflowDraftHash !== previousState.syncWorkflowDraftHash)
-        collaborationManager.resumeJoinWhenDraftReady(appId)
-    })
-    collaborationManager.resumeJoinWhenDraftReady(appId)
-    return unsubscribe
-  }, [appId, canEdit, isCollaborationEnabled, workflowStore])
+  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled])
 
   const prevIsConnected = useRef(false)
   useEffect(() => {

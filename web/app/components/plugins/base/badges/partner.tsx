@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import IconWithTooltip from './icon-with-tooltip'
 
 type PartnerProps = {
@@ -10,7 +10,7 @@ type PartnerProps = {
 }
 
 const Partner: FC<PartnerProps> = ({ className, text }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   return (
     <IconWithTooltip

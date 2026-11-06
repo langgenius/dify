@@ -1,8 +1,6 @@
 import logging
 from collections.abc import Generator, Iterator
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from threading import Event
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -16,14 +14,11 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
-    WorkflowCollaborationDraftOutdatedError,
     WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
-    WorkflowCollaborationUnavailableError,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app
@@ -54,21 +49,8 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, Workflow.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        session.add(
-            Workflow(
-                id="draft-1",
-                tenant_id="t-1",
-                app_id="wf-1",
-                type=WorkflowType.WORKFLOW,
-                version=Workflow.VERSION_DRAFT,
-                graph='{"nodes": [], "edges": []}',
-                _features="{}",
-                created_by="u-1",
-            )
-        )
-        session.commit()
         yield session
 
 
@@ -86,117 +68,6 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
-    @pytest.mark.parametrize("room", ["empty", "with_leader", "without_leader"])
-    def test_outdated_new_join_is_rejected_before_room_changes(
-        self, real_service: ServiceFixture, db_session: Session, room: str
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        if room != "empty":
-            seed_session(repository, "sid-other", user_id="other-user")
-        if room == "with_leader":
-            repository.set_leader("wf-1", "sid-other")
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        with config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
-        ):
-            with pytest.raises(WorkflowCollaborationDraftOutdatedError):
-                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="outdated")
-
-        assert not repository.session_exists("wf-1", "sid-1")
-        assert repository.session_exists("wf-1", "sid-other") is (room != "empty")
-        assert repository.get_current_leader("wf-1") == ("sid-other" if room == "with_leader" else None)
-        socketio.enter_room.assert_not_called()
-        socketio.emit.assert_not_called()
-        socketio.start_background_task.assert_not_called()
-
-    @pytest.mark.parametrize("draft_hash", ["matching", "missing"])
-    def test_current_or_legacy_new_join_can_enter(
-        self, real_service: ServiceFixture, db_session: Session, draft_hash: str
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        draft = db_session.get(Workflow, "draft-1")
-        assert draft is not None
-        current_hash = draft.unique_hash
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        with config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
-        ):
-            result = service.authorize_and_join_workflow_room(
-                "wf-1", "sid-1", session=db_session, draft_hash=current_hash if draft_hash == "matching" else None
-            )
-
-        assert result == ("u-1", True)
-        assert repository.session_exists("wf-1", "sid-1")
-
-    def test_established_session_can_rejoin_with_outdated_hash(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        seed_session(repository, "sid-1")
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        with config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
-        ):
-            result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="old")
-
-        assert result == ("u-1", True)
-        assert repository.session_exists("wf-1", "sid-1")
-
-    @pytest.mark.parametrize("expired_part", ["mapping", "session"])
-    def test_same_socket_with_expired_session_must_match_draft(
-        self,
-        real_service: ServiceFixture,
-        db_session: Session,
-        collaboration_redis: RedisClientWrapper,
-        expired_part: str,
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        seed_session(repository, "sid-1")
-        if expired_part == "mapping":
-            collaboration_redis.delete(repository.sid_key("sid-1"))
-        else:
-            repository.delete_session("wf-1", "sid-1")
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        with config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
-        ):
-            with pytest.raises(WorkflowCollaborationDraftOutdatedError):
-                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session, draft_hash="old")
-
-        assert repository.session_exists("wf-1", "sid-1") is (expired_part == "mapping")
-        socketio.enter_room.assert_not_called()
-        socketio.start_background_task.assert_not_called()
-
-    def test_join_without_draft_does_not_create_session(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        draft = db_session.get(Workflow, "draft-1")
-        assert draft is not None
-        db_session.delete(draft)
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        with config_overrides_context(ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False):
-            with pytest.raises(WorkflowCollaborationUnavailableError):
-                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
-
-        assert repository.get_session_sids("wf-1") == []
-        socketio.enter_room.assert_not_called()
-
     @pytest.mark.parametrize(
         ("edition", "plan", "enabled", "allowed"),
         [
@@ -272,85 +143,6 @@ class TestWorkflowCollaborationService:
         socketio.start_background_task.assert_not_called()
         socketio.enter_room.assert_not_called()
         socketio.emit.assert_not_called()
-
-    @pytest.mark.parametrize("failure", ["heartbeat", "background_task"])
-    def test_join_retries_heartbeat_startup_after_failure(
-        self,
-        real_service: ServiceFixture,
-        db_session: Session,
-        monkeypatch: pytest.MonkeyPatch,
-        failure: str,
-    ) -> None:
-        service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
-        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
-        db_session.commit()
-
-        if failure == "heartbeat":
-            refresh_heartbeat = repository.refresh_server_heartbeat
-            attempts = 0
-
-            def fail_once(server_id: str) -> None:
-                nonlocal attempts
-                attempts += 1
-                if attempts == 1:
-                    raise RuntimeError("heartbeat failed")
-                refresh_heartbeat(server_id)
-
-            monkeypatch.setattr(repository, "refresh_server_heartbeat", fail_once)
-        else:
-            socketio.start_background_task.side_effect = [RuntimeError("background task failed"), None]
-
-        with config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
-        ):
-            with pytest.raises(RuntimeError, match="failed"):
-                service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
-            assert repository.get_session_sids("wf-1") == []
-
-            assert service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session) is not None
-
-        assert repository.has_active_sessions("wf-1")
-        assert repository.server_heartbeat_exists("server-1")
-        assert socketio.start_background_task.call_count == (2 if failure == "background_task" else 1)
-
-    def test_concurrent_heartbeat_start_waits_for_a_failed_attempt(self, real_service: ServiceFixture) -> None:
-        service, repository, socketio = real_service
-        refresh_heartbeat = repository.refresh_server_heartbeat
-        first_started, second_started, release_first = Event(), Event(), Event()
-        attempts = 0
-
-        def refresh(server_id: str) -> None:
-            nonlocal attempts
-            attempts += 1
-            if attempts == 1:
-                first_started.set()
-                assert release_first.wait(5)
-                raise RuntimeError("heartbeat failed")
-            refresh_heartbeat(server_id)
-
-        def start_second() -> None:
-            second_started.set()
-            service._ensure_server_heartbeat_started()
-
-        with patch.object(repository, "refresh_server_heartbeat", side_effect=refresh):
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                first = executor.submit(service._ensure_server_heartbeat_started)
-                assert first_started.wait(5)
-                second = executor.submit(start_second)
-                assert second_started.wait(5)
-                try:
-                    with pytest.raises(TimeoutError):
-                        second.result(timeout=0.2)
-                finally:
-                    release_first.set()
-
-                with pytest.raises(RuntimeError, match="heartbeat failed"):
-                    first.result(timeout=5)
-                second.result(timeout=5)
-
-        assert repository.server_heartbeat_exists("server-1")
-        socketio.start_background_task.assert_called_once()
 
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session
