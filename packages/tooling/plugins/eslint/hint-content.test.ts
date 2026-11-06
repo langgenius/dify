@@ -216,10 +216,11 @@ it('keeps dialog sizes within the viewport bound owned by the surface', () => {
       <DialogContent className="h-170 w-285 xl:h-170 sm:w-132" />
       <DialogContent className="h-dvh w-full max-h-[calc(100dvh-1rem)] max-w-[calc(100vw-1rem)]" />
       <DialogContent className="h-[85dvh] max-h-[80dvh]" />
+      <DialogContent className="max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)]" />
       <DialogContent className="max-h-[min(44rem,calc(100dvh-2rem))] min-h-[min(22.5rem,calc(100dvh-2rem))]" />
       <DialogContent className="max-w-120 max-h-200 min-w-140 min-h-90 max-h-[80%]" />
       <AlertDialogContent className="w-[min(960px,calc(100vw-2rem))] h-[min(680px,calc(100dvh-2rem))] h-[calc(100dvh-16px)]" />
-      <DialogContent className="max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-32px)] max-h-[min(44rem,32rem)]" />
+      <DialogContent className="max-w-[calc(100vw-32px)] max-h-[min(44rem,32rem)]" />
     </>
   `)
   const rejected = [
@@ -231,8 +232,6 @@ it('keeps dialog sizes within the viewport bound owned by the surface', () => {
     'w-[min(960px,calc(100vw-2rem))]',
     'h-[min(680px,calc(100dvh-2rem))]',
     'h-[calc(100dvh-16px)]',
-    'max-w-[calc(100vw-2rem)]',
-    'max-h-[calc(100dvh-2rem)]',
     'max-w-[calc(100vw-32px)]',
     'max-h-[min(44rem,32rem)]',
   ]

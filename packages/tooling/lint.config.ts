@@ -354,8 +354,6 @@ export const stylingContractRules = {
             'h-[*rem]',
             'w-screen',
             'h-screen',
-            'max-w-[calc(100vw-2rem)]',
-            'max-h-[calc(100dvh-2rem)]',
           ],
           message:
             '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and keeps itself within the viewport. Size it with w-* and h-* (h-dvh fills the viewport). Change the viewport margin with max-w-[calc(100vw-Nrem)] or max-h-[calc(100dvh-Nrem)], and bound a height cap or floor by the viewport, e.g. max-h-[80dvh] or min-h-[min(20rem,calc(100dvh-2rem))]. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
