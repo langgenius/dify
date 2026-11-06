@@ -3,8 +3,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type AudioPlayerProps = Readonly<{
   src?: string // Keep backward compatibility
@@ -22,7 +21,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const playPauseLabel = t(($) => $[isPlaying ? 'operation.pause' : 'operation.play'], {
     ns: 'common',
   })
@@ -214,10 +213,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     // Draw waveform bars
     data.forEach((value, index) => {
       let color
-      if (index * barWidth <= playedWidth) color = theme === Theme.light ? '#296DFF' : '#84ABFF'
+      if (index * barWidth <= playedWidth) color = theme === 'light' ? '#296DFF' : '#84ABFF'
       else if (((index * barWidth) / width) * duration <= hoverTime)
-        color = theme === Theme.light ? 'rgba(21,90,239,.40)' : 'rgba(200, 206, 218, 0.28)'
-      else color = theme === Theme.light ? 'rgba(21,90,239,.20)' : 'rgba(200, 206, 218, 0.14)'
+        color = theme === 'light' ? 'rgba(21,90,239,.40)' : 'rgba(200, 206, 218, 0.28)'
+      else color = theme === 'light' ? 'rgba(21,90,239,.20)' : 'rgba(200, 206, 218, 0.14)'
       const barHeight = value * height
       const rectX = index * barWidth
       const rectY = (height - barHeight) / 2
@@ -295,7 +294,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         </div>
       </div>
       <div
-        className="absolute top-0 left-0 flex size-full items-center justify-center text-text-quaternary"
+        className="absolute inset-s-0 top-0 flex size-full items-center justify-center text-text-quaternary"
         hidden={isAudioAvailable}
       >
         {t(($) => $['operation.audioSourceUnavailable'], { ns: 'common' })}

@@ -1,5 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -16,7 +16,7 @@ export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+  const { data: knowledgeFsEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_knowledge_fs,
     }),

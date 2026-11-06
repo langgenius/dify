@@ -524,7 +524,7 @@ describe('workspace credits and marketplace availability', () => {
     expect(screen.queryByRole('button', { name: /selector.install/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /discoverMoreInMarketplace/ })).toHaveAttribute(
       'href',
-      expect.stringMatching(/\/plugins\/model$/),
+      expect.stringMatching(/\/plugins\/model\?theme=light$/),
     )
   })
 })

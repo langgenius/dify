@@ -12,8 +12,10 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
     KnowledgeFSLifecycleOutboxStatus,
+    KnowledgeFSRevokeCommandPayload,
 )
 from services.knowledge_fs.control_space_commands import (
     KnowledgeFSControlSpaceCommandService,
@@ -26,6 +28,7 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSDeletionProgress,
     KnowledgeFSIntegratedDeletionRequest,
     KnowledgeFSIntegratedProvisionRequest,
+    KnowledgeFSLifecycleRemoteError,
     KnowledgeFSRemoteSpace,
 )
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
@@ -266,6 +269,207 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
         "running",
         "succeeded",
     ]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSLifecycleOutbox)],
+    indirect=True,
+)
+@pytest.mark.parametrize("queued_before_deletion", [True, False])
+def test_revoke_is_acknowledged_after_matching_space_deletion_without_remote_call(
+    sqlite_session: Session, queued_before_deletion: bool
+) -> None:
+    """Both queued and newly produced revokes are covered by the same terminal DELETE."""
+
+    session_maker = _session_maker(sqlite_session)
+    now = datetime(2026, 7, 21, 12, 0)
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="provision-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=2,
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add(control_space)
+    sqlite_session.commit()
+
+    def enqueue_revoke(*, deferred: bool) -> str:
+        event_id = "30000000-0000-4000-8000-000000000001"
+        grant_id = "20000000-0000-4000-8000-000000000001"
+        idempotency_key = f"kfs-revoke:{control_space.id}:4:{grant_id}"
+        with session_maker.begin() as session:
+            command = KnowledgeFSLifecycleOutbox(
+                tenant_id="tenant-1",
+                control_space_id=control_space.id,
+                operation_id=event_id,
+                idempotency_key=idempotency_key,
+                operation=KnowledgeFSLifecycleOperation.REVOKE,
+                command_payload=KnowledgeFSRevokeCommandPayload(
+                    schema_version=1,
+                    idempotency_key=idempotency_key,
+                    expected_revision=2,
+                    event_id=event_id,
+                    grant_id=grant_id,
+                    knowledge_space_id="space-1",
+                    principal="dify-account:member-1",
+                    reason_code="workspace_rbac_role_changed",
+                    revoke_sequence=4,
+                ),
+                expected_control_space_version=control_space.resource_version,
+                next_attempt_at=now + timedelta(minutes=1) if deferred else None,
+            )
+            session.add(command)
+            session.flush()
+            return command.id
+
+    revoke_id = enqueue_revoke(deferred=True) if queued_before_deletion else None
+    deletion = KnowledgeFSControlSpaceCommandService(session_maker).request_deletion(
+        tenant_id="tenant-1",
+        control_space_id=control_space.id,
+        operation_id="delete-1",
+        idempotency_key="delete-idempotency-1",
+    )
+    remote = FakeKnowledgeFSLifecycleRemote()
+    remote.deletion_progress.append(KnowledgeFSDeletionProgress(KnowledgeFSDeletionPhase.COMPLETED, 3, now))
+    runner = KnowledgeFSLifecycleSagaRunner(session_maker, remote)
+    deleted = runner.dispatch_one(
+        worker_id="worker-1",
+        now=now,
+        lease_duration=timedelta(minutes=1),
+        product_enabled=True,
+    )
+    if revoke_id is None:
+        revoke_id = enqueue_revoke(deferred=False)
+    revoked = runner.dispatch_one(
+        worker_id="worker-1",
+        now=now + timedelta(minutes=1),
+        lease_duration=timedelta(minutes=1),
+        product_enabled=True,
+    )
+
+    with session_maker() as session:
+        revoke = session.get(KnowledgeFSLifecycleOutbox, revoke_id)
+        delete = session.get(KnowledgeFSLifecycleOutbox, deletion.outbox.id if deletion.outbox else "")
+    assert deleted.completed is True
+    assert delete is not None
+    assert delete.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
+    assert revoked.completed is True
+    assert revoke is not None
+    assert revoke.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSLifecycleOutbox)],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    ("remote_error_code", "proof_case", "expected_completed", "expected_status"),
+    [
+        ("CAPABILITY_SPACE_DELETED", "valid", True, KnowledgeFSLifecycleOutboxStatus.SUCCEEDED),
+        ("KNOWLEDGE_FS_HTTP_409", "valid", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "event_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "space_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+        ("CAPABILITY_SPACE_DELETED", "delete_mismatch", False, KnowledgeFSLifecycleOutboxStatus.RETRY),
+    ],
+)
+def test_only_typed_remote_deletion_settles_revoke_while_local_delete_is_pending(
+    sqlite_session: Session,
+    remote_error_code: str,
+    proof_case: str,
+    expected_completed: bool,
+    expected_status: KnowledgeFSLifecycleOutboxStatus,
+) -> None:
+    """A typed KFS response settles only a REVOKE bound to the original DELETE intent."""
+
+    session_maker = _session_maker(sqlite_session)
+    now = datetime(2026, 7, 21, 12, 0)
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="provision-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=2,
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add(control_space)
+    sqlite_session.commit()
+    deletion = KnowledgeFSControlSpaceCommandService(session_maker).request_deletion(
+        tenant_id="tenant-1",
+        control_space_id=control_space.id,
+        operation_id="delete-1",
+        idempotency_key="delete-idempotency-1",
+    )
+    assert deletion.outbox is not None
+    with session_maker.begin() as session:
+        delete = session.get(KnowledgeFSLifecycleOutbox, deletion.outbox.id)
+        assert delete is not None
+        delete.next_attempt_at = now + timedelta(hours=1)
+        if proof_case == "delete_mismatch":
+            stored_space = session.get(KnowledgeFSControlSpace, control_space.id)
+            assert stored_space is not None
+            stored_space.lifecycle_operation_id = "different-delete-operation"
+        revoke = KnowledgeFSLifecycleOutbox(
+            tenant_id="tenant-1",
+            control_space_id=control_space.id,
+            operation_id="30000000-0000-4000-8000-000000000001",
+            idempotency_key="revoke-1",
+            operation=KnowledgeFSLifecycleOperation.REVOKE,
+            command_payload=KnowledgeFSRevokeCommandPayload(
+                schema_version=1,
+                idempotency_key="revoke-1",
+                expected_revision=2,
+                event_id=(
+                    "30000000-0000-4000-8000-000000000002"
+                    if proof_case == "event_mismatch"
+                    else "30000000-0000-4000-8000-000000000001"
+                ),
+                grant_id="20000000-0000-4000-8000-000000000001",
+                knowledge_space_id="space-2" if proof_case == "space_mismatch" else "space-1",
+                principal="dify-account:member-1",
+                reason_code="workspace_rbac_role_changed",
+                revoke_sequence=4,
+            ),
+            expected_control_space_version=control_space.resource_version,
+        )
+        session.add(revoke)
+        session.flush()
+        revoke_id = revoke.id
+
+    class DeletedSpaceRemote(FakeKnowledgeFSLifecycleRemote):
+        def __init__(self) -> None:
+            super().__init__()
+            self.revoke_requests: list[KnowledgeFSCapabilityGrantRevokeRequest] = []
+
+        @override
+        def revoke_capability_grant(
+            self, request: KnowledgeFSCapabilityGrantRevokeRequest
+        ) -> KnowledgeFSCapabilityGrantRevokeAck:
+            self.revoke_requests.append(request)
+            raise KnowledgeFSLifecycleRemoteError(remote_error_code, "Capability revoke failed")
+
+    remote = DeletedSpaceRemote()
+    result = KnowledgeFSLifecycleSagaRunner(session_maker, remote).dispatch_one(
+        worker_id="worker-1",
+        now=now,
+        lease_duration=timedelta(minutes=1),
+        product_enabled=True,
+    )
+
+    with session_maker() as session:
+        persisted_revoke = session.get(KnowledgeFSLifecycleOutbox, revoke_id)
+        persisted_delete = session.get(KnowledgeFSLifecycleOutbox, deletion.outbox.id)
+        persisted_space = session.get(KnowledgeFSControlSpace, control_space.id)
+    assert result.completed is expected_completed
+    assert len(remote.revoke_requests) == 1
+    assert persisted_revoke is not None
+    assert persisted_revoke.status is expected_status
+    assert persisted_delete is not None
+    assert persisted_delete.status is KnowledgeFSLifecycleOutboxStatus.PENDING
+    assert persisted_space is not None
+    assert persisted_space.state is KnowledgeFSControlSpaceState.DELETING
 
 
 @pytest.mark.parametrize(

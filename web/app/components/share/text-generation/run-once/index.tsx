@@ -6,7 +6,6 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -27,7 +26,6 @@ import TextGenerationImageUploader from '@/app/components/base/image-uploader/te
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -56,8 +54,6 @@ const RunOnce: FC<IRunOnceProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'share', 'workflow'])
   const baseId = useId()
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
   const [isInitialized, setIsInitialized] = useState(false)
   const fileUploadersRef = useRef(new Map<string, FileUploaderInAttachmentRef>())
 
@@ -328,7 +324,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 </span>
               </Button>
               <Button
-                className={cn(!isPC && 'grow')}
+                className="max-md:grow"
                 type={isRunning ? 'button' : 'submit'}
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}

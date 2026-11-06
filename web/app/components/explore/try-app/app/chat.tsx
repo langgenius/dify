@@ -6,6 +6,7 @@ import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -17,7 +18,6 @@ import { EmbeddedChatbotContext } from '@/app/components/base/chat/embedded-chat
 import { useEmbeddedChatbot } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 
 type Props = Readonly<{
@@ -28,8 +28,7 @@ type Props = Readonly<{
 
 const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const { t } = useTranslation(['explore', 'share', 'common'])
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
   const theme = createTheme(
     chatData.appData?.site?.chat_color_theme ?? null,
@@ -52,7 +51,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
         {
           ...chatData,
           disableFeedback: true,
-          isMobile,
+          isBelowSm,
           theme,
         } as EmbeddedChatbotContextValue
       }
