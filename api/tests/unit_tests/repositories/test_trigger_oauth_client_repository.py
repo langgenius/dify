@@ -37,7 +37,7 @@ def _custom(*, tenant_id: str, plugin_id: str, provider: str) -> TriggerOAuthTen
 def test_missing_clients_return_empty_snapshot(repository: TriggerOAuthClientRepository) -> None:
     assert repository.get(
         tenant_id=str(uuid4()), provider_id=TriggerProviderID("langgenius/github/github")
-    ) == TriggerOAuthClientSnapshot(custom=None, system_configured=False)
+    ) == TriggerOAuthClientSnapshot(custom=None, encrypted_system_oauth_params=None)
 
 
 def test_repository_returns_its_connection_after_every_operation(
@@ -81,7 +81,7 @@ def test_custom_lookup_uses_complete_owner_scope(
 
     assert repository.get(
         tenant_id=tenant_id, provider_id=TriggerProviderID("langgenius/github/github")
-    ) == TriggerOAuthClientSnapshot(custom=None, system_configured=False)
+    ) == TriggerOAuthClientSnapshot(custom=None, encrypted_system_oauth_params=None)
 
 
 @pytest.mark.parametrize("other_scope", ["plugin", "provider"])
@@ -133,7 +133,7 @@ def test_get_materializes_ciphertext_and_enabled_before_closing_session(
             encrypted_oauth_params='{"client_secret": "original-ciphertext"}',
             enabled=False,
         ),
-        system_configured=True,
+        encrypted_system_oauth_params="system-ciphertext",
     )
 
 
