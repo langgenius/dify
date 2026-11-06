@@ -1,0 +1,28 @@
+.builderEditBorder {
+  position: absolute;
+  /* Preserve the outline's 4px offset outside the node's 1px border. */
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.builderEditBorder rect {
+  fill: none;
+  stroke: var(--color-state-accent-solid);
+  stroke-width: 2;
+  stroke-dasharray: 0.5 0.5;
+}
+
+@keyframes builder-edit-border-flow {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .builderEditBorder rect {
+    animation: builder-edit-border-flow 1s linear infinite;
+  }
+}

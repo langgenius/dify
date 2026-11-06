@@ -1666,7 +1666,8 @@ export const zCreateAppPayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
-  name: z.string().min(1),
+  name: z.string().min(1).nullish(),
+  prompt: z.string().nullish(),
 })
 
 /**
@@ -2091,6 +2092,36 @@ export const zPaginatedConversationVariableResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * CognitionModelResponse
+ */
+export const zCognitionModelResponse = z.object({
+  completion_params: z.record(z.string(), z.unknown()),
+  health: z.enum(['configured', 'unavailable', 'unknown']),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * DifyBuilderAvailabilityResponse
+ *
+ * The same safe availability projection after App-scoped admission.
+ */
+export const zDifyBuilderAvailabilityResponse = z.object({
+  available: z.boolean(),
+  default_model_id: z.string().nullable(),
+  enabled: z.boolean(),
+  fallback_model_ids: z.array(z.string()),
+  models: z.array(zCognitionModelResponse),
+  reason_code: z
+    .enum(['builder_disabled', 'model_availability_unknown', 'model_unavailable'])
+    .nullable(),
+  revision: z.int(),
+  source: z.enum(['explicit', 'workspace_default']),
 })
 
 export const zAnyJsonValue = z.unknown()
@@ -7470,6 +7501,15 @@ export const zPostAppsByAppIdCopyPath = z.object({
 })
 
 export const zPostAppsByAppIdCopyResponse = z.union([zAppDetailWithSite, zAppImportResponse])
+
+export const zGetAppsByAppIdDifyBuilderAvailabilityPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdDifyBuilderAvailabilityResponse = zDifyBuilderAvailabilityResponse
 
 export const zGetAppsByAppIdExportPath = z.object({
   app_id: z.uuid(),

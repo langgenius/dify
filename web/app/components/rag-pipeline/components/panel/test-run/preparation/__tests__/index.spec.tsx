@@ -14,6 +14,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
@@ -23,6 +24,7 @@ import { createPipelineVariable } from '@/test/pipeline-variables'
 import Preparation from '../index'
 
 const api = vi.hoisted(() => ({ stream: vi.fn<typeof ssePost>(), upload: vi.fn<typeof upload>() }))
+const processingParameters = vi.hoisted(() => vi.fn())
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: api.stream,
@@ -38,16 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': async () => ({
-        variables: [
-          createPipelineVariable({
-            variable: 'limit',
-            label: 'Limit',
-            type: PipelineInputVarType.number,
-            default_value: 5,
-          }),
-        ],
-      }),
+      'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': processingParameters,
       'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': async () => ({
         variables: [
           createPipelineVariable({
@@ -140,6 +133,17 @@ const uploadedFile = {
 } satisfies FileResponse
 const handleRun = vi.fn()
 beforeEach(() => {
+  handleRun.mockReset().mockResolvedValue(true)
+  processingParameters.mockReset().mockResolvedValue({
+    variables: [
+      createPipelineVariable({
+        variable: 'limit',
+        label: 'Limit',
+        type: PipelineInputVarType.number,
+        default_value: 5,
+      }),
+    ],
+  })
   api.upload.mockReset().mockResolvedValue(uploadedFile)
   api.stream.mockReset().mockImplementation(async (_url, { body }, callbacks) => {
     if (!body || typeof body !== 'object' || !('datasource_type' in body))
@@ -259,6 +263,41 @@ const selectItem = async (id: string, user: ReturnType<typeof userEvent.setup>) 
   }
   await waitFor(() => expect(next()).toBeEnabled())
 }
+
+it('keeps the processing form and selected file after a failed save, then allows retry', async () => {
+  processingParameters.mockResolvedValue({
+    variables: [
+      createPipelineVariable({ variable: 'query', label: 'Query', default_value: 'original' }),
+    ],
+  })
+  const starting = createDeferred<boolean>()
+  handleRun.mockReturnValueOnce(starting.promise)
+  const { user, workflowStore } = await setup()
+  await selectItem('local', user)
+  await user.click(next())
+  const input = screen.getByRole('textbox', { name: 'Query' })
+  await user.clear(input)
+  await user.type(input, 'edited')
+  await user.click(process())
+
+  expect(workflowStore.getState().isPreparingDataSource).toBe(true)
+  expectLoadingButton(process())
+  await user.click(process())
+  expect(handleRun).toHaveBeenCalledOnce()
+  await act(async () => starting.resolve(false))
+  await waitFor(() => expect(process()).not.toHaveAttribute('aria-disabled', 'true'))
+  expect(input).toHaveValue('edited')
+  expect(workflowStore.getState().isPreparingDataSource).toBe(true)
+
+  await user.click(process())
+  await waitFor(() => expect(workflowStore.getState().isPreparingDataSource).toBe(false))
+  expect(handleRun).toHaveBeenLastCalledWith({
+    inputs: { query: 'edited' },
+    start_node_id: 'local',
+    datasource_type: DatasourceType.localFile,
+    datasource_info_list: [expectedInfo.local],
+  })
+})
 
 it.each(sources)(
   'requires a selected item before processing $title and sends its complete run payload',

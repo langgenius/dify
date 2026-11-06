@@ -251,9 +251,14 @@ def test_main_ci_passes_style_base_rev_input() -> None:
     assert style_job is not None
     assert "uses: ./.github/workflows/style.yml" in style_job.group("job")
     assert (
-        "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+        "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || inputs.base_sha }}"
         in style_job.group("job")
     )
+    dispatch = re.search(r"(?ms)^  workflow_dispatch:\n(?P<inputs>.*?)(?=^  [a-z0-9_-]+:\n)", workflow)
+    assert dispatch is not None
+    assert "base_sha:" in dispatch.group("inputs")
+    assert "required: true" in dispatch.group("inputs")
+    assert "type: string" in dispatch.group("inputs")
     assert "run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}" in style_job.group(
         "job"
     )

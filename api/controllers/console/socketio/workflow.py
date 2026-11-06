@@ -1,8 +1,9 @@
 import logging
 from collections.abc import Callable
-from typing import cast
+from typing import Annotated, cast
 
 from flask import Request as FlaskRequest
+from pydantic import UUID4, BaseModel, Field, ValidationError
 
 from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
@@ -11,11 +12,24 @@ from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_draft_sync_repository import WorkflowDraftSyncRepository
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationService,
+    WorkflowPageResume,
+)
+from services.workflow_draft_sync_service import WorkflowDraftSyncService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
+draft_sync_repository = WorkflowDraftSyncRepository()
+draft_sync_service = WorkflowDraftSyncService(draft_sync_repository, repository, collaboration_service, sio)
+
+
+class WorkflowPageResumePayload(BaseModel):
+    page_id: UUID4
+    sequence: Annotated[int, Field(strict=True, ge=1)]
 
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -65,17 +79,24 @@ def socket_connect(sid, environ, auth=None):
 
 @_sio_on("user_connect")
 @observe_workflow_event("user_connect", sio)
-def handle_user_connect(sid, data):
-    """
-    Handle user connect event. Each session (tab) is treated as an independent collaborator.
-    """
-    workflow_id = data.get("workflow_id")
-    if not workflow_id:
+def handle_user_connect(sid: str, data: object):
+    """Admit a new page or resume one after validating the optional page credential."""
+    if not isinstance(data, dict) or not isinstance(workflow_id := data.get("workflow_id"), str) or not workflow_id:
         return {"msg": "workflow_id is required"}, 400
+
+    resume = None
+    if (raw_resume := data.get("resume")) is not None:
+        try:
+            payload = WorkflowPageResumePayload.model_validate(raw_resume)
+        except ValidationError:
+            return {"msg": "invalid resume"}, 400
+        resume = WorkflowPageResume(payload.page_id.hex, payload.sequence)
 
     try:
         with sio.app.app_context(), session_factory.create_session() as session:
-            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+            result = collaboration_service.authorize_and_join_workflow_room(
+                workflow_id, sid, session=session, resume=resume
+            )
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
@@ -85,13 +106,25 @@ def handle_user_connect(sid, data):
         return {"msg": "unauthorized"}, 401
 
     user_id, is_leader = result
+    pending_draft = draft_sync_repository.get(workflow_id)
+    if pending_draft is not None and pending_draft.update is None:
+        sio.emit("server_draft_changed", {"revision": pending_draft.revision}, to=sid)
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
 @observe_workflow_event("disconnect", sio)
 def _handle_disconnect(sid):
     """Remove the session from online users and observe the result."""
-    collaboration_service.disconnect_session(sid)
+    workflow_id = collaboration_service.disconnect_session(sid)
+    if workflow_id and not repository.get_session_sids(workflow_id):
+        draft_sync_repository.clear(workflow_id)
+
+
+@_sio_on("server_draft_sync")
+def handle_server_draft_sync(sid, _data):
+    """Return one accepted CRDT update for the latest committed server draft."""
+    with sio.app.app_context(), session_factory.create_session() as session:
+        return draft_sync_service.sync(sid, session=session)
 
 
 @_sio_on("disconnect")

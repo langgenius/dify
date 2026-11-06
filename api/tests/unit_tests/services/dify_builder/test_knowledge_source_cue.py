@@ -1,0 +1,457 @@
+"""Explicit source exclusions must not invent a retrieval clarification goal."""
+
+import pytest
+
+from services.dify_builder.plan import has_knowledge_source_cue
+
+MEETING_GOAL = (
+    "合成补充验收，不是原始 ENG1235 输入回放。创建会后纪要 Workflow：Start 只接收必填文本 meeting_notes；"
+    "用当前已有模型整理中文纪要，End 输出文本 minutes，明确分为结论、待办、待确认事项。"
+    "严格区分已决定与未决定；未提供的负责人、日期、金额只能注明待确认，不能补造。"
+    "不发送通知，不使用工具、HTTP、Agent、知识库、文件或外部业务账户。先给计划，等待批准；不测试、不发布。"
+)
+
+
+CAPTURED_MEETING_GOAL = (
+    "创建一个专用的合成会议纪要验收 Workflow 草稿，名称"
+    "「Dev ENG1235 Meeting 439e」。先生成"
+    "计划供我审阅，不要执行测试或发布。只允许 Start → 一"
+    "个当前已经配置可用模型的 LLM → End，3 个节点、2"
+    " 条连线，不需要任何新资源、工具、Code、Agent、HT"
+    "TP、知识库、文件或凭据。Start 必填文本输入 meet"
+    "ing_notes。LLM 根据会议原文，用中文按顺序输出四"
+    "节：结论、待办、待确认事项、风险与阻塞。区分已决定与未决定；"
+    "对缺失负责人、日期、金额标注待确认，不编造；风险与阻塞只列原"
+    "文明示内容，未提及则写「原文未提及」。End 返回文本 mi"
+    "nutes，绑定 LLM 的 text。"
+)
+CAPTURED_MEETING_REQUIREMENTS = {
+    "mode": "workflow_draft_plan_only",
+    "publish": False,
+    "llm_model": "当前已经配置可用的模型",
+    "llm_rules": [
+        "区分已决定与未决定",
+        "对缺失负责人、日期、金额标注待确认，不编造",
+        "风险与阻塞只列原文明示内容，未提及则写「原文未提及」",
+    ],
+    "edge_count": 2,
+    "node_count": 3,
+    "end_outputs": [{"type": "text", "variable": "minutes", "value_selector": "LLM.text"}],
+    "start_inputs": [{"type": "text", "required": True, "variable": "meeting_notes"}],
+    "allowed_nodes": ["Start", "LLM", "End"],
+    "execute_tests": False,
+    "workflow_name": "Dev ENG1235 Meeting 439e",
+    "excluded_resources": ["工具", "Code", "Agent", "HTTP", "知识库", "文件", "凭据"],
+    "llm_output_language": "中文",
+    "new_resources_allowed": False,
+    "llm_output_sections_in_order": ["结论", "待办", "待确认事项", "风险与阻塞"],
+}
+
+
+CAPTURED_AGENT_GOAL = (
+    "请生成一个合同风险初筛 Workflow。Start 节点接收 contract_text"
+    "（合同正文，文本，必填）和 jurisdiction（适用地区，文本，选填）。优先搜索当前"
+    " Workspace 中已发布、我和这个 Workflow 都有权调用的现有 Agent，"
+    "让它识别高风险条款。End 节点输出 risks 和 summary。请展示你选用该 Ag"
+    "ent 的理由、版本与权限状态；不要创建新 Agent，也不要使用旧版 Agent 节点。"
+    "\n\n本次是同一专用未发布 App 的新 BUILD 计划，不续跑任何旧 Run。资源选择已"
+    "明确：仅使用当前 Workspace 中已有、已发布、且本账号与本 Workflow 有权"
+    "调用的“ENG1376 Contract Risk Reviewer a1 2026103"
+    "0”，Agent ID 01a18ce5-e037-77b9-bf99-c20a39d49"
+    "024，当前 published display version 4、immutable "
+    "snapshot 01a19641-cdb3-7981-b257-5a12dce30849"
+    "（max_tokens=8192）。必须核对真实可用性、版本和权限；若该精确资源不可用，请"
+    "停住说明，不能替换、创建或升级其他 Agent。工作流严格限定为 Start（contra"
+    "ct_text 文本必填、jurisdiction 文本选填）→这个已发布 Agent→E"
+    "nd（risks、summary，沿用当前草稿已声明的输出约定）。不要增加其他 Agent"
+    "、工具、HTTP、Code、文件或知识库。先展示正式计划并等待明确批准；本阶段不得生成或改"
+    "写画布、运行 Agent/Workflow、测试或发布。"
+)
+CAPTURED_FORBIDDEN_ADDITIONS = {"forbidden_additions": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
+CAPTURED_NO_EXTRA_COMPONENTS = {"no_extra_components": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
+CAPTURED_BARE_ROLE_REQUIREMENTS = {
+    "agent": {
+        "name": "ENG1376 Contract Risk Reviewer a1 20261030",
+        "task": "识别高风险条款",
+        "agent_id": "01a18ce5-e037-77b9-bf99-c20a39d49024",
+        "max_tokens": "<redacted>",
+        "constraints": [
+            "仅使用现有已发布 Agent",
+            "不创建新 Agent",
+            "不使用旧版 Agent 节点",
+            "必须核对真实可用性、版本和权限",
+            "若精确资源不可用则停住说明，不替换/创建/升级",
+        ],
+        "immutable_snapshot": "01a19641-cdb3-7981-b257-5a12dce30849",
+        "published_display_version": 4,
+    },
+    "disallowed": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"],
+    "end_outputs": ["risks", "summary"],
+    "start_inputs": [
+        {"name": "contract_text", "type": "text", "label": "合同正文", "required": True},
+        {"name": "jurisdiction", "type": "text", "label": "适用地区", "required": False},
+    ],
+    "workflow_structure": "Start → 已发布 Agent → End",
+    "no_run_or_publish_this_phase": True,
+    "require_plan_approval_before_build": True,
+}
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        MEETING_GOAL,
+        "不使用知识库，只整理用户提供的文本。",
+        "无需知识库。",
+        "禁止访问外部知识库。",
+        "不要依赖知识库。",
+        "不使用工具和知识库。",
+        "Do not use a knowledge base.",
+        "Do not use tools, HTTP, agents, knowledge bases or files.",
+        "Never query the knowledge base.",
+        "Format the input without knowledge_base.",
+        "No need to use a knowledge base.",
+    ],
+)
+def test_explicitly_excluded_source_does_not_create_a_knowledge_goal(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "必须使用知识库回答。",
+        "先不要使用知识库，但后续必须使用知识库回答。",
+        "不使用HTTP，改用知识库回答。",
+        "不使用工具，必须查询文档和知识库",
+        "Do not use tools, retrieve answers from documents and knowledge bases.",
+        "不使用知识库A，需要知识库B回答。",
+        "Do not use knowledge base A; use knowledge base B for answers.",
+        "不要生成知识库节点，但仍需检索。",
+        "不使用知识库节点，但仍需检索公司的文档。",
+        "不能不检索知识库。",
+        "不可以不使用知识库",
+        "不需要禁止使用知识库。",
+        "不要不使用知识库。",
+        "禁止不使用知识库。",
+        "不使用知识库，但必须从 knowledge_base 检索。",
+        "Do not use a knowledge base; retrieve answers from the knowledge base.",
+        "Do not generate knowledge retrieval nodes, but still retrieve from a knowledge base.",
+        "Do not use knowledge base nodes, but keep retrieval.",
+        "Do not avoid using the knowledge base.",
+        "You cannot avoid using the knowledge base.",
+        "You can't avoid using the knowledge base.",
+        "You shouldn't avoid using the knowledge base.",
+        "Not without a knowledge base.",
+        "Do not use a knowledge base unless the question needs retrieval.",
+        "除非必要，否则不使用知识库。",
+        "Knowledge base access is undecided.",
+        "Without changing the knowledge base, retrieve answers from it.",
+        "不使用财务系统和知识库。",
+        "Do not use the bespoke registry and knowledge bases.",
+    ],
+)
+def test_affirmative_mixed_or_uncertain_source_still_requires_clarification(goal: str) -> None:
+    assert has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"knowledge_base": False},
+        {"knowledge_base": None},
+        {"knowledge_base": {"enabled": False}},
+        {"knowledge_base": {"enabled": True}},
+        {"knowledge_base": "false"},
+        {"rules": [False, {"knowledge_base": False}, "不使用知识库"]},
+    ],
+)
+def test_requirement_keys_and_nontext_values_do_not_invent_source_use(requirements: object) -> None:
+    assert not has_knowledge_source_cue("Format the supplied text", requirements)
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"source": "必须使用知识库回答"},
+        {"rules": [False, {"source": "Retrieve from the knowledge base"}]},
+        {"rules": [{"source": "不使用工具，必须查询文档和知识库"}]},
+        {"rules": [{"source": "Do not use tools, retrieve answers from documents and knowledge bases."}]},
+        ["Use knowledge_base", {"knowledge_base": False}],
+    ],
+)
+def test_affirmative_requirement_overrides_goal_exclusion(requirements: object) -> None:
+    assert has_knowledge_source_cue("不要使用知识库", requirements)
+
+
+@pytest.mark.parametrize(
+    ("goal", "requirements"),
+    [
+        (CAPTURED_AGENT_GOAL, {}),
+        ("", CAPTURED_FORBIDDEN_ADDITIONS),
+        (CAPTURED_AGENT_GOAL, CAPTURED_FORBIDDEN_ADDITIONS),
+    ],
+    ids=["goal", "requirements", "both"],
+)
+def test_captured_agent_only_goal_and_forbidden_resource_list_do_not_invent_knowledge_use(
+    goal: str, requirements: dict[str, object]
+) -> None:
+    assert not has_knowledge_source_cue(goal, requirements)
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "不要增加知识库。",
+        "不要添加其他 Agent、工具、HTTP、Code、文件或知识库。",
+        "不增加代码、知识库。",
+        "禁止添加 Code 和知识库。",
+        "Do not add other agents, tools, HTTP, Code, files or knowledge bases.",
+    ],
+)
+def test_direct_add_exclusion_only_discounts_known_resource_categories(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize("key", ["forbidden_additions", "forbidden_resources", "excluded_resources"])
+def test_explicit_resource_exclusion_list_keeps_its_role_when_nested(key: str) -> None:
+    assert not has_knowledge_source_cue("Format supplied text", {"scope": {key: ["知识库", "knowledge base"]}})
+
+
+@pytest.mark.parametrize(
+    ("goal", "requirements"),
+    [
+        ("不要增加知识库节点，但仍需检索。", {}),
+        ("不能不添加知识库。", {}),
+        ("如果需要就不要添加知识库。", {}),
+        ("不要增加知识库，但仍需使用知识库回答。", {}),
+        ("不要添加财务系统和知识库。", {}),
+        ("不要增加知识库", {"forbidden_additions": ["知识库"], "source": "必须使用知识库回答"}),
+        ("", {"arbitrary": ["知识库"]}),
+        ("", {"forbidden_nodes": ["知识库"]}),
+        ("", {"forbidden_additions": ["知识库节点"]}),
+        ("", {"forbidden_resources": {"source": "知识库"}}),
+        ("", {"forbidden_additions": ["知识库", {"source": "知识库"}]}),
+        ("", {"excluded_resources": ["知识库", "如果必要则查询知识库"]}),
+        ("", {"forbidden_resources": ["知识库A"]}),
+        ("", {"forbidden_additions": ("知识库",)}),
+    ],
+)
+def test_exclusion_lists_never_hide_positive_unknown_or_node_only_requirements(
+    goal: str, requirements: dict[str, object]
+) -> None:
+    assert has_knowledge_source_cue(goal, requirements)
+
+
+@pytest.mark.parametrize("goal", ["", CAPTURED_AGENT_GOAL], ids=["requirements", "combined"])
+def test_captured_no_extra_components_list_does_not_invent_knowledge_use(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, CAPTURED_NO_EXTRA_COMPONENTS)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "no_extra_components",
+        "disallowed_resources",
+        "without_components",
+        "forbidden_other_resources",
+        "excluded_additional_components",
+        "no_additions",
+        "without_extra_additions",
+        "disallowed_other_components",
+    ],
+)
+def test_explicit_negative_resource_collection_role_recognizes_bounded_identifier_variants(key: str) -> None:
+    assert not has_knowledge_source_cue("Format supplied text", {"scope": {key: ["知识库", "knowledge base"]}})
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "not_forbidden_resources",
+        "allowed_no_extra_components",
+        "no_extra_nodes",
+        "forbidden_nodes",
+        "forbidden_resources_backup",
+        "no_extra_components_maybe",
+        "unknown_no_extra_components",
+        "no_extra",
+        "no__resources",
+        "no_extra_other_resources",
+        "no_extra_components_to_add",
+        "no_extra_resource",
+        "disallowedresources",
+        "if_no_extra_components",
+    ],
+)
+def test_negative_substrings_and_node_collection_keys_never_hide_source_mentions(key: str) -> None:
+    assert has_knowledge_source_cue("Format supplied text", {key: ["知识库"]})
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"no_extra_components": "知识库"},
+        {"without_resources": {"source": "知识库"}},
+        {"no_extra_components": ("知识库",)},
+        {"no_extra_components": ["知识库节点"]},
+        {"no_extra_components": ["知识库", {"required_resources": ["知识库"]}]},
+        {"no_extra_components": ["知识库", "必须使用知识库回答"]},
+        {"no_extra_components": ["知识库", "如果需要就查询知识库"]},
+        {"no_extra_components": ["知识库A"]},
+        {"no_extra_components": ["知识库", ["知识库"]]},
+    ],
+)
+def test_general_resource_list_role_never_skips_unknown_or_positive_children(requirements: object) -> None:
+    assert has_knowledge_source_cue("Format supplied text", requirements)
+
+
+def test_positive_goal_dominates_a_general_negative_resource_list_role() -> None:
+    assert has_knowledge_source_cue("必须使用知识库回答", CAPTURED_NO_EXTRA_COMPONENTS)
+
+
+@pytest.mark.parametrize("goal", ["", CAPTURED_AGENT_GOAL], ids=["requirements", "combined"])
+def test_full_captured_bare_disallowed_role_does_not_invent_knowledge_use(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, CAPTURED_BARE_ROLE_REQUIREMENTS)
+
+
+@pytest.mark.parametrize("role", ["forbidden", "excluded", "disallowed", "no", "without"])
+def test_bare_explicit_negative_roles_obtain_collection_meaning_only_from_the_list(role: str) -> None:
+    assert not has_knowledge_source_cue("Format supplied text", {role: ["知识库", "knowledge base"]})
+
+
+@pytest.mark.parametrize("key", ["not_disallowed", "disallowed_nodes", "otherwise_disallowed", "disallowed_"])
+def test_bare_role_prefixes_still_require_a_complete_identifier(key: str) -> None:
+    assert has_knowledge_source_cue("Format supplied text", {key: ["知识库"]})
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"disallowed": "知识库"},
+        {"disallowed": {"source": "知识库"}},
+        {"disallowed": ("知识库",)},
+        {"disallowed": ["知识库节点"]},
+        {"disallowed": ["知识库", {"required": ["知识库"]}]},
+        {"disallowed": ["知识库", "必须查询知识库"]},
+        {"disallowed": ["知识库", "如果需要就检索知识库"]},
+        {"disallowed": ["知识库A"]},
+        {"disallowed": ["知识库", ["知识库"]]},
+    ],
+)
+def test_bare_negative_roles_do_not_hide_nonlist_unknown_positive_or_nested_values(requirements: object) -> None:
+    assert has_knowledge_source_cue("Format supplied text", requirements)
+
+
+def test_positive_goal_still_dominates_a_bare_negative_resource_role() -> None:
+    assert has_knowledge_source_cue("必须使用知识库回答", {"without": ["知识库"]})
+
+
+@pytest.mark.parametrize("requirements", [{}, None])
+def test_captured_meeting_goal_excludes_knowledge_without_a_goal_change(requirements: object) -> None:
+    assert not has_knowledge_source_cue(
+        CAPTURED_MEETING_GOAL, CAPTURED_MEETING_REQUIREMENTS if requirements is None else requirements
+    )
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "不需要任何新资源、工具、Code、Agent、HTTP、知识库、文件或凭据。",
+        "不需要资源、知识库。",
+        "不使用任何新工具和知识库。",
+        "不要添加新模型、文件或知识库。",
+        "Do not use any new resources, tools, HTTP or knowledge bases.",
+        "Do not add resources and knowledge bases.",
+        "Without new tools or knowledge bases.",
+        "Do not use any new models, files and knowledge bases.",
+    ],
+)
+def test_complete_preceding_resource_items_allow_bounded_new_descriptors(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize("prefix", ["不使用工具、", "不需要任何新资源、工具、"])
+@pytest.mark.parametrize("suffix", ["仍需检索", "访问尚未决定", "不一定不用", "A", "_archive", "-backup"])
+def test_excluded_knowledge_mention_requires_a_complete_bare_list_item(prefix: str, suffix: str) -> None:
+    assert has_knowledge_source_cue(prefix + "知识库" + suffix, {})
+
+
+@pytest.mark.parametrize("prefix", ["Do not use tools, ", "Do not use any new resources, tools, "])
+@pytest.mark.parametrize("suffix", [" still requires retrieval", " access is undecided", " may still be needed"])
+def test_english_source_suffix_prose_is_not_a_bare_excluded_item(prefix: str, suffix: str) -> None:
+    assert has_knowledge_source_cue(prefix + "knowledge bases" + suffix, {})
+
+
+@pytest.mark.parametrize("suffix", ["", "。", "  。", "、文件。", " 或文件。", "，文件。", "; format text"])
+def test_bare_excluded_item_accepts_end_punctuation_or_list_connector(suffix: str) -> None:
+    assert not has_knowledge_source_cue("不需要任何新资源、工具、知识库" + suffix, {})
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "不需要新知识库。",
+        "Do not use new knowledge bases.",
+        "不需要任何新财务系统、知识库。",
+        "Do not use new bespoke registries and knowledge bases.",
+        "不需要任何新资源、知识库节点。",
+        "不需要任何新资源、知识库配置。",
+        "不需要任何新资源、知识库，除非必要。",
+        "如果必要，不需要任何新资源、知识库。",
+        "不能不使用新资源、知识库。",
+        "不需要任何新资源、知识库。但必须使用知识库回答。",
+        "Do not use new resources, knowledge base nodes.",
+        "Do not use new resources, knowledge bases unless retrieval is needed.",
+    ],
+)
+def test_preceding_item_expansion_preserves_unknown_uncertain_and_affirmative_guards(goal: str) -> None:
+    assert has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize("prefix", ["不需要新资源，", "不使用工具、"])
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        "知识库和文件仍需检索。",
+        "知识库、文件仍需检索。",
+        "知识库，文件仍需检索。",
+        "知识库和财务系统是否使用待确认。",
+        "知识库和外部业务账户仍需访问。",
+    ],
+)
+def test_compound_source_subject_does_not_hide_a_shared_predicate(prefix: str, suffix: str) -> None:
+    assert has_knowledge_source_cue(prefix + suffix, {})
+
+
+@pytest.mark.parametrize("prefix", ["Do not use new resources, ", "Do not use tools, "])
+@pytest.mark.parametrize("connector", [" and ", " or ", ", "])
+def test_english_compound_source_subject_requires_complete_exclusion_framing(prefix: str, connector: str) -> None:
+    assert has_knowledge_source_cue(prefix + "knowledge bases" + connector + "files are still required.", {})
+
+
+@pytest.mark.parametrize("prefix", ["不需要新资源，", "不使用工具、"])
+@pytest.mark.parametrize(
+    "suffix", ["知识库。", "知识库、文件或凭据。", "知识库，文件，凭据。", "知识库、文件或外部业务账户。"]
+)
+def test_complete_known_suffix_lists_remain_explicit_exclusions(prefix: str, suffix: str) -> None:
+    assert not has_knowledge_source_cue(prefix + suffix, {})
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "不需要新资源，知识库，财务系统是否使用待确认。",
+        "不需要新资源，知识库，检索方案待确认。",
+        "Do not use new resources, knowledge bases, the bespoke registry is undecided.",
+    ],
+)
+def test_new_resource_prefix_does_not_waive_ambiguous_postcomma_prose(goal: str) -> None:
+    assert has_knowledge_source_cue(goal, {})
+
+
+@pytest.mark.parametrize(
+    "goal", ["不使用知识库，只整理用户文本。", "Do not use a knowledge base, format supplied text."]
+)
+def test_legacy_independent_postcomma_clause_preserves_explicit_exclusion(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, {})

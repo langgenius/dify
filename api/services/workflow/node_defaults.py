@@ -11,10 +11,10 @@ from typing import Any, Final, Union, get_args, get_origin
 from pydantic import BaseModel, Field
 
 from core.workflow.human_input_adapter import DeliveryChannelConfig
-from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from services.workflow_runtime.node_factory import resolve_workflow_node_class
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {

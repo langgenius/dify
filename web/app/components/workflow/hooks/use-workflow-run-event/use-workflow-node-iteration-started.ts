@@ -39,7 +39,8 @@ export const useWorkflowNodeIterationStarted = () => {
       const position = currentNode!.position
       const zoom = transform[2]
 
-      if (!currentNode!.parentId) {
+      const state = workflowStore.getState()
+      if (!currentNode!.parentId && state.autoFollowExecution) {
         setViewport({
           x:
             (containerParams.clientWidth - 400 - currentNode!.width! * zoom) / 2 -

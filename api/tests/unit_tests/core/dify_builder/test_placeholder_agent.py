@@ -1,0 +1,169 @@
+"""Fallback-agent diagnosis, repair, and workflow generation behavior."""
+
+from core.dify_builder.models import ChecklistError, Graph, NodeOutput, Run
+from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
+
+
+def test_diagnose_points_at_first_failed_node() -> None:
+    a = PlaceholderAgent()
+    outputs = [
+        NodeOutput(node_id="start", status="success"),
+        NodeOutput(node_id="code-1", status="failed", error="boom"),
+        NodeOutput(node_id="end", status="skip"),
+    ]
+    d = a.diagnose(Run(), Graph(), outputs)
+    assert d.culprit_node_id == "code-1"
+    assert d.root_cause == "Code node raised at runtime"
+    assert d.severity == "high"
+
+
+def test_diagnose_falls_back_to_output_when_nothing_failed() -> None:
+    a = PlaceholderAgent()
+    d = a.diagnose(Run(), Graph(), [NodeOutput(node_id="start", status="success")])
+    assert d.culprit_node_id == "output"
+
+
+def test_propose_repair_replaces_culprit_code() -> None:
+    a = PlaceholderAgent()
+    outputs = [NodeOutput(node_id="code-1", status="failed", error="boom")]
+    d = a.diagnose(Run(), Graph(), outputs)
+    assert d.culprit_node_id == "code-1"
+
+    intents, risk = a.propose_repair(d, Graph())
+
+    assert len(intents) == 1
+    it = intents[0]
+    assert it.op == "set_node_config"
+    assert it.args["node_id"] == "code-1"
+    assert it.args["path"] == "code"
+    assert isinstance(it.args["value"], str)
+    assert it.args["value"] == FIXED_CODE
+    assert risk.level == "low"
+    assert risk.reason == "config-only fix"
+    assert risk.has_external_side_effect is False
+
+
+def test_diagnose_checklist_picks_first_error_with_messages() -> None:
+    a = PlaceholderAgent()
+    errors = [
+        ChecklistError(node_id="n1", unconnected=True),  # no messages, skipped
+        ChecklistError(node_id="n2", messages=["missing required field 'metrics'"]),
+        ChecklistError(node_id="n3", messages=["unused, should not be reached"]),
+    ]
+    d = a.diagnose_checklist(errors, Graph())
+    assert d.culprit_node_id == "n2"
+    assert d.root_cause == "missing required field 'metrics'"
+    assert d.severity == "medium"
+
+
+def test_diagnose_checklist_no_messages_anywhere_returns_generic_cause() -> None:
+    a = PlaceholderAgent()
+    errors = [ChecklistError(node_id="n1", unconnected=True)]
+    d = a.diagnose_checklist(errors, Graph())
+    assert d.culprit_node_id == ""
+    assert d.root_cause == "Checklist error"
+    assert d.severity == "medium"
+
+
+def test_diagnose_checklist_empty_errors_returns_generic_cause() -> None:
+    a = PlaceholderAgent()
+    d = a.diagnose_checklist([], Graph())
+    assert d.culprit_node_id == ""
+    assert d.root_cause == "Checklist error"
+    assert d.severity == "medium"
+
+
+def test_generate_mock_inputs_returns_canned_query() -> None:
+    a = PlaceholderAgent()
+    assert a.generate_mock_inputs({}, {}) == {"query": "mock"}
+    assert a.generate_mock_inputs({}, {}, business_context="Daily order report") == {"query": "mock"}
+
+
+def test_analyze_goal_returns_full_requirements_shape() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+
+    analysis = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
+    assert set(analysis.keys()) == {"fields", "values"}
+    assert {f["key"] for f in analysis["fields"]} == {
+        "report_types",
+        "audience",
+        "currency",
+        "metrics",
+        "output",
+        "prefer_audited",
+    }
+    assert set(analysis["values"].keys()) == {
+        "report_types",
+        "audience",
+        "currency",
+        "metrics",
+        "output",
+        "prefer_audited",
+    }
+    assert analysis["values"]["currency"] == "USD"
+    assert analysis["values"]["prefer_audited"] is True
+
+
+def test_propose_plan_v1_and_bind_resources_return_ordered_strings() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+
+    a = PlaceholderAgent()
+    v1 = a.propose_plan_v1({"currency": "USD"}, goal_text="Build a report")
+    assert v1
+    assert all(isinstance(x, str) for x in v1.items)
+    v2 = a.bind_resources(v1.items, ["kb-company"])
+    assert v2
+    assert all(isinstance(x, str) for x in v2)
+
+
+def test_discover_resources_returns_one_ready_option() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+
+    opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"], goal_text="Build a report", requirements={})
+    assert len(opts) == 1
+    assert opts[0].readiness == "ready"
+    assert opts[0].kind == "knowledge"
+
+
+def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects() -> None:
+    from services.dify_builder.application.placeholder_agent import (
+        BUILD_END_ID,
+        BUILD_KNOWLEDGE_ID,
+        BUILD_LLM_ID,
+        BUILD_START_ID,
+        PlaceholderAgent,
+    )
+
+    intents = PlaceholderAgent().build_nodes(["Retrieve", "Summarize", "Emit"]).intents
+    creates = [i for i in intents if i.op == "create_node"]
+    connects = [i for i in intents if i.op == "connect"]
+    assert [i.args["node_id"] for i in creates] == [
+        BUILD_START_ID,
+        BUILD_KNOWLEDGE_ID,
+        BUILD_LLM_ID,
+        BUILD_END_ID,
+    ]
+    assert [i.args["node_type"] for i in creates] == ["start", "knowledge-retrieval", "llm", "end"]
+    assert [(i.args["from_node"], i.args["to_node"]) for i in connects] == [
+        (BUILD_START_ID, BUILD_KNOWLEDGE_ID),
+        (BUILD_KNOWLEDGE_ID, BUILD_LLM_ID),
+        (BUILD_LLM_ID, BUILD_END_ID),
+    ]
+    # every connect references only nodes created earlier in the sequence:
+    created_so_far: set[str] = set()
+    for i in intents:
+        if i.op == "create_node":
+            created_so_far.add(i.args["node_id"])
+        else:
+            assert i.args["from_node"] in created_so_far
+            assert i.args["to_node"] in created_so_far
+    # each create_node config carries a real node_defaults baseline:
+    assert creates[2].args["config"]["model"]["mode"] == "chat"
+
+
+def test_placeholder_learn_from_build_returns_descriptor() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+
+    out = PlaceholderAgent().learn_from_build("summarize a PDF", {}, ["step"], ["llm"])
+    assert isinstance(out, str)
+    assert out != ""

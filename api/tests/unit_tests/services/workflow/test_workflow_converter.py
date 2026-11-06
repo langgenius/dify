@@ -477,6 +477,8 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     sqlite_session: Session,
 ) -> None:
     app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
+    sqlite_session.add(app_model)
+    sqlite_session.flush()
     app_config = SimpleNamespace(
         variables=[SimpleNamespace(variable="name")],
         external_data_variables=[SimpleNamespace(variable="ext")],
@@ -555,6 +557,8 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     sqlite_session: Session,
 ) -> None:
     app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    sqlite_session.add(app_model)
+    sqlite_session.flush()
     app_config = SimpleNamespace(
         variables=[SimpleNamespace(variable="name")],
         external_data_variables=[],

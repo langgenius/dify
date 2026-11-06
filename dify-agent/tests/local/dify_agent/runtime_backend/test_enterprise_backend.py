@@ -714,3 +714,178 @@ async def test_enterprise_snapshot_delete_treats_absent_snapshot_as_success(
     await snapshots.delete("tenant-1/agent-1/home-2")
 
     assert [request.method for request in requests] == ["DELETE"]
+
+
+def _finite_idle_gateway(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[EnterpriseExecutionBindingBackend, Callable[[float], None], list[httpx.Request]]:
+    """Physical HTTP boundary only; actual adapter and Shellctl decoding stay intact."""
+    now = 0.0
+    last_active = 0.0
+    allocated = False
+    requests: list[httpx.Request] = []
+
+    def advance(seconds: float) -> None:
+        nonlocal now
+        now += seconds
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal allocated, last_active
+        requests.append(request)
+        if request.method == "POST" and request.url.path == "/v1/sandboxes":
+            assert not allocated, "A lost binding must never be silently replaced"
+            allocated = True
+            last_active = now
+            return httpx.Response(201, json={"sandboxId": "fresh-idle-binding"})
+        assert request.headers["X-Sandbox-Id"] == "fresh-idle-binding"
+        assert request.headers["X-Inner-Api-Key"] == "synthetic-test-key"
+        if not allocated or now - last_active > 360:
+            return httpx.Response(404, json={"error": {"code": "sandbox_expired", "message": "unavailable"}})
+        if request.method == "GET" and request.url.path == "/proxy/healthz":
+            last_active = now
+            return httpx.Response(200, json={"status": "ok"})
+        if request.method == "POST" and request.url.path == "/proxy/v1/jobs/run":
+            last_active = now
+            return _job_response()
+        if request.method == "GET" and request.url.path == "/proxy/v1/jobs/job-1":
+            last_active = now
+            return httpx.Response(200, json={"job_id": "job-1"})
+        if request.method == "DELETE" and request.url.path == "/proxy/v1/jobs/job-1":
+            return httpx.Response(204)
+        raise AssertionError(f"Unexpected Gateway boundary: {request.method} {request.url.path}")
+
+    _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(
+        gateway_endpoint="http://gateway.example", auth_token="synthetic-test-key"
+    )
+    return backend, advance, requests
+
+
+async def _allocate_idle_binding(backend: EnterpriseExecutionBindingBackend) -> str:
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="synthetic-tenant",
+            agent_id="synthetic-agent",
+            binding_id="synthetic-binding",
+            workspace_id="synthetic-workspace",
+            existing_workspace_ref=None,
+        )
+    )
+    assert allocation.binding_ref == allocation.workspace_ref == "fresh-idle-binding"
+    return allocation.binding_ref
+
+
+@pytest.mark.anyio
+async def test_enterprise_idle_binding_is_lost_after_six_minutes_without_health(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend, advance, requests = _finite_idle_gateway(monkeypatch)
+    binding_ref = await _allocate_idle_binding(backend)
+    advance(361)
+
+    with pytest.raises(BindingLostError):
+        await backend.acquire(binding_ref)
+
+    assert sum(request.url.path == "/v1/sandboxes" for request in requests) == 1
+    assert not any(request.url.path == "/proxy/healthz" for request in requests)
+
+
+@pytest.mark.anyio
+async def test_enterprise_keep_alive_preserves_same_binding_across_approval_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend, advance, requests = _finite_idle_gateway(monkeypatch)
+    binding_ref = await _allocate_idle_binding(backend)
+    baseline_jobs = sum(request.url.path == "/proxy/v1/jobs/run" for request in requests)
+
+    for _ in range(3):
+        advance(300)
+        await backend.keep_alive(binding_ref)
+        assert sum(request.url.path == "/proxy/v1/jobs/run" for request in requests) == baseline_jobs
+
+    lease = await backend.acquire(binding_ref)
+    await backend.release(lease)
+
+    assert sum(request.url.path == "/v1/sandboxes" for request in requests) == 1
+    assert sum(request.url.path == "/proxy/healthz" for request in requests) == 3
+    assert all(request.method == "GET" for request in requests if request.url.path == "/proxy/healthz")
+    assert sum(request.url.path == "/proxy/v1/jobs/run" for request in requests) == baseline_jobs + 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("status_code", [200, 404, 502])
+async def test_enterprise_keep_alive_is_one_health_read_and_closes_without_transport_retry(
+    monkeypatch: pytest.MonkeyPatch, status_code: int
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if status_code == 200:
+            return httpx.Response(200, json={"status": "ok"})
+        return httpx.Response(
+            status_code,
+            json={
+                "error": {
+                    "code": "sandbox_expired" if status_code == 404 else "upstream",
+                    "message": "PRIVATE_PROVIDER_SECRET",
+                }
+            },
+        )
+
+    clients = _mock_http(monkeypatch, handler)
+    transport_factory = httpx.AsyncHTTPTransport
+    retries_requested: list[int] = []
+
+    def capture_transport(*, retries: int = 0) -> httpx.AsyncBaseTransport:
+        retries_requested.append(retries)
+        return transport_factory(retries=retries)
+
+    monkeypatch.setattr(httpx, "AsyncHTTPTransport", capture_transport)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="credential")
+    if status_code == 200:
+        await backend.keep_alive("private-binding")
+    else:
+        with pytest.raises(BindingLostError if status_code == 404 else BindingAcquireError) as raised:
+            await backend.keep_alive("private-binding")
+        assert "PRIVATE_PROVIDER_SECRET" not in str(raised.value)
+        assert "private-binding" not in str(raised.value)
+        assert "credential" not in str(raised.value)
+    assert [(request.method, request.url.path) for request in requests] == [("GET", "/proxy/healthz")]
+    assert requests[0].headers["X-Sandbox-Id"] == "private-binding"
+    assert requests[0].headers["X-Inner-Api-Key"] == "credential"
+    assert clients[0].is_closed
+    assert retries_requested == [0]
+
+
+@pytest.mark.anyio
+async def test_enterprise_keep_alive_malformed_health_is_private_and_closed(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    clients = _mock_http(monkeypatch, lambda _request: httpx.Response(200, content=b"PRIVATE_PROVIDER_BODY"))
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="PRIVATE_TOKEN")
+    with pytest.raises(BindingAcquireError, match="^binding_keep_alive_failed$"):
+        await backend.keep_alive("PRIVATE_BINDING")
+    assert clients[0].is_closed
+    assert "PRIVATE_PROVIDER_BODY" not in caplog.text
+    assert "PRIVATE_TOKEN" not in caplog.text
+    assert "PRIVATE_BINDING" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_enterprise_keep_alive_cancellation_propagates_and_closes_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+
+    cancellation = asyncio.CancelledError()
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise cancellation
+
+    clients = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="synthetic")
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await backend.keep_alive("binding")
+    assert raised.value is cancellation
+    assert clients[0].is_closed

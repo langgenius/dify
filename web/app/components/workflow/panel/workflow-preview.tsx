@@ -1,3 +1,4 @@
+import type { ResultPanelProps } from '../run/result-panel'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,7 +26,9 @@ import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
-const WorkflowPreview = () => {
+type WorkflowPreviewProps = Pick<ResultPanelProps, 'renderFailureActions'>
+
+const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
@@ -148,7 +151,9 @@ const WorkflowPreview = () => {
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
-            <div
+            <button
+              type="button"
+              aria-pressed={currentTab === 'INPUT'}
               className={cn(
                 'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
@@ -156,47 +161,47 @@ const WorkflowPreview = () => {
               onClick={() => switchTab('INPUT')}
             >
               {t(($) => $.input, { ns: 'runLog' })}
-            </div>
+            </button>
           )}
-          <div
+          <button
+            type="button"
+            aria-pressed={currentTab === 'RESULT'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('RESULT')
-            }}
+            onClick={() => switchTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'DETAIL'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('DETAIL')
-            }}
+            onClick={() => switchTab('DETAIL')}
           >
             {t(($) => $.detail, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'TRACING'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('TRACING')
-            }}
+            onClick={() => switchTab('TRACING')}
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
-          </div>
+          </button>
         </div>
         <div
           className={cn(
@@ -285,6 +290,7 @@ const WorkflowPreview = () => {
                   : undefined
               }
               onOpenTracingTab={handleOpenTracingTab}
+              renderFailureActions={renderFailureActions}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

@@ -235,11 +235,11 @@ def test_factory_runs_v2_and_reuses_persisted_approval(
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
-    from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
     from graphon.engine_events import NodeRunPauseRequestedEvent
     from graphon.runtime import InitParams, RuntimeState
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     pool = VariablePool()
@@ -1535,7 +1535,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
-    from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
+    from tests.unit_tests.services.workflow_runtime.test_response_converter import (
         _workflow_response_converter_human_input_build_converter as _build_converter,
     )
 
@@ -3041,7 +3041,6 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
-    from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
     from graphon.engine import Engine
     from graphon.engine.command import InMemoryChannel
@@ -3060,6 +3059,7 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     from graphon.runtime import InitParams, RuntimeState
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     provider_accept = providers[1].on_send

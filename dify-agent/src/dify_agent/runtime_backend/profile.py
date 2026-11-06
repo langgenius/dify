@@ -17,7 +17,11 @@ from dify_agent.runtime_backend.e2b import (
     E2BExecutionBindingBackend,
 )
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.local import (
+    LocalExecutionBindingBackend,
+    LocalHomeSnapshotBackend,
+    LocalNativeScopeClient,
+)
 from dify_agent.runtime_backend.openshell import (
     DEFAULT_OPENSHELL_SANDBOX_IMAGE,
     DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
@@ -52,6 +56,9 @@ class RuntimeBackendSettings(BaseSettings):
             "DIFY_AGENT_SHELLCTL_AUTH_TOKEN",
         ),
     )
+    local_native_test_endpoint: str | None = None
+    local_native_test_auth_token: str | None = Field(default=None, repr=False, exclude=True)
+
     local_sandbox_materialized_home_root: str = DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT
     local_sandbox_workspace_root: str = DEFAULT_LOCAL_WORKSPACE_ROOT
     local_sandbox_home_snapshot_root: str = DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT
@@ -96,6 +103,12 @@ class RuntimeBackendSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_selected_backend(self) -> Self:
+        if self.local_native_test_endpoint or self.local_native_test_auth_token:
+            if not self.local_native_test_endpoint:
+                raise ValueError("local_native_test_endpoint is required with native scope authentication")
+            if not self.local_native_test_auth_token or not self.local_native_test_auth_token.strip():
+                raise ValueError("local_native_test_auth_token is required for native scopes")
+            _validate_http_url(self.local_native_test_endpoint, field_name="local_native_test_endpoint")
         match self.runtime_backend:
             case "local":
                 if not self.local_sandbox_endpoint or not self.local_sandbox_endpoint.strip():
@@ -172,6 +185,12 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                 execution_bindings=LocalExecutionBindingBackend(
                     endpoint=endpoint,
                     auth_token=token,
+                    native_scope_client=LocalNativeScopeClient(
+                        endpoint=settings.local_native_test_endpoint,
+                        auth_token=settings.local_native_test_auth_token or "",
+                    )
+                    if settings.local_native_test_endpoint
+                    else None,
                     materialized_home_root=settings.local_sandbox_materialized_home_root,
                     workspace_root=settings.local_sandbox_workspace_root,
                     snapshot_root=settings.local_sandbox_home_snapshot_root,

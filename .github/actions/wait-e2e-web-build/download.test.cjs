@@ -3,7 +3,11 @@ const { access } = require('node:fs/promises')
 const { test } = require('node:test')
 const downloadWebBuild = require('./download.cjs')
 
-function fixture({ downloadFails = false, producerFails = false } = {}) {
+function fixture({
+  downloadFails = false,
+  producerFails = false,
+  currentAttemptArtifact = false,
+} = {}) {
   const calls = []
   const env = {
     GITHUB_REPOSITORY: 'owner/repo',
@@ -49,8 +53,11 @@ function fixture({ downloadFails = false, producerFails = false } = {}) {
             artifacts: [
               {
                 id: 42,
-                name: 'core-e2e-web-build-2',
-                created_at: '2026-09-22T04:08:11Z',
+                name: currentAttemptArtifact ? 'core-e2e-web-build-4' : 'core-e2e-web-build-2',
+                created_at: currentAttemptArtifact
+                  ? '2026-09-22T05:08:11Z'
+                  : '2026-09-22T04:08:11Z',
+                workflow_run: { id: 123 },
                 expired: false,
               },
             ],
@@ -59,7 +66,11 @@ function fixture({ downloadFails = false, producerFails = false } = {}) {
       }
     }
     assert.equal(args[1], 'repos/owner/repo/actions/artifacts/42')
-    return { stdout: JSON.stringify({ name: 'core-e2e-web-build-2' }) }
+    return {
+      stdout: JSON.stringify({
+        name: currentAttemptArtifact ? 'core-e2e-web-build-4' : 'core-e2e-web-build-2',
+      }),
+    }
   }
   return { calls, options: { env, execute, webDir: '/test/web' } }
 }
@@ -109,4 +120,66 @@ test('requires CI metadata and credentials before starting preparation', async (
     )
   }
   assert.equal(calls.length, 0)
+})
+
+test('retries transient GitHub API failures and still downloads the selected build', async () => {
+  const { calls, options } = fixture()
+  const execute = options.execute
+  let failures = 0
+  const delays = []
+  options.sleep = async (ms) => {
+    delays.push(ms)
+  }
+  options.execute = async (command, args, config) => {
+    if (args[0] === 'api' && args[1].includes('/jobs?') && failures++ < 2) {
+      const error = new Error('gh: Server Error (HTTP 502)')
+      error.stderr = 'gh: Server Error (HTTP 502)'
+      throw error
+    }
+    return execute(command, args, config)
+  }
+  await downloadWebBuild(options)
+  assert.equal(failures, 3)
+  assert.deepEqual(delays, [2000, 5000])
+  assert.ok(calls.some(({ command }) => command === 'tar'))
+})
+
+test('limits retries and does not retry authorization failures', async () => {
+  for (const [status, attempts, waits] of [
+    [502, 4, 3],
+    [403, 1, 0],
+  ]) {
+    const { calls, options } = fixture()
+    let attempted = 0
+    const delays = []
+    options.sleep = async (ms) => {
+      delays.push(ms)
+    }
+    options.execute = async () => {
+      attempted++
+      const error = new Error(`gh: Error (HTTP ${status})`)
+      error.stderr = `gh: Error (HTTP ${status})`
+      throw error
+    }
+    await assert.rejects(downloadWebBuild(options), new RegExp(`HTTP ${status}`))
+    assert.equal(attempted, attempts)
+    assert.equal(delays.length, waits)
+    assert.equal(calls.length, 0)
+  }
+})
+
+test('downloads a completed current-attempt artifact despite differing upload timestamps', async () => {
+  const { calls, options } = fixture({ currentAttemptArtifact: true })
+  await downloadWebBuild(options)
+  const download = calls.find(({ args }) => args[0] === 'run')
+  assert.deepEqual(download.args.slice(0, 7), [
+    'run',
+    'download',
+    '123',
+    '--repo',
+    'owner/repo',
+    '--name',
+    'core-e2e-web-build-4',
+  ])
+  assert.equal(calls.at(-1).command, 'tar')
 })

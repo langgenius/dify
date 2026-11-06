@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
 import ChatVariableTrigger from '../chat-variable-trigger'
 

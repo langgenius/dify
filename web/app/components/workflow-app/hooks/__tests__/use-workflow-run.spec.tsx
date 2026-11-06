@@ -7,13 +7,14 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
 import { assert } from 'vite-plus/test'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { createTestWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { createNode, createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
-import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
@@ -518,7 +519,7 @@ it.each([
     act(() => result.current.run.handleRestoreFromPublishedWorkflow(published))
     expect(canvasUpdate).toHaveBeenCalledWith({
       type: WORKFLOW_DATA_UPDATE,
-      payload: {
+      payload: expect.objectContaining({
         nodes: [
           expect.objectContaining({
             id: 'published-node',
@@ -527,7 +528,8 @@ it.each([
           }),
         ],
         edges: [],
-      },
+        viewport: { x: 10, y: 20, zoom: 0.8 },
+      }),
     })
     expect(store.getState().environmentVariables).toEqual(variables ?? [])
     expect(features.getState().features).toMatchObject({
@@ -630,3 +632,45 @@ it.each([
     })
   },
 )
+
+it('does not save or start a run while the draft has an unresolved conflict', async () => {
+  const { result, store } = await setup()
+  act(() => store.getState().setWorkflowDraftConflict(true))
+  await act(async () => {
+    await result.current.run.handleRun({ inputs: {} })
+  })
+  expect(api.sync).not.toHaveBeenCalled()
+  expect(api.ssePost).not.toHaveBeenCalled()
+  expect(store.getState().workflowRunningData).toBeUndefined()
+})
+
+it.each([
+  TriggerType.UserInput,
+  TriggerType.Schedule,
+  TriggerType.Webhook,
+  TriggerType.Plugin,
+  TriggerType.All,
+])('does not dispatch a %s run when saving discovers a conflict', async (mode) => {
+  const { result, store } = await setup()
+  api.sync.mockRejectedValueOnce(
+    new ORPCError('draft_workflow_not_sync', {
+      defined: true,
+      message: 'Workflow not synced.',
+      status: 409,
+    }),
+  )
+  await act(async () => {
+    await result.current.run.handleRun({}, undefined, {
+      mode,
+      scheduleNodeId: 'schedule',
+      webhookNodeId: 'webhook',
+      pluginNodeId: 'plugin',
+      allNodeIds: ['schedule', 'webhook', 'plugin'],
+    })
+  })
+  expect(store.getState().hasWorkflowDraftConflict).toBe(true)
+  expect(api.ssePost).not.toHaveBeenCalled()
+  expect(api.post).not.toHaveBeenCalled()
+  expect(store.getState().workflowRunningData).toBeUndefined()
+  expect(store.getState().isListening).toBe(false)
+})

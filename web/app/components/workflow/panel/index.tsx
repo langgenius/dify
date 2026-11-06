@@ -119,23 +119,25 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const otherPanelRef = useResizeObserver(setOtherPanelWidth)
 
   return (
-    <div
-      ref={rightPanelRef}
-      data-workflow-right-panel
-      tabIndex={-1}
-      className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
-      key={`${isRestoring}`}
-    >
-      {components?.left}
-      {!!selectedNode && <NodePanel {...selectedNode} />}
-      <div className="relative" ref={otherPanelRef}>
-        {components?.right}
-        {showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
-          <VersionHistoryPanel {...versionHistoryPanelProps} />
-        )}
-        {showEnvPanel && <EnvPanel />}
+    <>
+      <div
+        ref={rightPanelRef}
+        data-workflow-right-panel
+        tabIndex={-1}
+        className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
+        key={`${isRestoring}`}
+      >
+        {components?.left}
+        {!!selectedNode && <NodePanel {...selectedNode} />}
+        <div className="relative" ref={otherPanelRef}>
+          {components?.right}
+          {showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
+            <VersionHistoryPanel {...versionHistoryPanelProps} />
+          )}
+          {showEnvPanel && <EnvPanel />}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

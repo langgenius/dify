@@ -20,6 +20,12 @@ capability that acquires a resource releases it in `wrap_run` using `finally`,
 including failures and cancellation. The API owns durable Binding/Workspace
 retirement and saves snapshots in the owning session.
 
+`DIFY_AGENT_INNER_API_URL` may include a reverse-proxy mount path, such as
+`https://api.example.com/dify`. Ordinary and confirmed API clients retain that
+prefix. The strict runtime transport sends its bearer only to the configured
+origin, exact mount prefix and allowed runtime routes; redirects and encoded
+route aliases remain rejected.
+
 Registered production names are `agent_soul_prompt`, `workflow_node_job_prompt`,
 `workflow_user_prompt`, `agent_app_user_prompt`, `execution_context`, `runtime`,
 `shell`, `config`, `history`, `llm`, `tools`, `core_tools`, `knowledge`, `output`,
@@ -63,3 +69,45 @@ prompt. Draft merge and publication retain their existing lifecycle.
 See [run lifecycle](concepts/run-lifecycle/index.md),
 [resources](concepts/runtime-resources/index.md), and the
 [operations guide](guide/index.md).
+
+Confirmed Builder Test Runs may borrow the existing ordinary Workspace for
+configured CLI tools, skills and files. The immutable request and current API
+Workspace owner are checked before acquiring the lease; each shell/bootstrap or
+configuration pull spends its exact durable operation permit before command
+execution. Config reads carry that claimed dispatch through the encrypted Agent
+Stub token and strict Run-bound API transport. Config writes and generic file
+upload/download remain unavailable in this profile.
+
+Preparation waits retain their stage and resume through the same API ledger.
+Completed results are read back; an unknown operation or lost claim response
+never triggers automatic replay. The runtime releases its borrowed lease but
+does not force-delete tracked jobs on confirmed Run exit. Workspace retirement
+stays with its existing owner, and an HTTP timeout does not prove remote process
+cleanup.
+
+A configured service bearer also exposes the private Execution Binding
+`POST /execution-bindings/keep-alive` operation. It accepts only `binding_ref`
+and returns `supported`: Enterprise touches the existing sandbox through the
+Gateway's shellctl health endpoint; Local, E2B and OpenShell return false without
+performing health I/O. Health never allocates a replacement, runs a command,
+spends a tool permit or retries a lost operation. Missing bindings return a fixed
+410 `binding_lost`; other health failures return fixed502 diagnostics without
+provider text or binding credentials. The endpoint is absent in anonymous
+migration mode. The owning API decides whether a Run remains eligible for this
+bounded infrastructure operation; the immutable test scope and grants are not renewed.
+
+For confirmed native shell calls, the result callback may include a typed
+`shell_job` receipt captured from the structured command result and the actual
+borrowed lease's binding handle. The replayable result stays unchanged. Model
+output, including tagged metadata printed by a script, never supplies this
+receipt. Missing receipt evidence cannot authorize a completed-ACK config read.
+
+Authenticated deployments expose `POST /execution-bindings/job-status`, selected
+by `binding_ref` and `job_id`, through the SDK's `read_execution_binding_job`
+(and synchronous `read_execution_binding_job_sync`). Local and Enterprise
+connections issue only Shellctl's status GET and close their transient client;
+they do not acquire or release a runtime, run a command, allocate a binding, or
+refresh its TTL. The response contains only `job_id`, `status`, `done`, and
+`exit_code`. Unsupported contexts, missing jobs, mismatched or inconsistent
+responses, and transport failures refuse the read. Anonymous deployments do not
+mount this route. A status response alone grants no execution or config access.

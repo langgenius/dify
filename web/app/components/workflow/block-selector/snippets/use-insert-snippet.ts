@@ -10,7 +10,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
-import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../../hooks/use-schedule-draft-save'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
 import { hasAgentV2OutputRoutes } from '../../nodes/agent-v2/types'
@@ -410,7 +410,7 @@ export const useInsertSnippet = () => {
   const { t: workflowT } = useTranslation(['workflow'])
   const queryClient = useQueryClient()
   const store = useStoreApi()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { saveStateToHistory } = useWorkflowHistory()
   const { mutate: incrementSnippetUseCount } = useIncrementSnippetUseCountMutation()
 

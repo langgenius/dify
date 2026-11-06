@@ -59,7 +59,7 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
+vi.mock('@/features/dsl-import/uploader', () => ({
   Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
       data-testid="dsl-file-input"

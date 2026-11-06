@@ -195,6 +195,7 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
+        "tasks.workflow_draft_coordination_task",
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
@@ -205,6 +206,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.dify_builder_advance_task",  # Dify Builder session advance
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
         "tasks.human_input_im_card_tasks",  # post-submission IM card updates
         "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
@@ -288,6 +290,12 @@ def init_app(app: DifyApp) -> Celery:
                 "schedule": collection_schedule,
                 "options": {"expires": interval},
             }
+    if dify_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK:
+        beat_schedule["workflow_draft_coordination_sweeper"] = {
+            "task": "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination",
+            "schedule": timedelta(seconds=dify_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL),
+            "options": {"queue": "schedule_executor"},
+        }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
@@ -341,6 +349,17 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["human_input_form_timeout"] = {
             "task": "human_input_form_timeout.check_and_resume",
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
+        }
+    if dify_config.ENABLE_DIFY_BUILDER_RECONCILER:
+        imports.append("schedule.dify_builder_reconcile_task")
+        beat_schedule["dify_builder_reconcile"] = {
+            "task": "schedule.dify_builder_reconcile_task.reconcile_interrupted_sessions",
+            "schedule": timedelta(minutes=dify_config.DIFY_BUILDER_RECONCILE_INTERVAL),
+        }
+        beat_schedule["dify_builder_retain_waiting_agent_bindings"] = {
+            "task": "schedule.dify_builder_reconcile_task.retain_waiting_agent_bindings",
+            "schedule": timedelta(seconds=60),
+            "options": {"expires": 60, "queue": "dify_builder"},
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))

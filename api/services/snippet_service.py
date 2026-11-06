@@ -9,7 +9,6 @@ from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.helper import escape_like_pattern
@@ -48,6 +47,7 @@ from services.workflow_node_execution_trace_service import (
     assemble_workflow_node_execution_traces,
 )
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_runtime.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 
 logger = logging.getLogger(__name__)
 

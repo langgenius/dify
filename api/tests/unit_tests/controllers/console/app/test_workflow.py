@@ -1,3 +1,5 @@
+"""Unit tests for convert-to-workflow endpoint."""
+
 from __future__ import annotations
 
 import inspect
@@ -12,7 +14,6 @@ from unittest.mock import ANY, MagicMock, Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
@@ -40,9 +41,17 @@ from models.model import AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
+from tests.helpers.unit.audio_runtime_fixtures import record_calls
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_app
+from tests.workflow_empty_draft_test_utils import (
+    POPULATED_GRAPH,
+    EmptyDraftDatabase,
+    post_empty_draft,
+    seed_owner,
+    workflow_rows,
+)
 
 
 def _account() -> _workflow_Account:
@@ -155,6 +164,23 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module.encrypter, "decrypt_token", lambda *, tenant_id, token: token)
 
     @staticmethod
+    @pytest.fixture
+    def app_with_draft(sqlite_session: Session) -> _workflow_App:
+        app = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        draft = _make_workflow(
+            app_id=app.id,
+            tenant_id=app.tenant_id,
+            version=Workflow.VERSION_DRAFT,
+            graph_dict=POPULATED_GRAPH,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        sqlite_session.add_all([app, draft])
+        sqlite_session.commit()
+        return app
+
+    @staticmethod
     @pytest.mark.parametrize(
         "advisory", ["clean", "warning", "checker-error", "formatter-error", "empty", "non-object", "invalid-json"]
     )
@@ -162,21 +188,17 @@ class TestWorkflowCases:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        app_with_draft: _workflow_App,
         advisory: str,
     ) -> None:
-        current_user = SimpleNamespace(id="account-1")
-        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
-        sqlite_session.add(app_model)
-        sqlite_session.commit()
+        current_user = _account()
         graph = {
             "nodes": [
                 {"id": "start", "data": {"type": "start"}},
                 {"id": "branch", "data": {"type": "if-else"}},
                 {"id": "producer", "data": {"type": "code", "title": "Producer"}},
-                {
-                    "id": "consumer",
-                    "data": {"type": "answer", "title": "Consumer", "answer": "{{#producer.text#}}"},
-                },
+                {"id": "consumer", "data": {"type": "answer", "title": "Consumer", "answer": "{{#producer.text#}}"}},
             ],
             "edges": [
                 {"source": "start", "target": "branch"},
@@ -201,22 +223,19 @@ class TestWorkflowCases:
                 "format_variable_reference_errors",
                 Mock(side_effect=RuntimeError("format")),
             )
-        monkeypatch.setattr(
-            workflow_module,
-            "WorkflowService",
-            Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
-        )
+        service = workflow_module.WorkflowService(session_maker=sqlite_session_factory)
+        monkeypatch.setattr(service, "publish_workflow", Mock(return_value=workflow))
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
                 workflow_module.PublishWorkflowPayload.model_validate({}),
                 current_user,
-                app_model,
+                app_with_draft,
             )
-
         assert response["result"] == "success"
         sqlite_session.expire_all()
-        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        persisted_app = sqlite_session.get(_workflow_App, app_with_draft.id)
         assert persisted_app is not None
         assert persisted_app.workflow_id == workflow.id
         assert persisted_app.updated_by == current_user.id
@@ -230,35 +249,34 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_publish_workflow_rolls_back_on_service_failure(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        app_with_draft: _workflow_App,
     ) -> None:
-        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
-        sqlite_session.add(app_model)
-        sqlite_session.commit()
-
         def fail_after_update(*, session: Session, **_kwargs: object) -> None:
-            persisted_app = session.get(_workflow_App, app_model.id)
+            persisted_app = session.get(_workflow_App, app_with_draft.id)
             assert persisted_app is not None
             persisted_app.name = "changed"
             session.flush()
             raise RuntimeError("publish failed")
 
-        service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
+        service = workflow_module.WorkflowService(session_maker=sqlite_session_factory)
         monkeypatch.setattr(service, "publish_workflow", fail_after_update)
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
-        current_user = _workflow_Account(name="Test", email="test@example.com")
-        current_user.id = "account-1"
+        current_user = _account()
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             with pytest.raises(RuntimeError, match="publish failed"):
                 inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                     workflow_module.PublishedWorkflowApi(),
                     workflow_module.PublishWorkflowPayload.model_validate({}),
                     current_user,
-                    app_model,
+                    app_with_draft,
                 )
 
         sqlite_session.expire_all()
-        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        persisted_app = sqlite_session.get(_workflow_App, app_with_draft.id)
         assert persisted_app is not None
         assert persisted_app.name == "Workflow App"
         assert persisted_app.workflow_id is None
@@ -384,58 +402,59 @@ class TestWorkflowCases:
     @staticmethod
     def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
-
         monkeypatch.setattr(
             workflow_module.variable_factory, "build_environment_variable_from_mapping", lambda *_args: "env"
         )
         monkeypatch.setattr(
             workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
         )
-
         sync_draft_workflow = Mock(return_value=workflow)
         service = SimpleNamespace(sync_draft_workflow=sync_draft_workflow)
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
-
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
-
         with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            json={"graph": {}, "features": {}, "hash": "h"},
+            "/apps/app/workflows/draft", method="POST", json={"graph": {}, "features": {}, "hash": "h"}
         ):
             response = handler(api, _account(), app_model=_workflow_app())
-
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+        assert sync_draft_workflow.call_args.kwargs["graph_only"] is True
+        write_session = sync_draft_workflow.call_args.kwargs["session"]
+        assert isinstance(write_session, Session)
+        assert write_session.expire_on_commit is False
 
     @staticmethod
-    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"], ids=["json", "beacon"])
     @pytest.mark.parametrize("confirmation", [{}, {"force": False}], ids=["missing-force", "force-false"])
     def test_sync_draft_workflow_rejects_empty_graph_without_confirmation(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
         content_type: str,
         confirmation: dict[str, bool],
     ) -> None:
-        workflow_service = Mock()
-        monkeypatch.setattr(workflow_module, "WorkflowService", workflow_service)
-        api = workflow_module.DraftWorkflowApi()
-        handler = inspect.unwrap(api.post)
-
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "h", **confirmation}),
-            content_type=content_type,
-        ):
-            with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+        # Preserve the destructive-clear guard while allowing a legitimate existing-empty presave.
+        owner = seed_owner(sqlite_session, graph=POPULATED_GRAPH)
+        assert owner.draft is not None
+        before = workflow_rows(sqlite_session_factory)
+        with pytest.raises(InvalidArgumentError) as exc:
+            post_empty_draft(
+                app,
+                monkeypatch,
+                sqlite_session,
+                owner,
+                content_type=content_type,
+                unique_hash=owner.draft.unique_hash,
+                confirmation=confirmation,
+            )
 
         assert exc.value.code == 400
         assert exc.value.description == "Saving an empty workflow requires force=true."
-        workflow_service.assert_not_called()
+        sqlite_session.rollback()
+        assert workflow_rows(sqlite_session_factory) == before
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
@@ -658,31 +677,42 @@ class TestWorkflowCases:
         assert exc.value.description == "description too long"
 
     @staticmethod
-    def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
-
+    def test_restore_published_workflow_to_draft_success(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        owner = seed_owner(sqlite_session, graph=POPULATED_GRAPH)
+        source_id = owner.app.workflow_id
+        source = sqlite_session.get(Workflow, source_id)
+        assert source is not None
+        expected_hash = source.unique_hash
+        service = workflow_module.WorkflowService(sqlite_session_factory)
+        restores: list[dict[str, object]] = []
         monkeypatch.setattr(
-            workflow_module,
-            "WorkflowService",
-            lambda: SimpleNamespace(restore_published_workflow_to_draft=lambda **_kwargs: workflow),
+            service,
+            "restore_published_workflow_to_draft",
+            record_calls(service.restore_published_workflow_to_draft, restores),
         )
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+        monkeypatch.setattr("services.workflow.draft_coordination_service.db", EmptyDraftDatabase(sqlite_session))
+        # Event receivers own external cache/Redis work outside the restore receipt contract.
+        monkeypatch.setattr("events.app_event.app_draft_workflow_was_synced.send", lambda *_args, **_kwargs: None)
 
         api = workflow_module.DraftWorkflowRestoreApi()
         handler = inspect.unwrap(api.post)
-
-        with app.test_request_context(
-            "/apps/app/workflows/published-workflow/restore",
-            method="POST",
-        ):
-            response = handler(
-                api,
-                _account(),
-                app_model=_workflow_app(tenant_id="tenant-1"),
-                workflow_id="published-workflow",
-            )
+        with app.test_request_context(f"/apps/{owner.app.id}/workflows/{source_id}/restore", method="POST"):
+            response = handler(api, owner.account, app_model=owner.app, workflow_id=source_id)
 
         assert response["result"] == "success"
-        assert response["hash"] == workflow.unique_hash
+        assert response["hash"] == expected_hash
+        assert len(restores) == 1
+        write_session = restores[0]["session"]
+        assert isinstance(write_session, Session)
+        assert write_session.expire_on_commit is False
+        assert write_session.get_bind() is sqlite_session.get_bind()
+        assert write_session is not sqlite_session
 
     @staticmethod
     def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1352,9 +1382,6 @@ class TestWorkflowCases:
         assert exc.value.description is not None
         assert "Maximum" in exc.value.description
         get_tenant_app_maintainers.assert_not_called()
-
-
-"""Unit tests for convert-to-workflow endpoint."""
 
 
 def _workflow_convert_api_app(app_id: str) -> _workflow_convert_api_App:

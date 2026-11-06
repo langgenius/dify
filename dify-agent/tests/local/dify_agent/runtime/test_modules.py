@@ -209,3 +209,35 @@ async def test_native_sequential_tools_commit_json_state_without_lost_updates():
         native = create_modules(deps, registry=registry)["counter"]
         await Agent(FunctionModel(model), deps_type=Deps, toolsets=[native]).run("increment twice", deps=deps)
         assert snapshot_modules(deps, registry=registry).layers["counter"] == {"count": 2}
+
+
+@pytest.mark.parametrize("target", ["missing", "execution_context"])
+def test_core_shell_reference_is_validated_before_io(target, services):
+    with pytest.raises(ValueError, match="reference shell"):
+        load_modules(request(RunLayerSpec(name="core_tools", config={"shell": target})), services, "test")
+
+
+@pytest.mark.parametrize(
+    "provider_type,provider_id", [("plugin", "langgenius/search/search"), ("builtin", "langgenius/search/search")]
+)
+def test_core_plugin_required_hidden_parameters_rejected_before_io(provider_type, provider_id, services):
+    with pytest.raises(ValueError, match="requires non-LLM runtime_parameters for: hidden"):
+        load_modules(
+            request(
+                RunLayerSpec(
+                    name="core_tools",
+                    config={
+                        "tools": [
+                            {
+                                "provider_type": provider_type,
+                                "provider_id": provider_id,
+                                "tool_name": "search",
+                                "parameters": [{"name": "hidden", "type": "string", "form": "form", "required": True}],
+                            }
+                        ]
+                    },
+                )
+            ),
+            services,
+            "test",
+        )

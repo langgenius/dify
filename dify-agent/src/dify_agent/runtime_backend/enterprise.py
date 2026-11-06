@@ -10,6 +10,7 @@ routed through the Gateway's shellctl proxy.
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 from http import HTTPStatus
 import logging
@@ -18,9 +19,10 @@ from typing import cast
 from urllib.parse import quote
 
 import httpx2 as httpx
+from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol, ShellProviderError
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands, ShellctlJobStatus
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -179,6 +181,8 @@ class EnterpriseExecutionBindingBackend:
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
+        if spec.native_test_scope is not None:
+            raise BindingCreateError("native_scope_unavailable")
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
 
@@ -201,7 +205,7 @@ class EnterpriseExecutionBindingBackend:
                 raise BindingCreateError("Enterprise Gateway returned an invalid sandbox id")
             sandbox_id = sandbox_id_value
 
-            data_plane = await self._create_data_plane(sandbox_id)
+            data_plane = await self._create_data_plane(sandbox_id, transport_retries=3, follow_redirects=True)
             result = await run_shellctl_control_command(
                 ShellctlCommands(
                     client=data_plane.client,
@@ -233,11 +237,40 @@ class EnterpriseExecutionBindingBackend:
                 raise BindingCreateError(str(exc)) from exc
             raise
 
+    async def read_job_status(self, binding_ref: str, job_id: str) -> ShellctlJobStatus:
+        """Connect directly to the existing sandbox; GET status and close only."""
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("binding_job_status_unsupported")
+        data_plane = await self._create_data_plane(binding_ref, transport_retries=0, follow_redirects=False)
+        try:
+            return await data_plane.client.status(job_id)
+        finally:
+            await data_plane.close()
+
+    async def keep_alive(self, binding_ref: str) -> None:
+        """Touch the existing sandbox through health only, without a command or allocation."""
+        data_plane: ShellctlRuntimeLease | None = None
+        try:
+            data_plane = await self._create_data_plane(binding_ref, transport_retries=0, follow_redirects=False)
+            await data_plane.client.health()
+        except (ShellProviderError, ShellctlClientError) as error:
+            if _is_missing_sandbox(error):
+                raise BindingLostError("binding_lost") from None
+            raise BindingAcquireError("binding_keep_alive_failed") from None
+        except Exception:
+            raise BindingAcquireError("binding_keep_alive_failed") from None
+        finally:
+            if data_plane is not None:
+                with suppress(Exception):
+                    await data_plane.close()
+
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("native_scope_unavailable")
         """Reconnect to one existing Gateway sandbox without creating a replacement."""
         data_plane: ShellctlRuntimeLease | None = None
         try:
-            data_plane = await self._create_data_plane(binding_ref)
+            data_plane = await self._create_data_plane(binding_ref, transport_retries=3, follow_redirects=True)
             validation_commands = ShellctlCommands(client=data_plane.client)
             result = await run_shellctl_control_command(
                 validation_commands,
@@ -277,6 +310,8 @@ class EnterpriseExecutionBindingBackend:
             raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        if spec.binding_ref.startswith("native:"):
+            raise BindingDestroyError("native_scope_cleanup_unavailable")
         """Delete the coupled sandbox only when its Workspace is also retired."""
         if not spec.destroy_workspace:
             raise WorkspacePreservationUnsupportedError(
@@ -310,7 +345,9 @@ class EnterpriseExecutionBindingBackend:
                 extra={"binding_ref": sandbox_id},
             )
 
-    async def _create_data_plane(self, binding_ref: str) -> ShellctlRuntimeLease:
+    async def _create_data_plane(
+        self, binding_ref: str, *, transport_retries: int, follow_redirects: bool
+    ) -> ShellctlRuntimeLease:
         proxy_base_url = f"{self.gateway_endpoint.rstrip('/')}/proxy/"
         headers = {"X-Sandbox-Id": binding_ref}
         if self.auth_token:
@@ -318,9 +355,9 @@ class EnterpriseExecutionBindingBackend:
         http_client = httpx.AsyncClient(
             base_url=proxy_base_url,
             headers=headers,
-            follow_redirects=True,
+            follow_redirects=follow_redirects,
             timeout=httpx.Timeout(self.proxy_timeout),
-            transport=httpx.AsyncHTTPTransport(retries=3),
+            transport=httpx.AsyncHTTPTransport(retries=transport_retries),
         )
 
         def client_factory() -> ShellctlClientProtocol:
@@ -360,7 +397,7 @@ class EnterpriseRuntimeLease:
         return self.data_plane.commands
 
 
-def _is_missing_sandbox(exc: ShellProviderError) -> bool:
+def _is_missing_sandbox(exc: ShellProviderError | ShellctlClientError) -> bool:
     return exc.status_code == 404 or (exc.code or "").casefold() in {
         "not_found",
         "sandbox_expired",

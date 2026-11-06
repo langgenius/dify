@@ -162,3 +162,70 @@ test('reports API errors rather than silently waiting until timeout', async () =
   await assert.rejects(waitForBuild(options), /Resource not accessible/)
   assert.equal(options.now(), 0)
 })
+
+test('completed current-attempt uploads tolerate artifact and job timestamp skew', async () => {
+  const { options } = fixture({
+    artifacts: [{ ...artifact, created_at: '2026-09-22T05:08:11Z', workflow_run: { id: 123 } }],
+    jobs: [successfulProducer],
+  })
+  assert.equal(await waitForBuild(options), '42')
+  assert.equal(options.now(), 0)
+})
+
+for (const [label, artifacts] of [
+  ['missing', []],
+  ['expired', [{ ...artifact, expired: true }]],
+  ['unrelated name', [{ ...artifact, name: 'unrelated' }]],
+  ['wrong workflow run', [{ ...artifact, workflow_run: { id: 456 } }]],
+  ['future attempt', [{ ...artifact, name: 'core-e2e-web-build-3' }]],
+  ['older attempt outside upload window', [{ ...oldArtifact, created_at: '2026-09-22T05:08:11Z' }]],
+]) {
+  test(`completed producer rejects ${label} artifacts`, async () => {
+    const { options } = fixture({ artifacts, jobs: [successfulProducer] })
+    await assert.rejects(waitForBuild(options), /Timed out/)
+    assert.equal(options.now(), 20000)
+  })
+}
+
+for (const jobs of [[], [{ ...producer, status: 'queued' }]]) {
+  test(`current-attempt artifact requires an active or successful producer: ${jobs[0]?.status ?? 'missing'}`, async () => {
+    const { options } = fixture({ artifacts: [artifact], jobs })
+    await assert.rejects(waitForBuild(options), /Timed out/)
+  })
+}
+
+test('in-progress producer cannot consume another workflow run artifact with the current name', async () => {
+  const { options } = fixture({
+    artifacts: [{ ...artifact, workflow_run: { id: 456 } }],
+  })
+  await assert.rejects(waitForBuild(options), /Timed out/)
+})
+
+for (const conclusion of ['failure', 'cancelled', 'skipped', undefined]) {
+  test(`current-attempt name cannot bypass unsuccessful upload: ${conclusion}`, async () => {
+    const { options } = fixture({
+      artifacts: [{ ...artifact, created_at: '2026-09-22T05:08:11Z' }],
+      jobs: [{ ...successfulProducer, steps: [{ ...successfulProducer.steps[0], conclusion }] }],
+    })
+    await assert.rejects(waitForBuild(options), /Timed out/)
+  })
+}
+
+test('timestamp skew does not let an older attempt bypass its successful upload window', async () => {
+  const { options } = fixture({
+    runAttempt: 4,
+    artifacts: [{ ...artifact, created_at: '2026-09-22T05:08:11Z' }],
+    jobs: [{ ...successfulProducer, run_attempt: 4 }],
+  })
+  await assert.rejects(waitForBuild(options), /Timed out/)
+})
+
+test('artifact run identity accepts the environment string used by the downloader', async () => {
+  const { options } = fixture({
+    artifacts: [{ ...artifact, workflow_run: { id: 123 } }],
+    jobs: [successfulProducer],
+  })
+  options.context.runId = '123'
+  assert.equal(await waitForBuild(options), '42')
+  assert.equal(options.now(), 0)
+})

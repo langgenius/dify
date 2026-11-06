@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import _build_app_generate_entity
+from tests.unit_tests.services.workflow_runtime.test_pipeline_runner import _build_app_generate_entity
 
 
 def _load_queued_entity(payload: dict[str, object]) -> RagPipelineGenerateEntity:

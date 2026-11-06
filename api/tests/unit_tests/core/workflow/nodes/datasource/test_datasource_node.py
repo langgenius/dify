@@ -1,3 +1,5 @@
+"""Unit coverage for datasource node event streaming."""
+
 import time
 from collections.abc import Generator
 from types import SimpleNamespace
@@ -9,13 +11,13 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import RuntimeState, VariablePool
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -112,9 +114,6 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
     assert isinstance(evts[-1], StreamCompletedEvent)
 
 
-"""Unit coverage for datasource node event streaming."""
-
-
 @pytest.mark.parametrize("use_factory", [False, True])
 def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: Engine, use_factory: bool) -> None:
     variable_pool = VariablePool.from_bootstrap(
@@ -171,9 +170,9 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
     )
     if use_factory:
         database_client = sessionmaker(sqlite_engine)
-        mocker.patch("core.workflow.node_factory.get_session_maker", return_value=database_client)
+        mocker.patch("services.workflow_runtime.node_factory.get_session_maker", return_value=database_client)
         build_credentials = mocker.patch(
-            "core.workflow.node_factory.build_data_source_credentials",
+            "services.workflow_runtime.node_factory.build_data_source_credentials",
             return_value=SimpleNamespace(providers=SimpleNamespace(get_datasource_credentials=load_credentials)),
         )
         factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)

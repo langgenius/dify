@@ -21,7 +21,7 @@ from services.rbac.contracts import (
     WorkspacePermissionSnapshot,
 )
 
-_RBAC_MODULE = "controllers.common.agent_access.enterprise_rbac_service"
+_RBAC_MODULE = "services.agent.access_service.enterprise_rbac_service"
 
 
 def _permissions(

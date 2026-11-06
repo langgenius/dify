@@ -9,20 +9,22 @@ more reliable and realistic test scenarios.
 
 import logging
 import os
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import ExitStack, closing
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
 import psycopg2
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.core.wait_strategies import HttpWaitStrategy, LogMessageWaitStrategy
+from testcontainers.core.wait_strategies import ExecWaitStrategy, HttpWaitStrategy, LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -68,7 +70,16 @@ def postgres_container(testcontainers_network: Network) -> Generator[PostgresCon
         .with_tmpfs_mount("/var/lib/postgresql/data", size="rw,size=2g")
         .with_network(testcontainers_network)
     )
-    postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
+    postgres.waiting_for(
+        ExecWaitStrategy(
+            [
+                "sh",
+                "-c",
+                'PGPASSWORD="$POSTGRES_PASSWORD" psql --username "$POSTGRES_USER" '
+                '--dbname "$POSTGRES_DB" --host 127.0.0.1 -tAc "SELECT 1"',
+            ]
+        ).with_startup_timeout(30)
+    )
 
     with ExitStack() as stack:
         postgres = stack.enter_context(postgres)
@@ -472,7 +483,18 @@ def _truncate_container_database(app: Flask) -> None:
     with app.app_context():
         db.session.remove()
 
-        tables = db.metadata.sorted_tables
+        # Module fixtures legitimately drop and rebuild schema subsets through real
+        # migrations, so db.metadata can describe tables that are absent right now.
+        # TRUNCATE names every table in one statement and fails outright on a missing
+        # relation, which would fail every remaining test in the module rather than
+        # the one that dropped it. Reset what actually exists.
+        present = set(sa_inspect(db.engine).get_table_names())
+        tables = [table for table in db.metadata.sorted_tables if table.name in present]
+        absent = [table.name for table in db.metadata.sorted_tables if table.name not in present]
+        if absent:
+            # Visible rather than silent: a fixture dropped these on purpose, but a
+            # genuinely missing table should still be traceable from the test log.
+            logger.debug("Skipping truncate for absent tables: %s", ", ".join(sorted(absent)))
         if not tables:
             return
 
@@ -522,14 +544,19 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests() -> Generator[None]:
+def mock_ssrf_proxy_requests() -> Generator[Callable[..., httpx.Response]]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
+
+    Yield the original facade so a witness that intercepts Client.send can
+    restore it locally after installing its synthetic physical transport.
     """
 
     from unittest.mock import patch
 
-    import httpx
+    from core.helper import ssrf_proxy
+
+    actual_make_request = ssrf_proxy.make_request
 
     def _fake_request(method: str, url: str, **_kwargs: object) -> httpx.Response:
         request = httpx.Request(method=method, url=url)
@@ -544,4 +571,4 @@ def mock_ssrf_proxy_requests() -> Generator[None]:
         patch("core.helper.ssrf_proxy.delete", side_effect=lambda url, **kw: _fake_request("DELETE", url, **kw)),
         patch("core.helper.ssrf_proxy.head", side_effect=lambda url, **kw: _fake_request("HEAD", url, **kw)),
     ):
-        yield
+        yield actual_make_request

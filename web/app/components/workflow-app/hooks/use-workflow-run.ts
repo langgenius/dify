@@ -13,6 +13,7 @@ import { v4 as uuidV4 } from 'uuid'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import {
   editorResourceAtom,
   workflowAppIdentityAtom,
@@ -21,12 +22,11 @@ import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useWorkflowDraftSave, useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,
@@ -111,7 +111,7 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
   return Array.isArray(tracing) ? tracing.length : undefined
 }
 
-type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
@@ -195,6 +195,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       callback?: IOtherOptions,
       options?: HandleRunOptions,
     ) => {
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
       const { getNodes, setNodes } = store.getState()
@@ -206,6 +207,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       })
       setNodes(newNodes)
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
 
       const {
         onWorkflowStarted,
@@ -561,13 +563,13 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 }
 
 export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
 
   return useWorkflowRunBase(doSyncWorkflowDraft)
 }
 
 export const useWorkflowRun = () => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useWorkflowDraftSave()
 
   return useWorkflowRunBase(doSyncWorkflowDraft)
 }

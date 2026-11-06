@@ -56,13 +56,26 @@ RUN apt-get update \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${node_dist}.tar.xz" \
     && grep " ${node_dist}.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 \
+    && tar --no-same-owner -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 \
     && rm -f SHASUMS256.txt "${node_dist}.tar.xz" \
     && npm install --global "pnpm@${PNPM_VERSION}" \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
+
+# Locked build inputs only; unsupported wheel/interpreter profiles fail closed.
+# The content receipt is evidence for independent OCI/scope qualification, not admission.
+COPY docker/native-code-python.requirements.txt /usr/share/dify-native/
+COPY docker/native-code-environment.py /usr/share/dify-native/
+RUN python -m pip install --require-hashes --only-binary=:all: --no-compile \
+        -r /usr/share/dify-native/native-code-python.requirements.txt \
+    && python -I -B /usr/share/dify-native/native-code-environment.py \
+        > /usr/share/dify-native/native-code-environment.json
+
+# Reviewed deployment profiles are shipped with the same runtime artifact.
+# The container/systemd owner must enforce them explicitly; copying is not activation.
+COPY docker/native-test-seccomp.json docker/native-test-apparmor.profile docker/native-test-supervisor.service docker/native-test-start.sh /usr/share/dify-native/
 
 # Go binaries
 COPY --from=go-builder /bin/shellctl /usr/local/bin/shellctl

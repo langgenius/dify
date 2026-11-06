@@ -1,13 +1,14 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
+import AppDetailLayout from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main'
 import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
+import MainNavLayout from '@/app/components/main-nav/layout'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
-import { AppDetailPrefetch } from '../app-detail-prefetch'
-import { getAppIdFromPathname } from '../app-detail-route'
 
 function deferredResponse() {
   let resolve!: (response: Response) => void
@@ -30,13 +31,12 @@ vi.mock('@/app/components/app-sidebar/app-info', () => ({
 vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   default: ({ name, href }: { name: string; href: string }) => <a href={href}>{name}</a>,
 }))
+vi.mock('@/app/components/main-nav', () => ({ MainNav: () => null }))
 
 function Route() {
-  const appId = getAppIdFromPathname(pathname)
   return (
     <>
       <a href="/apps">Back to Apps</a>
-      {appId && <AppDetailPrefetch appId={appId} />}
       <AppDetailSection />
     </>
   )
@@ -54,10 +54,22 @@ describe('App sidebar route loading', () => {
     request.mockReset()
   })
 
-  it('keeps the shell visible and consumes the in-flight prefetch from the query cache alone', async () => {
+  it('renders the shell before fetching app detail and shares one request with the page', async () => {
     const pending = deferredResponse()
     request.mockReturnValue(pending.promise)
-    renderWithConsoleQuery(<Route />)
+    const route = (
+      <MainNavLayout initialDetailSidebarMode="expand" detailSidebar={<Route />}>
+        <AppDetailLayout appId="app-1">
+          <div>App overview content</div>
+        </AppDetailLayout>
+      </MainNavLayout>
+    )
+    const { queryClient, wrapper: ServerProviders } = createConsoleQueryWrapper()
+    const html = renderToString(<ServerProviders>{route}</ServerProviders>)
+    expect(html).toContain('navigation.menus.appDetail')
+    expect(queryClient.isFetching()).toBe(0)
+
+    renderWithConsoleQuery(route)
     expect(screen.getByRole('link', { name: 'Back to Apps' })).toBeVisible()
     expect(screen.getByText('navigation.menus.appDetail')).toBeVisible()
     expect(screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })).toBeDisabled()
@@ -66,6 +78,7 @@ describe('App sidebar route loading', () => {
     await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
     await act(async () => pending.resolve(Response.json(app('app-1', 'First app'))))
     expect(await screen.findByText('First app')).toBeVisible()
+    expect(screen.getByText('App overview content')).toBeVisible()
     expect(screen.getByRole('link', { name: 'common.appMenus.overview' })).toHaveAttribute(
       'href',
       '/app/app-1/overview',
@@ -73,7 +86,7 @@ describe('App sidebar route loading', () => {
     expect(request).toHaveBeenCalledTimes(1)
   })
 
-  it('can load without prefetch and retries a failed query inside the sidebar', async () => {
+  it('retries a failed app detail request from the sidebar', async () => {
     request.mockRejectedValueOnce(new Error('unavailable'))
     request.mockResolvedValue(Response.json(app('app-1', 'Recovered app')))
     renderWithConsoleQuery(<AppDetailSection />)

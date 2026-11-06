@@ -1,7 +1,7 @@
 from typing import override
 
 import pytest
-from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 
 from services.app_tracing_config_service import AppTraceSettings
 from services.tracing.scopes import TraceScopes, TracingPolicyQuery
@@ -101,3 +101,28 @@ def test_a_failed_policy_lookup_stays_out_of_the_request() -> None:
     scopes, _ = _scopes(_Policies({}, fails=True), enterprise=True)
 
     assert scopes.for_app(tenant_id="tenant-1", app_id="app-1", user_id=None, correlation=CORRELATION) is None
+
+
+@pytest.mark.parametrize("enterprise", [False, True])
+def test_restricted_scope_preserves_policy_through_event_serialization(enterprise: bool) -> None:
+    policies = _Policies({}, fails=False)
+    scopes, recorder = _scopes(policies, enterprise=enterprise)
+
+    scope = scopes.for_execution(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        policy=ENABLED,
+        user_id=None,
+        correlation=CORRELATION,
+        external_tracing_disabled=True,
+    )
+
+    if enterprise:
+        assert scope is not None
+        scope.emit(MessageCompleted(message_id="message-1", conversation_id=None))
+        (event,) = recorder.events
+        assert TraceEvent.model_validate_json(event.model_dump_json()).external_tracing_disabled is True
+    else:
+        assert scope is None
+        assert recorder.events == []
+    assert policies.lookups == []

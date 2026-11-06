@@ -3,17 +3,22 @@ import type {
   CursorPosition,
   OnlineUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
+import { useEffect, useState } from 'react'
 import { useViewport } from 'reactflow'
+import { collaborationManager } from '../core/collaboration-manager'
 import { getUserColor } from '../utils/user-color'
 
 type UserCursorsProps = {
-  cursors: Record<string, CursorPosition>
+  visible: boolean
   myUserId: string | null
   onlineUsers: OnlineUser[]
 }
 
-const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) => {
+const UserCursors: FC<UserCursorsProps> = ({ visible, myUserId, onlineUsers }) => {
+  const [cursors, setCursors] = useState<Record<string, CursorPosition>>({})
   const viewport = useViewport()
+
+  useEffect(() => collaborationManager.onCursorUpdate(setCursors), [])
 
   const convertToScreenCoordinates = (cursor: CursorPosition) => {
     // Convert world coordinates to screen coordinates using current viewport
@@ -22,9 +27,11 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
 
     return { x: screenX, y: screenY }
   }
+  if (!visible) return null
+
   return (
     <>
-      {Object.entries(cursors || {}).map(([userId, cursor]) => {
+      {Object.entries(cursors).map(([userId, cursor]) => {
         if (userId === myUserId) return null
 
         const userInfo = onlineUsers.find((user) => user.user_id === userId)
@@ -35,10 +42,9 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
         return (
           <div
             key={userId}
-            className="pointer-events-none absolute z-8 transition-all duration-150 ease-out"
+            className="pointer-events-none absolute inset-s-0 top-0 z-8 transition-transform duration-150 ease-out motion-reduce:transition-none"
             style={{
-              left: screenPos.x,
-              top: screenPos.y,
+              transform: `translate(${screenPos.x}px, ${screenPos.y}px)`,
             }}
           >
             <svg
@@ -59,7 +65,7 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
             </svg>
 
             <div
-              className="absolute top-4 left-4 max-w-30 overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
+              className="absolute inset-s-4 top-4 max-w-30 overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}

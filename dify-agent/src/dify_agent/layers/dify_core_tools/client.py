@@ -7,8 +7,11 @@ from dataclasses import dataclass, field
 from typing import ClassVar, cast
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
@@ -82,6 +85,7 @@ class _DifyCoreToolsRequestTool(BaseModel):
 class _DifyCoreToolsInvokeRequest(BaseModel):
     caller: _DifyCoreToolsCaller
     tool: _DifyCoreToolsRequestTool
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -124,7 +128,13 @@ class DifyCoreToolsClient:
         assert user_from is not None
         assert app_id is not None
 
+        from dify_agent.runtime.native_effects import current_native_dispatch
+
+        envelope = current_native_dispatch()
         request_payload = _DifyCoreToolsInvokeRequest(
+            native_dispatch=AgentPhysicalDispatchPayload.model_validate(envelope.wire())
+            if envelope is not None
+            else None,
             caller=_DifyCoreToolsCaller(
                 tenant_id=execution_context.tenant_id,
                 user_id=user_id,
@@ -150,14 +160,21 @@ class DifyCoreToolsClient:
             ),
         )
 
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path="agent/tools/invoke",
+            runtime_path="tools/invoke",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url}/inner/api/agent/tools/invoke",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                 },
-                json=request_payload.model_dump(mode="json"),
+                json=request_payload.model_dump(mode="json", exclude={"native_dispatch"} if envelope is None else None),
             )
         except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
             raise DifyCoreToolsClientError(f"Core tools are misconfigured: {exc}", retryable=False) from exc

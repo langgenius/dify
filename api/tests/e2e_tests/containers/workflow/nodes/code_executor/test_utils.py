@@ -14,19 +14,17 @@ if TYPE_CHECKING:
 
 
 def force_reload_code_executor():
-    """
-    Force reload the code_executor module to reinitialize code_execution_endpoint_url.
+    """Reload the actual transport owner after the container configuration exists.
 
-    This function should be called after setting up environment variables
-    to ensure the code_execution_endpoint_url is initialized with the correct value.
+    The HTTP endpoint moved out of the CodeExecutor facade into
+    clients.code_execution; reload it first so the real sandbox request uses
+    the container's endpoint together with its configured authentication key.
     """
-    try:
-        import core.helper.code_executor.code_executor
+    import clients.code_execution
+    import core.helper.code_executor.code_executor
 
-        importlib.reload(core.helper.code_executor.code_executor)
-    except Exception as e:
-        # Log the error but don't fail the test
-        print(f"Warning: Failed to reload code_executor module: {e}")
+    importlib.reload(clients.code_execution)
+    importlib.reload(core.helper.code_executor.code_executor)
 
 
 def get_code_executor_imports():

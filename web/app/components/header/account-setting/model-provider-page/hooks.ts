@@ -37,7 +37,7 @@ export const useDefaultModel = (
   type: ModelTypeEnum,
   { enabled = true }: ModelQueryOptions = {},
 ) => {
-  const { data, refetch, isPending } = useQuery(
+  const { data, refetch, isPending, isError } = useQuery(
     consoleQuery.workspaces.current.defaultModel.get.queryOptions({
       input: { query: { model_type: type } },
       enabled,
@@ -49,6 +49,7 @@ export const useDefaultModel = (
     data: data?.data ?? undefined,
     mutate: refetch,
     isLoading: enabled && isPending,
+    isError: enabled && isError && data === undefined,
   }
 }
 
@@ -73,13 +74,16 @@ export { getCurrentProviderAndModel as useCurrentProviderAndModel }
 
 export const useTextGenerationCurrentProviderAndModelAndModelList = (
   defaultModel?: DefaultModel,
+  { enabled = true }: ModelQueryOptions = {},
 ) => {
-  const { data: textGenerationModelList = [] } = useQuery(
+  const { data, isPending, isError, refetch } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
       select: (response) => response.data,
+      enabled,
     }),
   )
+  const textGenerationModelList = data ?? []
   const activeTextGenerationModelList = textGenerationModelList.filter(
     (model) => model.status === ModelStatusEnum.active,
   )
@@ -93,6 +97,9 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (
     currentModel,
     textGenerationModelList,
     activeTextGenerationModelList,
+    isLoading: enabled && isPending,
+    isError: enabled && isError && data === undefined,
+    refetch,
   }
 }
 
@@ -292,6 +299,7 @@ export const useRefreshModel = () => {
   const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
+  const invalidateDefaultModel = useInvalidateDefaultModel()
   const handleRefreshModel = useCallback(
     (
       provider: ModelProvider,
@@ -316,6 +324,7 @@ export const useRefreshModel = () => {
 
       provider.supported_model_types.forEach((type) => {
         updateModelList(type)
+        invalidateDefaultModel(type)
       })
 
       if (
@@ -333,7 +342,13 @@ export const useRefreshModel = () => {
           updateModelList(CustomConfigurationModelFixedFields.__model_type)
       }
     },
-    [expandModelProviderList, queryClient, updateModelList, updateModelProviders],
+    [
+      expandModelProviderList,
+      invalidateDefaultModel,
+      queryClient,
+      updateModelList,
+      updateModelProviders,
+    ],
   )
 
   return {

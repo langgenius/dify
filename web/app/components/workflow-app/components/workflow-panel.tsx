@@ -1,15 +1,21 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
+import { useWorkflowAppSelector as useStore } from '@/app/components/workflow-app/store/workflow'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
-import { useStore } from '@/app/components/workflow/store'
+import BuilderFixButton from '@/features/dify-builder/fix-button'
+import {
+  difyBuilderAvailableAtom,
+  difyBuilderCanStartFixAtom,
+  difyBuilderStartRunFixAtom,
+} from '@/features/dify-builder/state'
 import { consoleQuery } from '@/service/console'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
@@ -58,6 +64,9 @@ const WorkflowPanelOnLeft = ({ appId }: { appId: string }) => {
   )
 }
 const WorkflowPanelOnRight = () => {
+  const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
+  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
+  const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const isChatflow = useAtomValue(isChatflowAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
@@ -70,7 +79,20 @@ const WorkflowPanelOnRight = () => {
       {historyWorkflowData && !isChatflow && <Record />}
       {historyWorkflowData && isChatflow && <ChatRecord />}
       {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
-      {showDebugAndPreviewPanel && !isChatflow && <WorkflowPreview />}
+      {showDebugAndPreviewPanel && !isChatflow && (
+        <WorkflowPreview
+          renderFailureActions={
+            difyBuilderAvailable && !historyWorkflowData
+              ? (runId) => (
+                  <BuilderFixButton
+                    disabled={!canStartFix}
+                    onClick={() => void startRunFix(runId)}
+                  />
+                )
+              : undefined
+          }
+        />
+      )}
       {showChatVariablePanel && isChatflow && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}

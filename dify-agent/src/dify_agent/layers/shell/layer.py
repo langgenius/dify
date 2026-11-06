@@ -2,38 +2,48 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Sequence
 import json
 import logging
 import re
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import ClassVar, NotRequired, Protocol, TypedDict, override, runtime_checkable
+from typing import ClassVar, NotRequired, Protocol, Self, TypedDict, override, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
-from pydantic_ai import RunContext
+from pydantic_ai import DeferredToolRequests, RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.messages import ToolReturn
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.toolsets import FunctionToolset
-from typing_extensions import Self
 
 from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
     ShellCommandResult,
+    ShellCommandStatus,
     ShellPromptObservation,
 )
 from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.runtime.layer import Capability as RuntimeCapability
-from dify_agent.runtime.context import Deps
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
 from dify_agent.runtime.command_runner import execute_complete_with_commands
+from dify_agent.runtime.context import Deps
+from dify_agent.runtime.native_continuation import NativeApprovalSuspended, NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeToolBoundary, capture_shell_job_receipt
+from dify_agent.protocol.native_testing import AgentShellJobReceipt
+from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
+from dify_agent.runtime_backend.enterprise import EnterpriseRuntimeLease
 from dify_agent.runtime_backend import BindingLostError, RuntimeLease
-
+from dify_agent.runtime_backend.native_test_scope import (
+    AgentJobUnavailable,
+    NativeScopeLease,
+    ShellJobRef,
+    validate_job_identity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +188,8 @@ class State(BaseModel):
     initialized: bool = False
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
+    # Preserve the legacy ordinary state wire; only native jobs add identities.
+    job_refs: dict[str, ShellJobRef] = Field(default_factory=dict, exclude_if=lambda refs: not refs)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -223,28 +235,34 @@ class Capability(AbstractCapability[Deps]):
     def get_toolset(self) -> FunctionToolset[Deps]:
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
-        @toolset.tool(name="shell_run")
+        async def native_arguments(arguments):
+            return arguments
+
+        def metadata(boundary):
+            return {"native_effect": NativeToolBoundary(boundary, {"shell": self.name}, native_arguments)}
+
+        @toolset.tool(name="shell_run", metadata=metadata("shell_run"))
         async def shell_run(
             ctx: RunContext[Deps], script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Start a shell job and return its output and status."""
             return await ctx.deps.resources.shells[self.name]._tool_run(script, timeout)
 
-        @toolset.tool(name="shell_wait")
+        @toolset.tool(name="shell_wait", metadata=metadata("shell_wait"))
         async def shell_wait(
             ctx: RunContext[Deps], job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Wait for output or completion from an existing shell job."""
             return await ctx.deps.resources.shells[self.name]._tool_wait(job_id, timeout)
 
-        @toolset.tool(name="shell_input")
+        @toolset.tool(name="shell_input", metadata=metadata("shell_input"))
         async def shell_input(
             ctx: RunContext[Deps], job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Send stdin to a shell job and wait for its next output."""
             return await ctx.deps.resources.shells[self.name]._tool_input(job_id, text, timeout)
 
-        @toolset.tool(name="shell_interrupt")
+        @toolset.tool(name="shell_interrupt", metadata=metadata("shell_interrupt"))
         async def shell_interrupt(
             ctx: RunContext[Deps], job_id: str, grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS
         ) -> ShellInterruptToolResult:
@@ -257,24 +275,57 @@ class Capability(AbstractCapability[Deps]):
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         session = ShellSession(self.name, ctx.deps)
         ctx.deps.resources.shells[self.name] = session
+        retain = False
         try:
             state = session.runtime_state
             if not state.initialized:
                 script = _workspace_bootstrap_script(session.config)
                 if script:
-                    result = await session._run_internal_script_complete(script, cwd=session._require_workspace_cwd())
-                    if result.exit_code != 0 or not result.output_complete:
-                        raise RuntimeError(
-                            f"Failed to bootstrap shell workspace: {result.status} exit_code={result.exit_code}"
+
+                    async def bootstrap(_permit):
+                        result = await session._run_internal_script_complete(
+                            script, cwd=session._require_workspace_cwd()
+                        )
+                        if result.exit_code != 0 or not result.output_complete:
+                            raise RuntimeError(
+                                f"Failed to bootstrap shell workspace: {result.status} exit_code={result.exit_code}"
+                            )
+
+                    if ctx.deps.native_effects is None:
+                        await bootstrap(None)
+                    else:
+                        await ctx.deps.native_effects.stage(
+                            boundary="bootstrap",
+                            call_id=self.name,
+                            target={"shell": self.name, "runtime": session.config.runtime},
+                            parameters={"script": script},
+                            stage="bootstrap",
+                            invoke=bootstrap,
                         )
                 state.initialized = True
                 session.save_state(state)
-            return await handler()
+            result = await handler()
+            retain = ctx.deps.native_effects is not None and isinstance(result.output, DeferredToolRequests)
+            return result
+        except NativeApprovalSuspended:
+            retain = ctx.deps.native_effects is not None
+            raise
         finally:
+            # Confirmed runs borrow the ordinary persistent Workspace. Retirement
+            # belongs to that API owner; an exception/timeout is no authority to
+            # force-delete remote jobs or report process cleanup.
+            if (
+                ctx.deps.native_effects is not None
+                and ctx.deps.native_effects.continuation.native_test_profile == "confirmed"
+            ):
+                retain = True
             try:
-                await session._delete_tracked_jobs_best_effort(session.runtime_state.job_ids)
+                if not retain:
+                    await session._delete_tracked_jobs_best_effort(session.runtime_state.job_ids)
             finally:
-                session._clear_tracked_jobs()
+                if not retain:
+                    session._clear_tracked_jobs()
+                session._job_agent_stub_tokens.clear()
                 del ctx.deps.resources.shells[self.name]
 
 
@@ -326,12 +377,14 @@ class ShellSession:
         try:
             env = self._build_shell_command_env(include_agent_stub_env=True)
             agent_stub_token = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
-            result = await self._require_resource().commands.run(
+            resource = self._require_resource()
+            result = await resource.commands.run(
                 _wrap_user_script(script, self.config),
                 cwd=self._require_workspace_cwd(),
                 env=env,
                 timeout=timeout,
             )
+            self._capture_job_receipt(resource, result)
             # Register the remote job before observing output so cancellation during
             # a tail request still leaves cleanup with its job and redaction token.
             self._remember_job_id(result.job_id)
@@ -360,9 +413,13 @@ class ShellSession:
                     self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
                 )
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return await self._known_tool_error(exc)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_run", exc)
 
     async def _tool_wait(self, job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
@@ -370,7 +427,10 @@ class ShellSession:
 
         try:
             offset = self._tracked_offset(job_id)
-            result = await self._require_resource().commands.wait(job_id, offset=offset, timeout=timeout)
+            resource = self._require_resource()
+            result = await resource.commands.wait(job_id, offset=offset, timeout=timeout)
+            self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -396,9 +456,13 @@ class ShellSession:
                     redacted_output,
                 )
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return await self._known_tool_error(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_wait", exc, job_id=job_id)
 
     async def _tool_input(self, job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
@@ -406,7 +470,10 @@ class ShellSession:
 
         try:
             offset = self._tracked_offset(job_id)
-            result = await self._require_resource().commands.input(job_id, text, offset=offset, timeout=timeout)
+            resource = self._require_resource()
+            result = await resource.commands.input(job_id, text, offset=offset, timeout=timeout)
+            self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -432,9 +499,13 @@ class ShellSession:
                     redacted_output,
                 )
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return await self._known_tool_error(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_input", exc, job_id=job_id)
 
     async def _tool_interrupt(
@@ -446,7 +517,10 @@ class ShellSession:
 
         try:
             self._ensure_tracked_job(job_id)
-            result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)
+            resource = self._require_resource()
+            result = await resource.commands.interrupt(job_id, grace_seconds=grace_seconds)
+            self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, result.offset)
             self._job_agent_stub_tokens.pop(result.job_id, None)
@@ -456,6 +530,8 @@ class ShellSession:
                 # best-effort metadata enrichment and must not turn the interrupt
                 # into a failed tool result.
                 output_path = (await self._require_resource().commands.tail(job_id)).output_path
+            except (NativeApprovalSuspended, NativePolicyStopped):
+                raise
             except (RuntimeError, ValueError) as exc:
                 logger.warning(
                     "Failed to fetch output path for interrupted shell job %s: %s",
@@ -477,10 +553,23 @@ class ShellSession:
                 ),
                 "Job was interrupted.",
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_interrupt", exc, job_id=job_id)
+
+    def _stop_native_job_failure(self) -> None:
+        capture_shell_job_receipt(None)
+        if isinstance(self.deps.resources.leases.get(self.config.runtime), NativeScopeLease):
+            raise NativePolicyStopped("native_job_unavailable")
+
+    def _validate_result_job(self, expected: str, observed: str) -> None:
+        if isinstance(self._require_resource(), NativeScopeLease) and expected != observed:
+            raise NativePolicyStopped("native_job_identity_mismatch")
 
     async def run_remote_script_complete(
         self,
@@ -532,6 +621,21 @@ class ShellSession:
             mode="stdio",
         )
 
+    def _capture_job_receipt(self, resource: RuntimeLease, result: ShellCommandResult | ShellCommandStatus) -> None:
+        # The actual borrowed lease owns physical identity; configuration is not evidence.
+        if isinstance(resource, (ShellctlRuntimeLease, EnterpriseRuntimeLease)):
+            capture_shell_job_receipt(
+                AgentShellJobReceipt.model_validate(
+                    {
+                        "binding_ref": resource.handle,
+                        "job_id": result.job_id,
+                        "status": result.status,
+                        "done": result.done,
+                        "exit_code": result.exit_code,
+                    }
+                )
+            )
+
     def _require_resource(self) -> RuntimeLease:
         lease = self.deps.resources.leases.get(self.config.runtime)
         if lease is None:
@@ -544,6 +648,15 @@ class ShellSession:
     def _ensure_tracked_job(self, job_id: str) -> None:
         if job_id not in self.runtime_state.job_ids:
             raise ValueError(f"Unknown shell job id for this session: {job_id}.")
+        lease = self._require_resource()
+        if isinstance(lease, NativeScopeLease):
+            saved = self.runtime_state.job_refs.get(job_id)
+            if saved is None:
+                raise NativePolicyStopped("native_job_identity_missing")
+            try:
+                validate_job_identity(saved=saved, actual=lease.job_ref(job_id, saved.output_offset))
+            except AgentJobUnavailable:
+                raise NativePolicyStopped("native_job_identity_mismatch") from None
 
     def _tracked_offset(self, job_id: str) -> int:
         self._ensure_tracked_job(job_id)
@@ -559,9 +672,18 @@ class ShellSession:
     def _remember_job_offset(self, job_id: str, offset: int) -> None:
         state = self.runtime_state
         state.job_offsets = {**state.job_offsets, job_id: offset}
+        lease = self._require_resource()
+        if isinstance(lease, NativeScopeLease):
+            state.job_refs = {**state.job_refs, job_id: lease.job_ref(job_id, offset)}
         self.save_state(state)
+        if self.deps.native_effects is not None:
+            self.deps.native_effects.continuation.job_refs = tuple(
+                item.model_dump_json() for item in state.job_refs.values()
+            )
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
+        if not job_ids:
+            return
         commands = self._require_resource().commands
         for job_id in _deduplicate_preserving_order(job_ids):
             try:
@@ -577,6 +699,7 @@ class ShellSession:
         state = self.runtime_state
         state.job_offsets = {}
         state.job_ids = []
+        state.job_refs = {}
         self.save_state(state)
         self._job_agent_stub_tokens.clear()
 
@@ -586,6 +709,18 @@ class ShellSession:
         include_agent_stub_env: bool,
         require_agent_stub_env: bool = False,
     ) -> dict[str, str]:
+        if isinstance(self._require_resource(), NativeScopeLease):
+            if require_agent_stub_env or (
+                include_agent_stub_env and self.deps.services.agent_stub_token_factory is not None
+            ):
+                raise NativePolicyStopped("native_agent_stub_unavailable")
+            if (
+                _shell_config_env(self.config)
+                or self.config.secret_refs
+                or any(tool.secret_refs for tool in self.config.cli_tools)
+            ):
+                raise NativePolicyStopped("native_environment_import_requires_capability")
+            return {}
         env = _shell_config_env(self.config)
         env["HOME"] = self._require_resource().layout.home_dir
         if not include_agent_stub_env:
@@ -596,6 +731,9 @@ class ShellSession:
             if context_name
             else None
         )
+        # Resolving the strict client checks this actual Deps.run_id against the
+        # scheduler binding synchronously before the server token factory runs.
+        _ = self.deps.dify_api_http_client
         agent_stub_env = build_shell_agent_stub_env(
             agent_stub_api_base_url=self.deps.services.agent_stub_api_base_url,
             execution_context=execution_context,
@@ -784,12 +922,12 @@ def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
 
 
 __all__ = [
-    "Config",
-    "State",
-    "Capability",
-    "ShellSession",
-    "CompleteRemoteCommandResult",
     "DEFAULT_TERMINATE_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
+    "Capability",
+    "CompleteRemoteCommandResult",
+    "Config",
+    "ShellSession",
+    "State",
     "render_prompt_observation_from_result",
 ]

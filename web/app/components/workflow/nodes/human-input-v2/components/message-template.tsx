@@ -40,7 +40,7 @@ import { useTranslation } from 'react-i18next'
 import { getInputVars } from '@/app/components/base/prompt-editor/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
@@ -103,7 +103,7 @@ const MessageTemplateSession = ({
   const resource = useAtomValue(editorResourceAtom)
   const flowId = resource.kind === 'app' ? resource.appId : undefined
   const isChatMode = resource.kind === 'app' && resource.mode === 'advanced-chat'
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useScheduleDraftSave()
   const canTest = !readonly && canRun && resource.kind === 'app' && !!flowId && !!nodeId
   const canTestRef = useRef(canTest)
   const testContext = `${flowId}:${nodeId}:${isChatMode}:${selectedChannel}`

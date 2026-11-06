@@ -1,0 +1,694 @@
+"""Logical stop of the original confirmed Agent pause, independent of cleanup.
+
+Only opaque SQL object receipts and snapshot hashes survive revocation. They
+retain evidence selected by the ordinary owners, never execution authority.
+Backend and storage reads happen before the bounded SQL settlement transaction.
+"""
+
+from dataclasses import asdict
+from operator import itemgetter
+
+from dify_agent.protocol.schemas import RunStatusResponse
+from sqlalchemy import delete, select
+
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from extensions.ext_storage import storage
+from libs.datetime_utils import utc_now
+from models.dify_builder_native_tests import (
+    NativeContinuation,
+    NativeDispatch,
+    NativeEffectOperation,
+    NativeInvocationState,
+    NativePayloadObject,
+    NativeTestInvocation,
+)
+from models.enums import CreatorUserRole
+from models.model import App, AppMode
+from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.native.agent_contracts import AgentNodeAssociation
+from runtime_contracts.builder.native.contracts import CheckpointRef
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
+from services.dify_builder.native_testing.confirmed_agent_completion import (
+    CANCELLED_CHILD_OBSERVATION,
+    STOP_CONTROL,
+    _native_run_id,
+    _request,
+    _terminal_proof,
+    cancelled_parent_proof,
+    settled_physical_facts,
+    stop_control_facts,
+    stop_observation_matches,
+)
+from services.dify_builder.native_testing.confirmed_agent_continuation import validate_parent_snapshot
+from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.state_store import (
+    NativeExecutionStateStore,
+    ObjectReceipt,
+    invocation_state,
+    owner_query,
+)
+
+PREPARATION = "confirmed_agent_cancel_v1"
+
+
+class ConfirmedAgentCancellation:
+    def __init__(self, commands):
+        self.commands = commands
+        self.loader = commands.loader
+
+    def _objects(self, sql, ref, tenant_id):
+        return sorted(
+            (
+                asdict(ObjectReceipt.from_payload_object(row))
+                for row in sql.scalars(owner_query(NativePayloadObject, ref, tenant_id))
+            ),
+            key=itemgetter("id"),
+        )
+
+    def _sources(self, sql, ref):
+        return sorted(
+            [
+                (
+                    row.id,
+                    row.tenant_id,
+                    row.invocation_id,
+                    row.generation,
+                    row.state,
+                    row.checkpoint_id,
+                    row.idempotency_digest,
+                )
+                for row in sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id))
+            ],
+            key=itemgetter(0),
+        )
+
+    @staticmethod
+    def _unclaimed_resume(source, proof):
+        checkpoint_generation = proof.get("checkpoint_generation", proof["generation"])
+        return (
+            type(checkpoint_generation) is int
+            and checkpoint_generation + 1 == proof["generation"]
+            and source.generation == proof["generation"]
+            and source.checkpoint_id == proof["checkpoint"]["checkpoint_id"]
+            and source.state in {"queued", "published", "cancelled"}
+            and source.claim_expires_at is None
+        )
+
+    def _sources_match(self, sql, ref, proof):
+        current = [list(source) for source in self._sources(sql, ref)]
+        original = proof["sources"]
+        if len(current) != len(original):
+            return False
+        for selected, saved in zip(current, original, strict=True):
+            # Broker publication and durable revocation do not claim the
+            # original paused continuation. All other receipt facts stay exact.
+            if (
+                selected[3] == saved[3] == proof["generation"]
+                and saved[4] in {"queued", "published"}
+                and selected[4] in {"queued", "published", "cancelled"}
+            ):
+                selected[4] = saved[4]
+        return current == original
+
+    def _rows(self, sql, owned, run_id, *, lock):
+        query = select(WorkflowRun).where(
+            WorkflowRun.id == run_id,
+            WorkflowRun.tenant_id == owned.tenant_id,
+            WorkflowRun.app_id == owned.app_id,
+            WorkflowRun.workflow_id == owned.workflow_id,
+            WorkflowRun.created_by == owned.actor_id,
+            WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+        )
+        pause_query = select(WorkflowPause).where(
+            WorkflowPause.workflow_run_id == run_id,
+            WorkflowPause.workflow_id == owned.workflow_id,
+            WorkflowPause.resumed_at.is_(None),
+        )
+        if lock:
+            query, pause_query = query.with_for_update(), pause_query.with_for_update()
+        return sql.scalar(query), sql.scalar(pause_query)
+
+    def prepare(self, *, ref):
+        """Capture through existing active readers; failure grants no stop proof."""
+        paused = self.commands.continuation.read_parent_pause(ref=ref)
+        with self.loader.session_factory() as sql:
+            owned, _ = self.loader._load(sql, ref=ref, lock=False)
+            state = invocation_state(sql, ref, owned.tenant_id)
+            prior_state = state.state
+            checkpoint_generation = state.generation - (1 if prior_state == "queued" else 0)
+            continuation = sql.scalar(
+                owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                    NativeContinuation.checkpoint_id == state.checkpoint_id,
+                    NativeContinuation.generation == checkpoint_generation,
+                )
+            )
+            if prior_state not in {"waiting", "queued"} or continuation is None:
+                return
+            checkpoint = CheckpointRef(
+                checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
+            )
+            generation = state.generation
+            objects = self._objects(sql, ref, owned.tenant_id)
+            sources = self._sources(sql, ref)
+        payload = self.commands.api.store.read_checkpoint_for_cancellation(ref=ref, checkpoint=checkpoint)
+        executions = {item.execution_id for item in paused.runtime.graph_execution.node_executions.values()}
+        if (
+            payload.native_run_id != paused.native_run_id
+            or payload.generation != checkpoint_generation
+            or payload.graph_runtime_state_json != paused.state.serialized_graph_runtime_state
+            or not payload.agent_associations
+            or any(
+                wait.parent_node.ref != ref or wait.parent_node.execution_id not in executions
+                for wait in payload.agent_associations
+            )
+        ):
+            return
+        children = []
+        for wait in payload.agent_associations:
+            protected = self.commands.api.store.read_agent_association_for_cancellation(
+                ref=ref, parent_node=wait.parent_node, wait=wait
+            )
+            children.append(protected.association.agent_run_id)
+        proof = {
+            "generation": generation,
+            "checkpoint_generation": checkpoint_generation,
+            "checkpoint": checkpoint.model_dump(mode="json"),
+            "pause_id": paused.pause_id,
+            "state_object_key": paused.state_object_key,
+            "runtime_digest": canonical_digest(paused.state.serialized_graph_runtime_state),
+            "native_run_id": paused.native_run_id,
+            "children": sorted(set(children)),
+            "objects": objects,
+            "sources": [list(source) for source in sources],
+            "context_object_id": state.context_object_id,
+        }
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+            # Neither this snapshot nor its client-independent child IDs may
+            # survive a changed checkpoint/ordinary pause during preparation.
+            if not self._matches(sql, ref, owned, proof):
+                return
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return
+            if (
+                _native_run_id(request) != paused.native_run_id
+                or invocation_state(sql, ref, owned.tenant_id).state != prior_state
+            ):
+                return
+            if not any(PREPARATION in record for record in request.observations):
+                request.observations = [*request.observations, {PREPARATION: proof}]
+
+    def _matches(self, sql, ref, owned, proof):
+        state = invocation_state(sql, ref, owned.tenant_id)
+        run, pause = self._rows(sql, owned, proof["native_run_id"], lock=True)
+        continuations = sql.scalars(
+            owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                NativeContinuation.checkpoint_id == proof["checkpoint"]["checkpoint_id"],
+                NativeContinuation.payload_digest == proof["checkpoint"]["payload_digest"],
+                NativeContinuation.generation == proof.get("checkpoint_generation", proof["generation"]),
+            )
+        ).all()
+        states = sql.scalars(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+        ).all()
+        sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)).all()
+        operations = sql.scalars(
+            select(NativeEffectOperation).where(NativeEffectOperation.request_id == ref.request_id)
+        ).all()
+        return (
+            run is not None
+            and run.status == "paused"
+            and pause is not None
+            and (pause.id, pause.state_object_key) == (proof["pause_id"], proof["state_object_key"])
+            and state.checkpoint_id == proof["checkpoint"]["checkpoint_id"]
+            and state.context_object_id == proof["context_object_id"]
+            and (state.app_id, state.workflow_id) == (owned.app_id, owned.workflow_id)
+            and state.generation == proof["generation"]
+            and len(continuations) == 1
+            and len(states) == 1
+            and states[0].invocation_id == ref.invocation_id
+            # Initial confirmed runs use the ordinary generator directly;
+            # only later native resumes require a durable dispatch source.
+            and (
+                (state.generation == 0 and not sources)
+                or (bool(sources) and any(source.generation == state.generation for source in sources))
+            )
+            and all(
+                source.tenant_id == owned.tenant_id
+                and source.invocation_id == ref.invocation_id
+                and (source.state == "completed" or self._unclaimed_resume(source, proof))
+                and source.generation <= state.generation
+                for source in sources
+            )
+            and all(
+                operation.tenant_id == owned.tenant_id
+                and operation.invocation_id == ref.invocation_id
+                and operation.state in {"completed", "failed", "not_dispatched", "denied", "pending"}
+                for operation in operations
+            )
+            and settled_physical_facts(sql, ref=ref, tenant_id=owned.tenant_id, operations=operations) is not None
+            and self._objects(sql, ref, owned.tenant_id) == proof["objects"]
+            and self._sources_match(sql, ref, proof)
+        )
+
+    def stop_is_saved(self, *, ref):
+        """Read an exact sealed logical stop, never physical cleanup.
+
+        Initial runs have no dispatch. Resumed runs additionally retain the
+        original cancellation preparation's complete source/object snapshot.
+        """
+        with self.loader.session_factory() as sql:
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None or request.state != "sealed":
+                return False
+            outcome = _terminal_proof(sql, request=request, ref=ref)
+            if outcome is not None and outcome.reason_code == "native_cancelled":
+                return True
+            states = sql.scalars(
+                select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+            ).all()
+            invocations = sql.scalars(
+                select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+            ).all()
+            if len(states) != 1 or len(invocations) != 1:
+                return False
+            state, invocation = states[0], invocations[0]
+            if (
+                (state.tenant_id, state.invocation_id, state.parent_invocation_id)
+                != (self.commands.actor.tenant_id, ref.invocation_id, None)
+                or type(state.generation) is not int
+                or state.generation < 0
+                or (invocation.tenant_id, invocation.invocation_id)
+                != (self.commands.actor.tenant_id, ref.invocation_id)
+                or invocation.active
+                or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
+                or sql.scalar(
+                    owner_query(NativePayloadObject, ref, request.tenant_id).where(
+                        NativePayloadObject.id == state.context_object_id, NativePayloadObject.kind == "context"
+                    )
+                )
+                is None
+            ):
+                return False
+            sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)).all()
+            if state.generation == 0:
+                if sources:
+                    return False
+            else:
+                proofs = [record[PREPARATION] for record in request.observations if PREPARATION in record]
+                if len(proofs) != 1 or not isinstance(proofs[0], dict):
+                    return False
+                proof = proofs[0]
+                try:
+                    checkpoint = CheckpointRef.model_validate(proof.get("checkpoint"))
+                except (TypeError, ValueError):
+                    return False
+                continuations = sql.scalars(
+                    owner_query(NativeContinuation, ref, request.tenant_id).where(
+                        NativeContinuation.checkpoint_id == checkpoint.checkpoint_id,
+                        NativeContinuation.payload_digest == checkpoint.payload_digest,
+                        NativeContinuation.generation == proof.get("checkpoint_generation", state.generation),
+                    )
+                ).all()
+                if (
+                    state.checkpoint_id != checkpoint.checkpoint_id
+                    or len(continuations) != 1
+                    or type(proof.get("generation")) is not int
+                    or not sources
+                    or proof.get("generation") != state.generation
+                    or proof.get("context_object_id") != state.context_object_id
+                    or proof.get("native_run_id") != _native_run_id(request)
+                    or not proof.get("children")
+                    or not self._sources_match(sql, ref, proof)
+                    or proof.get("objects") != self._objects(sql, ref, request.tenant_id)
+                    or not any(source.generation == state.generation for source in sources)
+                    or any(
+                        (source.tenant_id, source.invocation_id) != (request.tenant_id, ref.invocation_id)
+                        or not (source.state == "completed" or self._unclaimed_resume(source, proof))
+                        or not 0 <= source.generation <= state.generation
+                        for source in sources
+                    )
+                ):
+                    return False
+            operations = sql.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == ref.request_id)
+            ).all()
+            if any(
+                (operation.tenant_id, operation.invocation_id) != (request.tenant_id, ref.invocation_id)
+                or operation.state not in {"completed", "failed", "not_dispatched"}
+                for operation in operations
+            ):
+                return False
+            if settled_physical_facts(sql, ref=ref, tenant_id=request.tenant_id, operations=operations) is None:
+                return False
+            outcome = _terminal_proof(sql, request=request, ref=ref)
+            return outcome is not None and outcome.status == "stopped" and outcome.reason_code == "effect_denied"
+
+    def retry_children(self, *, ref):
+        """Targets for an explicit cancel only; revoked scopes gain no read/run grant.
+
+        Resolve the original encrypted checkpoint and binding again rather than
+        trusting a child ID copied into observations. The final SQL proof check
+        ends before the caller can issue a cancellation RPC. GET never calls this.
+        """
+        validate_private_read(self.loader, ref)
+        with self.loader.session_factory() as sql:
+            owned, scope = self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if request is None or not scope.cancelled or state.state != "cancelled" or state.outcome is not None:
+                return ()
+            proofs = [record[PREPARATION] for record in request.observations if PREPARATION in record]
+            if len(proofs) != 1 or _native_run_id(request) != proofs[0]["native_run_id"]:
+                return ()
+            proof = proofs[0]
+            objects = self._objects(sql, ref, owned.tenant_id)
+            if objects != proof["objects"]:
+                return ()
+        receipts = {value["id"]: ObjectReceipt(**value) for value in objects}
+        checkpoint = receipts[proof["checkpoint"]["checkpoint_id"]]
+        if checkpoint.kind != "checkpoint" or checkpoint.payload_digest != proof["checkpoint"]["payload_digest"]:
+            return ()
+        payload = NativeCheckpointPayload.model_validate(self.commands.api.store._read_object(checkpoint))
+        if (
+            payload.native_run_id != proof["native_run_id"]
+            or payload.generation != proof.get("checkpoint_generation", proof["generation"])
+            or canonical_digest(payload.graph_runtime_state_json) != proof["runtime_digest"]
+            or not payload.agent_associations
+        ):
+            return ()
+        children = []
+        for wait in payload.agent_associations:
+            binding = receipts[wait.association_object_ref]
+            if (
+                wait.parent_node.ref != ref
+                or binding.kind != "result"
+                or binding.logical_key != NativeExecutionStateStore._agent_key("agent-bind", wait.parent_node)
+            ):
+                return ()
+            association = AgentNodeAssociation.model_validate(self.commands.api.store._read_object(binding))
+            if (
+                association.parent_node != wait.parent_node
+                or association.workflow_native_run_id != payload.native_run_id
+            ):
+                return ()
+            children.append(association.agent_run_id)
+        targets = tuple(sorted(set(children)))
+        if list(targets) != proof["children"]:
+            return ()
+        paused = WorkflowResumptionContext.loads(storage.load(proof["state_object_key"]).decode())
+        validate_parent_snapshot(state=paused, ref=ref, native_run_id=proof["native_run_id"])
+        if canonical_digest(paused.serialized_graph_runtime_state) != proof["runtime_digest"]:
+            return ()
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, scope):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if (
+                request is None
+                or _native_run_id(request) != proof["native_run_id"]
+                or not scope.cancelled
+                or scope.generation != proof["generation"]
+                or state.state != "cancelled"
+                or state.outcome is not None
+                or [record[PREPARATION] for record in request.observations if PREPARATION in record] != [proof]
+                or not self._matches(sql, ref, owned, proof)
+            ):
+                return ()
+        return targets
+
+    def settle(self, *, ref):
+        if self.settle_terminal(ref=ref):
+            return True
+        if self.settle_control_pause(ref=ref):
+            return True
+        with self.loader.session_factory() as sql:
+            owned, scope = self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if not scope.cancelled:
+                return False
+            saved = state.outcome or {}
+            if saved.get("reason_code") == "effect_denied" and saved.get("status") == "stopped":
+                return _terminal_proof(sql, request=request, ref=ref) is not None
+            proofs = [record[PREPARATION] for record in request.observations if PREPARATION in record]
+            if len(proofs) != 1:
+                return False
+            proof = proofs[0]
+            if _native_run_id(request) != proof["native_run_id"]:
+                return False
+        # Retained preparation never suffices: read the actual original child,
+        # then recheck all local facts under the scope lock before recording stop.
+        for child in proof["children"]:
+            status = self.commands.backend.client.get_run_sync(child)
+            status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
+            if status.run_id != child or status.status != "cancelled":
+                return False
+        if not proof["children"]:
+            return False
+        state = WorkflowResumptionContext.loads(storage.load(proof["state_object_key"]).decode())
+        validate_parent_snapshot(state=state, ref=ref, native_run_id=proof["native_run_id"])
+        if canonical_digest(state.serialized_graph_runtime_state) != proof["runtime_digest"]:
+            return False
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, scope):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            if (
+                _native_run_id(request) != proof["native_run_id"]
+                or invocation_state(sql, ref, owned.tenant_id).state != "cancelled"
+            ):
+                return False
+            if (
+                not scope.cancelled
+                or scope.generation != proof["generation"]
+                or not self._matches(sql, ref, owned, proof)
+            ):
+                return False
+            run, pause = self._rows(sql, owned, proof["native_run_id"], lock=True)
+            run.status, run.error, run.finished_at = "stopped", "effect_denied", utc_now()
+            # Paused elapsed time is already accumulated by the native owner;
+            # wall time spent waiting for consent is not execution time.
+            sql.execute(delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause.id))
+            sql.delete(pause)
+            request.state = "sealed"
+            state = invocation_state(sql, ref, owned.tenant_id)
+            state.pending_ids, state.wait_reason = [], None
+            state.outcome = NativeWorkflowOutcome(
+                status="stopped",
+                ref=ref,
+                native_run_id=run.id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code="effect_denied",
+                wait_reason=None,
+                native_status="stopped",
+                output_result_ref=None,
+            ).model_dump(mode="json")
+            # cancellation/cleanup state and capacity remain with C02.
+            return True
+
+    def settle_control_pause(self, *, ref):
+        """Acknowledge user stop separately from the child's actual terminal status.
+
+        Read SDK/storage with no SQL writer. Commit its original pause/child
+        receipt before ordinary stop can retire resources. Release the C04 lock
+        before calling that owner; then lock C04 before rereading its durable
+        Run stop fence. A stopped Run cannot be resumed or revived by late saves.
+        """
+        with self.loader.session_factory() as sql:
+            owned, _ = self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            facts = stop_control_facts(sql, request=request, ref=ref)
+            if facts is None:
+                return False
+            native, node, _, binding = facts
+            records = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+            if len(records) > 1 or (records and not isinstance(records[0], dict)):
+                return False
+            observation = records[0] if records else None
+            if observation is not None and not stop_observation_matches(observation, binding):
+                return False
+            _, pause = self._rows(sql, owned, native.id, lock=False)
+            pause_ref = (pause.id, pause.state_object_key) if pause is not None else None
+            native_status = native.status
+            if (
+                observation is not None
+                and native_status == "paused"
+                and (
+                    pause_ref is None
+                    or observation["pause_id"] != pause_ref[0]
+                    or observation["pause_key_digest"] != canonical_digest(pause_ref[1])
+                )
+            ):
+                return False
+            app = sql.scalar(select(App).where(App.id == request.app_id, App.tenant_id == owned.tenant_id))
+            if app is None:
+                return False
+            mode = AppMode.value_of(app.mode)
+        if observation is None:
+            if native_status != "paused" or pause_ref is None:
+                return False
+            paused = WorkflowResumptionContext.loads(storage.load(pause_ref[1]).decode())
+            runtime = validate_parent_snapshot(state=paused, ref=ref, native_run_id=binding["native_run_id"])
+            if binding["node_execution_id"] not in {
+                entry.execution_id for entry in runtime.graph_execution.node_executions.values()
+            }:
+                return False
+            status = self.commands.backend.client.get_run_sync(binding["child_run_id"])
+            status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
+            if status.run_id != binding["child_run_id"] or status.status not in {"succeeded", "failed", "cancelled"}:
+                return False
+            observation = {
+                **binding,
+                "pause_id": pause_ref[0],
+                "pause_key_digest": canonical_digest(pause_ref[1]),
+                "runtime_digest": canonical_digest(paused.serialized_graph_runtime_state),
+                "source_original_state": "claimed",
+                "child_status": status.status,
+                "child_error_digest": canonical_digest(status.error) if status.error is not None else None,
+                "backend_updated_at": status.updated_at.isoformat(),
+            }
+            with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+                request = _request(sql, actor=self.commands.actor, ref=ref)
+                if request is None:
+                    return False
+                fresh = stop_control_facts(sql, request=request, ref=ref)
+                if fresh is None or fresh[3] != binding:
+                    return False
+                _, current_pause = self._rows(sql, owned, binding["native_run_id"], lock=True)
+                if current_pause is None or (current_pause.id, current_pause.state_object_key) != pause_ref:
+                    return False
+                current = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+                if current and current != [observation]:
+                    return False
+                if not current:
+                    request.observations = [*request.observations, {STOP_CONTROL: observation}]
+        if observation.get("child_status") not in {"succeeded", "failed", "cancelled"}:
+            return False
+        if native_status == "paused":
+            # This owner commits the Run lock/fence, forms and pause invalidation,
+            # then publishes history and retires resources outside its writer.
+            from extensions.ext_redis import redis_client
+            from services.app_task_service import AppTaskService
+
+            AppTaskService.stop_workflow_run(
+                tenant_id=self.commands.actor.tenant_id,
+                app_id=owned.app_id,
+                run_id=binding["native_run_id"],
+                app_mode=mode,
+                owner=(CreatorUserRole.ACCOUNT, self.commands.actor.account_id),
+                redis=redis_client,
+            )
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            facts = stop_control_facts(sql, request=request, ref=ref)
+            if facts is None:
+                return False
+            native, _, source, current = facts
+            if native.status != "stopped" or current != binding:
+                return False
+            if sql.scalar(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == native.id)) is not None:
+                return False
+            saved = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+            if saved != [observation]:
+                return False
+            source.state = "cancelled"  # Preserve its original lease and delivery audit.
+            state = invocation_state(sql, ref, owned.tenant_id)
+            state.pending_ids, state.wait_reason = [], None
+            state.outcome = NativeWorkflowOutcome(
+                status="stopped",
+                ref=ref,
+                native_run_id=native.id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code="native_cancelled",
+                wait_reason=None,
+                native_status="stopped",
+                output_result_ref=None,
+            ).model_dump(mode="json")
+            request.state = "sealed"
+            return True
+
+    def settle_terminal(self, *, ref):
+        """Seal consumed cancellation or observe a revoked restore guard's child.
+
+        A consumed native event needs SQL only. If revocation prevented event
+        consumption, read only the original child outside the writer, then bind
+        its actual cancelled status to the rechecked SQL snapshot. No Graphon
+        producer metadata or physical cleanup acknowledgement is manufactured.
+        """
+        with self.loader.session_factory() as sql:
+            self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            state = invocation_state(sql, ref, request.tenant_id)
+            if state.outcome is not None:
+                outcome = _terminal_proof(sql, request=request, ref=ref)
+                return outcome is not None and outcome.reason_code == "native_cancelled"
+            proof = cancelled_parent_proof(
+                sql, request=request, ref=ref, allow_claimed=True, allow_unobserved_guard=True
+            )
+            if proof is None:
+                return False
+            _, child, _ = proof
+        observation = None
+        if child.get("needs_observation"):
+            binding = child.get("observation_binding")
+            if not isinstance(binding, dict):
+                return False
+            status = self.commands.backend.client.get_run_sync(child["run_id"])
+            status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
+            if status.run_id != child["run_id"] or status.status != "cancelled":
+                return False
+            observation = {
+                **binding,
+                "status": "cancelled",
+                "backend_updated_at": status.updated_at.isoformat(),
+            }
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if state.outcome is not None:
+                outcome = _terminal_proof(sql, request=request, ref=ref)
+                return outcome is not None and outcome.reason_code == "native_cancelled"
+            proof = cancelled_parent_proof(
+                sql, request=request, ref=ref, allow_claimed=True, allow_unobserved_guard=True
+            )
+            if proof is None:
+                return False
+            native, child, source = proof
+            if child.get("needs_observation"):
+                binding = child.get("observation_binding")
+                if (
+                    not isinstance(binding, dict)
+                    or observation is None
+                    or any(observation.get(key) != value for key, value in binding.items())
+                ):
+                    return False
+                request.observations = [*request.observations, {CANCELLED_CHILD_OBSERVATION: observation}]
+            if source is not None:
+                source.state = "completed"
+            state.pending_ids, state.wait_reason = [], None
+            state.outcome = NativeWorkflowOutcome(
+                status="stopped",
+                ref=ref,
+                native_run_id=native.id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code="native_cancelled",
+                wait_reason=None,
+                native_status="failed",
+                output_result_ref=None,
+            ).model_dump(mode="json")
+            request.state = "sealed"
+            return True

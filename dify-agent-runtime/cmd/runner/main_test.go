@@ -359,3 +359,10 @@ func assertExitArtifactsAbsent(t *testing.T, jobDir string) {
 		}
 	}
 }
+
+func TestNativeScopeChildArgumentsRemainTrusted(t *testing.T) {
+	args := nativeChildArgs("/control/worker.json", "/control/spool/job/script", "/workspace")
+	if len(args) != 5 || args[0] != "--exec" || args[1] != "--native-scope" || args[2] != "/control/worker.json" {
+		t.Fatalf("native scope marker lost: %v", args)
+	}
+}
