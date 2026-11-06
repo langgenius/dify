@@ -12,7 +12,7 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateAllLastRun,
@@ -30,7 +30,7 @@ export type HeaderInRestoringProps = {
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(

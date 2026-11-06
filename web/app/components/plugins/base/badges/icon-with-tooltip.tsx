@@ -1,13 +1,13 @@
 import type { FC } from 'react'
+import type { ResolvedTheme } from '@/features/theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { Theme } from '@/types/app'
 
 type IconWithTooltipProps = {
   className?: string
   popupContent?: string
-  theme: Theme
+  theme: ResolvedTheme
   lightIconClassName: string
   darkIconClassName: string
 }
@@ -19,7 +19,7 @@ const IconWithTooltip: FC<IconWithTooltipProps> = ({
   lightIconClassName,
   darkIconClassName,
 }) => {
-  const isDark = theme === Theme.dark
+  const isDark = theme === 'dark'
   const iconClassName = cn(isDark ? darkIconClassName : lightIconClassName, 'size-5', className)
   const icon = (
     <span className="flex shrink-0 items-center justify-center">

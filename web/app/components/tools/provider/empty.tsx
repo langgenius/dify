@@ -4,7 +4,7 @@ import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { ToolType } from '../../workflow/block-selector/types'
 
@@ -32,7 +32,7 @@ const getLink = (type?: ToolType) => {
 const Empty = ({ type, isAgent }: Props) => {
   const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const hasLink = type === ToolType.Custom || type === ToolType.MCP
   const renderType = isAgent ? ('agent' as const) : type

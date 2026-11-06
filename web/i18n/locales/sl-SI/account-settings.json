@@ -1,10 +1,5 @@
 {
   "account.account": "Račun",
-  "account.appearanceDark": "Temno",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Videz",
-  "account.appearanceLight": "Svetlo",
-  "account.appearanceSystem": "Sistem",
   "account.changeEmail.authTip": "Ko bo vaš e-poštni naslov spremenjen, se računi Google ali GitHub, povezani z vašim starim e-poštnim naslovom, ne bodo mogli več prijaviti v ta račun.",
   "account.changeEmail.changeTo": "Spremeni v {{email}}",
   "account.changeEmail.codeLabel": "Koda za potrditev",

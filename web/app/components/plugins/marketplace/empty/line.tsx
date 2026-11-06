@@ -1,12 +1,12 @@
 'use client'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type LineProps = {
   className?: string
 }
 
 const Line = ({ className }: LineProps) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const isDarkMode = theme === 'dark'
 
   if (isDarkMode) {

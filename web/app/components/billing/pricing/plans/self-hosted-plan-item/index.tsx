@@ -3,8 +3,7 @@ import type { SelfHostedPlan } from '../../../config'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { SELF_HOSTED_PLAN_URLS } from '../../../config'
 import Community from '../../assets/community'
 import Enterprise from '../../assets/enterprise'
@@ -41,7 +40,7 @@ const STYLE_MAP = {
 
 export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
   const { t } = useTranslation(['billing'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'community'
   const isPremiumPlan = plan === 'premium'
@@ -79,7 +78,7 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
           data-plan={plan}
           className={cn(
             buttonVariants({ variant: 'tertiary', size: null }),
-            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap',
+            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 ps-5 pe-4 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap',
           )}
         >
           <span className="flex min-w-0 grow flex-wrap items-center gap-x-2 xl:flex-nowrap">
@@ -92,7 +91,7 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
             )}
             {isPremiumPlan && (
               <span aria-hidden className="pt-1.75 pb-px">
-                {theme === Theme.light ? (
+                {theme === 'light' ? (
                   <span
                     aria-hidden
                     className="i-custom-public-billing-aws-marketplace-light h-6 w-31.5"
