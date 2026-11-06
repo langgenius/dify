@@ -282,6 +282,59 @@ def test_create_delegates_typed_settings(datasets: DatasetServiceFake) -> None:
     assert values["retrieval_model"] is None
 
 
+def test_create_with_retrieval_model_reaches_application_service(
+    monkeypatch: pytest.MonkeyPatch,
+    documents: DocumentServiceFake,
+) -> None:
+    from controllers.service_api.dataset import dataset as controller
+
+    operations = create_autospec(DatasetOperations, instance=True, spec_set=True)
+    operations.get_dataset.return_value = dataset_detail_result()
+    mutations = create_autospec(DatasetMutationStore, instance=True, spec_set=True)
+    mutations.create_dataset.return_value = str(DATASET_ID)
+    service = DatasetApplicationService(
+        dataset_access=create_autospec(DatasetAccess, instance=True, spec_set=True),
+        operations=operations,
+        mutations=mutations,
+        models=KnowledgeModelConfigurationGateway(),
+        cleanup_dataset=lambda _cleanup: None,
+        rbac_enabled=False,
+        service_api_url="",
+        vector_store="milvus",
+        tidb_fulltext=False,
+    )
+    monkeypatch.setattr(
+        controller,
+        "application_services",
+        lambda: ApplicationServicesFake(KnowledgeFake(datasets=service, documents=documents)),
+    )
+    payload = DatasetCreatePayload(
+        name="Knowledge",
+        retrieval_model={
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "top_k": 2,
+            "score_threshold_enabled": False,
+        },
+    )
+
+    response, status = unwrap(controller.DatasetListApi.post)(controller.DatasetListApi(), payload, CONTEXT)
+
+    assert (response, status) == (serialized_dataset_detail(operations.get_dataset.return_value), 200)
+    mutation = mutations.create_dataset.call_args.args[0]
+    assert mutation.retrieval_model == {
+        "search_method": "semantic_search",
+        "reranking_enable": False,
+        "reranking_model": None,
+        "reranking_mode": None,
+        "top_k": 2,
+        "score_threshold_enabled": False,
+        "score_threshold": None,
+        "weights": None,
+        "metadata_filtering_conditions": None,
+    }
+
+
 def test_create_translates_duplicate_name(datasets: DatasetServiceFake) -> None:
     from controllers.service_api.dataset.dataset import DatasetListApi
 

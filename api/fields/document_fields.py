@@ -22,7 +22,11 @@ def normalize_enum(value: Any) -> Any:
 def public_document_source_info(value: Any) -> Any:
     """Keep indexing cleanup bookkeeping out of document source responses."""
     if isinstance(value, dict):
-        return {key: item for key, item in value.items() if key != "_pending_upload_cleanup_ids"}
+        return {
+            key: item
+            for key, item in value.items()
+            if key not in {"_pending_upload_cleanup_ids", "_notion_sync_recoverable_index"}
+        }
     return value
 
 

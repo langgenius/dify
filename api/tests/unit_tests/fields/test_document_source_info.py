@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from controllers.console.datasets.datasets_document import DocumentDetailResponse as ConsoleDocumentDetailResponse
-from fields.document_fields import DocumentResponse, DocumentSourceDetailResponse
+from fields.document_fields import DocumentResponse, DocumentSourceDetailResponse, public_document_source_info
 from fields.service_api.document import DocumentDetailResponse as ServiceAPIDocumentDetailResponse
 from libs.helper import dump_response
 
@@ -14,6 +14,10 @@ _PUBLIC_SOURCE_INFO: dict[str, object] = {
     "upload_file_id": "upload-file-1",
 }
 _PRIVATE_CLEANUP_IDS = ["replaced-upload-1", "replaced-upload-2"]
+_PRIVATE_SOURCE_INFO: dict[str, object] = {
+    "_pending_upload_cleanup_ids": _PRIVATE_CLEANUP_IDS,
+    "_notion_sync_recoverable_index": True,
+}
 
 
 @pytest.mark.parametrize(
@@ -24,7 +28,7 @@ _PRIVATE_CLEANUP_IDS = ["replaced-upload-1", "replaced-upload-2"]
             {
                 "id": "document-1",
                 "name": "Document",
-                "data_source_info": {**_PUBLIC_SOURCE_INFO, "_pending_upload_cleanup_ids": _PRIVATE_CLEANUP_IDS},
+                "data_source_info": {**_PUBLIC_SOURCE_INFO, **_PRIVATE_SOURCE_INFO},
                 "data_source_detail_dict": {},
             },
             "data_source_info",
@@ -33,7 +37,7 @@ _PRIVATE_CLEANUP_IDS = ["replaced-upload-1", "replaced-upload-2"]
             ConsoleDocumentDetailResponse,
             {
                 "id": "document-1",
-                "data_source_info": {**_PUBLIC_SOURCE_INFO, "_pending_upload_cleanup_ids": _PRIVATE_CLEANUP_IDS},
+                "data_source_info": {**_PUBLIC_SOURCE_INFO, **_PRIVATE_SOURCE_INFO},
             },
             "data_source_info",
         ),
@@ -41,13 +45,13 @@ _PRIVATE_CLEANUP_IDS = ["replaced-upload-1", "replaced-upload-2"]
             ServiceAPIDocumentDetailResponse,
             {
                 "id": "document-1",
-                "data_source_info": {**_PUBLIC_SOURCE_INFO, "_pending_upload_cleanup_ids": _PRIVATE_CLEANUP_IDS},
+                "data_source_info": {**_PUBLIC_SOURCE_INFO, **_PRIVATE_SOURCE_INFO},
             },
             "data_source_info",
         ),
         (
             DocumentSourceDetailResponse,
-            {**_PUBLIC_SOURCE_INFO, "_pending_upload_cleanup_ids": _PRIVATE_CLEANUP_IDS},
+            {**_PUBLIC_SOURCE_INFO, **_PRIVATE_SOURCE_INFO},
             None,
         ),
     ],
@@ -64,3 +68,13 @@ def test_document_source_responses_do_not_expose_cleanup_bookkeeping(
 
     assert public_source == _PUBLIC_SOURCE_INFO
     assert payload == original_payload
+
+
+def test_public_document_source_info_filters_internal_bookkeeping_without_mutating_input() -> None:
+    source_info = {**_PUBLIC_SOURCE_INFO, **_PRIVATE_SOURCE_INFO}
+    original_source_info = deepcopy(source_info)
+
+    public_source_info = public_document_source_info(source_info)
+
+    assert public_source_info == _PUBLIC_SOURCE_INFO
+    assert source_info == original_source_info

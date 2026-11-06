@@ -184,16 +184,23 @@ def test_segment_detail_handlers_delegate_without_persistence(app: Flask) -> Non
     assert response["data"]["id"] == str(_SEGMENT_ID)
 
     method = unwrap(DatasetSegmentApi.post)
-    payload = SegmentUpdatePayload(segment=SegmentUpdateArgs(content="updated"))
+    payload = SegmentUpdatePayload(segment=SegmentUpdateArgs(content="updated", enabled=True))
     with app.test_request_context("/", method="POST"), _services(segments):
         response, status = method(DatasetSegmentApi(), payload, _context(), _DATASET_ID, _DOCUMENT_ID, _SEGMENT_ID)
     assert status == 200
-    assert segments.update_segment.call_args.kwargs["values"] == {"content": "updated"}
+    assert segments.update_segment.call_args.kwargs["values"] == {"content": "updated", "enabled": True}
 
 
-def test_update_payload_rejects_status_and_content_mutation() -> None:
+def test_update_payload_rejects_disable_and_content_mutation() -> None:
     with pytest.raises(ValidationError, match="Enabled cannot be updated together"):
         SegmentUpdatePayload(segment=SegmentUpdateArgs(enabled=False, content="ignored"))
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_payload_allows_status_only_mutation(enabled: bool) -> None:
+    payload = SegmentUpdatePayload(segment=SegmentUpdateArgs(enabled=enabled))
+
+    assert payload.segment.model_dump(exclude_unset=True) == {"enabled": enabled}
 
 
 def test_existing_segment_update_does_not_require_paid_segment_plan() -> None:

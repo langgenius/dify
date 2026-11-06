@@ -889,7 +889,138 @@ def test_unchanged_first_notion_index_requires_real_indexing(
 def test_unchanged_notion_sync_restores_a_previously_completed_document(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    document = _document("document-1", status=IndexingStatus.WAITING)
+    document = _document("document-1", status=IndexingStatus.COMPLETED)
+    document.completed_at = datetime(2026, 1, 1)
+    document.data_source_info = json.dumps({"last_edited_time": "2026-01-01T00:00:00Z"})
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    repository.sync_notion(ref)
+    with sqlite_session_factory() as session:
+        expected_source_info = session.get_one(Document, document.id).data_source_info_dict
+
+    outcome = repository.complete_unchanged_notion_sync(
+        ref,
+        expected_source_info=expected_source_info,
+    )
+
+    assert outcome == "completed"
+    with sqlite_session_factory() as session:
+        persisted = session.get_one(Document, document.id)
+        assert persisted.indexing_status == IndexingStatus.COMPLETED
+        assert persisted.data_source_info_dict == {"last_edited_time": "2026-01-01T00:00:00Z"}
+
+
+@pytest.mark.parametrize(
+    ("completed_at", "expected_outcome", "expected_status"),
+    [
+        (datetime(2026, 1, 1), "restored", IndexingStatus.COMPLETED),
+        (None, "failed", IndexingStatus.ERROR),
+    ],
+)
+def test_notion_preflight_failure_resolves_only_the_matching_waiting_attempt(
+    sqlite_session_factory: sessionmaker[Session],
+    completed_at: datetime | None,
+    expected_outcome: str,
+    expected_status: IndexingStatus,
+) -> None:
+    status = IndexingStatus.COMPLETED if completed_at is not None else IndexingStatus.WAITING
+    document = _document("document-1", status=status)
+    document.completed_at = completed_at
+    document.data_source_info = json.dumps({"last_edited_time": "2026-01-01T00:00:00Z"})
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    repository.sync_notion(ref)
+    if completed_at is not None:
+        # Duplicate dispatch admission must preserve the same healthy waiting
+        # attempt rather than erase its recovery marker.
+        repository.sync_notion(ref)
+    with sqlite_session_factory() as session:
+        expected_source_info = session.get_one(Document, document.id).data_source_info_dict
+
+    outcome = repository.resolve_notion_sync_preflight_failure(
+        ref,
+        expected_source_info=expected_source_info,
+        error="Notion preflight failed.",
+    )
+
+    assert outcome == expected_outcome
+    with sqlite_session_factory() as session:
+        persisted = session.get_one(Document, document.id)
+        assert persisted.indexing_status == expected_status
+        assert persisted.completed_at == completed_at
+        assert persisted.error == (None if completed_at is not None else "Notion preflight failed.")
+        assert persisted.data_source_info_dict == {"last_edited_time": "2026-01-01T00:00:00Z"}
+
+
+def test_notion_cleanup_boundary_discards_recovery_eligibility_before_destructive_work(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    document = _document("document-1", status=IndexingStatus.COMPLETED)
+    document.completed_at = datetime(2026, 1, 1)
+    document.data_source_info = json.dumps({"last_edited_time": "2026-01-01T00:00:00Z"})
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    repository.sync_notion(ref)
+    with sqlite_session_factory() as session:
+        expected_source_info = session.get_one(Document, document.id).data_source_info_dict
+
+    outcome = repository.begin_notion_sync_cleanup(ref, expected_source_info=expected_source_info)
+
+    assert outcome == "cleaning"
+    with sqlite_session_factory() as session:
+        persisted = session.get_one(Document, document.id)
+        assert persisted.indexing_status == IndexingStatus.CLEANING
+        assert persisted.completed_at is None
+        assert persisted.data_source_info_dict == {"last_edited_time": "2026-01-01T00:00:00Z"}
+
+
+@pytest.mark.parametrize("stale_kind", ["source", "status"])
+def test_notion_cleanup_boundary_does_not_overwrite_newer_state(
+    sqlite_session_factory: sessionmaker[Session],
+    stale_kind: str,
+) -> None:
+    document = _document("document-1", status=IndexingStatus.COMPLETED)
+    document.completed_at = datetime(2026, 1, 1)
+    document.data_source_info = json.dumps({"notion_page_id": "original-page"})
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    repository.sync_notion(ref)
+    with sqlite_session_factory.begin() as session:
+        persisted = session.get_one(Document, document.id)
+        expected_source_info = persisted.data_source_info_dict
+        if stale_kind == "source":
+            source_info = persisted.data_source_info_dict
+            source_info["notion_page_id"] = "replacement-page"
+            persisted.data_source_info = json.dumps(source_info)
+        else:
+            persisted.indexing_status = IndexingStatus.PARSING
+
+    outcome = repository.begin_notion_sync_cleanup(ref, expected_source_info=expected_source_info)
+
+    assert outcome == "stale"
+    with sqlite_session_factory() as session:
+        persisted = session.get_one(Document, document.id)
+        assert persisted.indexing_status == (
+            IndexingStatus.PARSING if stale_kind == "status" else IndexingStatus.WAITING
+        )
+        assert persisted.completed_at == datetime(2026, 1, 1)
+        assert persisted.data_source_info_dict["notion_page_id"] == (
+            "replacement-page" if stale_kind == "source" else "original-page"
+        )
+
+
+def test_error_notion_sync_with_stale_completed_at_is_not_recoverable(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    document = _document("document-1", status=IndexingStatus.ERROR)
     document.completed_at = datetime(2026, 1, 1)
     document.data_source_info = json.dumps({"last_edited_time": "2026-01-01T00:00:00Z"})
     with sqlite_session_factory.begin() as session:
@@ -897,15 +1028,55 @@ def test_unchanged_notion_sync_restores_a_previously_completed_document(
     repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
 
-    outcome = repository.complete_unchanged_notion_sync(
+    repository.sync_notion(ref)
+    with sqlite_session_factory() as session:
+        queued = session.get_one(Document, document.id)
+        expected_source_info = queued.data_source_info_dict
+        assert queued.indexing_status == IndexingStatus.WAITING
+        assert queued.completed_at is None
+        assert queued.data_source_info_dict == {"last_edited_time": "2026-01-01T00:00:00Z"}
+
+    outcome = repository.resolve_notion_sync_preflight_failure(
         ref,
-        expected_source_info={"last_edited_time": "2026-01-01T00:00:00Z"},
+        expected_source_info=expected_source_info,
+        error="Notion preflight failed.",
     )
 
-    assert outcome == "completed"
+    assert outcome == "failed"
     with sqlite_session_factory() as session:
         persisted = session.get_one(Document, document.id)
-        assert persisted.indexing_status == IndexingStatus.COMPLETED
+        assert persisted.indexing_status == IndexingStatus.ERROR
+        assert persisted.completed_at is None
+        assert persisted.error == "Notion preflight failed."
+
+
+@pytest.mark.parametrize("stale_kind", ["source", "status"])
+def test_notion_preflight_failure_does_not_overwrite_newer_state(
+    sqlite_session_factory: sessionmaker[Session],
+    stale_kind: str,
+) -> None:
+    status = IndexingStatus.PARSING if stale_kind == "status" else IndexingStatus.WAITING
+    document = _document("document-1", status=status)
+    document.completed_at = datetime(2026, 1, 1)
+    source_page = "replacement-page" if stale_kind == "source" else "original-page"
+    document.data_source_info = json.dumps({"notion_page_id": source_page})
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+
+    outcome = repository.resolve_notion_sync_preflight_failure(
+        ref,
+        expected_source_info={"notion_page_id": "original-page"},
+        error="Notion preflight failed.",
+    )
+
+    assert outcome == "stale"
+    with sqlite_session_factory() as session:
+        persisted = session.get_one(Document, document.id)
+        assert persisted.indexing_status == status
+        assert persisted.data_source_info_dict["notion_page_id"] == source_page
+        assert persisted.error is None
 
 
 def test_indexing_transitions_preserve_pause(sqlite_session_factory: sessionmaker[Session]) -> None:

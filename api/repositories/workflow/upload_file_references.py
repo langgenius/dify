@@ -1,6 +1,7 @@
 """Workflow-domain references to shared upload files."""
 
 import json
+import logging
 from collections.abc import Iterable, Mapping, Sequence
 
 from sqlalchemy import select
@@ -22,6 +23,14 @@ from repositories.file.reference_queries import candidate_batches, payload_refer
 from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.entities.upload_file import UploadFileReferenceCandidate
 from services.file_reference_parser import referenced_candidate_ids, trusted_upload_file_ids
+
+logger = logging.getLogger(__name__)
+
+# Fixed per-check budgets bound the SQL owner scan and the payload bytes this
+# repository accumulates. The row queries may read one extra overflow-probe
+# row, and a storage adapter may buffer data internally before yielding chunks.
+_OPAQUE_PAYLOAD_ROW_LIMIT = 100
+_OPAQUE_PAYLOAD_BYTE_LIMIT = 16 * 1024 * 1024
 
 
 def _decode_payload(payload: object) -> object:
@@ -75,20 +84,60 @@ def lock_new_workflow_upload_file_references(
     )
 
 
-def _load_opaque_payload(key: str) -> object | None:
+def _load_opaque_payload(
+    key: str,
+    *,
+    byte_budget: int,
+) -> tuple[object | None, int, bool]:
+    """Accumulate one streamed payload within the repository byte budget.
+
+    The final boolean reports whether the complete object fit in the budget. A
+    missing object keeps its historical meaning: it contributes no reference.
+    Other storage errors propagate so reclamation fails closed. Whether the
+    object is also streamed at the transport layer is the storage adapter's
+    responsibility; some adapters may buffer before yielding their first chunk.
+    """
+
+    chunks: list[bytes] = []
+    bytes_read = 0
+    exhausted = False
+    within_budget = True
+    payload_stream = None
     try:
-        payload = storage.load(key)
+        payload_stream = storage.load_stream(key)
+        while not exhausted and within_budget:
+            try:
+                chunk = next(payload_stream)
+            except StopIteration:
+                exhausted = True
+            else:
+                bytes_read += len(chunk)
+                within_budget = bytes_read <= byte_budget
+                if within_budget:
+                    chunks.append(chunk)
     except FileNotFoundError:
-        return None
-    return _decode_payload(payload.decode())
+        return None, bytes_read, True
+    finally:
+        if payload_stream is not None:
+            payload_stream.close()
+
+    if not within_budget:
+        return None, bytes_read, False
+    return _decode_payload(b"".join(chunks).decode()), bytes_read, True
 
 
 def _opaque_payload_keys(
     session: Session,
     *,
     tenant_id: str,
-) -> tuple[str, ...]:
-    """Lock and return every live opaque workflow payload for one tenant."""
+) -> tuple[tuple[str, ...], bool]:
+    """Lock a bounded, complete list of live opaque payload keys for a tenant.
+
+    All three owner sources share one row budget. The extra row requested from
+    each source proves whether the list is complete before any object is read.
+    If the budget is exceeded, callers must conservatively retain candidates;
+    large tenants may therefore defer otherwise-safe file reclamation.
+    """
 
     execution_query = (
         select(UploadFile.key)
@@ -122,12 +171,27 @@ def _opaque_payload_keys(
         .where(WorkflowRun.tenant_id == tenant_id, WorkflowPause.resumed_at.is_(None))
         .with_for_update(read=True, nowait=True)
     )
-    keys = (
-        *session.scalars(execution_query),
-        *session.scalars(draft_query),
-        *session.scalars(pause_query),
-    )
-    return tuple(dict.fromkeys(keys))
+    queries = (execution_query, draft_query, pause_query)
+    keys: list[str] = []
+    query_index = 0
+    complete = True
+    while complete and query_index < len(queries):
+        remaining = _OPAQUE_PAYLOAD_ROW_LIMIT - len(keys)
+        source_keys = tuple(session.scalars(queries[query_index].limit(remaining + 1)))
+        complete = len(source_keys) <= remaining
+        if complete:
+            keys.extend(source_keys)
+        query_index += 1
+
+    if not complete:
+        logger.warning(
+            "Opaque workflow payload scan exceeded the row limit; retaining upload-file candidates, "
+            "tenant_id=%s, row_limit=%s",
+            tenant_id,
+            _OPAQUE_PAYLOAD_ROW_LIMIT,
+        )
+        return (), False
+    return tuple(dict.fromkeys(keys)), True
 
 
 def _candidate_ids_maybe_referenced_by_opaque_payloads(
@@ -136,20 +200,51 @@ def _candidate_ids_maybe_referenced_by_opaque_payloads(
     tenant_id: str,
     candidates: Sequence[UploadFileReferenceCandidate],
 ) -> set[str]:
-    """Resolve references from actual offload and pause-state payloads."""
+    """Resolve opaque references within row and repository-buffer budgets.
+
+    Exceeding either budget treats every unresolved candidate as referenced.
+    This fail-closed choice bounds the SQL owner scan and bytes accumulated by
+    this repository at the cost of deferring deletion for tenants with too much
+    live opaque workflow state. It does not guarantee that every storage
+    adapter streams its transport without internal buffering.
+    """
 
     referenced: set[str] = set()
     remaining = tuple(candidates)
+    keys, key_list_complete = _opaque_payload_keys(session, tenant_id=tenant_id)
+    if not key_list_complete:
+        return {candidate.id for candidate in remaining}
+
     # Keep the candidate and owner-row locks while reading immutable payloads;
     # releasing either side before parsing would reopen the attach/delete race.
-    for key in _opaque_payload_keys(session, tenant_id=tenant_id):
-        payload = _load_opaque_payload(key)
-        if payload is None:
-            continue
-        referenced.update(referenced_candidate_ids((payload,), remaining))
-        remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
-        if not remaining:
-            break
+    key_index = 0
+    bytes_read = 0
+    scan_complete = True
+    while scan_complete and remaining and key_index < len(keys):
+        byte_budget = _OPAQUE_PAYLOAD_BYTE_LIMIT - bytes_read
+        if byte_budget <= 0:
+            scan_complete = False
+        else:
+            payload, payload_bytes_read, payload_complete = _load_opaque_payload(
+                keys[key_index],
+                byte_budget=byte_budget,
+            )
+            bytes_read += payload_bytes_read
+            scan_complete = payload_complete
+            if payload is not None:
+                referenced.update(referenced_candidate_ids((payload,), remaining))
+                remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
+        key_index += 1
+
+    if not scan_complete:
+        logger.warning(
+            "Opaque workflow payload scan exceeded the repository byte-buffer limit; "
+            "retaining unresolved upload-file candidates, "
+            "tenant_id=%s, byte_limit=%s",
+            tenant_id,
+            _OPAQUE_PAYLOAD_BYTE_LIMIT,
+        )
+        referenced.update(candidate.id for candidate in remaining)
     return referenced
 
 
@@ -169,6 +264,9 @@ def get_referenced_upload_file_ids(
         tenant_id=tenant_id,
         candidates=candidates,
     )
+    if all(candidate.id in referenced for candidate in candidates):
+        return referenced
+
     for batch in candidate_batches(candidates):
         batch_ids = tuple(candidate.id for candidate in batch)
         referenced.update(

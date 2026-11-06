@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, Literal
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -113,6 +113,7 @@ logger = logging.getLogger(__name__)
 
 _MAPPING_ADAPTER = TypeAdapter(dict[str, object])
 _PENDING_NOTION_SOURCE_VERSION_KEY = "pending_last_edited_time"
+_NOTION_SYNC_RECOVERABLE_INDEX_KEY = "_notion_sync_recoverable_index"
 
 
 @dataclass(frozen=True)
@@ -1298,6 +1299,24 @@ class SQLAlchemyDocumentRepository:
                 raise DocumentPersistenceArchivedError("Document is archived.")
             if document.data_source_type != DataSourceType.NOTION_IMPORT:
                 raise DocumentPersistenceInvalidStateError("Document is not a Notion document.")
+            source_info = dict(_mapping(document.data_source_info) or {})
+            recoverable_index = document.completed_at is not None and (
+                document.indexing_status == IndexingStatus.COMPLETED
+                or (
+                    document.indexing_status == IndexingStatus.WAITING
+                    and source_info.get(_NOTION_SYNC_RECOVERABLE_INDEX_KEY) is True
+                )
+            )
+            if recoverable_index:
+                source_info[_NOTION_SYNC_RECOVERABLE_INDEX_KEY] = True
+            else:
+                # ``completed_at`` predates the current attempt and may survive
+                # an older failed cleanup. It is not evidence that the vector
+                # index is still published unless the current waiting attempt
+                # already carries the explicit recovery marker.
+                source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
+                document.completed_at = None
+            document.data_source_info = json.dumps(source_info, ensure_ascii=False)
             document.indexing_status = IndexingStatus.WAITING
             document.error = None
             session.commit()
@@ -1326,12 +1345,94 @@ class SQLAlchemyDocumentRepository:
             source_info = dict(_mapping(document.data_source_info) or {})
             if source_info != dict(expected_source_info):
                 return "stale"
-            if document.completed_at is None:
+            if document.completed_at is None or source_info.get(_NOTION_SYNC_RECOVERABLE_INDEX_KEY) is not True:
                 return "requires_indexing"
+            source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
+            document.data_source_info = json.dumps(source_info, ensure_ascii=False)
             document.indexing_status = IndexingStatus.COMPLETED
             document.completed_at = naive_utc_now()
             document.error = None
             return "completed"
+
+    def begin_notion_sync_cleanup(
+        self,
+        ref: DocumentRef,
+        *,
+        expected_source_info: Mapping[str, object],
+    ) -> Literal["cleaning", "stale"]:
+        """Persist the point after which a previous Notion index is not recoverable.
+
+        The caller must still own the indexing lease and invoke this method
+        before removing vector entries or segments. A matching WAITING attempt
+        becomes CLEANING and loses both its recovery marker and ``completed_at``;
+        a newer source or state remains untouched.
+        """
+
+        with self._session_factory.begin() as session:
+            document = _lock_document(session, ref)
+            if document is None:
+                return "stale"
+            if (
+                document.data_source_type != DataSourceType.NOTION_IMPORT
+                or document.archived
+                or not document.enabled
+                or document.is_paused
+                or document.indexing_status != IndexingStatus.WAITING
+            ):
+                return "stale"
+            source_info = dict(_mapping(document.data_source_info) or {})
+            if source_info != dict(expected_source_info):
+                return "stale"
+            source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
+            document.data_source_info = json.dumps(source_info, ensure_ascii=False)
+            document.indexing_status = IndexingStatus.CLEANING
+            document.completed_at = None
+            document.error = None
+            return "cleaning"
+
+    def resolve_notion_sync_preflight_failure(
+        self,
+        ref: DocumentRef,
+        *,
+        expected_source_info: Mapping[str, object],
+        error: str,
+    ) -> Literal["restored", "failed", "stale"]:
+        """Conditionally finish a Notion sync that failed before index cleanup.
+
+        Preconditions: the caller still owns the document indexing lease and no
+        existing segments or index entries have been removed. Postconditions: a
+        matching WAITING document with a previously completed index becomes
+        COMPLETED again; a matching first index becomes ERROR; a newer source or
+        state is unchanged and reports ``stale``. The tenant and dataset owner
+        chain is locked for every update.
+        """
+
+        with self._session_factory.begin() as session:
+            document = _lock_document(session, ref)
+            if document is None:
+                return "stale"
+            if (
+                document.data_source_type != DataSourceType.NOTION_IMPORT
+                or document.archived
+                or not document.enabled
+                or document.is_paused
+                or document.indexing_status != IndexingStatus.WAITING
+            ):
+                return "stale"
+            source_info = dict(_mapping(document.data_source_info) or {})
+            if source_info != dict(expected_source_info):
+                return "stale"
+            had_recoverable_index = source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None) is True
+            recoverable_index = document.completed_at is not None and had_recoverable_index
+            document.data_source_info = json.dumps(source_info, ensure_ascii=False)
+            if recoverable_index:
+                document.indexing_status = IndexingStatus.COMPLETED
+                document.error = None
+                return "restored"
+            document.indexing_status = IndexingStatus.ERROR
+            document.error = error
+            document.stopped_at = naive_utc_now()
+            return "failed"
 
     def enable_summary(self, ref: DatasetRef, document_ids: Sequence[str]) -> int:
         unique_ids = tuple(dict.fromkeys(document_ids))
@@ -1631,6 +1732,7 @@ class SQLAlchemyDocumentRepository:
             document = require_indexing_document(session, ref, lock=True)
             if document.data_source_type == DataSourceType.NOTION_IMPORT:
                 source_info = dict(_mapping(document.data_source_info) or {})
+                source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
                 if source_version is None:
                     source_info.pop(_PENDING_NOTION_SOURCE_VERSION_KEY, None)
                 else:
@@ -1650,6 +1752,7 @@ class SQLAlchemyDocumentRepository:
             document = require_indexing_document(session, ref, lock=True)
             if document.data_source_type == DataSourceType.NOTION_IMPORT:
                 source_info = dict(_mapping(document.data_source_info) or {})
+                source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
                 pending_source_version = source_info.pop(_PENDING_NOTION_SOURCE_VERSION_KEY, None)
                 if isinstance(pending_source_version, str):
                     source_info["last_edited_time"] = pending_source_version
@@ -1666,6 +1769,7 @@ class SQLAlchemyDocumentRepository:
                 document = require_indexing_document(session, ref, lock=True)
                 if document.data_source_type == DataSourceType.NOTION_IMPORT:
                     source_info = dict(_mapping(document.data_source_info) or {})
+                    source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
                     source_info.pop(_PENDING_NOTION_SOURCE_VERSION_KEY, None)
                     document.data_source_info = json.dumps(source_info)
                 document.indexing_status = IndexingStatus.ERROR

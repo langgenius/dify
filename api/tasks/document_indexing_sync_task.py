@@ -15,7 +15,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.errors import DocumentIsPausedError
@@ -27,6 +27,140 @@ from services.knowledge.indexing.locks import (
 )
 
 logger = logging.getLogger(__name__)
+_NOTION_PREFLIGHT_ERROR = "Failed to inspect the Notion source before synchronization."
+_NOTION_CREDENTIAL_ERROR = "Datasource credential not found. Please reconnect your Notion workspace."
+
+
+def _validate_notion_last_edited_time(value: object) -> str:
+    """Return a nonempty textual Notion source version.
+
+    Preconditions: ``value`` is the untrusted value returned by Notion.
+    Postconditions: malformed values fail before any existing index is removed.
+    """
+
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Notion last_edited_time is missing or invalid.")
+    return value
+
+
+def _clean_and_reindex_notion_document(
+    *,
+    dataset_id: str,
+    document_id: str,
+    document_ref: DocumentRef,
+    index_type: str | None,
+    index_node_ids: list[str],
+    requires_initial_indexing: bool,
+    lease: KnowledgeIndexingLease,
+    start_at: float,
+) -> None:
+    """Idempotently finish a persisted Notion CLEANING phase.
+
+    Preconditions: the caller owns ``lease``, the document is already
+    persisted as CLEANING, and vector cleanup is safe to repeat. Postconditions:
+    vector and segment cleanup complete before PARSING plus segment deletion are
+    committed, then indexing runs; lease loss is re-raised and other non-pause
+    failures leave the document in ERROR.
+    """
+
+    try:
+        indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+        with session_factory.create_session() as session:
+            document = session.scalar(
+                select(Document)
+                .where(
+                    Document.id == document_id,
+                    Document.dataset_id == dataset_id,
+                    Document.tenant_id == document_ref.dataset.tenant_id,
+                )
+                .limit(1)
+            )
+            if not document:
+                logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                return
+            if document.indexing_status != IndexingStatus.CLEANING:
+                logger.info(click.style(f"Document {document_id} cleanup request is stale, skipping", fg="yellow"))
+                return
+
+            dataset = session.scalar(
+                select(Dataset)
+                .where(
+                    Dataset.id == dataset_id,
+                    Dataset.tenant_id == document_ref.dataset.tenant_id,
+                )
+                .limit(1)
+            )
+            # End the read transaction before the external vector cleanup.
+            session.commit()
+            if dataset and (not requires_initial_indexing or index_node_ids):
+                try:
+                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    lease.assert_owned()
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        session=session,
+                    )
+                    lease.assert_owned()
+                    session.commit()
+                    logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
+                except KnowledgeIndexingLeaseLostError:
+                    session.rollback()
+                    raise
+                except Exception:
+                    logger.exception("Failed to clean vector index for document %s", document_id)
+                    session.rollback()
+                    document = session.scalar(
+                        select(Document)
+                        .where(
+                            Document.id == document_id,
+                            Document.dataset_id == dataset_id,
+                            Document.tenant_id == document_ref.dataset.tenant_id,
+                        )
+                        .limit(1)
+                    )
+                    if not document:
+                        logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                        return
+
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            lease.assert_owned()
+            session.execute(segment_delete_stmt)
+            document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
+            # Make the parsing state and segment deletion visible before extraction.
+            session.commit()
+
+            logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
+
+            indexing_service.run(document_refs, owned_leases={document.id: lease})
+        end_at = time.perf_counter()
+        logger.info(click.style(f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
+    except DocumentIsPausedError as ex:
+        logger.info(click.style(str(ex), fg="yellow"))
+    except KnowledgeIndexingLeaseLostError:
+        raise
+    except Exception as e:
+        logger.exception("document_indexing_sync_task failed for document_id: %s", document_id)
+        with session_factory.create_session() as session:
+            document = session.scalar(
+                select(Document)
+                .where(
+                    Document.id == document_id,
+                    Document.dataset_id == dataset_id,
+                    Document.tenant_id == document_ref.dataset.tenant_id,
+                )
+                .limit(1)
+            )
+            if document:
+                document.indexing_status = IndexingStatus.ERROR
+                document.error = str(e)
+                document.stopped_at = naive_utc_now()
+                session.commit()
 
 
 @shared_task(
@@ -102,9 +236,20 @@ def _run_document_indexing_sync_task(
     # The document lease excludes an active indexer. An in-progress phase here
     # belongs to an interrupted attempt, whose source may already be unchanged
     # even though its index has not been published yet.
+    if resume_status == IndexingStatus.CLEANING:
+        _clean_and_reindex_notion_document(
+            dataset_id=dataset_id,
+            document_id=document_id,
+            document_ref=document_ref,
+            index_type=index_type,
+            index_node_ids=index_node_ids,
+            requires_initial_indexing=False,
+            lease=lease,
+            start_at=start_at,
+        )
+        return
     if resume_status in {
         IndexingStatus.PARSING,
-        IndexingStatus.CLEANING,
         IndexingStatus.SPLITTING,
         IndexingStatus.INDEXING,
     }:
@@ -119,6 +264,8 @@ def _run_document_indexing_sync_task(
         except DocumentIsPausedError as error:
             logger.info(click.style(str(error), fg="yellow"))
         return
+
+    document_repository = SQLAlchemyDocumentRepository(session_factory=session_factory.get_session_maker())
 
     # Resolve the persisted credential before constructing the extractor. An
     # explicit credential ID fails closed; only legacy sources without an ID
@@ -136,12 +283,13 @@ def _run_document_indexing_sync_task(
             credential_id,
         )
 
-        with session_factory.create_session() as session, session.begin():
-            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if document:
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = "Datasource credential not found. Please reconnect your Notion workspace."
-                document.stopped_at = naive_utc_now()
+        lease.assert_owned()
+        document_repository.resolve_notion_sync_preflight_failure(
+            document_ref,
+            expected_source_info=dict(data_source_info),
+            error=_NOTION_CREDENTIAL_ERROR,
+        )
+        lease.assert_owned()
         return
 
     loader = NotionExtractor(
@@ -150,11 +298,25 @@ def _run_document_indexing_sync_task(
         notion_access_token=notion_access_token,
     )
 
-    last_edited_time = loader.get_notion_last_edited_time()
+    try:
+        last_edited_time = _validate_notion_last_edited_time(loader.get_notion_last_edited_time())
+    except Exception:
+        logger.exception("Failed to inspect Notion source before sync: document_id=%s", document_id)
+        lease.assert_owned()
+        outcome = document_repository.resolve_notion_sync_preflight_failure(
+            document_ref,
+            expected_source_info=dict(data_source_info),
+            error=_NOTION_PREFLIGHT_ERROR,
+        )
+        lease.assert_owned()
+        logger.info(
+            "Notion sync preflight failure resolved: document_id=%s outcome=%s",
+            document_id,
+            outcome,
+        )
+        return
     requires_initial_indexing = False
     if last_edited_time == page_edited_time:
-        document_ref = DatasetRef(tenant_id, dataset_id).document(document_id)
-        document_repository = SQLAlchemyDocumentRepository(session_factory=session_factory.get_session_maker())
         unchanged_outcome = document_repository.complete_unchanged_notion_sync(
             document_ref,
             expected_source_info=dict(data_source_info),
@@ -175,67 +337,23 @@ def _run_document_indexing_sync_task(
     else:
         logger.info(click.style(f"Document {document_id} content changed, starting sync", fg="green"))
 
-    try:
-        indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
-        with session_factory.create_session() as session:
-            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if not document:
-                logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
-                return
+    lease.assert_owned()
+    cleanup_outcome = document_repository.begin_notion_sync_cleanup(
+        document_ref,
+        expected_source_info=dict(data_source_info),
+    )
+    lease.assert_owned()
+    if cleanup_outcome == "stale":
+        logger.info(click.style(f"Document {document_id} sync request is stale, skipping", fg="yellow"))
+        return
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            # End the read transaction before the external vector cleanup.
-            session.commit()
-            if dataset and (not requires_initial_indexing or index_node_ids):
-                try:
-                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
-                    lease.assert_owned()
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=True,
-                        session=session,
-                    )
-                    lease.assert_owned()
-                    session.commit()
-                    logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
-                except KnowledgeIndexingLeaseLostError:
-                    session.rollback()
-                    raise
-                except Exception:
-                    logger.exception("Failed to clean vector index for document %s", document_id)
-                    session.rollback()
-                    document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-                    if not document:
-                        logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
-                        return
-
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-
-            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-            lease.assert_owned()
-            session.execute(segment_delete_stmt)
-            document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
-            # Make the parsing state and segment deletion visible before extraction.
-            session.commit()
-
-            logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
-
-            indexing_service.run(document_refs, owned_leases={document.id: lease})
-        end_at = time.perf_counter()
-        logger.info(click.style(f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
-    except DocumentIsPausedError as ex:
-        logger.info(click.style(str(ex), fg="yellow"))
-    except KnowledgeIndexingLeaseLostError:
-        raise
-    except Exception as e:
-        logger.exception("document_indexing_sync_task failed for document_id: %s", document_id)
-        with session_factory.create_session() as session:
-            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if document:
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = str(e)
-                document.stopped_at = naive_utc_now()
-                session.commit()
+    _clean_and_reindex_notion_document(
+        dataset_id=dataset_id,
+        document_id=document_id,
+        document_ref=document_ref,
+        index_type=index_type,
+        index_node_ids=index_node_ids,
+        requires_initial_indexing=requires_initial_indexing,
+        lease=lease,
+        start_at=start_at,
+    )

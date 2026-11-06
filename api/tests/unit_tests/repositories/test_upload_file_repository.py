@@ -1,6 +1,6 @@
 import base64
 import json
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 
 import pytest
 from pymysql.err import OperationalError as PyMySQLOperationalError
@@ -37,6 +37,7 @@ from repositories.file.upload_file_repository import (
     UploadFileRepository,
     lock_and_validate_owned_upload_files_in_session,
 )
+from repositories.workflow import upload_file_references as workflow_upload_file_references
 from repositories.workflow.upload_file_references import get_referenced_upload_file_ids
 from services.entities.upload_file import UploadFileReferenceCandidate
 from services.errors.file import UploadFileReferenceNotFoundError
@@ -93,6 +94,66 @@ def _serialized_pause_state(reference: str) -> bytes:
         serialized_graph_runtime_state=json.dumps({"file": {"reference": reference}}),
     )
     return context.dumps().encode()
+
+
+def _stream_bytes(payload: bytes) -> Generator[bytes]:
+    yield payload
+
+
+def _add_execution_offload(session: Session, *, suffix: str, tenant_id: str = "tenant-1") -> str:
+    offload_upload = make_upload_file(
+        file_id=f"offload-{tenant_id}-{suffix}",
+        tenant_id=tenant_id,
+        key=f"uploads/{tenant_id}/offload-{suffix}.json",
+    )
+    execution = _workflow_execution()
+    execution.id = f"execution-{tenant_id}-{suffix}"
+    execution.tenant_id = tenant_id
+    execution.app_id = f"app-{tenant_id}"
+    execution.workflow_id = f"workflow-{tenant_id}"
+    execution.workflow_run_id = f"run-{tenant_id}-{suffix}"
+    execution.node_execution_id = f"node-execution-{tenant_id}-{suffix}"
+    session.add_all([offload_upload, execution])
+    session.flush()
+    session.add(
+        WorkflowNodeExecutionOffload(
+            tenant_id=tenant_id,
+            app_id=execution.app_id,
+            node_execution_id=execution.id,
+            type_=ExecutionOffLoadType.INPUTS,
+            file_id=offload_upload.id,
+        )
+    )
+    session.flush()
+    return offload_upload.key
+
+
+def _add_active_pause(session: Session, *, suffix: str, tenant_id: str = "tenant-1") -> str:
+    state_object_key = f"workflow-state-{tenant_id}-{suffix}.json"
+    run = WorkflowRun(
+        id=f"run-{tenant_id}-{suffix}",
+        tenant_id=tenant_id,
+        app_id=f"app-{tenant_id}",
+        workflow_id=f"workflow-{tenant_id}",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.PAUSED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+    session.add_all(
+        [
+            run,
+            WorkflowPause(
+                workflow_id=run.workflow_id,
+                workflow_run_id=run.id,
+                state_object_key=state_object_key,
+            ),
+        ]
+    )
+    session.flush()
+    return state_object_key
 
 
 def test_reference_lock_rejects_an_empty_file_id(sqlite_session: Session) -> None:
@@ -287,8 +348,10 @@ def test_live_execution_offload_retains_referenced_candidate(
     )
     sqlite_session.flush()
     monkeypatch.setattr(
-        "repositories.workflow.upload_file_references.storage.load",
-        lambda _key: json.dumps({"file": {"reference": build_file_reference(record_id=candidate.id)}}).encode(),
+        "repositories.workflow.upload_file_references.storage.load_stream",
+        lambda _key: _stream_bytes(
+            json.dumps({"file": {"reference": build_file_reference(record_id=candidate.id)}}).encode()
+        ),
     )
 
     assert get_referenced_upload_file_ids(
@@ -323,8 +386,10 @@ def test_unrelated_execution_offload_does_not_retain_candidate(
     )
     sqlite_session.flush()
     monkeypatch.setattr(
-        "repositories.workflow.upload_file_references.storage.load",
-        lambda _key: json.dumps({"file": {"reference": build_file_reference(record_id="unrelated")}}).encode(),
+        "repositories.workflow.upload_file_references.storage.load_stream",
+        lambda _key: _stream_bytes(
+            json.dumps({"file": {"reference": build_file_reference(record_id="unrelated")}}).encode()
+        ),
     )
 
     assert (
@@ -371,10 +436,10 @@ def test_bound_draft_offload_retains_referenced_candidate(
     sqlite_session.add(variable)
     sqlite_session.flush()
     monkeypatch.setattr(
-        "repositories.workflow.upload_file_references.storage.load",
-        lambda _key: dumps_with_segments(
-            {"file": {"reference": build_file_reference(record_id=candidate.id)}}
-        ).encode(),
+        "repositories.workflow.upload_file_references.storage.load_stream",
+        lambda _key: _stream_bytes(
+            dumps_with_segments({"file": {"reference": build_file_reference(record_id=candidate.id)}}).encode()
+        ),
     )
 
     assert get_referenced_upload_file_ids(
@@ -411,8 +476,8 @@ def test_active_pause_retains_referenced_candidate(sqlite_session: Session, monk
     )
     sqlite_session.flush()
     monkeypatch.setattr(
-        "repositories.workflow.upload_file_references.storage.load",
-        lambda _key: _serialized_pause_state(build_file_reference(record_id=candidate.id)),
+        "repositories.workflow.upload_file_references.storage.load_stream",
+        lambda _key: _stream_bytes(_serialized_pause_state(build_file_reference(record_id=candidate.id))),
     )
 
     assert get_referenced_upload_file_ids(
@@ -420,6 +485,244 @@ def test_active_pause_retains_referenced_candidate(sqlite_session: Session, monk
         tenant_id="tenant-1",
         candidates=(UploadFileReferenceCandidate(id=candidate.id, key=candidate.key),),
     ) == {candidate.id}
+
+
+def test_opaque_payload_scan_at_row_limit_is_complete_and_uses_sql_limits(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(workflow_upload_file_references, "_OPAQUE_PAYLOAD_ROW_LIMIT", 2)
+    candidate = make_upload_file(file_id="row-boundary-candidate", key="uploads/row-boundary.txt")
+    execution_key = _add_execution_offload(sqlite_session, suffix="row-boundary")
+    pause_key = _add_active_pause(sqlite_session, suffix="row-boundary-pause")
+    sqlite_session.add(candidate)
+    sqlite_session.flush()
+
+    loaded_keys: list[str] = []
+
+    def load_stream(key: str) -> Generator[bytes]:
+        loaded_keys.append(key)
+        return _stream_bytes(b"{}")
+
+    monkeypatch.setattr(workflow_upload_file_references.storage, "load_stream", load_stream)
+    engine = sqlite_session.get_bind()
+    opaque_selects: list[str] = []
+
+    def capture_opaque_selects(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        normalized = statement.lower()
+        selects_key = "select upload_files" in normalized and " join workflow_" in normalized
+        selects_pause_state = "select workflow_pauses.state_object_key" in normalized
+        if selects_key or selects_pause_state:
+            opaque_selects.append(normalized)
+
+    event.listen(engine, "before_cursor_execute", capture_opaque_selects)
+    try:
+        referenced = get_referenced_upload_file_ids(
+            sqlite_session,
+            tenant_id="tenant-1",
+            candidates=(UploadFileReferenceCandidate(id=candidate.id, key=candidate.key),),
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", capture_opaque_selects)
+
+    assert referenced == set()
+    assert loaded_keys == [execution_key, pause_key]
+    assert len(opaque_selects) == 3
+    assert all(" limit " in statement for statement in opaque_selects)
+
+
+def test_cross_source_row_overflow_retains_all_candidates_without_blob_deletion(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(workflow_upload_file_references, "_OPAQUE_PAYLOAD_ROW_LIMIT", 2)
+    candidates = (
+        make_upload_file(file_id="row-overflow-a", key="uploads/row-overflow-a.txt"),
+        make_upload_file(file_id="row-overflow-b", key="uploads/row-overflow-b.txt"),
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all(candidates)
+        _add_execution_offload(session, suffix="row-overflow")
+
+        app = make_app(app_id="row-overflow-app", tenant_id="tenant-1")
+        draft_upload = make_upload_file(file_id="row-overflow-draft", key="uploads/row-overflow-draft.json")
+        draft_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-1",
+            app_id=app.id,
+            user_id="account-1",
+            upload_file_id=draft_upload.id,
+            size=2,
+            length=None,
+            value_type=SegmentType.STRING,
+        )
+        session.add_all([app, draft_upload, draft_file])
+        session.flush()
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id=app.id,
+            user_id="account-1",
+            node_id="row-overflow-node",
+            name="value",
+            value=build_segment("truncated"),
+            node_execution_id="row-overflow-node-execution",
+        )
+        variable.file_id = draft_file.id
+        session.add(variable)
+        _add_active_pause(session, suffix="row-overflow-pause")
+
+    def unexpected_load(_key: str) -> Generator[bytes]:
+        pytest.fail("row-overflow detection must happen before object storage reads")
+
+    def unexpected_candidate_batches(
+        _candidates: Sequence[UploadFileReferenceCandidate],
+    ) -> tuple[tuple[UploadFileReferenceCandidate, ...], ...]:
+        pytest.fail("retaining every candidate must skip subsequent workflow SQL")
+
+    monkeypatch.setattr(workflow_upload_file_references.storage, "load_stream", unexpected_load)
+    monkeypatch.setattr(workflow_upload_file_references, "candidate_batches", unexpected_candidate_batches)
+    deleted_blob_keys: list[str] = []
+    files = UploadFileRepository(session_factory=sqlite_session_factory)
+
+    deleted_ids = build_upload_file_reclaimer(
+        session_factory=sqlite_session_factory,
+        files=files,
+    ).delete_unreferenced_files(
+        tenant_id="tenant-1",
+        file_ids=tuple(candidate.id for candidate in candidates),
+        delete_blob=deleted_blob_keys.append,
+    )
+
+    assert deleted_ids == ()
+    assert deleted_blob_keys == []
+    assert "exceeded the row limit" in caplog.text
+    with sqlite_session_factory() as session:
+        assert all(session.get(UploadFile, candidate.id) is not None for candidate in candidates)
+
+
+def test_opaque_payload_row_budget_excludes_other_tenants(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(workflow_upload_file_references, "_OPAQUE_PAYLOAD_ROW_LIMIT", 2)
+    candidate = make_upload_file(file_id="tenant-candidate", tenant_id="tenant-1", key="uploads/tenant.txt")
+    sqlite_session.add(candidate)
+    for index in range(3):
+        _add_execution_offload(sqlite_session, suffix=f"other-tenant-{index}", tenant_id="tenant-2")
+    sqlite_session.flush()
+
+    def unexpected_load(_key: str) -> Generator[bytes]:
+        pytest.fail("another tenant's opaque payload must not be loaded")
+
+    monkeypatch.setattr(workflow_upload_file_references.storage, "load_stream", unexpected_load)
+
+    assert (
+        get_referenced_upload_file_ids(
+            sqlite_session,
+            tenant_id="tenant-1",
+            candidates=(UploadFileReferenceCandidate(id=candidate.id, key=candidate.key),),
+        )
+        == set()
+    )
+
+
+def test_opaque_payload_byte_overflow_closes_stream_and_skips_later_payloads(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(workflow_upload_file_references, "_OPAQUE_PAYLOAD_BYTE_LIMIT", 4)
+    candidate = make_upload_file(file_id="byte-overflow-candidate", key="uploads/byte-overflow.txt")
+    first_key = _add_execution_offload(sqlite_session, suffix="byte-overflow")
+    _add_active_pause(sqlite_session, suffix="byte-overflow-pause")
+    sqlite_session.add(candidate)
+    sqlite_session.flush()
+
+    loaded_keys: list[str] = []
+    stream_closed = False
+
+    def oversized_stream() -> Generator[bytes]:
+        nonlocal stream_closed
+        try:
+            yield b"12345"
+        finally:
+            stream_closed = True
+
+    def load_stream(key: str) -> Generator[bytes]:
+        loaded_keys.append(key)
+        if key != first_key:
+            pytest.fail("byte-overflow must prevent reading subsequent payloads")
+        return oversized_stream()
+
+    def unexpected_candidate_batches(
+        _candidates: Sequence[UploadFileReferenceCandidate],
+    ) -> tuple[tuple[UploadFileReferenceCandidate, ...], ...]:
+        pytest.fail("byte-overflow retention must skip subsequent workflow SQL")
+
+    monkeypatch.setattr(workflow_upload_file_references.storage, "load_stream", load_stream)
+    monkeypatch.setattr(workflow_upload_file_references, "candidate_batches", unexpected_candidate_batches)
+
+    assert get_referenced_upload_file_ids(
+        sqlite_session,
+        tenant_id="tenant-1",
+        candidates=(UploadFileReferenceCandidate(id=candidate.id, key=candidate.key),),
+    ) == {candidate.id}
+    assert loaded_keys == [first_key]
+    assert stream_closed
+    assert "exceeded the repository byte-buffer limit" in caplog.text
+
+
+def test_opaque_payload_byte_budget_accumulates_across_payloads(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(workflow_upload_file_references, "_OPAQUE_PAYLOAD_BYTE_LIMIT", 10)
+    candidate = make_upload_file(file_id="cumulative-byte-candidate", key="uploads/cumulative-byte.txt")
+    _add_execution_offload(sqlite_session, suffix="cumulative-byte-first")
+    _add_execution_offload(sqlite_session, suffix="cumulative-byte-second")
+    _add_active_pause(sqlite_session, suffix="cumulative-byte-third")
+    sqlite_session.add(candidate)
+    sqlite_session.flush()
+
+    loaded_keys: list[str] = []
+    closed_streams: list[int] = []
+
+    def payload_stream(stream_index: int) -> Generator[bytes]:
+        try:
+            yield b'{"a":1}'
+        finally:
+            closed_streams.append(stream_index)
+
+    def load_stream(key: str) -> Generator[bytes]:
+        stream_index = len(loaded_keys)
+        loaded_keys.append(key)
+        if stream_index >= 2:
+            pytest.fail("cumulative byte overflow must prevent reading the third payload")
+        return payload_stream(stream_index)
+
+    def unexpected_candidate_batches(
+        _candidates: Sequence[UploadFileReferenceCandidate],
+    ) -> tuple[tuple[UploadFileReferenceCandidate, ...], ...]:
+        pytest.fail("cumulative byte-overflow retention must skip subsequent workflow SQL")
+
+    monkeypatch.setattr(workflow_upload_file_references.storage, "load_stream", load_stream)
+    monkeypatch.setattr(workflow_upload_file_references, "candidate_batches", unexpected_candidate_batches)
+
+    assert get_referenced_upload_file_ids(
+        sqlite_session,
+        tenant_id="tenant-1",
+        candidates=(UploadFileReferenceCandidate(id=candidate.id, key=candidate.key),),
+    ) == {candidate.id}
+    assert len(loaded_keys) == 2
+    assert closed_streams == [0, 1]
+    assert "exceeded the repository byte-buffer limit" in caplog.text
 
 
 def _reclaim_and_count_selects(

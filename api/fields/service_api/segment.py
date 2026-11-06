@@ -42,7 +42,12 @@ class SegmentUpdatePayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_status_update(self) -> Self:
-        if self.segment.enabled is not None and self.segment.model_fields_set.difference({"enabled"}):
+        """Validate parsed segment settings without changing the requested fields.
+
+        Postconditions: enabling may accompany edits; disabling with other
+        fields raises ``ValueError`` before reaching the application service.
+        """
+        if self.segment.enabled is False and self.segment.model_fields_set.difference({"enabled"}):
             raise ValueError("Enabled cannot be updated together with segment content")
         return self
 

@@ -198,11 +198,14 @@ class DatasetListApi(DatasetApiResource):
     @dataset_admission(rate_limit=True)
     @model_validate(DatasetCreatePayload)
     def post(self, payload: DatasetCreatePayload, request_context: RequestContext):
-        """Resource for creating datasets."""
+        """Create a dataset for an admitted caller from a validated payload.
+
+        Postconditions: retrieval settings cross the application boundary as
+        ordinary mappings; application failures retain their HTTP translation.
+        """
         try:
             values = payload.model_dump()
             values["permission"] = str(payload.permission) if payload.permission else None
-            values["retrieval_model"] = payload.retrieval_model
             result = application_services().knowledge.datasets.create_dataset_with_requested_permission(
                 request_context,
                 values=values,
