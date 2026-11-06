@@ -67,6 +67,7 @@ vi.mock('@/service/webapp-address', async (importOriginal) => ({
 }))
 
 const profile: WebAccountProfileResponse = {
+  account_login_url: 'https://accounts.example/signin',
   name: 'Alice Chen',
   avatar: 'avatar-file-id',
   avatar_url: 'https://example.com/signed-avatar.png',

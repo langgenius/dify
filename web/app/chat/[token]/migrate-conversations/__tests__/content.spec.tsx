@@ -104,6 +104,7 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue('https://accounts.example/signin?code_challenge=challenge')
   vi.mocked(webAppClient.account.profile.get).mockResolvedValue({
+    account_login_url: 'https://accounts.example/signin',
     name: 'Reader',
     avatar: null,
     avatar_url: null,

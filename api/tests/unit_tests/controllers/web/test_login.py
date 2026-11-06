@@ -27,6 +27,7 @@ from controllers.web.login import (
     LoginStatusApi,
     LoginStatusQuery,
     LogoutApi,
+    WebAccountProfileResponse,
 )
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
@@ -47,6 +48,28 @@ from services.webapp_access_query_service import (
 )
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities
+
+
+@pytest.mark.parametrize("login_enabled", [True, False])
+@pytest.mark.parametrize("console_url", ["https://console.example.com", "https://console.example.com/base///", ""])
+def test_account_profile_login_url_matches_parameters(
+    monkeypatch: pytest.MonkeyPatch, login_enabled: bool, console_url: str
+) -> None:
+    """Given deployment settings, serialize the parameter-compatible sign-in URL without side effects."""
+    apply_config_overrides(monkeypatch, WEBAPP_ACCOUNT_PASSPORT_ENABLED=login_enabled, CONSOLE_WEB_URL=console_url)
+    profile = WebAccountProfileResponse(name="Alice", avatar=None)
+
+    result = profile.model_dump(mode="json")
+
+    assert result["account_login_url"] == (f"{console_url.rstrip('/')}/signin" if login_enabled else None)
+
+
+def test_account_profile_schema_requires_nullable_login_url() -> None:
+    """Given the response DTO, publish the login URL as a required nullable string in the serialization schema."""
+    schema = WebAccountProfileResponse.model_json_schema(mode="serialization")
+
+    assert "account_login_url" in schema["required"]
+    assert schema["properties"]["account_login_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
 
 
 @pytest.fixture

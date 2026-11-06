@@ -20,6 +20,7 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 
 const profile: WebAccountProfileResponse = {
+  account_login_url: 'https://accounts.example/signin',
   name: 'Joel',
   avatar: null,
   avatar_url: 'https://example.com/joel.png',

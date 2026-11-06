@@ -6,10 +6,11 @@ from uuid import UUID, uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
-from models.end_user_connection import EndUserConnectionRevision
+from models.end_user_connection import AppConnection, EndUserConnection, EndUserConnectionRevision, SessionConnection
 from models.model import EndUser
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connections.errors import ConnectionRevisionChangedError
@@ -19,8 +20,84 @@ from services.end_user_connections.revision import (
     ProviderContractSnapshot,
 )
 from tests.helpers.end_user_api_key import make_harness
-from tests.helpers.end_user_connection_contract import new_connection
+from tests.helpers.end_user_connection_contract import new_app_selection, new_connection, new_session_selection
 from tests.helpers.end_user_oauth import make_oauth_harness
+
+
+def test_deleted_app_selection_cleanup_is_scoped_and_bounded(sqlite_session_factory: sessionmaker[Session]) -> None:
+    connection = new_connection()
+    foreign_connection = new_connection()
+    app_id = str(uuid4())
+    removed = [
+        replace(factory(connection), app_id=app_id, node_id=f"tool-{index}")
+        for factory in (new_app_selection, new_session_selection)
+        for index in range(3)
+    ]
+    kept = [
+        new_app_selection(connection),
+        new_session_selection(connection),
+        replace(new_app_selection(foreign_connection), app_id=app_id),
+        replace(new_session_selection(foreign_connection), app_id=app_id),
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([connection, foreign_connection])
+        session.flush()
+        session.add_all([*removed, *kept])
+    repository = EndUserConnectionRepository(session_factory=sqlite_session_factory)
+
+    assert repository.delete_app_selections_batch(tenant_id=connection.tenant_id, app_id=app_id, batch_size=2) == 4
+    with sqlite_session_factory() as session:
+        assert sum(session.get(type(selection), selection.id) is not None for selection in removed) == 2
+    assert repository.delete_app_selections_batch(tenant_id=connection.tenant_id, app_id=app_id, batch_size=2) == 2
+    assert repository.delete_app_selections_batch(tenant_id=connection.tenant_id, app_id=app_id, batch_size=2) == 0
+    with sqlite_session_factory() as session:
+        assert all(session.get(type(selection), selection.id) is None for selection in removed)
+        assert all(session.get(type(selection), selection.id) is not None for selection in kept)
+        assert session.get(EndUserConnection, connection.id) == connection
+        assert session.get(EndUserConnection, foreign_connection.id) == foreign_connection
+
+
+def test_deleted_app_selection_cleanup_rolls_back_both_tables_on_failure(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    connection = new_connection()
+    app_selection = new_app_selection(connection)
+    session_selection = replace(new_session_selection(connection), app_id=app_selection.app_id)
+    with sqlite_session_factory.begin() as session:
+        session.add(connection)
+        session.flush()
+        session.add_all([app_selection, session_selection])
+        session.execute(
+            sa.text(
+                "CREATE TRIGGER reject_session_selection_cleanup BEFORE DELETE ON session_connections "
+                "BEGIN SELECT RAISE(ABORT, 'selection cleanup failed'); END"
+            )
+        )
+    repository = EndUserConnectionRepository(session_factory=sqlite_session_factory)
+
+    with pytest.raises(IntegrityError, match="selection cleanup failed"):
+        repository.delete_app_selections_batch(
+            tenant_id=connection.tenant_id, app_id=app_selection.app_id, batch_size=2
+        )
+    with sqlite_session_factory.begin() as session:
+        assert session.get(AppConnection, app_selection.id) is not None
+        assert session.get(SessionConnection, session_selection.id) is not None
+        session.execute(sa.text("DROP TRIGGER reject_session_selection_cleanup"))
+    assert (
+        repository.delete_app_selections_batch(
+            tenant_id=connection.tenant_id, app_id=app_selection.app_id, batch_size=2
+        )
+        == 2
+    )
+
+
+@pytest.mark.parametrize("batch_size", [0, -1])
+def test_deleted_app_selection_cleanup_rejects_nonpositive_batches(
+    sqlite_session_factory: sessionmaker[Session], batch_size: int
+) -> None:
+    repository = EndUserConnectionRepository(session_factory=sqlite_session_factory)
+    with pytest.raises(ValueError, match="batch size must be positive"):
+        repository.delete_app_selections_batch(tenant_id=str(uuid4()), app_id=str(uuid4()), batch_size=batch_size)
 
 
 @pytest.mark.parametrize("anonymous", [False, True])

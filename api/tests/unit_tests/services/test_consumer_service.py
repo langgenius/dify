@@ -14,6 +14,7 @@ from constants.end_user_connections import ConnectionCredentialType, OAuthClient
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.account_webapp import AccountWebApp
+from models.agent import AgentConfigRevision
 from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import CustomizeTokenStrategy, EndUserType
 from models.model import App, AppMode, AppStar, EndUser, Site
@@ -27,7 +28,13 @@ from services.consumer_service import (
 from services.end_user_connections.entities import AccountConnectionContext
 from services.end_user_connections.errors import ConnectionNotFoundError
 from services.web_identity_service import WebIdentityError
-from tests.helpers.consumer import ConsumerHarness, consumer_connection_key, make_consumer_harness, new_consumer_run
+from tests.helpers.consumer import (
+    ConsumerHarness,
+    consumer_connection_key,
+    make_consumer_harness,
+    new_consumer_run,
+    publish_consumer_app,
+)
 from tests.helpers.end_user_api_key import make_harness
 from tests.helpers.end_user_connection_contract import new_connection
 
@@ -35,6 +42,20 @@ from tests.helpers.end_user_connection_contract import new_connection
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> ConsumerHarness:
     return make_consumer_harness(sqlite_session_factory, monkeypatch)
+
+
+@pytest.fixture(
+    params=[
+        AppMode.CHAT,
+        AppMode.COMPLETION,
+        AppMode.AGENT_CHAT,
+        AppMode.ADVANCED_CHAT,
+        AppMode.WORKFLOW,
+        AppMode.AGENT,
+    ],
+)
+def webapp_mode(request: pytest.FixtureRequest) -> AppMode:
+    return request.param
 
 
 def test_account_authentication_does_not_provision_workspace(harness: ConsumerHarness) -> None:
@@ -141,15 +162,16 @@ def test_banned_account_cannot_authenticate_or_continue_connection_management(ha
         base.service.delete_connection(context, connection.id)
 
 
-@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-def test_favorites_and_recent_are_account_scoped_and_recheck_access(harness: ConsumerHarness, mode: AppMode) -> None:
+def test_favorites_and_recent_are_account_scoped_and_recheck_access(
+    harness: ConsumerHarness, webapp_mode: AppMode
+) -> None:
     base = harness.oauth.base
     app_id = base.context.app_id
+    publish_consumer_app(base, webapp_mode)
     for _ in range(2):
         harness.service.set_favorite(harness.identity, app_id, enabled=True)
+    assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data
     now = datetime(2026, 10, 30, 10)
-    with base.sessions.begin() as session:
-        session.execute(sa.update(App).where(App.id == app_id).values(mode=mode))
     for moment in (now, now - timedelta(days=1), now + timedelta(hours=1)):
         harness.record_usage(moment)
     for view in ("recent", "favorites", "shared"):
@@ -157,31 +179,44 @@ def test_favorites_and_recent_are_account_scoped_and_recheck_access(harness: Con
         assert [app.id for app in result.data] == [app_id]
         assert result.data[0].is_favorite
         assert result.data[0].last_used_at == now + timedelta(hours=1)
+        assert result.data[0].mode == webapp_mode
+        assert result.data[0].connection_status == (
+            "not_configured" if webapp_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW) else None
+        )
     other = ConsumerIdentity(str(uuid4()))
     assert not harness.service.list_apps(other, ConsumerAppsQuery()).data
     assert not harness.service.list_apps(other, ConsumerAppsQuery(view="favorites")).data
     with base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppStar)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(AccountWebApp)) == 1
+        assert session.get_one(Account, harness.identity.account_id).first_app_used_at == now - timedelta(days=1)
     harness.access.denied.add(app_id)
-    assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="favorites")).data
+    for view in ("recent", "favorites", "shared"):
+        assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view)).data
     with pytest.raises(ConsumerAppNotFoundError):
         harness.service.set_favorite(harness.identity, app_id, enabled=True)
     for _ in range(2):
         harness.service.set_favorite(harness.identity, app_id, enabled=False)
 
 
-def test_unpublished_app_cannot_be_favorited_or_listed(harness: ConsumerHarness) -> None:
+def test_unpublished_app_cannot_be_favorited_or_listed(harness: ConsumerHarness, webapp_mode: AppMode) -> None:
     base = harness.oauth.base
+    publish_consumer_app(base, webapp_mode)
+    harness.record_usage(datetime(2026, 11, 4))
+    harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
     with base.sessions.begin() as session:
-        session.execute(sa.update(App).where(App.id == base.context.app_id).values(enable_site=False))
+        app = session.get_one(App, base.context.app_id)
+        app.workflow_id = None
+        app.app_model_config_id = None
+        session.execute(sa.delete(AgentConfigRevision).where(AgentConfigRevision.tenant_id == app.tenant_id))
     with pytest.raises(ConsumerAppNotFoundError):
         harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
-    assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared")).data
+    for view in ("recent", "favorites", "shared"):
+        assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view)).data
 
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.AGENT])
-def test_consumer_apps_support_only_chatflow_and_workflow(harness: ConsumerHarness, mode: AppMode) -> None:
+@pytest.mark.parametrize("mode", [AppMode.CHANNEL, AppMode.RAG_PIPELINE])
+def test_consumer_apps_exclude_non_webapp_modes(harness: ConsumerHarness, mode: AppMode) -> None:
     base = harness.oauth.base
     harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
     with base.sessions.begin() as session:
@@ -191,6 +226,48 @@ def test_consumer_apps_support_only_chatflow_and_workflow(harness: ConsumerHarne
         assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view)).data
     with pytest.raises(ConsumerAppNotFoundError):
         harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
+
+
+def test_removal_before_first_usage_preserves_ordering_for_all_webapp_modes(
+    harness: ConsumerHarness, webapp_mode: AppMode, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import repositories.app.console_repository as repository_module
+
+    base = harness.oauth.base
+    publish_consumer_app(base, webapp_mode)
+    removed_at = datetime(2026, 11, 4, 10)
+    monkeypatch.setattr(repository_module, "naive_utc_now", lambda: removed_at)
+    harness.service.remove_app(harness.identity, base.context.app_id)
+    with base.sessions() as session:
+        state = session.scalar(sa.select(AccountWebApp))
+        assert state is not None
+        assert state.removed_at == removed_at
+        assert state.last_used_at is None
+        assert session.get_one(Account, harness.identity.account_id).first_app_used_at is None
+    harness.record_usage(removed_at - timedelta(seconds=1))
+    assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data
+    harness.record_usage(removed_at + timedelta(seconds=1))
+    restored = harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data[0]
+    assert restored.last_used_at == removed_at + timedelta(seconds=1)
+    assert not restored.is_favorite
+    harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
+    harness.service.remove_app(harness.identity, base.context.app_id)
+    for view in ("recent", "favorites"):
+        assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view)).data
+    assert harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared")).data
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.AGENT])
+def test_non_workflow_apps_ignore_stale_workflow_connection_requirements(
+    harness: ConsumerHarness, mode: AppMode
+) -> None:
+    base = harness.oauth.base
+    publish_consumer_app(base, mode)
+    with base.sessions.begin() as session:
+        session.execute(sa.update(App).where(App.id == base.context.app_id).values(workflow_id=base.workflow_id))
+    result = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared"))
+    assert result.data[0].mode == mode
+    assert result.data[0].connection_status is None
 
 
 def test_consumer_apps_report_not_configured_until_all_required_nodes_are_saved(
@@ -310,9 +387,10 @@ def test_passport_without_execution_is_not_recent_and_log_deletion_removes_recen
 
 @pytest.mark.parametrize("mismatch", ["tenant", "app", "end_user", "account", "guest", "type"])
 def test_recent_usage_requires_the_complete_passport_execution_owner_chain(
-    harness: ConsumerHarness, mismatch: str
+    harness: ConsumerHarness, mismatch: str, webapp_mode: AppMode
 ) -> None:
     base = harness.oauth.base
+    publish_consumer_app(base, webapp_mode)
     now = datetime(2026, 10, 30)
     harness.record_usage(now)
     tenant_id, app_id, end_user_id = base.context.tenant_id, base.context.app_id, base.context.end_user_id
@@ -345,9 +423,12 @@ def test_recent_usage_requires_the_complete_passport_execution_owner_chain(
     assert result.data[0].last_used_at == now
 
 
-def test_connection_queries_do_not_decrypt_or_expose_foreign_and_guest_credentials(harness: ConsumerHarness) -> None:
+def test_connection_queries_do_not_decrypt_or_expose_foreign_and_guest_credentials(
+    harness: ConsumerHarness, webapp_mode: AppMode
+) -> None:
     base = harness.oauth.base
     owned = base.service.create_api_key(base.context, base.command())
+    publish_consumer_app(base, webapp_mode)
     foreign = replace(new_connection(), tenant_id=base.context.tenant_id, account_id=str(uuid4()))
     guest = replace(new_connection(), tenant_id=base.context.tenant_id, account_id=None, end_user_id=str(uuid4()))
     with base.sessions.begin() as session:

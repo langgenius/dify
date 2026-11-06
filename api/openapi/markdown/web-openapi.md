@@ -1007,7 +1007,7 @@ Logout user from web application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/apps
-List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
+List accessible Chat, Completion, legacy Agent, Chatflow, Workflow and Agent WebApps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
 
 #### Parameters
 
@@ -3497,6 +3497,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
 | avatar | string |  | Yes |
 | avatar_url | string |  | Yes |
 | has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
