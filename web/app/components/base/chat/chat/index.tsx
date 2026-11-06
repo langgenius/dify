@@ -1,4 +1,4 @@
-import type { FC, ReactNode, Ref } from 'react'
+import type { FC, ReactNode, Ref, RefObject } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnFeedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
@@ -68,6 +68,8 @@ export type ChatProps = {
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
+  disabledInputAction?: ReactNode
+  inputRef?: RefObject<HTMLTextAreaElement | null>
   inputPlaceholder?: string
   inputPlaceholderBotName?: string
   sendButtonLabel?: string
@@ -133,6 +135,8 @@ const Chat: FC<ChatProps> = ({
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
+  disabledInputAction,
+  inputRef,
   inputPlaceholder,
   inputPlaceholderBotName,
   sendButtonLabel,
@@ -301,6 +305,8 @@ const Chat: FC<ChatProps> = ({
                 botName={inputPlaceholderBotName || appData?.site?.title || 'Bot'}
                 customPlaceholder={inputPlaceholder ?? appData?.site?.input_placeholder}
                 disabled={inputDisabled}
+                disabledInputAction={disabledInputAction}
+                inputRef={inputRef}
                 showFeatureBar={showFeatureBar}
                 showFileUpload={showFileUpload}
                 featureBarReadonly={featureBarReadonly}

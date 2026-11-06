@@ -1,6 +1,6 @@
 'use client'
 
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import type { DialogContentProps, DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ComponentProps } from 'react'
 import type { ConnectionLoadStateProps } from './connection-load-state'
 import {
@@ -28,6 +28,7 @@ type Props = Omit<
   | 'showMissingConnectionWarning'
 > & {
   handle: DialogHandle<unknown>
+  finalFocus?: DialogContentProps['finalFocus']
   isResponding?: boolean
   disabled?: boolean
   loadState?: ConnectionLoadStateProps
@@ -39,6 +40,7 @@ type ApiKeyEditor = {
 
 export default function ConfigureConnectionsDialog({
   handle,
+  finalFocus,
   services,
   onConnect,
   onConnectionChange,
@@ -93,7 +95,7 @@ export default function ConfigureConnectionsDialog({
         }
       }}
     >
-      <DialogContent className="w-160">
+      <DialogContent className="w-160" finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle tabIndex={-1} ref={configurationTitleRef}>
             <span className="flex items-center gap-2">
