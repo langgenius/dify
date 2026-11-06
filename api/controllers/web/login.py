@@ -6,7 +6,6 @@ from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, computed_field, field_validator
 from werkzeug.exceptions import Unauthorized
 
-from configs import dify_config
 from controllers.common.fields import (
     AccessTokenData,
     AccessTokenResultResponse,
@@ -103,19 +102,6 @@ class WebAccountProfileResponse(ResponseModel):
     @property
     def avatar_url(self) -> str | None:
         return build_avatar_url(self.avatar)
-
-    @computed_field(  # type: ignore[prop-decorator]
-        return_type=str | None,
-        description=(
-            "Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled."
-        ),
-    )
-    @property
-    def account_login_url(self) -> str | None:
-        """Read deployment settings and return the same sign-in URL as Web App parameters, without side effects."""
-        return (
-            f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin" if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED else None
-        )
 
 
 register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginStatusQuery)
