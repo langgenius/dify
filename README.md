@@ -23,9 +23,6 @@
             alt="follow on X(Twitter)"></a>
     <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
         <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/8Goqlh)
-
             alt="follow on LinkedIn"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
@@ -67,6 +64,8 @@
 Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features (including [Opik](https://www.comet.com/docs/opik/integrations/dify), [Langfuse](https://docs.langfuse.com), and [Arize Phoenix](https://docs.arize.com/phoenix)) and more, letting you quickly go from prototype to production. Here's a list of the core features:
 
 ## Quick start
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/8Goqlh)
 
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 >
