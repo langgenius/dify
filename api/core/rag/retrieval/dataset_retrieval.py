@@ -708,7 +708,7 @@ class DatasetRetrieval:
                         tenant_id=selected_dataset.tenant_id,
                         dataset_id=selected_dataset.id,
                         query=query,
-                        external_retrieval_parameters=selected_dataset.retrieval_model,
+                        external_retrieval_parameters=selected_dataset.external_retrieval_model,
                         metadata_condition=metadata_condition,
                     )
                     for external_document in external_documents:
@@ -1183,7 +1183,7 @@ class DatasetRetrieval:
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset_id,
                     query=query,
-                    external_retrieval_parameters=dataset.retrieval_model,
+                    external_retrieval_parameters=dataset.external_retrieval_model,
                     metadata_condition=metadata_condition,
                 )
                 for external_document in external_documents:

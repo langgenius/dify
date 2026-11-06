@@ -5081,7 +5081,10 @@ class TestDatasetRetrievalCases:
         def retrieval(self) -> DatasetRetrieval:
             return DatasetRetrieval()
 
-        def test_single_retrieve_external_path(self, retrieval: DatasetRetrieval) -> None:
+        @pytest.mark.parametrize("retrieval_model", [None, {"top_k": 5, "score_threshold": 0.7}])
+        def test_single_retrieve_external_path(
+            self, retrieval: DatasetRetrieval, retrieval_model: dict[str, Any] | None
+        ) -> None:
             dataset_id = str(uuid4())
             tenant_id = str(uuid4())
             dataset = _dataset(
@@ -5091,7 +5094,7 @@ class TestDatasetRetrievalCases:
                 provider="external",
                 tenant_id=tenant_id,
                 created_by=str(uuid4()),
-                retrieval_model={"top_k": 2},
+                retrieval_model=retrieval_model,
                 indexing_technique="high_quality",
             )
             app = Flask(__name__)
@@ -5128,6 +5131,9 @@ class TestDatasetRetrievalCases:
 
             assert len(result) == 1
             assert result[0].provider == "external"
+            assert mock_external.call_args.kwargs["external_retrieval_parameters"] == (
+                retrieval_model or {"top_k": 2, "score_threshold": 0.0}
+            )
             mock_end.assert_called_once()
             assert retrieval.llm_usage.total_tokens == 2
 
@@ -5805,7 +5811,8 @@ class TestDatasetRetrievalCases:
             assert mock_sessionmaker.return_value.begin.call_count == 3
             mock_trace.assert_not_called()
 
-        def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
+        @pytest.mark.parametrize("retrieval_model", [None, {"top_k": 5, "score_threshold": 0.7}])
+        def test_retriever_variants(self, retrieval: DatasetRetrieval, retrieval_model: dict[str, Any] | None) -> None:
             flask_app = SimpleNamespace(app_context=lambda: nullcontext())
             all_documents: list[_dataset_retrieval_Document] = []
             tenant_id = str(uuid4())
@@ -5832,7 +5839,7 @@ class TestDatasetRetrievalCases:
                 name="External",
                 provider="external",
                 tenant_id=tenant_id,
-                retrieval_model={"top_k": 2},
+                retrieval_model=retrieval_model,
                 indexing_technique="high_quality",
                 created_by=creator_id,
             )
@@ -5878,6 +5885,9 @@ class TestDatasetRetrievalCases:
                     query="python",
                     top_k=1,
                     all_documents=all_documents,
+                )
+                assert mock_external.call_args.kwargs["external_retrieval_parameters"] == (
+                    retrieval_model or {"top_k": 2, "score_threshold": 0.0}
                 )
 
             with (
