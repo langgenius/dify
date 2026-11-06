@@ -2919,6 +2919,7 @@ knowledge_cases.update(
 # Source-bound semantic intent: exact captured-negative and safety cases.
 a4_expected["tests.unit_tests.services.dify_builder.test_knowledge_source_intent"] = {
     "test_actual_pending_business_form_stop_resume_keeps_logical_task_requirement": 2,
+    "test_actual_source_exclusion_survives_sql_stop_resume_and_model_only_confirmation": 1,
     "test_actual_submitted_control_refreshes_intent_in_the_existing_plan_call": 2,
     "test_analysis_preserves_fixed_grounded_source_intent_without_an_extra_call": 1,
     "test_confirmed_bool_source_cannot_match_a_changed_numeric_value": 1,
@@ -2932,6 +2933,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_knowledge_source_intent
     "test_new_logical_task_does_not_inherit_positive_and_old_exclusion_is_stale": 1,
     "test_old_planning_intent_cannot_be_rebound_after_a_new_real_answer": 1,
     "test_planning_clarification_keeps_semantic_metadata_without_extra_calls": 1,
+    "test_resume_rejects_inflight_exclusion_stamp_but_preserves_accepted_interpretation": 1,
     "test_retained_source_cannot_be_waived_by_semantic_exclusion": 1,
     "test_semantic_source_survives_the_real_context_json_boundary": 1,
     "test_stale_or_forged_exclusion_cannot_be_rebound_to_new_source": 5,
