@@ -372,6 +372,57 @@ def test_missing_or_expired_context_fails_before_plugin_or_config_lookup(flow: _
     assert flow.builders.credentials == []
 
 
+@pytest.mark.parametrize("context_state", ["missing_cookie", "unknown", "expired"])
+def test_invalid_context_is_rejected_before_parsing_invalid_provider(flow: _Flow, context_state: str) -> None:
+    if context_state == "unknown":
+        flow.harness.client.set_cookie("context_id", str(uuid4()))
+    elif context_state == "expired":
+        context_id = flow.grant_callback()
+        del flow.contexts.contexts[context_id]
+
+    response = flow.harness.client.get("/console/api/oauth/plugin/INVALID!/trigger/callback")
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json()["code"] == "trigger_oauth_context_invalid"
+    assert flow.harness.metadata.provider_requests == 0
+    assert flow.plugin.exchanges == []
+
+
+def test_invalid_provider_after_valid_context_consumes_context(flow: _Flow) -> None:
+    context_id = flow.grant_callback()
+
+    response = flow.harness.client.get("/console/api/oauth/plugin/INVALID!/trigger/callback")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "invalid_param"
+    assert context_id not in flow.contexts.contexts
+    assert flow.plugin.exchanges == []
+
+
+@pytest.mark.parametrize("context_state", ["missing_cookie", "unknown"])
+def test_invalid_context_is_rejected_before_reading_oversized_body(flow: _Flow, context_state: str) -> None:
+    flow.harness.app.config["MAX_CONTENT_LENGTH"] = 1
+    if context_state == "unknown":
+        flow.harness.client.set_cookie("context_id", str(uuid4()))
+
+    response = flow.harness.client.get(_CALLBACK, data=b"oversized")
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json()["code"] == "trigger_oauth_context_invalid"
+    assert flow.plugin.exchanges == []
+
+
+def test_valid_context_reads_callback_body_and_enforces_limit(flow: _Flow) -> None:
+    flow.configure()
+    flow.grant_callback()
+    flow.harness.app.config["MAX_CONTENT_LENGTH"] = 1
+
+    response = flow.harness.client.get(_CALLBACK, data=b"oversized")
+
+    assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+    assert flow.plugin.exchanges == []
+
+
 @pytest.mark.parametrize("provider", ["another/github/github", "langgenius/github/other"])
 def test_context_cannot_authorize_another_plugin_or_provider(flow: _Flow, provider: str) -> None:
     flow.grant_callback(provider_id=provider)

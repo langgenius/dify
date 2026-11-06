@@ -1,17 +1,14 @@
+import type { ResolvedTheme } from '@/features/theme/theme'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Theme } from '@/types/app'
 import { CodeBlock } from '../code-block'
-
-const { mockHighlightCode } = vi.hoisted(() => ({
-  mockHighlightCode: vi.fn(),
-}))
+import { highlightCode } from '../code-highlight'
 
 type UseThemeReturn = {
-  theme: Theme
+  theme: ResolvedTheme
 }
 
-const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
+const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: 'light' }))
 const mockEcharts = vi.hoisted(() => {
   const state = {
     option: undefined as unknown,
@@ -68,14 +65,14 @@ class MockAudioContext {
   }))
 }
 
-vi.mock('@/hooks/use-theme', () => ({
+vi.mock('@/features/theme/hooks', () => ({
   __esModule: true,
-  default: () => mockUseTheme(),
+  useResolvedTheme: () => mockUseTheme().theme,
 }))
 
-vi.mock('../shiki-highlight', () => ({
-  highlightCode: mockHighlightCode,
-}))
+// Keep the real highlighter so tests cover its output; the spy only forces
+// the failure fallback.
+vi.mock('../code-highlight', { spy: true })
 
 vi.mock('../../svg-gallery', () => ({
   default: ({ content }: { content: string }) => <div data-testid="svg-renderer">{content}</div>,
@@ -142,15 +139,17 @@ const findEchartsHost = async () => {
   return document.querySelector('.echarts-for-react') as HTMLDivElement
 }
 
+const findHighlightedKeyword = async () => {
+  await waitFor(() => {
+    expect(document.querySelector('.code-line-numbers .line span'))!.toBeInTheDocument()
+  })
+  return document.querySelector('.code-line-numbers .line span') as HTMLSpanElement
+}
+
 describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseTheme.mockReturnValue({ theme: Theme.light })
-    mockHighlightCode.mockImplementation(async ({ code, language }) => (
-      <pre className="shiki">
-        <code className={`language-${language}`}>{code}</code>
-      </pre>
-    ))
+    mockUseTheme.mockReturnValue({ theme: 'light' })
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
@@ -218,11 +217,9 @@ describe('CodeBlock', () => {
       render(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
 
       expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
-      await waitFor(() => {
-        expect(document.querySelector('code.language-javascript')?.textContent).toContain(
-          'const x = 1;',
-        )
-      })
+      // github-light keyword color
+      expect(await findHighlightedKeyword()).toHaveStyle({ color: '#d73a49' })
+      expect(document.querySelector('.code-line-numbers code')?.textContent).toBe('const x = 1;')
     })
 
     it('should format unknown language labels with capitalized fallback when language is not in map', () => {
@@ -252,27 +249,25 @@ describe('CodeBlock', () => {
     })
 
     it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark })
+      mockUseTheme.mockReturnValue({ theme: 'dark' })
 
       render(<CodeBlock className="language-javascript">const y = 2;</CodeBlock>)
 
       expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
-      await waitFor(() => {
-        expect(document.querySelector('code.language-javascript')?.textContent).toContain(
-          'const y = 2;',
-        )
-      })
+      // github-dark keyword color
+      expect(await findHighlightedKeyword()).toHaveStyle({ color: '#f97583' })
     })
 
-    it('should fall back to plain code block when shiki highlighting fails', async () => {
-      mockHighlightCode.mockRejectedValueOnce(new Error('highlight failed'))
+    it('should fall back to plain code block when highlighting fails', async () => {
+      vi.mocked(highlightCode).mockRejectedValueOnce(new Error('highlight failed'))
 
       render(<CodeBlock className="language-javascript">const z = 3;</CodeBlock>)
 
       await waitFor(() => {
-        expect(screen.getByText('const z = 3;'))!.toBeInTheDocument()
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Code highlighting failed:', expect.any(Error))
       })
-      expect(document.querySelector('code.language-javascript')).toBeNull()
+      expect(screen.getByText('const z = 3;'))!.toBeInTheDocument()
+      expect(document.querySelector('.code-line-numbers')).toBeNull()
     })
   })
 
@@ -366,7 +361,7 @@ describe('CodeBlock', () => {
     })
 
     it('should render dark themed echarts path when app theme is dark', async () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark })
+      mockUseTheme.mockReturnValue({ theme: 'dark' })
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
 
       expect(await findEchartsHost())!.toBeInTheDocument()

@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createDeferred } from '@/test/deferred'
 import ImagePreview from '../image-preview'
 
@@ -32,7 +32,7 @@ const setup = (props: Partial<ComponentProps<typeof ImagePreview>> = {}) => {
         onCancel={onCancel}
         {...props}
       />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </>,
   )
   return { user, clipboardWrite, windowOpen, download, onCancel }
@@ -116,18 +116,16 @@ it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
 it.each([dataImage, base64Image])(
   'opens inline image %s with its title treated as text',
   async (url) => {
-    render(<iframe title="Image tab" />)
-    const popup = screen.getByTitle<HTMLIFrameElement>('Image tab').contentWindow
-    if (!popup) throw new Error('Popup document unavailable')
+    const popupDocument = document.implementation.createHTMLDocument()
     const title = '\" /><script>window.injected = true</script>'
     const { user, windowOpen } = setup({ url, title })
-    windowOpen.mockReturnValue(popup)
+    windowOpen.mockReturnValue({ document: popupDocument } as unknown as Window)
     await user.click(button('openInNewTab'))
     expect(windowOpen).toHaveBeenCalledOnce()
-    const image = popup.document.querySelector('img')
+    const image = popupDocument.querySelector('img')
     expect(image?.src).toBe(dataImage)
     expect(image?.alt).toBe(title)
-    expect(popup.document.querySelector('script')).toBeNull()
+    expect(popupDocument.querySelector('script')).toBeNull()
   },
 )
 

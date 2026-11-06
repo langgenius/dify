@@ -31,6 +31,33 @@ class Kind(StrEnum):
     FILE = "file"
 
 
+class Effect(StrEnum):
+    """What running an op does to the server. Frozen protocol names, published in the catalog.
+
+    Each member owns the HTTP methods that imply it; an op overrides that default
+    through `endpoint(effect=...)` when its method understates what it does.
+    """
+
+    methods: frozenset[str]
+
+    READ = ("read", frozenset({"GET"}))
+    WRITE = ("write", frozenset({"POST", "PUT", "PATCH"}))
+    DESTRUCTIVE = ("destructive", frozenset({"DELETE"}))
+
+    def __new__(cls, value: str, methods: frozenset[str]) -> Effect:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.methods = methods
+        return obj
+
+    @classmethod
+    def for_method(cls, method: str) -> Effect:
+        for effect in cls:
+            if method.upper() in effect.methods:
+                return effect
+        raise ValueError(f"no effect for HTTP method {method!r}")
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Example:
     """One complete input for an op, shown by the CLI next to the schema."""
@@ -44,8 +71,10 @@ class CatalogMeta:
     """What the catalog (`_catalog.py`) says about a route; the router never reads it.
 
     `internal` hides the op from the CLI's default listing; `deprecated` marks it
-    as kept for compatibility only. `examples` ride into the catalog as complete
-    inputs; a catalog test checks each one against the op's input schema.
+    as kept for compatibility only. `effect` overrides the effect the op's HTTP
+    method implies; leave it unset when the method already says it. `examples`
+    ride into the catalog as complete inputs; a catalog test checks each one against
+    the op's input schema.
     """
 
     op: str
@@ -55,6 +84,7 @@ class CatalogMeta:
     body: type[BaseModel] | None = None
     internal: bool = False
     deprecated: bool = False
+    effect: Effect | None = None
     examples: tuple[Example, ...] = ()
 
 

@@ -28,17 +28,16 @@ from models.enums import AppTriggerStatus, AppTriggerType, EndUserType, Workflow
 from models.model import App, AppMode, EndUser
 from models.trigger import AppTrigger, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import WorkflowRun
-from services.billing_service import BillingService
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from tasks.async_workflow_tasks import execute_workflow_sandbox
 from tasks.trigger_processing_tasks import dispatch_triggered_workflow
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app, make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_builder import _Daemon
-from tests.unit_tests.model_factories import make_app, make_workflow
 
 application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
@@ -101,13 +100,12 @@ def billing() -> Iterator[_Billing]:
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
-    previous_url, previous_quota_url = BillingService.base_url, BillingService.quota_base_url
-    BillingService.base_url = BillingService.quota_base_url = f"http://127.0.0.1:{server.server_port}"
     thread.start()
     try:
-        yield billing
+        url = f"http://127.0.0.1:{server.server_port}"
+        with config_overrides_context(BILLING_API_URL=url, BILLING_QUOTA_API_URL=url):
+            yield billing
     finally:
-        BillingService.base_url, BillingService.quota_base_url = previous_url, previous_quota_url
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)

@@ -48,6 +48,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
+import { getErrorMessage } from '@/utils/error-message'
 
 type SwitchAppModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
   sourceApp: Pick<
@@ -62,15 +63,22 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const conversion = useMutation(consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions())
-  const deletion = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
+  const conversion = useMutation(
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
+  )
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const isPending = conversion.isPending || deletion.isPending
   const submit = (body: ConvertToWorkflowPayload, removeOriginal: boolean) => {
     if (isPending) return
     conversion.mutate(
       { params: { app_id: sourceApp.id }, body },
       {
-        onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+        onError: (error) =>
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          ),
         onSuccess: ({ new_app_id, permission_keys }) => {
           const finish = (removed: boolean) => {
             actionsRef.current?.close()
@@ -89,8 +97,8 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
               { params: { app_id: sourceApp.id } },
               {
                 onSuccess: () => finish(true),
-                onError: () => {
-                  toast.error(t(($) => $.appDeleteFailed, { ns: 'app' }))
+                onError: (error) => {
+                  toast.error(getErrorMessage(error) ?? t(($) => $.appDeleteFailed, { ns: 'app' }))
                   finish(false)
                 },
               },
@@ -110,7 +118,7 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
         else onOpenChange?.(nextOpen, details)
       }}
     >
-      <DialogContent initialFocus={nameInputRef} className="w-150 max-w-150">
+      <DialogContent initialFocus={nameInputRef} className="w-150">
         <SwitchAppSession
           nameInputRef={nameInputRef}
           sourceApp={sourceApp}
@@ -243,7 +251,7 @@ function SwitchAppSession({
                 required
                 readOnly={isPending}
                 defaultValue={`${sourceApp.name}(copy)`}
-                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                 className="h-10 grow"
               />
               <FieldError className="col-span-2" />
@@ -264,7 +272,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

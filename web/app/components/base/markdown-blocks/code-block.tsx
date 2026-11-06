@@ -2,7 +2,7 @@ import type { EChartsOption, EChartsType } from 'echarts'
 import type EChartsReact from 'echarts-for-react'
 import type { EChartsReactProps } from 'echarts-for-react'
 import type { JSX } from 'react'
-import type { CodeTheme } from './shiki-highlight'
+import type { CodeTheme } from './code-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import dynamic from 'next/dynamic'
@@ -19,9 +19,8 @@ import {
 } from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
-import { highlightCode } from './shiki-highlight'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { highlightCode } from './code-highlight'
 
 const MermaidDiagram = dynamic(
   () => import('./mermaid-diagram').then((module) => module.MermaidDiagram),
@@ -76,7 +75,7 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const ShikiCodeBlock = memo(
+const HighlightedCodeBlock = memo(
   ({
     code,
     language,
@@ -102,7 +101,7 @@ const ShikiCodeBlock = memo(
           if (!cancelled) setNodes(result)
         })
         .catch((error) => {
-          console.error('Shiki highlighting failed:', error)
+          console.error('Code highlighting failed:', error)
           if (!cancelled) setNodes(undefined)
         })
 
@@ -135,14 +134,14 @@ const ShikiCodeBlock = memo(
           borderBottomRightRadius: '10px',
           overflow: 'auto',
         }}
-        className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-2!"
+        className="code-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-2!"
       >
         {nodes}
       </div>
     )
   },
 )
-ShikiCodeBlock.displayName = 'ShikiCodeBlock'
+HighlightedCodeBlock.displayName = 'HighlightedCodeBlock'
 
 // Define ECharts event parameter types
 type EChartsEventParams = {
@@ -156,7 +155,7 @@ type EChartsEventParams = {
 }
 
 export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
   const [finalChartOption, setFinalChartOption] = useState<EChartsOption | null>(null)
@@ -171,7 +170,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  const isDarkMode = theme === Theme.dark
+  const isDarkMode = theme === 'dark'
 
   const clearResizeTimer = useCallback(() => {
     if (!resizeTimerRef.current) return
@@ -373,6 +372,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
         if (chartState === 'loading') {
           return (
             <div
+              className="dark:bg-components-input-bg-normal"
               style={{
                 minHeight: '350px',
                 width: '100%',
@@ -382,9 +382,6 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
                 justifyContent: 'center',
                 borderBottomLeftRadius: '10px',
                 borderBottomRightRadius: '10px',
-                backgroundColor: isDarkMode
-                  ? 'var(--color-components-input-bg-normal)'
-                  : 'transparent',
                 color: 'var(--color-text-secondary)',
               }}
             >
@@ -525,7 +522,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
         )
       default:
         return (
-          <ShikiCodeBlock
+          <HighlightedCodeBlock
             code={content}
             language={match?.[1] || 'text'}
             theme={isDarkMode ? 'github-dark' : 'github-light'}
@@ -555,7 +552,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   return (
     <div className="relative">
-      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
+      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 ps-3">
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && (

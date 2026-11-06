@@ -44,14 +44,18 @@ rule:
                               field: module_name
                               stopBy: end
                               regex: '^types$'
-        - inside:
-            kind: module
-            stopBy: end
-            has:
-              stopBy: end
-              all:
-                - pattern: $CALLEE = $ORIGINAL
-                - has:
-                    field: right
-                    stopBy: end
-                    regex: '(^|\.)(Mock|MagicMock|SimpleNamespace)$'
+        - all:
+            - has:
+                field: function
+                kind: identifier
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  all:
+                    - pattern: $CALLEE = $ORIGINAL
+                    - has:
+                        field: right
+                        stopBy: end
+                        regex: '(^|\.)(Mock|MagicMock|SimpleNamespace)$'

@@ -62,7 +62,7 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from services.trigger.oauth_client_service import TriggerOAuthClientService, TriggerOAuthProviderMetadata
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 _PROVIDER = "langgenius/github/github"
 _URL = f"/console/api/workspaces/current/trigger-provider/{_PROVIDER}/oauth/client"

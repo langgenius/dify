@@ -22,8 +22,8 @@ from services.app.mcp_server_service import (
     AppMCPServerUpdate,
     PublishedApp,
 )
-from tests.unit_tests.model_factories import make_app
-from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
+from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 WORKSPACE_ID = "tenant-1"
 DRAFT = AppMCPServerDraft(

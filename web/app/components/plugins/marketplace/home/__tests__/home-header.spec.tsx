@@ -24,11 +24,18 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/console${path || ''}`,
 }))
 
-vi.mock('@/config', () => ({
-  get MARKETPLACE_URL_PREFIX() {
-    return mocks.marketplaceUrlPrefix
-  },
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      get NEXT_PUBLIC_MARKETPLACE_URL_PREFIX() {
+        return mocks.marketplaceUrlPrefix
+      },
+    },
+  }
+})
 
 vi.mock('../home-sticky-state-provider', () => ({
   HomeStickyCatalogTabs: ({ children }: { children: React.ReactNode }) => children,

@@ -52,13 +52,13 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
             <button
               {...props}
               type="button"
-              className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+              className={cn('block w-full border-0 bg-transparent p-0 text-start', props.className)}
             >
               {currentItem ? (
-                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
+                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal ps-3 pe-2.5">
                   <div className="text-sm text-text-primary">{currentItem.name}</div>
                   <div className="flex items-center">
-                    <div className="mr-1.5 w-67.5 truncate text-right text-xs text-text-quaternary">
+                    <div className="me-1.5 w-67.5 truncate text-end text-xs text-text-quaternary">
                       {currentItem.api_endpoint}
                     </div>
                     <span
@@ -71,7 +71,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                   </div>
                 </div>
               ) : (
-                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
+                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal ps-3 pe-2.5 text-sm text-text-quaternary">
                   {t(($) => $['apiBasedExtension.selector.placeholder'], {
                     ns: 'common',
                   })}
@@ -88,11 +88,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
           )}
         />
         <PopoverPortal>
-          <PopoverPositioner
-            placement="bottom-start"
-            sideOffset={4}
-            className="w-[calc(100%-32px)] max-w-xl"
-          >
+          <PopoverPositioner align="start" sideOffset={4} className="w-[calc(100%-32px)] max-w-xl">
             <PopoverPopup className="rounded-xl border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
               <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
                 <div className="p-1">
@@ -110,7 +106,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                     >
                       {t(($) => $['apiBasedExtension.selector.manage'], { ns: 'common' })}
                       <span
-                        className="ml-0.5 i-custom-vender-line-arrows-arrow-up-right size-3"
+                        className="ms-0.5 i-custom-vender-line-arrows-arrow-up-right size-3 rtl:-scale-x-100"
                         aria-hidden="true"
                       />
                     </button>
@@ -120,7 +116,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                       <button
                         type="button"
                         key={item.id}
-                        className="w-full cursor-pointer rounded-md border-none bg-transparent px-3 py-1.5 text-left hover:bg-state-base-hover"
+                        className="w-full cursor-pointer rounded-md border-none bg-transparent px-3 py-1.5 text-start hover:bg-state-base-hover"
                         onClick={() => handleSelect(item.id)}
                       >
                         <div className="text-sm text-text-primary">{item.name}</div>
@@ -133,13 +129,13 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                 <div className="p-1">
                   <button
                     type="button"
-                    className="flex h-8 w-full cursor-pointer items-center border-none bg-transparent px-3 text-left text-sm text-text-accent"
+                    className="flex h-8 w-full cursor-pointer items-center border-none bg-transparent px-3 text-start text-sm text-text-accent"
                     onClick={() => {
                       setOpen(false)
                       setAddModalOpen(true)
                     }}
                   >
-                    <span className="mr-2 i-ri-add-line size-4" aria-hidden="true" />
+                    <span className="me-2 i-ri-add-line size-4" aria-hidden="true" />
                     {t(($) => $['operation.add'], { ns: 'common' })}
                   </button>
                 </div>

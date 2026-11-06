@@ -7,9 +7,8 @@ import {
   ContextMenuItem,
   ContextMenuLinkItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
+  ContextMenuSubmenu,
+  ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from '../index'
 
@@ -41,6 +40,14 @@ describe('context-menu wrapper', () => {
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
+      const triggerRect = screen.getByLabelText('context trigger').element().getBoundingClientRect()
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().left)
+        .toBeCloseTo(triggerRect.left + 8, 0)
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().top)
+        .toBeCloseTo(triggerRect.top + 8 + 4, 0)
+
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()
@@ -50,7 +57,7 @@ describe('context-menu wrapper', () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent placement="top-end" sideOffset={12} alignOffset={-3}>
+          <ContextMenuContent side="top" align="end" sideOffset={12} alignOffset={-3}>
             <ContextMenuItem>Custom content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
@@ -85,18 +92,18 @@ describe('context-menu wrapper', () => {
     })
   })
 
-  describe('ContextMenuSubContent', () => {
-    it('should place sub-content inline-end-start when placement is omitted', async () => {
+  describe('ContextMenuContent inside a submenu', () => {
+    it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
-            <ContextMenuSub open>
-              <ContextMenuSubTrigger>More actions</ContextMenuSubTrigger>
-              <ContextMenuSubContent>
+            <ContextMenuSubmenu open>
+              <ContextMenuSubmenuTrigger>More actions</ContextMenuSubmenuTrigger>
+              <ContextMenuContent>
                 <ContextMenuItem>Sub action</ContextMenuItem>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
+              </ContextMenuContent>
+            </ContextMenuSubmenu>
           </ContextMenuContent>
         </ContextMenu>,
       )
@@ -164,16 +171,16 @@ describe('context-menu wrapper', () => {
           <ContextMenu>
             <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
             <ContextMenuContent>
-              <ContextMenuSub open>
-                <ContextMenuSubTrigger
+              <ContextMenuSubmenu open>
+                <ContextMenuSubmenuTrigger
                   variant={variant}
                   aria-label="submenu action"
                   id={`context-sub-${variant}`}
                   onClick={handleClick}
                 >
                   Trigger item
-                </ContextMenuSubTrigger>
-              </ContextMenuSub>
+                </ContextMenuSubmenuTrigger>
+              </ContextMenuSubmenu>
             </ContextMenuContent>
           </ContextMenu>,
         )
@@ -296,12 +303,12 @@ it('resolves submenu popup classes with the popup state', async () => {
     <ContextMenu>
       <ContextMenuTrigger>Open audit menu</ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuSub open>
-          <ContextMenuSubTrigger>More audit actions</ContextMenuSubTrigger>
-          <ContextMenuSubContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+        <ContextMenuSubmenu open>
+          <ContextMenuSubmenuTrigger>More audit actions</ContextMenuSubmenuTrigger>
+          <ContextMenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
             <ContextMenuItem>Audit action</ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+          </ContextMenuContent>
+        </ContextMenuSubmenu>
       </ContextMenuContent>
     </ContextMenu>,
   )

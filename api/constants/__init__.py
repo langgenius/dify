@@ -7,6 +7,8 @@ UUID_NIL = "00000000-0000-0000-0000-000000000000"
 
 DEFAULT_FILE_NUMBER_LIMITS = 3
 
+BYTES_PER_MIB = 1024 * 1024
+
 _IMAGE_EXTENSION_BASE: frozenset[str] = frozenset(("jpg", "jpeg", "png", "webp", "gif", "svg"))
 _VIDEO_EXTENSION_BASE: frozenset[str] = frozenset(("mp4", "mov", "mpeg", "webm"))
 _AUDIO_EXTENSION_BASE: frozenset[str] = frozenset(("mp3", "m4a", "wav", "amr", "mpga"))
@@ -79,4 +81,6 @@ COOKIE_NAME_PASSPORT = "passport"
 HEADER_NAME_CSRF_TOKEN = "X-CSRF-Token"
 HEADER_NAME_APP_CODE = "X-App-Code"
 HEADER_NAME_PASSPORT = "X-App-Passport"
+HEADER_NAME_IDEMPOTENCY_KEY = "Idempotency-Key"
+HEADER_NAME_REQUEST_ID = "X-Request-ID"
 HEADER_NAME_CATALOG = "X-Dify-Catalog"

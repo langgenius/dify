@@ -5,11 +5,13 @@ import type { PostAppsByAppIdAgentConfigSkillsUploadResponse } from '@dify/contr
 import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -18,6 +20,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -195,12 +198,19 @@ function AgentSkillPackageUploader({
             </div>
           </div>
           <div className="flex items-center pr-3">
-            <IconButton
-              aria-label={tCommon(($) => $['operation.remove'])}
-              onClick={() => onChange(undefined)}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </IconButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={tCommon(($) => $['operation.remove'])}
+                    onClick={() => onChange(undefined)}
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       )}
@@ -210,31 +220,29 @@ function AgentSkillPackageUploader({
         })}
       </p>
       {showWarning && (
-        <div className="mt-2 flex items-start gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-          <span
-            aria-hidden
-            className="mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
-          />
-          <ul className="list-disc space-y-1 pl-4 system-xs-regular text-text-warning">
-            <li>
-              <Trans
-                i18nKey={($) => $['agentDetail.configure.skills.upload.warning.specification']}
-                ns="agentV2"
-                components={{
-                  specificationLink: (
-                    <Link
-                      href="https://agentskills.io/specification"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-sm underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    />
-                  ),
-                }}
-              />
-            </li>
-            <li>{t(($) => $['agentDetail.configure.skills.upload.warning.files'])}</li>
-          </ul>
-        </div>
+        <Alert type="warning" className="mt-2">
+          <AlertTitle>
+            <ul className="list-disc space-y-1 ps-4">
+              <li>
+                <Trans
+                  i18nKey={($) => $['agentDetail.configure.skills.upload.warning.specification']}
+                  ns="agentV2"
+                  components={{
+                    specificationLink: (
+                      <Link
+                        href="https://agentskills.io/specification"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-sm underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      />
+                    ),
+                  }}
+                />
+              </li>
+              <li>{t(($) => $['agentDetail.configure.skills.upload.warning.files'])}</li>
+            </ul>
+          </AlertTitle>
+        </Alert>
       )}
     </div>
   )
@@ -275,7 +283,6 @@ export function AgentSkillUploadDialog({
       ) => {
         toast.success(t(($) => $['agentDetail.configure.skills.upload.success']))
         onUploaded?.(toUploadedSkill(response, file))
-        setFile(undefined)
         onOpenChange(false)
       },
     }
@@ -317,17 +324,21 @@ export function AgentSkillUploadDialog({
     )
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      uploadAgentSkillMutation.reset()
-      uploadWorkflowSkillMutation.reset()
-      setFile(undefined)
-    }
-    onOpenChange(nextOpen)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && uploadSkillMutation.isPending) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          uploadSkillMutation.reset()
+          setFile(undefined)
+        }
+      }}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
@@ -344,13 +355,9 @@ export function AgentSkillUploadDialog({
           />
         </DialogBody>
         <DialogFooter>
-          <Button
-            type="button"
-            onClick={() => handleOpenChange(false)}
-            disabled={uploadSkillMutation.isPending}
-          >
+          <DialogClose render={<Button disabled={uploadSkillMutation.isPending} />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             type="button"
             variant="primary"

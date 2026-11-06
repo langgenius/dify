@@ -7,12 +7,12 @@ import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zPluginCategoryInstalledPluginResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { ThemeProvider } from '@/features/theme/provider'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -128,11 +128,11 @@ function setup(
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient)
   renderWithConsoleQuery(
-    <ThemeProvider defaultTheme="light" enableSystem={false}>
+    <ThemeProvider defaultPreference="light">
       <NuqsTestingAdapter>
         <DataSourcePage {...props} />
         <ReadmePanel />
-        <AppToastHost />
+        <AppToaster />
       </NuqsTestingAdapter>
     </ThemeProvider>,
     {

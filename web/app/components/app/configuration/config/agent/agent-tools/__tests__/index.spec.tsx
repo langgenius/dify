@@ -1,437 +1,267 @@
-import type { PropsWithChildren } from 'react'
-import type { Mock } from 'vite-plus/test'
-import type SettingBuiltInToolType from '../setting-built-in-tool'
-import type { Tool, ToolParameter } from '@/app/components/tools/types'
-import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { ModelConfig } from '@/models/debug'
 import type { AgentTool } from '@/types/app'
-import { zToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { zToolApiEntity } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import {
-  DEFAULT_AGENT_SETTING,
-  DEFAULT_CHAT_PROMPT_CONFIG,
-  DEFAULT_COMPLETION_PROMPT_CONFIG,
-} from '@/config'
 import ConfigContext from '@/context/debug-configuration'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
-import { ModelModeType } from '@/types/app'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import AgentTools from '../index'
 
-const formattingDispatcherMock = vi.fn()
-vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
-  useFormattingChangedDispatcher: () => formattingDispatcherMock,
-}))
-
-let builtInTools: ToolWithProvider[] = []
-let customTools: ToolWithProvider[] = []
-let workflowTools: ToolWithProvider[] = []
-let mcpTools: ToolWithProvider[] = []
-type ToolPickerProps = React.ComponentProps<typeof ToolPickerType>
-let singleToolSelection: ToolDefaultValue | null = null
-let multipleToolSelection: ToolDefaultValue[] = []
-const ToolPickerMock = (props: ToolPickerProps) => (
-  <div data-testid="tool-picker">
-    <div>{props.trigger}</div>
-    <button
-      type="button"
-      onClick={() => singleToolSelection && props.onSelect(singleToolSelection)}
-    >
-      pick-single
-    </button>
-    <button type="button" onClick={() => props.onSelectMultiple(multipleToolSelection)}>
-      pick-multiple
-    </button>
-  </div>
-)
-vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
-  default: (props: ToolPickerProps) => <ToolPickerMock {...props} />,
-}))
-
-type SettingBuiltInToolProps = React.ComponentProps<typeof SettingBuiltInToolType>
-let settingPanelSavePayload: Record<string, unknown> = {}
-let settingPanelCredentialId = 'credential-from-panel'
-const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
-  return (
-    <div data-testid="setting-built-in-tool">
-      <span>{props.toolName}</span>
-      <button type="button" onClick={() => props.onSave?.(settingPanelSavePayload)}>
-        save-from-panel
-      </button>
-      <button
-        type="button"
-        onClick={() => props.onAuthorizationItemClick?.(settingPanelCredentialId)}
-      >
-        auth-from-panel
-      </button>
-      <button type="button" onClick={props.onHide}>
-        close-panel
-      </button>
-    </div>
-  )
-}
-vi.mock('../setting-built-in-tool', () => ({
-  default: (props: SettingBuiltInToolProps) => <SettingBuiltInToolMock {...props} />,
+// Credential loading and clipboard writes are external boundaries. The picker,
+// settings drawer, authorization menu and configuration caller remain live.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: async (url: string) => {
+    if (
+      !url.startsWith('/workspaces/current/tool-provider/builtin/vendor/provider-1/credential/info')
+    )
+      throw new Error(`Unexpected request: ${url}`)
+    return {
+      supported_credential_types: ['api-key'],
+      is_oauth_custom_client_enabled: false,
+      credentials: [
+        {
+          id: 'credential-search',
+          name: 'Search credential',
+          provider: 'vendor/provider-1',
+          credential_type: 'api-key',
+          is_default: true,
+        },
+        {
+          id: 'credential-translate',
+          name: 'Translate credential',
+          provider: 'vendor/provider-1',
+          credential_type: 'api-key',
+          is_default: false,
+        },
+        {
+          id: 'credential-updated',
+          name: 'Replacement credential',
+          provider: 'vendor/provider-1',
+          credential_type: 'api-key',
+          is_default: false,
+        },
+      ],
+    }
+  },
 }))
 
 vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
 }))
 
-const writeTextToClipboardMock = writeTextToClipboard as Mock
+const createTool = (name: string, label: string) =>
+  zToolApiEntity.parse({
+    name,
+    author: 'tester',
+    label: { en_US: label },
+    description: { en_US: `${label} documents` },
+    parameters: [
+      {
+        name: 'api_key',
+        label: { en_US: 'API Key' },
+        human_description: { en_US: 'API key for requests' },
+        type: 'string',
+        form: 'form',
+        required: true,
+        default: 'default-key',
+      },
+    ],
+  })
 
-const createToolParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
-  name: 'api_key',
-  label: {
-    en_US: 'API Key',
-    zh_Hans: 'API Key',
-  },
-  human_description: {
-    en_US: 'desc',
-    zh_Hans: 'desc',
-  },
-  type: 'string',
-  form: 'form',
-  llm_description: '',
-  required: true,
-  multiple: false,
-  default: 'default',
+const createAgentTool = (overrides: Partial<AgentTool> = {}): AgentTool => ({
+  provider_id: 'provider-1',
+  provider_type: CollectionType.builtIn,
+  provider_name: 'vendor/provider-1',
+  tool_name: 'search',
+  tool_label: 'Search Tool',
+  tool_parameters: { api_key: 'original-key' },
+  enabled: true,
   ...overrides,
 })
 
-const createToolDefinition = (overrides?: Partial<Tool>): Tool => ({
-  name: 'search',
-  author: 'tester',
-  label: {
-    en_US: 'Search',
-    zh_Hans: 'Search',
-  },
-  description: {
-    en_US: 'desc',
-    zh_Hans: 'desc',
-  },
-  parameters: [createToolParameter()],
-  labels: [],
-  output_schema: {},
-  ...overrides,
-})
-
-const createCollection = (overrides?: Partial<ToolWithProvider>): ToolWithProvider => ({
-  id: overrides?.id || 'provider-1',
-  name: overrides?.name || 'vendor/provider-1',
-  author: 'tester',
-  description: {
-    en_US: 'desc',
-    zh_Hans: 'desc',
-  },
-  icon: 'https://example.com/icon.png',
-  label: {
-    en_US: 'Provider Label',
-    zh_Hans: 'Provider Label',
-  },
-  type: overrides?.type || CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: true,
-  allow_delete: true,
-  labels: [],
-  tools: overrides?.tools || [createToolDefinition()],
-  meta: {
-    version: '1.0.0',
-  },
-  ...overrides,
-})
-
-const createAgentTool = (overrides?: Partial<AgentTool>): AgentTool => ({
-  provider_id: overrides?.provider_id || 'provider-1',
-  provider_type: overrides?.provider_type || CollectionType.builtIn,
-  provider_name: overrides?.provider_name || 'vendor/provider-1',
-  tool_name: overrides?.tool_name || 'search',
-  tool_label: overrides?.tool_label || 'Search Tool',
-  tool_parameters: overrides?.tool_parameters || { api_key: 'key' },
-  enabled: overrides?.enabled ?? true,
-  ...overrides,
-})
-
-const createModelConfig = (tools: AgentTool[]): ModelConfig => ({
-  provider: 'OPENAI',
-  model_id: 'gpt-3.5-turbo',
-  mode: ModelModeType.chat,
-  configs: {
-    prompt_template: '',
-    prompt_variables: [],
-  },
-  chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
-  completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
-  opening_statement: '',
-  more_like_this: null,
-  suggested_questions: [],
-  suggested_questions_after_answer: null,
-  speech_to_text: null,
-  text_to_speech: null,
-  file_upload: null,
-  retriever_resource: null,
-  sensitive_word_avoidance: null,
-  annotation_reply: null,
-  external_data_tools: [],
-  dataSets: [],
-  agentConfig: {
-    ...DEFAULT_AGENT_SETTING,
-    tools,
-  },
-})
-
-const renderAgentTools = (initialTools?: AgentTool[]) => {
-  const tools = initialTools ?? [createAgentTool()]
-  const modelConfigRef = { current: createModelConfig(tools) }
-  const Wrapper = ({ children }: PropsWithChildren) => {
-    const [modelConfig, setModelConfig] = useState<ModelConfig>(modelConfigRef.current)
+const renderAgentTools = (initialTools: AgentTool[] = [createAgentTool()]) => {
+  let savedConfig = createModelConfigFixture()
+  const initialConfig = createModelConfigFixture({
+    agentConfig: { ...savedConfig.agentConfig, tools: initialTools },
+  })
+  savedConfig = initialConfig
+  const Caller = () => {
+    const [modelConfig, setModelConfig] = useState<ModelConfig>(initialConfig)
     useEffect(() => {
-      modelConfigRef.current = modelConfig
+      savedConfig = modelConfig
     }, [modelConfig])
     const value = useMemo(
-      () =>
-        createDebugConfigurationFixture({
-          modelConfig,
-          setModelConfig,
-        }),
+      () => createDebugConfigurationFixture({ modelConfig, setModelConfig }),
       [modelConfig],
     )
-    return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
+    return (
+      <ConfigContext.Provider value={value}>
+        <AgentTools />
+      </ConfigContext.Provider>
+    )
   }
   const queryClient = createConsoleQueryClient()
-  for (const [operation, data] of [
-    [consoleQuery.workspaces.current.tools.builtin.get, builtInTools],
-    [consoleQuery.workspaces.current.tools.api.get, customTools],
-    [consoleQuery.workspaces.current.tools.workflow.get, workflowTools],
-    [consoleQuery.workspaces.current.tools.mcp.get, mcpTools],
-  ] as const)
-    queryClient.setQueryData(
-      operation.queryOptions().queryKey,
-      data.map((item) => zToolProviderApiEntityResponse.parse(item)),
-    )
-  const renderResult = renderWithConsoleQuery(
-    <Wrapper>
-      <AgentTools />
-    </Wrapper>,
-    { queryClient },
+  const tools = consoleQuery.workspaces.current.tools
+  queryClient.setQueryData(tools.builtin.get.queryKey(), [
+    createToolProviderFixture({
+      id: 'provider-1',
+      name: 'vendor/provider-1',
+      label: { en_US: 'Search and Translate' },
+      allow_delete: true,
+      is_team_authorization: true,
+      tools: [createTool('search', 'Search Tool'), createTool('translate', 'Translate Tool')],
+    }),
+  ])
+  for (const operation of [tools.api.get, tools.workflow.get, tools.mcp.get])
+    queryClient.setQueryData(operation.queryKey(), [])
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  const view = renderWithConsoleQuery(
+    <UrlState>
+      <EventEmitterContextProvider>
+        <Caller />
+      </EventEmitterContextProvider>
+    </UrlState>,
+    {
+      queryClient,
+      systemFeatures: { enable_marketplace: false },
+      workspacePermissionKeys: ['credential.use'],
+    },
   )
-  return {
-    ...renderResult,
-    getModelConfig: () => modelConfigRef.current,
-  }
+  return { ...view, queryClient, getTools: () => savedConfig.agentConfig.tools as AgentTool[] }
 }
 
 describe('AgentTools', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    builtInTools = [
-      createCollection(),
-      createCollection({
-        id: 'provider-2',
-        name: 'vendor/provider-2',
-        tools: [
-          createToolDefinition({
-            name: 'translate',
-            label: {
-              en_US: 'Translate',
-              zh_Hans: 'Translate',
-            },
-          }),
-        ],
-      }),
-      createCollection({
-        id: 'provider-3',
-        name: 'vendor/provider-3',
-        tools: [
-          createToolDefinition({
-            name: 'summarize',
-            label: {
-              en_US: 'Summary',
-              zh_Hans: 'Summary',
-            },
-          }),
-        ],
-      }),
-    ]
-    customTools = []
-    workflowTools = []
-    mcpTools = []
-    singleToolSelection = {
-      provider_id: 'provider-3',
-      provider_type: CollectionType.builtIn,
-      provider_name: 'vendor/provider-3',
-      tool_name: 'summarize',
-      tool_label: 'Summary Tool',
-      tool_description: 'desc',
-      title: 'Summary Tool',
-      is_team_authorization: true,
-      params: { api_key: 'picker-value' },
-      paramSchemas: [],
-      output_schema: {},
-    }
-    multipleToolSelection = [
-      {
-        provider_id: 'provider-2',
-        provider_type: CollectionType.builtIn,
-        provider_name: 'vendor/provider-2',
-        tool_name: 'translate',
-        tool_label: 'Translate Tool',
-        tool_description: 'desc',
-        title: 'Translate Tool',
-        is_team_authorization: true,
-        params: { api_key: 'multi-a' },
-        paramSchemas: [],
-        output_schema: {},
-      },
-      {
-        provider_id: 'provider-3',
-        provider_type: CollectionType.builtIn,
-        provider_name: 'vendor/provider-3',
-        tool_name: 'summarize',
-        tool_label: 'Summary Tool',
-        tool_description: 'desc',
-        title: 'Summary Tool',
-        is_team_authorization: true,
-        params: { api_key: 'multi-b' },
-        paramSchemas: [],
-        output_schema: {},
-      },
-    ]
-    settingPanelSavePayload = {}
-    settingPanelCredentialId = 'credential-from-panel'
-  })
-
-  it('should show enabled count and provider information', () => {
+  it('shows enabled count and provider information', () => {
     renderAgentTools([
       createAgentTool(),
-      createAgentTool({
-        provider_id: 'provider-2',
-        provider_name: 'vendor/provider-2',
-        tool_name: 'translate',
-        tool_label: 'Translate Tool',
-        enabled: false,
-      }),
+      createAgentTool({ tool_name: 'translate', tool_label: 'Translate Tool', enabled: false }),
     ])
-
-    const enabledText = screen.getByText((content) =>
-      content.includes('appDebug.agent.tools.enabled'),
-    )
-    expect(enabledText).toHaveTextContent('1/2')
-    expect(screen.getByText('provider-1')).toBeInTheDocument()
+    expect(screen.getByText(/appDebug.agent.tools.enabled/)).toHaveTextContent('1/2')
+    expect(screen.getAllByText('provider-1')).toHaveLength(2)
     expect(screen.getByText('Translate Tool')).toBeInTheDocument()
   })
 
-  it('should copy tool name from infotip action', async () => {
+  it('copies the tool name from its infotip', async () => {
     const user = userEvent.setup()
     renderAgentTools()
-
     await user.hover(screen.getByRole('button', { name: 'search' }))
-    const copyButton = await screen.findByText('tools.copyToolName')
-    await user.click(copyButton)
-    expect(writeTextToClipboardMock).toHaveBeenCalledWith('search')
+    await user.click(await screen.findByRole('button', { name: 'tools.copyToolName' }))
+    expect(writeTextToClipboard).toHaveBeenCalledWith('search')
   })
 
-  it('should toggle tool enabled state via switch', async () => {
+  it('saves the disabled state and updates the enabled count', async () => {
     const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools()
+    const { getTools } = renderAgentTools()
+    await user.click(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText(/appDebug.agent.tools.enabled/)).toHaveTextContent('0/1')
+    expect(getTools()[0]?.enabled).toBe(false)
+  })
 
-    const switchButton = screen.getByRole('switch')
-    await user.click(switchButton)
+  it('removes the tool from the configuration and list', async () => {
+    const user = userEvent.setup()
+    const { getTools } = renderAgentTools()
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete Search Tool' }))
+    expect(screen.queryByText('Search Tool')).not.toBeInTheDocument()
+    expect(screen.getByText(/appDebug.agent.tools.enabled/)).toHaveTextContent('0/0')
+    expect(getTools()).toEqual([])
+  })
 
-    await waitFor(() => {
-      const tools = getModelConfig().agentConfig.tools
-      const toggledTool = tools.find((tool) => tool.tool_name === 'search')
-      expect(toggledTool?.enabled).toBe(false)
+  it('adds the chosen tool with its provider and parameter defaults', async () => {
+    const user = userEvent.setup()
+    const { getTools } = renderAgentTools([])
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const picker = await screen.findByRole('dialog', {
+      name: 'plugin.detailPanel.toolSelector.title',
     })
-    expect(formattingDispatcherMock).toHaveBeenCalled()
-  })
-
-  it('should remove tool when delete action is clicked', async () => {
-    const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools()
-    const deleteButton = screen.getByRole('button', { name: /operation\.delete/i })
-    await user.click(deleteButton)
-    await waitFor(() => {
-      expect(getModelConfig().agentConfig.tools).toHaveLength(0)
-    })
-    expect(formattingDispatcherMock).toHaveBeenCalled()
-  })
-
-  it('should add a tool when ToolPicker selects one', async () => {
-    const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools([])
-    const addSingleButton = screen.getByRole('button', { name: 'pick-single' })
-    await user.click(addSingleButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Summary Tool')).toBeInTheDocument()
-    })
-    expect(getModelConfig().agentConfig.tools).toHaveLength(1)
-  })
-
-  it('should append multiple selected tools at once', async () => {
-    const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools([])
-    await user.click(screen.getByRole('button', { name: 'pick-multiple' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Translate Tool')).toBeInTheDocument()
-      expect(screen.getAllByText('Summary Tool')).toHaveLength(1)
-    })
-    expect(getModelConfig().agentConfig.tools).toHaveLength(2)
-  })
-
-  it('should persist tool parameters when SettingBuiltInTool saves values', async () => {
-    const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools([
-      createAgentTool({
-        notAuthor: true,
-      }),
+    await user.click(await within(picker).findByRole('button', { name: /Search and Translate/ }))
+    await user.click(await within(picker).findByRole('button', { name: /Translate Tool/ }))
+    expect(getTools()).toMatchObject([
+      {
+        provider_id: 'provider-1',
+        provider_name: 'vendor/provider-1',
+        tool_name: 'translate',
+        tool_parameters: { api_key: 'default-key' },
+        enabled: true,
+        notAuthor: false,
+      },
     ])
-    await user.click(screen.getByRole('button', { name: /tools.notAuthorized/ }))
-    settingPanelSavePayload = { api_key: 'updated' }
-    await user.click(screen.getByRole('button', { name: 'save-from-panel' }))
-
-    await waitFor(() => {
-      expect(getModelConfig().agentConfig.tools[0]?.tool_parameters).toEqual({ api_key: 'updated' })
-    })
+    expect(screen.getByText(/appDebug.agent.tools.enabled/)).toHaveTextContent('1/1')
   })
 
-  it('should update only the selected tool credential when tools share a provider', async () => {
+  it('adds all tools from the chosen provider', async () => {
     const user = userEvent.setup()
-    const { getModelConfig } = renderAgentTools([
-      createAgentTool({
-        credential_id: 'credential-search',
-        notAuthor: true,
-      }),
+    const { getTools } = renderAgentTools([])
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const picker = await screen.findByRole('dialog', {
+      name: 'plugin.detailPanel.toolSelector.title',
+    })
+    const provider = await within(picker).findByRole('button', { name: /Search and Translate/ })
+    await user.hover(provider)
+    // Focus reveals the real add-all control before clicking it.
+    const addAll = within(picker).getByRole('button', { name: 'workflow.tabs.addAll' })
+    addAll.focus()
+    await user.click(addAll)
+    expect(getTools().map((tool) => tool.tool_name)).toEqual(['search', 'translate'])
+    expect(getTools().map((tool) => tool.tool_parameters)).toEqual([
+      { api_key: 'default-key' },
+      { api_key: 'default-key' },
+    ])
+    expect(screen.getByText(/appDebug.agent.tools.enabled/)).toHaveTextContent('2/2')
+  })
+
+  it('saves settings entered in the real drawer and closes it', async () => {
+    const user = userEvent.setup()
+    const { getTools } = renderAgentTools([createAgentTool({ notAuthor: true })])
+    await user.click(screen.getByRole('button', { name: 'tools.notAuthorized' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Search Tool' })
+    const input = await within(drawer).findByRole('textbox', { name: /API Key/ })
+    await user.clear(input)
+    await user.type(input, 'updated-key')
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(getTools()[0]?.tool_parameters).toEqual({ api_key: 'updated-key' })
+  })
+
+  it('changes only the selected tool credential when tools share a provider', async () => {
+    const user = userEvent.setup()
+    const { getTools } = renderAgentTools([
+      createAgentTool({ credential_id: 'credential-search', notAuthor: true }),
       createAgentTool({
         credential_id: 'credential-translate',
         notAuthor: true,
-        tool_label: 'Translate Tool',
         tool_name: 'translate',
+        tool_label: 'Translate Tool',
       }),
     ])
-    const authorizationButtons = screen.getAllByRole('button', { name: /tools.notAuthorized/ })
-    const secondAuthorizationButton = authorizationButtons[1]
-    if (!secondAuthorizationButton) throw new Error('Second authorization button not found')
-    await user.click(secondAuthorizationButton)
-    settingPanelCredentialId = 'credential-updated'
-    await user.click(screen.getByRole('button', { name: 'auth-from-panel' }))
-
-    await waitFor(() => {
-      const tools = getModelConfig().agentConfig.tools as AgentTool[]
-      expect(tools.map((tool) => tool.credential_id)).toEqual([
-        'credential-search',
-        'credential-updated',
-      ])
-    })
+    await user.click(screen.getAllByRole('button', { name: 'tools.notAuthorized' })[1]!)
+    const drawer = await screen.findByRole('dialog', { name: 'Translate Tool' })
+    await user.click(await within(drawer).findByRole('button', { name: 'Translate credential' }))
+    const menu = await screen.findByRole('dialog', { name: 'plugin.auth.authorizations' })
+    await user.click(within(menu).getByText('Replacement credential'))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'plugin.auth.authorizations' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      within(drawer).getByRole('button', { name: 'Replacement credential' }),
+    ).toBeInTheDocument()
+    expect(getTools().map((tool) => tool.credential_id)).toEqual([
+      'credential-search',
+      'credential-updated',
+    ])
   })
 })

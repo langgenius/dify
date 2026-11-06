@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -155,7 +155,7 @@ async function setup({
     renderWithConsoleQuery(
       <NuqsTestingAdapter hasMemory searchParams={api.params}>
         <Apps />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </NuqsTestingAdapter>,
       {
         queryClient,
@@ -164,7 +164,6 @@ async function setup({
           deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY',
           enable_learn_app: true,
           rbac_enabled: true,
-          enable_collaboration_mode: false,
         },
         features: { apps: { size: 0, limit: 10 } },
       },
@@ -208,7 +207,10 @@ it('imports fresh canonical detail through the real list and form, then checks d
   )
   await submit(user)
   await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
-  expect(api.detail).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'canonical-template' } })
+  expect(api.detail).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'canonical-template' } },
+    { context: { silent: true } },
+  )
   expect(api.import).toHaveBeenCalledWith({
     body: expect.objectContaining({
       yaml_content: 'fresh-dsl',
@@ -260,7 +262,7 @@ it('shows a detail error once without importing or navigating, and preserves the
   const { user } = await setup()
   await openCreate(user)
   await submit(user)
-  expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+  expect(await screen.findAllByText('Unavailable')).toHaveLength(1)
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),

@@ -10,7 +10,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from extensions.ext_application_services import application_services
 from models.trigger import TriggerSubscription
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_builder import _Daemon

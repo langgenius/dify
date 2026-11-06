@@ -34,6 +34,7 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.provider_query import TriggerProviderQuery
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
@@ -129,6 +130,7 @@ def build_workspace_services(
         subscriptions=subscriptions,
         providers=subscription_provider,
         locks=RedisTriggerSubscriptionLocks(redis=redis),
+        codec=ProviderTriggerSubscriptionCodec(),
         invalidate_cache=delete_cache_for_subscription,
     )
     trigger_builders = TriggerSubscriptionBuilderService(
