@@ -372,6 +372,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
         if (chartState === 'loading') {
           return (
             <div
+              className="dark:bg-components-input-bg-normal"
               style={{
                 minHeight: '350px',
                 width: '100%',
@@ -381,9 +382,6 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
                 justifyContent: 'center',
                 borderBottomLeftRadius: '10px',
                 borderBottomRightRadius: '10px',
-                backgroundColor: isDarkMode
-                  ? 'var(--color-components-input-bg-normal)'
-                  : 'transparent',
                 color: 'var(--color-text-secondary)',
               }}
             >
