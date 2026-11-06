@@ -863,7 +863,15 @@ class DatasetRetrieval:
         document_ids_filter: list[str] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
+        *,
+        retrieval_model_override: DefaultRetrievalModelDict | None = None,
     ):
+        """Append results for a dataset scoped to the supplied tenant.
+
+        An override supplies per-call settings for internal datasets; None keeps
+        the stored settings and shared defaults. Neither path mutates the stored
+        configuration. Missing datasets append nothing; retrieval errors propagate.
+        """
         dataset = self._records.dataset(tenant_id, dataset_id)
 
         if not dataset:
@@ -891,7 +899,11 @@ class DatasetRetrieval:
                 all_documents.append(document)
         else:
             # get retrieval model , if the model is not setting , using default
-            retrieval_model: DefaultRetrievalModelDict = dataset.retrieval_model or default_retrieval_model
+            retrieval_model: DefaultRetrievalModelDict = (
+                retrieval_model_override
+                if retrieval_model_override is not None
+                else dataset.retrieval_model or default_retrieval_model
+            )
 
             if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
@@ -1021,7 +1033,13 @@ class DatasetRetrieval:
         return_resource: bool,
         hit_callback: DatasetIndexToolCallbackHandler,
     ) -> str:
-        """Run an Agent dataset tool using the same reads and writes as app retrieval."""
+        """Run an Agent dataset tool using its resolved limit and legacy defaults.
+
+        The caller supplies the tenant, dataset and effective top_k (including
+        zero). Missing search_method uses semantic search; explicit settings are
+        preserved without modifying the stored configuration. Return an empty
+        context for missing or filtered datasets; retrieval errors propagate.
+        """
         dataset = self._records.dataset(tenant_id, dataset_id)
         if dataset is None:
             return ""
@@ -1047,6 +1065,9 @@ class DatasetRetrieval:
         )
         if dataset.provider != "external" and condition and not document_ids:
             return ""
+        retrieval_model: DefaultRetrievalModelDict = (dataset.retrieval_model or default_retrieval_model).copy()
+        retrieval_model.setdefault("search_method", RetrievalMethod.SEMANTIC_SEARCH)
+        retrieval_model["top_k"] = top_k
         self._retriever(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -1055,6 +1076,7 @@ class DatasetRetrieval:
             all_documents=documents,
             document_ids_filter=document_ids.get(dataset_id, []) if document_ids else None,
             metadata_condition=condition,
+            retrieval_model_override=retrieval_model,
         )
         self._records.record_hits(tenant_id, documents)
         if dataset.indexing_technique == IndexTechniqueType.ECONOMY and dataset.provider != "external":
