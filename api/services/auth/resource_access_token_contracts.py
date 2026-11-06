@@ -57,6 +57,19 @@ class ResourceAccessTokenGrant:
     app_ids: frozenset[str]
 
 
+@dataclass(frozen=True, slots=True)
+class DatasetServiceApiGrant:
+    """Authorized Dataset Service API scope.
+
+    ``dataset_ids=None`` denotes an unrestricted legacy workspace key. A
+    concrete set is always a hard resource boundary.
+    """
+
+    token_id: str
+    tenant_id: str
+    dataset_ids: frozenset[str] | None
+
+
 class ResourceAccessTokenInputError(Exception):
     pass
 

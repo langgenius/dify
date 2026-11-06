@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from sqlalchemy import select
@@ -18,6 +19,7 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOutbox,
 )
 from services.knowledge_fs.membership_changes import (
+    KnowledgeFSMembershipChangeInvariantError,
     KnowledgeFSWorkspaceMembershipChange,
     apply_workspace_membership_change,
     apply_workspace_rbac_role_change,
@@ -41,12 +43,14 @@ from tests.helpers.unit.services.knowledge_fs_fakes import claims_summary, revok
     indirect=True,
 )
 def test_member_removal_reassigns_owned_spaces_and_revokes_grants_atomically(sqlite_session: Session) -> None:
+    anchor = _greenfield_anchor(owner_account_id="member-1")
     space = _space(owner_account_id="member-1")
     removed_owner = _permission(space, "member-1", KnowledgeFSControlSpacePermissionRole.OWNER)
     replacement = _permission(space, "owner-1", KnowledgeFSControlSpacePermissionRole.EDITOR)
     revision = KnowledgeFSAuthorizationRevision(tenant_id="tenant-1", control_space_id=space.id)
     sqlite_session.add_all(
         [
+            anchor,
             space,
             removed_owner,
             replacement,
@@ -69,6 +73,8 @@ def test_member_removal_reassigns_owned_spaces_and_revokes_grants_atomically(sql
 
     sqlite_session.expire_all()
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
+    assert anchor.owner_account_id == "member-1"
+    assert anchor.knowledge_space_id is None
     assert space.owner_account_id == "owner-1"
     assert removed_owner.status is KnowledgeFSControlSpacePermissionStatus.REVOKED
     assert replacement.status is KnowledgeFSControlSpacePermissionStatus.ACTIVE
@@ -147,6 +153,7 @@ def test_workspace_rbac_role_change_revokes_every_interactive_grant_without_touc
     revision = KnowledgeFSAuthorizationRevision(tenant_id="tenant-1", control_space_id=space.id)
     sqlite_session.add_all(
         [
+            _greenfield_anchor(),
             space,
             revision,
             _audit(space, "member-1", "20000000-0000-4000-8000-000000000031"),
@@ -179,6 +186,60 @@ def test_workspace_rbac_role_change_revokes_every_interactive_grant_without_touc
         "dify-account:member-2",
     }
     assert {revoke_payload(command)["reason_code"] for command in commands} == {"workspace_rbac_role_changed"}
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSAuthorizationRevision)],
+    indirect=True,
+)
+def test_deleted_real_space_missing_revision_still_blocks_membership_change(sqlite_session: Session) -> None:
+    space = _space()
+    space.state = KnowledgeFSControlSpaceState.DELETED
+    sqlite_session.add_all([_greenfield_anchor(), space])
+    sqlite_session.commit()
+
+    with pytest.raises(KnowledgeFSMembershipChangeInvariantError, match="authorization revision is missing"):
+        apply_workspace_membership_change(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            actor_account_id="owner-1",
+            account_ids=("member-1",),
+            change=KnowledgeFSWorkspaceMembershipChange.MEMBER_ADDED,
+        )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSAuthorizationRevision)],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("id", "10000000-0000-4000-8000-000000000001"),
+        ("provisioning_key", "not-the-anchor"),
+        ("state", KnowledgeFSControlSpaceState.PROVISIONING),
+        ("knowledge_space_id", "10000000-0000-4000-8000-000000000002"),
+        ("lifecycle_operation_id", "10000000-0000-4000-8000-000000000003"),
+    ],
+)
+def test_inconsistent_greenfield_anchor_missing_revision_still_blocks_membership_change(
+    sqlite_session: Session, field: str, value: str | KnowledgeFSControlSpaceState
+) -> None:
+    anchor = _greenfield_anchor()
+    setattr(anchor, field, value)
+    sqlite_session.add(anchor)
+    sqlite_session.commit()
+
+    with pytest.raises(KnowledgeFSMembershipChangeInvariantError, match="authorization revision is missing"):
+        apply_workspace_membership_change(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            actor_account_id="owner-1",
+            account_ids=("member-1",),
+            change=KnowledgeFSWorkspaceMembershipChange.MEMBER_ADDED,
+        )
 
 
 @pytest.mark.parametrize(
@@ -253,6 +314,20 @@ def test_member_removal_rolls_back_owner_and_epoch_when_revoke_reservation_is_in
     assert removed_owner.status is KnowledgeFSControlSpacePermissionStatus.ACTIVE
     assert revision.membership_epoch == 0
     assert sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox)) is None
+
+
+def _greenfield_anchor(*, owner_account_id: str = "owner-1") -> KnowledgeFSControlSpace:
+    provisioning_key = "dify-kfs-greenfield-activation:tenant-1"
+    anchor_id = str(uuid5(NAMESPACE_URL, provisioning_key))
+    anchor = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id=owner_account_id,
+        provisioning_key=provisioning_key,
+        state=KnowledgeFSControlSpaceState.DELETED,
+        lifecycle_operation_id=anchor_id,
+    )
+    anchor.id = anchor_id
+    return anchor
 
 
 def _space(*, owner_account_id: str = "owner-1", suffix: str = "0") -> KnowledgeFSControlSpace:

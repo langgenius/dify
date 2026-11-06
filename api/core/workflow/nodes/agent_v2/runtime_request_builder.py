@@ -20,6 +20,7 @@ from dify_agent.layers.execution_context import (
 from dify_agent.layers.knowledge import (
     DifyKnowledgeBaseLayerConfig,
     DifyKnowledgeDatasetConfig,
+    DifyKnowledgeMetadataConditions,
     DifyKnowledgeMetadataFilteringConfig,
     DifyKnowledgeModelConfig,
     DifyKnowledgeQueryConfig,
@@ -55,6 +56,7 @@ from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
+from libs.workflow_template_values import resolve_template_value
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
@@ -284,7 +286,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=build_knowledge_layer_config(agent_soul),
+                knowledge=build_knowledge_layer_config(agent_soul, variable_pool=context.variable_pool),
                 knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
@@ -762,7 +764,9 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
-def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
+def build_knowledge_layer_config(
+    agent_soul: AgentSoulConfig, *, variable_pool: VariablePoolReader | None = None
+) -> DifyKnowledgeBaseLayerConfig | None:
     """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
     Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
@@ -770,6 +774,11 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
     policy, dataset refs, retrieval controls, and metadata-filtering controls.
     ``score_threshold=None`` means disabled threshold filtering and maps to the
     inner retrieval request's ``0.0`` default through the Agent backend DTO.
+    Preconditions: ``agent_soul`` is validated. Workflow callers provide the
+    current run's variable pool; ``None`` preserves standalone literal filters.
+    Postconditions: Return no layer for empty sets, otherwise map every set
+    without mutating the saved configuration. Missing manual-filter references
+    raise ``WorkflowAgentRuntimeRequestBuildError``.
     """
     if not agent_soul.knowledge.sets:
         return None
@@ -793,7 +802,9 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
                     value=knowledge_set.query.value,
                 ),
                 retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
-                metadata_filtering=_knowledge_metadata_filtering_config(knowledge_set.metadata_filtering),
+                metadata_filtering=_knowledge_metadata_filtering_config(
+                    knowledge_set.metadata_filtering, variable_pool=variable_pool
+                ),
             )
             for knowledge_set in agent_soul.knowledge.sets
         ],
@@ -840,17 +851,42 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
 
 def _knowledge_metadata_filtering_config(
     metadata_filtering: AgentKnowledgeMetadataFilteringConfig,
+    *,
+    variable_pool: VariablePoolReader | None,
 ) -> DifyKnowledgeMetadataFilteringConfig:
+    """Map validated metadata settings to the runtime DTO.
+
+    Preconditions: A supplied pool belongs to the current workflow run.
+    Postconditions: Resolve only value-taking manual filters with a pool,
+    preserving saved settings and stripping editor-only fields. Value-free
+    operators ignore retained templates. Missing required references raise
+    ``WorkflowAgentRuntimeRequestBuildError`` without changing the settings.
+    """
+    conditions = metadata_filtering.conditions
+    if conditions is not None and metadata_filtering.mode == "manual" and variable_pool is not None:
+        try:
+            conditions = conditions.model_copy(
+                update={
+                    "conditions": [
+                        condition.model_copy(update={"value": resolve_template_value(condition.value, variable_pool)})
+                        if condition.comparison_operator not in ("empty", "not empty")
+                        else condition
+                        for condition in conditions.conditions
+                    ]
+                }
+            )
+        except ValueError as error:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "agent_metadata_filter_variable_not_found", str(error)
+            ) from error
+
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(
-            Any,
-            metadata_filtering.conditions.model_dump(
-                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
-            ),
+        conditions=DifyKnowledgeMetadataConditions.model_validate(
+            conditions.model_dump(mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}),
         )
-        if metadata_filtering.conditions is not None
+        if conditions is not None
         else None,
     )
 

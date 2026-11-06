@@ -48,7 +48,6 @@ import { knowledgeSettingsInteractionLockedAtom } from './state/workflow'
 
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const REASONING_MODEL_ERROR_ID = 'knowledge-reasoning-model-error'
-const REASONING_MODEL_WARNING_ID = 'knowledge-reasoning-model-warning'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
 const EMBEDDING_MODEL_ERROR_ID = 'knowledge-embedding-model-error'
 const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
@@ -84,17 +83,12 @@ export function RetrievalSettingsSection() {
   )
   const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()
   const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
-  const [pendingReasoningModel, setPendingReasoningModel] = useState<DefaultModel>()
 
   if (!space || !settings || !current) return null
   const canEdit = space.permission_keys.includes('knowledge_space_edit') && !interactionLocked
-  const hasDocuments = (space.technical_summary?.document_count ?? 0) > 0
-  const saved = retrievalDraftFromSettings(settings)
-  const reasoningDirty =
-    modelFingerprint(current.reasoningModel) !== modelFingerprint(saved.reasoningModel)
-  const reasoningRebuildRequired = hasDocuments && Boolean(saved.reasoningModel)
   const embeddingDirty =
-    modelFingerprint(current.embeddingModel) !== modelFingerprint(saved.embeddingModel)
+    modelFingerprint(current.embeddingModel) !==
+    modelFingerprint(retrievalDraftFromSettings(settings).embeddingModel)
   const retrievalFieldsDisabled = !canEdit
   const updateRetrievalDraft = (patch: Partial<RetrievalSettingsDraft>) => {
     if (canEdit) updateDraft(patch)
@@ -153,13 +147,7 @@ export function RetrievalSettingsSection() {
               </span>
             </div>
             <ModelSelector
-              ariaDescribedBy={
-                !current.reasoningModel
-                  ? REASONING_MODEL_ERROR_ID
-                  : reasoningDirty && reasoningRebuildRequired
-                    ? REASONING_MODEL_WARNING_ID
-                    : undefined
-              }
+              ariaDescribedBy={!current.reasoningModel ? REASONING_MODEL_ERROR_ID : undefined}
               ariaInvalid={!current.reasoningModel}
               ariaLabelledBy={REASONING_MODEL_LABEL_ID}
               ariaRequired
@@ -167,18 +155,7 @@ export function RetrievalSettingsSection() {
               models={reasoningModelList}
               disabled={retrievalFieldsDisabled}
               className="w-full"
-              onValueChange={(model) => {
-                if (!canEdit) return
-                if (modelFingerprint(model) === modelFingerprint(current.reasoningModel)) return
-                if (
-                  reasoningRebuildRequired &&
-                  modelFingerprint(model) !== modelFingerprint(saved.reasoningModel)
-                ) {
-                  setPendingReasoningModel(model)
-                  return
-                }
-                updateRetrievalDraft({ reasoningModel: model })
-              }}
+              onValueChange={(reasoningModel) => updateRetrievalDraft({ reasoningModel })}
             />
             {!current.reasoningModel && (
               <p
@@ -186,15 +163,6 @@ export function RetrievalSettingsSection() {
                 className="mt-1 system-xs-regular text-text-destructive"
               >
                 {t(($) => $['settings.systemReasoningModelRequired'], { ns: 'knowledgeSettings' })}
-              </p>
-            )}
-            {reasoningDirty && reasoningRebuildRequired && (
-              <p
-                id={REASONING_MODEL_WARNING_ID}
-                className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary"
-              >
-                <span aria-hidden className="mt-0.5 i-ri-alert-fill size-3.5 shrink-0" />
-                {t(($) => $['settings.reasoningChangeWarning'], { ns: 'knowledgeSettings' })}
               </p>
             )}
           </div>
@@ -221,7 +189,7 @@ export function RetrievalSettingsSection() {
               onValueChange={(model) => {
                 if (!canEdit) return
                 if (modelFingerprint(model) === modelFingerprint(current.embeddingModel)) return
-                if (hasDocuments) {
+                if ((space.technical_summary?.document_count ?? 0) > 0) {
                   setPendingEmbeddingModel(model)
                   setEmbeddingDialogOpen(true)
                   return
@@ -237,7 +205,7 @@ export function RetrievalSettingsSection() {
                 {t(($) => $['settings.embeddingModelRequired'], { ns: 'knowledgeSettings' })}
               </p>
             )}
-            {embeddingDirty && hasDocuments && (
+            {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
               <p className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary">
                 <span aria-hidden className="mt-0.5 i-ri-alert-fill size-3.5 shrink-0" />
                 {t(($) => $['settings.embeddingChangeWarning'], { ns: 'knowledgeSettings' })}
@@ -429,40 +397,6 @@ export function RetrievalSettingsSection() {
               }}
             >
               {tCommon(($) => $['operation.confirm'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog
-        open={Boolean(pendingReasoningModel) && canEdit}
-        onOpenChange={(open) => {
-          if (!open) setPendingReasoningModel(undefined)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {tCommon(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['settings.reasoningChangeWarning'], { ns: 'knowledgeSettings' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton type="button">
-              {tCommon(($) => $['operation.cancel'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              type="button"
-              tone="default"
-              disabled={!canEdit}
-              onClick={() => {
-                if (!pendingReasoningModel) return
-                updateRetrievalDraft({ reasoningModel: pendingReasoningModel })
-                setPendingReasoningModel(undefined)
-              }}
-            >
-              {t(($) => $['settings.reasoningChangeConfirm'], { ns: 'knowledgeSettings' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
         </AlertDialogContent>
