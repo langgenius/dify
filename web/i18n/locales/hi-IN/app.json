@@ -169,8 +169,6 @@
   "newApp.appCreated": "ऐप बनाया गया",
   "newApp.appDescriptionPlaceholder": "ऐप का विवरण दर्ज करें",
   "newApp.appNamePlaceholder": "अपने ऐप को नाम दें",
-  "newApp.buildFromBlank": "शुरू से बनाएँ",
-  "newApp.builderDescription": "<builderIcon/> App Builder से या स्वयं बनाएँ",
   "newApp.captionDescription": "विवरण",
   "newApp.captionName": "ऐप आइकन और नाम",
   "newApp.caution": "सावधानी",

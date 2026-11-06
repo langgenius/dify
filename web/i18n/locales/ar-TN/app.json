@@ -169,8 +169,6 @@
   "newApp.appCreated": "تم إنشاء التطبيق",
   "newApp.appDescriptionPlaceholder": "أدخل وصف التطبيق",
   "newApp.appNamePlaceholder": "أعط اسمًا لتطبيقك",
-  "newApp.buildFromBlank": "الإنشاء من الصفر",
-  "newApp.builderDescription": "باستخدام <builderIcon/> App Builder أو يدويًا",
   "newApp.captionDescription": "الوصف",
   "newApp.captionName": "اسم التطبيق والأيقونة",
   "newApp.caution": "تحذير",

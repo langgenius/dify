@@ -27,6 +27,7 @@
 /* Component CSS using @apply / @utility. */
 @import '../components/base/badge/index.css';
 @import '../components/base/premium-badge/index.css';
+@import './builder-brand-mark.css';
 @import './glass-surface.css';
 
 /* ---------- JS plugins ------------------------------------------------ */
