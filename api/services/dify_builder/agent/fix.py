@@ -148,7 +148,8 @@ def diagnose(
     """Diagnose owned failure evidence without changing the graph or Run.
 
     Only a unique historically bound Code target with format facts may expose
-    its complete redacted current source, under the existing repair budget.
+    its complete redacted current source, under the existing repair budget,
+    and receive the same failure-policy contract used by repair proposals.
     Missing/oversized context remains explicit; model failures still degrade.
     """
     if evidence is None:
@@ -200,6 +201,8 @@ def diagnose(
         safe_graph = diagnostic_context.redact_diagnostic_value(graph, failed_run, graph, node_outputs)
         targets = [node for node in safe_graph.get("nodes", []) if node.get("id") == target]
         if len(targets) == 1 and targets[0].get("data", {}).get("type") == "code":
+            # Diagnose against the same contract before suggesting a remedy.
+            system += CODE_FAILURE_POLICY_RULES
             fields, _omitted = _culprit_repair_fields(target, safe_graph)
             source_context = (
                 f"\n\nCURRENT CULPRIT SOURCE CONTEXT (native graph relation: {relation}):\n"
