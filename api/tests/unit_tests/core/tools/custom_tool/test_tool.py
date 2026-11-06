@@ -101,11 +101,11 @@ class TestApiToolRequestAssemblyCases:
             sent_fields.append(parse_qsl(request.content.decode(), keep_blank_values=True))
             return httpx.Response(200, json={"ok": True})
 
-        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+        with Session() as session, httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
             monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
             list(
                 tool.invoke(
-                    session=Mock(),
+                    session=session,
                     user_id="user-1",
                     tool_parameters={
                         "tags": json.dumps(tags),
