@@ -130,17 +130,17 @@ class TestWorkflowCollaborationRepository:
         assert result is False
         assert mock_redis.eval.call_args.args[-2:] == ("1", 3)
 
-    def test_graph_view_state_lock_is_scoped_to_workflow(self, mock_redis: Mock) -> None:
+    def test_room_state_lock_is_scoped_to_workflow(self, mock_redis: Mock) -> None:
         expected_lock = Mock()
         mock_redis.lock.return_value = expected_lock
         repository = WorkflowCollaborationRepository()
 
-        lock = repository.graph_view_state_lock("wf-1")
+        lock = repository.room_state_lock("wf-1")
 
         assert lock is expected_lock
         mock_redis.lock.assert_called_once_with(
             "workflow_graph_view_state_lock:wf-1",
-            timeout=repo_module.GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS,
+            timeout=repo_module.ROOM_STATE_LOCK_TIMEOUT_SECONDS,
         )
 
     def test_set_session_info_persists_payload(self, mock_redis: Mock) -> None:
@@ -252,6 +252,10 @@ class TestWorkflowCollaborationRepository:
 
     def test_refresh_server_sessions_refreshes_owned_session_ttls(self, mock_redis: Mock) -> None:
         mock_redis.hgetall.return_value = {b"sid-1": b"wf-1"}
+        mock_redis.get.side_effect = [
+            b'{"workflow_id":"wf-1","user_id":"u-1","server_id":"server-1","page_id":"page-1"}',
+            b'{"sid":"sid-1","sequence":1}',
+        ]
         mock_redis.exists.return_value = 1
         repository = WorkflowCollaborationRepository()
 
@@ -259,11 +263,12 @@ class TestWorkflowCollaborationRepository:
 
         mock_redis.expire.assert_any_call("workflow_online_users:wf-1", 3600)
         mock_redis.expire.assert_any_call("ws_sid_map:sid-1", 3600)
+        mock_redis.expire.assert_any_call("workflow_page_session:wf-1:u-1:page-1", 3600)
         mock_redis.expire.assert_any_call("ws_server_sessions:server-1", 3600)
 
     def test_refresh_server_sessions_drops_stale_sid(self, mock_redis: Mock) -> None:
         mock_redis.hgetall.return_value = {b"sid-stale": b"wf-1"}
-        mock_redis.exists.return_value = 0
+        mock_redis.get.return_value = None
         repository = WorkflowCollaborationRepository()
 
         repository.refresh_server_sessions("server-1")

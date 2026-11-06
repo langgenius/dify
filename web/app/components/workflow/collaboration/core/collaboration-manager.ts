@@ -22,6 +22,7 @@ import type { CRDTProvider } from './crdt-provider'
 import type { ServerDraftChange, ServerDraftGraph, ServerDraftUpdate } from './server-draft-sync'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { v4 as uuid4 } from 'uuid'
 import { EventEmitter } from './event-emitter'
 import { ServerDraftSync } from './server-draft-sync'
 import { applyServerGraphChange } from './server-graph-change'
@@ -205,6 +206,7 @@ export class CollaborationManager {
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
+  private pageSessionId: string | null = null
   private joinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
@@ -282,10 +284,14 @@ export class CollaborationManager {
     this.joinPending = true
     const attempt = ++this.joinAttempt
     const sid = socket.id
+    this.pageSessionId ??= uuid4()
     emitWithAuthGuard(
       socket,
       'user_connect',
-      { workflow_id: this.currentAppId },
+      {
+        workflow_id: this.currentAppId,
+        resume: { page_id: this.pageSessionId, sequence: attempt },
+      },
       {
         onAck: (...args) => {
           if (
@@ -2047,7 +2053,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; requiresGraphReload?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
@@ -2061,10 +2067,14 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
+        if (this.isLeader && data.requiresGraphReload) this.crdtTrusted = false
 
         if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (data.requiresGraphReload ||
+            this.reconnectedWithFreshDoc ||
+            this.awaitingSnapshotImport ||
+            this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false
