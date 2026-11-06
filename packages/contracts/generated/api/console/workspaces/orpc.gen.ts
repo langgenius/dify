@@ -4,6 +4,8 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAccountNotLinkTenantError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
   zCannotOperateSelfError,
   zCannotTransferOwnerToSelfError,
   zCurrentWorkspaceArchivedError,
@@ -20,13 +22,31 @@ import {
   zLimitExceededError,
   zMemberNotFoundError,
   zMemberNotInTenantError,
+  zNetworkAccessForbiddenError,
+  zNetworkAccessGroupBoundError,
+  zNetworkAccessGroupNameConflictError,
+  zNetworkAccessGroupNotFoundError,
+  zNetworkAccessInvalidInputError,
+  zNetworkAccessNotEntitledError,
+  zNetworkAccessRoleDeniedError,
+  zNetworkAccessVersionConflictError,
   zNoFileUploadedError,
   zNotOwnerError,
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
+  zPaidPlanRequiredError,
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
+  zTriggerOauthClientChangedError,
+  zTriggerOauthClientConfigInvalidError,
+  zTriggerOauthProviderError,
+  zTriggerSubscriptionChangedError,
+  zTriggerSubscriptionInvalidError,
+  zTriggerSubscriptionLimitReachedError,
+  zTriggerSubscriptionNameConflictError,
+  zTriggerSubscriptionNotFoundError,
+  zTriggerSubscriptionProviderError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -1474,12 +1494,12 @@ export const channels = {
 }
 
 /**
- * Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+ * Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
  */
 export const get16 = oc
   .route({
     description:
-      'Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.',
+      'Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptionsBatch',
@@ -1494,12 +1514,12 @@ export const batch = {
 }
 
 /**
- * List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+ * List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
  */
 export const get17 = oc
   .route({
     description:
-      'List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.',
+      'List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptions',
@@ -2536,6 +2556,7 @@ export const get35 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse)
+  .errors({ network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError } })
 
 export const currentIp = {
   get: get35,
@@ -2551,6 +2572,14 @@ export const get36 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpPath }))
   .output(zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const checkCurrentIp = {
   get: get36,
@@ -2571,6 +2600,17 @@ export const delete12 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_bound: { status: 409, data: zNetworkAccessGroupBoundError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const get37 = oc
   .route({
@@ -2582,6 +2622,14 @@ export const get37 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdPath }))
   .output(zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const put9 = oc
   .route({
@@ -2598,6 +2646,18 @@ export const put9 = oc
     }),
   )
   .output(zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const byGroupId = {
   delete: delete12,
@@ -2615,6 +2675,13 @@ export const get38 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentNetworkAccessGroupsResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const post38 = oc
   .route({
@@ -2627,6 +2694,16 @@ export const post38 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentNetworkAccessGroupsBody }))
   .output(zPostWorkspacesCurrentNetworkAccessGroupsResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+    network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const networkAccessGroups = {
   get: get38,
@@ -5669,7 +5746,7 @@ export const info3 = {
 }
 
 /**
- * Remove custom OAuth client configuration
+ * Remove the workspace's custom OAuth client configuration
  */
 export const delete26 = oc
   .route({
@@ -5677,14 +5754,14 @@ export const delete26 = oc
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Remove custom OAuth client configuration',
+    summary: "Remove the workspace's custom OAuth client configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 /**
- * Get OAuth client configuration for a provider
+ * Get the masked OAuth client configuration for a provider
  */
 export const get127 = oc
   .route({
@@ -5692,14 +5769,20 @@ export const get127 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Get OAuth client configuration for a provider',
+    summary: 'Get the masked OAuth client configuration for a provider',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 /**
- * Configure custom OAuth client for a provider
+ * Configure the workspace's custom OAuth client for a provider
  */
 export const post84 = oc
   .route({
@@ -5707,7 +5790,7 @@ export const post84 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Configure custom OAuth client for a provider',
+    summary: "Configure the workspace's custom OAuth client for a provider",
     tags: ['console'],
   })
   .input(
@@ -5717,6 +5800,13 @@ export const post84 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 export const client = {
   delete: delete26,
@@ -5751,6 +5841,17 @@ export const post85 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    trigger_subscription_limit_reached: {
+      status: 400,
+      data: zTriggerSubscriptionLimitReachedError,
+    },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionBuilderId = {
   post: post85,
@@ -5952,6 +6053,13 @@ export const get131 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+    trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+  })
 
 export const authorize = {
   get: get131,
@@ -5962,7 +6070,7 @@ export const oauth3 = {
 }
 
 /**
- * Verify credentials for an existing subscription (edit mode only)
+ * Verify credentials against the subscription's own provider without updating it
  */
 export const post89 = oc
   .route({
@@ -5971,7 +6079,7 @@ export const post89 = oc
     operationId:
       'postWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionId',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}',
-    summary: 'Verify credentials for an existing subscription (edit mode only)',
+    summary: "Verify credentials against the subscription's own provider without updating it",
     tags: ['console'],
   })
   .input(
@@ -5984,6 +6092,11 @@ export const post89 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse,
   )
+  .errors({
+    trigger_subscription_invalid: { status: 400, data: zTriggerSubscriptionInvalidError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionId = {
   post: post89,
@@ -6008,7 +6121,7 @@ export const byProvider3 = {
 }
 
 /**
- * Delete a subscription instance
+ * Delete the subscription and its workflow trigger bindings
  */
 export const post90 = oc
   .route({
@@ -6016,7 +6129,7 @@ export const post90 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDelete',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete',
-    summary: 'Delete a subscription instance',
+    summary: 'Delete the subscription and its workflow trigger bindings',
     tags: ['console'],
   })
   .input(
@@ -6025,13 +6138,18 @@ export const post90 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const delete27 = {
   post: post90,
 }
 
 /**
- * Update a subscription instance
+ * Rename a subscription or rebuild its provider configuration
  */
 export const post91 = oc
   .route({
@@ -6039,7 +6157,7 @@ export const post91 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdate',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/update',
-    summary: 'Update a subscription instance',
+    summary: 'Rename a subscription or rebuild its provider configuration',
     tags: ['console'],
   })
   .input(
@@ -6049,6 +6167,15 @@ export const post91 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const update7 = {
   post: post91,
@@ -6197,12 +6324,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))

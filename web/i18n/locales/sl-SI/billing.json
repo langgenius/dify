@@ -8,6 +8,9 @@
   "apps.fullTip2": "Dosežena meja načrta",
   "apps.fullTip2des": "Priporočljivo je, da očistite neaktivne aplikacije, da sprostite prostor, ali nas kontaktirate.",
   "buyPermissionDeniedTip": "Za naročnino kontaktirajte svojega skrbnika podjetja",
+  "errors.operationFailed": "Te zahteve ni bilo mogoče dokončati. Poskusite znova pozneje. Če težava ne izgine, se obrnite na podporo.",
+  "errors.requestInProgress": "Vaša prejšnja zahteva se še obdeluje. Poskusite znova čez trenutek.",
+  "errors.unavailable": "Ta storitev je začasno nedosegljiva. Poskusite znova pozneje.",
   "plans.community.btnText": "Začnite s skupnostjo",
   "plans.community.description": "Za posamezne uporabnike, majhne skupine ali nekomercialne projekte",
   "plans.community.features": [

@@ -8,7 +8,7 @@ afterEach(() => vi.restoreAllMocks())
 it('downloads generated results with commas, quotes, and newlines preserved', async () => {
   const user = userEvent.setup()
   const downloads = captureDownloads()
-  render(<ResDownload isMobile={false} values={[{ text: 'Hello, "world"\nNext line' }]} />)
+  render(<ResDownload compact={false} values={[{ text: 'Hello, "world"\nNext line' }]} />)
 
   await user.click(screen.getByRole('button', { name: 'common.operation.download' }))
 

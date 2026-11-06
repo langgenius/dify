@@ -30,7 +30,15 @@ export function buildQueryOutcomesChartOptions({
   return {
     animationDuration: 250,
     color: ['#0033ff', '#bdb4fe', '#f79009'],
-    grid: { bottom: 18, containLabel: true, left: 0, right: 24, top: 42 },
+    // Legacy containLabel ignores the first x-axis label's overflow past the y-axis on narrow cards.
+    grid: {
+      bottom: 18,
+      left: 0,
+      outerBoundsContain: 'axisLabel',
+      outerBoundsMode: 'same',
+      right: 24,
+      top: 42,
+    },
     legend: {
       icon: 'circle',
       itemHeight: 7,

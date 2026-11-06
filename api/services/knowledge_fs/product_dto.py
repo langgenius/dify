@@ -486,6 +486,90 @@ class KnowledgeFSUpgradeDiscoveryResponse(ResponseModel):
     block_reason: KnowledgeFSUpgradeBlockReason | None = None
 
 
+class KnowledgeFSUpgradeModelChoice(BaseModel):
+    provider: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUpgradeModelsPayload(BaseModel):
+    embedding: KnowledgeFSUpgradeModelChoice
+    rerank: KnowledgeFSUpgradeModelChoice
+    reasoning: KnowledgeFSUpgradeModelChoice
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUpgradeStartPayload(BaseModel):
+    # Older callers may omit the body; the server still resolves and validates all three models.
+    models: KnowledgeFSUpgradeModelsPayload | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+type KnowledgeFSUpgradeModelUnavailableReason = Literal[
+    "missing",
+    "not_found",
+    "deprecated",
+    "no-configure",
+    "quota-exceeded",
+    "no-permission",
+    "disabled",
+    "credential-removed",
+]
+
+
+class KnowledgeFSUpgradeModelRecommendationResponse(ResponseModel):
+    value: KnowledgeFSUpgradeModelChoice | None
+    source: Literal["legacy", "workspace_default"] | None
+    available: bool
+    unavailable_reason: (
+        Literal[
+            "missing",
+            "not_found",
+            "deprecated",
+            "no-configure",
+            "quota-exceeded",
+            "no-permission",
+            "disabled",
+            "credential-removed",
+        ]
+        | None
+    ) = None
+
+
+class KnowledgeFSUpgradeModelRecommendationsResponse(ResponseModel):
+    embedding: KnowledgeFSUpgradeModelRecommendationResponse
+    rerank: KnowledgeFSUpgradeModelRecommendationResponse
+    reasoning: KnowledgeFSUpgradeModelRecommendationResponse
+
+
+class KnowledgeFSUpgradePreparationResponse(KnowledgeFSUpgradeDiscoveryResponse):
+    # A blocked upgrade does not need model-provider I/O merely to explain its block reason.
+    models: KnowledgeFSUpgradeModelRecommendationsResponse | None = None
+
+
+class KnowledgeFSUpgradeModelIssueResponse(ResponseModel):
+    field: Literal["embedding", "reasoning", "rerank"]
+    reason: Literal[
+        "credential-removed",
+        "deprecated",
+        "disabled",
+        "missing",
+        "no-configure",
+        "no-permission",
+        "not_found",
+        "quota-exceeded",
+    ]
+    provider: str | None = None
+    model: str | None = None
+
+
+class KnowledgeFSUpgradeModelErrorDetailsResponse(ResponseModel):
+    issues: list[KnowledgeFSUpgradeModelIssueResponse] = Field(min_length=1, max_length=3)
+
+
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
     icon: KnowledgeFSIconIdentity | None = None

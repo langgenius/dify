@@ -14,6 +14,7 @@ from configs import dify_config
 from controllers.common.rbac import RBACPermission, RBACResourceScope
 from controllers.common.wraps import rbac_permission_required
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -182,7 +183,7 @@ def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Ca
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
         if not is_cloud_edition_billing_paid_plan(current_tenant_id):
-            abort(403, "This feature requires a paid plan.")
+            raise PaidPlanRequiredError()
         return view(*args, **kwargs)
 
     return decorated

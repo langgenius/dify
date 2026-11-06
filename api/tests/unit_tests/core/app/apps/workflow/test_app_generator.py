@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent, WorkflowRunCompleted
 from flask import Flask
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,7 +31,6 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.tool_file_manager import ToolFileManager
@@ -50,6 +51,42 @@ from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+class _PersistedRunRecorder:
+    """Record each workflow trace with the run status persisted when it was emitted."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+        self.events: list[TraceEvent] = []
+        self.persisted_statuses: list[str | None] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        assert isinstance(event.payload, WorkflowRunCompleted)
+        self.events.append(event)
+        with self._session_factory() as session:
+            run = session.get(WorkflowRun, event.payload.workflow_run_id)
+            self.persisted_statuses.append(run.status if run is not None else None)
+
+
+def _trace_scope(recorder: _TraceRecorder | _PersistedRunRecorder, *, app: App, end_user: EndUser) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        user_id=end_user.session_id,
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _workflow_app_generator_workflow(
@@ -122,7 +159,7 @@ def _generate_entity(
         user_id=end_user.id,
         stream=stream,
         invoke_from=invoke_from,
-        trace_manager=TraceQueueManager(app_id=app.id, user_id=end_user.id),
+        trace_scope=_trace_scope(_TraceRecorder(), app=app, end_user=end_user),
         workflow_execution_id="run",
     )
 
@@ -155,10 +192,7 @@ def _repositories(
 class TestWorkflowAppGeneratorCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
-        """Construct real trace managers without provider lookup or background delivery."""
-        monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
-        monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    def disable_enterprise_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
     @staticmethod
@@ -183,6 +217,7 @@ class TestWorkflowAppGeneratorCases:
             }
         )
         sqlite_session.commit()
+        recorder = _PersistedRunRecorder(sqlite_session_factory)
         entity = WorkflowAppGenerateEntity(
             user_from=UserFrom.END_USER,
             task_id="worker-task",
@@ -193,6 +228,7 @@ class TestWorkflowAppGeneratorCases:
             stream=True,
             invoke_from=InvokeFrom.SERVICE_API,
             workflow_execution_id="worker-run",
+            trace_scope=_trace_scope(recorder, app=app_model, end_user=end_user),
         )
         queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
         execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
@@ -214,6 +250,10 @@ class TestWorkflowAppGeneratorCases:
         assert run is not None
         assert run.status == "succeeded"
         assert run.outputs_dict == {"caller": end_user.session_id}
+        assert [event.payload for event in recorder.events] == [
+            WorkflowRunCompleted(workflow_run_id="worker-run", conversation_id=None, total_tokens=0)
+        ]
+        assert recorder.persisted_statuses == ["succeeded"]
 
     @staticmethod
     def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
@@ -317,6 +357,14 @@ class TestWorkflowAppGeneratorCases:
             "core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=sqlite_session.get_bind())
         )
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
+        trace_scope = _trace_scope(_TraceRecorder(), app=app, end_user=end_user)
+        scope_requests: list[dict[str, object]] = []
+
+        def create_trace_scope(**kwargs: object) -> TraceScope:
+            scope_requests.append(kwargs)
+            return trace_scope
+
+        monkeypatch.setattr(_workflow_app_generator, "create_trace_scope", create_trace_scope)
 
         captured = {}
 
@@ -356,6 +404,16 @@ class TestWorkflowAppGeneratorCases:
             "parent_node_execution_id": "outer-node-execution-1",
         }
         assert extras["trace_session_id"] == "session-1"
+        assert application_generate_entity.trace_scope is trace_scope
+        assert scope_requests == [
+            {
+                "tenant_id": app.tenant_id,
+                "app_id": app.id,
+                "app_tracing": None,
+                "user_id": end_user.session_id,
+                "extras": extras,
+            }
+        ]
         assert isinstance(captured["workflow_execution_repository"], SQLAlchemyWorkflowExecutionRepository)
         assert isinstance(captured["workflow_node_execution_repository"], SQLAlchemyWorkflowNodeExecutionRepository)
         assert repository_tenant_ids == {"workflow": app.tenant_id, "node": app.tenant_id}
@@ -654,6 +712,29 @@ END_USER_ID = "00000000-0000-0000-0000-000000000005"
 CREATOR_ID = "00000000-0000-0000-0000-000000000006"
 
 
+def _app_generator_extra_trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        user_id="session-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _record_trace_scope_requests(monkeypatch: pytest.MonkeyPatch, trace_scope: TraceScope) -> list[dict[str, object]]:
+    requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(_app_generator_extra_app_generator_module, "create_trace_scope", create_trace_scope)
+    return requests
+
+
 def _app() -> App:
     return App(
         id=APP_ID,
@@ -762,10 +843,7 @@ def _persist_snippet(
 class TestAppGeneratorExtraCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
-        """Construct real trace managers without provider lookup or background delivery."""
-        monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
-        monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    def disable_enterprise_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
     @staticmethod
@@ -1234,7 +1312,7 @@ class TestAppGeneratorExtraCases:
                 stream=False,
                 invoke_from=InvokeFrom.WEB_APP,
                 extras={},
-                trace_manager=None,
+                trace_scope=None,
                 workflow_execution_id="run-id",
                 call_depth=0,
             )
@@ -1360,7 +1438,7 @@ class TestAppGeneratorExtraCases:
             execute.assert_not_called()
 
     class TestWorkflowAppGeneratorResume:
-        def test_resume_restores_trace_manager_when_missing(self, monkeypatch: pytest.MonkeyPatch):
+        def test_resume_recreates_trace_scope_when_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
             generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
             app_config = WorkflowUIBasedAppConfig(
                 tenant_id="tenant",
@@ -1379,51 +1457,46 @@ class TestAppGeneratorExtraCases:
                 user_id="user",
                 stream=False,
                 invoke_from=InvokeFrom.WEB_APP,
-                extras={},
-                trace_manager=None,
+                extras={"external_trace_id": "trace-1"},
+                trace_scope=None,
                 workflow_execution_id="run-id",
                 call_depth=0,
             )
-            dummy_trace_queue_manager = type(
-                "_DummyTraceQueueManager",
-                (TraceQueueManager,),
+            trace_scope = _app_generator_extra_trace_scope()
+            scope_requests = _record_trace_scope_requests(monkeypatch, trace_scope)
+            captured_entity: WorkflowAppGenerateEntity | None = None
+
+            def _fake_generate(**kwargs):
+                nonlocal captured_entity
+                captured_entity = kwargs["application_generate_entity"]
+                return SimpleNamespace(ok=True)
+
+            monkeypatch.setattr(generator, "_generate", _fake_generate)
+
+            result = generator.resume(
+                app_model=_app(),
+                workflow=_app_generator_extra_workflow(),
+                user=_end_user(),
+                application_generate_entity=application_generate_entity,
+                graph_runtime_state=SimpleNamespace(),
+                workflow_execution_repository=SimpleNamespace(),
+                workflow_node_execution_repository=SimpleNamespace(),
+            )
+
+            assert result.ok is True
+            assert captured_entity is not None
+            assert captured_entity.trace_scope is trace_scope
+            assert scope_requests == [
                 {
-                    "__init__": lambda self, app_id=None, user_id=None: (
-                        setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                    )
-                },
-            )
-            monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.TraceQueueManager",
-                dummy_trace_queue_manager,
-            )
-            captured_entity: WorkflowAppGenerateEntity | None = None
+                    "tenant_id": TENANT_ID,
+                    "app_id": APP_ID,
+                    "app_tracing": None,
+                    "user_id": "session-id",
+                    "extras": {"external_trace_id": "trace-1"},
+                }
+            ]
 
-            def _fake_generate(**kwargs):
-                nonlocal captured_entity
-                captured_entity = kwargs["application_generate_entity"]
-                return SimpleNamespace(ok=True)
-
-            monkeypatch.setattr(generator, "_generate", _fake_generate)
-
-            result = generator.resume(
-                app_model=_app(),
-                workflow=_app_generator_extra_workflow(),
-                user=_end_user(),
-                application_generate_entity=application_generate_entity,
-                graph_runtime_state=SimpleNamespace(),
-                workflow_execution_repository=SimpleNamespace(),
-                workflow_node_execution_repository=SimpleNamespace(),
-            )
-
-            assert result.ok is True
-            assert captured_entity is not None
-            trace_manager = captured_entity.trace_manager
-            assert isinstance(trace_manager, dummy_trace_queue_manager)
-            assert trace_manager.app_id == APP_ID
-            assert trace_manager.user_id == "session-id"
-
-        def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch):
+        def test_resume_preserves_existing_trace_scope(self, monkeypatch: pytest.MonkeyPatch) -> None:
             generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
             app_config = WorkflowUIBasedAppConfig(
                 tenant_id="tenant",
@@ -1433,7 +1506,7 @@ class TestAppGeneratorExtraCases:
                 variables=[],
                 workflow_id="workflow-id",
             )
-            existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+            existing_trace_scope = _app_generator_extra_trace_scope()
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
                 user_from=UserFrom.END_USER,
                 task_id="task",
@@ -1444,10 +1517,11 @@ class TestAppGeneratorExtraCases:
                 stream=False,
                 invoke_from=InvokeFrom.WEB_APP,
                 extras={},
-                trace_manager=existing_trace_manager,
+                trace_scope=existing_trace_scope,
                 workflow_execution_id="run-id",
                 call_depth=0,
             )
+            scope_requests = _record_trace_scope_requests(monkeypatch, _app_generator_extra_trace_scope())
             captured_entity: WorkflowAppGenerateEntity | None = None
 
             def _fake_generate(**kwargs):
@@ -1469,7 +1543,8 @@ class TestAppGeneratorExtraCases:
 
             assert result.ok is True
             assert captured_entity is not None
-            assert captured_entity.trace_manager is existing_trace_manager
+            assert captured_entity.trace_scope is existing_trace_scope
+            assert scope_requests == []
 
     class TestWorkflowAppGeneratorWorker:
         def test_generate_worker_uses_end_user_session_for_external_invocation(
@@ -1517,7 +1592,7 @@ class TestAppGeneratorExtraCases:
                 stream=False,
                 invoke_from=InvokeFrom.WEB_APP,
                 extras={},
-                trace_manager=None,
+                trace_scope=None,
                 workflow_execution_id="run-id",
                 call_depth=0,
             )

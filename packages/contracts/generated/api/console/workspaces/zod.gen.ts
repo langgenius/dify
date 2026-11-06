@@ -545,6 +545,66 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * NetworkAccessForbiddenError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessNotEntitledError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessNotEntitledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_not_entitled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessRoleDeniedError
+ *
+ * Your workspace role does not allow this network access operation.
+ */
+export const zNetworkAccessRoleDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_role_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * NetworkAccessGroupCreatePayload
  */
 export const zNetworkAccessGroupCreatePayload = z.object({
@@ -552,6 +612,42 @@ export const zNetworkAccessGroupCreatePayload = z.object({
   description: z.string().max(500).optional().default(''),
   name: z.string().min(1).max(100),
 })
+
+/**
+ * NetworkAccessInvalidInputError
+ *
+ * Invalid network access group request.
+ */
+export const zNetworkAccessInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessGroupNameConflictError
+ *
+ * An IP policy with this name already exists.
+ */
+export const zNetworkAccessGroupNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_name_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * NetworkAccessGroupCurrentIPResponse
@@ -566,6 +662,42 @@ export const zNetworkAccessGroupCurrentIpResponse = z.object({
 export const zNetworkAccessGroupDeleteResponse = z.object({
   deleted: z.boolean(),
 })
+
+/**
+ * NetworkAccessGroupNotFoundError
+ *
+ * Network access group was not found.
+ */
+export const zNetworkAccessGroupNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NetworkAccessGroupBoundError
+ *
+ * This IP policy is still used by one or more apps.
+ */
+export const zNetworkAccessGroupBoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_bound'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * NetworkAccessVersionConflictError
+ *
+ * The network access resource changed. Refresh it and try again.
+ */
+export const zNetworkAccessVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_version_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * NetworkAccessGroupUpdatePayload
@@ -1120,12 +1252,36 @@ export const zWorkflowToolDeletePayload = z.object({
 })
 
 /**
+ * TriggerOauthClientConfigInvalidError
+ *
+ * The stored trigger OAuth client configuration is invalid.
+ */
+export const zTriggerOauthClientConfigInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_client_config_invalid'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * TriggerOAuthClientPayload
  */
 export const zTriggerOAuthClientPayload = z.object({
   client_params: z.record(z.string(), z.unknown()).nullish(),
   enabled: z.boolean().nullish(),
 })
+
+/**
+ * TriggerOauthClientChangedError
+ *
+ * The trigger OAuth client configuration changed. Reload it before saving again.
+ */
+export const zTriggerOauthClientChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_client_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * TriggerSubscriptionBuilderUpdatePayload
@@ -1136,6 +1292,42 @@ export const zTriggerSubscriptionBuilderUpdatePayload = z.object({
   parameters: z.record(z.string(), z.unknown()).nullish(),
   properties: z.record(z.string(), z.unknown()).nullish(),
 })
+
+/**
+ * TriggerSubscriptionLimitReachedError
+ *
+ * The maximum number of trigger subscriptions for this provider has been reached.
+ */
+export const zTriggerSubscriptionLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_limit_reached'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TriggerSubscriptionNameConflictError
+ *
+ * A trigger subscription with this name already exists for the provider.
+ */
+export const zTriggerSubscriptionNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_name_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TriggerSubscriptionProviderError
+ *
+ * The trigger provider could not complete the subscription operation.
+ */
+export const zTriggerSubscriptionProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_provider_error'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * TriggerSubscriptionBuilderCreatePayload
@@ -1166,11 +1358,59 @@ export const zTriggerProviderErrorResponse = z.object({
 })
 
 /**
+ * TriggerOauthProviderError
+ *
+ * The trigger provider could not complete OAuth authorization.
+ */
+export const zTriggerOauthProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_provider_error'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * TriggerSubscriptionVerifyPayload
  */
 export const zTriggerSubscriptionVerifyPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * TriggerSubscriptionInvalidError
+ *
+ * The trigger subscription configuration or credentials are invalid.
+ */
+export const zTriggerSubscriptionInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TriggerSubscriptionNotFoundError
+ *
+ * The trigger subscription does not exist in this workspace and provider.
+ */
+export const zTriggerSubscriptionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TriggerSubscriptionChangedError
+ *
+ * The trigger subscription changed. Reload it before trying again.
+ */
+export const zTriggerSubscriptionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkspaceCustomConfigResponse
@@ -2946,6 +3186,7 @@ export const zContactOption = z.object({
   avatar_url: z.string().nullish(),
   email: z.string().nullish(),
   id: z.string(),
+  im_providers: z.array(zImProvider),
   name: z.string(),
   type: zHumanInputContactType,
 })

@@ -740,6 +740,36 @@ export type AppNetworkAccessGroupResponse = {
   tenant_id: string
 }
 
+export type NetworkAccessUnsupportedAppModeError = ErrorResponse & {
+  code: 'network_access_unsupported_app_mode'
+  status: 400
+}
+
+export type NetworkAccessForbiddenError = ErrorResponse & {
+  code: 'network_access_forbidden'
+  status: 403
+}
+
+export type NetworkAccessNotEntitledError = ErrorResponse & {
+  code: 'network_access_not_entitled'
+  status: 403
+}
+
+export type NetworkAccessRoleDeniedError = ErrorResponse & {
+  code: 'network_access_role_denied'
+  status: 403
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status: 502
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
+}
+
 export type AppNetworkAccessGroupUpdatePayload = {
   access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   enabled: boolean
@@ -751,6 +781,31 @@ export type AppNetworkAccessGroupMutationResponse = {
   available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   binding: AppNetworkAccessGroupBindingResponse
   effective_enabled: boolean
+}
+
+export type NetworkAccessInvalidInputError = ErrorResponse & {
+  code: 'network_access_invalid_input'
+  status: 400
+}
+
+export type NetworkAccessUnsupportedAccessPointsError = ErrorResponse & {
+  code: 'network_access_unsupported_access_points'
+  status: 400
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type NetworkAccessGroupNotFoundError = ErrorResponse & {
+  code: 'network_access_group_not_found'
+  status: 404
+}
+
+export type NetworkAccessVersionConflictError = ErrorResponse & {
+  code: 'network_access_version_conflict'
+  status: 409
 }
 
 export type AppNetworkAccessGroupStatusResponse = {
@@ -944,6 +999,7 @@ export type TraceProviderCapabilitiesResponse = {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -3469,6 +3525,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -6716,7 +6773,15 @@ export type GetAppsByAppIdNetworkAccessGroupData = {
 }
 
 export type GetAppsByAppIdNetworkAccessGroupErrors = {
+  400: NetworkAccessUnsupportedAppModeError | ErrorResponse
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6740,7 +6805,21 @@ export type PutAppsByAppIdNetworkAccessGroupData = {
 }
 
 export type PutAppsByAppIdNetworkAccessGroupErrors = {
-  404: AppNotFoundError | ErrorResponse
+  400:
+    | NetworkAccessInvalidInputError
+    | NetworkAccessUnsupportedAccessPointsError
+    | NetworkAccessUnsupportedAppModeError
+    | ErrorResponse
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | PaidPlanRequiredError
+    | ErrorResponse
+  404: AppNotFoundError | NetworkAccessGroupNotFoundError | ErrorResponse
+  409: NetworkAccessVersionConflictError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6764,7 +6843,15 @@ export type GetAppsByAppIdNetworkAccessGroupStatusData = {
 }
 
 export type GetAppsByAppIdNetworkAccessGroupStatusErrors = {
+  400: NetworkAccessUnsupportedAppModeError | ErrorResponse
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7366,7 +7453,7 @@ export type GetAppsByAppIdTraceCapabilitiesData = {
 }
 
 export type GetAppsByAppIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -310,8 +310,14 @@ def test_get_oauth_client_config_returns_detached_tenant_and_system_rows(
     assert record.system_credentials == {"client_secret": "system-secret"}
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("encrypted_credentials", {"integration_secret": "concurrent"}), ("expires_at", 200), ("auth_type", "api-key")],
+)
 def test_update_if_unchanged_detects_concurrent_change(
     sqlite_session_factory: sessionmaker[Session],
+    field: str,
+    value: object,
 ) -> None:
     repository = SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
     with sqlite_session_factory.begin() as session:
@@ -332,8 +338,7 @@ def test_update_if_unchanged_detects_concurrent_change(
     with sqlite_session_factory.begin() as session:
         stored = session.scalar(select(DatasourceProvider).where(DatasourceProvider.id == credential_id))
         assert stored is not None
-        stored.encrypted_credentials = {"integration_secret": "concurrent"}
-        stored.expires_at = 200
+        setattr(stored, field, value)
 
     assert not repository.update_if_unchanged(
         record=record,

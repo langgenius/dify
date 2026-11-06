@@ -272,6 +272,42 @@ export const zEducationStatusResponse = z.object({
 })
 
 /**
+ * BillingRequestInProgressError
+ *
+ * A previous request is still being processed. Please try again shortly.
+ */
+export const zBillingRequestInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_request_in_progress'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * EducationActivatePayload
  */
 export const zEducationActivatePayload = z.object({
@@ -286,6 +322,18 @@ export const zEducationActivatePayload = z.object({
 export const zEducationActivateResponse = z.object({
   message: z.string(),
 })
+
+/**
+ * EducationActivateFailedError
+ *
+ * We couldn't activate your education discount.
+ */
+export const zEducationActivateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_activate_failed'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * EducationActivateLimitError
@@ -307,6 +355,18 @@ export const zEducationAutocompleteResponse = z.object({
   data: z.array(z.string()),
   has_next: z.boolean(),
 })
+
+/**
+ * EducationVerifyFailedError
+ *
+ * We couldn't verify your education status.
+ */
+export const zEducationVerifyFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_verify_failed'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * EducationVerifyLimitError

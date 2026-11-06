@@ -5,9 +5,8 @@ import { render } from 'vitest-browser-react'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import ChatWithHistory from '../index'
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'pc',
-  MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'pc' },
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: () => false,
 }))
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
