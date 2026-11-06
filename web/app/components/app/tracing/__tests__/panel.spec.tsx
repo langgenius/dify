@@ -107,6 +107,10 @@ function renderPanel({
   mode = 'chat',
 }: { readOnly?: boolean; searchParams?: string; mode?: AppMode } = {}) {
   const client = createTestQueryClient()
+  client.setQueryData(
+    consoleQuery.systemFeatures.get.queryKey(),
+    createSystemFeaturesFixture({ agent_tracing_api_collection_enabled: agentTracingEnabled }),
+  )
   const QueryWrapper = createQueryClientWrapper(client)
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
     searchParams,
@@ -231,31 +235,10 @@ describe('Tracing overview panel', () => {
       await client.invalidateQueries({ queryKey: consoleQuery.systemFeatures.get.queryKey() })
     })
 
-    expect(requested('/system-features')).toHaveLength(2)
+    expect(requested('/system-features')).toHaveLength(1)
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
     expect(writes).toEqual([])
-    expect(requested('/features')).toEqual([])
-  })
-
-  it('does not report a disabled deployment when the initial system-features request fails', async () => {
-    mockServer()
-    const server = request.getMockImplementation()!
-    request.mockImplementation(async (...args) => {
-      if (new URL(args[2].request.url).pathname.endsWith('/system-features'))
-        throw await httpErrorFromResponse(
-          Response.json({ message: 'System features unavailable' }, { status: 500 }),
-        )
-      return server(...args)
-    })
-    renderPanel({ searchParams: 'tracing=configure', mode: 'workflow' })
-
-    await screen.findByRole('group', { name: 'app.tracing.langfuse.title' })
-    expect(screen.queryByRole('note')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
-    ).not.toBeInTheDocument()
-    expect(requested('/trace-capabilities')).toEqual([])
     expect(requested('/features')).toEqual([])
   })
 

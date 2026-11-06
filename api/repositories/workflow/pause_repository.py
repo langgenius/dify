@@ -201,13 +201,19 @@ class WorkflowPauseRepository:
         return load_form_tokens_by_form_id(form_ids, session=session)
 
     def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        """Bind a task only when the identified run belongs to the supplied tenant and app.
+
+        The conditional write commits in one transaction and preserves the first binding.
+        Missing, out-of-scope, or already-bound runs are unchanged; database failures roll back.
+        """
         with self._session_maker() as session, session.begin():
             session.execute(
                 update(WorkflowRun)
                 .where(
                     WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
+                    # Keep owner checks together so PostgreSQL can use the run's primary key instead of
+                    # underestimating the tenant/app composite index when their values are correlated.
+                    and_(WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id).is_(True),
                     WorkflowRun.task_id.is_(None),
                 )
                 .values(task_id=task_id)

@@ -171,9 +171,9 @@ export function DocumentDetailTasksDrawer({
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-110 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
-              <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
-                <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
+            <DrawerContent className="bg-components-panel-bg">
+              <header className="relative shrink-0 ps-[calc(1.5rem+env(safe-area-inset-left,0px))] pe-[calc(1.5rem+env(safe-area-inset-right,0px))] pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pb-3.5">
+                <DrawerTitle className="pe-9 system-md-semibold text-text-primary">
                   {t(($) => $.backgroundTasks)}
                 </DrawerTitle>
                 <DrawerClose
@@ -183,7 +183,7 @@ export function DocumentDetailTasksDrawer({
                     <IconButton
                       aria-label={tCommon(($) => $['operation.close'])}
                       size="lg"
-                      className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+                      className="absolute inset-e-[calc(1.5rem+env(safe-area-inset-right,0px))] top-[calc(1.25rem+env(safe-area-inset-top,0px))]"
                     >
                       <span aria-hidden className="i-ri-close-line size-5" />
                     </IconButton>
@@ -202,7 +202,7 @@ export function DocumentDetailTasksDrawer({
                   </p>
                 )}
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
+              <div className="min-h-0 flex-1 overflow-y-auto ps-[calc(1.5rem+env(safe-area-inset-left,0px))] pe-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
                 {taskQueryError && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">

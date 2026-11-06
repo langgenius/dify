@@ -5,10 +5,10 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore } from '@/app/components/workflow/store'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { t } = useTranslation(['workflow'])
   const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)

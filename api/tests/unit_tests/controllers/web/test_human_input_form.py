@@ -57,7 +57,7 @@ def database_session(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Session:
-    """Bind model/controller database access to the shared SQLite session."""
+    """Bind controller database access to the shared SQLite session."""
 
     database = SimpleNamespace(engine=sqlite_engine, session=sqlite_session)
     monkeypatch.setattr(human_input_module, "db", database)

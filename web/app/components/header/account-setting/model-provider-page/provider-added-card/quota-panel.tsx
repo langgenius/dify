@@ -11,7 +11,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -93,9 +93,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     exhaustedAt,
     nextCreditResetDate,
   } = useTrialCredits()
-  const { data: trialModels = [] } = useQuery(
+  const isCloud = deploymentEdition === 'CLOUD'
+  const { data: trialModels = [], isPending: isTrialModelsPending } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
+      enabled: isCloud,
       select: (data) => data.trial_models,
     }),
   )
@@ -174,10 +175,22 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .join(', '),
   })
 
-  if (isLoading) {
+  if (isLoading || (isCloud && isTrialModelsPending)) {
     return (
-      <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
-        <LoadingPlaceholder />
+      <div
+        role="status"
+        aria-label={t(($) => $.loading, { ns: 'common' })}
+        className="relative h-16 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs"
+      >
+        <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
+        <div className="relative">
+          <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
+          </div>
+          <div className="flex h-6 items-center motion-safe:animate-pulse">
+            <SkeletonRectangle className="my-0 h-5 w-48" />
+          </div>
+        </div>
       </div>
     )
   }

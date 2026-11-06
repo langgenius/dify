@@ -73,7 +73,7 @@ const baseProps = {
   handleSaveMessage: vi.fn(async () => {}),
   inputs: { name: 'Alice' },
   isCallBatchAPI: false,
-  isPC: true,
+  isBelowMd: false,
   isShowResultPanel: true,
   isWorkflow: false,
   moreLikeThisEnabled: true,
