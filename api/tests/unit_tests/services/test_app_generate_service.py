@@ -573,7 +573,9 @@ class TestGenerate(_RealSessionTest):
         assert result == {"result": "trigger"}
         generate.assert_called_once()
 
-    def test_specific_start_workflow_version_remains_runnable(self, mocker: MockerFixture) -> None:
+    def test_specific_start_workflow_version_remains_runnable(
+        self, mocker: MockerFixture, unbound_session: Session
+    ) -> None:
         workflow_id = str(uuid.uuid4())
         workflow = _make_workflow(workflow_id=workflow_id, node_types=("start",))
         get_workflow = mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -586,7 +588,6 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda value: value,
         )
         app = _make_app(AppMode.WORKFLOW)
-        session = MagicMock()
 
         result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=app,
@@ -594,11 +595,11 @@ class TestGenerate(_RealSessionTest):
             args={"inputs": {}, "workflow_id": workflow_id},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
-            session=session,
+            session=unbound_session,
         )
 
         assert result == {"result": "version"}
-        get_workflow.assert_called_once_with(app, InvokeFrom.SERVICE_API, workflow_id, session=session)
+        get_workflow.assert_called_once_with(app, InvokeFrom.SERVICE_API, workflow_id, session=unbound_session)
 
     # -- WORKFLOW streaming -------------------------------------------------
     def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
