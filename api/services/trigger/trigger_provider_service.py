@@ -38,7 +38,7 @@ class TriggerProviderService:
     """Legacy subscription reads and renewal tasks.
 
     Console management and builder writes use the injected TriggerSubscriptionService.
-    TODO: Retire these ORM-returning reads when webhook dispatch, dynamic options and
+    TODO: Retire these ORM-returning reads when debug invocation, dynamic options and
     renewal tasks migrate to detached subscription queries and explicit dependencies.
     """
 
@@ -317,32 +317,3 @@ class TriggerProviderService:
                 if oauth_params is not None
                 else None
             )
-
-    @classmethod
-    def get_subscription_by_endpoint(cls, endpoint_id: str) -> TriggerSubscription | None:
-        """
-        Get a trigger subscription by the endpoint ID.
-        """
-        with Session(db.engine, expire_on_commit=False) as session:
-            subscription = session.scalar(
-                select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id).limit(1)
-            )
-            if not subscription:
-                return None
-            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-                tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
-            )
-            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-                tenant_id=subscription.tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.credentials = dict(credential_encrypter.decrypt(subscription.credentials))
-
-            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
-                tenant_id=subscription.tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
-            return subscription
