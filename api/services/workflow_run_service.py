@@ -11,7 +11,6 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from machinery.context import RequestContext
@@ -199,6 +198,10 @@ class WorkflowRunService:
     ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list
+
+        Returns an empty list when the run is not visible to the admitted workspace.
+        Creator accounts and end users are resolved in a short read-only session that
+        closes before returning, so the traces carry detached, already-loaded rows.
         """
         workflow_run = self.get_workflow_run(context, app_id=app_id, run_id=run_id)
 
@@ -213,7 +216,8 @@ class WorkflowRunService:
             app_id=app_id,
             workflow_run_id=run_id,
         )
-        return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=db.session())
+        with self._session_factory() as session:
+            return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=session)
 
     def get_workflow_tool_node_executions(
         self,
@@ -223,7 +227,12 @@ class WorkflowRunService:
         run_id: str,
         node_execution_id: str,
     ) -> list[WorkflowNodeExecutionTrace] | None:
-        """Read nested Tool traces through the admitted root app and workflow run."""
+        """Read nested Tool traces through the admitted root app and workflow run.
+
+        Returns None when the root run is not visible to the admitted workspace.
+        Creator lookups use a short read-only session that closes before the internal
+        correlation keys are stripped from ``process_data``.
+        """
         if self.get_workflow_run(context, app_id=app_id, run_id=run_id) is None:
             return None
         contexts.plugin_tool_providers.set({})
@@ -233,7 +242,8 @@ class WorkflowRunService:
             workflow_run_id=run_id,
             parent_node_execution_id=node_execution_id,
         )
-        traces = assemble_workflow_node_execution_traces(executions, self._node_executions, session=db.session())
+        with self._session_factory() as session:
+            traces = assemble_workflow_node_execution_traces(executions, self._node_executions, session=session)
         for trace in traces:
             if trace.process_data is not None:
                 trace.process_data = {
