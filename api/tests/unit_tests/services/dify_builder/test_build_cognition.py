@@ -2616,7 +2616,7 @@ def test_planner_returns_later_discovered_business_questions_with_editable_defau
     outcome = build.propose_plan_v1(model, {"currency": "USD"}, goal_text="Settle orders after rule approval.")
 
     assert outcome is not None
-    assert asdict(outcome) == reply
+    assert asdict(outcome) == {**reply, "knowledge_source_intent": None}
     assert len(model.calls) == 1
     system = model.calls[0][0][0].content
     assert "unanswered business" in system
