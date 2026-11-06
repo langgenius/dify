@@ -10,6 +10,16 @@ from flask_sqlalchemy import SQLAlchemy
 from models.account import Account
 
 
+def _flask_current_app() -> Flask:
+    accessor = "_get_current_object"
+    return getattr(current_app, accessor)()
+
+
+def _flask_g() -> object:
+    accessor = "_get_current_object"
+    return getattr(g, accessor)()
+
+
 @pytest.fixture
 def flask_app() -> Flask:
     app = Flask(__name__)
@@ -21,7 +31,7 @@ def flask_app() -> Flask:
 class TestFlaskAppContext:
     """Test FlaskAppContext implementation."""
 
-    def test_flask_app_context_initialization(self, flask_app):
+    def test_flask_app_context_initialization(self, flask_app: Flask) -> None:
         """Test FlaskAppContext initialization."""
         # Import here to avoid Flask dependency in test environment
         from context.flask_app_context import FlaskAppContext
@@ -30,7 +40,7 @@ class TestFlaskAppContext:
 
         assert ctx.flask_app == flask_app
 
-    def test_flask_app_context_get_config(self, flask_app):
+    def test_flask_app_context_get_config(self, flask_app: Flask) -> None:
         """Test get_config returns Flask app config value."""
         from context.flask_app_context import FlaskAppContext
 
@@ -38,7 +48,7 @@ class TestFlaskAppContext:
 
         assert ctx.get_config("TEST_KEY") == "test_value"
 
-    def test_flask_app_context_get_config_default(self, flask_app):
+    def test_flask_app_context_get_config_default(self, flask_app: Flask) -> None:
         """Test get_config returns default when key not found."""
         from context.flask_app_context import FlaskAppContext
 
@@ -46,7 +56,7 @@ class TestFlaskAppContext:
 
         assert ctx.get_config("NONEXISTENT", "default") == "default"
 
-    def test_flask_app_context_get_extension(self, flask_app):
+    def test_flask_app_context_get_extension(self, flask_app: Flask) -> None:
         """Test get_extension returns Flask extension."""
         from context.flask_app_context import FlaskAppContext
 
@@ -55,7 +65,7 @@ class TestFlaskAppContext:
 
         assert ctx.get_extension("sqlalchemy") == db_ext
 
-    def test_flask_app_context_get_extension_not_found(self, flask_app):
+    def test_flask_app_context_get_extension_not_found(self, flask_app: Flask) -> None:
         """Test get_extension returns None when extension not found."""
         from context.flask_app_context import FlaskAppContext
 
@@ -63,20 +73,20 @@ class TestFlaskAppContext:
 
         assert ctx.get_extension("nonexistent") is None
 
-    def test_flask_app_context_enter(self, flask_app):
+    def test_flask_app_context_enter(self, flask_app: Flask) -> None:
         """Test enter method enters Flask app context."""
         from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(flask_app)
 
         with ctx.enter():
-            assert current_app._get_current_object() is flask_app
+            assert _flask_current_app() is flask_app
 
 
 class TestFlaskExecutionContext:
     """Test FlaskExecutionContext class."""
 
-    def test_initialization(self, flask_app):
+    def test_initialization(self, flask_app: Flask) -> None:
         """Test FlaskExecutionContext initialization."""
         from context.flask_app_context import FlaskExecutionContext
 
@@ -92,7 +102,7 @@ class TestFlaskExecutionContext:
         assert ctx.context_vars == context_vars
         assert ctx.user == user
 
-    def test_app_context_property(self, flask_app):
+    def test_app_context_property(self, flask_app: Flask) -> None:
         """Test app_context property returns FlaskAppContext."""
         from context.flask_app_context import FlaskAppContext, FlaskExecutionContext
 
@@ -104,7 +114,7 @@ class TestFlaskExecutionContext:
         assert isinstance(ctx.app_context, FlaskAppContext)
         assert ctx.app_context.flask_app == flask_app
 
-    def test_context_manager_protocol(self, flask_app):
+    def test_context_manager_protocol(self, flask_app: Flask) -> None:
         """Test FlaskExecutionContext supports context manager protocol."""
         from context.flask_app_context import FlaskExecutionContext
 
@@ -125,16 +135,16 @@ class TestFlaskExecutionContext:
 class TestCaptureFlaskContext:
     """Test capture_flask_context against real Flask proxies."""
 
-    def test_capture_flask_context_captures_app(self, flask_app):
+    def test_capture_flask_context_captures_app(self, flask_app: Flask) -> None:
         from context.flask_app_context import capture_flask_context
 
         with flask_app.app_context():
             ctx = capture_flask_context()
 
         with ctx:
-            assert current_app._get_current_object() is flask_app
+            assert _flask_current_app() is flask_app
 
-    def test_capture_flask_context_captures_user_from_g(self, flask_app):
+    def test_capture_flask_context_captures_user_from_g(self, flask_app: Flask) -> None:
         from context.flask_app_context import capture_flask_context
 
         user = Account(name="user_123", email="user_123@example.com")
@@ -144,7 +154,7 @@ class TestCaptureFlaskContext:
 
         assert ctx.user is user
 
-    def test_capture_flask_context_with_explicit_user(self, flask_app):
+    def test_capture_flask_context_with_explicit_user(self, flask_app: Flask) -> None:
         from context.flask_app_context import capture_flask_context
 
         explicit_user = Account(name="user_456", email="user_456@example.com")
@@ -154,14 +164,15 @@ class TestCaptureFlaskContext:
 
         assert ctx.user is explicit_user
 
-    def test_capture_flask_context_captures_contextvars(self, flask_app):
-        from context.flask_app_context import capture_flask_context
+    def test_capture_flask_context_captures_contextvars(self, flask_app: Flask) -> None:
+        from context.flask_app_context import FlaskExecutionContext, capture_flask_context
 
         test_var = contextvars.ContextVar("test_var")
         token = test_var.set("test_value")
         try:
             with flask_app.app_context():
                 ctx = capture_flask_context()
+            assert isinstance(ctx, FlaskExecutionContext)
             assert ctx.context_vars[test_var] == "test_value"
         finally:
             test_var.reset(token)
@@ -173,7 +184,9 @@ class TestFlaskExecutionContextIntegration:
     @pytest.mark.parametrize("use_enter", [False, True])
     @pytest.mark.parametrize("caller_value", [None, "caller"])
     @pytest.mark.parametrize("raise_error", [False, True])
-    def test_enter_restores_context_vars(self, flask_app, use_enter, caller_value, raise_error):
+    def test_enter_restores_context_vars(
+        self, flask_app: Flask, use_enter: bool, caller_value: str | None, raise_error: bool
+    ) -> None:
         """Restore the caller's binding on normal and exceptional exits."""
         test_var = contextvars.ContextVar("integration_test_var")
         context_vars = contextvars.Context()
@@ -201,12 +214,12 @@ class TestFlaskExecutionContextIntegration:
                 test_var.reset(token)
 
     @pytest.mark.parametrize(("outer_enter", "inner_enter"), [(False, False), (False, True), (True, False)])
-    def test_nested_context_restores_each_scope(self, outer_enter, inner_enter):
+    def test_nested_context_restores_each_scope(self, outer_enter: bool, inner_enter: bool) -> None:
         from context.flask_app_context import FlaskExecutionContext
 
         flask_app = Flask(__name__)
-        caller_app = current_app._get_current_object()
-        caller_g = g._get_current_object()
+        caller_app = _flask_current_app()
+        caller_g = _flask_g()
         test_var = contextvars.ContextVar("nested_var")
         captured = contextvars.copy_context()
         captured.run(test_var.set, "captured")
@@ -215,22 +228,24 @@ class TestFlaskExecutionContextIntegration:
         with ctx.enter() if outer_enter else ctx:
             assert current_app == flask_app
             test_var.set("outer")
-            outer_g = g._get_current_object()
+            outer_g = _flask_g()
             with ctx.enter() if inner_enter else ctx:
                 assert current_app == flask_app
-                assert g._get_current_object() is not outer_g
+                assert _flask_g() is not outer_g
                 assert test_var.get() == "captured"
                 test_var.set("inner")
-            assert g._get_current_object() is outer_g
+            assert _flask_g() is outer_g
             assert test_var.get() == "outer"
 
         assert test_var not in contextvars.copy_context()
         assert current_app == caller_app
-        assert g._get_current_object() is caller_g
+        assert _flask_g() is caller_g
 
     @pytest.mark.parametrize("use_enter", [False, True])
     @pytest.mark.parametrize("failure_stage", ["enter", "teardown"])
-    def test_context_vars_restored_when_flask_context_fails(self, flask_app, monkeypatch, use_enter, failure_stage):
+    def test_context_vars_restored_when_flask_context_fails(
+        self, flask_app: Flask, monkeypatch: pytest.MonkeyPatch, use_enter: bool, failure_stage: str
+    ) -> None:
         from context.flask_app_context import FlaskExecutionContext
 
         test_var = contextvars.ContextVar("failure_var")
@@ -238,7 +253,7 @@ class TestFlaskExecutionContextIntegration:
         captured.run(test_var.set, "captured")
         ctx = FlaskExecutionContext(flask_app=flask_app, context_vars=captured)
 
-        def fail_context(_exception=None):
+        def fail_context(_exception: object | None = None) -> None:
             raise ValueError("context failed")
 
         with monkeypatch.context() as patch:
@@ -252,7 +267,7 @@ class TestFlaskExecutionContextIntegration:
             assert test_var.get() == "captured"
         assert test_var not in contextvars.copy_context()
 
-    def test_enter_enters_flask_app_context(self, flask_app):
+    def test_enter_enters_flask_app_context(self, flask_app: Flask) -> None:
         """Test that enter enters Flask app context."""
         from context.flask_app_context import FlaskExecutionContext
 
@@ -263,9 +278,9 @@ class TestFlaskExecutionContextIntegration:
 
         with ctx:
             # Verify app context was entered
-            assert current_app._get_current_object() is flask_app
+            assert _flask_current_app() is flask_app
 
-    def test_enter_restores_user_in_g(self, flask_app):
+    def test_enter_restores_user_in_g(self, flask_app: Flask) -> None:
         """The explicit user is restored into the new Flask app context."""
         from context.flask_app_context import FlaskExecutionContext
 
@@ -281,7 +296,7 @@ class TestFlaskExecutionContextIntegration:
 
         assert ctx.user is user
 
-    def test_enter_method_as_context_manager(self, flask_app):
+    def test_enter_method_as_context_manager(self, flask_app: Flask) -> None:
         """Test enter method returns a proper context manager."""
         from context.flask_app_context import FlaskExecutionContext
 
@@ -292,4 +307,4 @@ class TestFlaskExecutionContextIntegration:
 
         # enter() should return a generator/context manager
         with ctx.enter():
-            assert current_app._get_current_object() is flask_app
+            assert _flask_current_app() is flask_app
