@@ -612,6 +612,7 @@ export default interface Resources {
     'endUser.noProviderConnectionsDescription': 'Connections you authorize with {{provider}} will appear here.'
     'endUser.noResults': 'No apps found'
     'endUser.noResultsDescription': 'Try another name or clear your search.'
+    'endUser.notConfigured': 'Not configured'
     'endUser.oauthAccount': 'OAuth Account'
     'endUser.providerConnectionsDescription': 'Manage {{provider}} authorizations. Disconnect removes an authorization from all linked apps.'
     'endUser.removeFromList': 'Remove from list'

@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "การเชื่อมต่อที่คุณอนุญาตสิทธิ์กับ {{provider}} จะปรากฏที่นี่",
   "endUser.noResults": "ไม่พบแอป",
   "endUser.noResultsDescription": "ลองชื่ออื่นหรือล้างการค้นหา",
+  "endUser.notConfigured": "ยังไม่ได้กำหนดค่า",
   "endUser.oauthAccount": "บัญชี OAuth",
   "endUser.providerConnectionsDescription": "จัดการการอนุญาตสิทธิ์ของ {{provider}} การตัดการเชื่อมต่อจะนำการอนุญาตสิทธิ์ออกจากแอปที่เชื่อมโยงทั้งหมด",
   "endUser.removeFromList": "นำออกจากรายการ",

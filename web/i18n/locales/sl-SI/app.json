@@ -75,6 +75,7 @@
   "endUser.noProviderConnectionsDescription": "Povezave, ki jih odobrite pri {{provider}}, bodo prikazane tukaj.",
   "endUser.noResults": "Ni najdenih aplikacij",
   "endUser.noResultsDescription": "Poskusite z drugim imenom ali počistite iskanje.",
+  "endUser.notConfigured": "Ni konfigurirano",
   "endUser.oauthAccount": "Račun OAuth",
   "endUser.providerConnectionsDescription": "Upravljajte pooblastila za {{provider}}. Prekinitev povezave odstrani pooblastilo iz vseh povezanih aplikacij.",
   "endUser.removeFromList": "Odstrani s seznama",

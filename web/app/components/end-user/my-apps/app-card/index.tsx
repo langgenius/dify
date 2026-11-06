@@ -4,6 +4,7 @@ import type { EndUserApp } from '../model'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon, AppTypeLabel } from '@/app/components/app/type-selector'
@@ -69,6 +70,14 @@ export default function EndUserAppCard({ app, authSession }: Props) {
         {app.description}
       </p>
       <div className="flex min-h-9.5 items-center justify-end gap-1 px-4 pt-2">
+        {app.connection_status === 'not_configured' && (
+          <span className="me-auto flex min-w-0 items-center gap-1.5 system-xs-medium text-text-warning">
+            <StatusDot status="warning" />
+            <span className="min-w-0 wrap-anywhere">
+              {t(($) => $['endUser.notConfigured'], { ns: 'app' })}
+            </span>
+          </span>
+        )}
         <IconButton
           size="md"
           className="relative size-7"

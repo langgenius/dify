@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "ການເຊື່ອມຕໍ່ທີ່ທ່ານອະນຸຍາດສິດກັບ {{provider}} ຈະປາກົດຢູ່ທີ່ນີ້.",
   "endUser.noResults": "ບໍ່ພົບແອັບ",
   "endUser.noResultsDescription": "ລອງໃຊ້ຊື່ອື່ນ ຫຼືລ້າງການຄົ້ນຫາ.",
+  "endUser.notConfigured": "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ",
   "endUser.oauthAccount": "ບັນຊີ OAuth",
   "endUser.providerConnectionsDescription": "ຈັດການການອະນຸຍາດສິດຂອງ {{provider}}. ການຕັດການເຊື່ອມຕໍ່ຈະເອົາສິດອອກຈາກແອັບທີ່ເຊື່ອມໂຍງທັງໝົດ.",
   "endUser.removeFromList": "ເອົາອອກຈາກລາຍການ",

@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "Koneksi yang Anda otorisasi dengan {{provider}} akan muncul di sini.",
   "endUser.noResults": "Tidak ada aplikasi yang ditemukan",
   "endUser.noResultsDescription": "Coba nama lain atau hapus pencarian Anda.",
+  "endUser.notConfigured": "Belum dikonfigurasi",
   "endUser.oauthAccount": "Akun OAuth",
   "endUser.providerConnectionsDescription": "Kelola otorisasi {{provider}}. Memutuskan koneksi akan menghapus otorisasi dari semua aplikasi yang ditautkan.",
   "endUser.removeFromList": "Hapus dari daftar",

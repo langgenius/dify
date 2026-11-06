@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "{{provider}} ile yetkilendirdiğiniz bağlantılar burada görünür.",
   "endUser.noResults": "Uygulama bulunamadı",
   "endUser.noResultsDescription": "Başka bir ad deneyin veya aramanızı temizleyin.",
+  "endUser.notConfigured": "Yapılandırılmadı",
   "endUser.oauthAccount": "OAuth hesabı",
   "endUser.providerConnectionsDescription": "{{provider}} yetkilendirmelerini yönetin. Bağlantıyı kesmek, bir yetkilendirmeyi tüm bağlı uygulamalardan kaldırır.",
   "endUser.removeFromList": "Listeden kaldır",

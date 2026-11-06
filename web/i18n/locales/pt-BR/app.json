@@ -74,6 +74,7 @@
   "endUser.noProviderConnectionsDescription": "As conexões que você autorizar com {{provider}} aparecerão aqui.",
   "endUser.noResults": "Nenhum aplicativo encontrado",
   "endUser.noResultsDescription": "Tente outro nome ou limpe a busca.",
+  "endUser.notConfigured": "Não configurado",
   "endUser.oauthAccount": "Conta OAuth",
   "endUser.providerConnectionsDescription": "Gerencie autorizações do {{provider}}. Desconectar remove uma autorização de todos os aplicativos vinculados.",
   "endUser.removeFromList": "Remover da lista",

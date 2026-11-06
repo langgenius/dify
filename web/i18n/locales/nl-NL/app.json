@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "Verbindingen die je bij {{provider}} autoriseert, verschijnen hier.",
   "endUser.noResults": "Geen apps gevonden",
   "endUser.noResultsDescription": "Probeer een andere naam of wis je zoekopdracht.",
+  "endUser.notConfigured": "Niet geconfigureerd",
   "endUser.oauthAccount": "OAuth-account",
   "endUser.providerConnectionsDescription": "Beheer autorisaties voor {{provider}}. Als je de verbinding verbreekt, wordt een autorisatie uit alle gekoppelde apps verwijderd.",
   "endUser.removeFromList": "Uit lijst verwijderen",

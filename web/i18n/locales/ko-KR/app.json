@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "{{provider}}에서 인증한 연결이 여기에 표시됩니다.",
   "endUser.noResults": "앱을 찾을 수 없습니다",
   "endUser.noResultsDescription": "다른 이름을 검색하거나 검색 내용을 지워 보세요.",
+  "endUser.notConfigured": "구성되지 않음",
   "endUser.oauthAccount": "OAuth 계정",
   "endUser.providerConnectionsDescription": "{{provider}} 인증을 관리합니다. 연결을 해제하면 연결된 모든 앱에서 해당 인증이 제거됩니다.",
   "endUser.removeFromList": "목록에서 제거",

@@ -75,6 +75,7 @@
   "endUser.noProviderConnectionsDescription": "Підключення, які ви авторизуєте через {{provider}}, з’являться тут.",
   "endUser.noResults": "Застосунків не знайдено",
   "endUser.noResultsDescription": "Спробуйте іншу назву або очистьте пошук.",
+  "endUser.notConfigured": "Не налаштовано",
   "endUser.oauthAccount": "Обліковий запис OAuth",
   "endUser.providerConnectionsDescription": "Керуйте авторизаціями {{provider}}. Відключення видаляє авторизацію з усіх пов’язаних застосунків.",
   "endUser.removeFromList": "Вилучити зі списку",
