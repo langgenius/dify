@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
+from context.web_chat import WebChatActor
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.file_access import DatabaseFileAccessController
 from core.model_manager import ModelInstance
@@ -26,6 +27,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.conversation_access import require_web_message_access
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.runtime_config_service import AgentRuntimeConfigService
 
@@ -144,9 +146,12 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
+        *,
+        web_actor: WebChatActor | None = None,
     ) -> None:
         self.conversation = conversation
         self.model_instance = model_instance
+        self._web_actor = web_actor
 
     @staticmethod
     def _file_config(
@@ -338,13 +343,36 @@ class TokenBufferMemory:
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
-        session = db.session()
-        history = self.load_history(
-            conversation=self.conversation,
-            app_record=self.conversation.app(session=session),
-            session=session,
-            message_limit=message_limit,
-        )
+        """Prepare bounded history, then restore files and count tokens outside its fence.
+
+        An enrolled Web actor must still own the conversation. Otherwise raise
+        before reading history. Unenrolled callers retain their existing session
+        semantics, including visibility of their own uncommitted App changes.
+        """
+        actor = self._web_actor
+        if actor is None:
+            session = db.session()
+            history = self.load_history(
+                conversation=self.conversation,
+                app_record=self.conversation.app(session=session),
+                session=session,
+                message_limit=message_limit,
+            )
+        else:
+            with Session(db.engine, expire_on_commit=False) as session:
+                require_web_message_access(
+                    session,
+                    tenant_id=actor.tenant_id,
+                    app_id=actor.app_id,
+                    end_user_id=actor.end_user_id,
+                    conversation_id=self.conversation.id,
+                )
+                history = self.load_history(
+                    conversation=self.conversation,
+                    app_record=self.conversation.app(session=session),
+                    session=session,
+                    message_limit=message_limit,
+                )
         return history.get_prompt_messages(model_instance=self.model_instance, max_token_limit=max_token_limit)
 
     def get_history_prompt_text(

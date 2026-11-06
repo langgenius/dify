@@ -8,6 +8,7 @@ from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
+    ChatAppGenerateEntity,
 )
 from core.app.entities.queue_entities import (
     QueueErrorEvent,
@@ -21,6 +22,7 @@ from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
+from repositories.conversation_access import require_web_message_owner
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,11 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Classify an error and optionally stage its authorized message mutation.
+
+        The caller owns commit or rollback. A migrated Chatbot message rejects its
+        old actor before mutation, rather than overwriting Account error state.
+        """
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -64,6 +71,16 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         if not message_id or not session:
             return err
 
+        entity = self._application_generate_entity
+        actor = entity.web_chat_actor if isinstance(entity, ChatAppGenerateEntity) else None
+        if actor is not None:
+            require_web_message_owner(
+                session,
+                tenant_id=actor.tenant_id,
+                app_id=actor.app_id,
+                end_user_id=actor.end_user_id,
+                message_id=message_id,
+            )
         stmt = select(Message).where(Message.id == message_id)
         message = session.scalar(stmt)
         if not message:

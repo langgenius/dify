@@ -82,7 +82,11 @@ class ChatAppRunner(AppRunner):
                 model=application_generate_entity.model_conf.model,
             )
 
-            memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+            memory = TokenBufferMemory(
+                conversation=conversation,
+                model_instance=model_instance,
+                web_actor=application_generate_entity.web_chat_actor,
+            )
 
         # organize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)

@@ -17,7 +17,7 @@ from models.enums import (
     FeedbackFromSource,
     InvokeFrom,
 )
-from models.model import App, AppMode, Conversation, EndUser, Message, MessageFeedback, Site, UploadFile
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFeedback, Site, UploadFile
 from models.tools import ToolFile
 from models.web import PinnedConversation, SavedMessage
 from models.workflow import WorkflowRun
@@ -27,7 +27,26 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionIdentityError
 from services.web_migration_service import GuestMigrationNotReadyError, GuestMigrationSource, MigrationCounts
 
-_MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
+_MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT)
+
+
+def supports_chatbot_migration(session: Session, *, guest: WebConnectionContext, config_id: str | None) -> bool:
+    """Admit only ordinary Chatbot configurations and ordinary Guest chat history.
+
+    Legacy agent configurations can be stored as CHAT until first use. Their tool
+    writers do not implement snapshot migration, so they remain unsupported.
+    This read performs no mode normalization or other mutation.
+    """
+    config = session.scalar(
+        sa.select(AppModelConfig).where(AppModelConfig.id == config_id, AppModelConfig.app_id == guest.app_id)
+    )
+    return (
+        config is not None
+        and not config.agent_mode_dict.get("enabled", False)
+        and not session.scalar(
+            sa.select(sa.exists().where(*guest_history_roots(guest), Conversation.mode != AppMode.CHAT))
+        )
+    )
 
 
 def guest_history_roots(guest: WebConnectionContext) -> tuple[sa.ColumnElement[bool], ...]:
@@ -70,9 +89,14 @@ class WebMigrationRepository:
         self._sessions = session_factory
 
     def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> GuestMigrationSource | None:
+        """Return current published Guest scope and advisory counts without mutation.
+
+        Missing identities and unsupported execution configurations return None.
+        Transfer rechecks these facts under its exclusive identity fence.
+        """
         with self._sessions() as session:
             identity = session.execute(
-                sa.select(App.tenant_id, App.name, App.mode)
+                sa.select(App.tenant_id, App.name, App.mode, App.app_model_config_id)
                 .join(Site, Site.app_id == App.id)
                 .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
                 .where(
@@ -92,6 +116,10 @@ class WebMigrationRepository:
             if identity is None:
                 return None
             guest = WebConnectionContext(identity.tenant_id, app_id, end_user_id, None)
+            if identity.mode == AppMode.CHAT and not supports_chatbot_migration(
+                session, guest=guest, config_id=identity.app_model_config_id
+            ):
+                return None
             connections = session.scalar(
                 sa.select(sa.func.count())
                 .select_from(EndUserConnection)
@@ -119,6 +147,12 @@ class WebMigrationRepository:
 
     @translate_end_user_lock_errors()
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts:
+        """Atomically transfer eligible resources between validated App identities.
+
+        Workflow/Chatflow must be quiescent; Chatbot transfers committed history
+        while excluding original-actor writes with the exclusive identity fence.
+        Return moved counts on commit; failures roll back all ownership changes.
+        """
         guest = source.context
         if guest.account_id is not None:
             raise ConnectionIdentityError()
@@ -144,6 +178,10 @@ class WebMigrationRepository:
             )
             if (
                 app is None
+                or (
+                    app.mode == AppMode.CHAT
+                    and not supports_chatbot_migration(session, guest=guest, config_id=app.app_model_config_id)
+                )
                 or session.scalar(
                     sa.select(Site.id).where(
                         Site.app_id == app.id, Site.code == source.app_code, Site.status == AppStatus.NORMAL
@@ -176,7 +214,7 @@ class WebMigrationRepository:
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
             # Startup registers its Run before releasing the shared identity lock.
             # With the exclusive lock held, this check closes the readiness-to-transfer gap.
-            if session.scalar(sa.select(sa.exists().where(*unfinished_guest_runs(guest)))):
+            if app.mode != AppMode.CHAT and session.scalar(sa.select(sa.exists().where(*unfinished_guest_runs(guest)))):
                 raise GuestMigrationNotReadyError()
             eligible = tuple(
                 session.scalars(sa.select(Conversation.id).where(*guest_history_roots(guest)).order_by(Conversation.id))
