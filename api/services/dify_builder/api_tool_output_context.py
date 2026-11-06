@@ -199,6 +199,15 @@ def format_plugin_tool_output_context(
         target_node_id=target_node_id,
         entries=[entry for entry in entries if entry["provider_type"] != "api"],
     )
+    return format_selected_plugin_tool_output_context(selected)
+
+
+def format_selected_plugin_tool_output_context(selected: Sequence[tuple[str, "ToolCatalogueEntry"]]) -> str:
+    """Render real matched graph identities without another catalogue read.
+
+    Callers supply real node IDs and exact installed entries. The result uses
+    the same bounded declaration states as generation; it never infers shape.
+    """
     if not selected:
         return ""
     tools: list[dict[str, object]] = []
