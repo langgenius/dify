@@ -98,6 +98,13 @@ from services.dify_builder.business_acceptance import (
 )
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
+from services.dify_builder.knowledge_source_intent import (
+    current_source_intent,
+    established_source_required,
+    planning_requirements,
+    record_source_intent,
+    source_intent_needs_refresh,
+)
 from services.dify_builder.plan import (
     BuildClarification,
     ResourceDiscovery,
@@ -179,6 +186,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
     fc.confirmed_requirement_keys = []
+    fc.confirmed_requirement_sources = {}
+    record_source_intent(fc, analysis.get("knowledge_source_intent"))
     _refine_app_name(env, fc)
 
     progress.activate("build-prepare-requirements")
@@ -189,8 +198,13 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         progress.add_steps([("build-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_WORKFLOW_PLAN))])
         progress.activate("build-draft-plan")
         plan = env.agent.propose_plan_v1(
-            fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None
+            _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
         )
+        if plan is not None:
+            record_source_intent(fc, plan.knowledge_source_intent)
+        if _knowledge_discovery_required(fc):
+            progress.finish()
+            return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
         if isinstance(plan, BuildClarification):
             progress.finish()
             return _offer_clarification(fc, plan)
@@ -345,6 +359,14 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         keys = [field.key for field in visible_fields]
         previous_requirements = fc.requirements
         fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
+        for control in visible_fields:
+            if control.key in turn.action.payload and control.key in fc.requirements:
+                fc.confirmed_requirement_sources[control.key] = {
+                    "label": control.label if isinstance(control.label, str) else asdict(control.label),
+                    "type": control.type,
+                    "options": list(control.options),
+                    "value": fc.requirements[control.key],
+                }
         confirmed_keys = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
         if confirmed_keys is not None:
             fc.confirmed_requirement_keys = list(
@@ -362,13 +384,18 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         if fc.requirements != previous_requirements:
             clear_task_acceptance(fc)
 
-    if _knowledge_discovery_required(fc):
+    if _knowledge_discovery_required(fc) and not source_intent_needs_refresh(fc):
         progress.finish()
         return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
     progress.activate("build-draft-plan")
     plan = env.agent.propose_plan_v1(
         _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
     )
+    if plan is not None:
+        record_source_intent(fc, plan.knowledge_source_intent)
+    if _knowledge_discovery_required(fc):
+        progress.finish()
+        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
     if isinstance(plan, BuildClarification):
         progress.finish()
         return _offer_clarification(fc, plan)
@@ -569,10 +596,12 @@ def _knowledge_waived(fc: DifyBuilderContext) -> bool:
 
 def _knowledge_requirements(fc: DifyBuilderContext) -> dict[str, Any]:
     if not _knowledge_waived(fc):
-        return fc.requirements
+        return planning_requirements(fc, fc.requirements)
     # Keep both the original task and the explicit user change traceable. This
     # is never inferred from a model's optional/required classification.
-    return {**fc.requirements, "_builder_knowledge_scope_change": fc.resource_selection["knowledge_scope_decision"]}
+    return planning_requirements(
+        fc, {**fc.requirements, "_builder_knowledge_scope_change": fc.resource_selection["knowledge_scope_decision"]}
+    )
 
 
 def _knowledge_discovery_required(fc: DifyBuilderContext) -> bool:
@@ -581,9 +610,21 @@ def _knowledge_discovery_required(fc: DifyBuilderContext) -> bool:
     Discovery and the actor-bound goal decision own this unsupported capability.
     Preserve all business answers; only explicit waiver permits normal planning.
     """
-    return not _knowledge_waived(fc) and has_confirmed_knowledge_source_cue(
-        fc.goal_text, fc.requirements, fc.confirmed_requirement_keys
-    )
+    if _knowledge_waived(fc):
+        return False
+    if established_source_required(fc):
+        return True
+    intent = current_source_intent(fc)
+    if intent is not None and intent["state"] in ("required", "excluded"):
+        return intent["state"] == "required"
+    if fc.knowledge_source_intent and (
+        intent is None or (intent["state"] == "unknown" and bool(fc.confirmed_requirement_keys))
+    ):
+        # A changed typed answer can request a source without spelling it in
+        # its value (for example a submitted bool). Missing refresh must not
+        # silently reuse the old negative or infer intent from its field key.
+        return True
+    return has_confirmed_knowledge_source_cue(fc.goal_text, fc.requirements, fc.confirmed_requirement_keys)
 
 
 def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -785,7 +826,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             or fc.resource_selection.get("blocked_capability") == "knowledge_retrieval_phase_two"
             or fc.resource_selection.get("knowledge_source_unavailable")
             or fc.resource_selection.get("knowledge_requires_clarification")
-            or has_confirmed_knowledge_source_cue(fc.goal_text, fc.requirements, fc.confirmed_requirement_keys)
+            or _knowledge_discovery_required(fc)
         )
     ):
         progress.fail_step("build-bind-resources")
@@ -1737,6 +1778,13 @@ def _collect_adjustment(fc: DifyBuilderContext) -> StepResult:
         fc.confirmed_requirement_keys = [key for key in confirmed_keys if key != _ADJUSTMENT_REQUEST]
         if isinstance(previous_request, str) and previous_request.strip() and _ADJUSTMENT_HISTORY not in confirmed_keys:
             fc.confirmed_requirement_keys.append(_ADJUSTMENT_HISTORY)
+        previous_source = fc.confirmed_requirement_sources.get(_ADJUSTMENT_REQUEST)
+        if previous_source is not None:
+            fc.confirmed_requirement_sources[_ADJUSTMENT_HISTORY] = {
+                **previous_source,
+                "value": fc.requirements[_ADJUSTMENT_HISTORY],
+            }
+    fc.confirmed_requirement_sources.pop(_ADJUSTMENT_REQUEST, None)
     fc.form_fields = [field for field in fc.form_fields if field.get("key") != _ADJUSTMENT_REQUEST]
     fc.form_fields.append(
         {

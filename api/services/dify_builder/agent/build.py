@@ -31,6 +31,12 @@ from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
+from services.dify_builder.knowledge_source_intent import (
+    INTENT_INSTRUCTION,
+    SOURCE_INPUT,
+    bind_planning_source_intent,
+    parse_source_intent,
+)
 from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
     native_constant_output_system_rules,
@@ -114,7 +120,9 @@ def analyze_goal(
             "the default value must exactly match one of its options."
         )
     try:
-        data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
+        data = llm.invoke_json(
+            model, system=system + INTENT_INSTRUCTION, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning
+        )
     except CognitionPolicyDeniedError:
         raise
     except Exception:
@@ -134,6 +142,7 @@ def analyze_goal(
             form_schema.reconcile_form_fields(explained_fields, answered_values), answered_values
         ),
         "values": answered_values,
+        "knowledge_source_intent": parse_source_intent(data.get("knowledge_source_intent"), {"goal": goal_text}),
     }
 
 
@@ -704,6 +713,10 @@ def propose_plan_v1(
         "the plan title, input and output summaries, and plan steps", reply_language=reply_language
     )
     source = _cognition_source(goal_text, requirements)
+    intent_source = requirements.get(SOURCE_INPUT)
+    if isinstance(intent_source, dict):
+        system += INTENT_INSTRUCTION
+        source += "\n\nUSER SOURCE:\n" + json.dumps(intent_source, ensure_ascii=False)
     if previous_plan is not None:
         source += (
             "\n\nPREVIOUS ABSTRACT PLAN (may contain assumptions invalidated by discovery):\n"
@@ -756,7 +769,18 @@ def propose_plan_v1(
             trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
-            result = parse_build_plan_response(data)
+            intent = (
+                bind_planning_source_intent(data.get("knowledge_source_intent"), intent_source)
+                if isinstance(data, dict) and isinstance(intent_source, dict)
+                else None
+            )
+            plan_data = (
+                {key: value for key, value in data.items() if key != "knowledge_source_intent"}
+                if isinstance(data, dict)
+                else data
+            )
+            result = parse_build_plan_response(plan_data)
+            result.knowledge_source_intent = intent
             if isinstance(result, BuildClarification):
                 safe_fields, safe_values = _remove_secret_questions(result.fields, result.values)
                 safe_values = _scrub_invented_defaults(safe_values, _cognition_source(goal_text, requirements))
@@ -765,9 +789,11 @@ def propose_plan_v1(
                 safe_fields = form_schema.reconcile_form_fields(
                     safe_fields, {key: value for key, value in safe_values.items() if value != ""}
                 )
-                return parse_build_plan_response(
+                normalized = parse_build_plan_response(
                     {"kind": "clarification", "fields": safe_fields, "values": safe_values}
                 )
+                normalized.knowledge_source_intent = intent
+                return normalized
             if previous_plan is not None:
                 result.used_resource_ids = _resolved_plan_resources(data, result, selected_resource_ids)
             return result
