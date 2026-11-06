@@ -1124,6 +1124,25 @@ class ComposeEnvironmentTests(unittest.TestCase):
         for name in ("web", "plugin_daemon", "nginx", "db_postgres", "agent_backend"):
             self.assertNotIn("PASSWORD_PEPPER", services[name]["environment"], name)
 
+    def test_secondary_services_disable_database_migrations(self):
+        services = self.render()
+        for name in (
+            "worker",
+            "worker_beat",
+            "api_websocket",
+            "worker_knowledge_fs_upgrade",
+        ):
+            self.assertEqual(
+                services[name]["environment"].get("MIGRATION_ENABLED"),
+                "false",
+                f"{name} must have MIGRATION_ENABLED=false to avoid startup migration race conditions with api",
+            )
+        self.assertEqual(
+            services["api"]["environment"].get("MIGRATION_ENABLED", "true"),
+            "true",
+            "api must retain migration capability",
+        )
+
     def test_generated_compose_matches_template(self):
         self.assertTrue(
             (DOCKER_DIR / "docker-compose.yaml")
