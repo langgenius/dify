@@ -1,9 +1,15 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type {
+  EducationStatusResponse,
+  GetAccountProfileResponse,
+} from '@dify/contracts/api/console/account/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { KnowledgeFsFeaturesResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
 } from '@dify/contracts/api/console/system-features/types.gen'
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
   RenderHookOptions,
@@ -12,15 +18,19 @@ import type {
   RenderResult,
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
+import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { DeepPartial } from '@/test/console/system-features'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   currentWorkspaceQueryKey,
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   createSystemFeaturesFixture,
@@ -45,11 +55,13 @@ type AppDslVersionQueryProvider = {
 }
 
 type CurrentWorkspaceQueryProvider = {
-  post?: QueryKeyProvider
+  summary?: {
+    get?: QueryKeyProvider
+  }
 }
 
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+const fallbackTrialModelsQueryKey = consoleQueryKey('trialModels.get')
+const fallbackAppDslVersionQueryKey = consoleQueryKey('appDslVersion.get')
 
 const getTrialModelsQueryKey = () => {
   const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels
@@ -64,6 +76,20 @@ const getAppDslVersionQueryKey = () => {
   return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
 }
 
+const fallbackKnowledgeFsFeaturesQueryKey = [
+  ['console', 'knowledgeFs', 'features', 'get'],
+  { type: 'query' },
+] as const
+
+// Suites that rebuild `consoleQuery.knowledgeFs` with object spreads drop the generated proxy paths.
+const getKnowledgeFsFeaturesQueryKey = () => {
+  const knowledgeFsQuery = (
+    consoleQuery as { knowledgeFs?: { features?: { get?: QueryKeyProvider } } }
+  ).knowledgeFs
+
+  return knowledgeFsQuery?.features?.get?.queryKey() ?? fallbackKnowledgeFsFeaturesQueryKey
+}
+
 const getCurrentWorkspaceQueryKey = () => {
   const currentWorkspaceQuery = (
     consoleQuery as {
@@ -71,7 +97,7 @@ const getCurrentWorkspaceQueryKey = () => {
     }
   ).workspaces?.current
 
-  return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
+  return currentWorkspaceQuery?.summary?.get?.queryKey() ?? currentWorkspaceQueryKey
 }
 
 /**
@@ -103,6 +129,43 @@ export const seedSystemFeaturesLicense = (
   return data
 }
 
+export const seedEducationStatus = (
+  queryClient: QueryClient,
+  overrides: Partial<EducationStatusResponse> = {},
+): EducationStatusResponse => {
+  const data: EducationStatusResponse = {
+    allow_refresh: false,
+    expire_at: null,
+    is_student: false,
+    result: false,
+    ...overrides,
+  }
+  queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, data)
+  return data
+}
+
+export const seedFeatures = (
+  queryClient: QueryClient,
+  overrides: DeepPartial<GetFeaturesResponse> = {},
+): GetFeaturesResponse => {
+  const data = zGetFeaturesResponse.parse(overrides)
+  queryClient.setQueryData(consoleQuery.features.get.queryKey(), data)
+  return data
+}
+
+export const seedKnowledgeFsFeatures = (
+  queryClient: QueryClient,
+  overrides: Partial<KnowledgeFsFeaturesResponse> = {},
+): KnowledgeFsFeaturesResponse => {
+  const data: KnowledgeFsFeaturesResponse = {
+    upload_enabled: false,
+    agent_enabled: false,
+    ...overrides,
+  }
+  queryClient.setQueryData(getKnowledgeFsFeaturesQueryKey(), data)
+  return data
+}
+
 const ensureSystemFeatures = (queryClient: QueryClient) => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
   const existingSystemFeatures = queryClient.getQueryData<GetSystemFeaturesResponse>(queryKey)
@@ -112,10 +175,12 @@ const ensureSystemFeatures = (queryClient: QueryClient) => {
 }
 
 const seedPendingSystemFeatures = (queryClient: QueryClient) => {
-  void queryClient.prefetchQuery({
-    queryKey: consoleQuery.systemFeatures.get.queryKey(),
-    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
-  })
+  void queryClient
+    .query({
+      queryKey: consoleQuery.systemFeatures.get.queryKey(),
+      queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
+    })
+    .catch(noop)
 }
 
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {
@@ -131,6 +196,14 @@ export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6
   queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
 }
 
+export const seedAppDetail = (queryClient: QueryClient, appDetail: AppDetailWithSite) => {
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
+    appDetail,
+  )
+  return appDetail
+}
+
 export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -139,8 +212,18 @@ export type ConsoleQueryTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
+  /**
+   * Partial overrides for the signed-in KnowledgeFS capability query. When
+   * omitted, every KnowledgeFS capability is seeded as unavailable. Pass `null`
+   * to leave the query unseeded. Product availability is
+   * `features.enable_knowledge_fs`.
+   */
+  knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
-  currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
+  accountProfileMeta?: Partial<UserProfileWithMeta['meta']>
+  features?: DeepPartial<GetFeaturesResponse>
+  educationStatus?: Partial<EducationStatusResponse>
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   trialModels?: readonly string[] | null
   workspacePermissionKeys?: readonly string[] | null
   /**
@@ -162,9 +245,18 @@ export const createConsoleQueryWrapper = (
 ): ConsoleQueryWrapper => {
   const queryClient = options.queryClient ?? createConsoleQueryClient()
   if (options.accountProfile !== null) {
-    if (options.accountProfile) seedAccountProfileQuery(queryClient, options.accountProfile)
-    else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' })
+    if (options.accountProfile)
+      seedAccountProfileQuery(queryClient, options.accountProfile, options.accountProfileMeta)
+    else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' }, options.accountProfileMeta)
   }
+  if (options.features) seedFeatures(queryClient, options.features)
+  if (options.knowledgeFsFeatures !== null) {
+    const queryKey = getKnowledgeFsFeaturesQueryKey()
+    if (options.knowledgeFsFeatures)
+      seedKnowledgeFsFeatures(queryClient, options.knowledgeFsFeatures)
+    else if (queryClient.getQueryData(queryKey) === undefined) seedKnowledgeFsFeatures(queryClient)
+  }
+  if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
     const queryKey = getCurrentWorkspaceQueryKey()
     if (options.currentWorkspace)
@@ -202,7 +294,11 @@ export const renderWithConsoleQuery = (
 } => {
   const {
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
+    accountProfileMeta,
+    features,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -212,7 +308,11 @@ export const renderWithConsoleQuery = (
   } = options
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
+    accountProfileMeta,
+    features,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -232,7 +332,11 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
 } => {
   const {
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
+    accountProfileMeta,
+    features,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,
@@ -242,7 +346,11 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   } = options
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
+    accountProfileMeta,
+    features,
+    educationStatus,
     currentWorkspace,
     trialModels,
     workspacePermissionKeys,

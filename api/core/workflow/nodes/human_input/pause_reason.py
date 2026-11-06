@@ -15,13 +15,16 @@ class DifyHITLEventType(StrEnum):
 
     """
 
-    # Ideally this should be a string constaint. However, we cannot put
-    # string constant into Literal type cosntructor. We have to warp it as a
+    # Ideally this should be a string constraint. However, we cannot put
+    # string constant into Literal type constructor. We have to wrap it as a
     # string enumeration.
     HUMAN_INPUT_REQUIRED = PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED.value
 
 
 class HumanInputRequired(BaseModel):
+    # The referenced form determines its storage owner; this is not an entity version.
+    # Clients use it to choose the matching submission API.
+    form_version: Literal["1", "2"] = "1"
     TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     form_content: str

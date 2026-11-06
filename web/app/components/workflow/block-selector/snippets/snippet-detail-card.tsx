@@ -11,7 +11,7 @@ type SnippetDetailCardProps = {
 
 function SnippetDetailCard({ snippet }: SnippetDetailCardProps) {
   const { author_name, description, name } = snippet
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const { data: workflow } = useSnippetPublishedWorkflow(snippet.id)
   const creatorName = author_name || t(($) => $.unknownUser)
 

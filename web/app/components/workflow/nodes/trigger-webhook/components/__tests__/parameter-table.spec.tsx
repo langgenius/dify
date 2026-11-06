@@ -1,21 +1,9 @@
 import type { WebhookParameter } from '../../types'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { VarType } from '@/app/components/workflow/types'
 import ParameterTable from '../parameter-table'
-
-const selectOption = async ({ rowKey, triggerName }: { rowKey: string; triggerName: string }) => {
-  const user = userEvent.setup()
-  const rowInput = screen.getByDisplayValue(rowKey)
-  const row = rowInput.closest('[style*="min-height"]')
-  if (!(row instanceof HTMLElement)) throw new Error('Failed to locate parameter table row')
-
-  expect(within(row).getByText(triggerName)).toBeInTheDocument()
-  const selectButton = within(row).getByRole('combobox')
-  await user.click(selectButton)
-  await user.keyboard('{ArrowDown}')
-  await user.keyboard('{Enter}')
-}
 
 describe('trigger-webhook/parameter-table', () => {
   it('updates parameter types and required flags for json payloads', async () => {
@@ -29,19 +17,23 @@ describe('trigger-webhook/parameter-table', () => {
       },
     ]
 
-    render(
-      <ParameterTable
-        title="Parameters"
-        parameters={parameters}
-        onChange={onChange}
-        contentType="application/json"
-      />,
-    )
-
-    await selectOption({
-      rowKey: 'page',
-      triggerName: 'String',
-    })
+    function Editor() {
+      const [value, setValue] = useState(parameters)
+      return (
+        <ParameterTable
+          title="Parameters"
+          parameters={value}
+          onChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
+          contentType="application/json"
+        />
+      )
+    }
+    render(<Editor />)
+    await user.click(screen.getAllByRole('combobox')[0]!)
+    await user.click(await screen.findByRole('option', { name: 'Number' }))
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([
@@ -59,7 +51,7 @@ describe('trigger-webhook/parameter-table', () => {
     expect(onChange).toHaveBeenCalledWith([
       {
         name: 'page',
-        type: VarType.string,
+        type: VarType.number,
         required: true,
       },
     ])
@@ -78,6 +70,7 @@ describe('trigger-webhook/parameter-table', () => {
             type: VarType.number,
             required: false,
           },
+          { name: 'extra', type: VarType.string, required: false },
         ]}
         onChange={onChange}
         contentType="text/plain"

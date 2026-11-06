@@ -2,18 +2,18 @@
 import type { FC } from 'react'
 import type { VersionProps } from '../../types'
 import * as React from 'react'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Badge from '@/app/components/base/badge/index'
 
 const Version: FC<VersionProps> = ({ hasInstalled, installedVersion, toInstallVersion }) => {
   return (
     <>
       {!hasInstalled ? (
-        <Badge className="mx-1" size="s" state={BadgeState.Default}>
+        <Badge className="mx-1" size="s">
           {toInstallVersion}
         </Badge>
       ) : (
         <>
-          <Badge className="mx-1" size="s" state={BadgeState.Warning}>
+          <Badge className="mx-1" size="s" variant="warning">
             {`${installedVersion} -> ${toInstallVersion}`}
           </Badge>
           {/* <div className='flex px-0.5 justify-center items-center gap-0.5'>

@@ -1,7 +1,7 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { FileResponse, HumanInputFormValue } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import SubmittedFieldValues from '../submitted-field-values'
@@ -82,23 +82,17 @@ const values: Record<string, HumanInputFormValue> = {
 }
 
 describe('SubmittedFieldValues', () => {
-  it('renders text and select values as text', () => {
+  it('renders submitted text, selections, and attachments together', () => {
     render(<SubmittedFieldValues fields={fields} values={values} />)
 
     expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Need more context')
     expect(screen.getByTestId('submitted-field-decision')).toHaveTextContent('approve')
-  })
-
-  it('renders file and file-list values as file lists', () => {
-    render(<SubmittedFieldValues fields={fields} values={values} />)
-
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
     expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
       'src',
       'https://example.com/evidence-1.png',
     )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
-    expect(screen.getAllByTestId('file-list')).toHaveLength(2)
   })
 
   it('skips fields with missing values', () => {

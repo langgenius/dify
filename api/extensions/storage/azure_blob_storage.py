@@ -91,6 +91,15 @@ class AzureBlobStorage(BaseStorage):
         blob_container = client.get_container_client(container=self.bucket_name)
         blob_container.delete_blob(filename)
 
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        if not self.bucket_name:
+            raise ValueError("Azure bucket name is not configured.")
+        container = self._sync_client().get_container_client(container=self.bucket_name)
+        # ItemPaged follows continuation tokens automatically.
+        keys = (blob.name for blob in container.list_blobs(name_starts_with=path))
+        return self._filter_scan_keys(keys, files, directories)
+
     def _sync_client(self):
         if self.account_key == "managedidentity":
             return BlobServiceClient(account_url=self.account_url, credential=self.credential)  # type: ignore

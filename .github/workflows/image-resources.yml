@@ -1,0 +1,39 @@
+name: Image optimization
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  image-resources:
+    name: Image optimization
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up workspace toolchain
+        uses: ./.github/actions/setup-web
+        with:
+          run-install: 'false'
+
+      - name: Install image checker dependencies
+        run: pnpm --filter @dify/image-resources... install --frozen-lockfile --ignore-scripts
+
+      - name: Type-check image checker
+        run: pnpm --filter @dify/image-resources type-check
+
+      - name: Test image checker
+        run: pnpm --filter @dify/image-resources test
+
+      - name: Check image optimization
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          pnpm --filter @dify/image-resources check:images --base "$BASE_SHA"

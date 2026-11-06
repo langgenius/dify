@@ -1,10 +1,11 @@
 'use client'
 
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ReactNode } from 'react'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import FirstEmptyActionCard from './action-card'
 
@@ -24,10 +25,10 @@ type EmptyCreateAction = {
 
 type Props = {
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   showLearnDify: boolean
 }
 
@@ -39,7 +40,7 @@ function FirstEmptyState({
   onTryLearnDify,
   showLearnDify,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const actions: EmptyCreateAction[] = [
     {
@@ -61,7 +62,7 @@ function FirstEmptyState({
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t(($) => $.importDSL, { ns: 'app' }),
+      title: t(($) => $.importApp, { ns: 'app' }),
       description: t(($) => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
@@ -70,8 +71,13 @@ function FirstEmptyState({
 
   return (
     <div className="flex grow flex-col overflow-hidden">
-      <div className="relative min-h-[430px] flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
+      <div className="relative min-h-107.5 flex-1 overflow-hidden">
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-8 inset-y-2 grid-rows-4 gap-3',
+            MAIN_NAV_APP_CARD_GRID_CLASS_NAME,
+          )}
+        >
           {EMPTY_PLACEHOLDER_CARD_IDS.map((id) => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
           ))}
@@ -81,7 +87,7 @@ function FirstEmptyState({
           className="absolute inset-0 flex items-center justify-center overflow-hidden p-2"
           aria-labelledby="apps-first-empty-title"
         >
-          <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+          <div className="flex w-full max-w-130 flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex size-14 items-center justify-center rounded-[10px]">
                 <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">

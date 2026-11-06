@@ -1,15 +1,17 @@
 'use client'
+
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -43,7 +45,7 @@ const Editor: FC<Props> = ({
   availableNodes = [],
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'] as const)
 
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean(false)
 
@@ -51,7 +53,7 @@ const Editor: FC<Props> = ({
     onFocusChange?.(isFocus)
   }, [isFocus])
 
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
@@ -59,7 +61,7 @@ const Editor: FC<Props> = ({
       <>
         <PromptEditor
           instanceId={instanceId}
-          className={cn(promptMinHeightClassName, 'leading-[18px]')}
+          className={cn(promptMinHeightClassName, 'leading-4.5')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
           value={value}
@@ -101,7 +103,7 @@ const Editor: FC<Props> = ({
               }
               return acc
             }, {} as any),
-            showManageInputField: !!pipelineId,
+            showManageInputField: resourceKind === 'knowledge-pipeline',
             onManageInputField: () => setShowInputFieldPanel?.(true),
           }}
           onChange={onChange}
@@ -115,14 +117,17 @@ const Editor: FC<Props> = ({
           <div
             className={cn(
               'absolute z-10',
-              insertVarTipToLeft ? 'top-1.5 left-[-12px]' : 'top-[-9px] right-1',
+              insertVarTipToLeft ? 'top-1.5 -left-3' : '-top-2.25 right-1',
             )}
           >
             <Tooltip>
               <TooltipTrigger
                 render={
                   <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
-                    <Variable02 className="size-3.5 text-components-button-secondary-accent-text" />
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-solid-development-variable-02 size-3.5 text-components-button-secondary-accent-text"
+                    />
                   </div>
                 }
               />

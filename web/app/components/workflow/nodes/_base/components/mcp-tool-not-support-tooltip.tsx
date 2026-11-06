@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const McpToolNotSupportTooltip: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const tip = t(($) => $['detailPanel.toolSelector.unsupportedMCPTool'], { ns: 'plugin' })
 
   return (
@@ -18,7 +18,7 @@ const McpToolNotSupportTooltip: FC = () => {
       >
         <RiAlertFill className="size-4 text-text-warning-secondary" />
       </PopoverTrigger>
-      <PopoverContent popupClassName="w-[256px] px-3 py-2 system-xs-regular text-text-tertiary">
+      <PopoverContent className="w-[256px] px-3 py-2 system-xs-regular text-text-tertiary">
         {tip}
       </PopoverContent>
     </Popover>

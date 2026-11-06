@@ -4,15 +4,12 @@ import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import { memo } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { CUSTOM_NODE } from './constants'
-import {
-  useAutoGenerateWebhookUrl,
-  useNodesInteractions,
-  useNodesSyncDraft,
-  useWorkflowHistory,
-  WorkflowHistoryEvent,
-} from './hooks'
+import { useAutoGenerateWebhookUrl } from './hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import CustomNode from './nodes'
 import { useCreateInlineAgentBinding } from './nodes/agent-v2/hooks'
 import { isAgentV2NodeData, needsInlineAgentBindingCreation } from './nodes/agent-v2/types'

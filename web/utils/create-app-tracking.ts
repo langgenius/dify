@@ -1,6 +1,6 @@
+import type { AgentScope } from '@/features/agent-v2/analytics'
 import Cookies from 'js-cookie'
 import { flushEvents, trackEvent } from '@/app/components/base/amplitude/utils'
-import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
 
@@ -18,7 +18,7 @@ type SearchParamReader = {
   get: (name: string) => string | null
 }
 
-type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent'
+type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent' | 'agent-v2'
 
 type CreateAppSource =
   | 'external'
@@ -32,6 +32,7 @@ type CreateAppSource =
 export type TrackCreateAppParams = {
   source: CreateAppSource
   appMode: string
+  agentScope?: AgentScope
   templateId?: string
 }
 
@@ -76,9 +77,11 @@ const formatCreateAppTime = (date: Date) => {
 }
 
 const mapOriginalCreateAppMode = (appMode: string): OriginalCreateAppMode => {
-  if (appMode === AppModeEnum.WORKFLOW) return 'workflow'
+  if (appMode === 'workflow') return 'workflow'
 
-  if (appMode === AppModeEnum.AGENT_CHAT || appMode === 'agent') return 'agent'
+  if (appMode === 'agent-v2') return 'agent-v2'
+
+  if (appMode === 'agent-chat' || appMode === 'agent') return 'agent'
 
   return 'chatflow'
 }
@@ -175,6 +178,7 @@ export const buildCreateAppEventPayload = (
     source,
     app_mode: mapOriginalCreateAppMode(params.appMode),
     time: formatCreateAppTime(currentTime),
+    ...(params.agentScope ? { agent_scope: params.agentScope } : {}),
     ...(params.templateId ? { template_id: params.templateId } : {}),
     ...(externalAttribution
       ? {

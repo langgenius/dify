@@ -57,10 +57,9 @@ export function useDocumentsPageState() {
   }, [statusFilterValue, updateQuery])
 
   const handleSortChange = useCallback(
-    (value: string) => {
-      const next = value as SortType
-      if (next === sortValue) return
-      updateQuery({ sort: next, page: 1 })
+    (value: SortType) => {
+      if (value === sortValue) return
+      updateQuery({ sort: value, page: 1 })
     },
     [sortValue, updateQuery],
   )

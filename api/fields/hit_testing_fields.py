@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -47,7 +47,7 @@ class HitTestingSegment(ResponseModel):
     completed_at: int | None
     error: str | None
     stopped_at: int | None
-    document: HitTestingDocument
+    document: HitTestingDocument = Field(description="Parent document information for the matched chunk.")
 
     @field_validator("disabled_at", "created_at", "indexing_at", "completed_at", "stopped_at", mode="before")
     @classmethod
@@ -77,7 +77,7 @@ class HitTestingFile(ResponseModel):
 
 
 class HitTestingRecord(ResponseModel):
-    segment: HitTestingSegment
+    segment: HitTestingSegment = Field(description="Matched chunk from the knowledge base.")
     child_chunks: list[HitTestingChildChunk]
     score: float | None
     tsne_position: Any | None
@@ -86,7 +86,7 @@ class HitTestingRecord(ResponseModel):
 
 
 class HitTestingResponse(ResponseModel):
-    query: HitTestingQuery
+    query: HitTestingQuery = Field(description="The original query object.")
     records: list[HitTestingRecord]
 
 

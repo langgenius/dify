@@ -2,16 +2,17 @@ import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { memo, useCallback, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
-import { useAddSegment } from '@/service/knowledge/use-segment'
+import { consoleQuery } from '@/service/console'
 import { formatNumber } from '@/utils/format'
 import { IndexingType } from '../../create/step-two'
 import { useSegmentListContext } from './completed'
@@ -35,7 +36,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChunk,
 }) => {
-  const { t } = useTranslation()
+  const editorRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [attachments, setAttachments] = useState<FileEntity[]>([])
@@ -61,7 +63,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setAttachments(attachments)
   }, [])
 
-  const { mutateAsync: addSegment } = useAddSegment()
+  const { mutateAsync: addSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.post.mutationOptions(),
+  )
 
   const handleSave = useCallback(async () => {
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
@@ -92,7 +96,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
     setLoading(true)
     await addSegment(
-      { datasetId, documentId, body: params },
+      { params: { dataset_id: datasetId, document_id: documentId }, body: params },
       {
         onSuccess() {
           toast.success(
@@ -138,7 +142,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -160,12 +164,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             <>
               <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
                 loading={loading}
                 actionType="add"
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button
@@ -230,6 +235,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
           <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}
             loading={loading}

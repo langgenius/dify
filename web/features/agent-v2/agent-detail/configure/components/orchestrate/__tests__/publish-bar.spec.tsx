@@ -1,36 +1,43 @@
 import type {
+  AgentAppDetailWithSite,
   AgentConfigSnapshotSummaryResponse,
   AgentReferencingWorkflowResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
+import { zAgentAppComposerResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { createAppSiteFixture } from '@/test/fixtures/app'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 type PublishHandler = NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['onPublish']>
 type PublishMock = Mock<PublishHandler>
 
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: (event: { preventDefault: () => void }) => void
-        options?: { enabled?: boolean; ignoreInputs?: boolean }
-      }
-    >(),
-)
+const restoreAccess = vi.hoisted(() => ({
+  canRestore: true,
+  plan: 'professional',
+  onUrlUpdate: vi.fn(),
+}))
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useAgentPermissions: () => ({ canReleaseAndVersion: restoreAccess.canRestore }),
+}))
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return { deploymentEditionAtom: atom('CLOUD') }
+})
 
-const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display:${hotkey}`))
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
 const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
 const restoreVersionMutation = vi.hoisted(() =>
@@ -46,31 +53,17 @@ const toastMock = vi.hoisted(() => ({
 const workflowReferences = vi.hoisted(() => ({
   fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
+  shouldFail: false,
+}))
+const agentDetail = vi.hoisted(() => ({ data: {} as Partial<AgentAppDetailWithSite> }))
+
+const composerQuery = vi.hoisted(() => ({
+  data: undefined as unknown,
+  shouldFail: false,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    formatForDisplay: mockFormatForDisplay,
-    useHotkey: (
-      hotkey: string,
-      callback: (event: { preventDefault: () => void }) => void,
-      options?: { enabled?: boolean; ignoreInputs?: boolean },
-    ) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: mockFormatTimeFromNow,
-  }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -79,54 +72,31 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent', input],
-        },
-        composer: {
-          get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-composer',
-              input,
-            ],
-          },
-        },
-        referencingWorkflows: {
-          get: {
-            queryOptions: ({
-              enabled = true,
-              input,
-            }: {
-              enabled?: boolean
-              input: { params: { agent_id: string } }
-            }) => ({
-              queryKey: ['agent-referencing-workflows', input],
-              enabled,
-              queryFn: async () => ({
-                data: (workflowReferences.fetchCount++, workflowReferences.data),
-              }),
-            }),
-          },
-        },
-        versions: {
-          byVersionId: {
-            restore: {
-              post: {
-                mutationOptions: () => ({ mutationFn: restoreVersionMutation }),
-              },
-            },
-          },
-          get: {
-            key: () => ['agent-versions'],
-          },
-        },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': async () => ({
+        deployment_edition: 'CLOUD',
+        webapp_auth: { enabled: false },
+      }),
+      'features.get': async () => ({ billing: { subscription: { plan: restoreAccess.plan } } }),
+      'agent.byAgentId.get': async () => agentDetail.data,
+      'agent.byAgentId.composer.get': async () => {
+        if (composerQuery.shouldFail) throw new Error('Composer query failed')
+        return composerQuery.data
       },
-    },
-  },
-}))
+      'agent.byAgentId.referencingWorkflows.get': async () => {
+        workflowReferences.fetchCount++
+        if (workflowReferences.shouldFail) throw new Error('Workflow references query failed')
+        return { data: workflowReferences.data }
+      },
+      'agent.byAgentId.versions.byVersionId.restore.post': restoreVersionMutation,
+    }),
+  }
+})
 
 const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   id: 'snapshot-1',
@@ -135,7 +105,7 @@ const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   created_at: 1710000000,
 }
 
-const originalDraftWithFile = {
+const savedDraftWithFile = {
   ...defaultAgentSoulConfigFormState,
   tools: [
     {
@@ -181,22 +151,27 @@ function createDeferredPromise() {
 }
 
 function renderPublishBar({
+  agent = {},
   activeConfigIsPublished,
   activeConfigSnapshot,
   draftSavedAt,
+  composerQueryAvailable = true,
+  composerQueryFails = false,
   isPublishing,
-  onPublish = vi.fn<PublishHandler>(),
+  onPublish: providedOnPublish,
   onExitVersions = vi.fn(),
   onVersionRestored = vi.fn(),
   prompt = '',
   selectedVersionSnapshot,
   setupStore,
   usedByAppReferences = [],
-  workflowReferencesEnabled,
 }: {
+  agent?: Partial<AgentAppDetailWithSite>
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
+  composerQueryAvailable?: boolean
+  composerQueryFails?: boolean
   isPublishing?: boolean
   onPublish?: PublishMock
   onExitVersions?: Mock<() => void>
@@ -205,56 +180,102 @@ function renderPublishBar({
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
-  workflowReferencesEnabled?: boolean
 } = {}) {
+  agentDetail.data = agent
   workflowReferences.data = usedByAppReferences
+  composerQuery.shouldFail = composerQueryFails
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
   })
+  queryClient.setQueryData<unknown>(consoleQuery.features.get.queryOptions({}).queryKey, {
+    billing: { subscription: { plan: restoreAccess.plan } },
+  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: restoreAccess.onUrlUpdate })
+  queryClient.setQueryData<unknown>(
+    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
+      .queryKey,
+    agent,
+  )
+  queryClient.setQueryData<unknown>(systemFeaturesQueryOptions().queryKey, {
+    deployment_edition: 'CLOUD',
+    webapp_auth: { enabled: false },
+  })
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
+  const composerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+    input: { params: { agent_id: 'agent-1' } },
+  })
+  const composerState = {
+    active_config_is_published: activeConfigIsPublished ?? false,
+    active_config_snapshot: activeConfigSnapshot,
+    agent: {
+      id: 'agent-1',
+      name: 'Iris',
+      description: '',
+      scope: 'roster',
+      status: 'active',
+    },
+    agent_soul: {
+      schema_version: 1,
+    },
+    draft: draftSavedAt
+      ? {
+          agent_id: 'agent-1',
+          draft_type: 'draft',
+          id: 'draft-1',
+          updated_at: draftSavedAt / 1000,
+        }
+      : null,
+    save_options: ['save_to_current_version'],
+    variant: 'agent_app',
+  }
+  composerQuery.data = composerState
+  if (composerQueryAvailable) {
+    queryClient.setQueryData(composerQueryKey, zAgentAppComposerResponse.parse(composerState))
+  }
+
+  const onPublish =
+    providedOnPublish ??
+    vi.fn<PublishHandler>(async () => ({
+      kind: 'update',
+      draft: store.get(agentComposerDraftAtom),
+    }))
 
   const renderPublishBarTree = (nextProps?: {
-    activeConfigIsPublished?: boolean
-    activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
     isPublishing?: boolean
+    selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   }) => (
-    <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>
-        <AgentConfigurePublishBar
-          agentId="agent-1"
-          activeConfigIsPublished={
-            nextProps && 'activeConfigIsPublished' in nextProps
-              ? nextProps.activeConfigIsPublished
-              : activeConfigIsPublished
-          }
-          activeConfigSnapshot={
-            nextProps && 'activeConfigSnapshot' in nextProps
-              ? nextProps.activeConfigSnapshot
-              : activeConfigSnapshot
-          }
-          draftSavedAt={draftSavedAt}
-          agentName="Iris"
-          isPublishing={nextProps?.isPublishing ?? isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          workflowReferencesEnabled={workflowReferencesEnabled}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={vi.fn()}
-          onVersionRestored={onVersionRestored}
-        />
-      </JotaiProvider>
-    </QueryClientProvider>
+    <NuqsWrapper>
+      <QueryClientProvider client={queryClient}>
+        <JotaiProvider store={store}>
+          <AgentConfigurePublishBar
+            agentId="agent-1"
+            agentName="Iris"
+            isPublishing={nextProps?.isPublishing ?? isPublishing}
+            selectedVersionSnapshot={
+              nextProps?.selectedVersionSnapshot === undefined
+                ? selectedVersionSnapshot
+                : nextProps.selectedVersionSnapshot
+            }
+            onPublish={onPublish}
+            onExitVersions={onExitVersions}
+            onOpenVersions={vi.fn()}
+            onVersionRestored={onVersionRestored}
+          />
+        </JotaiProvider>
+      </QueryClientProvider>
+    </NuqsWrapper>
   )
   const view = render(renderPublishBarTree())
 
   return {
     ...view,
     queryClient,
+    store,
     onExitVersions,
     onPublish,
     onVersionRestored,
@@ -262,16 +283,24 @@ function renderPublishBar({
   }
 }
 
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({ formatTimeFromNow: mockFormatTimeFromNow }),
+}))
+
 describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyRegistrations.clear()
+    restoreAccess.canRestore = true
+    restoreAccess.plan = 'professional'
     restoreVersionMutation.mockResolvedValue({
       active_config_snapshot_id: 'snapshot-2',
       result: 'success',
     })
     workflowReferences.data = []
     workflowReferences.fetchCount = 0
+    workflowReferences.shouldFail = false
+    composerQuery.data = undefined
+    composerQuery.shouldFail = false
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
@@ -279,24 +308,8 @@ describe('AgentConfigurePublishBar', () => {
     vi.restoreAllMocks()
   })
 
-  it('should render draft state with a formatted publish shortcut', () => {
-    renderPublishBar()
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.draft')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.saved')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('display:Mod')).toBeInTheDocument()
-    expect(screen.getByText('display:Shift')).toBeInTheDocument()
-    expect(screen.getByText('display:P')).toBeInTheDocument()
-    expect(mockFormatForDisplay).toHaveBeenCalledWith('Mod')
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
-  })
-
   it('should allow publish request when knowledge retrieval validation fails', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       setupStore: (store) => {
         store.set(agentComposerDraftAtom, {
@@ -322,11 +335,8 @@ describe('AgentConfigurePublishBar', () => {
         'common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}',
       ),
     ).not.toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -355,14 +365,19 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByText('Stable version')).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.versionHistory.viewOnly')).toBeInTheDocument()
     expect(screen.getByText('formatted:1710000000 · Alice')).toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.versionHistory.restore' }),
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
     )
 
     await waitFor(() => {
       expect(restoreVersionMutation).toHaveBeenCalled()
     })
-    expect(restoreVersionMutation.mock.calls[0]?.[0]).toEqual({
+    expect(restoreVersionMutation).toHaveBeenCalledExactlyOnceWith({
       params: {
         agent_id: 'agent-1',
         version_id: 'snapshot-2',
@@ -375,6 +390,111 @@ describe('AgentConfigurePublishBar', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
+  it('starts a fresh restore confirmation after leaving and re-entering version view', async () => {
+    const user = userEvent.setup()
+    const { rerender, rerenderPublishBar } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+    rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    rerender(
+      rerenderPublishBar({
+        selectedVersionSnapshot: {
+          ...activeConfigSnapshot,
+          id: 'snapshot-2',
+          version_note: 'Version two',
+        },
+      }),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog', { name: /Version two/ })
+    await user.click(within(dialog).getByRole('button', { name: /restore/i }))
+    await waitFor(() =>
+      expect(restoreVersionMutation).toHaveBeenCalledWith({
+        params: { agent_id: 'agent-1', version_id: 'snapshot-2' },
+      }),
+    )
+  })
+
+  it('shows the agent upgrade dialog before opening pricing on the sandbox plan', async () => {
+    restoreAccess.plan = 'sandbox'
+    const user = userEvent.setup()
+    const { onExitVersions, onVersionRestored } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'billing.upgrade.agentRestore.title' })
+    expect(dialog).toHaveAccessibleDescription('billing.upgrade.agentRestore.description')
+    expect(restoreAccess.onUrlUpdate).not.toHaveBeenCalled()
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+    )
+    expect(restoreAccess.onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?pricing=open' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(restoreVersionMutation).not.toHaveBeenCalled()
+    expect(onExitVersions).not.toHaveBeenCalled()
+    expect(onVersionRestored).not.toHaveBeenCalled()
+  })
+
+  it('prevents duplicate restoration and cancellation while the request is pending', async () => {
+    const deferred = createDeferredPromise()
+    restoreVersionMutation.mockImplementationOnce(async () => {
+      await deferred.promise
+      return { active_config_snapshot_id: 'snapshot-2', result: 'success' }
+    })
+    const user = userEvent.setup()
+    const { onExitVersions } = renderPublishBar({ selectedVersionSnapshot: activeConfigSnapshot })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: /restore/i })
+    await user.click(confirm)
+    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+    expect(within(dialog).getByRole('button', { name: /cancel/i })).toBeDisabled()
+    await user.click(confirm)
+    expect(restoreVersionMutation).toHaveBeenCalledTimes(1)
+    expect(onExitVersions).not.toHaveBeenCalled()
+    await act(async () => {
+      deferred.resolve()
+      await deferred.promise
+    })
+    await waitFor(() => expect(onExitVersions).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps the selected version open when restoration fails', async () => {
+    restoreVersionMutation.mockRejectedValueOnce(new Error('Restore failed'))
+    const user = userEvent.setup()
+    const { onExitVersions, onVersionRestored } = renderPublishBar({
+      selectedVersionSnapshot: activeConfigSnapshot,
+    })
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
+    )
+    await waitFor(() => expect(restoreVersionMutation).toHaveBeenCalledTimes(1))
+    expect(onExitVersions).not.toHaveBeenCalled()
+    expect(onVersionRestored).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
+
   it('should render saved time from the latest draft save timestamp', () => {
     renderPublishBar({ draftSavedAt: 1710000100000 })
 
@@ -384,7 +504,8 @@ describe('AgentConfigurePublishBar', () => {
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000100000)
   })
 
-  it('should render published state from the active snapshot and disable publish logic', () => {
+  it('should render published state from the active snapshot and disable publish logic', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: true,
       activeConfigSnapshot,
@@ -399,41 +520,40 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
     ).toBeDisabled()
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
     )
 
     expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
-    const { rerender, rerenderPublishBar } = renderPublishBar({
-      activeConfigIsPublished: true,
-      activeConfigSnapshot: null,
+  it('should fail closed while the Composer Query is unavailable', async () => {
+    renderPublishBar({
+      composerQueryAvailable: false,
+      composerQueryFails: true,
     })
 
-    rerender(
-      rerenderPublishBar({
-        activeConfigIsPublished: undefined,
-        activeConfigSnapshot: undefined,
-      }),
-    )
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
+    })
+  })
 
-    expect(
-      screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
-    ).toBeDisabled()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
+  it('should fail closed when refreshing cached Composer state fails', async () => {
+    renderPublishBar({
+      activeConfigIsPublished: false,
+      activeConfigSnapshot,
+      composerQueryFails: true,
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+        }),
+      ).toBeDisabled()
+    })
   })
 
   it('should show unpublished state from local draft changes even when active config is published', () => {
@@ -451,12 +571,10 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
     ).toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
   })
 
   it('should initialize unpublished state when active config is not published', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,
       activeConfigSnapshot,
@@ -471,11 +589,8 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
     ).toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: false }),
-    )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -492,6 +607,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should publish the current draft payload from the unpublished changes state', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -501,7 +617,7 @@ describe('AgentConfigurePublishBar', () => {
       screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -512,42 +628,70 @@ describe('AgentConfigurePublishBar', () => {
     })
   })
 
-  it('should publish without loading workflow references when references are disabled', async () => {
+  it('should fail closed and show feedback when workflow references cannot be loaded', async () => {
+    const user = userEvent.setup()
+    workflowReferences.shouldFail = true
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
-      usedByAppReferences: publishedReferences,
-      workflowReferencesEnabled: false,
     })
 
     await waitFor(() => {
-      expect(workflowReferences.fetchCount).toBe(0)
+      expect(workflowReferences.fetchCount).toBe(1)
     })
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
     )
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledTimes(1)
+      expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
     })
-    expect(workflowReferences.fetchCount).toBe(0)
+    expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should refresh cached workflow references before publishing', async () => {
+    const user = userEvent.setup()
+    const { onPublish, queryClient } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const referencesQueryKey = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    queryClient.setQueryDefaults(consoleQuery.agent.byAgentId.referencingWorkflows.get.key(), {
+      staleTime: Infinity,
+    })
+    queryClient.setQueryData(referencesQueryKey, { data: [] })
+    workflowReferences.data = publishedReferences
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    expect(onPublish).not.toHaveBeenCalled()
     expect(
-      screen.queryByRole('region', {
+      await screen.findByRole('region', {
         name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
       }),
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(2)
   })
 
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, originalDraftWithFile)
-        store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
+        store.set(agentComposerSavedDraftAtom, savedDraftWithFile)
         store.set(agentComposerDraftAtom, {
-          ...originalDraftWithFile,
+          ...savedDraftWithFile,
           tools: [],
         })
       },
@@ -559,20 +703,16 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should keep unpublished state after draft autosave updates the saved draft baseline', () => {
-    const publishedDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Published prompt',
-    }
     const savedDraft = {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Autosaved draft prompt',
     }
 
     renderPublishBar({
+      activeConfigIsPublished: false,
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, publishedDraft)
-        store.set(agentComposerOriginalDraftAtom, savedDraft)
+        store.set(agentComposerSavedDraftAtom, savedDraft)
         store.set(agentComposerDraftAtom, savedDraft)
       },
     })
@@ -588,10 +728,6 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
-    const stalePublishedDraftBaseline = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Old unpublished normal draft',
-    }
     const savedDraftMatchingActiveSnapshot = {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Published prompt',
@@ -601,8 +737,7 @@ describe('AgentConfigurePublishBar', () => {
       activeConfigIsPublished: true,
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
-        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerSavedDraftAtom, savedDraftMatchingActiveSnapshot)
         store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
       },
     })
@@ -620,25 +755,8 @@ describe('AgentConfigurePublishBar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should render publishing as a single disabled action state', () => {
-    renderPublishBar({ isPublishing: true, prompt: 'Updated system prompt' })
-
-    expect(
-      screen.getByText('agentV2.agentDetail.configure.publishBar.publishing'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
-    ).toHaveAttribute('aria-disabled', 'true')
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
-    ).not.toHaveAttribute('aria-busy')
-    expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
-  })
-
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -657,15 +775,14 @@ describe('AgentConfigurePublishBar', () => {
     const publishButton = screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     })
-    fireEvent.click(publishButton)
+    await user.click(publishButton)
 
     expect(onPublish).not.toHaveBeenCalled()
-    expect(publishButton).not.toHaveAttribute('aria-busy')
     const impactDetails = await screen.findByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
     expect(impactDetails).toBeInTheDocument()
-    expect(workflowReferences.fetchCount).toBe(1)
+    expect(workflowReferences.fetchCount).toBe(2)
     expect(
       screen.getAllByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
@@ -674,11 +791,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.publishBar.versionHistory',
-      }),
-    ).toHaveClass('group-data-open/publish-bar:hidden')
     expect(
       screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/),
     ).toBeInTheDocument()
@@ -699,22 +811,25 @@ describe('AgentConfigurePublishBar', () => {
       'noopener noreferrer',
     )
     expect(within(impactDetails).getAllByText('just now')).toHaveLength(2)
-    expect(screen.getByText('display:Mod')).toBeInTheDocument()
-    expect(screen.getByText('display:Shift')).toBeInTheDocument()
-    expect(screen.getByText('display:P')).toBeInTheDocument()
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
+    const user = userEvent.setup()
     const publishDeferred = createDeferredPromise()
-    const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
-    const { rerender, rerenderPublishBar } = renderPublishBar({
+    const onPublish = vi.fn<PublishHandler>()
+    const { store, rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigSnapshot,
       onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
+    onPublish.mockImplementation(async () => {
+      const draft = store.get(agentComposerDraftAtom)
+      await publishDeferred.promise
+      return { kind: 'update', draft }
+    })
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -724,7 +839,7 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
       }),
     ).toBeInTheDocument()
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -741,7 +856,7 @@ describe('AgentConfigurePublishBar', () => {
       await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.publishBar.publishing',
       }),
-    ).not.toHaveAttribute('aria-busy')
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await act(async () => {
       publishDeferred.resolve()
@@ -757,14 +872,17 @@ describe('AgentConfigurePublishBar', () => {
     })
   })
 
-  it('should collapse affected workflow details from the expanded footer cancel action', async () => {
-    const { onPublish } = renderPublishBar({
+  it('should keep impact confirmation open without leaking a rejected publish command', async () => {
+    const user = userEvent.setup()
+    const onPublish = vi.fn<PublishHandler>(() => Promise.reject(new Error('publish failed')))
+    renderPublishBar({
       activeConfigSnapshot,
+      onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -775,7 +893,42 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(
+      screen.getByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('should collapse affected workflow details from the expanded footer cancel action', async () => {
+    const user = userEvent.setup()
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+    })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+    expect(
+      await screen.findByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+
+    await user.click(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
     )
 
@@ -795,10 +948,10 @@ describe('AgentConfigurePublishBar', () => {
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
-    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
 
     await act(async () => {
-      await publishShortcut?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(onPublish).not.toHaveBeenCalled()
@@ -809,7 +962,8 @@ describe('AgentConfigurePublishBar', () => {
     ).toBeInTheDocument()
 
     await act(async () => {
-      await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(onPublish).toHaveBeenCalledTimes(1)
@@ -820,10 +974,10 @@ describe('AgentConfigurePublishBar', () => {
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
     })
-    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
 
     await act(async () => {
-      await publishShortcut?.callback({ preventDefault: vi.fn() })
+      fireEvent.keyDown(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
+      fireEvent.keyUp(document.body, { key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
     })
 
     expect(
@@ -832,5 +986,228 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).not.toBeInTheDocument()
     expect(onPublish).toHaveBeenCalledTimes(1)
+  })
+  describe('publish success guidance', () => {
+    const successKey = 'agentV2.agentDetail.configure.publishSuccess.'
+    const readyAgent = {
+      access_ready: true,
+      enable_site: true,
+      site: createAppSiteFixture({
+        access_token: 'published-token',
+        app_base_url: 'https://apps.example.test',
+      }),
+    }
+
+    it.each([
+      ['first', 'firstTitle'],
+      ['update', 'updateTitle'],
+    ] as const)(
+      'uses the publication result even when cached availability disagrees (%s)',
+      async (kind, title) => {
+        const user = userEvent.setup()
+        const view = renderPublishBar({ agent: { ...readyAgent, access_ready: kind === 'first' } })
+        view.onPublish.mockImplementation(async () => {
+          agentDetail.data = readyAgent
+          view.queryClient.setQueryData<unknown>(
+            consoleQuery.agent.byAgentId.get.queryOptions({
+              input: { params: { agent_id: 'agent-1' } },
+            }).queryKey,
+            readyAgent,
+          )
+          return { kind, draft: view.store.get(agentComposerDraftAtom) }
+        })
+        expect(screen.queryByText(successKey + title, { selector: 'p' })).not.toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        expect(await screen.findByText(successKey + title, { selector: 'p' })).toBeVisible()
+        const link = screen.getByRole('link', { name: `${successKey}openWebApp` })
+        expect(link).toHaveAttribute('href', 'https://apps.example.test/agent/published-token')
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(screen.getByRole('link', { name: `${successKey}accessMethods` })).toHaveAttribute(
+          'href',
+          '/agents/agent-1/access',
+        )
+      },
+    )
+
+    it.each(['dismiss', 'openWebApp', 'accessMethods'] as const)(
+      'consumes the guidance after %s and allows the next publication to show it again',
+      async (action) => {
+        const user = userEvent.setup()
+        renderPublishBar({ agent: readyAgent })
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+        const bar = document.activeElement as HTMLElement
+        expect(bar).toContainElement(
+          screen.getByText(`${successKey}updateTitle`, { selector: 'p' }),
+        )
+        const focus = vi.spyOn(bar, 'focus')
+        const control = screen.getByRole(action === 'dismiss' ? 'button' : 'link', {
+          name: successKey + action,
+        })
+        // Navigation is verified in Chrome; this test exercises the guidance lifetime.
+        if (action !== 'dismiss')
+          control.addEventListener('click', (event) => event.preventDefault())
+        await user.click(control)
+        if (action === 'accessMethods') {
+          expect(focus).not.toHaveBeenCalled()
+        } else {
+          expect(bar).toHaveFocus()
+          expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+        }
+        focus.mockRestore()
+        expect(
+          screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeVisible()
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      },
+    )
+
+    it('does not steal focus moved outside the bar while publishing', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      render(<input aria-label="Other editor" />)
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      const editor = screen.getByRole('textbox', { name: 'Other editor' })
+      await user.click(editor)
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      expect(editor).toHaveFocus()
+    })
+
+    it('does not reopen after an edit is autosaved or undone', async () => {
+      const user = userEvent.setup()
+      const { store } = renderPublishBar({ agent: readyAgent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+      const publishedDraft = store.get(agentComposerDraftAtom)
+      act(() => {
+        store.set(agentComposerPromptAtom, 'New edit')
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
+      ).toBeVisible()
+      act(() => {
+        store.set(agentComposerSavedDraftAtom, store.get(agentComposerDraftAtom))
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      act(() => store.set(agentComposerDraftAtom, publishedDraft))
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not show success when publishing is blocked by validation', async () => {
+      const user = userEvent.setup()
+      const onPublish = vi.fn<PublishHandler>().mockResolvedValue(false)
+      renderPublishBar({ agent: readyAgent, onPublish })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('ignores repeated publication requests while the first request is pending', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      const publishButton = screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })
+      await user.dblClick(publishButton)
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      expect(onPublish).toHaveBeenCalledOnce()
+    })
+
+    it('does not show stale success over edits made during publication', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      act(() => {
+        store.set(agentComposerPromptAtom, 'Edited while publishing')
+      })
+
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
+      ).toBeVisible()
+    })
+
+    it.each([
+      { ...readyAgent, enable_site: false },
+      { ...readyAgent, access_ready: false },
+      { ...readyAgent, site: null },
+    ])('retains only access methods when the Web App cannot open (%j)', async (agent) => {
+      const user = userEvent.setup()
+      renderPublishBar({ agent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      expect(await screen.findByRole('link', { name: `${successKey}accessMethods` })).toBeVisible()
+      expect(
+        screen.queryByRole('link', { name: `${successKey}openWebApp` }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText(`${successKey}accessDescription`)).toBeVisible()
+    })
+
+    it('does not show guidance just because an existing version is published', () => {
+      renderPublishBar({ agent: readyAgent, activeConfigIsPublished: true, activeConfigSnapshot })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeVisible()
+    })
+
+    it('clears guidance when entering version history', async () => {
+      const user = userEvent.setup()
+      const { rerender, rerenderPublishBar } = renderPublishBar({ agent: readyAgent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+      rerender(rerenderPublishBar({ selectedVersionSnapshot: activeConfigSnapshot }))
+      rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
   })
 })

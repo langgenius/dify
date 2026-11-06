@@ -1,24 +1,20 @@
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
+// Billing labels have their own tests and are outside indexing progress semantics.
 vi.mock('@/app/components/billing/priority-label', () => ({
   default: () => <span data-testid="priority-label">Priority</span>,
-}))
-vi.mock('../../../common/document-file-icon', () => ({
-  default: ({ name }: { name?: string }) => <span data-testid="file-icon">{name}</span>,
-}))
-vi.mock('@/app/components/base/notion-icon', () => ({
-  default: ({ src }: { src?: string }) => <span data-testid="notion-icon">{src}</span>,
 }))
 describe('IndexingProgressItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const makeDetail = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
+  const makeDetail = (overrides: Partial<DocumentStatusResponse> = {}): DocumentStatusResponse => ({
     id: 'doc-1',
     indexing_status: 'indexing',
     processing_started_at: 0,
@@ -43,49 +39,33 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    // Name appears in both the file-icon mock and the display div; verify at least one
-    expect(screen.getAllByText('test.pdf').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('test.pdf')).toBeInTheDocument()
     expect(screen.getByText('50%')).toBeInTheDocument()
-  })
-
-  it('should render file icon for FILE source type', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="report.docx"
-        sourceType={DataSourceType.FILE}
-      />,
+    expect(screen.getByRole('progressbar', { name: 'test.pdf' })).toHaveAttribute(
+      'aria-valuenow',
+      '50',
     )
-
-    expect(screen.getByTestId('file-icon')).toBeInTheDocument()
   })
 
-  it('should render notion icon for NOTION source type', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="My Page"
-        sourceType={DataSourceType.NOTION}
-        notionIcon="notion-icon-url"
-      />,
-    )
+  it('announces a file completing after processing without retaining its progress bar', () => {
+    const { rerender } = render(<IndexingProgressItem detail={makeDetail()} name="done.pdf" />)
+    const status = screen.getByRole('status')
+    expect(status).toBeEmptyDOMElement()
+    expect(screen.getByRole('progressbar', { name: 'done.pdf' })).toBeInTheDocument()
 
-    expect(screen.getByTestId('notion-icon')).toBeInTheDocument()
-  })
-
-  it('should render success icon for completed status', () => {
-    render(
+    rerender(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'completed' })}
         name="done.pdf"
       />,
     )
 
-    // No progress percentage should be shown for completed
-    expect(screen.queryByText(/%/)).not.toBeInTheDocument()
+    expect(status).toHaveTextContent('done.pdf: datasetDocuments.embedding.completed')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('should render error icon with tooltip for error status', () => {
+  it('opens the full indexing error from the warning button', async () => {
+    const user = userEvent.setup()
     render(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'error', error: 'Parse failed' })}
@@ -93,18 +73,23 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('broken.pdf: common.error: Parse failed')
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Parse failed')
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'common.error' })).toHaveFocus()
   })
 
-  it('should show priority label when billing is enabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={true} />)
+  it('should use the localized fallback when an error has no message', async () => {
+    const user = userEvent.setup()
+    render(
+      <IndexingProgressItem
+        detail={makeDetail({ indexing_status: 'error', error: null })}
+        name="broken.pdf"
+      />,
+    )
 
-    expect(screen.getByTestId('priority-label')).toBeInTheDocument()
-  })
-
-  it('should not show priority label when billing is disabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={false} />)
-
-    expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.error' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('common.error')
   })
 })

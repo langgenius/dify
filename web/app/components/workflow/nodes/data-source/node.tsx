@@ -2,8 +2,8 @@ import type { FC } from 'react'
 import type { DataSourceNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { memo } from 'react'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 
 const Node: FC<NodeProps<DataSourceNodeType>> = ({ data }) => {
   const { isChecking, isMissing, uniqueIdentifier, canInstall, onInstallSuccess } =

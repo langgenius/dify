@@ -6,7 +6,7 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
 const kbdVariants = cva(
-  'pointer-events-none inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic select-none',
+  'pointer-events-none inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic select-none',
   {
     variants: {
       color: {
@@ -25,11 +25,11 @@ const kbdVariants = cva(
   },
 )
 
-export type KbdColor = NonNullable<VariantProps<typeof kbdVariants>['color']>
+type KbdColor = NonNullable<VariantProps<typeof kbdVariants>['color']>
 
-export type KbdProps = Omit<React.ComponentProps<'kbd'>, 'color'> & VariantProps<typeof kbdVariants>
+type KbdProps = Omit<React.ComponentProps<'kbd'>, 'color'> & VariantProps<typeof kbdVariants>
 
-export function Kbd({ className, color, disabled, ...props }: KbdProps) {
+function Kbd({ className, color, disabled, ...props }: KbdProps) {
   return (
     <kbd
       data-disabled={disabled ? '' : undefined}
@@ -39,10 +39,16 @@ export function Kbd({ className, color, disabled, ...props }: KbdProps) {
   )
 }
 
-export type KbdGroupProps = React.ComponentProps<'span'>
+type KbdGroupProps = React.ComponentProps<'span'>
 
-export function KbdGroup({ className, ...props }: KbdGroupProps) {
+function KbdGroup({ className, ...props }: KbdGroupProps) {
   return (
-    <span className={cn('inline-flex items-center gap-0.5 align-middle', className)} {...props} />
+    <span
+      className={cn('inline-flex shrink-0 items-center gap-0.5 align-middle', className)}
+      {...props}
+    />
   )
 }
+
+export { Kbd, KbdGroup }
+export type { KbdColor, KbdGroupProps, KbdProps }

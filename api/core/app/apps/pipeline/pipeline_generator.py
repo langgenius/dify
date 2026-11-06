@@ -1,5 +1,4 @@
 import contextvars
-import datetime
 import json
 import logging
 import secrets
@@ -7,7 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -22,10 +21,10 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
+from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
@@ -38,7 +37,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
@@ -47,19 +46,34 @@ from core.repositories.factory import (
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
-from models.enums import WorkflowRunTriggeredFrom
+from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline, build_built_in_field_values
+from models.enums import DataSourceType, DocumentCreatedFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
-from services.datasource_provider_service import DatasourceProviderService
+from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(
+        self,
+        *,
+        execution_driver: "WorkflowRunDriver",
+        documents: PipelineDocumentStore,
+        datasource_providers: DatasourceProviderService,
+    ) -> None:
+        self._execution_driver = execution_driver
+        self._documents = documents
+        self._datasource_providers = datasource_providers
+
     @overload
     def generate(
         self,
@@ -74,7 +88,7 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -106,7 +120,7 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str]: ...
 
     def generate(
         self,
@@ -121,10 +135,10 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
+    ) -> Mapping[str, Any] | Generator[Mapping | str] | None:
         # Add null check for dataset
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
@@ -140,21 +154,22 @@ class PipelineGenerator(BaseAppGenerator):
         )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
-            from services.dataset_service import DocumentService
             from services.feature_service import FeatureService
+            from services.knowledge.dataset_service import DocumentService
 
             features = FeatureService.get_features(pipeline.tenant_id)
             DocumentService.check_document_creation_limits(len(datasource_info_list), features)
 
             for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id, session)
+                document_created_from: DocumentCreatedFrom = DocumentCreatedFrom("rag-pipeline")
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
                     built_in_field_enabled=dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
-                    created_from="rag-pipeline",
+                    created_from=document_created_from,
                     position=position,
                     account=user,
                     batch=batch,
@@ -182,13 +197,14 @@ class PipelineGenerator(BaseAppGenerator):
                 )
                 session.add(document_pipeline_execution_log)
             application_generate_entity = RagPipelineGenerateEntity(
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
                 pipeline_config=pipeline_config,
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=args.get("original_document_id"),
+                original_document_id=None if is_retry else args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -196,7 +212,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 ),
                 files=[],
                 user_id=user.id,
@@ -302,7 +318,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -351,17 +367,28 @@ class PipelineGenerator(BaseAppGenerator):
                 user,
                 tenant_id=pipeline.tenant_id,
             )
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                stream=streaming,
-                draft_var_saver_factory=draft_var_saver_factory,
-            )
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    stream=streaming,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -373,11 +400,11 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
@@ -396,12 +423,13 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -475,11 +503,11 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
@@ -493,7 +521,7 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        dataset = pipeline.retrieve_dataset(session)
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
         if not dataset:
             raise ValueError("Pipeline dataset is required")
 
@@ -504,6 +532,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         # init application generate entity
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -616,17 +645,19 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
+                        execution_driver=self._execution_driver,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
-                        workflow_execution_repository=workflow_execution_repository,
-                        workflow_node_execution_repository=workflow_node_execution_repository,
+                        documents=self._documents,
                     )
 
-                    runner.run()
+                    self._execution_driver(
+                        runner, None, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -643,8 +674,6 @@ class PipelineGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,
@@ -654,11 +683,7 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        WorkflowAppBlockingResponse
-        | WorkflowAppPausedBlockingResponse
-        | Generator[WorkflowAppStreamResponse, None, None]
-    ):
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -682,7 +707,7 @@ class PipelineGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception(
                     "Fails to process generate task pipeline, task_id: %r",
@@ -697,11 +722,11 @@ class PipelineGenerator(BaseAppGenerator):
         built_in_field_enabled: bool,
         datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account | EndUser,
         batch: str,
-        document_form: str,
+        document_form: IndexStructureType,
     ):
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
@@ -714,11 +739,12 @@ class PipelineGenerator(BaseAppGenerator):
                 name = datasource_info.get("name", "untitled")
             case _:
                 raise ValueError(f"Unsupported datasource type: {datasource_type}")
+        document_data_source_type: DataSourceType = DataSourceType(datasource_type)
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=position,
-            data_source_type=datasource_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(datasource_info),
             batch=batch,
             name=name,
@@ -726,17 +752,15 @@ class PipelineGenerator(BaseAppGenerator):
             created_by=account.id,
             doc_form=document_form,
         )
-        doc_metadata = {}
         if built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: datasource_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=datasource_type,
+            )
         return document
 
     def _format_datasource_info_list(
@@ -770,8 +794,7 @@ class PipelineGenerator(BaseAppGenerator):
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(
+            credentials = self._datasource_providers.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),

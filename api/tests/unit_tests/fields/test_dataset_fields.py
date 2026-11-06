@@ -1,11 +1,33 @@
-from types import SimpleNamespace
-from unittest.mock import Mock
+import json
+from collections.abc import Generator
+from contextlib import contextmanager
 
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+)
+from models.account import Account
+from models.dataset import (
+    AppDatasetJoin,
+    Dataset,
+    DatasetMetadata,
+    Document,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
+    Pipeline,
+)
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus, TagType
+from models.model import App, AppMode, IconType, Tag, TagBinding
+from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
 
 
-def _dataset_detail_payload(**overrides):
-    payload = {
+def _dataset_detail_payload(**overrides: object) -> dict[str, object]:
+    tags: list[object] = []
+    doc_metadata: list[object] = []
+    payload: dict[str, object] = {
         "id": "ds-1",
         "name": "Dataset",
         "description": "desc",
@@ -51,7 +73,7 @@ def _dataset_detail_payload(**overrides):
             "model_provider_name": None,
             "summary_prompt": None,
         },
-        "tags": [],
+        "tags": tags,
         "doc_form": None,
         "external_knowledge_info": {
             "external_knowledge_id": "knowledge-id",
@@ -60,7 +82,7 @@ def _dataset_detail_payload(**overrides):
             "external_knowledge_api_endpoint": "https://example.com",
         },
         "external_retrieval_model": None,
-        "doc_metadata": [],
+        "doc_metadata": doc_metadata,
         "built_in_field_enabled": False,
         "pipeline_id": None,
         "runtime_mode": "general",
@@ -81,11 +103,11 @@ def _dataset_detail_payload(**overrides):
     return payload
 
 
-def _dump_dataset_detail(payload):
+def _dump_dataset_detail(payload: dict[str, object]) -> dict[str, object]:
     return DatasetDetailResponse.model_validate(payload).model_dump(mode="json")
 
 
-def test_dataset_detail_preserves_permission_keys():
+def test_dataset_detail_preserves_permission_keys() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(permission_keys=["dataset.acl.readonly", "dataset.acl.edit"])
     )
@@ -93,7 +115,7 @@ def test_dataset_detail_preserves_permission_keys():
     assert response["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
 
-def test_dataset_detail_expands_legacy_null_nested_fields():
+def test_dataset_detail_expands_legacy_null_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             summary_index_setting=None,
@@ -123,7 +145,7 @@ def test_dataset_detail_expands_legacy_null_nested_fields():
     assert response["external_retrieval_model"] is None
 
 
-def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
+def test_dataset_detail_expands_legacy_null_retrieval_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             retrieval_model_dict={
@@ -142,11 +164,15 @@ def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
         )
     )
 
-    assert response["retrieval_model_dict"]["reranking_model"] == {
+    retrieval_model_dict = response["retrieval_model_dict"]
+    assert isinstance(retrieval_model_dict, dict)
+
+    assert retrieval_model_dict["reranking_model"] == {
         "reranking_provider_name": None,
         "reranking_model_name": None,
     }
-    assert response["retrieval_model_dict"]["weights"] == {
+
+    assert retrieval_model_dict["weights"] == {
         "weight_type": None,
         "keyword_setting": {"keyword_weight": None},
         "vector_setting": {
@@ -157,7 +183,7 @@ def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
     }
 
 
-def test_dataset_detail_expands_missing_weighted_score_nested_fields():
+def test_dataset_detail_expands_missing_weighted_score_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             retrieval_model_dict={
@@ -173,7 +199,10 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
         )
     )
 
-    assert response["retrieval_model_dict"]["weights"] == {
+    retrieval_model_dict = response["retrieval_model_dict"]
+    assert isinstance(retrieval_model_dict, dict)
+
+    assert retrieval_model_dict["weights"] == {
         "weight_type": None,
         "keyword_setting": {"keyword_weight": None},
         "vector_setting": {
@@ -184,45 +213,258 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
     }
 
 
-def test_dataset_detail_response_source_uses_caller_session_for_database_fields():
-    session = Mock()
-    getter_mocks = {
-        "get_app_count": Mock(return_value=3),
-        "get_document_count": Mock(return_value=4),
-        "get_word_count": Mock(return_value=500),
-        "get_author_name": Mock(return_value="Ada"),
-        "get_tags": Mock(return_value=[{"id": "tag-1", "name": "Tag", "type": "knowledge"}]),
-        "get_doc_form": Mock(return_value="paragraph"),
-        "get_external_knowledge_info": Mock(
-            return_value={
-                "external_knowledge_id": "knowledge-id",
-                "external_knowledge_api_id": "api-id",
-                "external_knowledge_api_name": "api",
-                "external_knowledge_api_endpoint": "https://example.com",
-            }
-        ),
-        "get_doc_metadata": Mock(return_value=[{"id": "metadata-1", "name": "Metadata", "type": "string"}]),
-        "get_is_published": Mock(return_value=True),
-        "get_total_documents": Mock(return_value=4),
-        "get_total_available_documents": Mock(return_value=2),
-    }
-    dataset = SimpleNamespace(**_dataset_detail_payload(), **getter_mocks)
+def test_dataset_detail_serializes_after_session_closes(sqlite_session: Session) -> None:
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = "account-1"
+    dataset = Dataset(
+        id="ds-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        description="desc",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="economy",
+        created_by=account.id,
+        retrieval_model=_dataset_detail_payload()["retrieval_model_dict"],
+        summary_index_setting=_dataset_detail_payload()["summary_index_setting"],
+        built_in_field_enabled=False,
+        icon_info=_dataset_detail_payload()["icon_info"],
+        runtime_mode="general",
+        enable_api=False,
+        is_multimodal=False,
+    )
+    dataset.embedding_available = True  # pyrefly: ignore[missing-attribute]
+    decoy_app = App(
+        id="decoy-app",
+        tenant_id="tenant-1",
+        name="Decoy app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="app",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+    decoy_join = AppDatasetJoin(app_id=decoy_app.id, dataset_id="other-dataset")
+    sqlite_session.add_all([account, dataset, decoy_app, decoy_join])
+    sqlite_session.flush()
 
-    response = DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session),
-        from_attributes=True,
+    detail = load_dataset_detail(dataset, session=sqlite_session)
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    response = DatasetDetailResponse.model_validate(detail)
+
+    assert response.app_count == 0
+    assert response.document_count == 0
+    assert response.word_count == 0
+    assert response.author_name == "Ada"
+    assert response.tags == []
+    assert response.doc_form is None
+    assert response.external_knowledge_info.external_knowledge_api_id is None
+    assert response.doc_metadata == []
+    assert response.is_published is False
+    assert response.total_documents == 0
+    assert response.total_available_documents == 0
+
+
+def _dataset(index: int, account_id: str, **overrides: object) -> Dataset:
+    dataset = Dataset(
+        id=f"ds-{index}",
+        tenant_id="tenant-1",
+        name=f"Dataset {index}",
+        description="desc",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="economy",
+        created_by=account_id,
+        retrieval_model=None,
+        summary_index_setting=None,
+        built_in_field_enabled=False,
+        icon_info=None,
+        runtime_mode="general",
+        enable_api=False,
+        is_multimodal=False,
+    )
+    for name, value in overrides.items():
+        setattr(dataset, name, value)
+    return dataset
+
+
+def _document(dataset_id: str, *, word_count: int, indexing_status: IndexingStatus, archived: bool = False) -> Document:
+    return Document(
+        tenant_id="tenant-1",
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch",
+        name="doc",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="account-1",
+        word_count=word_count,
+        indexing_status=indexing_status,
+        enabled=True,
+        archived=archived,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
 
-    assert response.app_count == 3
-    assert response.document_count == 4
-    assert response.word_count == 500
-    assert response.author_name == "Ada"
-    assert response.tags[0].id == "tag-1"
-    assert response.doc_form == "paragraph"
-    assert response.external_knowledge_info.external_knowledge_api_id == "api-id"
-    assert response.doc_metadata[0].id == "metadata-1"
-    assert response.is_published is True
-    assert response.total_documents == 4
-    assert response.total_available_documents == 2
-    for getter in getter_mocks.values():
-        getter.assert_called_once_with(session=session)
+
+def _seed_dataset_page(session: Session) -> list[Dataset]:
+    """Create a page of datasets covering every session-scoped detail field."""
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = "account-1"
+    session.add(account)
+
+    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", is_published=True, created_by=account.id)
+    external_api = ExternalKnowledgeApis(
+        name="api",
+        description="",
+        tenant_id="tenant-1",
+        settings=json.dumps({"endpoint": "https://example.com"}),
+        created_by=account.id,
+        updated_by=None,
+    )
+    session.add_all([pipeline, external_api])
+    session.flush()
+
+    plain = _dataset(1, account.id, built_in_field_enabled=True)
+    piped = _dataset(2, account.id, pipeline_id=pipeline.id)
+    external = _dataset(3, account.id, provider="external")
+    structured = _dataset(4, account.id, chunk_structure=IndexStructureType.QA_INDEX)
+    empty = _dataset(5, account.id)
+    datasets = [plain, piped, external, structured, empty]
+    session.add_all(datasets)
+
+    session.add_all(
+        [
+            _document(plain.id, word_count=10, indexing_status=IndexingStatus.COMPLETED),
+            _document(plain.id, word_count=20, indexing_status=IndexingStatus.COMPLETED, archived=True),
+            _document(plain.id, word_count=5, indexing_status=IndexingStatus.WAITING),
+            _document(piped.id, word_count=7, indexing_status=IndexingStatus.COMPLETED),
+        ]
+    )
+
+    tag = Tag(tenant_id="tenant-1", type=TagType.KNOWLEDGE, name="tag", created_by=account.id)
+    other_tag = Tag(tenant_id="tenant-1", type=TagType.APP, name="app tag", created_by=account.id)
+    session.add_all([tag, other_tag])
+    session.flush()
+    session.add_all(
+        [
+            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=plain.id, created_by=account.id),
+            TagBinding(tenant_id="tenant-1", tag_id=other_tag.id, target_id=plain.id, created_by=account.id),
+        ]
+    )
+
+    session.add(
+        DatasetMetadata(
+            tenant_id="tenant-1",
+            dataset_id=plain.id,
+            type=DatasetMetadataType.STRING,
+            name="author",
+            created_by=account.id,
+        )
+    )
+    session.add(
+        ExternalKnowledgeBindings(
+            tenant_id="tenant-1",
+            external_knowledge_api_id=external_api.id,
+            dataset_id=external.id,
+            external_knowledge_id="external-1",
+            created_by=account.id,
+        )
+    )
+
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="App",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="app",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+    session.add_all([app, AppDatasetJoin(app_id=app.id, dataset_id=plain.id)])
+    session.flush()
+    return datasets
+
+
+def _dump(dataset: Dataset, *, session: Session) -> dict[str, object]:
+    return DatasetDetailResponse.model_validate(load_dataset_detail(dataset, session=session)).model_dump(mode="json")
+
+
+@contextmanager
+def _count_selects(session: Session) -> Generator[list[str]]:
+    """Record every SELECT issued against the session's engine."""
+    statements: list[str] = []
+    engine = session.get_bind()
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def _before(
+        _conn: object, _cursor: object, statement: str, _parameters: object, _context: object, _executemany: object
+    ) -> None:
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", _before)
+
+
+def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Session) -> None:
+    datasets = _seed_dataset_page(sqlite_session)
+
+    expected = [_dump(dataset, session=sqlite_session) for dataset in datasets]
+
+    details = load_dataset_details(datasets, session=sqlite_session)
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    prefetched = [DatasetDetailResponse.model_validate(detail).model_dump(mode="json") for detail in details]
+
+    assert prefetched == expected
+
+    plain = prefetched[0]
+    assert plain["app_count"] == 1
+    assert plain["document_count"] == 3
+    assert plain["total_documents"] == 3
+    assert plain["total_available_documents"] == 1
+    assert plain["word_count"] == 35
+    assert plain["keyword_number"] == 10
+    assert plain["author_name"] == "Ada"
+    assert [tag["name"] for tag in plain["tags"]] == ["tag"]
+    assert plain["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
+    assert [metadata["name"] for metadata in plain["doc_metadata"]][0] == "author"
+    assert len(plain["doc_metadata"]) == 6
+    assert prefetched[1]["is_published"] is True
+    assert prefetched[2]["external_knowledge_info"]["external_knowledge_api_endpoint"] == "https://example.com"
+    assert prefetched[3]["doc_form"] == IndexStructureType.QA_INDEX
+    assert prefetched[4]["document_count"] == 0
+    assert prefetched[4]["doc_form"] is None
+
+
+def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqlite_session: Session) -> None:
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = "account-1"
+    sqlite_session.add(account)
+    datasets = [_dataset(index, account.id) for index in range(20)]
+    sqlite_session.add_all(datasets)
+    sqlite_session.flush()
+
+    def select_count(page: list[Dataset]) -> int:
+        with _count_selects(sqlite_session) as statements:
+            for detail in load_dataset_details(page, session=sqlite_session):
+                DatasetDetailResponse.model_validate(detail).model_dump(mode="json")
+            return len(statements)
+
+    small_page = select_count(datasets[:2])
+    full_page = select_count(datasets)
+
+    assert full_page == small_page
+    assert full_page <= 8

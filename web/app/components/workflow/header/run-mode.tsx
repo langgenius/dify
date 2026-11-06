@@ -1,24 +1,22 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  useWorkflowRun,
-  useWorkflowRunValidation,
-  useWorkflowStartRun,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useWorkflowRunValidation } from '../hooks/use-checklist'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
+import { useWorkflowStartRun } from '../hooks/use-workflow-start-run'
 import { TEST_RUN_MENU_HOTKEY } from '../hotkeys'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 
@@ -31,7 +29,7 @@ const isWorkflowStopEvent = (value: EventEmitterValue) =>
   typeof value !== 'string' && value.type === EVENT_WORKFLOW_STOP
 
 const RunMode = ({ text, disabled = false }: RunModeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const {
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
@@ -58,9 +56,22 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     testRunMenuRef.current?.toggle()
   }, [isRunDisabled])
 
-  useHotkey(TEST_RUN_MENU_HOTKEY, handleToggleTestRunMenu, {
-    ignoreInputs: true,
-  })
+  useHotkey(
+    TEST_RUN_MENU_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleToggleTestRunMenu()
+    },
+    {
+      enabled: !isRunDisabled,
+      preventDefault: false,
+      stopPropagation: false,
+      ignoreInputs: true,
+    },
+  )
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')
@@ -162,7 +173,7 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
       {isRunning && !isRunDisabled && (
         <button
           type="button"
-          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
           )}

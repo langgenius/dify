@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 const InfoPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const docLink = useDocLink()
 
   return (
-    <div className="flex w-[360px] flex-col items-start pt-[108px] pr-8 pb-2">
-      <div className="flex w-full min-w-[240px] flex-col items-start gap-3 self-stretch rounded-xl bg-background-section p-6">
+    <div className="flex w-90 flex-col items-start pt-27 pr-8 pb-2">
+      <div className="flex w-full min-w-60 flex-col items-start gap-3 self-stretch rounded-xl bg-background-section p-6">
         <div className="flex h-10 w-10 grow items-center justify-center gap-2 self-stretch rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1">
           <RiBookOpenLine className="size-5 text-text-accent" />
         </div>

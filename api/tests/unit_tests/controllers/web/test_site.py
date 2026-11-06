@@ -1,67 +1,144 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from configs import dify_config
+import pytest
+from flask import Blueprint, Flask
+from pytest_mock import MockerFixture
+from werkzeug.exceptions import Forbidden, ServiceUnavailable
+
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.web import site as site_module
-from extensions.storage.storage_type import StorageType
-from models.model import IconType, Site
+from controllers.web.error import WebAppNotFoundError
+from extensions.ext_application_services import ApplicationServices
+from libs.external_api import ExternalApi
+from models.enums import EndUserType
+from models.model import App, EndUser
+from services.app_definition_query_service import AppSiteConfiguration
+from services.web_app_runtime_query_service import (
+    WebAppBootstrap,
+    WebAppRuntimeUnavailableError,
+)
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def test_build_site_icon_url_uses_s3_presigned_url() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
-
-    with (
-        patch.object(dify_config, "EDITION", "CLOUD"),
-        patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
-        patch.object(site_module, "db") as mock_db,
-        patch.object(site_module, "FileService") as mock_file_service,
-        patch.object(site_module, "build_icon_url") as mock_build_icon_url,
-    ):
-        mock_file_service.return_value.get_file_presigned_url.return_value = (
-            "https://s3.example.com/icon.png?signature=test"
-        )
-
-        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
-
-    assert result == "https://s3.example.com/icon.png?signature=test"
-    mock_file_service.assert_called_once_with(mock_db.engine)
-    mock_file_service.return_value.get_file_presigned_url.assert_called_once_with(
-        file_id="11111111-1111-4111-8111-111111111111",
-        tenant_id="tenant-id",
+def _bootstrap() -> WebAppBootstrap:
+    site = AppSiteConfiguration(
+        title="Test Site",
+        chat_color_theme="light",
+        chat_color_theme_inverted=False,
+        icon_type="image",
+        icon="file-1",
+        icon_background="#ffffff",
+        description="Description",
+        copyright="Copyright",
+        privacy_policy="Privacy",
+        input_placeholder="Ask anything",
+        custom_disclaimer="Disclaimer",
+        default_language="en-US",
+        prompt_public=True,
+        show_workflow_steps=True,
+        use_icon_as_answer_icon=False,
     )
-    mock_build_icon_url.assert_not_called()
+    return WebAppBootstrap(
+        app_id="app-id",
+        mode="agent-chat",
+        enable_site=True,
+        site={**site._asdict(), "icon_url": "https://files.example.com/icon.png"},
+        plan="pro",
+        can_replace_logo=True,
+        custom_config={
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": "https://files.example.com/files/workspaces/tenant-id/webapp-logo",
+        },
+    )
 
 
-def test_build_site_icon_url_keeps_preview_url_for_self_hosted_s3() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
+def test_app_site_api_queries_the_admitted_app_runtime() -> None:
+    app_model = MagicMock(id="app-id")
+    end_user = MagicMock(id="end-user-id")
+    web_app_runtime = MagicMock()
+    web_app_runtime.get_bootstrap.return_value = _bootstrap()
+
+    with patch.object(
+        site_module,
+        "application_services",
+        return_value=SimpleNamespace(web_app_runtime=web_app_runtime),
+    ):
+        result = site_module.AppSiteApi().get(app_model, end_user)
+
+    assert result["app_id"] == "app-id"
+    assert result["mode"] == "agent-chat"
+    assert result["end_user_id"] == "end-user-id"
+    assert result["site"]["prompt_public"] is True
+    assert result["site"]["icon_url"] == "https://files.example.com/icon.png"
+    assert result["model_config"] is None
+    assert result["custom_config"] == {
+        "remove_webapp_brand": True,
+        "replace_webapp_logo": "https://files.example.com/files/workspaces/tenant-id/webapp-logo",
+    }
+    web_app_runtime.get_bootstrap.assert_called_once_with("app-id")
+
+
+def test_app_site_api_maps_unavailable_runtime_to_app_not_found() -> None:
+    web_app_runtime = MagicMock()
+    web_app_runtime.get_bootstrap.side_effect = WebAppRuntimeUnavailableError
 
     with (
-        patch.object(dify_config, "EDITION", "SELF_HOSTED"),
-        patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
-        patch.object(site_module, "FileService") as mock_file_service,
-        patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),
+        patch.object(
+            site_module,
+            "application_services",
+            return_value=SimpleNamespace(web_app_runtime=web_app_runtime),
+        ),
+        pytest.raises(WebAppNotFoundError),
     ):
-        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
-
-    assert result == "https://api.example.com/files/icon/file-preview"
-    mock_file_service.assert_not_called()
+        site_module.AppSiteApi().get(MagicMock(id="app-id"), MagicMock(id="end-user-id"))
 
 
-def test_build_site_icon_url_keeps_preview_url_for_non_s3_storage() -> None:
-    site = MagicMock(spec=Site)
-    site.icon_type = IconType.IMAGE
-    site.icon = "11111111-1111-4111-8111-111111111111"
+@pytest.mark.parametrize(
+    ("failure", "status"),
+    [
+        (WebAppRuntimeUnavailableError("Site not found"), 404),
+        (ServiceUnavailable("dependency unavailable"), 503),
+        (Forbidden("business permission denied"), 403),
+        (RuntimeError("programming bug"), 500),
+    ],
+)
+def test_site_final_response_only_reclassifies_terminal_runtime_failure(
+    failure: Exception,
+    status: int,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
+) -> None:
+    from controllers.web import wraps
 
-    with (
-        patch.object(dify_config, "EDITION", "CLOUD"),
-        patch.object(dify_config, "STORAGE_TYPE", StorageType.LOCAL),
-        patch.object(site_module, "FileService") as mock_file_service,
-        patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),
-    ):
-        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
-
-    assert result == "https://api.example.com/files/icon/file-preview"
-    mock_file_service.assert_not_called()
+    app = Flask(__name__)
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    bp = Blueprint("site_fixture", __name__, url_prefix="/api")
+    register_app_access_error_metadata(bp, surface="web")
+    api = ExternalApi(bp)
+    api.add_resource(site_module.AppSiteApi, "/site")
+    app.register_blueprint(bp)
+    mocker.patch.object(account_application_services.web_app_runtime, "get_bootstrap", side_effect=failure)
+    monkeypatch.setattr(site_module, "application_services", lambda: account_application_services)
+    monkeypatch.setattr(
+        wraps,
+        "decode_jwt_token",
+        lambda: (
+            App(id="fixture-app"),
+            EndUser(id="fixture-user", tenant_id="fixture-tenant", type=EndUserType.BROWSER),
+        ),
+    )
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+    response = app.test_client().get("/api/site", environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
+    assert response.status_code == status
+    if status == 404:
+        assert (
+            response.data
+            == b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+        )
+        assert response.headers["Content-Type"] == "application/json"
+        assert response.headers["Cache-Control"] == "no-store"
+    else:
+        assert response.get_json()["code"] != "app_not_found"
+        assert "client_ip" not in response.get_json()

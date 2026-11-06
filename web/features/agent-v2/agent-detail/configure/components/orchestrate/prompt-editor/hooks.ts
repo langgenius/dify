@@ -2,19 +2,20 @@
 
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
+import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import useTheme from '@/hooks/use-theme'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { consoleQuery } from '@/service/console'
 import { basePath } from '@/utils/var'
+import {
+  createAgentToolProviderCatalog,
+  getAgentProviderToolIcon,
+} from '../../../tool-provider-catalog'
 
 type ProviderTool = Extract<AgentTool, { kind: 'provider' }>
 
@@ -40,45 +41,52 @@ function getProviderByTool(providerById: Map<string, ToolWithProvider>, tool: Pr
   return providerById.get(tool.id) ?? providerById.get(tool.name)
 }
 
-function createProviderMap(providers: ToolWithProvider[]) {
-  const providerById = new Map<string, ToolWithProvider>()
-
-  providers.forEach((provider) => {
-    providerById.set(provider.id, provider)
-    providerById.set(provider.name, provider)
-    if (provider.plugin_id) {
-      providerById.set(provider.plugin_id, provider)
-      providerById.set(`${provider.plugin_id}/${provider.name}`, provider)
-    }
-  })
-
-  return providerById
-}
-
-export function useAgentPromptToolIconResolver() {
-  const { theme } = useTheme()
+export function useAgentPromptToolIconResolver(
+  providerTypes?: ReadonlySet<ProviderTool['providerType']>,
+) {
+  const theme = useResolvedTheme()
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const { data: builtInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: builtInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled:
+        !providerTypes || providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.custom),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.workflow),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.mcp),
+      select: selectToolsWithProvider,
+    }),
+  )
 
-  const providerById = useMemo(() => {
-    const allProviders = [
-      ...(Array.isArray(builtInTools) ? builtInTools : []),
-      ...(Array.isArray(customTools) ? customTools : []),
-      ...(Array.isArray(workflowTools) ? workflowTools : []),
-      ...(Array.isArray(mcpTools) ? mcpTools : []),
-    ]
-
-    return createProviderMap(allProviders)
-  }, [builtInTools, customTools, mcpTools, workflowTools])
+  const providerById = useMemo(
+    () =>
+      createAgentToolProviderCatalog({
+        buildInTools: builtInTools,
+        customTools,
+        mcpTools,
+        workflowTools,
+      }).providerById,
+    [builtInTools, customTools, mcpTools, workflowTools],
+  )
 
   return useMemo(
     () => ({
       getProviderIcon: (provider: ToolWithProvider) => {
-        const rawIcon =
-          theme === Theme.dark && provider.icon_dark ? provider.icon_dark : provider.icon
+        const rawIcon = theme === 'dark' && provider.icon_dark ? provider.icon_dark : provider.icon
         return normalizeProviderIcon(rawIcon, currentWorkspaceId)
       },
       getProviderIcons: (provider: ToolWithProvider) => ({
@@ -88,9 +96,9 @@ export function useAgentPromptToolIconResolver() {
       getConfiguredToolIcon: (tool: ProviderTool) => {
         const provider = getProviderByTool(providerById, tool)
         const rawIcon =
-          theme === Theme.dark && (tool.iconDark ?? provider?.icon_dark)
+          theme === 'dark' && (tool.iconDark ?? provider?.icon_dark)
             ? (tool.iconDark ?? provider?.icon_dark)
-            : (tool.icon ?? provider?.icon)
+            : getAgentProviderToolIcon(tool, provider)
 
         return normalizeProviderIcon(rawIcon, currentWorkspaceId)
       },

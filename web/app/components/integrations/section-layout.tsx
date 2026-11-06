@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 
 type IntegrationSectionLayoutProps = {
   bodyClassName?: string
@@ -15,15 +14,12 @@ export function IntegrationSectionLayout({
   label,
 }: IntegrationSectionLayoutProps) {
   return (
-    <ScrollArea
-      className="min-h-0 flex-1 overflow-hidden"
-      label={label}
-      slotClassNames={{
-        viewport: 'overscroll-contain',
-        content: 'min-h-full',
-      }}
+    <div
+      aria-label={label}
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain max-md:min-h-48"
+      role={label ? 'region' : undefined}
     >
       <div className={bodyClassName}>{children}</div>
-    </ScrollArea>
+    </div>
   )
 }

@@ -1,3 +1,5 @@
+export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
+
 export type OnlineUser = {
   user_id: string
   username: string
@@ -39,9 +41,7 @@ type CollaborationEventType =
   | 'mouse_move'
   | 'vars_and_features_update'
   | 'sync_request'
-  | 'app_state_update'
   | 'app_meta_update'
-  | 'mcp_server_update'
   | 'workflow_update'
   | 'comments_update'
   | 'node_panel_presence'

@@ -23,6 +23,7 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    RunCancelledEvent,
     RunEvent,
     RunStatusResponse,
 )
@@ -45,6 +46,15 @@ class AgentBackendRunClient(Protocol):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for one Agent backend run."""
 
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Request cancellation and wait for runner cleanup to finish."""
+
     def stream_events(
         self,
         run_id: str,
@@ -66,6 +76,15 @@ class _DifyAgentSyncClient(Protocol):
 
     def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Cancel one run synchronously."""
+
+    def cancel_run_and_wait_sync(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Cancel one run and wait for its terminal event synchronously."""
 
     def stream_events_sync(
         self,
@@ -92,11 +111,9 @@ class DifyAgentBackendRunClient:
         client: _DifyAgentSyncClient,
         *,
         stream_max_reconnects: int = 3,
-        stream_timeout_seconds: float = 1200,
     ) -> None:
         self.client = client
         self._stream_max_reconnects = stream_max_reconnects
-        self._stream_timeout_seconds = stream_timeout_seconds
 
     def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run through ``POST /runs`` and normalize client exceptions."""
@@ -109,6 +126,19 @@ class DifyAgentBackendRunClient:
         """Cancel one run through ``POST /runs/{run_id}/cancel`` and normalize exceptions."""
         try:
             return self.client.cancel_run_sync(run_id, request=request)
+        except Exception as exc:
+            raise _normalize_dify_agent_error(exc) from exc
+
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Cancel one run, then wait for the cleanup-complete terminal event."""
+        try:
+            return self.client.cancel_run_and_wait_sync(run_id, request=request, after=after)
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 
@@ -125,7 +155,6 @@ class DifyAgentBackendRunClient:
                 run_id,
                 after=after,
                 max_reconnects=self._stream_max_reconnects,
-                timeout_seconds=self._stream_timeout_seconds,
                 should_stop=should_stop,
             )
         except Exception as exc:
