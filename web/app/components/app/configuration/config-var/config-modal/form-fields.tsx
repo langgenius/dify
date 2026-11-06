@@ -31,6 +31,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -83,6 +84,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const { data: fileUploadConfig } = useFileUploadConfig(isFileInput)
   const docLink = useDocLink()
   const fieldId = React.useId()
   const errorId = `${fieldId}-error`
@@ -339,6 +341,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [
                   TransferMethod.remote_url,
                 ],
+                fileUploadConfig,
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />
