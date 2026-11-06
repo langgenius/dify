@@ -373,6 +373,7 @@ services:
     image: langgenius/dify-api:1.19.0
     environment:
       MODE: worker
+      MIGRATION_ENABLED: "false"
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -443,6 +444,7 @@ services:
     image: langgenius/dify-api:1.19.0
     environment:
       MODE: beat
+      MIGRATION_ENABLED: "false"
     depends_on:
       init_permissions:
         condition: service_completed_successfully
