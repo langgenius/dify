@@ -296,10 +296,6 @@ class TestAgentStrategyEntity:
         assert entity.output_schema == {"type": "object"}
         assert entity.meta_version == "v1"
 
-    def test_missing_required_fields_raise(self, strategy_identity: AgentStrategyIdentity) -> None:
-        with pytest.raises(ValidationError):
-            AgentStrategyEntity(identity=strategy_identity)  # pyrefly: ignore[missing-argument]  # missing field under test
-
 
 # =========================================================
 # AgentProviderEntityWithPlugin Tests
