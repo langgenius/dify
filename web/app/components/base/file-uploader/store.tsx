@@ -4,6 +4,7 @@ import type {
 import {
   createContext,
   useContext,
+  useEffect,
   useRef,
 } from 'react'
 import {
@@ -12,6 +13,7 @@ import {
 } from 'zustand'
 
 type Shape = {
+  isActive: boolean
   files: FileEntity[]
   setFiles: (files: FileEntity[]) => void
 }
@@ -20,9 +22,12 @@ export const createFileStore = (
   value: FileEntity[] = [],
   onChange?: (files: FileEntity[]) => void,
 ) => {
-  return create<Shape>(set => ({
+  return create<Shape>((set, get) => ({
+    isActive: true,
     files: value ? [...value] : [],
     setFiles: (files) => {
+      if (!get().isActive)
+        return
       set({ files })
       onChange?.(files)
     },
@@ -58,6 +63,14 @@ export const FileContextProvider = ({
 
   if (!storeRef.current)
     storeRef.current = createFileStore(value, onChange)
+
+  const store = storeRef.current
+  useEffect(() => {
+    store.setState({ isActive: true })
+    return () => {
+      store.setState({ isActive: false })
+    }
+  }, [store])
 
   return (
     <FileContext.Provider value={storeRef.current}>

@@ -177,7 +177,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         onSuccessCallback: (res) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
-        onErrorCallback: (error?: any) => {
+        onErrorCallback: (error?: unknown) => {
+          if (!fileStore.getState().isActive)
+            return
           const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
           notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -188,6 +190,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
 
   const startProgressTimer = useCallback((fileId: string) => {
     const timer = setInterval(() => {
+      if (!fileStore.getState().isActive) {
+        clearInterval(timer)
+        return
+      }
       const files = fileStore.getState().files
       const file = files.find(file => file.id === fileId)
 
@@ -215,6 +221,8 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     startProgressTimer(uploadingFile.id)
 
     uploadRemoteFileInfo(url, !!params.token).then((res) => {
+      if (!fileStore.getState().isActive)
+        return
       const newFile = {
         ...uploadingFile,
         type: res.mime_type,
@@ -233,10 +241,12 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       else
         handleUpdateFile(newFile)
     }).catch(() => {
+      if (!fileStore.getState().isActive)
+        return
       notify({ type: 'error', message: t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }) })
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token, fileStore])
 
   const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
@@ -270,6 +280,8 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     reader.addEventListener(
       'load',
       () => {
+        if (!fileStore.getState().isActive)
+          return
         const uploadingFile = {
           id: uuid4(),
           name: file.name,
@@ -290,7 +302,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           onSuccessCallback: (res) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
-          onErrorCallback: (error?: any) => {
+          onErrorCallback: (error?: unknown) => {
+            if (!fileStore.getState().isActive)
+              return
             const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
             notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -302,12 +316,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     reader.addEventListener(
       'error',
       () => {
+        if (!fileStore.getState().isActive)
+          return
         notify({ type: 'error', message: t('fileUploader.uploadFromComputerReadError', { ns: 'common' }) })
       },
       false,
     )
     reader.readAsDataURL(file)
-  }, [noNeedToCheckEnable, checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
+  }, [noNeedToCheckEnable, checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled, fileStore])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]

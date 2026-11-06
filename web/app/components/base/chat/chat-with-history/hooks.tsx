@@ -484,12 +484,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const handleNewConversation = useCallback(async () => {
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
-    handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
       conversationInputs[item.variable] = item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
+    handleChangeConversation('')
     setClearChatList(true)
   }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList, inputsForms])
   const handleUpdateConversationList = useCallback(() => {
