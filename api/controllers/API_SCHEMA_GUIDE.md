@@ -59,6 +59,23 @@ are unchanged. Clients must not interpret a failed bootstrap request or a missin
 field as confirmed disabled login. App-specific return targets and PKCE proofs remain
 owned by the existing login handoff, not the public bootstrap response.
 
+### Console WebApp discovery
+
+The Console `/console/api/system-features` endpoint extends the shared snapshot
+with `ConsoleSystemFeatureResponse.webapp_url`. Console clients can discover the
+WebApp frontend before Account or workspace bootstrap, without querying an
+authenticated App detail endpoint. This required string comes from `APP_WEB_URL`,
+falling back to `CONSOLE_WEB_URL` when unset. Deployment base paths are preserved,
+trailing slashes are removed, and an empty string means the same-origin root.
+Request hosts and forwarding headers never supply this address. The shared
+`SystemFeatureModel` and Web bootstrap response do not expose this Console-only field.
+
+This extension adds one scalar to the existing Console bootstrap request with no
+extra I/O, credentials, or state changes. SSR timing, caching ownership, and feature
+query failure behavior stay unchanged. A missing field or failed request must not
+be interpreted as confirmed same-origin configuration. WebApp availability is
+independent of whether Account login is enabled; this URL grants no access.
+
 ### Agent tracing deployment discovery exception
 
 `agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication

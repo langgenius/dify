@@ -1,5 +1,7 @@
 from flask_restx import Resource
+from pydantic import Field
 
+from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.console.flask_admission import console_account_admission
 from extensions.ext_application_services import application_services
@@ -26,13 +28,24 @@ class AppDslVersionResponse(ResponseModel):
     app_dsl_version: str
 
 
+class ConsoleSystemFeatureResponse(SystemFeatureModel):
+    """Extend public bootstrap with the Console-only WebApp frontend address."""
+
+    webapp_url: str = Field(
+        description=(
+            "WebApp frontend base URL, preserving its deployment base path. "
+            "Falls back to the Console frontend URL; an empty string means the same-origin root."
+        ),
+    )
+
+
 register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
+    ConsoleSystemFeatureResponse,
     FeatureModel,
     LicenseModel,
     LimitationModel,
-    SystemFeatureModel,
     TrialModelsResponse,
     VectorSpaceLimitationModel,
 )
@@ -115,15 +128,28 @@ class SystemFeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[SystemFeatureModel.__name__],
+        console_ns.models[ConsoleSystemFeatureResponse.__name__],
     )
     def get(self):
         """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
         Authentication configuration must be available before the authentication flow can be selected.
         Authenticated license detail is served separately by SystemFeatureLicenseApi.
+
+        Preconditions: no Account, workspace, or app identity is required. URL
+        settings are trusted deployment configuration, never request headers.
+        Postconditions: return the WebApp frontend base URL with its base path
+        intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+        means the same-origin root. Issue no credentials and change no state;
+        feature-query failures propagate unchanged.
         """
-        return dump_response(SystemFeatureModel, application_services().feature_queries.get_public_system_features())
+        return dump_response(
+            ConsoleSystemFeatureResponse,
+            {
+                **application_services().feature_queries.get_public_system_features().model_dump(mode="json"),
+                "webapp_url": (dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL).rstrip("/"),
+            },
+        )
 
 
 @console_ns.route("/system-features/license")
