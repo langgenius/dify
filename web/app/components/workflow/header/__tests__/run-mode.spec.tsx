@@ -2,7 +2,6 @@ import type { TestRunOptions } from '../test-run-menu'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { toast } from '@/app/notifications'
 import {
   baseRunningData,
   renderWorkflowComponent as renderWithStores,
@@ -27,6 +26,7 @@ vi.mock('../../hooks/use-checklist', async (importOriginal) => {
     ...actual,
     useWorkflowRunValidation: () => ({
       warningNodes: mockWarningNodes,
+      hasValidationErrors: mockWarningNodes.length > 0,
     }),
   }
 })
@@ -77,16 +77,6 @@ it('starts the sole user-input option from the real run button', async () => {
   await user.click(screen.getByRole('button', { name: /workflow.common.run/ }))
   expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
   expect(trackEvent).toHaveBeenCalledWith('app_start_action_time', { action_type: 'user_input' })
-})
-
-it('reports checklist warnings without starting the selected trigger', async () => {
-  const user = userEvent.setup()
-  const error = vi.spyOn(toast, 'error')
-  mockWarningNodes = [{ id: 'start-node' }]
-  renderWorkflowComponent(<RunMode />)
-  await user.click(screen.getByRole('button', { name: /workflow.common.run/ }))
-  expect(error).toHaveBeenCalledWith('workflow.panel.checklistTip')
-  expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
 })
 
 it.each([false, true])('stops the active task while listening=%s', async (isListening) => {

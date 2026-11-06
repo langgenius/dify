@@ -232,7 +232,10 @@ const WorkflowPreview = () => {
                     : undefined
                 }
                 preparingRun={connections.checking}
-                disabled={connections.nodes.length > 0 && isRunActive}
+                disabled={
+                  connections.nodes.length > 0 &&
+                  (connections.warningCount > 0 || connections.error || isRunActive)
+                }
               />
             </>
           )}

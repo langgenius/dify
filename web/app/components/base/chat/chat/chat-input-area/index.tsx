@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
@@ -48,6 +48,8 @@ type ChatInputAreaProps = {
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  disabledInputAction?: ReactNode
+  inputRef?: RefObject<HTMLTextAreaElement | null>
   sendButtonLabel?: string
   sendButtonLoading?: boolean
   footerNotice?: ReactNode
@@ -81,6 +83,8 @@ const ChatInputArea = ({
   theme,
   isResponding,
   disabled,
+  disabledInputAction,
+  inputRef,
   sendButtonLabel,
   sendButtonLoading,
   footerNotice,
@@ -327,6 +331,7 @@ const ChatInputArea = ({
                 id={textareaId}
                 ref={(ref) => {
                   textareaRef.current = ref ?? undefined
+                  if (inputRef) inputRef.current = ref
                 }}
                 className={cn(
                   'w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden',
@@ -377,6 +382,9 @@ const ChatInputArea = ({
           </div>
         )}
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
+        {disabled && disabledInputAction && (
+          <div className="pointer-events-auto absolute inset-0">{disabledInputAction}</div>
+        )}
       </div>
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">

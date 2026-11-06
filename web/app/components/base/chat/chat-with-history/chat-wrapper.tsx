@@ -4,6 +4,7 @@ import type { HumanInputFormSubmitData } from '../chat/answer/human-input-conten
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +17,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { InstalledConnectionSetup } from '@/app/components/explore/installed-app/connections'
 import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
+import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
@@ -41,6 +43,8 @@ const ChatWrapper = () => {
   const installedConnections = useOptionalInstalledAppConnections()
   const connections = webAppConnections ?? installedConnections
   const [connectionSetupComplete, setConnectionSetupComplete] = useState(false)
+  const [connectionDialogHandle] = useState(() => createDialogHandle())
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const {
     appParams,
     appPrevChatTree,
@@ -534,6 +538,22 @@ const ChatWrapper = () => {
         theme={theme}
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled || Boolean(connections && !connections.canRun)}
+        inputRef={inputRef}
+        disabledInputAction={
+          webAppConnections &&
+          !webAppConnections.canRun &&
+          webAppConnections.status !== 'inactive' &&
+          webAppConnections.status !== 'sign-in-required' ? (
+            <DialogTrigger
+              handle={connectionDialogHandle}
+              className="size-full cursor-pointer rounded-xl focus-visible:ring-0 focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            >
+              <span className="sr-only">
+                {t(($) => $['connections.configure.title'], { ns: 'share' })}
+              </span>
+            </DialogTrigger>
+          ) : undefined
+        }
         inputPlaceholder={
           signInRequired
             ? t(($) => $['connections.required.inputPlaceholder'], { ns: 'share' })
@@ -549,6 +569,11 @@ const ChatWrapper = () => {
             </Avatar>
           ) : undefined
         }
+      />
+      <WebAppConnectionDialog
+        handle={connectionDialogHandle}
+        isResponding={respondingState}
+        finalFocus={() => (inputRef.current?.disabled === false ? inputRef.current : true)}
       />
     </div>
   )

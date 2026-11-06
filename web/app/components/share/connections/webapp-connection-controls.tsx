@@ -4,8 +4,8 @@ import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import SignIn from '../sign-in'
 import ConfigureConnectionsButton from './configure-connections-button'
-import ConfigureConnectionsDialog from './configure-connections-dialog'
 import { useOptionalWebAppConnections } from './use-connections'
+import WebAppConnectionDialog from './webapp-connection-dialog'
 
 export default function WebAppConnectionControls({
   isResponding = false,
@@ -26,30 +26,7 @@ export default function WebAppConnectionControls({
             handle={handle}
             render={<ConfigureConnectionsButton services={state.services} />}
           />
-          <ConfigureConnectionsDialog
-            handle={handle}
-            services={state.services}
-            onConnect={state.onConnect}
-            onConnectionChange={state.onConnectionChange}
-            onReconnect={state.onReconnect}
-            onReplace={state.onReplace}
-            onRemove={state.onRemove}
-            isResponding={isResponding}
-            isMutating={state.isMutating}
-            disabled={state.status !== 'ready'}
-            loadState={{
-              loading: state.status === 'loading' || state.preflight.status === 'checking',
-              error: state.status === 'error' || state.preflight.status === 'error',
-              onRetry:
-                state.status === 'error'
-                  ? state.retry
-                  : state.preflight.canRetry
-                    ? state.preflight.retry
-                    : undefined,
-              onLoadMore: state.hasMoreConnections ? state.loadMoreConnections : undefined,
-              loadingMore: state.isFetchingMoreConnections,
-            }}
-          />
+          <WebAppConnectionDialog handle={handle} isResponding={isResponding} />
         </>
       )}
     </div>
