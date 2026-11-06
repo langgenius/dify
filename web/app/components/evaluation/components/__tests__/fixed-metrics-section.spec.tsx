@@ -49,10 +49,13 @@ describe('agent evaluation metrics', () => {
     expect(screen.queryByText('evaluation.metrics.custom.title')).not.toBeInTheDocument()
     const addCondition = screen.getByRole('button', { name: 'evaluation.conditions.addCondition' })
     expect(addCondition).toBeDisabled()
+    expect(screen.getByText('evaluation.conditions.emptyDescription')).toBeInTheDocument()
 
     await user.click(screen.getByText('Task Completion'))
     expect(taskCompletion).toBeChecked()
     expect(addCondition).toBeEnabled()
+    expect(screen.queryByText('evaluation.conditions.emptyDescription')).not.toBeInTheDocument()
+    expect(screen.getByText('evaluation.conditions.emptyTitle')).toBeInTheDocument()
     const selectedResource =
       useEvaluationStore.getState().resources[buildResourceKey('agents', agentId)]
     if (!selectedResource) throw new Error('Expected agent evaluation state')

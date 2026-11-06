@@ -21,11 +21,12 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
     [conditionMetricOptions],
   )
   const canAddCondition = conditionMetricOptions.length > 0
-  let emptyMessage: string = t(($) => $['conditions.emptyDescription'])
-  if (resourceType === 'datasets') {
-    emptyMessage = canAddCondition
-      ? t(($) => $['conditions.emptyTitle'])
-      : t(($) => $['conditions.selectFieldFirst'])
+  let emptyMessage: string = t(($) => $['conditions.emptyTitle'])
+  if (!canAddCondition) {
+    emptyMessage =
+      resourceType === 'datasets'
+        ? t(($) => $['conditions.selectFieldFirst'])
+        : t(($) => $['conditions.emptyDescription'])
   }
 
   return (
