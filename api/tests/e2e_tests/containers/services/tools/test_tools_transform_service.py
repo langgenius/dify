@@ -17,7 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from models.tools import ApiToolProvider, WorkflowToolProvider
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
 
@@ -27,7 +27,7 @@ class TestToolTransformService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
+        with patch("services.tools.legacy_tools_transform_service.dify_config") as mock_dify_config:
             with patch("core.plugin.plugin_service.dify_config", new=mock_dify_config):
                 # Setup default mock returns
                 mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
@@ -462,7 +462,7 @@ class TestToolTransformService:
         mock_db_provider.credentials = {"api_key": "encrypted_key"}
 
         # Mock encryption
-        with patch("services.tools.tools_transform_service.create_provider_encrypter") as mock_encrypter:
+        with patch("services.tools.legacy_tools_transform_service.create_provider_encrypter") as mock_encrypter:
             mock_encrypter_instance = Mock()
             mock_encrypter_instance.decrypt.return_value = {"api_key": "decrypted_key"}
             mock_encrypter_instance.mask_plugin_credentials.return_value = {"api_key": ""}
@@ -715,7 +715,9 @@ class TestToolTransformService:
         db_session_with_containers.commit()
 
         # Mock the WorkflowToolProviderController.from_db method to avoid app dependency
-        with patch("services.tools.tools_transform_service.WorkflowToolProviderController.from_db") as mock_from_db:
+        with patch(
+            "services.tools.legacy_tools_transform_service.WorkflowToolProviderController.from_db"
+        ) as mock_from_db:
             mock_controller = Mock()
             mock_from_db.return_value = mock_controller
 
