@@ -61,7 +61,7 @@
   "subscription.list.item.actions.deleteConfirm.title": "{{name}} silinsin mi?",
   "subscription.list.item.actions.edit.error": "Abonelik güncellenemedi",
   "subscription.list.item.actions.edit.title": "Aboneliği Düzenle",
-  "subscription.list.item.noUsed": "Hiç işlem akışı kullanılmadı",
+  "subscription.list.item.noUsed": "Hiç iş akışı kullanılmadı",
   "subscription.list.item.usedByNum": "{{num}} iş akışı tarafından kullanılıyor",
   "subscription.list.tip": "Abonelik aracılığıyla etkinlikleri alın",
   "subscription.listNum": "{{num}} abonelik",

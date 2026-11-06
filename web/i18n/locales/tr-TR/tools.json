@@ -116,7 +116,7 @@
   "mcp.modal.authentication": "Kimlik Doğrulama",
   "mcp.modal.cancel": "İptal",
   "mcp.modal.changeIcon": "Sunucu simgesini değiştir",
-  "mcp.modal.clientID": "Müşteri Kimliği",
+  "mcp.modal.clientID": "İstemci Kimliği",
   "mcp.modal.clientSecret": "İstemci Sırrı",
   "mcp.modal.clientSecretPlaceholder": "İstemci Sırrı",
   "mcp.modal.configurations": "Yapılandırmalar",
@@ -204,11 +204,11 @@
   "type.builtIn": "Yerleşik",
   "type.custom": "Özel",
   "type.workflow": "İş Akışı",
-  "workflowToolEmpty.description": "Bir workflow’u araç olarak kullanmak için önce Studio’dan yayınlayın. Ardından burada görünür ve herhangi bir uygulamaya eklenebilir.",
+  "workflowToolEmpty.description": "Bir iş akışını araç olarak kullanmak için önce Studio’dan yayınlayın. Ardından burada görünür ve herhangi bir uygulamaya eklenebilir.",
   "workflowToolEmpty.goToStudio": "Studio’ya git",
-  "workflowToolEmpty.learnMore": "Yardıma mı ihtiyacınız var? Bir workflow’u araç olarak yayınlamayı öğrenin →",
-  "workflowToolEmpty.step1": "Studio’da bir workflow oluşturun",
+  "workflowToolEmpty.learnMore": "Yardıma mı ihtiyacınız var? Bir iş akışını araç olarak yayınlamayı öğrenin →",
+  "workflowToolEmpty.step1": "Studio’da bir iş akışı oluşturun",
   "workflowToolEmpty.step2": "Yayınlama menüsünde “Workflow as Tool”a tıklayarak araç olarak kullanılabilir hale getirin",
   "workflowToolEmpty.step3": "Yönetmek ve yeniden kullanmak için buraya dönün",
-  "workflowToolEmpty.title": "Henüz araç olarak yayınlanmış workflow yok"
+  "workflowToolEmpty.title": "Henüz araç olarak yayınlanmış iş akışı yok"
 }
