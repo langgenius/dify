@@ -45,7 +45,7 @@ class _Result:
 
 
 class _FakeInstance:
-    def __init__(self, replies: list[str]) -> None:
+    def __init__(self, replies: Sequence[str | Exception]) -> None:
         self._r = list(replies)
         self.calls = []
 
@@ -59,7 +59,10 @@ class _FakeInstance:
         **_kw: object,
     ) -> _Result:
         self.calls.append((prompt_messages, model_parameters, stop, stream))
-        return _Result(self._r.pop(0))
+        reply = self._r.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return _Result(reply)
 
 
 class _BoomInstance:
@@ -592,15 +595,14 @@ def test_assess_capability_gap_reports_no_gap_when_the_plan_is_covered() -> None
     assert build.assess_capability_gap(m, ["Summarize text"], []) == ""
 
 
-def test_assess_capability_gap_reports_no_gap_without_a_model() -> None:
-    # A gap we cannot assess is not a gap -- inventing one would block a build
-    # that might be fine.
-    assert build.assess_capability_gap(None, ["Email the manager"], []) == ""
+def test_assess_capability_gap_reports_unknown_without_a_model() -> None:
+    # Unknown assessment must not assert a missing capability.
+    assert build.assess_capability_gap(None, ["Email the manager"], []) is None
 
 
-def test_assess_capability_gap_reports_no_gap_on_model_failure() -> None:
+def test_assess_capability_gap_reports_unknown_on_model_failure() -> None:
     m = _BoomInstance()
-    assert build.assess_capability_gap(m, ["Email the manager"], []) == ""
+    assert build.assess_capability_gap(m, ["Email the manager"], []) is None
 
 
 def test_assess_capability_gap_reports_no_gap_for_an_empty_plan() -> None:
@@ -608,9 +610,9 @@ def test_assess_capability_gap_reports_no_gap_for_an_empty_plan() -> None:
     assert build.assess_capability_gap(m, [], []) == ""
 
 
-def test_assess_capability_gap_reports_no_gap_on_unparseable_reply() -> None:
+def test_assess_capability_gap_reports_unknown_on_unparseable_reply() -> None:
     m = _FakeInstance([json.dumps({"gap": 42})])
-    assert build.assess_capability_gap(m, ["Email the manager"], []) == ""
+    assert build.assess_capability_gap(m, ["Email the manager"], []) is None
 
 
 def test_assess_capability_gap_shows_the_model_each_option_and_its_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2661,3 +2663,158 @@ def test_planner_can_ask_a_required_select_without_inventing_a_recommendation() 
     assert outcome.values == {"recipient": ""}
     assert outcome.fields[0]["options"] == ["Owner", "Reviewer"]
     assert outcome.fields[0]["required"] is True
+
+
+@pytest.mark.parametrize("reply_language", ["en", "zh-Hans"])
+@pytest.mark.parametrize(
+    ("outcome", "replies", "expected_calls", "schema_reason"),
+    [
+        ("provider_failure", [RuntimeError("PRIVATE_PROVIDER_VALUE")], 2, None),
+        ("absent_model", [], 0, None),
+        ("missing_gap", ['{"PRIVATE_SCHEMA_KEY":"PRIVATE_SCHEMA_VALUE"}'], 2, "missing"),
+        ("wrong_type", ['{"gap":{"PRIVATE_SCHEMA_KEY":"PRIVATE_SCHEMA_VALUE"}}'], 2, "type"),
+        ("invalid_json", ["[]", "[]"], 3, None),
+        ("covered", ['{"gap":""}'], 2, None),
+        ("explained", ['{"gap":"The requested external binding remains unconfirmed."}'], 2, None),
+    ],
+)
+def test_preapproval_feasibility_unknown_is_disclosed_without_changing_approval(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    reply_language: str,
+    outcome: str,
+    replies: list[str | Exception],
+    expected_calls: int,
+    schema_reason: str | None,
+) -> None:
+    """Catches silent unknown, fabricated bindings and extra assessment retries."""
+    from core.dify_builder.models import Action, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_build import handle_initial_plan, handle_resource_recommendation
+    from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _seed_build_session
+    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+    provider = _FakeInstance(['{"resource_ids":[]}'] + replies)
+    agent = LlmBuilderAgent(
+        "tenant-1", account_id="acc-1", model_resolver_fn=lambda: None if outcome == "absent_model" else provider
+    )
+    env, repo = _new_env(agent=agent)
+    agent.set_diagnostic_callback(env.record_diagnostic)
+    goal = "Translate source_text to English without external tools; return translation."
+    requirements: dict[str, object] = {"target_language": "English", "output": "translation", "external_tools": False}
+    items = ["start collects source_text", "llm translates to English", "end returns translation"]
+    session = _seed_build_session(
+        repo,
+        PcState.BUILD_INITIAL_PLAN,
+        goal_text=goal,
+        requirements=requirements,
+        plan_items=items,
+        reply_language=reply_language,
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: resources.TenantResources([], [], []))
+    result = handle_initial_plan(env, Turn(actor=_actor()), *repo.get_session(session.id))
+    assert result.next == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert result.context is not None
+    reply = english_text(next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn"))
+    unknown = outcome not in {"covered", "explained"}
+    disclosure = "计划可行性检查暂不可用" if reply_language == "zh-Hans" else "plan feasibility check is unavailable"
+    assert (disclosure in reply) is unknown
+    assert ("external binding remains unconfirmed" in reply) is (outcome == "explained")
+    assert "unsupported" not in reply.lower()
+    assert "PRIVATE" not in reply + json.dumps(env.diagnostics) + caplog.text
+    assert not any(item.kind == "notice" for item in result.items)
+    assert len(provider.calls) == expected_calls
+    for messages, parameters, stop, stream in provider.calls:
+        assert goal in messages[1].content
+        assert '"external_tools": false' in messages[1].content
+        assert parameters == {}
+        assert stop is None
+        assert stream is False
+    schema_records = [record for record in env.diagnostics if record["code"] == "response_schema_invalid"]
+    if schema_reason:
+        assert len(schema_records) == 1
+        assert schema_records[0]["span_id"] == "assess-capability-gap"
+        assert schema_records[0]["validation_details"] == [
+            {"stage": "plan", "reason_code": schema_reason, "path": ["gap"]}
+        ]
+    before_confirm = len(provider.calls)
+    confirmed = handle_resource_recommendation(
+        env,
+        Turn(actor=_actor(), action=Action(kind="confirm_resources", payload={"resource_ids": []})),
+        session,
+        result.context,
+    )
+    assert confirmed.next == PcState.BUILD_PLAN_APPROVAL
+    assert confirmed.context is not None
+    assert confirmed.context.goal_text == goal
+    assert confirmed.context.requirements == requirements
+    assert confirmed.context.plan_items == items
+    assert confirmed.context.resource_selection == {"resource_ids": []}
+    assert len(provider.calls) == before_confirm
+    assert not env.fake_dify.applied
+
+
+@pytest.mark.parametrize("model_available", [True, False])
+def test_knowledge_only_discovery_does_not_report_missing_plan_assessment(
+    monkeypatch: pytest.MonkeyPatch, model_available: bool
+) -> None:
+    """No executable plan is expected before the knowledge decision gate."""
+    from core.dify_builder.models import Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_build import handle_initial_plan
+    from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _seed_build_session
+    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+    provider = _FakeInstance(['{"resource_ids":[],"knowledge_requires_clarification":true}'])
+    agent = LlmBuilderAgent(
+        "tenant-1", account_id="acc-1", model_resolver_fn=lambda: provider if model_available else None
+    )
+    env, repo = _new_env(agent=agent)
+    agent.set_diagnostic_callback(env.record_diagnostic)
+    session = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, goal_text="Use the knowledge base", plan_items=[])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: resources.TenantResources([], [], []))
+    result = handle_initial_plan(env, Turn(actor=_actor()), *repo.get_session(session.id))
+    reply = english_text(next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn"))
+    assert reply == "Recommended resources."
+    assert result.next == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert len(provider.calls) == int(model_available)
+    assert not env.fake_dify.applied
+
+
+@pytest.mark.parametrize("gap_reply", ['{"gap":""}', '{"gap":42}'])
+def test_feasibility_reply_does_not_attribute_earlier_discovery_failure(
+    monkeypatch: pytest.MonkeyPatch, gap_reply: str
+) -> None:
+    """A discovery timeout must not become the cause of an unrelated gap schema failure."""
+    from core.dify_builder.models import Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_build import handle_initial_plan
+    from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _seed_build_session
+    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+    provider = _FakeInstance([TimeoutError("PRIVATE_DISCOVERY_VALUE"), gap_reply])
+    agent = LlmBuilderAgent("tenant-1", account_id="acc-1", model_resolver_fn=lambda: provider)
+    env, repo = _new_env(agent=agent)
+    agent.set_diagnostic_callback(env.record_diagnostic)
+    session = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, plan_items=["code transforms input"])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: resources.TenantResources([], [], []))
+    result = handle_initial_plan(env, Turn(actor=_actor()), *repo.get_session(session.id))
+    reply = english_text(next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn"))
+    assert "timed out" not in reply
+    assert ("plan feasibility check is unavailable" in reply) is (gap_reply == '{"gap":42}')
+    assert "PRIVATE" not in reply + json.dumps(env.diagnostics)
+    assert len(provider.calls) == 2
+
+
+def test_feasibility_policy_denial_is_not_an_unknown_assessment() -> None:
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+
+    provider = _FakeInstance([CognitionPolicyDeniedError("model_not_admitted")])
+    agent = LlmBuilderAgent("tenant", model_resolver_fn=lambda: provider)
+    with pytest.raises(CognitionPolicyDeniedError, match="model_not_admitted"):
+        agent.assess_capability_gap(["code transforms input"], [], goal_text="Preserve input", requirements={})
+    assert len(provider.calls) == 1
