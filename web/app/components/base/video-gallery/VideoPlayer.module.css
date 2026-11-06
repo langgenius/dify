@@ -7,9 +7,22 @@
   overflow: hidden;
 }
 
+.videoPlayer:fullscreen {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border-radius: 0;
+  background: #000;
+}
+
 .video {
   width: 100%;
   display: block;
+}
+
+.videoPlayer:fullscreen .video {
+  height: 100%;
+  object-fit: contain;
 }
 
 .controls {

@@ -28,7 +28,7 @@ describe('VideoPlayer', () => {
     screen.getByRole('button', { name: 'common.operation.toggleFullscreen' })
 
   const originalFullscreen = Object.getOwnPropertyDescriptor(
-    HTMLVideoElement.prototype,
+    HTMLElement.prototype,
     'requestFullscreen',
   )
   const originalExitFullscreen = Object.getOwnPropertyDescriptor(document, 'exitFullscreen')
@@ -38,7 +38,7 @@ describe('VideoPlayer', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
-    Object.defineProperty(HTMLVideoElement.prototype, 'requestFullscreen', {
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
       configurable: true,
       value: vi.fn().mockResolvedValue(undefined),
     })
@@ -54,7 +54,7 @@ describe('VideoPlayer', () => {
     vi.restoreAllMocks()
     vi.useRealTimers()
     for (const [target, key, descriptor] of [
-      [HTMLVideoElement.prototype, 'requestFullscreen', originalFullscreen],
+      [HTMLElement.prototype, 'requestFullscreen', originalFullscreen],
       [document, 'exitFullscreen', originalExitFullscreen],
       [document, 'fullscreenElement', originalFullscreenElement],
     ] as const) {
@@ -113,10 +113,11 @@ describe('VideoPlayer', () => {
     it('should toggle fullscreen on button click', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
+      const player = screen.getByTestId('video-player-container')
       const fullscreenBtn = getFullscreenButton()
 
       await user.click(fullscreenBtn)
-      expect(window.HTMLVideoElement.prototype.requestFullscreen).toHaveBeenCalled()
+      expect(player.requestFullscreen).toHaveBeenCalled()
 
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,
