@@ -8,6 +8,8 @@ from dify_agent.protocol import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
     ReadExecutionBindingJobRequest,
@@ -71,6 +73,20 @@ class ExecutionBindingService:
         return CreateExecutionBindingResponse(
             binding_ref=allocation.binding_ref,
             workspace_ref=allocation.workspace_ref,
+        )
+
+    async def inspect_binding(self, request: InspectExecutionBindingRequest) -> InspectExecutionBindingResponse:
+        """Read optional adapter evidence without expanding the lifecycle protocol.
+
+        Preconditions: validated exact refs. Postconditions: unsupported adapters
+        do no I/O; native scopes never qualify as ordinary recovery evidence.
+        """
+        if isinstance(
+            self.backend, (LocalExecutionBindingBackend, EnterpriseExecutionBindingBackend)
+        ) and not request.binding_ref.startswith("native:"):
+            return await self.backend.inspect_binding(request)
+        return InspectExecutionBindingResponse(
+            **request.model_dump(), adapter="unsupported", state="unsupported", evidence_code="backend_unsupported"
         )
 
     async def read_job(self, request: ReadExecutionBindingJobRequest) -> ReadExecutionBindingJobResponse:

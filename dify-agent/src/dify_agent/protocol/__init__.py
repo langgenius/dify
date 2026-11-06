@@ -40,6 +40,8 @@ from .execution_binding import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
     ReadExecutionBindingJobRequest,
@@ -58,6 +60,16 @@ from .home_snapshot import (
     CreateHomeSnapshotFromBindingRequest,
     DeleteHomeSnapshotRequest,
     HomeSnapshotResponse,
+)
+
+from .confirmed_recovery import (
+    recovery_successor_digest,
+    AgentRecoveryBinding,
+    AgentRecoveryReconstruction,
+    AgentRecoveryOperationSubstitution,
+    AgentRecoverySuccessor,
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
 )
 
 __all__ = [
@@ -82,6 +94,8 @@ __all__ = [
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "DestroyExecutionBindingRequest",
+    "InspectExecutionBindingRequest",
+    "InspectExecutionBindingResponse",
     "KeepAliveExecutionBindingRequest",
     "KeepAliveExecutionBindingResponse",
     "ReadExecutionBindingJobRequest",
@@ -158,3 +172,14 @@ __all__ += [
 
 
 __all__ += ["LookupRunRequest", "create_run_fingerprint"]
+
+
+__all__ += [
+    "recovery_successor_digest",
+    "AgentRecoveryBinding",
+    "AgentRecoveryReconstruction",
+    "AgentRecoveryOperationSubstitution",
+    "AgentRecoverySuccessor",
+    "InstallConfirmedRecoverySuccessorRequest",
+    "InstallConfirmedRecoverySuccessorReceipt",
+]

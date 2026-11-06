@@ -156,8 +156,11 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
     monkeypatch.setattr(service.loader, "locked", locked)
     monkeypatch.setattr(
         service.state_store,
-        "load_prepared_config",
-        lambda **_kwargs: prepared.model_copy(update={"config_ref": "other"}) if mutation == "prepared" else prepared,
+        "load_prepared_config_selection",
+        lambda **_kwargs: (
+            prepared.model_copy(update={"config_ref": "other"}) if mutation == "prepared" else prepared,
+            None,
+        ),
     )
     monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
     monkeypatch.setattr(service, "_definition", lambda **_kwargs: (resolved_context(), definition()))
@@ -360,7 +363,7 @@ def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_r
 
     service = operations_service
     monkeypatch.setattr(service.loader, "locked", locked)
-    monkeypatch.setattr(service.state_store, "load_prepared_config", lambda **_kwargs: config)
+    monkeypatch.setattr(service.state_store, "load_prepared_config_selection", lambda **_kwargs: (config, None))
     monkeypatch.setattr(service, "_definition", lambda **_kwargs: (resolved_context(), definition()))
     monkeypatch.setattr(
         agent_confirmed_workspace, "current_confirmed_workspace", lambda **_kwargs: (WORKSPACE, "stamp")

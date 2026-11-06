@@ -6,6 +6,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import TypeAdapter, ValidationError
 
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
+from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.protocol.native_continuation import (
     MAX_CHECKPOINT_REQUEST_BYTES,
     MAX_CHECKPOINT_RESPONSE_BYTES,
@@ -22,7 +27,9 @@ from dify_agent.runtime.native_continuation import NativeContinuationConflict
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
 
-def create_native_testing_router(get_store: Callable[[], RedisRunStore]) -> APIRouter:
+def create_native_testing_router(
+    get_store: Callable[[], RedisRunStore], get_scheduler: Callable[[], RunScheduler] | None = None
+) -> APIRouter:
     router = APIRouter(prefix="/runs", tags=["native-testing-private"])
 
     @router.post("/{run_id}/native-checkpoint", response_model=SelectedNativeCheckpoint)
@@ -69,5 +76,31 @@ def create_native_testing_router(get_store: Callable[[], RedisRunStore]) -> APIR
         except NativeContinuationConflict:
             raise HTTPException(status_code=409, detail="native identity unavailable") from None
         return Response(content=content, media_type="application/json", headers={"Cache-Control": "no-store"})
+
+    if get_scheduler is not None:
+        scheduler_provider = get_scheduler
+
+        @router.post("/{run_id}/confirmed-recovery-successor", response_model=InstallConfirmedRecoverySuccessorReceipt)
+        async def install_successor(run_id: str, request: Request) -> Response:
+            body = bytearray()
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                    raise HTTPException(status_code=413, detail="confirmed recovery unavailable")
+                body.extend(chunk)
+            try:
+                selection = InstallConfirmedRecoverySuccessorRequest.model_validate_json(body)
+                if run_id != selection.successor.agent_run_id:
+                    raise ValueError
+            except ValueError:
+                raise HTTPException(status_code=422, detail="confirmed recovery unavailable") from None
+            try:
+                receipt = await scheduler_provider().install_confirmed_recovery_successor(selection)
+            except RunNotFoundError:
+                raise HTTPException(status_code=404, detail="run not found") from None
+            except (NativeContinuationConflict, SchedulerStoppingError):
+                raise HTTPException(status_code=409, detail="confirmed recovery unavailable") from None
+            return Response(
+                content=receipt.model_dump_json(), media_type="application/json", headers={"Cache-Control": "no-store"}
+            )
 
     return router

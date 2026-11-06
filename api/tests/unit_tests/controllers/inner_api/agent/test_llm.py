@@ -72,7 +72,8 @@ def _flask_app() -> Flask:
     return app
 
 
-def test_post_streams_plugin_compatible_envelope() -> None:
+@pytest.mark.parametrize("with_private_prompt", [False, True])
+def test_post_streams_plugin_compatible_envelope(with_private_prompt: bool) -> None:
     payload = _payload()
     request = AgentLLMInvokeRequest.model_validate(payload)
     prepared = PreparedAgentLLMInvocation(
@@ -80,6 +81,7 @@ def test_post_streams_plugin_compatible_envelope() -> None:
     )
     chunk = LLMResultChunk(
         model="gpt-test",
+        prompt_messages=[UserPromptMessage(content="private synthetic history")] if with_private_prompt else [],
         delta=LLMResultChunkDelta(
             index=0,
             message=AssistantPromptMessage(content="done", tool_calls=[]),
@@ -106,6 +108,16 @@ def test_post_streams_plugin_compatible_envelope() -> None:
         envelope = json.loads(data_line)
         assert envelope["code"] == 0
         assert envelope["data"]["delta"]["message"]["content"] == "done"
+        assert "prompt_messages" not in envelope["data"]
+        assert "private synthetic history" not in data_line
+        from dify_agent.adapters.llm.provider import PluginDaemonBasicResponse
+
+        # Decode the real SSE envelope with the SDK's exact DTO/default path.
+        wrapped = PluginDaemonBasicResponse.model_validate_json(data_line)
+        decoded = LLMResultChunk.model_validate(wrapped.data)
+        assert decoded.prompt_messages == []
+        assert decoded.delta == chunk.delta
+        assert len(chunk.prompt_messages) == int(with_private_prompt)
         prepare.assert_called_once()
 
 
