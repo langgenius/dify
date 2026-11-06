@@ -1,8 +1,10 @@
 import math
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, Table, create_engine, select
+from sqlalchemy.dialects import postgresql
 
-from libs.pagination import PaginatedResult, clamp_pagination
+from libs.pagination import PaginatedResult, clamp_pagination, paginate_query
 
 
 class TestPaginatedResultPages:
@@ -100,3 +102,92 @@ class TestClampPagination:
         page, size = clamp_pagination(total, per_page, 100)
         result = PaginatedResult(items=[object()], total=total, page=page, per_page=size)
         assert (page * size < total) is result.has_next is False
+
+
+def _compile(stmt) -> str:
+    from sqlalchemy.dialects import postgresql
+
+    return str(stmt.compile(dialect=postgresql.dialect()))
+
+
+class TestPaginateQueryCountSQL:
+    """paginate_query builds the count from a subquery of the page statement.
+
+    The count's subquery must not carry the statement's ORDER BY: sorting cannot
+    change a total, but keeping it forces the database to sort every matching
+    wide row before aggregating (issue #45734: multi-minute COUNTs and a
+    critical read-IOPS alarm on an 8.5M-conversation table).
+    """
+
+    def test_count_subquery_has_no_order_by_while_page_keeps_it(self) -> None:
+        from sqlalchemy import Column, Integer, MetaData, Table
+
+        metadata = MetaData()
+        table = Table("convos", metadata, Column("id", Integer, primary_key=True), Column("created_at", Integer))
+
+        stmt = select(table).where(table.c.created_at > 10).order_by(table.c.created_at.desc())
+
+        # Capture both statements by running paginate_query against a fake session.
+        class FakeResult:
+            def __init__(self, value):
+                self._value = value
+
+            def scalars(self):
+                return self
+
+            def all(self):
+                return []
+
+        class FakeSession:
+            def __init__(self):
+                self.queries = []
+
+            def scalar(self, stmt):
+                compiled = str(stmt.compile(dialect=postgresql.dialect()))
+                self.queries.append(("count", compiled))
+                return 0
+
+            def scalars(self, stmt):
+                compiled = str(stmt.compile(dialect=postgresql.dialect()))
+                self.queries.append(("page", compiled))
+                return FakeResult([])
+
+        session = FakeSession()
+        result = paginate_query(stmt, session=session, page=1, per_page=5)
+
+        count_sql = next(sql for kind, sql in session.queries if kind == "count")
+        page_sql = next(sql for kind, sql in session.queries if kind == "page")
+
+        assert "ORDER BY" not in count_sql.upper(), f"count must not sort: {count_sql}"
+        assert "ORDER BY" in page_sql.upper(), f"page must keep its ordering: {page_sql}"
+        assert result.total == 0
+
+    def test_count_still_counts_all_rows(self) -> None:
+        """The order_by(None) rewrite must not change the count semantics."""
+        engine = create_engine("sqlite://")
+        metadata = MetaData()
+        table = Table(
+            "convos",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("created_at", Integer),
+        )
+        metadata.create_all(engine)
+        with engine.begin() as conn:
+            conn.execute(table.insert().values([{"id": 1, "created_at": 5}, {"id": 2, "created_at": 3}]))
+
+        stmt = select(table).order_by(table.c.created_at.desc())
+
+        class RealSession:
+            def __init__(self, conn):
+                self._conn = conn
+
+            def scalar(self, stmt):
+                return self._conn.execute(stmt).scalar()
+
+            def scalars(self, stmt):
+                return self._conn.execute(stmt).scalars()
+
+        result = paginate_query(stmt, session=RealSession(engine.connect()), page=1, per_page=1)
+        assert result.total == 2
+        assert len(result.items) == 1
