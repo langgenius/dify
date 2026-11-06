@@ -1007,7 +1007,7 @@ Logout user from web application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/apps
-List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
+List accessible Chat, Completion, legacy Agent, Chatflow, Workflow and Agent WebApps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
 
 #### Parameters
 

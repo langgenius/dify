@@ -13,7 +13,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants import COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import bp, me
 from models.end_user_connection import AppConnection
-from tests.helpers.consumer import ConsumerHarness, consumer_connection_key, make_consumer_harness, new_consumer_run
+from models.model import AppMode
+from tests.helpers.consumer import (
+    ConsumerHarness,
+    consumer_connection_key,
+    make_consumer_harness,
+    new_consumer_run,
+    publish_consumer_app,
+)
 from tests.helpers.end_user_connection_contract import new_connection
 
 
@@ -34,8 +41,13 @@ def client(harness: ConsumerHarness, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield client
 
 
-def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: ConsumerHarness) -> None:
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT],
+)
+def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: ConsumerHarness, mode: AppMode) -> None:
     base = harness.oauth.base
+    publish_consumer_app(base, mode)
     path = f"/api/me/apps/{base.context.app_id}/favorite"
     assert client.put(path).status_code == 204
     assert client.put(path).status_code == 204
@@ -49,7 +61,10 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
         assert data["has_more"] is False
         assert data["data"][0]["id"] == base.context.app_id
         assert isinstance(data["data"][0]["last_used_at"], int)
-        assert data["data"][0]["connection_status"] == "not_configured"
+        assert data["data"][0]["mode"] == mode
+        assert data["data"][0]["connection_status"] == (
+            "not_configured" if mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW) else None
+        )
         assert "continuation" not in data["data"][0]
     assert client.delete(path).status_code == 204
     assert client.get("/api/me/apps?view=favorites").get_json()["data"] == []

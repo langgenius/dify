@@ -25,6 +25,7 @@ from extensions.otel import AppGenerateHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.consumer_service import CONSUMER_APP_MODES
 from services.end_user_connection_execution_adapters import (
     prepare_installed_connection_execution,
     prepare_web_connection_execution,
@@ -117,6 +118,9 @@ class AppGenerateService:
     ):
         """
         App Content Generate
+        Record personal use only after an Account-linked Browser WebApp request
+        is accepted. Rejected requests and other invocation sources do not record
+        use; preference failures do not change the accepted execution result.
         :param app_model: app model
         :param user: user
         :param args: args
@@ -144,7 +148,7 @@ class AppGenerateService:
             invoke_from == InvokeFrom.WEB_APP
             and isinstance(user, EndUser)
             and user.account_id is not None
-            and app_model.mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+            and app_model.mode in CONSUMER_APP_MODES
         ):
             from extensions.ext_application_services import application_services
             from services.consumer_service import ConsumerIdentity

@@ -252,6 +252,8 @@ class EndUserConnectionRepository:
         Any linked browser EndUser for this App contributes its saved choices.
         Incomplete or malformed EndUser authentication settings remain action
         items instead of making App discovery fail.
+        Only Chatflow and Workflow publications define these node requirements;
+        other modes are ignored even if they retain a stale Workflow pointer.
         """
         unique_app_ids = tuple(dict.fromkeys(app_ids))
         if not unique_app_ids:
@@ -267,7 +269,11 @@ class EndUserConnectionRepository:
                         Workflow.app_id == App.id,
                     ),
                 )
-                .where(App.id.in_(unique_app_ids), Workflow.version != Workflow.VERSION_DRAFT)
+                .where(
+                    App.id.in_(unique_app_ids),
+                    App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
             ).all()
             required: dict[str, frozenset[str]] = {}
             malformed: set[str] = set()

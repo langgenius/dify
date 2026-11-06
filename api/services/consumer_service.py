@@ -3,12 +3,15 @@
 Candidate discovery is not permission. Every App projection is filtered through
 the existing deployment access policy, including Apps referenced by Connections.
 Ports return detached, non-secret values and own short transactions.
+Personal Apps include published Chat, Completion, legacy Agent, Chatflow,
+Workflow and Agent WebApps. Channel and RAG pipeline modes are not WebApps.
+Additional modes record future accepted use without backfilling historical use.
 """
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Final, Literal, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,6 +22,15 @@ from services.end_user_connections.errors import ConnectionNotFoundError
 from services.end_user_connections.management import ConnectionService
 from services.web_identity_service import WebIdentityError, WebIdentityService
 from services.web_passport_service import WebPassportTokenGateway
+
+CONSUMER_APP_MODES: Final[tuple[str, ...]] = (
+    "chat",
+    "completion",
+    "agent-chat",
+    "advanced-chat",
+    "workflow",
+    "agent",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +176,7 @@ class ConsumerAppsStore(Protocol):
     ) -> None:
         """Validate the complete Browser identity chain and atomically record accepted use.
 
+        Only CONSUMER_APP_MODES qualify; invalid owners and modes are no-ops.
         Lock the personal App state to preserve its latest use. A conditional
         Account update preserves the earliest event across Apps and out-of-order
         writes; a non-matching update means an equal or earlier event is recorded.
