@@ -2470,7 +2470,7 @@ Returns historical chat records in a scrolling load format, with the first page 
 ### [GET] /datasets
 **List Knowledge Bases**
 
-Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.
+Returns a paginated list of visible knowledge bases. A scoped knowledge API key only lists its authorized knowledge bases; workspace-wide keys retain their existing visibility. Supports filtering by keyword and tags within that scope.
 
 #### Parameters
 

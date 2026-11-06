@@ -32,6 +32,8 @@ from controllers.service_api.dataset.error import DatasetInUseError, DatasetName
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
+    validate_dataset_list_token,
+    validate_dataset_token,
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -409,11 +411,18 @@ register_response_schema_models(
 
 @service_api_ns.route("/datasets")
 class DatasetListApi(DatasetApiResource):
-    """Resource for datasets."""
+    """Read authorized datasets while retaining ordinary admission for creation."""
+
+    # Explicit handler decorators also protect Flask's automatic HEAD dispatch.
+    method_decorators = []
 
     @service_api_ns.doc(
         summary="List Knowledge Bases",
-        description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
+        description=(
+            "Returns a paginated list of visible knowledge bases. A scoped knowledge API key "
+            "only lists its authorized knowledge bases; workspace-wide keys retain their existing visibility. "
+            "Supports filtering by keyword and tags within that scope."
+        ),
         tags=["Knowledge Bases"],
         responses={
             HTTPStatus.OK: "List of knowledge bases.",
@@ -433,6 +442,7 @@ class DatasetListApi(DatasetApiResource):
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
+    @validate_dataset_list_token
     @with_session(write=False)
     def get(
         self,
@@ -523,6 +533,7 @@ class DatasetListApi(DatasetApiResource):
         "Dataset created successfully",
         service_api_ns.models[DatasetDetailResponse.__name__],
     )
+    @validate_dataset_token
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
     @model_validate(DatasetCreatePayload)
