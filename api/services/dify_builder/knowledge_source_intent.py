@@ -122,6 +122,7 @@ def user_source(context: DifyBuilderContext) -> dict | None:
                     "goal": context.goal_text,
                     "answers": answers,
                     "generation": context.task_control.get("generation", 0),
+                    "logical_task_id": context.logical_task_id,
                 },
                 ensure_ascii=False,
                 allow_nan=False,
@@ -156,15 +157,20 @@ def record_source_intent(context: DifyBuilderContext, value: object) -> None:
             **intent,
             "source_digest": canonical_digest(source),
             "generation": context.task_control.get("generation", 0),
+            "logical_task_id": context.logical_task_id,
             "required": required,
         }
 
 
 def established_source_required(context: DifyBuilderContext) -> bool:
-    """Keep established positive intent or a retained discovery goal sticky."""
+    """Keep required intent for its logical task, including ordinary Resume.
+
+    Execution generation fences stale exclusions/results; it does not authorize
+    dropping a positive requirement. New logical tasks do not inherit it.
+    """
     record = context.knowledge_source_intent
     return (
-        record.get("required") is True and record.get("generation") == context.task_control.get("generation", 0)
+        record.get("required") is True and record.get("logical_task_id") == context.logical_task_id
     ) or context.resource_selection.get("blocked_capability") == "knowledge_retrieval_phase_two"
 
 
