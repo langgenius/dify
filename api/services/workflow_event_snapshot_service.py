@@ -53,8 +53,10 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_task_service import AppTaskService
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
+from services.workflow.node_execution_extras import node_execution_extras
 from services.workflow_pause_service import WorkflowPauseSnapshot, load_workflow_pause_snapshot
 
 logger = logging.getLogger(__name__)
@@ -91,6 +93,7 @@ def build_workflow_event_stream(
     tenant_id: str,
     app_id: str,
     session_maker: sessionmaker[Session],
+    tool_providers: ToolProviderIcons,
     human_input_surface: HumanInputSurface | None = None,
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
@@ -207,6 +210,7 @@ def build_workflow_event_stream(
                         resumption_context=resumption_context,
                         session_maker=session_maker,
                         human_input_surface=human_input_surface,
+                        tool_providers=tool_providers,
                     )
                 else:
                     snapshot_events = _build_snapshot_events(
@@ -215,6 +219,7 @@ def build_workflow_event_stream(
                         task_id=task_id,
                         message_context=message_context,
                         node_executions=node_executions,
+                        tool_providers=tool_providers,
                     )
 
                 for event in snapshot_events:
@@ -355,6 +360,7 @@ def _build_snapshot_events(
     task_id: str,
     message_context: MessageContext | None,
     node_executions: Mapping[str, WorkflowNodeExecutionModel],
+    tool_providers: ToolProviderIcons,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
 
@@ -377,6 +383,7 @@ def _build_snapshot_events(
             task_id=task_id,
             snapshot=snapshot,
             execution=execution,
+            tool_providers=tool_providers,
         )
         _apply_message_context(node_started, message_context)
         events.append(node_started)
@@ -404,6 +411,7 @@ def _build_paused_snapshot_events(
     node_executions: Mapping[str, WorkflowNodeExecutionModel],
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session],
+    tool_providers: ToolProviderIcons,
     human_input_surface: HumanInputSurface | None = None,
 ) -> list[Mapping[str, Any]]:
     events = _build_snapshot_events(
@@ -412,6 +420,7 @@ def _build_paused_snapshot_events(
         task_id=task_id,
         message_context=message_context,
         node_executions=node_executions,
+        tool_providers=tool_providers,
     )
     pause_snapshot = load_workflow_pause_snapshot(
         pause_entity, session_factory=session_maker, context=resumption_context
@@ -505,6 +514,7 @@ def _build_node_started_event(
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
     execution: WorkflowNodeExecutionModel | None,
+    tool_providers: ToolProviderIcons,
 ) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     response = NodeStartStreamResponse(
@@ -520,7 +530,7 @@ def _build_node_started_event(
             inputs=execution.inputs_dict if execution else None,
             inputs_truncated=execution.inputs_truncated if execution else False,
             created_at=created_at,
-            extras=execution.extras if execution else {},
+            extras=node_execution_extras(execution, tool_providers=tool_providers) if execution else {},
             iteration_id=snapshot.iteration_id,
             loop_id=snapshot.loop_id,
         ),

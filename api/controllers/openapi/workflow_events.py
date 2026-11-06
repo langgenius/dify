@@ -35,6 +35,7 @@ from controllers.openapi.human_input_form import with_form_hints
 from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
+from extensions.ext_application_services import application_services
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app.generation.response import convert_to_event_stream
@@ -138,6 +139,7 @@ class OpenApiWorkflowEventsApi(Resource):
                             tenant_id=tenant_id,
                             app_id=owning_app_id,
                             session_maker=session_maker,
+                            tool_providers=application_services().tools.tool_providers,
                             human_input_surface=HumanInputSurface.OPENAPI,
                             close_on_pause=not continue_on_pause,
                         )

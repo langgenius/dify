@@ -19,9 +19,13 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
-from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
-from models import AppMode, Conversation, Message
+from extensions.application_services.annotation import build_annotation_replies
+from extensions.application_services.retrieval import build_dataset_retrieval
+from models import App, AppMode, Conversation, EndUser, Message
+from models.enums import EndUserType
+from repositories.app.generation_repository import AppGenerationRepository
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -50,13 +54,35 @@ def _entity(invoke_from: InvokeFrom) -> CompletionAppGenerateEntity:
     )
 
 
+def _generator(session_factory: sessionmaker[Session]) -> CompletionAppGenerator:
+    return CompletionAppGenerator(
+        retrieval=build_dataset_retrieval(session_factory),
+        records=AppGenerationRepository(session_factory),
+        annotations=build_annotation_replies(session_factory),
+    )
+
+
+def _save_app(entity: CompletionAppGenerateEntity, session_factory: sessionmaker[Session]) -> None:
+    with session_factory.begin() as session:
+        session.add(
+            App(
+                id=entity.app_config.app_id,
+                tenant_id=entity.app_config.tenant_id,
+                name="Prepared completion",
+                mode=AppMode.COMPLETION,
+                enable_site=True,
+                enable_api=True,
+            )
+        )
+
+
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.EXPLORE])
 def test_prepared_records_preserve_input_and_actor_ownership(
     sqlite_session_factory: sessionmaker[Session], invoke_from: InvokeFrom
 ) -> None:
     entity = _entity(invoke_from)
-    with sqlite_session_factory(expire_on_commit=False) as session:
-        conversation, message = CompletionAppGenerator()._init_generate_records(entity, session=session)
+    _save_app(entity, sqlite_session_factory)
+    conversation, message = _generator(sqlite_session_factory)._init_generate_records(entity)
     with sqlite_session_factory() as verification:
         saved = verification.get(Message, message.id)
         saved_conversation = verification.get(Conversation, conversation.id)
@@ -83,9 +109,17 @@ def test_invalid_prepared_input_rolls_back_without_starting_a_worker(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     entity = _entity(InvokeFrom.WEB_APP)
+    _save_app(entity, sqlite_session_factory)
     entity.inputs = {**entity.inputs, "invalid_json": object()}
+    user = EndUser(
+        id=entity.user_id,
+        tenant_id=entity.app_config.tenant_id,
+        app_id=entity.app_config.app_id,
+        type=EndUserType.BROWSER,
+        session_id=str(uuid4()),
+    )
     with pytest.raises(StatementError) as error:
-        CompletionAppGenerator().generate_from_entity(entity, session_factory=sqlite_session_factory)
+        _generator(sqlite_session_factory).generate_from_entity(entity, user=user)
     assert isinstance(error.value.orig, TypeError)
     with sqlite_session_factory() as verification:
         assert verification.scalar(select(func.count()).select_from(Message)) == 0

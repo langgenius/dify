@@ -25,6 +25,13 @@ from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 
 
+@dataclass
+class _ToolProvidersStub:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        del args, kwargs
+        return None
+
+
 @dataclass(frozen=True)
 class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
@@ -173,6 +180,7 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         resumption_context=_build_resumption_context(workflow_run_id, form.id),
         session_maker=session_maker,
         node_executions={},
+        tool_providers=_ToolProvidersStub(),
     )
 
     human_input_events = [event for event in events if event.get("event") == "human_input_required"]

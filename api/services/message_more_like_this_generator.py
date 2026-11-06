@@ -17,7 +17,6 @@ from core.app.app_config.easy_ui_based_app.model_config.converter import ModelCo
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from extensions.ext_database import db
@@ -26,8 +25,9 @@ from graphon.file import FileTransferMethod
 from graphon.file.constants import FILE_MODEL_IDENTITY
 from libs.orjson import orjson_dumps
 from libs.stream import close_stream
-from models.model import AppMode, AppModelConfigDict
+from models.model import Account, AppMode, AppModelConfigDict, EndUser
 from models.utils.file_input_compat import build_file_from_stored_mapping
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.entities.message_entities import MessageAccount, MessageActor
 from services.message_more_like_this_service import (
     MoreLikeThisFile,
@@ -65,8 +65,14 @@ class _MoreLikeThisEventStream:
 
 
 class MessageMoreLikeThisGenerator:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        completion_generator: CompletionAppGenerator,
+    ) -> None:
         self._session_factory = session_factory
+        self._completion_generator = completion_generator
         self._file_access_controller = DatabaseFileAccessController()
 
     def generate(
@@ -127,8 +133,21 @@ class MessageMoreLikeThisGenerator:
                 invoke_from=invoke_from,
                 extras={},
             )
-            response = CompletionAppGenerator().generate_from_entity(entity, session_factory=self._session_factory)
+            prepared_user = self._load_prepared_user(actor)
+            response = self._completion_generator.generate_from_entity(entity, user=prepared_user)
             return response if isinstance(response, Mapping) else _MoreLikeThisEventStream(response)
+
+    def _load_prepared_user(self, actor: MessageActor) -> Account | EndUser:
+        """Load the admitted actor required by the shared response boundary."""
+        with self._session_factory() as session:
+            if isinstance(actor, MessageAccount):
+                user = session.get(Account, actor.account_id)
+            else:
+                user = session.get(EndUser, actor.end_user_id)
+            if user is None:
+                raise ValueError("The admitted more-like-this actor no longer exists.")
+            session.expunge(user)
+            return user
 
 
 def _file_mapping(file: MoreLikeThisFile) -> dict[str, object]:

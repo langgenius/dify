@@ -56,8 +56,8 @@ from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolS
 from services.workflow.execution.adapters.human_input_events import build_human_input_pause_reason
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.node_runtime import resolve_dify_run_context
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunRunner
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
 
