@@ -22,20 +22,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
-from sqlalchemy import Engine, Table, event
+from sqlalchemy import Engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
-from models.base import TypeBase
 from models.dataset import (
-    AppDatasetJoin,
     ChildChunk,
     DatasetMetadata,
-    DatasetMetadataBinding,
-    DatasetProcessRule,
-    DatasetQuery,
     Document,
     DocumentSegment,
     Pipeline,
@@ -77,31 +72,8 @@ def pipeline_id() -> str:
 
 
 @pytest.fixture
-def orm_session_maker(
-    sqlite_engine: Engine,
-    sqlite_session_factory: sessionmaker[Session],
-) -> sessionmaker[Session]:
-    """Create the cleanup tables and return the suite's real SQLite session factory."""
-    models = (
-        Document,
-        DocumentSegment,
-        ChildChunk,
-        SegmentAttachmentBinding,
-        UploadFile,
-        DatasetProcessRule,
-        DatasetQuery,
-        AppDatasetJoin,
-        DatasetMetadata,
-        DatasetMetadataBinding,
-        Pipeline,
-        Workflow,
-    )
-    tables: list[Table] = []
-    for model in models:
-        table = model.__table__
-        assert isinstance(table, Table)
-        tables.append(table)
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+def orm_session_maker(sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    """Return the suite's real SQLite session factory over the shared full schema."""
     return sqlite_session_factory
 
 
