@@ -2,6 +2,7 @@ import type {
   ConsumerAppsResponse,
   ConsumerConnectionProvidersResponse,
   ConsumerConnectionsResponse,
+  WebSystemFeatureResponse,
 } from '@dify/contracts/api/web/types.gen'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { waitFor } from '@testing-library/react'
@@ -15,6 +16,8 @@ import {
   setWebAppPassport,
   startWebAppAccountSession,
 } from '@/service/webapp-auth'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createDeferred } from '@/test/deferred'
 import { webAppClient, webAppQuery } from '../index'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
@@ -76,6 +79,11 @@ const providers: ConsumerConnectionProvidersResponse = {
   has_more: false,
   next_cursor: null,
 }
+
+const systemFeatures = {
+  ...createSystemFeaturesFixture(),
+  account_login_url: 'https://accounts.example/console/signin?source=portal',
+} satisfies WebSystemFeatureResponse
 
 function expectAccountRequest(
   input: RequestInfo | URL,
@@ -154,17 +162,21 @@ describe('generated account Web App client', () => {
           { status: 401 },
         ),
       )
+      .mockResolvedValueOnce(Response.json(systemFeatures))
 
     await expect(request()).rejects.toMatchObject({ status: 401 })
 
-    expect(fetch).toHaveBeenCalledOnce()
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expectAccountRequest(...fetch.mock.calls[1]!, '/system-features', 'GET')
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
     expect(replace).toHaveBeenCalledOnce()
     const signin = new URL(replace.mock.calls[0]![0])
-    expect(signin.pathname).toBe('/signin')
+    expect(signin.origin).toBe('https://accounts.example')
+    expect(signin.pathname).toBe('/console/signin')
+    expect(signin.searchParams.get('source')).toBe('portal')
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expect(signin.searchParams.get('redirect_url')).toBe(
-      '/my-apps?view=starred&q=hello%20world#apps',
+      '/console/my-apps?view=starred&q=hello%20world#apps',
     )
     expect(signin.searchParams.has('app_code')).toBe(false)
     expect(signin.searchParams.has('code_challenge')).toBe(false)
@@ -177,16 +189,26 @@ describe('generated account Web App client', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  it('preserves the base path and normalizes a trailing slash for the portal API', async () => {
+  it('uses the Console sign-in prefix instead of the local Web app prefix', async () => {
     deployment.basePath = '/console'
     window.history.replaceState({}, '', '/console/my-apps/?view=starred#apps')
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          ...systemFeatures,
+          account_login_url: 'https://accounts.example/portal/signin',
+        }),
+      )
     await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
     const signin = new URL(replace.mock.calls[0]![0])
-    expect(signin.pathname).toBe('/console/signin')
-    expect(signin.searchParams.get('redirect_url')).toBe('/console/my-apps?view=starred#apps')
+    expect(signin.origin).toBe('https://accounts.example')
+    expect(signin.pathname).toBe('/portal/signin')
+    expect(signin.searchParams.get('redirect_url')).toBe('/portal/my-apps?view=starred#apps')
     expect(signin.searchParams.get('is_end_user')).toBe('1')
+    expectAccountRequest(...fetch.mock.calls[1]!, '/system-features', 'GET')
   })
 
   it.each(['/signin', '/chat/shared-code'])(
@@ -214,8 +236,77 @@ describe('generated account Web App client', () => {
     startWebAppAccountSession()
     finish(new Response(null, { status: 401 }))
     expect(await result).toMatchObject({ name: 'AbortError' })
+    expect(fetch).toHaveBeenCalledOnce()
     expect(replace).not.toHaveBeenCalled()
   })
+
+  it('loads public sign-in configuration without an App or leaking stored credentials', async () => {
+    setWebAppAccessToken('old-account-bearer', 'end_user')
+    setWebAppPassport({ kind: 'default', code: 'previous-app' }, 'old-app-passport')
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(systemFeatures))
+
+    await expect(webAppClient.systemFeatures.get()).resolves.toEqual(systemFeatures)
+
+    expectAccountRequest(...fetch.mock.calls[0]!, '/system-features', 'GET')
+  })
+
+  it.each([
+    null,
+    'javascript:alert(1)',
+    'https://user:password@accounts.example/signin',
+    'https://accounts.example/not-signin',
+    'https://[invalid/signin',
+  ])('does not redirect when the configured login URL is %s', async (account_login_url) => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url }))
+
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('keeps the existing sign-in fallback when public configuration cannot be fetched', async () => {
+    window.history.replaceState({}, '', '/my-apps?view=starred#apps')
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockRejectedValueOnce(new TypeError('Network unavailable'))
+
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+
+    expect(replace).toHaveBeenCalledOnce()
+    const signin = new URL(replace.mock.calls[0]![0])
+    expect(signin.origin).toBe(window.location.origin)
+    expect(signin.pathname).toBe('/signin')
+    expect(signin.searchParams.get('is_end_user')).toBe('1')
+    expect(signin.searchParams.get('redirect_url')).toBe('/my-apps?view=starred#apps')
+    expect(signin.searchParams.has('app_code')).toBe(false)
+    expect(signin.searchParams.has('code_challenge')).toBe(false)
+  })
+
+  it.each(['account change', 'leaving My apps'] as const)(
+    'ignores pending sign-in configuration after %s',
+    async (change) => {
+      const configuration = createDeferred<Response>()
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+        .mockReturnValueOnce(configuration.promise)
+      const result = webAppClient.me.apps.get().catch((error: unknown) => error)
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+      expect(replace).not.toHaveBeenCalled()
+
+      if (change === 'account change') startWebAppAccountSession()
+      else window.history.replaceState({}, '', '/connections')
+      configuration.resolve(Response.json(systemFeatures))
+
+      expect(await result).toMatchObject({ name: 'AbortError' })
+      expect(replace).not.toHaveBeenCalled()
+    },
+  )
 
   it('loads My connections without leaking stored credentials from a previously visited App', async () => {
     window.history.replaceState({}, '', '/connections')

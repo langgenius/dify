@@ -10,6 +10,21 @@ import { isUnauthorizedError } from '../http-error'
 import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
 import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
 
+function parseAccountSignin(raw: string | null) {
+  if (!raw) return null
+  try {
+    const url = new URL(raw, window.location.origin)
+    return ['http:', 'https:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password &&
+      url.pathname.endsWith('/signin')
+      ? url
+      : null
+  } catch {
+    return null
+  }
+}
+
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
   url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
   fetch: async (input, init, options) => {
@@ -17,6 +32,16 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     const url = new URL(input.url)
     const basePath = baseURL.pathname.replace(/\/$/, '')
     const path = url.pathname.slice(basePath.length)
+    if (path === '/system-features') {
+      // oxlint-disable-next-line typescript/no-deprecated -- Public bootstrap must use the existing transport without requiring an App Code or Passport.
+      return request<Response>(url.href, init, {
+        isPublicAPI: true,
+        isWebAppAccountAPI: true,
+        fetchCompat: true,
+        request: input,
+        silent: options.context.silent,
+      })
+    }
     if (
       path.startsWith('/me/') ||
       path === '/account/profile' ||
@@ -36,19 +61,36 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         fetchCompat: true,
         request: input,
         silent: options.context.silent,
-      }).catch((error: unknown) => {
+      }).catch(async (error: unknown) => {
         assertCurrentAccount()
         if (
           isUnauthorizedError(error) &&
           window.location.pathname.replace(/\/$/, '') === `${appBasePath}/my-apps`
         ) {
-          const signin = new URL(buildSigninUrlWithRedirect())
-          signin.searchParams.set('is_end_user', '1')
-          signin.searchParams.set(
-            'redirect_url',
-            `${appBasePath}/my-apps${window.location.search}${window.location.hash}`,
-          )
-          window.location.replace(signin.href)
+          const returnLocation = window.location.href
+          let loginUrl: string | null
+          try {
+            const { webAppClient } = await import('./index')
+            const features = await webAppClient.systemFeatures.get(undefined, {
+              context: { silent: true },
+            })
+            loginUrl = features.account_login_url
+          } catch {
+            loginUrl = buildSigninUrlWithRedirect()
+          }
+          assertCurrentAccount()
+          if (window.location.href !== returnLocation)
+            throw new DOMException('The personal portal page changed.', 'AbortError')
+          const signin = parseAccountSignin(loginUrl)
+          if (signin) {
+            const consolePrefix = signin.pathname.slice(0, -'/signin'.length)
+            signin.searchParams.set('is_end_user', '1')
+            signin.searchParams.set(
+              'redirect_url',
+              `${consolePrefix}/my-apps${window.location.search}${window.location.hash}`,
+            )
+            window.location.replace(signin.href)
+          }
         }
         throw error
       })
