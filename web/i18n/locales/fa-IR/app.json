@@ -169,8 +169,6 @@
   "newApp.appCreated": "برنامه ایجاد شد",
   "newApp.appDescriptionPlaceholder": "توضیحات برنامه را وارد کنید",
   "newApp.appNamePlaceholder": "به برنامه خود یک نام بدهید",
-  "newApp.buildFromBlank": "ساخت از ابتدا",
-  "newApp.builderDescription": "با <builderIcon/> App Builder یا به‌صورت دستی",
   "newApp.captionDescription": "توضیحات",
   "newApp.captionName": "آیکون و نام برنامه",
   "newApp.caution": "احتیاط",

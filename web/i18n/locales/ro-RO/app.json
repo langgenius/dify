@@ -169,8 +169,6 @@
   "newApp.appCreated": "Aplicația a fost creată",
   "newApp.appDescriptionPlaceholder": "Introduceți descrierea aplicației",
   "newApp.appNamePlaceholder": "Dă-i aplicației tale un nume",
-  "newApp.buildFromBlank": "Creează de la zero",
-  "newApp.builderDescription": "Cu <builderIcon/> App Builder sau manual",
   "newApp.captionDescription": "Descriere",
   "newApp.captionName": "Pictogramă și nume aplicație",
   "newApp.caution": "Prudență",
