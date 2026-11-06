@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
+from controllers.common.errors import UnauthorizedError
 from controllers.service_api import wraps as wraps_module
 from controllers.service_api.wraps import (
     DatasetApiResource,
@@ -39,7 +40,7 @@ from models.resource_access_token import (
     ResourceAccessTokenRelation,
     ResourceAccessTokenResourceType,
 )
-from services.api_token_service import ApiTokenCache
+from services.api_token_service import ApiTokenCache, ApiTokenInvalidError
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -159,7 +160,7 @@ class TestValidateAndGetApiToken:
             # No Authorization header
 
             # Act & Assert
-            with pytest.raises(Unauthorized) as exc_info:
+            with pytest.raises(UnauthorizedError) as exc_info:
                 validate_and_get_api_token("app")
             assert "Authorization header must be provided" in str(exc_info.value)
 
@@ -168,7 +169,7 @@ class TestValidateAndGetApiToken:
         # Arrange
         with app.test_request_context("/", method="GET", headers={"Authorization": "Basic token123"}):
             # Act & Assert
-            with pytest.raises(Unauthorized) as exc_info:
+            with pytest.raises(UnauthorizedError) as exc_info:
                 validate_and_get_api_token("app")
             assert "Authorization header must be provided and start with 'Bearer'" in str(exc_info.value)
 
@@ -203,16 +204,14 @@ class TestValidateAndGetApiToken:
     def test_invalid_token_raises_unauthorized(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app: Flask):
         """Test that invalid token raises Unauthorized."""
         # Arrange
-        from werkzeug.exceptions import Unauthorized
-
         mock_cache_instance = Mock()
         mock_cache_instance.get.return_value = None  # Cache miss
         mock_cache_cls.get = mock_cache_instance.get
-        mock_fetch_token.side_effect = Unauthorized("Access token is invalid")
+        mock_fetch_token.side_effect = ApiTokenInvalidError("Access token is invalid")
 
         # Act & Assert
         with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer invalid_token"}):
-            with pytest.raises(Unauthorized) as exc_info:
+            with pytest.raises(UnauthorizedError) as exc_info:
                 validate_and_get_api_token("app")
             assert "Access token is invalid" in str(exc_info.value)
 
@@ -232,7 +231,7 @@ class TestValidateAppToken:
         with (
             app.test_request_context("/", headers={"Authorization": f"Bearer{separator}dify_rt_token"}),
             patch.object(wraps_module, "application_services") as services,
-            pytest.raises(Unauthorized),
+            pytest.raises(UnauthorizedError),
         ):
             validate_app_token(lambda: "ok")()
         services.assert_not_called()
@@ -874,8 +873,12 @@ class TestValidateDatasetToken:
         sqlite_session.commit()
 
         @validate_dataset_token
-        def protected_view(tenant_id):
-            return {"success": True, "tenant_id": tenant_id}
+        def protected_view(tenant_id, dataset_grant=None):
+            return {
+                "success": True,
+                "tenant_id": tenant_id,
+                "dataset_grant": dataset_grant,
+            }
 
         # Act
         with (
@@ -887,6 +890,8 @@ class TestValidateDatasetToken:
         # Assert
         assert result["success"] is True
         assert result["tenant_id"] == tenant.id
+        assert result["dataset_grant"].tenant_id == tenant.id
+        assert result["dataset_grant"].dataset_ids is None
         assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
@@ -937,8 +942,13 @@ class TestValidateDatasetToken:
         sqlite_session.commit()
 
         @validate_dataset_token
-        def protected_view(tenant_id, dataset_id=None):
-            return {"success": True, "tenant_id": tenant_id, "dataset_id": dataset_id}
+        def protected_view(tenant_id, dataset_id=None, dataset_grant=None):
+            return {
+                "success": True,
+                "tenant_id": tenant_id,
+                "dataset_id": dataset_id,
+                "dataset_grant": dataset_grant,
+            }
 
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": f"Bearer {access_token.token}"}),
@@ -948,6 +958,7 @@ class TestValidateDatasetToken:
 
         assert result["tenant_id"] == tenant.id
         assert result["dataset_id"] == dataset.id
+        assert result["dataset_grant"].dataset_ids == frozenset({dataset.id})
         sqlite_session.expire_all()
         assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 

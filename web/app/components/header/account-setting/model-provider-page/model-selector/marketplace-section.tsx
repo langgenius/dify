@@ -1,35 +1,37 @@
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { modelNameMap, providerLogoMap } from '../utils'
 
 type MarketplaceSectionProps = {
+  marketplace: MarketplaceLinks
   marketplaceProviders: ModelProviderQuotaGetPaid[]
   marketplaceCollapsed: boolean
   installingProvider: ModelProviderQuotaGetPaid | null
   canInstallPlugin: boolean
-  theme?: string
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
   onOpenMarketplace?: () => void
 }
 
 function MarketplaceSection({
+  marketplace,
   marketplaceProviders,
   marketplaceCollapsed,
   installingProvider,
   canInstallPlugin,
-  theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
   onOpenMarketplace,
 }: MarketplaceSectionProps) {
   const { t } = useTranslation(['plugin', 'modelProvider'])
+  const theme = useResolvedTheme()
   const headingId = useId()
 
   if (marketplaceProviders.length === 0) return null
@@ -135,7 +137,7 @@ function MarketplaceSection({
             ) : (
               <a
                 className="flex cursor-pointer items-center gap-0.5 rounded-md px-3 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                href={marketplace.category(PluginCategoryEnum.model, { theme })}
                 target="_blank"
                 rel="noopener noreferrer"
               >

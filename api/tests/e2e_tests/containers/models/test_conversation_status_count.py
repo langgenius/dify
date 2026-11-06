@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import ConversationFromSource, ConversationStatus, CustomizeTokenStrategy, InvokeFrom
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole, CustomizeTokenStrategy, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
@@ -90,7 +90,7 @@ class TestConversationStatusCount:
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="draft",
             status=status,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
         )
         db_session.add(run)

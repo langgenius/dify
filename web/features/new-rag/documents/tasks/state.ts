@@ -1,10 +1,23 @@
 import { atom } from 'jotai'
-import { taskGraphIsActive, taskIsActive } from '../model'
+import { selectAtom } from 'jotai/utils'
+import { taskGraphIsActive, taskIsActive, taskVersionIsAfter } from '../model'
 import { backgroundTasksAtom, baseTasksAtom, documentsAtom } from '../state/queries'
 import { taskRuntimeStateAtom } from '../state/scoped'
 import { transitionTaskRuntimeState } from './runtime-state'
 import { effectiveDocumentTasks, resolveDocumentTask } from './snapshot'
 import { dismissedBackgroundTaskIdsAtom } from './storage'
+
+const observedTasksAtom = selectAtom(taskRuntimeStateAtom, (state) => state.observedTasks)
+
+export const runtimeBaseTasksAtom = atom((get) => {
+  const tasks = new Map(get(observedTasksAtom))
+  for (const task of get(baseTasksAtom)) {
+    const observed = tasks.get(task.id)
+    if (!observed || !taskVersionIsAfter(observed.updatedAt, task.updatedAt))
+      tasks.set(task.id, task)
+  }
+  return [...tasks.values()]
+})
 
 export const applyTaskRuntimeEventAtom = atom(
   null,
@@ -12,7 +25,7 @@ export const applyTaskRuntimeEventAtom = atom(
     const transition = transitionTaskRuntimeState(get(taskRuntimeStateAtom), event)
     let state = transition.state
     const tasks = effectiveDocumentTasks({
-      baseTasks: get(baseTasksAtom),
+      baseTasks: get(runtimeBaseTasksAtom),
       streamActiveOverrideVersions: state.streamActiveOverrideVersions,
       taskOverrides: state.overrides,
       terminalTaskPins: state.terminalPins,
@@ -30,7 +43,7 @@ export const effectiveTasksAtom = atom((get) => {
   const runtimeState = get(taskRuntimeStateAtom)
 
   return effectiveDocumentTasks({
-    baseTasks: get(baseTasksAtom),
+    baseTasks: get(runtimeBaseTasksAtom),
     streamActiveOverrideVersions: runtimeState.streamActiveOverrideVersions,
     taskOverrides: runtimeState.overrides,
     terminalTaskPins: runtimeState.terminalPins,

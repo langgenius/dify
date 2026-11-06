@@ -194,7 +194,7 @@ function ProviderFieldControl({
         >
           <SelectLabel>
             {label}
-            {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
+            {field.required && <span className="ms-0.5 text-text-destructive">*</span>}
           </SelectLabel>
           <SelectTrigger aria-describedby={descriptionId} size="large">
             {value === 'true'
@@ -224,7 +224,7 @@ function ProviderFieldControl({
         <>
           <FieldLabel>
             {label}
-            {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
+            {field.required && <span className="ms-0.5 text-text-destructive">*</span>}
           </FieldLabel>
           <Input
             aria-describedby={descriptionId}
@@ -1070,7 +1070,6 @@ function AddSourcePageContent({
             <>
               <SourceProviderSelector
                 disabled={websiteSetupLocked}
-                layout="grid-four"
                 options={websiteProviderOptions}
                 providerKey={websiteProviderOption?.key ?? ''}
                 showEmptyState={!queryError && websiteProviderOptions.length === 0}
@@ -1125,10 +1124,10 @@ function AddSourcePageContent({
                   providerOption={datasourceProvider}
                   syncPolicyField={
                     <SourceSyncPolicyField
-                      className="w-full sm:w-75.25"
                       disabled={websiteSetupLocked}
                       draft={providerDraft}
                       size="medium"
+                      triggerClassName="w-full sm:w-75.25"
                       onDraftChange={updateSourceDraft}
                     />
                   }
@@ -1187,9 +1186,9 @@ function AddSourcePageContent({
           )}
           {sourceType === 'websiteCrawl' && !websiteReady && (
             <SourceSyncPolicyField
-              className="w-full sm:w-75.25"
               draft={providerDraft}
               size="medium"
+              triggerClassName="w-full sm:w-75.25"
               onDraftChange={updateSourceDraft}
             />
           )}

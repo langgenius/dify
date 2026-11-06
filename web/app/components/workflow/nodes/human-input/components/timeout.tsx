@@ -26,6 +26,8 @@ const TimeoutInput: FC<Props> = ({ timeout, unit, onChange, readonly }) => {
       <NumberField
         value={timeout}
         min={1}
+        step={1}
+        format={{ maximumFractionDigits: 0, useGrouping: false }}
         onValueChange={(value) => onChange({ timeout: value ?? 1, unit })}
         disabled={readonly}
       >
@@ -35,7 +37,7 @@ const TimeoutInput: FC<Props> = ({ timeout, unit, onChange, readonly }) => {
       </NumberField>
       <SegmentedControl<'day' | 'hour'>
         value={unit}
-        onValueChange={(unit) => onChange({ timeout, unit })}
+        onValueChange={(unit) => onChange({ timeout: Math.max(1, Math.round(timeout)), unit })}
         disabled={readonly}
         aria-label={timeoutLabel}
         className="gap-0.5"

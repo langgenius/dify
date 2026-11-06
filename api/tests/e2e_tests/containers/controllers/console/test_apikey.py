@@ -218,11 +218,13 @@ class TestDatasetApiKeyListResource:
     """
 
     def _bound_dataset_ids(self, session: Session, api_token_id: str) -> set[str]:
-        return set(
-            session.scalars(
+        return {
+            dataset_id
+            for dataset_id in session.scalars(
                 select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token_id)
             ).all()
-        )
+            if dataset_id is not None
+        }
 
     def test_create_unbound_key(
         self,

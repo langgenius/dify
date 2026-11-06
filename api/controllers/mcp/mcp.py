@@ -136,16 +136,21 @@ class MCPAppApi(Resource):
             # Reading/parsing may have taken time. Revalidate in the original
             # execution transaction and use fresh, attached ORM records. A code
             # reassigned to a different server/App/tenant is not this request's identity.
-            with sessions.begin() as session:
+            # A plain session rather than sessions.begin(): app generation may commit this
+            # session itself (e.g. when it creates a conversation) and keep using it, which a
+            # begin() context manager rejects as operating on a closed transaction.
+            with sessions() as session:
                 mcp_server, app = self._get_mcp_server_and_app(server_code, session)
                 self._validate_server_status(mcp_server)
                 if (mcp_server.id, app.id, app.tenant_id) != identity:
                     raise MCPServerNotFoundError()
                 user_input_form = self._get_user_input_form(app, session=session)
 
-                return self._process_mcp_message(
+                response = self._process_mcp_message(
                     mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
                 )
+                session.commit()
+                return response
         except MCPServerNotFoundError:
             return mcp_server_not_found_response()
 

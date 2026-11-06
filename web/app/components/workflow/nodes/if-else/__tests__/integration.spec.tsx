@@ -1,69 +1,17 @@
-import type { Var } from '../../../types'
 import type { IfElseNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { useNodes } from 'reactflow'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { BlockEnum, VarType } from '../../../types'
-import ConditionAdd from '../components/condition-add'
-import ConditionFilesListValue from '../components/condition-files-list-value'
-import ConditionList from '../components/condition-list'
+import { createEdge, createNode, createStartNode } from '../../../__tests__/fixtures'
+import { BlockEnum, InputVarType, VarType } from '../../../types'
 import ConditionOperator from '../components/condition-list/condition-operator'
 import ConditionNumberInput from '../components/condition-number-input'
-import ConditionValue from '../components/condition-value'
 import Node from '../node'
 import Panel from '../panel'
 import { ComparisonOperator, LogicalOperator } from '../types'
-import useConfig from '../use-config'
-
-vi.mock('react-sortablejs', () => ({
-  ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/variable/variable-label',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/workflow/nodes/_base/components/variable/variable-label')
-    >()),
-    VariableLabelInText: ({ variables }: { variables: string[] }) => (
-      <div>{variables.join('.')}</div>
-    ),
-    VariableLabelInNode: ({ variables }: { variables: string[] }) => (
-      <div>{variables.join('.')}</div>
-    ),
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable-tag', () => ({
-  __esModule: true,
-  default: ({ valueSelector }: { valueSelector: string[] }) => <div>{valueSelector.join('.')}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: ({ handleId }: { handleId: string }) => (
-    <div data-testid={`handle-${handleId}`} />
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
-  __esModule: true,
-  default: () => ({
-    schemaTypeDefinitions: [],
-    matchSchemaType: () => undefined,
-  }),
-}))
-
-vi.mock('../../variable-assigner/hooks', () => ({
-  useGetAvailableVars: () => () => [
-    {
-      variable: ['node-1', 'score'],
-      type: VarType.number,
-    },
-  ],
-}))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -71,6 +19,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
+      'spec.schemaDefinitions.get': async () => [],
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
@@ -78,12 +28,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
 
 const createData = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => ({
   title: 'If Else',
@@ -109,73 +53,6 @@ const createData = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => 
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  filterVar: () => true,
-  filterNumberVar: (varPayload: Var) => varPayload.type === VarType.number,
-  handleAddCase: vi.fn(),
-  handleRemoveCase: vi.fn(),
-  handleSortCase: vi.fn(),
-  handleAddCondition: vi.fn(),
-  handleUpdateCondition: vi.fn(),
-  handleRemoveCondition: vi.fn(),
-  handleToggleConditionLogicalOperator: vi.fn(),
-  handleAddSubVariableCondition: vi.fn(),
-  handleRemoveSubVariableCondition: vi.fn(),
-  handleUpdateSubVariableCondition: vi.fn(),
-  handleToggleSubVariableConditionLogicalOperator: vi.fn(),
-  nodesOutputVars: [
-    {
-      nodeId: 'node-1',
-      title: 'Start Node',
-      vars: [
-        {
-          variable: 'answer',
-          type: VarType.string,
-        },
-      ],
-    },
-  ],
-  availableNodes: [],
-  nodesOutputNumberVars: [
-    {
-      nodeId: 'node-1',
-      title: 'Start Node',
-      vars: [
-        {
-          variable: 'score',
-          type: VarType.number,
-        },
-      ],
-    },
-  ],
-  availableNumberNodes: [],
-  varsIsVarFileAttribute: {},
-  ...overrides,
-})
-
-const baseNodeProps = {
-  type: 'custom',
-  selected: false,
-  zIndex: 1,
-  xPos: 0,
-  yPos: 0,
-  dragging: false,
-  isConnectable: true,
-}
-
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
-}
-
 const render = (
   ui: Parameters<typeof renderWorkflowFlowComponent>[0],
   options: Parameters<typeof renderWorkflowFlowComponent>[1] = {},
@@ -190,42 +67,80 @@ const render = (
     ],
     ...options,
   })
-const renderWithConsoleQuery = render
 const numberVariables = [
   { nodeId: 'node-1', title: 'Start Node', vars: [{ variable: 'score', type: VarType.number }] },
 ]
 
-describe('if-else path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
+function LivePanel() {
+  const node = useNodes<IfElseNodeType>().find((node) => node.id === 'if-else-node')
+  if (!node) return null
+  return (
+    <>
+      <Panel
+        id={node.id}
+        data={node.data}
+        panelProps={{
+          getInputVars: () => [],
+          toVarInputs: () => [],
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          setRunInputData: () => {},
+          runResult: null,
+        }}
+      />
+      <output aria-label="Saved cases">{JSON.stringify(node.data.cases)}</output>
+    </>
+  )
+}
+const readCases = (): IfElseNodeType['cases'] =>
+  JSON.parse(screen.getByRole('status', { name: 'Saved cases' }).textContent!)
+const renderPanel = (data: IfElseNodeType) =>
+  render(<LivePanel />, {
+    nodes: [
+      createStartNode({
+        id: 'node-1',
+        data: {
+          variables: [
+            { variable: 'score', label: 'Score', type: InputVarType.number, required: true },
+            { variable: 'answer', label: 'Answer', type: InputVarType.textInput, required: true },
+          ],
+        },
+      }),
+      createNode({ id: 'if-else-node', data }),
+    ],
+    edges: [createEdge({ source: 'node-1', target: 'if-else-node' })],
   })
 
+const nodeTypes = { ifElse: Node }
+const renderDisplay = (data: IfElseNodeType) =>
+  renderWorkflowFlowComponent(<></>, {
+    nodes: [
+      createStartNode({ id: 'node-1', type: 'input', data: { title: 'Start Node' } }),
+      createNode({ id: 'if-else-node', type: 'ifElse', data }),
+    ],
+    edges: [createEdge({ source: 'node-1', target: 'if-else-node' })],
+    reactFlowProps: { nodeTypes },
+  })
+
+describe('if-else path', () => {
   describe('Condition controls', () => {
-    it('should add a condition variable from the selector', async () => {
+    it('adds a selected upstream variable to the saved case', async () => {
       const user = userEvent.setup()
-      const onSelectVariable = vi.fn()
-
-      render(
-        <ConditionAdd
-          caseId="case-1"
-          variables={numberVariables}
-          onSelectVariable={onSelectVariable}
-        />,
-        {
-          resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-        },
+      renderPanel(
+        createData({
+          cases: [{ case_id: 'case-1', logical_operator: LogicalOperator.and, conditions: [] }],
+        }),
       )
-
       await user.click(
         screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
       )
       await user.click(await screen.findByText('score'))
-
-      expect(onSelectVariable).toHaveBeenCalledWith('case-1', ['node-1', 'score'], {
-        variable: 'score',
-        type: VarType.number,
-      })
+      expect(readCases()[0]!.conditions).toEqual([
+        expect.objectContaining({
+          variable_selector: ['node-1', 'score'],
+          varType: VarType.number,
+        }),
+      ])
       expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
 
@@ -279,128 +194,90 @@ describe('if-else path', () => {
       expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
     })
 
-    it('should toggle logical operators for a case list with multiple conditions', async () => {
+    it('toggles and saves the logical operator for multiple conditions', async () => {
       const user = userEvent.setup()
-      const onToggleConditionLogicalOperator = vi.fn()
-
-      renderWithConsoleQuery(
-        <ConditionList
-          caseId="case-1"
-          caseItem={{
-            case_id: 'case-1',
-            logical_operator: LogicalOperator.and,
-            conditions: [
-              {
-                id: 'condition-1',
-                varType: VarType.string,
-                variable_selector: ['node-1', 'answer'],
-                comparison_operator: ComparisonOperator.contains,
-                value: 'hello',
-              },
-              {
-                id: 'condition-2',
-                varType: VarType.string,
-                variable_selector: ['node-1', 'answer'],
-                comparison_operator: ComparisonOperator.is,
-                value: 'world',
-              },
-            ],
-          }}
-          nodeId="node-1"
-          nodesOutputVars={[]}
-          availableNodes={[]}
-          numberVariables={[]}
-          filterVar={() => true}
-          varsIsVarFileAttribute={{}}
-          onToggleConditionLogicalOperator={onToggleConditionLogicalOperator}
-        />,
-      )
-
+      const data = createData()
+      data.cases[0]!.conditions.push({
+        ...data.cases[0]!.conditions[0]!,
+        id: 'condition-2',
+        value: 'world',
+      })
+      renderPanel(data)
       await user.click(screen.getByText('AND'))
-
-      expect(onToggleConditionLogicalOperator).toHaveBeenCalledWith('case-1')
+      expect(screen.getByText('OR')).toBeInTheDocument()
+      expect(readCases()[0]!.logical_operator).toBe(LogicalOperator.or)
+      expect(readCases()[0]!.conditions).toEqual(data.cases[0]!.conditions)
     })
   })
 
   describe('Display rendering', () => {
-    it('should render formatted condition values and file sub-conditions', () => {
-      render(
-        <div>
-          <ConditionValue
-            variableSelector={['node-1', 'answer']}
-            operator={ComparisonOperator.contains}
-            value="{{#node-1.answer#}}"
-          />
-          <ConditionFilesListValue
-            condition={{
-              id: 'condition-files',
-              varType: VarType.object,
-              variable_selector: ['node-1', 'files'],
-              comparison_operator: ComparisonOperator.contains,
-              value: '',
-              sub_variable_condition: {
-                case_id: 'sub-case',
-                logical_operator: LogicalOperator.or,
-                conditions: [
-                  {
-                    id: 'sub-condition',
-                    key: 'name',
-                    varType: VarType.string,
-                    comparison_operator: ComparisonOperator.contains,
-                    value: 'report',
-                  },
-                ],
+    it('renders upstream variable names, formatted values, and file sub-conditions', () => {
+      const data = createData()
+      data.cases[0]!.conditions = [
+        { ...data.cases[0]!.conditions[0]!, value: '{{#node-1.answer#}}' },
+        {
+          id: 'condition-files',
+          varType: VarType.arrayFile,
+          variable_selector: ['node-1', 'files'],
+          comparison_operator: ComparisonOperator.contains,
+          value: '',
+          sub_variable_condition: {
+            case_id: 'sub-case',
+            logical_operator: LogicalOperator.and,
+            conditions: [
+              {
+                id: 'sub-condition',
+                key: 'name',
+                varType: VarType.string,
+                comparison_operator: ComparisonOperator.contains,
+                value: 'report',
               },
-            }}
-          />
-        </div>,
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-      )
+            ],
+          },
+        },
+      ]
+      renderDisplay(data)
 
-      expect(screen.getByText('node-1.answer')).toBeInTheDocument()
+      expect(screen.getByText('Start Node')).toBeInTheDocument()
+      expect(screen.getByText('answer')).toBeInTheDocument()
       expect(screen.getByText('{{answer}}')).toBeInTheDocument()
-      expect(screen.getByText('node-1.files')).toBeInTheDocument()
+      expect(screen.getByText('files')).toBeInTheDocument()
       expect(screen.getByText('name')).toBeInTheDocument()
       expect(screen.getByText('report')).toBeInTheDocument()
     })
 
-    it('should render node cases, missing setup state, and else handles', () => {
-      render(
-        <Node
-          id="if-else-node"
-          {...baseNodeProps}
-          data={createData({
-            cases: [
-              {
-                case_id: 'case-1',
-                logical_operator: LogicalOperator.and,
-                conditions: [
-                  {
-                    id: 'condition-empty',
-                    varType: VarType.string,
-                    variable_selector: [],
-                    comparison_operator: ComparisonOperator.contains,
-                    value: '',
-                  },
-                ],
-              },
-              {
-                case_id: 'case-2',
-                logical_operator: LogicalOperator.or,
-                conditions: [
-                  {
-                    id: 'condition-ready',
-                    varType: VarType.boolean,
-                    variable_selector: ['node-1', 'passed'],
-                    comparison_operator: ComparisonOperator.is,
-                    value: false,
-                  },
-                ],
-              },
-            ],
-          })}
-        />,
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    it('renders case labels, missing setup, false values, and branch handles', () => {
+      const { container } = renderDisplay(
+        createData({
+          cases: [
+            {
+              case_id: 'case-1',
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'condition-empty',
+                  varType: VarType.string,
+                  variable_selector: [],
+                  comparison_operator: ComparisonOperator.contains,
+                  value: '',
+                },
+              ],
+            },
+            {
+              case_id: 'case-2',
+              logical_operator: LogicalOperator.or,
+              conditions: [
+                {
+                  id: 'condition-ready',
+                  varType: VarType.boolean,
+                  variable_selector: ['node-1', 'passed'],
+                  comparison_operator: ComparisonOperator.is,
+                  value: false,
+                },
+              ],
+            },
+          ],
+        }),
       )
 
       expect(screen.getByText('IF')).toBeInTheDocument()
@@ -408,32 +285,26 @@ describe('if-else path', () => {
       expect(screen.getByText('workflowLogic.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
       expect(screen.getByText('False')).toBeInTheDocument()
       expect(screen.getByText('ELSE')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-case-1')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-case-2')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-false')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="case-1"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="case-2"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="false"]')).toBeInTheDocument()
     })
   })
 
   describe('Panel integration', () => {
     it('should add a case from the panel action and render else description', async () => {
       const user = userEvent.setup()
-      const handleAddCase = vi.fn()
       const inputs = createData({ cases: [] })
-
-      mockUseConfig.mockReturnValueOnce(
-        createConfigResult({
-          inputs,
-          handleAddCase,
-        }),
-      )
-
-      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />, {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-      })
+      renderPanel(inputs)
 
       await user.click(screen.getByRole('button', { name: /elif/i }))
 
-      expect(handleAddCase).toHaveBeenCalled()
+      expect(readCases()).toEqual([
+        { case_id: expect.any(String), logical_operator: LogicalOperator.and, conditions: [] },
+      ])
+      expect(
+        screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
+      ).toBeInTheDocument()
       expect(screen.getByText('workflowLogic.nodes.ifElse.elseDescription')).toBeInTheDocument()
     })
   })

@@ -1,22 +1,22 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { ReactNode } from 'react'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuFilterProvider,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuList,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuList,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -43,17 +43,17 @@ export function AgentSelectorMenu({ children }: { children: ReactNode }) {
   const [searchText, setSearchText] = useState('')
 
   return (
-    <DropdownMenuFilterProvider filter={null} value={searchText} onValueChange={setSearchText}>
-      <DropdownMenu>
+    <MenuFilterProvider filter={null} value={searchText} onValueChange={setSearchText}>
+      <Menu>
         <SearchTextContext value={searchText}>{children}</SearchTextContext>
-      </DropdownMenu>
-    </DropdownMenuFilterProvider>
+      </Menu>
+    </MenuFilterProvider>
   )
 }
 
-export const AgentSelectorMenuTrigger = DropdownMenuTrigger
+export const AgentSelectorMenuTrigger = MenuTrigger
 
-type AgentSelectorMenuContentProps = Pick<DropdownMenuContentProps, 'side' | 'align'> & {
+type AgentSelectorMenuContentProps = Pick<MenuContentProps, 'side' | 'align'> & {
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
 }
@@ -67,14 +67,14 @@ export function AgentSelectorMenuContent({
   const { t } = useTranslation(['agentRoster'])
 
   return (
-    <DropdownMenuContent
+    <MenuContent
       side={side}
       align={align}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
       className="w-60"
     >
       <AgentSelectorList onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
-    </DropdownMenuContent>
+    </MenuContent>
   )
 }
 
@@ -124,16 +124,16 @@ function AgentSelectorList({
 
   return (
     <>
-      <DropdownMenuInputGroup>
+      <MenuInputGroup>
         <span
           aria-hidden
           className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
         />
-        <DropdownMenuInput
+        <MenuInput
           aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
-      </DropdownMenuInputGroup>
+      </MenuInputGroup>
       {/* A persistent live region announces reliably. The skeleton already shows loading, so that
           status is announced but not displayed. */}
       <div
@@ -147,7 +147,7 @@ function AgentSelectorList({
       </div>
       {/* The agents scroll inside the list so the footer actions stay in view. The scroller is kept
           out of the tab order: the menu owns focus and Tab closes it. */}
-      <DropdownMenuList className="flex max-h-none flex-col overflow-visible">
+      <MenuList className="flex max-h-none flex-col overflow-visible">
         <div
           tabIndex={-1}
           className={cn(
@@ -160,7 +160,7 @@ function AgentSelectorList({
           ) : (
             !agentsQuery.isError &&
             agents.map((agent) => (
-              <DropdownMenuItem
+              <MenuItem
                 key={agent.id}
                 closeOnClick={Boolean(agent.active_config_snapshot_id)}
                 className="h-auto gap-2 py-1.5 pr-3 pl-2"
@@ -177,20 +177,20 @@ function AgentSelectorList({
                     {agent.role || agent.description}
                   </span>
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             ))
           )}
         </div>
-        <DropdownMenuSeparator className="shrink-0" />
+        <MenuSeparator className="shrink-0" />
         {onStartFromScratch && (
-          <DropdownMenuItem className="shrink-0" onClick={onStartFromScratch}>
+          <MenuItem className="shrink-0" onClick={onStartFromScratch}>
             <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
             <span className="min-w-0 flex-1 truncate">
               {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentRoster' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-        <DropdownMenuLinkItem
+        <MenuLinkItem
           className="shrink-0"
           render={<Link href="/agents" target="_blank" rel="noopener noreferrer" />}
         >
@@ -201,8 +201,8 @@ function AgentSelectorList({
           <span className="min-w-0 flex-1 truncate">
             {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentRoster' })}
           </span>
-        </DropdownMenuLinkItem>
-      </DropdownMenuList>
+        </MenuLinkItem>
+      </MenuList>
     </>
   )
 }

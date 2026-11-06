@@ -1,0 +1,258 @@
+{
+  "request": {
+    "nodes": [
+      {
+        "node_id": "all-inputs",
+        "node_data": {
+          "type": "human-input",
+          "title": "All inputs",
+          "desc": null,
+          "version": "1",
+          "error_strategy": null,
+          "default_value": null,
+          "retry_config": {
+            "max_retries": 0,
+            "retry_interval": 0,
+            "retry_enabled": false
+          },
+          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}",
+          "inputs": [
+            {
+              "output_variable_name": "reason",
+              "type": "paragraph",
+              "default": {
+                "type": "constant",
+                "selector": ["start", "reason"],
+                "value": "Keep this reason"
+              }
+            },
+            {
+              "output_variable_name": "decision",
+              "type": "select",
+              "option_source": {
+                "type": "constant",
+                "selector": ["start", "unused"],
+                "value": ["Yes", "No"]
+              }
+            },
+            {
+              "output_variable_name": "reviewer",
+              "type": "select",
+              "option_source": {
+                "type": "variable",
+                "selector": ["start", "reviewers"],
+                "value": ["Previous"]
+              }
+            },
+            {
+              "output_variable_name": "attachment",
+              "allowed_file_types": ["custom"],
+              "allowed_file_extensions": [".csv", ".json"],
+              "allowed_file_upload_methods": ["local_file"],
+              "type": "file"
+            },
+            {
+              "output_variable_name": "images",
+              "allowed_file_types": ["image"],
+              "allowed_file_extensions": [],
+              "allowed_file_upload_methods": ["remote_url", "local_file"],
+              "type": "file-list",
+              "number_limits": 7
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "approve",
+              "title": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "button_style": "primary"
+            }
+          ],
+          "timeout": 36,
+          "timeout_unit": "hour",
+          "delivery_methods": [
+            {
+              "enabled": true,
+              "id": "22222222-2222-4222-8222-222222222222",
+              "type": "webapp",
+              "config": {}
+            }
+          ]
+        }
+      },
+      {
+        "node_id": "text-only",
+        "node_data": {
+          "type": "human-input",
+          "title": "Text only",
+          "desc": null,
+          "version": "1",
+          "error_strategy": null,
+          "default_value": null,
+          "retry_config": {
+            "max_retries": 0,
+            "retry_interval": 0,
+            "retry_enabled": false
+          },
+          "form_content": "",
+          "inputs": [
+            {
+              "output_variable_name": "text",
+              "type": "paragraph",
+              "default": null
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "submit",
+              "title": "BBBBBBBBBBBBBBBBBBBBB",
+              "button_style": "default"
+            }
+          ],
+          "timeout": 36,
+          "timeout_unit": "hour",
+          "delivery_methods": [
+            {
+              "enabled": true,
+              "id": "22222222-2222-4222-8222-222222222222",
+              "type": "webapp",
+              "config": {}
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "response": {
+    "data": [
+      {
+        "node_id": "all-inputs",
+        "node_data": {
+          "type": "human-input",
+          "title": "All inputs",
+          "desc": null,
+          "version": "2",
+          "error_strategy": null,
+          "default_value": null,
+          "retry_config": {
+            "max_retries": 0,
+            "retry_interval": 0,
+            "retry_enabled": false
+          },
+          "recipients_spec": [
+            {
+              "type": "initiator"
+            }
+          ],
+          "message_template": {
+            "subject": "Action required",
+            "body": "A request is waiting for your review. Please review the details and submit your decision to continue. Review and respond: {{#url#}}"
+          },
+          "debug_mode": {
+            "enabled": false,
+            "channels": []
+          },
+          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}",
+          "inputs": [
+            {
+              "output_variable_name": "reason",
+              "type": "paragraph",
+              "default": {
+                "type": "constant",
+                "selector": ["start", "reason"],
+                "value": "Keep this reason"
+              }
+            },
+            {
+              "output_variable_name": "decision",
+              "type": "select",
+              "option_source": {
+                "type": "constant",
+                "selector": ["start", "unused"],
+                "value": ["Yes", "No"]
+              }
+            },
+            {
+              "output_variable_name": "reviewer",
+              "type": "select",
+              "option_source": {
+                "type": "variable",
+                "selector": ["start", "reviewers"],
+                "value": ["Previous"]
+              }
+            },
+            {
+              "output_variable_name": "attachment",
+              "allowed_file_types": ["custom"],
+              "allowed_file_extensions": [".csv", ".json"],
+              "allowed_file_upload_methods": ["local_file"],
+              "type": "file"
+            },
+            {
+              "output_variable_name": "images",
+              "allowed_file_types": ["image"],
+              "allowed_file_extensions": [],
+              "allowed_file_upload_methods": ["remote_url", "local_file"],
+              "type": "file-list",
+              "number_limits": 7
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "approve",
+              "title": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "button_style": "primary"
+            }
+          ],
+          "timeout": 36,
+          "timeout_unit": "hour"
+        }
+      },
+      {
+        "node_id": "text-only",
+        "node_data": {
+          "type": "human-input",
+          "title": "Text only",
+          "desc": null,
+          "version": "2",
+          "error_strategy": null,
+          "default_value": null,
+          "retry_config": {
+            "max_retries": 0,
+            "retry_interval": 0,
+            "retry_enabled": false
+          },
+          "recipients_spec": [
+            {
+              "type": "initiator"
+            }
+          ],
+          "message_template": {
+            "subject": "Action required",
+            "body": "A request is waiting for your review. Please review the details and submit your decision to continue. Review and respond: {{#url#}}"
+          },
+          "debug_mode": {
+            "enabled": false,
+            "channels": []
+          },
+          "form_content": "",
+          "inputs": [
+            {
+              "output_variable_name": "text",
+              "type": "paragraph",
+              "default": null
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "submit",
+              "title": "BBBBBBBBBBBBBBBBBBBBB",
+              "button_style": "default"
+            }
+          ],
+          "timeout": 36,
+          "timeout_unit": "hour"
+        }
+      }
+    ]
+  }
+}

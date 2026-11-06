@@ -204,10 +204,13 @@ describe('useDocumentActions', () => {
         await result.current.handleBatchDownload()
       })
 
-      expect(mockDownloadZip).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1'],
-      })
+      expect(mockDownloadZip).toHaveBeenCalledWith(
+        {
+          datasetId: 'ds-1',
+          documentIds: ['doc-1'],
+        },
+        { silent: true },
+      )
       expect(mockDownloadBlob).toHaveBeenCalledWith(
         expect.objectContaining({
           data: blob,

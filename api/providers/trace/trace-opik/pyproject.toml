@@ -2,9 +2,12 @@
 name = "dify-trace-opik"
 version = "0.0.1"
 dependencies = [
-    "opik~=1.11.2",
+    "dify-trace-sdk",
 ]
 description = "Dify ops tracing provider (Opik)."
+
+[project.entry-points."dify.trace_providers"]
+opik = "dify_trace_opik.provider:OpikProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -19,8 +19,7 @@ import {
 } from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { highlightCode } from './code-highlight'
 
 const MermaidDiagram = dynamic(
@@ -156,7 +155,7 @@ type EChartsEventParams = {
 }
 
 export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
   const [finalChartOption, setFinalChartOption] = useState<EChartsOption | null>(null)
@@ -171,7 +170,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  const isDarkMode = theme === Theme.dark
+  const isDarkMode = theme === 'dark'
 
   const clearResizeTimer = useCallback(() => {
     if (!resizeTimerRef.current) return
@@ -555,7 +554,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   return (
     <div className="relative">
-      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
+      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 ps-3">
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && (

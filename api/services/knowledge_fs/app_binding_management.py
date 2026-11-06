@@ -150,11 +150,52 @@ class KnowledgeFSAppBindingManagementService:
         control_space_id: str,
         payload: KnowledgeFSAppBindingPayload,
     ) -> KnowledgeFSAppBindingResponse:
+        """Manage a space's grants from its access settings."""
         self._authorize(
             tenant_id=tenant_id,
             actor_account_id=actor_account_id,
             control_space_id=control_space_id,
         )
+        return self._upsert(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            control_space_id=control_space_id,
+            payload=payload,
+        )
+
+    def upsert_for_app(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSAppBindingPayload,
+    ) -> KnowledgeFSAppBindingResponse:
+        """Bind a readable, queryable space after the caller authorizes app editing/debugging.
+
+        Sharing a space lets its readers use it in apps without granting them control
+        of its access settings. Channel policy is still enforced at runtime admission.
+        """
+        self._authorize_app_binding(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            control_space_id=control_space_id,
+        )
+        return self._upsert(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            control_space_id=control_space_id,
+            payload=payload,
+        )
+
+    def _upsert(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSAppBindingPayload,
+    ) -> KnowledgeFSAppBindingResponse:
         with self._session_maker.begin() as session:
             if not self._apps.supports_binding(
                 session=session,
@@ -206,7 +247,7 @@ class KnowledgeFSAppBindingManagementService:
         control_space_ids: builtins.list[str] | tuple[str, ...],
         session: Session | None = None,
     ) -> builtins.list[KnowledgeFSAppBindingResponse]:
-        """Make published Workflow bindings exactly match one validated graph snapshot."""
+        """Sync one validated graph after the caller authorizes publishing the Workflow app."""
         return self._sync_bindings(
             tenant_id=tenant_id,
             actor_account_id=actor_account_id,
@@ -225,7 +266,7 @@ class KnowledgeFSAppBindingManagementService:
         control_space_ids: builtins.list[str] | tuple[str, ...],
         session: Session | None = None,
     ) -> builtins.list[KnowledgeFSAppBindingResponse]:
-        """Reconcile the published Agent channel without changing Workflow grants."""
+        """Sync the Agent channel after the caller authorizes publishing the Agent app."""
         return self._sync_bindings(
             tenant_id=tenant_id,
             actor_account_id=actor_account_id,
@@ -253,9 +294,10 @@ class KnowledgeFSAppBindingManagementService:
             raise KnowledgeFSAppBindingManagementError("An application can bind at most 10 KnowledgeFS Spaces")
 
         # Authorize every desired target before opening the mutation transaction. A failure therefore
-        # cannot leave a partially updated set of published Workflow bindings.
+        # cannot leave a partially updated set of published app bindings. App authors need
+        # read/query access to the spaces, not permission to change their sharing settings.
         for control_space_id in normalized_space_ids:
-            self._authorize(
+            self._authorize_app_binding(
                 tenant_id=tenant_id,
                 actor_account_id=actor_account_id,
                 control_space_id=control_space_id,
@@ -415,6 +457,21 @@ class KnowledgeFSAppBindingManagementService:
                 subject=f"dify-app:{app_id}",
                 reason_code="app_binding_revoked",
                 caller_kinds=(caller_kind.value,),
+            )
+
+    def _authorize_app_binding(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+    ) -> None:
+        for permission in (KnowledgeFSProductPermission.READ, KnowledgeFSProductPermission.QUERY):
+            self._authorize(
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                control_space_id=control_space_id,
+                permission=permission,
             )
 
     def _authorize(

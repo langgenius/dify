@@ -7,7 +7,6 @@ import {
 
 const serviceMock = vi.hoisted(() => ({
   createSpace: vi.fn(),
-  getDefaultModel: vi.fn(),
   getSpace: vi.fn(),
 }))
 
@@ -21,38 +20,18 @@ vi.mock('@/service/console', () => ({
         post: serviceMock.createSpace,
       },
     },
-    workspaces: {
-      current: {
-        defaultModel: {
-          get: serviceMock.getDefaultModel,
-        },
-      },
-    },
   },
 }))
+
+const selectedModels = {
+  reasoning: { model: 'reasoning-model', provider: 'langgenius/openai/openai' },
+  embedding: { model: 'embedding-model', provider: 'langgenius/cohere/cohere' },
+  rerank: { model: 'rerank-model', provider: 'langgenius/cohere/cohere' },
+}
 
 describe('createKnowledge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serviceMock.getDefaultModel.mockImplementation(
-      ({ query }: { query: { model_type: 'llm' | 'rerank' | 'text-embedding' } }) =>
-        Promise.resolve({
-          data: {
-            model:
-              query.model_type === 'llm'
-                ? 'reasoning-model'
-                : query.model_type === 'rerank'
-                  ? 'rerank-model'
-                  : 'embedding-model',
-            provider: {
-              provider:
-                query.model_type === 'llm'
-                  ? 'langgenius/openai/openai'
-                  : 'langgenius/cohere/cohere',
-            },
-          },
-        }),
-    )
     serviceMock.createSpace.mockResolvedValue({
       control_space_id: 'control-space-1',
       model_setup_required: false,
@@ -84,6 +63,7 @@ describe('createKnowledge', () => {
     await expect(
       createKnowledge({
         description: 'Product docs',
+        models: selectedModels,
         idempotencyKey: '11111111-1111-4111-8111-111111111111',
         name: 'Dify Product Docs',
         onCreated,
@@ -139,94 +119,31 @@ describe('createKnowledge', () => {
     })
   })
 
-  it.each(['text-embedding', 'llm', 'rerank'] as const)(
-    'creates a setup-required control space when the default %s model is missing',
-    async (missingModelType) => {
-      serviceMock.createSpace.mockResolvedValueOnce({
-        control_space_id: 'control-space-1',
-        model_setup_required: true,
-        operation_id: 'operation-1',
-        state: 'provisioning',
-      })
-      serviceMock.getDefaultModel.mockImplementation(
-        ({ query }: { query: { model_type: 'llm' | 'rerank' | 'text-embedding' } }) =>
-          Promise.resolve(
-            query.model_type !== missingModelType
-              ? {
-                  data:
-                    query.model_type === 'llm'
-                      ? {
-                          model: 'reasoning-model',
-                          provider: { provider: 'langgenius/openai/openai' },
-                        }
-                      : query.model_type === 'rerank'
-                        ? {
-                            model: 'rerank-model',
-                            provider: { provider: 'langgenius/cohere/cohere' },
-                          }
-                        : {
-                            model: 'embedding-model',
-                            provider: { provider: 'langgenius/cohere/cohere' },
-                          },
-                }
-              : { data: null },
-          ),
-      )
+  it('rejects creation before the request when model selections are missing', async () => {
+    await expect(
+      createKnowledge({
+        description: '',
+        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        name: 'Knowledge',
+        onCreated: vi.fn(),
+        visibility: 'only_me',
+      }),
+    ).rejects.toMatchObject({ stage: 'preflight' })
+    expect(serviceMock.createSpace).not.toHaveBeenCalled()
+  })
 
-      await expect(
-        createKnowledge({
-          description: '',
-          idempotencyKey: '22222222-2222-4222-8222-222222222222',
-          name: '知识库',
-          onCreated: vi.fn(),
-          visibility: 'only_me',
-        }),
-      ).resolves.toEqual({
-        knowledgeSpace: {
-          control_space_id: 'control-space-1',
-          model_setup_required: true,
-          operation_id: 'operation-1',
-          state: 'provisioning',
-        },
-        modelSetupRequired: true,
-      })
-      expect(serviceMock.createSpace).toHaveBeenCalledWith({
-        body: {
-          description: undefined,
-          idempotency_key: '22222222-2222-4222-8222-222222222222',
-          name: '知识库',
-          slug: expect.stringMatching(/^knowledge-[a-z0-9]+$/),
-          visibility: 'only_me',
-        },
-      })
-    },
-  )
-
-  it('creates without model presets when loading workspace defaults fails', async () => {
-    serviceMock.createSpace.mockResolvedValueOnce({
-      control_space_id: 'control-space-1',
-      model_setup_required: true,
-      operation_id: 'operation-1',
-      state: 'provisioning',
-    })
-    serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
-
+  it('rejects an incomplete provider identity before creating a space', async () => {
     await expect(
       createKnowledge({
         description: '',
         idempotencyKey: '33333333-3333-4333-8333-333333333333',
-        name: 'Fallback',
+        name: 'Knowledge',
+        models: { ...selectedModels, reasoning: { model: 'reasoning-model', provider: '' } },
         onCreated: vi.fn(),
         visibility: 'only_me',
       }),
-    ).resolves.toMatchObject({ modelSetupRequired: true })
-
-    expect(serviceMock.createSpace).toHaveBeenCalledWith({
-      body: expect.not.objectContaining({
-        embedding: expect.anything(),
-        retrieval: expect.anything(),
-      }),
-    })
+    ).rejects.toMatchObject({ stage: 'preflight' })
+    expect(serviceMock.createSpace).not.toHaveBeenCalled()
   })
 
   it('uses the persisted setup state returned by an idempotent replay', async () => {
@@ -241,6 +158,7 @@ describe('createKnowledge', () => {
 
     const values = {
       description: '',
+      models: selectedModels,
       idempotencyKey: '44444444-4444-4444-8444-444444444444',
       name: 'Recovered',
       onCreated: vi.fn(),

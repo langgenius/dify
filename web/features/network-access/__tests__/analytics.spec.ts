@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { trackEvent } from '@/app/components/base/amplitude'
 import {
   getAccessControlFailReason,
@@ -40,38 +41,47 @@ it('only forwards allowlisted properties and excludes application context from S
 })
 
 it.each([
-  [403, 'This feature requires a paid plan.', 'plan', 'permission'],
-  [403, 'Network access groups are not available for this workspace.', 'plan', 'permission'],
-  [
-    403,
-    'Your workspace role does not allow this network access operation.',
-    'permission',
-    'permission',
-  ],
-  [401, 'Unauthorized', 'permission', 'permission'],
-  [503, 'Unavailable', 'network', 'network'],
-  [409, 'This workspace has reached the network access group limit.', 'other', 'limit_exceeded'],
-  [409, 'The network access resource changed. Refresh it and try again.', 'other', 'other'],
-  [409, 'A network access group with this name already exists.', 'other', 'other'],
-  [400, 'Invalid request', 'other', 'other'],
-])(
-  'classifies HTTP %i failures without forwarding error text',
-  async (status, message, accessReason, policyReason) => {
-    const error = Response.json({ message }, { status })
-    expect(await getAccessControlFailReason(error)).toBe(accessReason)
-    expect(await getIpPolicyFailReason(error)).toBe(policyReason)
-    expect(error.bodyUsed).toBe(false)
-  },
-)
+  ['paid_plan_required', 403, 'plan', 'permission'],
+  ['network_access_not_entitled', 403, 'plan', 'permission'],
+  ['network_access_forbidden', 403, 'permission', 'permission'],
+  ['network_access_role_denied', 403, 'permission', 'permission'],
+  ['billing_unavailable', 503, 'network', 'network'],
+  ['billing_operation_failed', 502, 'network', 'network'],
+  ['network_access_group_name_conflict', 409, 'other', 'name_conflict'],
+  ['network_access_version_conflict', 409, 'other', 'other'],
+  ['network_access_invalid_input', 400, 'other', 'other'],
+])('classifies the %s error code', (code, status, accessReason, policyReason) => {
+  const error = new ORPCError(code, { defined: true, status, message: 'Backend text' })
+  expect(getAccessControlFailReason(error)).toBe(accessReason)
+  expect(getIpPolicyFailReason(error)).toBe(policyReason)
+})
 
-it('recognizes fetch failures without labelling arbitrary exceptions as network errors', async () => {
-  expect(await getAccessControlFailReason(new TypeError('Failed to fetch'))).toBe('network')
-  expect(await getIpPolicyFailReason(new Error('Unexpected failure'))).toBe('other')
+it('ignores a plan or conflict code the contract does not define for the call', () => {
+  const plan = new ORPCError('paid_plan_required', { status: 403 })
+  const conflict = new ORPCError('network_access_group_name_conflict', { status: 409 })
+  expect(getAccessControlFailReason(plan)).toBe('permission')
+  expect(getIpPolicyFailReason(conflict)).toBe('other')
+})
+
+it.each([
+  [401, 'permission'],
+  [403, 'permission'],
+  [503, 'network'],
+  [400, 'other'],
+])('falls back to the HTTP %i status for undocumented errors', (status, reason) => {
+  const error = Response.json({ message: 'This feature requires a paid plan.' }, { status })
+  expect(getAccessControlFailReason(error)).toBe(reason)
+  expect(getIpPolicyFailReason(error)).toBe(reason)
+})
+
+it('recognizes fetch failures without labelling arbitrary exceptions as network errors', () => {
+  expect(getAccessControlFailReason(new TypeError('Failed to fetch'))).toBe('network')
+  expect(getIpPolicyFailReason(new Error('Unexpected failure'))).toBe('other')
 })
 
 it('still classifies the status when an error response body has already been consumed', async () => {
   const response = Response.json({ message: 'Unavailable' }, { status: 503 })
   await response.json()
-  expect(await getAccessControlFailReason(response)).toBe('network')
-  expect(await getIpPolicyFailReason(response)).toBe('network')
+  expect(getAccessControlFailReason(response)).toBe('network')
+  expect(getIpPolicyFailReason(response)).toBe('network')
 })

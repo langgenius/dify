@@ -1,22 +1,15 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
-import type useConfig from '../use-config'
-import type { PanelProps } from '@/types/workflow'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
 
 const service = vi.hoisted(() => ({
   listMetadata: vi.fn(),
   listSpaces: vi.fn(),
 }))
-const configState = vi.hoisted(() => ({
-  handleSpacesChange: vi.fn(),
-  handleTopNChange: vi.fn(),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
@@ -32,9 +25,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Node configuration editing has its own hook suite; this panel suite renders a given config.
-const useConfigMock = vi.hoisted(() => vi.fn())
-vi.mock('../use-config', () => ({ default: useConfigMock }))
 // These children have their own interaction suites and only receive panel-owned values.
 vi.mock('../components/add-knowledge-space', () => ({ default: () => null }))
 vi.mock('../components/recall-settings', () => ({
@@ -67,15 +57,6 @@ vi.mock(
     ),
   }),
 )
-
-const panelProps: PanelProps = {
-  getInputVars: () => [],
-  toVarInputs: () => [],
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: undefined,
-}
 
 const space = (controlSpaceId: string, name: string, technicalStatus = 'available') => ({
   control_space_id: controlSpaceId,
@@ -122,35 +103,7 @@ const nodeData = (
 })
 
 function renderPanel(data = nodeData()) {
-  useConfigMock.mockReturnValue({
-    readOnly: false,
-    inputs: data,
-    availableNumberNodesWithParent: [],
-    availableNumberVars: [],
-    availableStringNodesWithParent: [],
-    availableStringVars: [],
-    filterFileVar: vi.fn(),
-    filterStringVar: vi.fn(),
-    handleAddCondition: vi.fn(),
-    handleMetadataCompletionParamsChange: vi.fn(),
-    handleMetadataFilterChange: vi.fn(),
-    handleMetadataFilterModeChange: vi.fn(),
-    handleMetadataModelChange: vi.fn(),
-    handleModeChange: vi.fn(),
-    handleNodeKindToggle: vi.fn(),
-    handleQueryAttachmentChange: vi.fn(),
-    handleQueryVarChange: vi.fn(),
-    handleRerankingModelChange: vi.fn(),
-    handleRemoveCondition: vi.fn(),
-    handleScoreThresholdChange: vi.fn(),
-    handleSpacesChange: configState.handleSpacesChange,
-    handleTopNChange: configState.handleTopNChange,
-    handleToggleConditionLogicalOperator: vi.fn(),
-    handleUpdateCondition: vi.fn(),
-  } satisfies Partial<ReturnType<typeof useConfig>>)
-  return renderWithConsoleQuery(
-    <Panel id="knowledge-retrieval-v2-1" data={data} panelProps={panelProps} />,
-  )
+  return renderNodePanel(Panel, data)
 }
 
 describe('KnowledgeRetrievalV2Panel', () => {
@@ -171,20 +124,22 @@ describe('KnowledgeRetrievalV2Panel', () => {
 
   it('lists the selected spaces by name and routes recall changes to the node config', async () => {
     const user = userEvent.setup()
-    renderPanel()
+    const { data } = renderPanel()
 
     expect(await screen.findByText('Product docs')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'recall top 10' }))
-    expect(configState.handleTopNChange).toHaveBeenCalledWith(12)
+    expect(data().top_n).toBe(12)
+    expect(screen.getByRole('button', { name: 'recall top 12' })).toBeInTheDocument()
   })
 
   it('keeps a selected space visible after it becomes unavailable so it can be removed', async () => {
     const user = userEvent.setup()
-    renderPanel(nodeData({ control_space_ids: ['space-2'] }))
+    const { data } = renderPanel(nodeData({ control_space_ids: ['space-2'] }))
 
     expect(await screen.findByText('Archived docs')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    expect(configState.handleSpacesChange).toHaveBeenCalledWith([])
+    expect(data().control_space_ids).toEqual([])
+    expect(screen.queryByText('Archived docs')).not.toBeInTheDocument()
   })
 
   it('offers only user metadata shared by every selected space with the same type', async () => {

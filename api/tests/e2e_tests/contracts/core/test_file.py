@@ -2,9 +2,10 @@ import json
 
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
-def test_file_to_dict():
+def test_file_to_dict() -> None:
     file = File(
         file_id="file1",
         tenant_id="tenant1",
@@ -19,7 +20,7 @@ def test_file_to_dict():
     assert "url" in file_dict
 
 
-def test_workflow_features_with_image():
+def test_workflow_features_with_image() -> None:
     # Create a feature dict that mimics the old structure with image config
     features = {
         "file_upload": {
@@ -31,13 +32,13 @@ def test_workflow_features_with_image():
     workflow = Workflow(
         tenant_id="tenant-1",
         app_id="app-1",
-        type="chat",
+        type=ModelWorkflowType("chat"),
         version="1.0",
         graph="{}",
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="user-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     # Get the converted features through the property

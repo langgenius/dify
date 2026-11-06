@@ -13,12 +13,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '..'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../../dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '../../menu'
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -112,17 +107,17 @@ describe('Popover anatomy', () => {
   it('places the backdrop above a parent menu and below the interactive popup', async () => {
     const backdropRef = React.createRef<HTMLDivElement>()
     const screen = await renderWithSafeViewport(
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem>Primary action</DropdownMenuItem>
+      <Menu modal={false}>
+        <MenuTrigger>Actions</MenuTrigger>
+        <MenuContent>
+          <MenuItem>Primary action</MenuItem>
           <Popover modal="trap-focus">
-            <DropdownMenuItem
+            <MenuItem
               closeOnClick={false}
               render={<PopoverTrigger nativeButton={false} render={<div />} />}
             >
               More options
-            </DropdownMenuItem>
+            </MenuItem>
             <PopoverPortal>
               <PopoverBackdrop ref={backdropRef} />
               <PopoverPositioner side="right" align="start">
@@ -134,8 +129,8 @@ describe('Popover anatomy', () => {
               </PopoverPositioner>
             </PopoverPortal>
           </Popover>
-        </DropdownMenuContent>
-      </DropdownMenu>,
+        </MenuContent>
+      </Menu>,
     )
 
     await screen.getByRole('button', { name: 'Actions' }).click()

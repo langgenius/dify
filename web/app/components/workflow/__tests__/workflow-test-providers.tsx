@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { EditorResource } from '../editor-resource/resource'
+import type { TestEditorResource } from '../editor-resource/__tests__/fixture-resource'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { InjectWorkflowStoreSliceFn, Shape } from '../store/workflow'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
@@ -11,11 +11,12 @@ import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   seedAppDetail,
   seedAppDslVersion,
-  seedKnowledgeFsFeatures,
+  seedFeatures,
   seedSystemFeatures,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { WorkflowContext } from '../context'
+import { editorResourceForTest } from '../editor-resource/__tests__/fixture-resource'
 import { EditorResourceScope } from '../editor-resource/provider'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -51,7 +52,7 @@ type HistoryStoreConfig = {
 
 export type WorkflowProviderOptions = {
   injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn
-  resource?: EditorResource
+  resource?: TestEditorResource
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
@@ -76,7 +77,12 @@ export function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
   externalQueryClient?: QueryClient,
-  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  resource: TestEditorResource = {
+    kind: 'app',
+    appId: 'app-1',
+    mode: 'workflow',
+    collaborationEnabled: false,
+  },
 ) {
   if (historyConfig) {
     stores.store.temporal.getState().pause()
@@ -97,8 +103,9 @@ export function createWorkflowWrapper(
       },
     })
   if (!externalQueryClient) seedSystemFeatures(queryClient)
-  // The node catalog reads KnowledgeFS availability; keep it unavailable unless a suite seeds it.
-  if (!externalQueryClient) seedKnowledgeFsFeatures(queryClient)
+  // The node catalog suspends on workspace features; keep KnowledgeFS unavailable unless a suite seeds it.
+  if (queryClient.getQueryData(consoleQuery.features.get.queryKey()) === undefined)
+    seedFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
   if (resource.kind === 'app') {
@@ -124,7 +131,7 @@ export function createWorkflowWrapper(
 
   return ({ children }: { children: ReactNode }) => (
     <QueryClientWrapper>
-      <EditorResourceScope resource={resource}>
+      <EditorResourceScope resource={editorResourceForTest(resource)}>
         <WorkflowContext value={stores.store}>
           {stores.hooksStore ? (
             <HooksStoreContext value={stores.hooksStore}>{children}</HooksStoreContext>

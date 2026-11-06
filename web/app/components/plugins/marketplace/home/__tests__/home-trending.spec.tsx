@@ -37,16 +37,19 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
 }))
 
 // Keep real dialogs and message handling without loading external documents.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-    getTemplateLinkInMarketplace: (
-      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
-    ) =>
-      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
+      template: (...args: Parameters<typeof actual.marketplaceLinks.template>) =>
+        toBlank(actual.marketplaceLinks.template(...args)),
+    },
   }
 })
 
@@ -174,7 +177,7 @@ const originalNavigation = navigationSettings.disableMainFrameNavigation
 
 beforeEach(() => {
   navigationSettings.disableMainFrameNavigation = true
-  document.body.setAttribute('data-is-marketplace', '')
+  document.documentElement.setAttribute('data-is-marketplace', '')
   window.__marketplaceTracking__ = {
     track: mockTrackMarketplaceSiteEvent,
     rememberReferrer: vi.fn(),
@@ -187,7 +190,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete window.__marketplaceTracking__
-  document.body.removeAttribute('data-is-marketplace')
+  document.documentElement.removeAttribute('data-is-marketplace')
   navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -770,6 +773,57 @@ describe('HomeTrending', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('renders persisted emoji-mart IDs on recommend template cards as native emoji', () => {
+    const banner: PluginBanner = {
+      id: 'recommend-template-emoji',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'newest',
+        cards: [
+          {
+            item_type: 'template',
+            item_id: 'tpl-emoji-id',
+            display_name: 'Prompt Helper',
+            icon: 'face_with_monocle',
+            icon_background: '#FFEAD5',
+            link: '/templates/tpl-emoji-id',
+            card_position: 0,
+          },
+          {
+            item_type: 'template',
+            item_id: 'tpl-native-emoji',
+            display_name: 'Offer Arena',
+            icon: '🤖',
+            icon_background: '#FFEAD5',
+            link: '/templates/tpl-native-emoji',
+            card_position: 1,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[banner]} isMarketplacePlatform page="templates" />)
+
+    const emojiIdCard = screen.getByRole('link', { name: 'Prompt Helper' })
+    expect(within(emojiIdCard).getByText('🧐')).toBeInTheDocument()
+    expect(within(emojiIdCard).queryByText('face_with_monocle')).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('link', { name: 'Offer Arena' })).getByText('🤖'),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps standalone recommend plugin cards on local detail routes', () => {
+    render(<HomeTrending banners={[banners[0]!]} isMarketplacePlatform page="plugins" />)
+
+    expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
+      'href',
+      '/plugin/langgenius/dropbox',
+    )
+  })
+
   it('clamps the active slide when a refetch shrinks the banner list', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
@@ -791,11 +845,11 @@ describe('HomeTrending', () => {
   })
 
   describe('mobile swipe', () => {
-    const stubViewport = (isMobile: boolean) =>
+    const stubViewport = (isNarrow: boolean) =>
       vi.spyOn(window, 'matchMedia').mockImplementation(
         (query) =>
           ({
-            matches: isMobile && query === '(max-width: 879px)',
+            matches: isNarrow && query === '(max-width: 879px)',
             media: query,
             onchange: null,
             addEventListener: vi.fn(),
@@ -885,10 +939,18 @@ describe('HomeTrending', () => {
     })
 
     it.each([
-      { name: 'a vertical gesture on mobile', isMobile: true, end: [270, 300] as [number, number] },
-      { name: 'touch input on desktop', isMobile: false, end: [80, 160] as [number, number] },
-    ])('stays on the current slide for $name', ({ isMobile, end }) => {
-      stubViewport(isMobile)
+      {
+        name: 'a vertical gesture on a narrow viewport',
+        isNarrow: true,
+        end: [270, 300] as [number, number],
+      },
+      {
+        name: 'touch input on a wide viewport',
+        isNarrow: false,
+        end: [80, 160] as [number, number],
+      },
+    ])('stays on the current slide for $name', ({ isNarrow, end }) => {
+      stubViewport(isNarrow)
       renderCarousel()
 
       swipe(screen.getByRole('group', { name: 'Trending' }), [[300, 120], end])

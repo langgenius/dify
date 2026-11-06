@@ -540,7 +540,7 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                 )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
-            except (ValueError, ValidationError) as exc:
+            except ValueError as exc:
                 raise KnowledgeFSLifecycleRemoteError(
                     "KNOWLEDGE_FS_RESPONSE_INVALID", "KnowledgeFS returned invalid lifecycle JSON"
                 ) from exc

@@ -16,6 +16,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchMoreLikeThis,
@@ -39,6 +40,7 @@ type IGenerationItemProps = {
   className?: string
   isError: boolean
   onRetry: () => void
+  prepareHumanInputSubmission?: () => Promise<boolean>
   content: any
   messageId?: string | null
   conversationId?: string
@@ -50,7 +52,7 @@ type IGenerationItemProps = {
   feedback?: FeedbackType
   onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
-  isMobile?: boolean
+  isBelowMd?: boolean
   appSourceType: AppSourceType
   installedAppId?: string
   taskId?: string
@@ -69,6 +71,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
   onRetry,
+  prepareHumanInputSubmission,
   content,
   messageId,
   isLoading,
@@ -79,7 +82,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onFeedback,
   onSave,
   depth = 1,
-  isMobile,
+  isBelowMd,
   appSourceType,
   installedAppId,
   taskId,
@@ -124,7 +127,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     feedback: childFeedback,
     onSave,
     isShowTextToSpeech,
-    isMobile,
+    isBelowMd,
     appSourceType,
     installedAppId,
     controlClearMoreLikeThis,
@@ -192,11 +195,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (appSourceType === AppSourceType.installedApp)
-        await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const { form_version: formVersion, ...submission } = formData
+      if (appSourceType === AppSourceType.installedApp) {
+        await submitHumanInputFormService(formToken, submission, formVersion)
+      } else {
+        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+        await submitHumanInputForm(formToken, submission, formVersion)
+      }
     },
-    [appSourceType],
+    [appSourceType, prepareHumanInputSubmission],
   )
 
   return (
@@ -237,11 +245,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {!workflowProcessData && taskId && (
                 <div
                   className={cn(
-                    'sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary',
+                    'sticky inset-s-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary',
                     isError && 'text-text-destructive',
                   )}
                 >
-                  <RiPlayList2Line className="mr-1 size-3" />
+                  <RiPlayList2Line className="me-1 size-3" />
                   <span>{t(($) => $['generation.execution'], { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
@@ -262,10 +270,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div
               className={cn(
                 'relative mt-1 h-4 px-4 system-xs-regular text-text-quaternary',
-                isMobile &&
+                isBelowMd &&
                   (childMessageId || isQuerying) &&
                   depth < MAX_GENERATION_DEPTH &&
-                  'pl-10',
+                  'ps-10',
               )}
             >
               {!isWorkflow && (
@@ -274,7 +282,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </span>
               )}
               {/* action buttons */}
-              <div className="absolute right-2 bottom-1 flex items-center">
+              <div className="absolute inset-e-2 bottom-1 flex items-center">
                 <GenerationActionGroups
                   appSourceType={appSourceType}
                   content={content}
@@ -304,14 +312,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div
                 className={cn(
                   'absolute -top-8 flex h-8.25 w-4 justify-center',
-                  isMobile ? 'left-4.25' : 'left-[50%] translate-x-[-50%]',
+                  isBelowMd ? 'inset-s-4.25' : 'inset-s-[50%] translate-x-[-50%]',
                 )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>
                 <div
                   className={cn(
-                    'absolute left-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
-                    isMobile ? 'top-[3.5px]' : 'top-2',
+                    'absolute inset-s-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
+                    isBelowMd ? 'top-[3.5px]' : 'top-2',
                   )}
                 >
                   <RiSparklingFill className="size-3 text-text-primary-on-surface" />

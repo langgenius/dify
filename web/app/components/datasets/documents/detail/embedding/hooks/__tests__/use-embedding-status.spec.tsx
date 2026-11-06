@@ -257,7 +257,10 @@ describe('use-embedding-status', () => {
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalledOnce()
-        expect(mockPauseDocIndexing).toHaveBeenCalledWith({ datasetId: 'ds1', documentId: 'doc1' })
+        expect(mockPauseDocIndexing).toHaveBeenCalledWith(
+          { datasetId: 'ds1', documentId: 'doc1' },
+          undefined,
+        )
       })
     })
 
@@ -298,7 +301,10 @@ describe('use-embedding-status', () => {
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalledOnce()
-        expect(mockResumeDocIndexing).toHaveBeenCalledWith({ datasetId: 'ds1', documentId: 'doc1' })
+        expect(mockResumeDocIndexing).toHaveBeenCalledWith(
+          { datasetId: 'ds1', documentId: 'doc1' },
+          undefined,
+        )
       })
     })
   })
