@@ -1626,3 +1626,121 @@ def test_edge_only_wiring_of_historical_retrieval_does_not_change_native_binding
     assert vetted.applicable == [intent]
     assert vetted.rejections == []
     assert graph == before
+
+
+def test_repair_validation_details_distinguish_structural_native_and_semantic_without_values() -> None:
+    structural = vet_intents(
+        _scoring_graph(),
+        [
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "branch", "path": "cases.900.conditions", "value": "SECRET_VALUE"},
+            )
+        ],
+    )
+    assert structural.validation_details[0]["stage"] == "operation"
+    assert structural.validation_details[0]["reason_code"] == "invalid_path"
+    assert structural.validation_details[0]["op"] == "set_node_config"
+    assert structural.validation_details[0]["path"] == ["cases", "*", "conditions"]
+
+    native = vet_intents(
+        _scoring_graph(),
+        [
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "branch", "path": "cases.0.conditions.0.comparison_operator", "value": "SECRET_VALUE"},
+            )
+        ],
+    )
+    assert native.validation_details[0]["stage"] == "native_config"
+    assert native.validation_details[0]["reason_code"] == "literal_error"
+    assert native.validation_details[0]["path"] == ["cases", "*", "conditions", "*", "comparison_operator"]
+    assert native.validation_details[0]["node_index"] == 1
+    assert native.would_run_wrong == []
+    assert "SECRET_VALUE" not in json.dumps(native.validation_details)
+    output_graph = _code_node(code="def main():\n    return {}", code_language="python3", outputs={}, variables=[])
+    output_refusal = vet_intents(
+        output_graph,
+        [
+            MutationIntent(
+                op="set_node_config",
+                args={
+                    "node_id": "code1",
+                    "path": "outputs",
+                    "value": {
+                        "SECRET_OUTPUT_NAME": {"type": "SECRET_TYPE", "children": {"SECRET_NESTED": "SECRET_VALUE"}}
+                    },
+                },
+            )
+        ],
+    )
+    assert output_refusal.validation_details
+    assert all(detail["stage"] == "native_config" for detail in output_refusal.validation_details)
+    assert "SECRET" not in json.dumps(output_refusal.validation_details)
+
+
+def test_validation_metadata_never_copies_unknown_operation_node_or_path_strings() -> None:
+    marker = "SECRET_MARKER"
+    graph = _scoring_graph()
+    graph["nodes"][1]["id"] = marker
+    refused = vet_intents(
+        graph,
+        [
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": marker, "path": marker + "." + "x" * 10000, "value": {marker: marker}},
+            ),
+            MutationIntent(op=marker, args={marker: marker}),
+        ],
+    )
+    assert len(refused.validation_details) == 2
+    assert refused.validation_details[0]["node_index"] == 1
+    assert refused.validation_details[0]["path"] == ["unknown", "unknown"]
+    assert refused.validation_details[1]["reason_code"] == "unknown_operation"
+    assert "op" not in refused.validation_details[1]
+    assert marker not in json.dumps(refused.validation_details)
+    assert "x" * 100 not in json.dumps(refused.validation_details)
+
+
+@pytest.mark.parametrize(
+    ("op", "args", "reason"),
+    [
+        ("private-unknown-op", {"value": "__DIFY_BUILDER_REDACTED__"}, "unknown_operation"),
+        ("set_node_config", {"value": "__DIFY_BUILDER_REDACTED__"}, "missing_argument"),
+        (
+            "set_node_config",
+            {"node_id": "branch", "path": "title", "value": "__DIFY_BUILDER_REDACTED__"},
+            "redacted_value",
+        ),
+    ],
+)
+def test_validation_observation_preserves_existing_first_refusal_priority(
+    op: str, args: dict[str, object], reason: str
+) -> None:
+    vetted = vet_intents(_scoring_graph(), [MutationIntent(op=op, args=args)])
+    assert vetted.applicable == []
+    assert len(vetted.rejections) == 1
+    assert vetted.validation_details[0]["reason_code"] == reason
+    assert "__DIFY_BUILDER_REDACTED__" not in json.dumps(vetted.validation_details)
+
+
+def test_native_validation_crash_is_fixed_unknown_category_without_exception_text() -> None:
+    graph: Graph = {"nodes": [_http_node("h", {"type": "no-auth"})], "edges": []}
+    vetted = vet_intents(
+        graph,
+        [
+            MutationIntent(
+                op="set_node_config",
+                args={
+                    "node_id": "h",
+                    "path": "authorization",
+                    "value": {"type": "PRIVATE_INVALID_AUTH", "config": {"type": "bearer", "api_key": "PRIVATE_TOKEN"}},
+                },
+            )
+        ],
+    )
+    assert vetted.validation_details == (
+        {"stage": "native_config", "reason_code": "native_validation_exception", "node_index": 0},
+    )
+    assert "PRIVATE_TOKEN" not in json.dumps(vetted.validation_details)
+    assert vetted.would_run_wrong == []
