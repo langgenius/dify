@@ -1652,12 +1652,12 @@ export const byAppId = {
 }
 
 /**
- * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
+ * List accessible Chat, Completion, legacy Agent, Chatflow, Workflow and Agent WebApps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
  */
 export const get14 = oc
   .route({
     description:
-      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.',
+      'List accessible Chat, Completion, legacy Agent, Chatflow, Workflow and Agent WebApps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeApps',
@@ -2242,11 +2242,15 @@ export const site = {
  * except it is intended for use by the web app, instead of the console dashboard.
  *
  * Authentication configuration must be available before the authentication flow can be selected.
+ * No Account, App Passport, or app code is required. Return the configured
+ * Account sign-in URL, preserving its base path, or null when disabled.
+ * Read deployment settings without issuing credentials or changing state;
+ * feature-query failures propagate unchanged.
  */
 export const get27 = oc
   .route({
     description:
-      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
+      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.\nNo Account, App Passport, or app code is required. Return the configured\nAccount sign-in URL, preserving its base path, or null when disabled.\nRead deployment settings without issuing credentials or changing state;\nfeature-query failures propagate unchanged.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',

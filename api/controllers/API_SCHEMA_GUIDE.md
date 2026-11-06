@@ -44,6 +44,21 @@ Route excluded values to their actual owner:
   and failure cost explicitly.
 - Load large, slow, or page-specific data lazily through a consumer-owned query.
 
+### Web Account login discovery
+
+The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
+`WebSystemFeatureResponse`. Its required nullable `account_login_url` lets anonymous
+WebApp clients discover the Account-origin sign-in page even when `/account/profile`
+returns 401. It is derived only from `CONSOLE_WEB_URL` and
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED`; null means Account login is disabled. The Console
+endpoint and shared `SystemFeatureModel` remain unchanged.
+
+This extension adds one scalar to the existing Web bootstrap request, no extra I/O,
+and no credentials. Existing SSR timing, caching ownership, and query failure behavior
+are unchanged. Clients must not interpret a failed bootstrap request or a missing
+field as confirmed disabled login. App-specific return targets and PKCE proofs remain
+owned by the existing login handoff, not the public bootstrap response.
+
 ### Agent tracing deployment discovery exception
 
 `agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication

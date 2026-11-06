@@ -17,8 +17,8 @@ from services.consumer_service import ConsumerAppsQuery
 from tests.helpers.consumer import make_consumer_harness
 
 
-@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.CHAT])
-@pytest.mark.parametrize("source", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+@pytest.mark.parametrize("mode", list(AppMode))
+@pytest.mark.parametrize("source", list(InvokeFrom))
 @pytest.mark.parametrize("actor", ["browser", "guest", "account"])
 def test_only_accepted_account_browser_webapp_executions_record_usage(
     sqlite_session_factory: sessionmaker[Session],
@@ -50,7 +50,9 @@ def test_only_accepted_account_browser_webapp_executions_record_usage(
         assert AppGenerateService.generate(app, user, {}, source, session=session) is accepted
     with base.sessions() as session:
         count = session.scalar(sa.select(sa.func.count()).select_from(AccountWebApp))
-        assert count == int(actor == "browser" and source == InvokeFrom.WEB_APP and mode != AppMode.CHAT)
+        assert count == int(
+            actor == "browser" and source == InvokeFrom.WEB_APP and mode not in (AppMode.CHANNEL, AppMode.RAG_PIPELINE)
+        )
         first_used_at = session.scalar(
             sa.select(Account.first_app_used_at).where(Account.id == harness.identity.account_id)
         )
