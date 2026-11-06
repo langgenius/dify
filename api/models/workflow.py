@@ -24,6 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.workflow import EDITABLE_SYSTEM_VARIABLE_NAMES
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
@@ -1577,10 +1578,6 @@ class ConversationVariable(TypeBase):
         return variable_factory.build_conversation_variable_from_mapping(mapping)
 
 
-# Only `sys.query` and `sys.files` could be modified.
-_EDITABLE_SYSTEM_VARIABLE = frozenset(("query", "files"))
-
-
 class WorkflowDraftVariable(TypeBase):
     """`WorkflowDraftVariable` record variables and outputs generated during
     debugging workflow or chatflow.
@@ -2134,7 +2131,8 @@ class WorkflowDraftVariableFile(TypeBase):
 
 
 def is_system_variable_editable(name: str) -> bool:
-    return name in _EDITABLE_SYSTEM_VARIABLE
+    """Preserve the legacy model helper using the shared editable-system-variable names."""
+    return name in EDITABLE_SYSTEM_VARIABLE_NAMES
 
 
 class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
