@@ -2,7 +2,7 @@
 
 The backend uses a ports-and-adapters architecture, with application services orchestrating domain aggregates and domain services where business complexity warrants them. Each business capability is a slice. Application services own the use cases and declare ports for everything they need from outside. Adapters implement those ports, and a thin transport layer admits requests and translates them. One composition root connects the parts. The [API agent guide](../api/AGENTS.md) requires reading this document before backend changes; this document explains the architecture and how to review it. The legacy execution kernel is migration-only: never propose new files or extracted implementations there.
 
-Most existing services are application services: they coordinate use cases, persistence, and other capabilities. Migrated slices primarily work with plain records, so business rules still collect in application services and repositories. The dedicated `api/domain/` package described below is a target for new or extracted domain code; it does not exist yet.
+Most existing services are application services: they coordinate use cases, persistence, and other capabilities. Migrated slices primarily work with plain records, so business rules still collect in application services and repositories. New or extracted domain code goes in the dedicated `api/domain/` package described below, which holds the domain models extracted so far, such as workflow comments.
 
 Class names do not establish architectural roles. For example, [`WorkflowRunAgg`](../api/services/workflow_run_agg.py) coordinates execution, persistence, and publication and depends on concrete repositories and runtime infrastructure. It is an application orchestration component with legacy coupling, not a pure DDD aggregate. Extract its business behavior before moving anything into the domain package; moving or renaming the whole class would not establish the boundary.
 
@@ -65,19 +65,19 @@ A domain operation may return or record a plain domain event describing a busine
 
 Place pure domain code under `api/domain/<business_area>/`, grouped by business capability. Keep application use cases and their ports under `api/services/`, persistence adapters under `api/repositories/`, and wiring in `api/extensions/ext_application_services.py` and its `application_services/` modules. Existing runtime adapter locations can remain where they are. The new domain package creates an explicit boundary without requiring a rename of the application-service tree.
 
-For example, a future extraction of workflow comment behavior could use this layout. These domain files are illustrative, not existing modules or required scaffolding:
+For example, the workflow comment slice uses this layout:
 
 ```text
 api/
   domain/
     workflow_comments/
-      workflow_comment_agg.py  # WorkflowCommentAgg and its owned domain types
-      mention_policy.py       # Pure recipient eligibility policy, if needed
-      errors.py               # Business failures, if separate errors are needed
+      workflow_comment_agg.py  # WorkflowCommentAgg, its child entity, value objects, and domain event
+      errors.py                # Business failures the application service translates
   services/
     app/
       workflow_comment_service.py          # Use cases, records, and ports
-      workflow_comment_mention_gateway.py  # Existing delivery adapter
+      workflow_comment_errors.py           # Application errors the transport layer maps
+      workflow_comment_mention_gateway.py  # Delivery adapter
   repositories/
     app/
       workflow_comment_repository.py       # SQLAlchemy mapping and transactions
@@ -89,7 +89,7 @@ Keep an aggregate and its small child types together until separate modules are 
 
 Imports point from application services to domain code. Repositories may import domain types to reconstruct and persist aggregates, as well as the application ports they implement. Domain code never imports `services`, `repositories`, `models`, `controllers`, `extensions`, `configs`, `tasks`, or the legacy `core` package. It uses its own domain types, standard-library values, and pure helpers whose dependencies preserve this boundary. Transport continues to call application use cases and receive records. Keep each business area's domain internals private; another slice reaches it through application contracts and ports.
 
-The existing [`WorkflowCommentService`](../api/services/app/workflow_comment_service.py) demonstrates application orchestration: it calls a store and then a notifier. In a domain extraction, comment content rules, creator-only edits, and resolution transitions can belong to `WorkflowCommentAgg`; a recipient policy can operate on supplied mention and membership facts if it needs a separate owner. The application service still obtains those facts and coordinates the save and notification, the repository still enforces owner scope and concurrency, and the existing Celery adapter still performs delivery. Do not move the store or notifier into the aggregate.
+In that slice, [`WorkflowCommentAgg`](../api/domain/workflow_comments/workflow_comment_agg.py) owns the comment content rules, creator-only edits, and the one-way resolution, and its mention value object keeps only the workspace members it is given. [`WorkflowCommentService`](../api/services/app/workflow_comment_service.py) obtains those membership facts, applies one behavior inside a repository change, translates the domain's failures into the slice's errors, and sends notifications for the aggregate's mention events after the commit. The repository enforces owner scope and concurrency by locking the comment row for the change, and the existing Celery adapter performs delivery. The store and the notifier stay out of the aggregate.
 
 ## Adapters
 
@@ -139,7 +139,7 @@ Post-commit dispatch alone does not guarantee delivery: a process can fail betwe
 
 Every new or migrated slice adds two import-boundary contracts in the same change. One keeps the application module free of framework, persistence, configuration, task-queue, and transport imports. The other keeps the handler from reaching persistence except through the composition root. The legacy layering baseline only shrinks: never add an exception, and remove the exception for each dependency a migration eliminates.
 
-When the first domain package is introduced, add `domain` to the root packages in `api/.importlinter` and add a domain contract covering aggregates, entities, value objects, and domain services. Forbid application, persistence, framework, configuration, queue, transport, and legacy-kernel dependencies, including indirect imports through helpers. Preserve each slice's application and transport contracts; the domain rule supplements them. Import checks do not detect I/O hidden behind injected capabilities, so review signatures and behavior as well. The package and this enforcement must land together; this document alone does not add lint enforcement.
+`api/.importlinter` lists `domain` among its root packages, and its `domain-boundary` contract covers aggregates, entities, value objects, and domain services. It forbids application, persistence, framework, configuration, queue, transport, and legacy-kernel dependencies, including indirect imports through helpers. Preserve each slice's application and transport contracts; the domain rule supplements them. Import checks do not detect I/O hidden behind injected capabilities, so review signatures and behavior as well.
 
 ## Migrating legacy code
 
