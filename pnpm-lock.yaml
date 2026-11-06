@@ -600,8 +600,8 @@ catalogs:
       specifier: 1.5.0
       version: 1.5.0
     katex:
-      specifier: 0.17.0
-      version: 0.17.0
+      specifier: 0.18.2
+      version: 0.18.2
     knip:
       specifier: 6.44.0
       version: 6.44.0
@@ -1690,7 +1690,7 @@ importers:
         version: 1.5.0
       katex:
         specifier: 'catalog:'
-        version: 0.17.0
+        version: 0.18.2
       ky:
         specifier: 'catalog:'
         version: 2.2.0
@@ -7205,8 +7205,8 @@ packages:
     resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
     hasBin: true
 
-  katex@0.17.0:
-    resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
+  katex@0.18.2:
+    resolution: {integrity: sha512-3snve4y0SXTMequLim1FMiPvLGElySam0blN5xQZBqEY3lOJz1TnuaaiugnBZBqHzlSAGmFTYL7MCQkORuLKCA==}
     hasBin: true
 
   keyv@5.6.0:
@@ -14270,7 +14270,7 @@ snapshots:
     dependencies:
       commander: 8.3.0
 
-  katex@0.17.0:
+  katex@0.18.2:
     dependencies:
       commander: 8.3.0
 
@@ -17094,7 +17094,7 @@ time:
   js-yaml@5.5.0: '2026-10-15T23:28:37.500Z'
   jsonc-eslint-parser@3.3.0: '2026-08-08T01:15:58.520Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'
-  katex@0.17.0: '2026-05-22T08:06:26.967Z'
+  katex@0.18.2: '2026-08-08T11:55:16.681Z'
   knip@6.44.0: '2026-10-29T19:44:31.362Z'
   ky@2.2.0: '2026-10-09T06:32:47.556Z'
   lexical-code-no-prism@0.41.0: '2026-03-08T16:50:40.266Z'

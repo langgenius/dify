@@ -217,7 +217,7 @@ catalog:
   js-yaml: 5.5.0
   jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
-  katex: 0.17.0
+  katex: 0.18.2
   knip: 6.44.0
   ky: 2.2.0
   lexical: 0.47.0
