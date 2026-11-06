@@ -46,16 +46,15 @@ type CreateAppProps = {
 
 const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
-// The platform and theme are only known in the browser. The server snapshot keeps
-// the first client render equal to server-rendered markup, then the browser fills in.
+// The platform and theme are only known in the browser, so markup that depends on
+// them waits for hydration and the first client render matches the server markup.
 const noopSubscribe = () => () => {}
-const getHydratedSnapshot = () => true
-const getServerHydratedSnapshot = () => false
 const useHasHydrated = () =>
-  useSyncExternalStore(noopSubscribe, getHydratedSnapshot, getServerHydratedSnapshot)
-const getServerPlatformSnapshot = () => null
-const useBrowserPlatform = () =>
-  useSyncExternalStore(noopSubscribe, detectPlatform, getServerPlatformSnapshot)
+  useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  )
 
 const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
   return appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
@@ -179,7 +178,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  const platform = useBrowserPlatform()
+  const platform = useHasHydrated() ? detectPlatform() : null
   const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,

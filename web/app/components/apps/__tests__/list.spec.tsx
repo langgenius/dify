@@ -19,7 +19,6 @@ import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { mockIntersectionObserver } from '@/test/intersection-observer'
 import { AppACLPermission } from '@/utils/permission'
-import { templateDialogRequestedAtom } from '../creation-requests'
 import { List } from '../list'
 
 const api = vi.hoisted(() => ({
@@ -107,9 +106,8 @@ async function setup(
   searchParams = '',
   {
     waitForResults = true,
-    templateDialogRequested = false,
     ...options
-  }: ConsoleQueryTestOptions & { waitForResults?: boolean; templateDialogRequested?: boolean } = {},
+  }: ConsoleQueryTestOptions & { waitForResults?: boolean } = {},
   tour?: StepByStepTourSessionState,
 ) {
   api.searchParams = new URLSearchParams(searchParams)
@@ -129,7 +127,6 @@ async function setup(
   const store = createStore()
   store.set(queryClientAtom, queryClient)
   if (tour) store.set(stepByStepTourSessionAtom, tour)
-  if (templateDialogRequested) store.set(templateDialogRequestedAtom, true)
   const onUrlUpdate = vi.fn()
   const onCreateLearnDify = vi.fn()
   const onTryLearnDify = vi.fn()
@@ -510,7 +507,7 @@ it.each([
   },
 )
 
-it('follows browser history in and out of blank creation', async () => {
+it('closes blank creation when browser history leaves its URL', async () => {
   const { user } = await setup()
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
@@ -518,10 +515,6 @@ it('follows browser history in and out of blank creation', async () => {
 
   act(() => window.history.back())
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
-  act(() => window.history.forward())
-  expect(
-    await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),
-  ).toBeInTheDocument()
 })
 
 it('opens blank creation at its URL from the first empty state', async () => {
@@ -543,13 +536,6 @@ it('switches from blank creation to templates and leaves its URL', async () => {
     await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
   ).toBeInTheDocument()
   await waitFor(() => expect(window.location.pathname).toBe('/'))
-})
-
-it('opens the template dialog the blank creation route handed off to', async () => {
-  const { user } = await setup('', { templateDialogRequested: true })
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
-  await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
 it('opens blank creation from the template dialog', async () => {
