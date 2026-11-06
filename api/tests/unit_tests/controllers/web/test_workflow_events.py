@@ -60,7 +60,7 @@ def _workflow_run(
 # WorkflowEventsApi
 # ---------------------------------------------------------------------------
 class TestWorkflowEventsApi:
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_not_found(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
@@ -72,7 +72,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
@@ -85,7 +85,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_not_created_by_end_user(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
@@ -100,7 +100,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
@@ -114,7 +114,7 @@ class TestWorkflowEventsApi:
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.WorkflowResponseConverter")
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_finished_run_returns_sse_response(
         self, mock_db: MagicMock, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
@@ -135,7 +135,7 @@ class TestWorkflowEventsApi:
 
         assert response.mimetype == "text/event-stream"
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.workflow_storage")
     @patch("controllers.web.workflow_events.db")
     def test_snapshot_stream_can_continue_across_pauses(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch

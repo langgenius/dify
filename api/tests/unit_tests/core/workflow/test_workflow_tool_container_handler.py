@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from functools import partial
 from threading import Event, get_ident
 from types import TracebackType
-from typing import override
+from typing import Never, override
 
 import pytest
 from flask import current_app, g
@@ -35,8 +35,6 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
 )
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
@@ -140,10 +138,16 @@ from models import Account, ToolFile, UploadFile, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _workflow_tool_container_workflow_tool_node(
@@ -1753,6 +1757,7 @@ class TestWorkflowToolEventDeliveryCases:
                 user=user,
                 app_id="outer-app",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                upload_file=_unexpected_workflow_offload,
             ),
             trace_scope=None,
         )

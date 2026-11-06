@@ -16,6 +16,7 @@ from dify_trace_sdk.events import (
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services import workflow_storage
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.enums import (
@@ -33,7 +34,6 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
@@ -188,8 +188,8 @@ def outer_runs(sqlite_session: Session) -> None:
 def _assembler(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.example.com",
         enterprise_details=False,
     )
@@ -366,10 +366,7 @@ def test_workflow_trace_loads_only_descendants_of_its_owned_tools(
         monkeypatch.setattr(store, "execute_sql", execute_sql)
         apply_config_overrides(
             monkeypatch,
-            API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
-                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
-                "LogstoreAPIWorkflowNodeExecutionRepository"
-            ),
+            WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND="logstore",
         )
     run = sqlite_session.get(WorkflowRun, OUTER_RUN_ID)
     tool = sqlite_session.get(WorkflowNodeExecutionModel, TOOL_NODE_ID)

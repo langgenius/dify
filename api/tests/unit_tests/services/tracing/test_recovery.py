@@ -51,6 +51,7 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from domain.tracing.trace_run_agg import TraceInvocation, TraceRunState
 from events.event_handlers import update_provider_when_message_created as receiver
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks, bind_tracing
 from graphon.enums import WorkflowExecutionStatus
@@ -63,7 +64,6 @@ from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
@@ -149,10 +149,18 @@ class ScriptedProvider(TraceProvider[LangfuseConfig]):
 def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.test",
         enterprise_details=False,
+    )
+
+
+def trace_repository(sessions: sessionmaker[Session]) -> ApplicationTraceRepository:
+    return ApplicationTraceRepository(
+        sessions,
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
     )
 
 
@@ -225,7 +233,7 @@ def seed(sessions: sessionmaker[Session], name: str, *, capture_content: bool, c
                 },
             )
         )
-    repository = ApplicationTraceRepository(sessions)
+    repository = trace_repository(sessions)
     run = tracing_service(
         repository, record_source(sessions), RecordingEgress([], grpc_target=None), [], AGENT_TRACE_SETTINGS
     ).start(

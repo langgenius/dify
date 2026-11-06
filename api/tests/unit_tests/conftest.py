@@ -400,6 +400,7 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
     from extensions.ext_redis import redis_client
     from repositories.app.console_repository import ConsoleAppRepository
     from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+    from services.app_task_service import AppTaskControlService
     from services.app_tracing_config_service import AppTracingConfigService
     from services.recommended_app_package_service import RecommendedAppPackageService
 
@@ -413,6 +414,7 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
             provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+        tasks=AppTaskControlService(redis_client=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
 

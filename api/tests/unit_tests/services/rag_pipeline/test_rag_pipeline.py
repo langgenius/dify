@@ -276,11 +276,11 @@ class TestRagPipelineServiceCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> RagPipelineServiceTestContext:
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_node_execution_repository",
             return_value=MockRepo(),
         )
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+            "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_run_repository",
             return_value=MockRepo(),
         )
         mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
@@ -1134,7 +1134,7 @@ class TestRagPipelineServiceCases:
         # Mock Repository
         mock_repo_instance = mocker.Mock()
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository",
+            "services.rag_pipeline.rag_pipeline.create_workflow_node_execution_repository",
             return_value=mock_repo_instance,
         )
         # Repository._to_db_model is also called
@@ -1284,7 +1284,7 @@ class TestRagPipelineServiceCases:
 
         repo = mocker.Mock()
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.workflow_writers.create_workflow_node_execution_repository",
             return_value=repo,
         )
         rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
@@ -1320,7 +1320,7 @@ class TestRagPipelineServiceCases:
 
         repo = mocker.Mock()
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.workflow_writers.create_workflow_node_execution_repository",
             return_value=repo,
         )
         rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
@@ -2031,10 +2031,10 @@ class TestRagPipelineServiceCases:
     def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_session: Session) -> None:
         mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
         create_exec_repo = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository"
+            "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_node_execution_repository"
         )
         create_run_repo = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository"
+            "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_run_repository"
         )
 
         RagPipelineService(session=sqlite_session, session_maker=None)

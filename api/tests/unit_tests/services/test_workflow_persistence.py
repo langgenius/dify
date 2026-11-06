@@ -4,7 +4,7 @@ import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, override
+from typing import Any, Never, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,8 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
@@ -70,9 +68,11 @@ from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services import workflow_persistence as persistence_mod
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -93,6 +93,10 @@ in isolation by patching just the moving parts they touch
 the publisher module's call sites. This keeps the test compact and tied to
 the contract, not the implementation.
 """
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -381,6 +385,7 @@ def _make_sql_layer(session_factory, *, node_run_indices=None):
             user=user,
             app_id="caller-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=_unexpected_workflow_offload,
         ),
     )
     layer._application_generate_entity.app_config.app_id = "caller-app"

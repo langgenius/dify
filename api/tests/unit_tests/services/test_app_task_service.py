@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial
-from typing import override
+from typing import Never, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -31,7 +31,6 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
@@ -47,7 +46,9 @@ from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.logstore.schema import WORKFLOW_EXECUTION_LOGSTORE, WORKFLOW_NODE_EXECUTION_LOGSTORE
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
 
 """Injected workflow cancellation preserves both transport mechanisms."""
@@ -567,11 +568,11 @@ class TestAppTaskServiceCases:
         redis = _AppTaskServiceStopredis(values={_OWNER_KEY: cached_owner} if cached_owner else {})
         monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
         admissions: list[dict[str, object]] = []
-        repository_type = task_module.DifyAPISQLAlchemyWorkflowRunRepository
+        repository_type = DifyAPISQLAlchemyWorkflowRunRepository
         original_stop = repository_type.stop_paused_workflow_task
 
         def stop(
-            repository: task_module.DifyAPISQLAlchemyWorkflowRunRepository,
+            repository: DifyAPISQLAlchemyWorkflowRunRepository,
             *,
             tenant_id: str,
             app_id: str,
@@ -636,7 +637,7 @@ class TestAppTaskServiceCases:
         def reject_lookup(*_args: object, **_kwargs: object) -> None:
             pytest.fail("Invalid task IDs must be rejected before database lookup")
 
-        monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", reject_lookup)
+        monkeypatch.setattr(task_module.workflow_storage, "create_api_workflow_run_repository", reject_lookup)
         with pytest.raises(ValueError, match="Invalid task ID"):
             AppTaskService.stop_workflow_task(
                 tenant_id="tenant-1", app_id="app-1", task_id="not-a-uuid", app_mode=AppMode.WORKFLOW, owner=None
@@ -739,7 +740,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
             except KeyError as error:
                 raise FileNotFoundError(key) from error
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", load)
         return states
 
     @staticmethod
@@ -753,7 +754,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
         sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, recovery_redis: _LegacyWorkflowTaskRecoveryStopRedis
     ) -> AppTaskControlService:
         monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_engine))
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.delete", lambda _: None)
         monkeypatch.setattr(AppTaskService, "_persist_stopped_history", lambda _: None)
         monkeypatch.setattr(
             "core.workflow.nodes.agent_v2.session_store.WorkflowAgentWorkspaceStore.retire_workflow_run",
@@ -812,7 +813,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
         def reject_load(_key: str) -> bytes:
             pytest.fail("Unauthorized pauses must not reach snapshot storage")
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", reject_load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", reject_load)
         assert not _stop(recovery_service, context.get_generate_entity().task_id)
         sqlite_session.refresh(run)
         assert run.task_id is None
@@ -945,7 +946,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
                     concurrent_pause.resumed_at = datetime(2026, 10, 10, 1)
             return pause_states[key]
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", load)
         assert _stop(recovery_service, task_id)
         sqlite_session.refresh(run)
         assert run.task_id == task_id
@@ -971,7 +972,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
         def reject_load(_key: str) -> bytes:
             pytest.fail("Already indexed tasks must not read snapshots")
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", reject_load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", reject_load)
         assert _stop(recovery_service, context.get_generate_entity().task_id)
         sqlite_session.refresh(run)
         assert run.stop_requested_at is not None
@@ -999,7 +1000,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
         def reject_load(_key: str) -> bytes:
             pytest.fail("Ineligible runs must not read snapshots")
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", reject_load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", reject_load)
         assert not _stop(recovery_service, context.get_generate_entity().task_id)
         sqlite_session.refresh(run)
         assert run.task_id is None
@@ -1038,7 +1039,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
             assert not active_transactions
             return pause_states[key]
 
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", load)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", load)
         listeners: tuple[tuple[str, Callable[[Connection], None]], ...] = (
             ("begin", active_transactions.add),
             ("commit", active_transactions.discard),
@@ -1074,33 +1075,12 @@ class TestPausedWorkflowStopCases:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(
-            CORE_WORKFLOW_EXECUTION_REPOSITORY={
-                "sql": (
-                    "core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository"
-                ),
-                "celery": "core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository",
-                "logstore": (
-                    "extensions.logstore.repositories.logstore_workflow_execution_repository."
-                    "LogstoreWorkflowExecutionRepository"
-                ),
-            }[backend],
-            CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY={
-                "sql": (
-                    "core.repositories.sqlalchemy_workflow_node_execution_repository."
-                    "SQLAlchemyWorkflowNodeExecutionRepository"
-                ),
-                "celery": (
-                    "core.repositories.celery_workflow_node_execution_repository.CeleryWorkflowNodeExecutionRepository"
-                ),
-                "logstore": (
-                    "extensions.logstore.repositories.logstore_workflow_node_execution_repository."
-                    "LogstoreWorkflowNodeExecutionRepository"
-                ),
-            }[backend],
+            WORKFLOW_RUN_STORAGE_BACKEND="rdbms" if backend == "sql" else backend,
+            WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND="rdbms" if backend == "sql" else backend,
             LOGSTORE_DUAL_WRITE_ENABLED=False,
         )
         monkeypatch.setattr(
-            "repositories.sqlalchemy_api_workflow_run_repository.naive_utc_now", lambda: datetime(2026, 10, 10, 0, 1)
+            "repositories.workflow.pause_repository.naive_utc_now", lambda: datetime(2026, 10, 10, 0, 1)
         )
         logstore_records: dict[str, list[dict[str, str]]] = {}
         monkeypatch.setattr(AliyunLogStore, "_instance", None)
@@ -1115,11 +1095,11 @@ class TestPausedWorkflowStopCases:
         queued_node_saves: list[object] = []
         queued_saves: list[object] = []
         monkeypatch.setattr(
-            "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_executions_task.delay",
+            "repositories.workflow.celery_node_execution_writer.save_workflow_node_executions_task.delay",
             lambda *args, **kwargs: queued_node_saves.append((args, kwargs)),
         )
         monkeypatch.setattr(
-            "core.repositories.celery_workflow_execution_repository.save_workflow_execution_task.delay",
+            "repositories.workflow.celery_execution_writer.save_workflow_execution_task.delay",
             lambda *args, **kwargs: queued_saves.append((args, kwargs)),
         )
         run = WorkflowRun(
@@ -1143,6 +1123,11 @@ class TestPausedWorkflowStopCases:
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
         sqlite_session.add_all([run, pause])
         sqlite_session.commit()
+
+        def unexpected_upload(*, filename: str, content: bytes) -> Never:
+            """Fail without uploading if this small-payload fixture unexpectedly triggers offload."""
+            pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
+
         for node_app, origin in (
             ("app-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
             ("source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
@@ -1153,6 +1138,7 @@ class TestPausedWorkflowStopCases:
                 user=EndUser(id="user-1"),
                 app_id=node_app,
                 triggered_from=origin,
+                upload_file=unexpected_upload,
             ).save(
                 WorkflowNodeExecution(
                     id=f"node-{node_app}",
@@ -1171,7 +1157,7 @@ class TestPausedWorkflowStopCases:
         monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
         redis = _PausedWorkflowStopStopRedis()
         monkeypatch.setattr(task_module, "redis_client", redis)
-        monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
+        monkeypatch.setattr("repositories.workflow.pause_repository.storage.delete", lambda _: None)
         calls: list[str] = []
 
         def retire(*, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
@@ -1230,12 +1216,12 @@ class TestPausedWorkflowStopCases:
         assert redis.operations == []
         assert queued_saves == []
         if backend == "logstore":
-            assert len(logstore_records[AliyunLogStore.workflow_execution_logstore]) == 1
-            history = logstore_records[AliyunLogStore.workflow_execution_logstore][0]
+            assert len(logstore_records[WORKFLOW_EXECUTION_LOGSTORE]) == 1
+            history = logstore_records[WORKFLOW_EXECUTION_LOGSTORE][0]
             assert history["status"] == "stopped"
             assert float(history["elapsed_time"]) == 1
             assert (history["tenant_id"], history["app_id"], history["id"]) == ("tenant-1", "app-1", "run-1")
-            node_history = logstore_records[AliyunLogStore.workflow_node_execution_logstore]
+            node_history = logstore_records[WORKFLOW_NODE_EXECUTION_LOGSTORE]
             assert all(float(record["elapsed_time"]) == 60 for record in node_history)
             assert all(
                 json.loads(record["process_data"])["__dify_retry_history"][0]["error"] == "retry failed"

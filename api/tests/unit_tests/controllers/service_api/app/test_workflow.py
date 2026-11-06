@@ -34,6 +34,7 @@ from controllers.service_api.app.workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services import workflow_storage
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from libs.helper import dump_response
@@ -393,9 +394,7 @@ class TestWorkflowCases:
             run = _make_workflow_run(run_id=str(uuid.uuid4()))
             sqlite_session.add(run)
             sqlite_session.commit()
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            repo = workflow_storage.create_api_workflow_run_repository(
                 sessionmaker(bind=sqlite_engine, expire_on_commit=False)
             )
 

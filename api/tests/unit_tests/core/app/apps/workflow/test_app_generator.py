@@ -4,6 +4,7 @@ import contextlib
 import contextvars
 import json
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -31,8 +32,7 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import build_file_reference
 from core.workflow.node_runtime import resolve_dify_run_context
@@ -46,11 +46,17 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.file_request_service import FileRequestService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 class _TraceRecorder:
@@ -185,6 +191,7 @@ def _repositories(
             user=end_user,
             app_id=app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=_unexpected_workflow_offload,
         ),
     )
 
@@ -330,11 +337,9 @@ class TestWorkflowAppGeneratorCases:
             "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
         )
         repository_tenant_ids: dict[str, str] = {}
-        workflow_execution_factory = (
-            _workflow_app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository
-        )
+        workflow_execution_factory = _workflow_app_generator.workflow_writers.create_workflow_execution_repository
         workflow_node_execution_factory = (
-            _workflow_app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository
+            _workflow_app_generator.workflow_writers.create_workflow_node_execution_repository
         )
 
         def create_workflow_execution_repository(**kwargs):
@@ -346,11 +351,11 @@ class TestWorkflowAppGeneratorCases:
             return workflow_node_execution_factory(**kwargs)
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
             create_workflow_execution_repository,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
             create_workflow_node_execution_repository,
         )
         monkeypatch.setattr(
@@ -1179,11 +1184,11 @@ class TestAppGeneratorExtraCases:
                 lambda **kwargs: app_config,
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
@@ -1242,11 +1247,11 @@ class TestAppGeneratorExtraCases:
                 lambda **kwargs: app_config,
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(

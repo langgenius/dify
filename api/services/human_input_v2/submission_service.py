@@ -15,6 +15,7 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId, WorkspaceScope
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from extensions.application_services import workflow_storage
 from factories.file_factory import build_from_mapping
 from factories.human_input_v2_form_presentation import refresh_form_file_urls
 from graphon.enums import WorkflowExecutionStatus
@@ -22,7 +23,6 @@ from graphon.file import FileUploadConfig
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
 from libs.datetime_utils import naive_utc_now
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.contact import ContactType
 from repositories.human_input_v2.delivery_repository import (
     Delivery,
@@ -361,9 +361,7 @@ class HumanInputSubmissionService:
             form = authorized.form
             if form.workflow_run_id is not None:
                 # Keep the run-before-form lock order shared with expiration.
-                workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                    self._session_factory
-                )
+                workflow_run_repository = workflow_storage.create_api_workflow_run_repository(self._session_factory)
                 run = workflow_run_repository.get_workflow_run_by_id_for_update(
                     session,
                     tenant_id=form.tenant_id,
@@ -730,7 +728,7 @@ class HumanInputSubmissionService:
                 raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
             should_resume = False
             if form.workflow_run_id is not None:
-                repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+                repository = workflow_storage.create_api_workflow_run_repository(self._session_factory)
                 run = repository.get_workflow_run_by_id_for_update(
                     session, tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
                 )

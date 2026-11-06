@@ -42,10 +42,10 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
-from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
 from factories import file_factory
@@ -247,7 +247,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
-            workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
@@ -255,7 +255,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
             # Create workflow node execution repository
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
@@ -385,7 +385,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -393,7 +393,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -478,7 +478,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -486,7 +486,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,

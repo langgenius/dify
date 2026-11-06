@@ -20,16 +20,13 @@ from models import WorkflowRun, WorkflowRunTriggeredFrom
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowPause
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from repositories.sqlalchemy_api_workflow_run_repository import (
-    DifyAPISQLAlchemyWorkflowRunRepository,
-    WorkflowRunMessageRef,
-    WorkflowRunPauseRecord,
-    _PrivateWorkflowPauseEntity,
-)
+from repositories.workflow.pause_repository import _PrivateWorkflowPauseEntity
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services import workflow_run_service as service_module
+from services.workflow.run_entities import WorkflowRunMessageRef, WorkflowRunPauseRecord
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
 from services.workflow_pause_service import WorkflowPauseSnapshot
 from services.workflow_run_service import (

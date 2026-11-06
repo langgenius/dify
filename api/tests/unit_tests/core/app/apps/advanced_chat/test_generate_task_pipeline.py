@@ -74,7 +74,7 @@ from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message, MessageFile
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.workflow_test_utils import build_test_variable_pool
 
 

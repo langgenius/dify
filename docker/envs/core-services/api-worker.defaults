@@ -278,11 +278,8 @@ NEXT_PUBLIC_ENABLE_AGENT_V2=${NEXT_PUBLIC_ENABLE_AGENT_V2-true}
 # ------------------------------
 # Workflow storage and retention
 # ------------------------------
-# WORKFLOW_NODE_EXECUTION_STORAGE=rdbms
-# CORE_WORKFLOW_EXECUTION_REPOSITORY=core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository
-# CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY=core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository
-# API_WORKFLOW_RUN_REPOSITORY=repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository
-# API_WORKFLOW_NODE_EXECUTION_REPOSITORY=repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository
+# WORKFLOW_RUN_STORAGE_BACKEND=rdbms
+# WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND=rdbms
 # WORKFLOW_LOG_CLEANUP_ENABLED=false
 # WORKFLOW_LOG_RETENTION_DAYS=30
 # WORKFLOW_LOG_CLEANUP_BATCH_SIZE=100

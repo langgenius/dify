@@ -15,6 +15,7 @@ from configs import dify_config
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
@@ -52,7 +53,6 @@ from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
 from services.app_storage_cleanup_service import cleanup_app_storage
 
@@ -344,7 +344,7 @@ def _delete_workflow_agent_node_bindings(tenant_id: str, app_id: str) -> None:
 def _delete_app_workflow_runs(tenant_id: str, app_id: str):
     """Delete all workflow runs for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
 
     deleted_count = workflow_run_repo.delete_runs_by_app(
         tenant_id=tenant_id,
@@ -358,7 +358,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     """Delete all workflow node executions for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
-    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+    node_execution_repo = workflow_storage.create_api_workflow_node_execution_repository(session_maker)
 
     deleted_count = node_execution_repo.delete_executions_by_app(
         tenant_id=tenant_id,
@@ -650,6 +650,7 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
     Returns:
         Number of files cleaned up
     """
+
     from extensions.ext_storage import storage
 
     if not file_ids:

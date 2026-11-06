@@ -4,6 +4,7 @@ from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +14,6 @@ from dify_agent.runtime_backend.errors import SharedWorkspaceUnsupportedError
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from core.workflow.nodes.agent_v2.session_store import (
@@ -35,13 +35,18 @@ from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
 from tests.helpers.unit.model_factories import make_account
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -496,6 +501,7 @@ def test_node_completion_preserves_workspace_binding_and_sandbox_access(
         make_account(),
         scope.app_id,
         WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        upload_file=_unexpected_workflow_offload,
     )
     execution = WorkflowNodeExecution(
         id=scope.node_execution_id,

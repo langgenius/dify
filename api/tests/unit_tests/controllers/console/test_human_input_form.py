@@ -19,9 +19,9 @@ from controllers.console import human_input_form as human_input_form_module
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
     ConsoleWorkflowEventsApi,
-    DifyAPIRepositoryFactory,
     WorkflowResponseConverter,
     _jsonify_form_definition,
+    workflow_storage,
 )
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
@@ -297,7 +297,7 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
             return None
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -318,7 +318,7 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
             return workflow_run
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -339,7 +339,7 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
             return workflow_run
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -366,7 +366,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     )
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -441,7 +441,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
         return snapshot_events()
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )

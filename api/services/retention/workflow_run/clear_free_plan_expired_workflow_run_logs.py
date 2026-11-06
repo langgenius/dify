@@ -17,16 +17,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
-from repositories.api_workflow_run_repository import (
-    APIWorkflowRunRepository,
-    RunsWithRelatedCountsDict,
-    WorkflowRunCleanupRef,
-)
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_client.billing import SubscriptionPlanItem
 from services.billing_service import BillingService
+from services.workflow.run_entities import RunsWithRelatedCountsDict, WorkflowRunCleanupRef
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 logger = logging.getLogger(__name__)
 
@@ -240,11 +237,8 @@ class WorkflowRunCleanup:
         if workflow_run_repo:
             self.workflow_run_repo = workflow_run_repo
         else:
-            # Lazy import to avoid circular dependencies during module import
-            from repositories.factory import DifyAPIRepositoryFactory
-
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            self.workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
 
     def run(self) -> None:
         click.echo(
@@ -595,13 +589,13 @@ class WorkflowRunCleanup:
         return ref.created_at, ref.id
 
     def _count_node_executions_by_run_ids(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.count_by_runs(session, run_ids)
 
     def _delete_node_executions_by_run_ids(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.delete_by_runs(session, run_ids)

@@ -276,7 +276,7 @@ class TestGetHistoryPromptMessages:
         repository.get_workflow_run_by_id.return_value = workflow_run
 
         with patch.object(
-            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+            memory_module.workflow_storage, "create_api_workflow_run_repository", return_value=repository
         ):
             result = mem.get_history_prompt_messages()
 
@@ -848,7 +848,7 @@ class TestPreparedHistory:
         repository.get_workflow_run_by_id.return_value = workflow_run
 
         with patch.object(
-            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+            memory_module.workflow_storage, "create_api_workflow_run_repository", return_value=repository
         ) as create_repository:
             history = TokenBufferMemory.load_history(
                 conversation=conversation, app_record=app, session=database.session, message_limit=3

@@ -10,11 +10,11 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, Pau
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+from extensions.application_services import workflow_storage
 from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime import RuntimeState
-from repositories.entities.workflow_pause import WorkflowPauseEntity
-from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_v2.form_service import load_prepared_forms
+from services.workflow.run_entities import WorkflowPauseEntity
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ def load_workflow_pause_snapshot(
             has_v1 = True
     legacy: dict[str, HumanInputRequired] = {}
     if has_v1:
-        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+        repository = workflow_storage.create_api_workflow_run_repository(session_factory)
         with session_factory() as session:
             legacy = {
                 reason.form_id: reason

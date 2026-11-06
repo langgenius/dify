@@ -317,11 +317,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -447,11 +447,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -510,11 +510,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -1301,11 +1301,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda features_dict, is_vision=False: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1363,11 +1363,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda features_dict, is_vision=False: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1683,11 +1683,11 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(app_generator_module, "create_trace_scope", create_trace_scope)
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
 

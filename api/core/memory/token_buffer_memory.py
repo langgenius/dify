@@ -9,6 +9,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.file_access import DatabaseFileAccessController
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import FileTransferMethod, FileType, FileUploadConfig, file_manager
@@ -25,9 +26,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.runtime_config_service import AgentRuntimeConfigService
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -308,7 +308,7 @@ class TokenBufferMemory:
                 and workflow_run_repo is None
             ):
                 session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-                workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+                workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
             file_config = (
                 cls._file_config(
                     conversation=conversation,

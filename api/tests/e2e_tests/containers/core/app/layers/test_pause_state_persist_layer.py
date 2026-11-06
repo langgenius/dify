@@ -16,10 +16,9 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.application_services.workflow_writers import build_workflow_offload_uploader
 from extensions.ext_storage import storage
 from graphon.engine.command import InMemoryChannel, PauseCommand
 from graphon.engine_events import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunStartedEvent, GraphRunSucceededEvent
@@ -33,7 +32,9 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow_run_agg import WorkflowRunAgg
 
 
@@ -112,6 +113,9 @@ class WorkflowCase:
             user=self.account,
             app_id=self.workflow.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=build_workflow_offload_uploader(
+                session_factory=self.engine, tenant_id=self.workflow.tenant_id, user=self.account
+            ),
         )
         commands = InMemoryChannel()
         if pause:

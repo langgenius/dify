@@ -18,7 +18,7 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -26,7 +26,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowPauseReason, WorkflowRun, WorkflowType
-from repositories.entities.workflow_pause import WorkflowPauseEntity
+from services.workflow.run_entities import WorkflowPauseEntity
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 
 
@@ -49,6 +49,10 @@ class _FakePauseEntity(WorkflowPauseEntity):
     @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
+
+    @override
+    def get_pause_reasons(self) -> tuple[PauseReason, ...]:
+        return ()
 
     @property
     @override

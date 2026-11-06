@@ -19,11 +19,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.tracing.errors import TraceRunConflictError
 from domain.tracing.trace_run_agg import TraceBatch, TraceInvocation, TraceRunAgg, TraceRunState
+from extensions.application_services import workflow_storage
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
-    _dict_to_workflow_node_execution_model,
-)
-from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
@@ -31,8 +28,8 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories.application_trace_repository import ApplicationTraceRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from repositories.workflow.logstore.records import node_execution_model_from_log, workflow_run_from_log
 from services.tracing import service as service_module
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AppTracingSnapshot, TraceRun, TraceRunStatus
@@ -79,8 +76,8 @@ def identifier(value: str) -> str:
 def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.test",
         enterprise_details=False,
     )
@@ -160,7 +157,11 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
                 },
             )
         )
-    repository = ApplicationTraceRepository(sessions)
+    repository = ApplicationTraceRepository(
+        sessions,
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
+    )
     scheduled: list[str] = []
     run = collector(repository, trace_records(sessions), scheduled).start(
         tenant_id=tenant_id,
@@ -430,13 +431,14 @@ class TestApplicationTraceLogstoreCases:
         apply_config_overrides(
             monkeypatch,
             LOGSTORE_DUAL_WRITE_ENABLED=False,
-            API_WORKFLOW_RUN_REPOSITORY=(
-                "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository"
-            ),
-            API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
-                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
-                "LogstoreAPIWorkflowNodeExecutionRepository"
-            ),
+            LOGSTORE_DUAL_READ_ENABLED=False,
+            LOGSTORE_PG_MODE_ENABLED=False,
+            WORKFLOW_RUN_STORAGE_BACKEND="logstore",
+            WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND="logstore",
+            ALIYUN_SLS_ACCESS_KEY_ID="test-access-key",
+            ALIYUN_SLS_ACCESS_KEY_SECRET="test-secret",
+            ALIYUN_SLS_ENDPOINT="https://sls.example.test",
+            ALIYUN_SLS_REGION="test-region",
         )
         monkeypatch.setenv("LOGSTORE_DUAL_READ_ENABLED", "false")
         monkeypatch.setenv("LOGSTORE_PG_MODE_ENABLED", "false")
@@ -464,47 +466,30 @@ class TestApplicationTraceLogstoreCases:
 
         requests: list[str] = []
 
-        def get_logs(
-            _client: AliyunLogStore, *, query: str, logstore: str, **_kwargs: object
+        def execute_sql(
+            _client: AliyunLogStore, *, sql: str, logstore: str, **_kwargs: object
         ) -> list[dict[str, object]]:
-            # Exercise real configured repository construction, scoped query generation,
-            # and model decoding; replace only the remote transport boundary.
             assert not transactions, "LogStore I/O must not hold a SQL transaction"
-            assert f'tenant_id:"{case.run.tenant_id}"' in query.replace(": ", ":")
-            assert logstore == (
-                AliyunLogStore.workflow_execution_logstore
-                if kind == "workflow"
-                else AliyunLogStore.workflow_node_execution_logstore
-            )
-            if kind == "workflow":
-                assert f'app_id:"{case.run.app_id}"' in query
-            requests.append(query)
+            assert case.run.tenant_id in sql
+            if logstore == "workflow_execution":
+                if kind != "workflow":
+                    return []
+                assert case.run.app_id in sql
+            elif logstore == "workflow_node_execution":
+                if kind != "node":
+                    return []
+            else:
+                pytest.fail(f"Unexpected LogStore: {logstore}")
+            assert identifier("logstore-source") in sql
+            requests.append(sql)
             return [dict(row)] if row else []
 
-        monkeypatch.setattr(AliyunLogStore, "get_logs", get_logs)
-
-        def execute_sql(
-            client: AliyunLogStore, *, sql: str, query: str, logstore: str, **_kwargs: object
-        ) -> list[dict[str, object]]:
-            if kind == "workflow":
-                assert not transactions, "LogStore I/O must not hold a SQL transaction"
-                assert logstore == AliyunLogStore.workflow_node_execution_logstore
-                assert f"tenant_id = '{case.run.tenant_id}'" in sql
-                assert f"app_id = '{case.run.app_id}'" in sql
-                assert f"workflow_run_id = '{row['id']}'" in sql
-                requests.append(query)
-                return []
-            # The node reader now uses SQL in both SDK and PG modes. Preserve the
-            # real repository's query/decoding path while isolating this transport.
-            assert kind == "node"
-            assert f'id:"{identifier("logstore-source")}"' in query.replace(": ", ":")
-            assert f"tenant_id = '{case.run.tenant_id}'" in sql
-            assert f"id = '{identifier('logstore-source')}'" in sql
-            assert f'FROM "{logstore}"' in sql
-            assert "ORDER BY log_version DESC LIMIT 1" in sql
-            return get_logs(client, query=query, logstore=logstore)
-
         monkeypatch.setattr(AliyunLogStore, "execute_sql", execute_sql)
+        case.repository = ApplicationTraceRepository(
+            case.sessions,
+            workflow_runs=workflow_storage.create_api_workflow_run_repository(case.sessions),
+            node_executions=workflow_storage.create_api_workflow_node_execution_repository(case.sessions),
+        )
         event.listen(sqlite_engine, "begin", begun)
         event.listen(sqlite_engine, "commit", ended)
         event.listen(sqlite_engine, "rollback", ended)
@@ -571,7 +556,7 @@ class TestApplicationTraceLogstoreCases:
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_initialization_failure_uses_configured_source_reader(stored: StoredSource) -> None:
-        info = workflow_info(_dict_to_workflow_run(stored.row), None)
+        info = workflow_info(workflow_run_from_log(stored.row), None)
         assert stored.service().capture_terminal(tenant_id=stored.case.run.tenant_id, info=info) is True
         run = stored.case.repository.source_run(
             tenant_id=stored.case.run.tenant_id,
@@ -658,7 +643,7 @@ class TestApplicationTraceLogstoreCases:
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_missing_snapshot_classifies_logstore_agent_workflow_and_persists_failure(stored: StoredSource) -> None:
-        info = workflow_info(_dict_to_workflow_run(stored.row), None)
+        info = workflow_info(workflow_run_from_log(stored.row), None)
         assert stored.service().capture_terminal(tenant_id=stored.case.run.tenant_id, info=info) is True
         result = stored.status(node_execution_id=None)
         assert result.status is TraceRunState.FAILED
@@ -670,7 +655,7 @@ class TestApplicationTraceLogstoreCases:
     def test_unindexed_workflow_uses_owned_definition_for_safe_legacy_decision(
         stored: StoredSource, has_agent: bool
     ) -> None:
-        info = workflow_info(_dict_to_workflow_run(stored.row), None)
+        info = workflow_info(workflow_run_from_log(stored.row), None)
         with stored.case.sessions.begin() as session:
             app = session.get(App, stored.case.run.app_id)
             assert app is not None
@@ -741,7 +726,7 @@ class TestApplicationTraceLogstoreCases:
         stored: StoredSource, mismatch: str | None
     ) -> None:
         parent = stored.start()
-        info = workflow_info(_dict_to_workflow_run(stored.row), _dict_to_workflow_run(stored.row))
+        info = workflow_info(workflow_run_from_log(stored.row), workflow_run_from_log(stored.row))
         if mismatch:
             stored.row[mismatch] = identifier("foreign")
         linked = stored.service().link_managed_parent(tenant_id=stored.case.run.tenant_id, info=info)
@@ -757,7 +742,7 @@ class TestApplicationTraceLogstoreCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = seed(sqlite_session_factory, "sql-reader")
-        row = _dict_to_workflow_run(
+        row = workflow_run_from_log(
             {
                 "id": identifier("sql-run"),
                 "tenant_id": case.run.tenant_id,
@@ -1061,7 +1046,14 @@ class TestApplicationTraceRepositoryBoundariesCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = seed(sqlite_session_factory, "retry-unknown")
-        purged = replace(case, repository=PurgedBeforeLock(case.sessions)).service()
+        purged = replace(
+            case,
+            repository=PurgedBeforeLock(
+                case.sessions,
+                workflow_runs=workflow_storage.create_api_workflow_run_repository(case.sessions),
+                node_executions=workflow_storage.create_api_workflow_node_execution_repository(case.sessions),
+            ),
+        ).service()
         with pytest.raises(TraceCollectionNotFoundError, match="tracing_run_not_found"):
             purged.retry(
                 tenant_id=case.run.tenant_id,
@@ -1285,7 +1277,7 @@ class TestApplicationTraceRepositoryPersistenceCases:
                 )
             )
             session.add(
-                _dict_to_workflow_run(
+                workflow_run_from_log(
                     {
                         "id": workflow_run_id,
                         "tenant_id": case.run.tenant_id,
@@ -1296,7 +1288,7 @@ class TestApplicationTraceRepositoryPersistenceCases:
                 )
             )
             session.add(
-                _dict_to_workflow_node_execution_model(
+                node_execution_model_from_log(
                     {
                         "id": node_execution_id,
                         "tenant_id": case.run.tenant_id,

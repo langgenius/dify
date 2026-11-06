@@ -31,10 +31,10 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.enterprise.rbac_service import RBACService
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
 from services.workflow_run_service import WorkflowRunPauseDetails, WorkflowRunPausedNode, WorkflowRunService

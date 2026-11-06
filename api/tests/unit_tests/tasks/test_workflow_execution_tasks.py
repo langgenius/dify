@@ -4,11 +4,11 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account, CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution
+from repositories.workflow.celery_execution_writer import CeleryWorkflowExecutionRepository
 from tasks.workflow_execution_tasks import save_workflow_execution_task
 
 TABLES = (WorkflowRun,)
@@ -82,7 +82,7 @@ def test_celery_roundtrip_preserves_accumulated_duration_on_create_update_and_re
         execution.accumulated_elapsed_time = duration
         if status == WorkflowExecutionStatus.SUCCEEDED:
             execution.finished_at = datetime(2026, 1, 2)
-        with patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task") as task:
+        with patch("repositories.workflow.celery_execution_writer.save_workflow_execution_task") as task:
             repository.save(execution)
         payload = task.delay.call_args.kwargs
         assert payload["execution_data"]["accumulated_elapsed_time"] == duration

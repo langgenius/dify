@@ -11,9 +11,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api import bp
+from extensions.application_services import workflow_storage
 from extensions.ext_application_services import ApplicationServices
 from models.application_trace import ApplicationTraceBatch
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings
@@ -56,8 +56,8 @@ def bind_collector(
         sources=collection.repository,
         records=TraceRecordRepository(
             collection.sessions,
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(collection.sessions),
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(collection.sessions),
+            workflow_runs=workflow_storage.create_api_workflow_run_repository(collection.sessions),
+            node_executions=workflow_storage.create_api_workflow_node_execution_repository(collection.sessions),
             files_url="https://files.test",
             enterprise_details=False,
         ),
