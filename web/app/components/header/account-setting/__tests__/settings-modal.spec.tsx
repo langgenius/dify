@@ -125,6 +125,14 @@ const findSettings = async () => {
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
 
+beforeAll(async () => {
+  // Transform the real lazy surfaces before measuring navigation interactions.
+  await Promise.all([
+    import('@/app/components/header/account-setting'),
+    import('@/app/components/integrations/modal'),
+  ])
+})
+
 it('exposes the Members content title as a heading', async () => {
   renderSettings()
   const dialog = await findSettings()
@@ -144,7 +152,7 @@ it('opens preferences from the URL control, switches real pages, and closes with
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
   await act(async () => vi.dynamicImportSettled())
   const dialog = await findSettings()
-  expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByText('common.theme.label')).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(
     'navigation.settings.preferences',
   )
@@ -332,7 +340,7 @@ it.each([
 ])('hides billing and falls back to preferences for $reason', async ({ options }) => {
   renderSettings(TAB.BILLING, options)
   const dialog = await findSettings()
-  expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByText('common.theme.label')).toBeInTheDocument()
   expect(
     within(dialog).queryByRole('button', { name: 'navigation.settings.billing' }),
   ).not.toBeInTheDocument()

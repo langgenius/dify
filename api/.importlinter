@@ -1427,3 +1427,58 @@ forbidden_modules =
     services.tracing.runtime_bridge
     services.tracing.service
 allow_indirect_imports = True
+
+[importlinter:contract:trigger-oauth-client-service-boundary]
+name = Trigger OAuth client orchestration does not directly depend on persistence or HTTP
+type = forbidden
+source_modules =
+    services.trigger.oauth_client_service
+    services.trigger.oauth_service
+    services.trigger.provider_query
+    services.trigger.subscription_query_service
+    services.trigger.subscription_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-builder-persistence-boundary]
+name = Trigger subscription builder orchestration uses injected persistence
+type = forbidden
+source_modules =
+    services.trigger.trigger_subscription_builder_service
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    sqlalchemy
+    services.trigger.trigger_provider_service
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-encryption-boundary]
+name = Trigger subscription commands depend on the encryption port
+type = forbidden
+source_modules =
+    services.trigger.subscription_service
+forbidden_modules =
+    core.helper.provider_cache
+    core.helper.provider_encryption
+    core.helper.encrypter
+    services.trigger.subscription_codec
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-controller-persistence-boundary]
+name = Trigger subscription controllers reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.trigger_providers
+forbidden_modules =
+    repositories
+    sqlalchemy
+    core.db
+    models.engine
+allow_indirect_imports = True
