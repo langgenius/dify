@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial
-from typing import override
+from typing import Never, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -1123,6 +1123,11 @@ class TestPausedWorkflowStopCases:
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
         sqlite_session.add_all([run, pause])
         sqlite_session.commit()
+
+        def unexpected_upload(*, filename: str, content: bytes) -> Never:
+            """Fail without uploading if this small-payload fixture unexpectedly triggers offload."""
+            pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
+
         for node_app, origin in (
             ("app-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
             ("source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
@@ -1133,7 +1138,7 @@ class TestPausedWorkflowStopCases:
                 user=EndUser(id="user-1"),
                 app_id=node_app,
                 triggered_from=origin,
-                upload_file=lambda **_kwargs: None,
+                upload_file=unexpected_upload,
             ).save(
                 WorkflowNodeExecution(
                     id=f"node-{node_app}",
