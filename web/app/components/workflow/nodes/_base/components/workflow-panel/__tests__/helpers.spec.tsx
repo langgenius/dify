@@ -22,7 +22,7 @@ describe('workflow-panel helpers', () => {
     payload: Partial<CustomRunFormProps['payload']>,
   ): CustomRunFormProps => ({
     nodeId: 'node-1',
-    resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+    resource: { kind: 'app', collaborationEnabled: false, appId: 'flow-1', mode: 'workflow' },
 
     payload: payload as CustomRunFormProps['payload'],
     setRunResult: vi.fn(),

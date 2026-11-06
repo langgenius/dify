@@ -38,7 +38,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         ns: 'workflowHumanInput',
       })}
       classNames={{
-        content: 'max-w-[580px]',
+        content: 'w-145',
       }}
       footer={
         <>
@@ -56,7 +56,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             >
               <span
                 aria-hidden="true"
-                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px ps-0.75 text-components-premium-badge-indigo-text-stop-0"
               />
               <div className="system-sm-medium">
                 <span className="p-1">

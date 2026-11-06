@@ -16,7 +16,28 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
-from controllers.console.workspace.trigger_providers import TriggerOAuthClientManageApi
+from controllers.console.workspace.plugin import (
+    PluginFetchDynamicSelectOptionsApi,
+    PluginFetchDynamicSelectOptionsWithCredentialsApi,
+)
+from controllers.console.workspace.trigger_providers import (
+    TriggerOAuthAuthorizeApi,
+    TriggerOAuthCallbackApi,
+    TriggerOAuthClientManageApi,
+    TriggerProviderIconApi,
+    TriggerProviderInfoApi,
+    TriggerProviderListApi,
+    TriggerSubscriptionBuilderBuildApi,
+    TriggerSubscriptionBuilderCreateApi,
+    TriggerSubscriptionBuilderGetApi,
+    TriggerSubscriptionBuilderLogsApi,
+    TriggerSubscriptionBuilderUpdateApi,
+    TriggerSubscriptionBuilderVerifyApi,
+    TriggerSubscriptionDeleteApi,
+    TriggerSubscriptionListApi,
+    TriggerSubscriptionUpdateApi,
+    TriggerSubscriptionVerifyApi,
+)
 from controllers.console.wraps import _is_setup_completed
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import decrypt_token
@@ -40,7 +61,7 @@ from models.engine import db
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
-from services.trigger.oauth_client_service import TriggerOAuthClientService
+from services.trigger.oauth_client_service import TriggerOAuthClientService, TriggerOAuthProviderMetadata
 from tests.helpers.unit.config_override import config_overrides_context
 
 _PROVIDER = "langgenius/github/github"
@@ -63,7 +84,7 @@ class _PluginMetadata:
     # lookup so tests can interleave a real concurrent persistence operation.
     before_provider: Callable[[], None] | None = None
 
-    def get_provider(self, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
+    def get_metadata(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthProviderMetadata:
         assert all(not session.in_transaction() for session in self.sessions)
         assert tenant_id == self.provider.tenant_id
         assert str(provider_id) == str(self.provider.provider_id)
@@ -72,9 +93,11 @@ class _PluginMetadata:
         self.before_provider = None
         if before_provider is not None:
             before_provider()
-        return self.provider
+        return TriggerOAuthProviderMetadata(
+            schema=_SCHEMA, plugin_unique_identifier=self.provider.plugin_unique_identifier
+        )
 
-    def is_verified(self, tenant_id: str, plugin_unique_identifier: str) -> bool:
+    def is_verified(self, *, tenant_id: str, plugin_unique_identifier: str) -> bool:
         assert all(not session.in_transaction() for session in self.sessions)
         assert tenant_id == self.provider.tenant_id
         assert plugin_unique_identifier == self.provider.plugin_unique_identifier
@@ -127,12 +150,23 @@ class _Harness:
 
 
 @pytest.fixture
-def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
+def application_redis() -> Iterator[RedisClientWrapper]:
+    with Redis() as client:
+        redis = RedisClientWrapper()
+        redis.initialize(client)
+        yield redis
+
+
+@pytest.fixture
+def harness(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    application_redis: RedisClientWrapper,
+) -> Iterator[_Harness]:
     previous_storage = storage.__dict__.copy()
     previous_key_provider = key_provider_manager._provider
     with (
         TemporaryDirectory(prefix="trigger-oauth-keys-") as storage_path,
-        Redis() as redis_client,
         config_overrides_context(
             DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
             RBAC_ENABLED=False,
@@ -140,6 +174,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             INIT_PASSWORD="",
             SECRET_KEY="trigger-oauth-http-secret-at-least-32-bytes",
             CONSOLE_API_URL="https://console.example.test",
+            CONSOLE_WEB_URL="https://console.example.test",
             KEY_PROVIDER_TYPE="local",
             STORAGE_TYPE="local",
             STORAGE_LOCAL_PATH=storage_path,
@@ -187,18 +222,15 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             tenant_id=tenant_id,
         )
         metadata = _PluginMetadata(provider, sessions)
-        redis = RedisClientWrapper()
-        redis.initialize(redis_client)
         services = build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
             initialization_password="",
-            redis=redis,
+            redis=application_redis,
         )
         oauth_clients = TriggerOAuthClientService(
             clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
-            get_provider=metadata.get_provider,
-            is_plugin_verified=metadata.is_verified,
+            providers=metadata,
         )
         services = replace(services, workspaces=replace(services.workspaces, trigger_oauth_clients=oauth_clients))
         app.extensions["application_services"] = services
@@ -209,8 +241,45 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+        api.add_resource(
+            PluginFetchDynamicSelectOptionsWithCredentialsApi,
+            "/workspaces/current/plugin/parameters/dynamic-options-with-credentials",
+        )
+        api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
+        api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
+        api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
+        api.add_resource(
+            TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list"
+        )
         api.add_resource(
             TriggerOAuthClientManageApi, "/workspaces/current/trigger-provider/<path:provider>/oauth/client"
+        )
+        api.add_resource(
+            TriggerOAuthAuthorizeApi,
+            "/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize",
+        )
+        api.add_resource(TriggerOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
+        builder_path = "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder"
+        api.add_resource(TriggerSubscriptionBuilderCreateApi, f"{builder_path}/create")
+        api.add_resource(TriggerSubscriptionBuilderGetApi, f"{builder_path}/<path:subscription_builder_id>")
+        api.add_resource(TriggerSubscriptionBuilderUpdateApi, f"{builder_path}/update/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionBuilderVerifyApi, f"{builder_path}/verify-and-update/<path:subscription_builder_id>"
+        )
+        api.add_resource(TriggerSubscriptionBuilderLogsApi, f"{builder_path}/logs/<path:subscription_builder_id>")
+        api.add_resource(TriggerSubscriptionBuilderBuildApi, f"{builder_path}/build/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionUpdateApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
+        )
+        api.add_resource(
+            TriggerSubscriptionDeleteApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
+        )
+        api.add_resource(
+            TriggerSubscriptionVerifyApi,
+            "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
         )
         app.register_blueprint(blueprint)
 

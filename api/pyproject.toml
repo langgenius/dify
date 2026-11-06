@@ -44,7 +44,7 @@ dependencies = [
     "opentelemetry-instrumentation-httpx==0.65b0",
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
-    "opentelemetry-propagator-b3>=1.45.0,<2.0.0",
+    "opentelemetry-propagator-b3>=1.45.2,<2.0.0",
     "pydantic-settings>=2.14.2,<3.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
@@ -205,6 +205,7 @@ dev = [
     "types-bleach>=6.4.0.20260728",
     "types-croniter>=6.2.4.20261006",
     "types-jsonschema>=4.26.0.20261006",
+    "types-grpcio>=1.85.0.20261028",
 ]
 
 ############################################################

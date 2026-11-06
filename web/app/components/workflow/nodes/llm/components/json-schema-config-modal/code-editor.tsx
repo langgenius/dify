@@ -6,8 +6,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type CodeEditorProps = {
   value: string
@@ -38,7 +37,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   onBlur,
 }) => {
   const { t } = useTranslation(['common'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const monacoRef = useRef<Monaco | null>(null)
   const editorRef = useRef<MonacoEditor | null>(null)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -46,7 +45,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
 
   useEffect(() => {
     if (monacoRef.current) {
-      if (theme === Theme.light) monacoRef.current.editor.setTheme('light-theme')
+      if (theme === 'light') monacoRef.current.editor.setTheme('light-theme')
       else monacoRef.current.editor.setTheme('dark-theme')
     }
   }, [theme])
@@ -101,7 +100,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   )
 
   const editorTheme = useMemo(() => {
-    if (theme === Theme.light) return 'light-theme'
+    if (theme === 'light') return 'light-theme'
     return 'dark-theme'
   }, [theme])
   useEffect(() => {
@@ -125,7 +124,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
       )}
     >
       {!hideTopMenu && (
-        <div className="flex items-center justify-between pt-1 pr-1 pl-2">
+        <div className="flex items-center justify-between ps-2 pe-1 pt-1">
           <div className="py-0.5 system-xs-semibold-uppercase text-text-secondary">
             <span className="px-1 py-0.5">JSON</span>
           </div>

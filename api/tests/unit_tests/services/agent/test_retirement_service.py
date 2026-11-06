@@ -1,5 +1,4 @@
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,7 +22,6 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 
 
@@ -65,9 +63,9 @@ def _must_get[RowT](session: Session, model: type[RowT], row_id: str) -> RowT:
     return row
 
 
-def _workflow_only_agent(*, backing_app_id: str | None = None) -> Agent:
+def _workflow_only_agent(*, agent_id: str = "agent-1", backing_app_id: str | None = None) -> Agent:
     return Agent(
-        id="agent-1",
+        id=agent_id,
         tenant_id="tenant-1",
         name="Inline Agent",
         description="",
@@ -377,14 +375,28 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     )
 
 
-def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
+def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    """C6: every hidden-App cleanup publishes before the collector; a cleanup failure blocks
-    the collector and propagates, while the already-committed database state is kept."""
-    first = _seed_orphan_aggregate(sqlite_session, suffix="1")
-    second = _seed_orphan_aggregate(sqlite_session, suffix="2")
+    # Two orphaned workflow-only Agents, each backed by its own hidden App. Only the broker is faked:
+    # archiving, resource retirement and the hidden-App delete all run against the seeded rows.
+    owners = [("agent-1", "hidden-app-1"), ("agent-2", "hidden-app-2")]
+    agents = [_workflow_only_agent(agent_id=agent_id, backing_app_id=app_id) for agent_id, app_id in owners]
+    hidden_apps = [
+        App(
+            id=app_id,
+            tenant_id="tenant-1",
+            name="Inline Agent runtime",
+            mode=AppMode.AGENT,
+            status=AppStatus.NORMAL,
+            enable_site=False,
+            enable_api=False,
+        )
+        for _, app_id in owners
+    ]
+    sqlite_session.add_all([*agents, *hidden_apps])
+    sqlite_session.commit()
     error = RuntimeError("broker unavailable")
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
     cleanup_app.side_effect = [None, error]

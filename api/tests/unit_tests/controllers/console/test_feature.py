@@ -241,6 +241,7 @@ def test_public_system_features_exposes_gate_without_account_app_or_provider(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["agent_tracing_api_collection_enabled"] is enabled
+    assert "enable_collaboration_mode" not in payload
     assert "tracing_provider" not in payload
     assert "runtime_enabled" not in payload
     assert "queryable" not in payload
