@@ -1680,7 +1680,12 @@ def publication_denied(env: Env, s: Session, fc: DifyBuilderContext, state: PcSt
 
 
 def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) Terminal choice. Port of ``handlers_fix.go:239``."""
+    """(waiting) Choose the next step without dispatching a verification.
+
+    Re-fix may replace diagnostic provenance only with a current, owned,
+    immutable native failure. Unknown/stale evidence keeps the original Run;
+    no original record or input confirmation is changed here.
+    """
     kind = action_kind(turn)
     if kind == "run_verify":
         fc.verify_run_id = ""
@@ -1691,6 +1696,41 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             return publication_denied(env, s, fc, PcState.FIX_AWAIT_DECISION, decision.reason)
         return StepResult(next=PcState.FIX_PUBLISH, context=fc)
     if kind == "re_fix":
+        if fc.verify_run_id and not fc.business_acceptance_contract:
+            from services.dify_builder.task_lifecycle import task_identity
+
+            try:
+                latest = env.repo.get_run(fc.verify_run_id)
+            except NotFoundError:
+                latest = None
+            verification = latest.verification if latest else None
+            summary = verification.execution_evidence if verification else None
+            if (
+                latest is not None
+                and latest.id == fc.verify_run_id
+                and latest.session_id == s.id
+                and (not latest.origin_task_id or latest.origin_task_id == task_identity(s, fc))
+                and latest.kind == "verify"
+                and latest.immutable
+                and latest.status == "failed"
+                and not is_execution_policy_blocker(latest)
+                and latest.dify_run_id
+                and verification is not None
+                and verification.execution_revision
+                and verification.executed_graph_revision
+                and summary is not None
+                and summary.sealed
+                and summary.safety_outcome == "native_failed"
+                and summary.native_run_id == latest.dify_run_id
+                and not summary.simulated_node_ids
+            ):
+                graph, revision = env.dify.read_graph(s.app_id, turn.actor)
+                if (
+                    verification.execution_revision == revision
+                    and verification.executed_graph_revision == env.dify.graph_revision(graph)
+                ):
+                    fc.failed_run_id = latest.id
+                    fc.retained_test_input_ref = latest.inputs_ref
         if fc.verify_run_id and fc.business_acceptance_contract:
             latest = env.repo.get_run(fc.verify_run_id)
             graph, revision = env.dify.read_graph(s.app_id, turn.actor)

@@ -34,6 +34,8 @@ Files: `api/services/dify_builder/agent/fix.py`; dedicated `api/tests/unit_tests
 - [x] Add failing prompt-boundary tests for Code/Tool culprit configuration beyond the shared 1500-character graph budget.
 - [x] Add a bounded, separately labeled complete-field culprit section, with explicit omissions and existing redaction.
 - [x] Verify correction, preflight, and privacy regressions; independently review.
+- [x] Reproduce the remaining case-two parser mismatch; add bounded, value-free historical Code input-format facts shared by diagnosis and proposal, suppressing ambiguous identity or changed input bindings.
+- [x] Re-fix uses a current owned immutable native failed verification when available; missing, unknown, simulated, policy-blocked and stale evidence preserve the original source without dispatch. Preserve business-failure handling.
 - [ ] Run representative native Local failure → Fix → new Run checks with frozen business expectations.
 
 ## Task 2: ENG-1418 truthful knowledge decisions

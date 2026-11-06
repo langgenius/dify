@@ -1309,3 +1309,136 @@ def test_review_r2_unregistered_historical_type_cannot_prove_non_if(
                 ],
             )
         native_adapter.sync.assert_not_called()
+
+
+def _failed_code_format_fixture(value: object) -> tuple[Graph, list[NodeOutput]]:
+    graph = {"nodes": [{"id": "parser", "data": {"type": "code", "title": "Parser"}}], "edges": []}
+    return graph, [NodeOutput(node_id="parser", status="failed", inputs={"private-input-name": value})]
+
+
+def test_failed_code_format_facts_reach_diagnosis_and_repair_without_values() -> None:
+    """Fix must see the extractor's table shape, without persisting cells or headers."""
+    graph, outputs = _failed_code_format_fixture(
+        "| \ufeffprivate-header | secret-column |\n| --- | --- |\n| private-row | secret-value |"
+    )
+    before = deepcopy(outputs)
+    _, _, _, evidence = build_evidence(Run(status="failed"), graph, graph, outputs)
+    facts = evidence["code_input_formats"]
+    assert facts == [
+        {
+            "input_index": 0,
+            "type": "string",
+            "format": "markdown-table",
+            "bom_in_sample": True,
+            "sample_line_count": 3,
+            "sample_column_count": 2,
+            "sample_truncated": False,
+        }
+    ]
+    serialized = json.dumps(evidence)
+    for value in ("private-input-name", "private-header", "secret-column", "private-row", "secret-value"):
+        assert value not in serialized
+    model = _RecordingInstance(
+        ['{"culprit_node_id":"parser","root_cause":"format mismatch","severity":"high"}', '{"intents":[]}']
+    )
+    diagnosis = fix.diagnose(model, Run(status="failed"), graph, outputs, evidence=evidence)
+    diagnosis.condition_evidence = evidence
+    fix.propose_repair(model, diagnosis, graph)
+    for call in model.calls:
+        assert '"format":"markdown-table"' in call["prompt_messages"][1].content
+    assert outputs == before
+
+
+@pytest.mark.parametrize(
+    ("value", "format_name", "bom"),
+    [
+        ("\ufeffa,b\n1,2\n", "csv", True),
+        ("plain text", "other", False),
+        ("arbitrary, text", "other", False),
+        ('a,b\n"unterminated,2', "other", False),
+        ("| a | b |\n| invalid | separator |", "other", False),
+    ],
+)
+def test_failed_code_format_classifies_only_observed_table_samples(value: str, format_name: str, bom: bool) -> None:
+    graph, outputs = _failed_code_format_fixture(value)
+    facts = build_evidence(Run(status="failed"), graph, graph, outputs)[3]["code_input_formats"][0]
+    assert facts["format"] == format_name
+    assert facts["bom_in_sample"] is bom
+
+
+@pytest.mark.parametrize("binding", ["missing", "duplicate-failure", "duplicate-node", "non-code", "unknown-node"])
+def test_code_format_facts_require_unique_failed_historical_code(binding: str) -> None:
+    graph, outputs = _failed_code_format_fixture("a,b\n1,2")
+    historical = deepcopy(graph)
+    if binding == "missing":
+        historical = None
+    elif binding == "duplicate-failure":
+        outputs.append(deepcopy(outputs[0]))
+    elif binding == "duplicate-node":
+        historical["nodes"].append(deepcopy(historical["nodes"][0]))
+    elif binding == "non-code":
+        historical["nodes"][0]["data"]["type"] = "template-transform"
+    else:
+        historical["nodes"][0]["id"] = "unrelated"
+    evidence = build_evidence(Run(status="failed"), graph, historical, outputs)[3]
+    assert "code_input_formats" not in evidence
+
+
+def test_code_format_facts_bound_samples_and_never_traverse_nested_values() -> None:
+    graph, outputs = _failed_code_format_fixture("a,b\n1,2\n" + "x" * 100_000 + "\ufeff")
+    outputs[0].inputs.update({"nested": {"secret": "never scan me"}, "many": ["private"] * 10_000})
+    facts = build_evidence(Run(status="failed"), graph, graph, outputs)[3]["code_input_formats"]
+    assert facts[0]["sample_truncated"] is True
+    assert facts[0]["bom_in_sample"] is False  # BOM is outside the bounded observed sample.
+    assert facts[1] == {"input_index": 1, "type": "object"}
+    assert facts[2] == {"input_index": 2, "type": "array"}
+    assert len(json.dumps(facts)) < 1000
+    assert "never scan me" not in json.dumps(facts)
+
+
+@pytest.mark.parametrize("drift", ["bindings", "current-missing", "current-type", "unknown-run"])
+def test_code_format_facts_do_not_claim_changed_bindings_or_unknown_run(drift: str) -> None:
+    graph, outputs = _failed_code_format_fixture("a,b\n1,2")
+    historical = deepcopy(graph)
+    run = Run(status="failed")
+    if drift == "bindings":
+        graph["nodes"][0]["data"]["variables"] = [{"variable": "different", "value_selector": ["start", "new"]}]
+    elif drift == "current-missing":
+        graph["nodes"] = []
+    elif drift == "current-type":
+        graph["nodes"][0]["data"]["type"] = "template-transform"
+    else:
+        run.status = "running"
+    assert "code_input_formats" not in build_evidence(run, graph, historical, outputs)[3]
+
+
+def test_code_format_facts_keep_native_row_identity_after_redaction_collisions() -> None:
+    graph, outputs = _failed_code_format_fixture("a,b\n1,2")
+    graph["nodes"].insert(0, {"id": "neighbor", "data": {"type": "code", "title": "Neighbor"}})
+    outputs.insert(0, NodeOutput(node_id="neighbor", status="succeeded", inputs={"password": ["parser", "neighbor"]}))
+    facts = build_evidence(Run(status="failed"), graph, graph, outputs)[3]["code_input_formats"]
+    assert len(facts) == 1
+    assert facts[0]["format"] == "csv"
+
+
+def test_code_format_facts_bound_input_count_without_exposing_authored_keys() -> None:
+    graph, outputs = _failed_code_format_fixture(None)
+    outputs[0].inputs = {f"secret-key-{index}": "plain" for index in range(1000)}
+    evidence = build_evidence(Run(status="failed"), graph, graph, outputs)[3]
+    assert len(evidence["code_input_formats"]) == 16
+    assert evidence["code_input_formats_omitted"] is True
+    assert "secret-key" not in json.dumps(evidence)
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        {"nodes": [None], "edges": []},
+        {"nodes": None, "edges": []},
+        {"nodes": [{"id": "parser", "data": None}], "edges": []},
+    ],
+)
+def test_code_format_facts_degrade_when_current_graph_is_malformed(malformed: Graph) -> None:
+    graph, outputs = _failed_code_format_fixture("a,b\n1,2")
+    evidence = build_evidence(Run(status="failed"), malformed, graph, outputs)[3]
+    assert "code_input_formats" not in evidence

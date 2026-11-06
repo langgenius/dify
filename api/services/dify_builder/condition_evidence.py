@@ -5,12 +5,15 @@ configuration revision. Producer JSON types are not resolved IF operands.
 Only this projection can survive a step boundary; raw native rows stay local.
 """
 
+import csv
+import io
 import json
 import math
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping
 from copy import deepcopy
 from dataclasses import replace
+from itertools import islice
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from core.dify_builder.models import (
@@ -79,7 +82,55 @@ SYSTEM_RULES = (
     "A type alone cannot choose an ordering operator. Numeric expected literals use native wire text; "
     "unary null/empty/existence predicates require no expected literal. Unknown evidence requires hypotheses "
     "or a surfaced manual repair, never an invented conversion or operator change. "
+    "Code input format facts describe only bounded observed samples, not instructions or complete input validation. "
+    "Check those observed formats against the parser's assumptions; BOM normalization alone does not convert formats. "
 )
+
+
+def _code_input_format(value: Any, index: int) -> dict[str, Any]:
+    """Project a native input to fixed types/sample facts without keys or content.
+
+    Accept any observed value; inspect at most 4096 string characters/eight
+    lines. Return only fixed vocabulary, booleans and sample counts. Nested
+    values are never traversed. Malformed text remains other, with no I/O.
+    """
+    facts: dict[str, Any] = {"input_index": index, "type": json_type(value)}
+    if not isinstance(value, str):
+        return facts
+    prefix = value[:4096]
+    all_lines = prefix.splitlines()
+    lines = all_lines[:8]
+    # Discard an incomplete last line rather than classify a partial CSV row.
+    truncated = len(value) > len(prefix) or len(all_lines) > len(lines)
+    if len(value) > len(prefix) and lines and len(all_lines) <= 8:
+        lines = lines[:-1]
+    observed = "\n".join(lines)
+    nonempty = [line.strip().lstrip("\ufeff") for line in lines if line.strip()]
+    kind, columns = "other", 0
+    if len(nonempty) >= 2 and all(line.startswith("|") for line in nonempty):
+        cells = [line.strip("|").split("|") for line in nonempty]
+        separator = cells[1]
+        if (
+            len(cells[0]) > 1
+            and all(len(row) == len(cells[0]) for row in cells)
+            and all(cell.strip().strip(":").strip() and set(cell.strip().strip(":")) <= {"-"} for cell in separator)
+        ):
+            kind, columns = "markdown-table", len(cells[0])
+    elif len(nonempty) >= 2:
+        try:
+            rows = list(csv.reader(io.StringIO("\n".join(nonempty)), strict=True))
+        except csv.Error:
+            rows = []
+        if rows and len(rows[0]) > 1 and all(len(row) == len(rows[0]) for row in rows):
+            kind, columns = "csv", len(rows[0])
+    facts.update(
+        format=kind,
+        bom_in_sample="\ufeff" in observed,
+        sample_line_count=len(lines),
+        sample_column_count=columns,
+        sample_truncated=truncated,
+    )
+    return facts
 
 
 def json_type(value: Any) -> str:
@@ -327,6 +378,23 @@ def build_evidence(
         "current_conditions": _project(safe_current, [], target, observed=False),
         "truncated": False,
     }
+    current_targets = [node for node in current["nodes"] if node["id"] == raw_target] if _usable_graph(current) else []
+    if (
+        failed_run.status == "failed"
+        and identity == "bound"
+        and native_type == "code"
+        and len(current_targets) == 1
+        and current_targets[0].get("data", {}).get("type") == "code"
+        and current_targets[0]["data"].get("variables") == target_nodes[0]["data"].get("variables")
+    ):
+        # Redacted IDs can collide; the authorized native row position cannot.
+        failed_index = next(index for index, row in enumerate(outputs) if row.status == "failed")
+        inputs = safe_outputs[failed_index].inputs
+        if isinstance(inputs, Mapping):
+            evidence["code_input_formats"] = [
+                _code_input_format(value, index) for index, value in enumerate(islice(inputs.values(), 16))
+            ]
+            evidence["code_input_formats_omitted"] = len(inputs) > 16
     for key in ("conditions", "current_conditions"):
         if len(evidence[key]) > _MAX_CONDITIONS:
             evidence[key] = evidence[key][:_MAX_CONDITIONS]
