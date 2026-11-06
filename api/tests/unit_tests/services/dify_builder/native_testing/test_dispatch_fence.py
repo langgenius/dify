@@ -8,7 +8,7 @@ from typing import Literal, NoReturn, Unpack, override
 
 import pytest
 from sqlalchemy import Select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
@@ -25,11 +25,16 @@ from models.dify_builder_native_tests import (
     NativeTestScope,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import EffectIntent, JsonValue, NativeTestContextRef
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
-from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from services.dify_builder.native_testing.repository import (
+    NativeBinding,
+    NativeBindingResolver,
+    OwnedNativeTest,
+    OwnedNativeTestLoader,
+)
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
@@ -360,9 +365,24 @@ def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkey
         clock=lambda: NOW,
     )
     # This test isolates the ordered admission guard after current binding validation.
-    monkeypatch.setattr(service, "_binding", lambda *_args: binding(effect))
+    selected_sql = sql_session(monkeypatch, session.sql_methods())
+
+    def current_binding(
+        selected_session: Session,
+        selected_owned: OwnedNativeTest,
+        selected_intent: EffectIntent,
+        *,
+        resolver: NativeBindingResolver | None = None,
+    ) -> NativeBinding:
+        assert selected_session is selected_sql
+        assert selected_owned is owned
+        assert selected_intent == effect
+        assert resolver is None  # Direct _claim uses the loader's configured resolver.
+        return binding(effect)
+
+    monkeypatch.setattr(service, "_binding", current_binding)
     result = service._claim(
-        sql_session(monkeypatch, session.sql_methods()),
+        selected_sql,
         owned,
         checked_rows(NativeTestScope, session.rows[NativeTestScope])[0],
         effect,
@@ -945,14 +965,27 @@ def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(
         ),
         clock=lambda: NOW,
     )
-    monkeypatch.setattr(service, "_binding", lambda *_: binding(effect))
+    selected_sql = sql_session(monkeypatch, session.sql_methods())
+
+    def current_binding(
+        selected_session: Session,
+        selected_owned: OwnedNativeTest,
+        selected_intent: EffectIntent,
+        *,
+        resolver: NativeBindingResolver | None = None,
+    ) -> NativeBinding:
+        assert selected_session is selected_sql
+        assert selected_owned is owned
+        assert selected_intent == effect
+        assert resolver is None  # No operation-specific override at this direct port.
+        return binding(effect)
+
+    monkeypatch.setattr(service, "_binding", current_binding)
     if decision == "denied":
-        assert service._claim(sql_session(monkeypatch, session.sql_methods()), owned, scope, effect) == PolicyStop(
-            reason_code="effect_denied"
-        )
+        assert service._claim(selected_sql, owned, scope, effect) == PolicyStop(reason_code="effect_denied")
     else:
         with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_closed"):
-            service._claim(sql_session(monkeypatch, session.sql_methods()), owned, scope, effect)
+            service._claim(selected_sql, owned, scope, effect)
     assert writes == []
     assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (0, 0, 0)
     assert operation.state == "pending"
@@ -1016,12 +1049,28 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(
         return attempt
 
     monkeypatch.setattr(service, "_attempt", load_attempt)
-    monkeypatch.setattr(service, "_binding", lambda *_: trusted)
+    selected_sql = sql_session(monkeypatch, session.sql_methods())
+    owned = fence_owner(ref=child_ref, tenant_id="tenant")
+
+    def current_binding(
+        selected_session: Session,
+        selected_owned: OwnedNativeTest,
+        selected_intent: EffectIntent,
+        *,
+        resolver: NativeBindingResolver | None = None,
+    ) -> NativeBinding:
+        assert selected_session is selected_sql
+        assert selected_owned is owned
+        assert selected_intent == effect
+        assert resolver is None  # The direct validator has no selected override.
+        return trusted
+
+    monkeypatch.setattr(service, "_binding", current_binding)
     expected = "invalid_dispatch_permit" if fault else "native_ancestor_quarantined"
     with pytest.raises(BuilderExecutionPolicyError, match=expected):
         service._validate_dispatch_locked(
-            session=sql_session(monkeypatch, session.sql_methods()),
-            owned=fence_owner(ref=child_ref, tenant_id="tenant"),
+            session=selected_sql,
+            owned=owned,
             scope=scope,
             intent=effect,
             permit=permit,

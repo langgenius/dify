@@ -1246,6 +1246,12 @@ jobs:
                                                       'test_real_lifespan_accepts_prefixed_inner_api_alongside_ordinary_credentials': 1,
                                                       'test_create_app_authenticates_control_plane_routes': 6}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
+          # Recovery inspection is collected by the complete backend directory above.
+          # Keep this owner independent of the separate protocol pass's inventory.
+          EXPECTED['tests.local.dify_agent.runtime_backend.test_binding_inspection_deadline'] = {
+              'test_local_inspection_has_total_deadline_and_private_cleanup': 5,
+              'test_inspection_helper_bounds_and_sanitizes_owned_resource_close': 2,
+          }
           REPORT = "builder-agent-workspace-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/runtime_backend', 'tests/local/dify_agent/layers', 'tests/local/dify_agent/server/test_binding_files.py', 'tests/local/dify_agent/server/test_execution_bindings.py', 'tests/local/dify_agent/server/test_home_snapshots.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/runtime/test_modules.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-workspace-regressions.xml'])
           problems = []
@@ -1676,7 +1682,9 @@ jobs:
                                                                                  'test_transport_selection_refuses_noncanonical_or_duplicate_key_json': 4}}.items():
               new_expected.setdefault(module, {}).update(functions)
           # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
-          for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_agent_associations': {'test_blank_home_never_weakens_required_fields_or_isolated_pins': 4,
+          for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_agent_associations': {'test_blank_home_never_weakens_required_fields_or_pin_equality': 3,
+                                                                                             'test_blank_home_recovery_association_is_data_not_isolated_admission': 1,
+                                                                                             'test_workspace_data_counter_is_strict_even_without_association': 4,
                                                                                              'test_normal_blank_home_association_roundtrip_retains_explicit_none': 1,
                                                                                              'test_nullable_normal_home_cannot_enter_isolated_workspace_owner': 2}}.items():
               new_expected.setdefault(module, {}).update(functions)
