@@ -165,7 +165,7 @@ def _make_segments(document: Document, hit_counts: list[int]) -> list[DocumentSe
 class TestDatasetModelValidation:
     """Test suite for Dataset model validation and basic operations."""
 
-    def test_dataset_uses_typebase_registry_and_generates_ids(self):
+    def test_dataset_uses_typebase_registry_and_generates_ids(self) -> None:
         generated_dataset = Dataset()
         another_dataset = Dataset()
         explicit_id = str(uuid4())
@@ -175,7 +175,7 @@ class TestDatasetModelValidation:
         assert generated_dataset.id != another_dataset.id
         assert Dataset(id=explicit_id).id == explicit_id
 
-    def test_dataset_creation_with_required_fields(self):
+    def test_dataset_creation_with_required_fields(self) -> None:
         """Test creating a dataset with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -196,7 +196,7 @@ class TestDatasetModelValidation:
         assert dataset.created_by == created_by
         # Note: Default values are set by database, not by model instantiation
 
-    def test_dataset_creation_with_optional_fields(self):
+    def test_dataset_creation_with_optional_fields(self) -> None:
         """Test creating a dataset with optional fields."""
         # Arrange & Act
         dataset = Dataset(
@@ -217,7 +217,7 @@ class TestDatasetModelValidation:
         assert dataset.embedding_model_provider == "openai"
 
     @pytest.mark.parametrize("sqlite_session", [(Dataset, Account, DatasetProcessRule, Document)], indirect=True)
-    def test_session_aware_dataset_getters_use_caller_session(self, sqlite_session: Session):
+    def test_session_aware_dataset_getters_use_caller_session(self, sqlite_session: Session) -> None:
         account = Account(name="Ada", email="ada@example.com")
         account.id = "account-1"
         dataset = _make_dataset(created_by=account.id)
@@ -250,7 +250,7 @@ class TestDatasetModelValidation:
         assert get_dataset_doc_form(dataset, session=sqlite_session) is None
 
     @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetKeywordTable)], indirect=True)
-    def test_get_dataset_keyword_table_uses_caller_session(self, sqlite_session: Session):
+    def test_get_dataset_keyword_table_uses_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset()
         keyword_table = DatasetKeywordTable(
             dataset_id=dataset.id,
@@ -264,7 +264,7 @@ class TestDatasetModelValidation:
         assert result is keyword_table
 
     @pytest.mark.parametrize("sqlite_session", [(Dataset, Account, App, AppDatasetJoin, Document)], indirect=True)
-    def test_dataset_detail_getters_use_caller_session(self, sqlite_session: Session):
+    def test_dataset_detail_getters_use_caller_session(self, sqlite_session: Session) -> None:
         account = Account(name="Ada", email="ada@example.com")
         account.id = "account-1"
         dataset = _make_dataset(created_by=account.id)
@@ -308,7 +308,7 @@ class TestDatasetModelValidation:
         assert get_dataset_doc_metadata(dataset, session=sqlite_session) == []
         assert get_dataset_is_published(dataset, session=sqlite_session) is False
 
-    def test_dataset_indexing_technique_validation(self):
+    def test_dataset_indexing_technique_validation(self) -> None:
         """Test dataset indexing technique values."""
         # Arrange & Act
         dataset_high_quality = Dataset(
@@ -332,7 +332,7 @@ class TestDatasetModelValidation:
         assert IndexTechniqueType.HIGH_QUALITY in Dataset.INDEXING_TECHNIQUE_LIST
         assert IndexTechniqueType.ECONOMY in Dataset.INDEXING_TECHNIQUE_LIST
 
-    def test_dataset_provider_validation(self):
+    def test_dataset_provider_validation(self) -> None:
         """Test dataset provider values."""
         # Arrange & Act
         dataset_vendor = Dataset(
@@ -356,7 +356,7 @@ class TestDatasetModelValidation:
         assert "vendor" in Dataset.PROVIDER_LIST
         assert "external" in Dataset.PROVIDER_LIST
 
-    def test_dataset_index_struct_dict_property(self):
+    def test_dataset_index_struct_dict_property(self) -> None:
         """Test index_struct_dict property parsing."""
         # Arrange
         index_struct_data = {"type": "vector", "dimension": 1536}
@@ -373,10 +373,11 @@ class TestDatasetModelValidation:
 
         # Assert
         assert result == index_struct_data
+        assert result is not None
         assert result["type"] == "vector"
         assert result["dimension"] == 1536
 
-    def test_dataset_index_struct_dict_property_none(self):
+    def test_dataset_index_struct_dict_property_none(self) -> None:
         """Test index_struct_dict property when index_struct is None."""
         # Arrange
         dataset = Dataset(
@@ -392,7 +393,7 @@ class TestDatasetModelValidation:
         # Assert
         assert result is None
 
-    def test_dataset_external_retrieval_model_property(self):
+    def test_dataset_external_retrieval_model_property(self) -> None:
         """Test external_retrieval_model property with default values."""
         # Arrange
         dataset = Dataset(
@@ -412,7 +413,9 @@ class TestDatasetModelValidation:
     @pytest.mark.parametrize(
         "sqlite_session", [(Dataset, ExternalKnowledgeBindings, ExternalKnowledgeApis)], indirect=True
     )
-    def test_dataset_external_knowledge_info_returns_none_for_cross_tenant_template(self, sqlite_session: Session):
+    def test_dataset_external_knowledge_info_returns_none_for_cross_tenant_template(
+        self, sqlite_session: Session
+    ) -> None:
         """Test external datasets fail closed when the bound template is outside the tenant."""
         dataset = _make_dataset(provider="external")
         external_api = ExternalKnowledgeApis(
@@ -438,7 +441,7 @@ class TestDatasetModelValidation:
     @pytest.mark.parametrize(
         "sqlite_session", [(ExternalKnowledgeApis, ExternalKnowledgeBindings, Dataset)], indirect=True
     )
-    def test_external_knowledge_api_dataset_bindings_use_caller_session(self, sqlite_session: Session):
+    def test_external_knowledge_api_dataset_bindings_use_caller_session(self, sqlite_session: Session) -> None:
         external_api = ExternalKnowledgeApis(
             tenant_id="tenant-1",
             created_by=str(uuid4()),
@@ -484,7 +487,7 @@ class TestDatasetModelValidation:
         assert result == [{"id": dataset.id, "name": dataset.name}]
 
     @pytest.mark.parametrize("sqlite_session", [(DatasetQuery, UploadFile)], indirect=True)
-    def test_dataset_query_get_queries_uses_caller_session(self, sqlite_session: Session):
+    def test_dataset_query_get_queries_uses_caller_session(self, sqlite_session: Session) -> None:
         dataset_query = DatasetQuery(
             dataset_id=str(uuid4()),
             content=json.dumps([{"content_type": "image_query", "content": "file-1"}]),
@@ -528,7 +531,7 @@ class TestDatasetModelValidation:
             }
         ]
 
-    def test_dataset_retrieval_model_dict_property(self):
+    def test_dataset_retrieval_model_dict_property(self) -> None:
         """Test retrieval_model_dict property with default values."""
         # Arrange
         dataset = Dataset(
@@ -546,7 +549,7 @@ class TestDatasetModelValidation:
         assert result["reranking_enable"] is False
         assert result["score_threshold_enabled"] is False
 
-    def test_dataset_retrieval_model_dict_property_merges_partial_values(self):
+    def test_dataset_retrieval_model_dict_property_merges_partial_values(self) -> None:
         """Test retrieval_model_dict property fills in missing legacy keys."""
         # Arrange
         dataset = Dataset(
@@ -623,7 +626,7 @@ class TestDatasetModelValidation:
 
         assert error.value.errors()[0]["loc"] == (field,)
 
-    def test_dataset_gen_collection_name_by_id(self):
+    def test_dataset_gen_collection_name_by_id(self) -> None:
         """Test static method for generating collection name."""
         # Arrange
         dataset_id = "12345678-1234-1234-1234-123456789abc"
@@ -639,7 +642,7 @@ class TestDatasetModelValidation:
 class TestDocumentModelRelationships:
     """Test suite for Document model relationships and properties."""
 
-    def test_document_creation_with_required_fields(self):
+    def test_document_creation_with_required_fields(self) -> None:
         """Test creating a document with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -669,7 +672,7 @@ class TestDocumentModelRelationships:
         assert document.created_by == created_by
         # Note: Default values are set by database, not by model instantiation
 
-    def test_document_data_source_types(self):
+    def test_document_data_source_types(self) -> None:
         """Test document data source type validation."""
         # Assert
         assert "upload_file" in Document.DATA_SOURCES
@@ -677,7 +680,7 @@ class TestDocumentModelRelationships:
         assert "website_crawl" in Document.DATA_SOURCES
 
     @pytest.mark.parametrize("sqlite_session", [(Document, DatasetProcessRule, DocumentSegment)], indirect=True)
-    def test_session_aware_document_getters_use_caller_session(self, sqlite_session: Session):
+    def test_session_aware_document_getters_use_caller_session(self, sqlite_session: Session) -> None:
         process_rule = DatasetProcessRule(
             dataset_id="dataset-1",
             mode=ProcessRuleMode.CUSTOM,
@@ -706,7 +709,7 @@ class TestDocumentModelRelationships:
         assert get_document_segment_count(document, session=sqlite_session) == 3
         assert get_document_hit_count(document, session=sqlite_session) == 7
 
-    def test_document_display_status_queuing(self):
+    def test_document_display_status_queuing(self) -> None:
         """Test document display_status property for queuing state."""
         # Arrange
         document = Document(
@@ -727,7 +730,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "queuing"
 
-    def test_document_display_status_paused(self):
+    def test_document_display_status_paused(self) -> None:
         """Test document display_status property for paused state."""
         # Arrange
         document = Document(
@@ -749,7 +752,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "paused"
 
-    def test_document_display_status_indexing(self):
+    def test_document_display_status_indexing(self) -> None:
         """Test document display_status property for indexing state."""
         # Arrange
         for indexing_status in [
@@ -776,7 +779,7 @@ class TestDocumentModelRelationships:
             # Assert
             assert status == "indexing"
 
-    def test_document_display_status_error(self):
+    def test_document_display_status_error(self) -> None:
         """Test document display_status property for error state."""
         # Arrange
         document = Document(
@@ -797,7 +800,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "error"
 
-    def test_document_display_status_available(self):
+    def test_document_display_status_available(self) -> None:
         """Test document display_status property for available state."""
         # Arrange
         document = Document(
@@ -820,7 +823,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "available"
 
-    def test_document_display_status_disabled(self):
+    def test_document_display_status_disabled(self) -> None:
         """Test document display_status property for disabled state."""
         # Arrange
         document = Document(
@@ -843,7 +846,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "disabled"
 
-    def test_document_display_status_archived(self):
+    def test_document_display_status_archived(self) -> None:
         """Test document display_status property for archived state."""
         # Arrange
         document = Document(
@@ -865,7 +868,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert status == "archived"
 
-    def test_document_data_source_info_dict_property(self):
+    def test_document_data_source_info_dict_property(self) -> None:
         """Test data_source_info_dict property parsing."""
         # Arrange
         data_source_info = {"upload_file_id": str(uuid4()), "file_name": "test.pdf"}
@@ -889,7 +892,7 @@ class TestDocumentModelRelationships:
         assert "upload_file_id" in result
         assert "file_name" in result
 
-    def test_document_data_source_info_dict_property_empty(self):
+    def test_document_data_source_info_dict_property_empty(self) -> None:
         """Test data_source_info_dict property when data_source_info is None."""
         # Arrange
         document = Document(
@@ -910,7 +913,7 @@ class TestDocumentModelRelationships:
         assert result == {}
 
     @pytest.mark.parametrize("sqlite_session", [(Document, Dataset)], indirect=True)
-    def test_document_get_dataset_uses_caller_session(self, sqlite_session: Session):
+    def test_document_get_dataset_uses_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset()
         document = _make_document(dataset_id=dataset.id)
         sqlite_session.add_all([dataset, document])
@@ -922,7 +925,7 @@ class TestDocumentModelRelationships:
     def test_document_average_segment_length(
         self,
         sqlite_session: Session,
-    ):
+    ) -> None:
         """Test average_segment_length property calculation."""
         # Arrange
         document = Document(
@@ -949,7 +952,7 @@ class TestDocumentModelRelationships:
         # Assert
         assert result == 100
 
-    def test_document_average_segment_length_zero(self):
+    def test_document_average_segment_length_zero(self) -> None:
         """Test average_segment_length property when word_count is zero."""
         # Arrange
         document = Document(
@@ -977,7 +980,7 @@ class TestDocumentSegmentIndexing:
     @pytest.mark.parametrize(
         "sqlite_session", [(DocumentSegment, Document, DatasetProcessRule, ChildChunk)], indirect=True
     )
-    def test_get_child_chunks_uses_caller_session(self, sqlite_session: Session):
+    def test_get_child_chunks_uses_caller_session(self, sqlite_session: Session) -> None:
         process_rule = DatasetProcessRule(
             dataset_id="dataset-1",
             mode=ProcessRuleMode.HIERARCHICAL,
@@ -1014,7 +1017,7 @@ class TestDocumentSegmentIndexing:
     @pytest.mark.parametrize(
         "sqlite_session", [(DocumentSegment, Document, DatasetProcessRule, ChildChunk)], indirect=True
     )
-    def test_get_child_chunks_includes_full_doc_unless_explicitly_hidden(self, sqlite_session: Session):
+    def test_get_child_chunks_includes_full_doc_unless_explicitly_hidden(self, sqlite_session: Session) -> None:
         process_rule = DatasetProcessRule(
             dataset_id="dataset-1",
             mode=ProcessRuleMode.HIERARCHICAL,
@@ -1051,7 +1054,7 @@ class TestDocumentSegmentIndexing:
         assert response_result == []
 
     @pytest.mark.parametrize("sqlite_session", [(Dataset, Document, DocumentSegment)], indirect=True)
-    def test_relationship_getters_use_caller_session(self, sqlite_session: Session):
+    def test_relationship_getters_use_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset()
         document = _make_document(dataset_id=dataset.id)
         segment = DocumentSegment(
@@ -1070,7 +1073,7 @@ class TestDocumentSegmentIndexing:
         assert get_segment_dataset(segment, session=sqlite_session) is dataset
         assert get_segment_document(segment, session=sqlite_session) is document
 
-    def test_document_segment_creation_with_required_fields(self):
+    def test_document_segment_creation_with_required_fields(self) -> None:
         """Test creating a document segment with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -1101,7 +1104,7 @@ class TestDocumentSegmentIndexing:
         assert segment.created_by == created_by
         # Note: Default values are set by database, not by model instantiation
 
-    def test_document_segment_with_indexing_fields(self):
+    def test_document_segment_with_indexing_fields(self) -> None:
         """Test creating a document segment with indexing fields."""
         # Arrange
         index_node_id = str(uuid4())
@@ -1128,7 +1131,7 @@ class TestDocumentSegmentIndexing:
         assert segment.index_node_hash == index_node_hash
         assert segment.keywords == keywords
 
-    def test_document_segment_with_answer_field(self):
+    def test_document_segment_with_answer_field(self) -> None:
         """Test creating a document segment with answer field for QA model."""
         # Arrange
         content = "What is AI?"
@@ -1151,7 +1154,7 @@ class TestDocumentSegmentIndexing:
         assert segment.content == content
         assert segment.answer == answer
 
-    def test_document_segment_status_transitions(self):
+    def test_document_segment_status_transitions(self) -> None:
         """Test document segment status field values."""
         # Arrange & Act
         segment_waiting = DocumentSegment(
@@ -1181,7 +1184,7 @@ class TestDocumentSegmentIndexing:
         assert segment_waiting.status == SegmentStatus.WAITING
         assert segment_completed.status == SegmentStatus.COMPLETED
 
-    def test_document_segment_enabled_disabled_tracking(self):
+    def test_document_segment_enabled_disabled_tracking(self) -> None:
         """Test document segment enabled/disabled state tracking."""
         # Arrange
         disabled_by = str(uuid4())
@@ -1207,7 +1210,7 @@ class TestDocumentSegmentIndexing:
         assert segment.disabled_by == disabled_by
         assert segment.disabled_at == disabled_at
 
-    def test_document_segment_hit_count_tracking(self):
+    def test_document_segment_hit_count_tracking(self) -> None:
         """Test document segment hit count tracking."""
         # Arrange & Act
         segment = DocumentSegment(
@@ -1228,7 +1231,7 @@ class TestDocumentSegmentIndexing:
     @pytest.mark.parametrize("sqlite_session", [(DocumentSegment, UploadFile, SegmentAttachmentBinding)], indirect=True)
     def test_document_segment_attachments_prefers_files_url_for_source_url(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ):
+    ) -> None:
         """Test attachment source URLs use FILES_URL before falling back to CONSOLE_API_URL."""
         # Arrange
         segment = DocumentSegment(
@@ -1289,7 +1292,7 @@ class TestDocumentSegmentIndexing:
         assert query["nonce"] == ["01010101010101010101010101010101"]
         assert query["sign"][0]
 
-    def test_document_segment_error_tracking(self):
+    def test_document_segment_error_tracking(self) -> None:
         """Test document segment error tracking."""
         # Arrange
         error_message = "Indexing failed due to timeout"
@@ -1317,7 +1320,7 @@ class TestDocumentSegmentIndexing:
 class TestEmbeddingStorage:
     """Test suite for Embedding model storage and retrieval."""
 
-    def test_embedding_creation_with_required_fields(self):
+    def test_embedding_creation_with_required_fields(self) -> None:
         """Test creating an embedding with required fields."""
         # Arrange
         model_name = "text-embedding-ada-002"
@@ -1338,7 +1341,7 @@ class TestEmbeddingStorage:
         assert embedding.provider_name == provider_name
         assert embedding.embedding == b"binary_data"
 
-    def test_embedding_set_and_get_embedding(self):
+    def test_embedding_set_and_get_embedding(self) -> None:
         """Test setting and getting embedding data."""
         # Arrange
         embedding_data = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -1359,7 +1362,7 @@ class TestEmbeddingStorage:
         assert retrieved_data[0] == 0.1
         assert retrieved_data[4] == 0.5
 
-    def test_embedding_pickle_serialization(self):
+    def test_embedding_pickle_serialization(self) -> None:
         """Test embedding data is properly pickled."""
         # Arrange
         embedding_data = [0.1, 0.2, 0.3]
@@ -1380,7 +1383,7 @@ class TestEmbeddingStorage:
         unpickled_data = pickle.loads(embedding.embedding)  # noqa: S301
         assert unpickled_data == embedding_data
 
-    def test_embedding_with_large_vector(self):
+    def test_embedding_with_large_vector(self) -> None:
         """Test embedding with large dimension vector."""
         # Arrange
         # Simulate a 1536-dimension vector (OpenAI ada-002 size)
@@ -1405,7 +1408,7 @@ class TestEmbeddingStorage:
 class TestDatasetProcessRule:
     """Test suite for DatasetProcessRule model."""
 
-    def test_dataset_process_rule_creation(self):
+    def test_dataset_process_rule_creation(self) -> None:
         """Test creating a dataset process rule."""
         # Arrange
         dataset_id = str(uuid4())
@@ -1421,14 +1424,14 @@ class TestDatasetProcessRule:
         assert process_rule.mode == ProcessRuleMode.AUTOMATIC
         assert process_rule.created_by == created_by
 
-    def test_dataset_process_rule_modes(self):
+    def test_dataset_process_rule_modes(self) -> None:
         """Test dataset process rule mode validation."""
         # Assert
         assert "automatic" in DatasetProcessRule.MODES
         assert "custom" in DatasetProcessRule.MODES
         assert "hierarchical" in DatasetProcessRule.MODES
 
-    def test_dataset_process_rule_with_rules_dict(self):
+    def test_dataset_process_rule_with_rules_dict(self) -> None:
         """Test dataset process rule with rules dictionary."""
         # Arrange
         rules_data = {
@@ -1450,10 +1453,11 @@ class TestDatasetProcessRule:
 
         # Assert
         assert result == rules_data
+        assert result is not None
         assert "pre_processing_rules" in result
         assert "segmentation" in result
 
-    def test_dataset_process_rule_to_dict(self):
+    def test_dataset_process_rule_to_dict(self) -> None:
         """Test dataset process rule to_dict method."""
         # Arrange
         dataset_id = str(uuid4())
@@ -1473,7 +1477,7 @@ class TestDatasetProcessRule:
         assert result["mode"] == ProcessRuleMode.AUTOMATIC
         assert result["rules"] == rules_data
 
-    def test_dataset_process_rule_automatic_rules(self):
+    def test_dataset_process_rule_automatic_rules(self) -> None:
         """Test dataset process rule automatic rules constant."""
         # Act
         automatic_rules = DatasetProcessRule.AUTOMATIC_RULES
@@ -1487,7 +1491,7 @@ class TestDatasetProcessRule:
 class TestDatasetKeywordTable:
     """Test suite for DatasetKeywordTable model."""
 
-    def test_dataset_keyword_table_creation(self):
+    def test_dataset_keyword_table_creation(self) -> None:
         """Test creating a dataset keyword table."""
         # Arrange
         dataset_id = str(uuid4())
@@ -1503,7 +1507,7 @@ class TestDatasetKeywordTable:
         assert keyword_table.dataset_id == dataset_id
         assert keyword_table.data_source_type == "database"  # Default value
 
-    def test_dataset_keyword_table_data_source_type(self):
+    def test_dataset_keyword_table_data_source_type(self) -> None:
         """Test dataset keyword table data source type."""
         # Arrange & Act
         keyword_table = DatasetKeywordTable(
@@ -1516,7 +1520,7 @@ class TestDatasetKeywordTable:
         assert keyword_table.data_source_type == "file"
 
     @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetKeywordTable)], indirect=True)
-    def test_get_keyword_table_dict_from_database_uses_caller_session(self, sqlite_session: Session):
+    def test_get_keyword_table_dict_from_database_uses_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset()
         keyword_table = DatasetKeywordTable(
             dataset_id=dataset.id,
@@ -1540,7 +1544,7 @@ class TestDatasetKeywordTable:
 class TestAppDatasetJoin:
     """Test suite for AppDatasetJoin model."""
 
-    def test_app_dataset_join_creation(self):
+    def test_app_dataset_join_creation(self) -> None:
         """Test creating an app-dataset join relationship."""
         # Arrange
         app_id = str(uuid4())
@@ -1561,7 +1565,7 @@ class TestAppDatasetJoin:
 class TestChildChunk:
     """Test suite for ChildChunk model."""
 
-    def test_child_chunk_creation(self):
+    def test_child_chunk_creation(self) -> None:
         """Test creating a child chunk."""
         # Arrange
         tenant_id = str(uuid4())
@@ -1593,7 +1597,7 @@ class TestChildChunk:
         assert child_chunk.created_by == created_by
         # Note: Default values are set by database, not by model instantiation
 
-    def test_child_chunk_with_indexing_fields(self):
+    def test_child_chunk_with_indexing_fields(self) -> None:
         """Test creating a child chunk with indexing fields."""
         # Arrange
         index_node_id = str(uuid4())
@@ -1621,7 +1625,7 @@ class TestChildChunk:
 class TestModelIntegration:
     """Test suite for model integration scenarios."""
 
-    def test_complete_dataset_document_segment_hierarchy(self):
+    def test_complete_dataset_document_segment_hierarchy(self) -> None:
         """Test complete hierarchy from dataset to segment."""
         # Arrange
         tenant_id = str(uuid4())
@@ -1679,7 +1683,7 @@ class TestModelIntegration:
     def test_document_to_dict_serialization(
         self,
         sqlite_session: Session,
-    ):
+    ) -> None:
         """Test document to_dict method for serialization."""
         # Arrange
         tenant_id = str(uuid4())
@@ -1727,7 +1731,7 @@ class TestChildChunkSessionAccessors:
     global ``db.session`` internally; they are now plain methods accepting a ``Session`` explicitly.
     """
 
-    def test_accessors_resolve_related_rows_via_caller_session(self, sqlite_session: Session):
+    def test_accessors_resolve_related_rows_via_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
         document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
         segment = _make_segments(document, [0])[0]
@@ -1748,7 +1752,7 @@ class TestChildChunkSessionAccessors:
         assert get_child_document(child_chunk, session=sqlite_session) is document
         assert get_child_segment(child_chunk, session=sqlite_session) is segment
 
-    def test_accessors_return_none_when_related_rows_are_absent(self, sqlite_session: Session):
+    def test_accessors_return_none_when_related_rows_are_absent(self, sqlite_session: Session) -> None:
         child_chunk = ChildChunk(
             tenant_id=str(uuid4()),
             dataset_id=str(uuid4()),
@@ -1772,7 +1776,7 @@ class TestDatasetAvailableDocumentCount:
     caller-provided session, matching the other ``get_*`` accessors on ``Dataset``.
     """
 
-    def test_counts_only_completed_enabled_documents(self, sqlite_session: Session):
+    def test_counts_only_completed_enabled_documents(self, sqlite_session: Session) -> None:
         dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
         completed = _make_document(
             document_id=str(uuid4()),
@@ -1801,7 +1805,7 @@ class TestDocumentSegmentNeighborAccessors:
     plain methods accepting a ``Session`` explicitly.
     """
 
-    def test_accessors_resolve_neighboring_segments_via_caller_session(self, sqlite_session: Session):
+    def test_accessors_resolve_neighboring_segments_via_caller_session(self, sqlite_session: Session) -> None:
         dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
         document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
         segments = _make_segments(document, [0, 0, 0])
@@ -1812,7 +1816,7 @@ class TestDocumentSegmentNeighborAccessors:
         assert get_previous_segment(middle_segment, session=sqlite_session) is segments[0]
         assert get_next_segment(middle_segment, session=sqlite_session) is segments[2]
 
-    def test_accessors_return_none_when_neighbors_are_absent(self, sqlite_session: Session):
+    def test_accessors_return_none_when_neighbors_are_absent(self, sqlite_session: Session) -> None:
         dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
         document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
         segment = _make_segments(document, [0])[0]
@@ -1830,7 +1834,7 @@ class TestAppDatasetJoinSessionAccessors:
     it is now a plain method accepting a ``Session`` explicitly.
     """
 
-    def test_app_accessor_resolves_app_via_caller_session(self, sqlite_session: Session):
+    def test_app_accessor_resolves_app_via_caller_session(self, sqlite_session: Session) -> None:
         app = _make_app(app_id=str(uuid4()))
         join = AppDatasetJoin(
             app_id=app.id,
@@ -1841,7 +1845,7 @@ class TestAppDatasetJoinSessionAccessors:
 
         assert get_joined_app(join, session=sqlite_session) is app
 
-    def test_app_accessor_returns_none_when_app_absent(self, sqlite_session: Session):
+    def test_app_accessor_returns_none_when_app_absent(self, sqlite_session: Session) -> None:
         join = AppDatasetJoin(
             app_id=str(uuid4()),
             dataset_id=str(uuid4()),
