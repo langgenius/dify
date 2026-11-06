@@ -1,12 +1,61 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
+
+func TestMarshalJobEnvPreservesNilAndEmptyObjects(t *testing.T) {
+	tests := []struct {
+		name string
+		env  map[string]string
+	}{
+		{name: "nil"},
+		{name: "empty", env: map[string]string{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MarshalJobEnv(tt.env)
+			if err != nil {
+				t.Fatalf("MarshalJobEnv: %v", err)
+			}
+			if string(got) != "{}" {
+				t.Errorf("encoded env = %q, want {}", got)
+			}
+		})
+	}
+}
+
+func TestMarshalJobEnvEscapesControlAndUnicode(t *testing.T) {
+	env := map[string]string{
+		"ANSI_COLOR":          "\x1b[31mred\x1b[0m",
+		"CONTROL_VALUE":       "start\x01\tmiddle\nend",
+		"QUOTE\"_BACKSLASH\\": "quote=\" and path C:\\work\\file",
+		"变量":                "中文 😀",
+	}
+	payload, err := MarshalJobEnv(env)
+	if err != nil {
+		t.Fatalf("MarshalJobEnv: %v", err)
+	}
+	var decoded map[string]string
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal producer output: %v; payload=%s", err, payload)
+	}
+	for k, want := range env {
+		if got := decoded[k]; got != want {
+			t.Errorf("key %q: got %q, want %q", k, got, want)
+		}
+	}
+	// Ensure Go %q-style \x1b did not leak into JSON (invalid JSON escape).
+	if bytes.Contains(payload, []byte(`\x1b`)) {
+		t.Fatalf("payload still contains Go %%q ESC form: %s", payload)
+	}
+}
 
 func TestMaterializeStdioStatusDoesNotRequirePanePipe(t *testing.T) {
 	service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
