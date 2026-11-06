@@ -703,8 +703,6 @@ export default interface Resources {
     'newApp.appCreated': 'App created'
     'newApp.appDescriptionPlaceholder': 'Enter the description of the app'
     'newApp.appNamePlaceholder': 'Give your app a name'
-    'newApp.buildFromBlank': 'Build from blank'
-    'newApp.builderDescription': 'With <builderIcon/> App Builder or by hand'
     'newApp.captionDescription': 'Description'
     'newApp.captionName': 'App Name & Icon'
     'newApp.caution': 'Caution'

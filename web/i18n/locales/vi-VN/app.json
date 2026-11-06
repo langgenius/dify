@@ -169,8 +169,6 @@
   "newApp.appCreated": "Ứng dụng đã được tạo",
   "newApp.appDescriptionPlaceholder": "Nhập mô tả của ứng dụng",
   "newApp.appNamePlaceholder": "Đặt tên cho ứng dụng của bạn",
-  "newApp.buildFromBlank": "Tạo từ đầu",
-  "newApp.builderDescription": "Với <builderIcon/> App Builder hoặc thủ công",
   "newApp.captionDescription": "Mô tả",
   "newApp.captionName": "Biểu tượng và tên ứng dụng",
   "newApp.caution": "Thận trọng",

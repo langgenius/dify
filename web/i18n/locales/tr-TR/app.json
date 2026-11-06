@@ -169,8 +169,6 @@
   "newApp.appCreated": "Uygulama oluşturuldu",
   "newApp.appDescriptionPlaceholder": "Uygulamanın açıklamasını girin",
   "newApp.appNamePlaceholder": "Uygulamanıza bir isim verin",
-  "newApp.buildFromBlank": "Sıfırdan oluştur",
-  "newApp.builderDescription": "<builderIcon/> App Builder ile veya elle",
   "newApp.captionDescription": "Açıklama",
   "newApp.captionName": "Uygulama simgesi & ismi",
   "newApp.caution": "Dikkat",

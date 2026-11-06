@@ -169,8 +169,6 @@
   "newApp.appCreated": "สร้างโปรเจกต์",
   "newApp.appDescriptionPlaceholder": "ป้อนคำอธิบายของโปรเจกต์",
   "newApp.appNamePlaceholder": "ตั้งชื่อโปรเจกต์ของคุณ",
-  "newApp.buildFromBlank": "สร้างจากแอปเปล่า",
-  "newApp.builderDescription": "ด้วย <builderIcon/> App Builder หรือสร้างด้วยตนเอง",
   "newApp.captionDescription": "คำอธิบาย",
   "newApp.captionName": "ไอคอนและชื่อโปรเจกต์",
   "newApp.caution": "ข้อควรระวัง",

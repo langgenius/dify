@@ -15,12 +15,7 @@ const BuilderFixButton = ({ disabled = false, onClick }: BuilderFixButtonProps) 
           ns="difyBuilder"
           components={{
             builder: <span className="inline-flex items-center gap-1 font-semibold" />,
-            icon: (
-              <span
-                aria-hidden="true"
-                className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
-              />
-            ),
+            icon: <span aria-hidden="true" className="builder-brand-mark size-4 shrink-0" />,
           }}
         />
       </span>

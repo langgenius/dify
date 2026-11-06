@@ -169,8 +169,6 @@
   "newApp.appCreated": "アプリが作成されました",
   "newApp.appDescriptionPlaceholder": "アプリの説明を入力してください",
   "newApp.appNamePlaceholder": "アプリ名を入力してください",
-  "newApp.buildFromBlank": "空白から作成",
-  "newApp.builderDescription": "<builderIcon/> App Builder または手動で作成",
   "newApp.captionDescription": "説明",
   "newApp.captionName": "アプリのアイコンと名前",
   "newApp.caution": "注意",

@@ -169,8 +169,6 @@
   "newApp.appCreated": "Додаток створено",
   "newApp.appDescriptionPlaceholder": "Введіть опис додатка",
   "newApp.appNamePlaceholder": "Дайте назву вашому додатку",
-  "newApp.buildFromBlank": "Створити з нуля",
-  "newApp.builderDescription": "За допомогою <builderIcon/> App Builder або вручну",
   "newApp.captionDescription": "Опис",
   "newApp.captionName": "Іконка та назва додатка",
   "newApp.caution": "Обережність",
