@@ -79,9 +79,12 @@ def parse_source_intent(value: object, source: dict) -> KnowledgeSourceIntent | 
 def bind_planning_source_intent(value: object, source: dict) -> KnowledgeSourceIntent | None:
     """Tag newly parsed planner metadata with the exact request source digest.
 
-    Reusing a result after an answer/goal change must not rebind its exclusion.
+    The request includes execution generation as well as stable user source.
+    A cancelled in-flight result must not rebind an exclusion after Resume.
     The model's fixed schema cannot supply this server-owned tag.
     """
+    if type(source.get("generation")) is not int:
+        return None
     intent = parse_source_intent(value, source)
     if intent is not None:
         intent["source_digest"] = canonical_digest(source)
@@ -92,7 +95,8 @@ def user_source(context: DifyBuilderContext) -> dict | None:
     """Reconstruct current real source; legacy/incomplete provenance stays unknown.
 
     Values are read from the current requirements only when a server-recorded
-    submitted control agrees. Goal and generation changes alter the digest.
+    submitted control agrees. Goal, answers and logical task define accepted
+    interpretation; execution generation belongs only to in-flight results.
     """
     keys = context.confirmed_requirement_keys
     if (
@@ -121,7 +125,6 @@ def user_source(context: DifyBuilderContext) -> dict | None:
                 {
                     "goal": context.goal_text,
                     "answers": answers,
-                    "generation": context.task_control.get("generation", 0),
                     "logical_task_id": context.logical_task_id,
                 },
                 ensure_ascii=False,
@@ -143,7 +146,8 @@ def record_source_intent(context: DifyBuilderContext, value: object) -> None:
     intent = None
     if source is not None and isinstance(value, dict):
         if "source_digest" in value:
-            if value.get("source_digest") == canonical_digest(source) and set(value) == {
+            producer_source = {**source, "generation": context.task_control.get("generation", 0)}
+            if value.get("source_digest") == canonical_digest(producer_source) and set(value) == {
                 "state",
                 "evidence",
                 "source_digest",
@@ -165,7 +169,7 @@ def record_source_intent(context: DifyBuilderContext, value: object) -> None:
 def established_source_required(context: DifyBuilderContext) -> bool:
     """Keep required intent for its logical task, including ordinary Resume.
 
-    Execution generation fences stale exclusions/results; it does not authorize
+    Execution generation fences in-flight results; it does not authorize
     dropping a positive requirement. New logical tasks do not inherit it.
     """
     record = context.knowledge_source_intent
@@ -175,7 +179,7 @@ def established_source_required(context: DifyBuilderContext) -> bool:
 
 
 def current_source_intent(context: DifyBuilderContext) -> KnowledgeSourceIntent | None:
-    """Read a validated current decision; mismatched provenance never excludes."""
+    """Read accepted source meaning across Resume; changed user source excludes nothing."""
     record = context.knowledge_source_intent
     if not record:
         return None
@@ -207,5 +211,5 @@ def planning_requirements(context: DifyBuilderContext, requirements: dict) -> di
     result = {key: value for key, value in requirements.items() if key != SOURCE_INPUT}
     source = user_source(context)
     if context.knowledge_source_intent and source is not None:
-        result[SOURCE_INPUT] = source
+        result[SOURCE_INPUT] = {**source, "generation": context.task_control.get("generation", 0)}
     return result

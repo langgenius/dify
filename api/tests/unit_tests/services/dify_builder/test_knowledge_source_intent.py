@@ -158,18 +158,23 @@ def test_fixed_intent_preserves_semantic_positive_mixed_and_arbitrary_exclusions
     assert "mixed, conditional" in model.calls[0][0][0].content
 
 
-@pytest.mark.parametrize("mutation", ["goal", "generation", "answer", "forged", "legacy"])
+@pytest.mark.parametrize("mutation", ["goal", "logical_task", "answer", "forged", "legacy"])
 def test_stale_or_forged_exclusion_cannot_be_rebound_to_new_source(mutation: str) -> None:
     from services.dify_builder.application.handlers_build import _knowledge_discovery_required
     from services.dify_builder.knowledge_source_intent import current_source_intent, record_source_intent
+    from services.dify_builder.task_lifecycle import advance_task_identity
 
     context = DifyBuilderContext(goal_text=GOAL, confirmed_requirement_keys=[])
+    session = Session(app_id="app", entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_RESOURCE_RECOMMENDATION)
+    repo = InMemoryRepository()
+    repo.create_session(session, context, [])
+    advance_task_identity(session, context, EntryMode.BUILD)
     record_source_intent(context, INTENT)
     assert not _knowledge_discovery_required(context)
     if mutation == "goal":
         context.goal_text += " Now retrieve from CompanyFAQ knowledge base."
-    elif mutation == "generation":
-        context.task_control["generation"] = 1
+    elif mutation == "logical_task":
+        advance_task_identity(session, context, EntryMode.BUILD)
     elif mutation == "answer":
         context.confirmed_requirement_keys = ["arbitrary_key"]
         context.requirements["arbitrary_key"] = "Use CompanyFAQ knowledge base"
@@ -267,7 +272,9 @@ def test_actual_submitted_control_refreshes_intent_in_the_existing_plan_call(
     context = repo.get_session(current.id)[1]
     assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
     assert len(plans) == len(planning_model.calls) == len(analysis_model.calls) == 1
-    assert plans[0][SOURCE_INPUT] == user_source(context)
+    source = user_source(context)
+    assert source is not None
+    assert plans[0][SOURCE_INPUT] == {**source, "generation": context.task_control.get("generation", 0)}
     assert context.confirmed_requirement_sources["arbitrary_key"]["value"] is answer
     assert context.confirmed_requirement_sources["arbitrary_key"]["label"] == "Use a knowledge base?"
     assert context.requirements["no_knowledge_base"] is True  # forged hidden payload was not merged
@@ -305,12 +312,13 @@ def test_old_planning_intent_cannot_be_rebound_after_a_new_real_answer() -> None
     from services.dify_builder.knowledge_source_intent import (
         SOURCE_INPUT,
         current_source_intent,
+        planning_requirements,
         record_source_intent,
-        user_source,
     )
 
     context = DifyBuilderContext(goal_text=GOAL, confirmed_requirement_keys=[])
-    source = user_source(context)
+    record_source_intent(context, INTENT)
+    source = planning_requirements(context, {})[SOURCE_INPUT]
     model = _FakeInstance(
         [
             json.dumps(
@@ -580,6 +588,105 @@ def test_new_logical_task_does_not_inherit_positive_and_old_exclusion_is_stale()
     record_source_intent(context, INTENT)
     assert not established_source_required(context)
     assert current_source_intent(context) == INTENT
-    # An execution resume invalidates only the exclusion freshness, not task identity.
+    # Resume changes cancellation freshness, not already accepted user meaning.
+    # Old in-flight results remain separately generation-stamped below.
     context.task_control["generation"] = 1
-    assert current_source_intent(context) is None
+    assert current_source_intent(context) == INTENT
+
+
+def test_actual_source_exclusion_survives_sql_stop_resume_and_model_only_confirmation(
+    monkeypatch: pytest.MonkeyPatch, service: "DifyBuilderService", repo: "SqlDifyBuilderRepository"
+) -> None:
+    from core.dify_builder.models import Graph
+    from services.dify_builder.knowledge_source_intent import current_source_intent, record_source_intent
+    from services.dify_builder.task_lifecycle import advance_task_identity
+    from tests.unit_tests.services.dify_builder.test_service import ACCOUNT_ID, APP_ID, TENANT_ID, _actor
+
+    analysis_model = _FakeInstance([json.dumps({"fields": [], "values": VALUES, "knowledge_source_intent": INTENT})])
+    analysis = build.analyze_goal(analysis_model, GOAL)
+    plan = WorkflowPlan(
+        "Translation", "source_text", "translation", ["Translate supplied text"], used_resource_ids=[MODEL]
+    )
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_RESOURCE_RECOMMENDATION,
+    )
+    context = DifyBuilderContext(
+        goal_text=GOAL, confirmed_requirement_keys=[], requirements=analysis["values"], plan_items=plan.items
+    )
+    repo.create_session(session, context, [])
+    task_id = advance_task_identity(session, context, EntryMode.BUILD)
+    assert task_id == f"{session.id}:1"
+    record_source_intent(context, analysis["knowledge_source_intent"])
+    base = repo.compare_and_advance(session.id, 1, session.current_state, context, [])
+    accepted = dict(context.knowledge_source_intent)
+    service._read_task_dsl_fn = lambda *_: (
+        Graph(graph=Graph(nodes=[], edges=[]), features=Graph()),
+        "same-source-revision",
+    )
+    stopped = service.stop_task(session.id, _actor(), base_version=base, client_action_id="exclude-stop")
+    service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="exclude-resume")
+    resumed, context = repo.get_session(session.id)
+    assert context.task_control["generation"] == 1
+    assert context.logical_task_id == task_id
+    assert context.goal_text == GOAL
+    assert context.requirements == VALUES
+    assert current_source_intent(context) == INTENT
+    assert context.knowledge_source_intent == accepted
+    agent = ReconciliationAgent(plan)
+    planner_calls: list[object] = []
+
+    def no_new_cognition(*_args: object, **_kwargs: object) -> WorkflowPlan:
+        planner_calls.append(True)
+        raise AssertionError("Same-source Resume must not add a planning refresh")
+
+    monkeypatch.setattr(agent, "propose_plan_v1", no_new_cognition)
+    runner = Runner(Env(agent=agent, repo=repo, dify=FakeDifyPort(), now=lambda: datetime.min), build_registry())
+    result = runner.advance(
+        session.id,
+        Turn(
+            actor=_actor(),
+            action=Action(kind="confirm_resources", payload={"resource_ids": [MODEL]}, base_version=resumed.version),
+        ),
+    )
+    context = repo.get_session(session.id)[1]
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert context.goal_text == GOAL
+    assert context.requirements == VALUES
+    assert context.knowledge_source_intent == accepted
+    assert "knowledge_decision_pending" not in context.resource_selection
+    assert "knowledge_scope_decision" not in context.resource_selection
+    assert context.built_node_ids == []
+    assert planner_calls == []
+    assert len(analysis_model.calls) == 1
+    assert not any(item.kind == "form" for item in repo.list_conversation(session.id))
+
+
+def test_resume_rejects_inflight_exclusion_stamp_but_preserves_accepted_interpretation() -> None:
+    from services.dify_builder.knowledge_source_intent import (
+        SOURCE_INPUT,
+        bind_planning_source_intent,
+        current_source_intent,
+        planning_requirements,
+        record_source_intent,
+    )
+    from services.dify_builder.task_lifecycle import advance_task_identity
+
+    session = Session(app_id="app", entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_RESOURCE_RECOMMENDATION)
+    context = DifyBuilderContext(goal_text=GOAL, confirmed_requirement_keys=[])
+    repo = InMemoryRepository()
+    repo.create_session(session, context, [])
+    advance_task_identity(session, context, EntryMode.BUILD)
+    record_source_intent(context, INTENT)
+    accepted = dict(context.knowledge_source_intent)
+    old_result = bind_planning_source_intent(
+        {"state": "excluded", "evidence": [GOAL]}, planning_requirements(context, {})[SOURCE_INPUT]
+    )
+    assert old_result is not None
+    context.task_control["generation"] = 1
+    record_source_intent(context, old_result)
+    assert context.knowledge_source_intent == accepted
+    assert current_source_intent(context) == INTENT
