@@ -1,10 +1,5 @@
 {
   "account.account": "الحساب",
-  "account.appearanceDark": "داكن",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "المظهر",
-  "account.appearanceLight": "فاتح",
-  "account.appearanceSystem": "النظام",
   "account.changeEmail.authTip": "بمجرد تغيير بريدك الإلكتروني، لن تتمكن حسابات Google أو GitHub المرتبطة ببريدك الإلكتروني القديم من تسجيل الدخول إلى هذا الحساب.",
   "account.changeEmail.changeTo": "تغيير إلى {{email}}",
   "account.changeEmail.codeLabel": "رمز التحقق",

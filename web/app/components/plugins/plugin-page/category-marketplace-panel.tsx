@@ -8,7 +8,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -16,6 +15,7 @@ import List from '@/app/components/plugins/marketplace/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getCategoryMarketplaceId } from './category-marketplace'
@@ -34,7 +34,7 @@ const CategoryMarketplacePanel = ({
   tags?: string[]
 }) => {
   const { t } = useTranslation(['common', 'plugin', 'workflow', 'modelProvider'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapsed, setCollapsed] = useState(false)
   const {
@@ -103,7 +103,7 @@ const CategoryMarketplacePanel = ({
         <button
           type="button"
           aria-expanded={!collapsed}
-          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
+          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-start system-md-semibold text-text-primary"
           onClick={() => setCollapsed((value) => !value)}
         >
           <span
