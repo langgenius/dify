@@ -35,7 +35,8 @@ export default function EndUserAppCard({ app, authSession }: Props) {
       context,
     }),
   )
-  const pending = favorite.isPending || unfavorite.isPending || removeApp.isPending
+  const isTogglingFavorite = favorite.isPending || unfavorite.isPending
+  const pending = isTogglingFavorite || removeApp.isPending
   const error = favorite.error ?? unfavorite.error ?? removeApp.error
   const resetErrors = () => {
     favorite.reset()
@@ -98,7 +99,7 @@ export default function EndUserAppCard({ app, authSession }: Props) {
           <span
             className={cn(
               'size-4',
-              pending
+              isTogglingFavorite
                 ? 'i-ri-loader-4-line animate-spin'
                 : app.is_favorite
                   ? 'i-ri-star-fill text-util-colors-yellow-yellow-500'
