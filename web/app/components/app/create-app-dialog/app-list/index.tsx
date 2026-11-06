@@ -35,14 +35,11 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 
 type AppsProps = {
-  onClose: () => void
-  /** Runs once an app is created from a template; closes the list by default. */
-  onCreated?: () => void
   onCreateFromBlank?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, onCreated = onClose, onCreateFromBlank, templateMode }: AppsProps) => {
+const Apps = ({ onCreateFromBlank, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -173,8 +170,8 @@ const Apps = ({ onClose, onCreated = onClose, onCreateFromBlank, templateMode }:
                 templateId: currApp.app_id,
               })
             }
+            // The import navigates to the new app; the dialog stays until it replaces the page.
             setIsShowCreateModal(false)
-            onCreated()
           },
           onPending: () => {
             setIsShowCreateModal(false)
@@ -201,7 +198,6 @@ const Apps = ({ onClose, onCreated = onClose, onCreateFromBlank, templateMode }:
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
-        onCreated()
       },
     })
   }

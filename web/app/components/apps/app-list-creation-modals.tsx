@@ -16,11 +16,8 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
   ssr: false,
 })
 
-// Stay open until the new app replaces the page, like blank creation.
-const keepOpenAfterCreating = () => {}
-
 export type AppListCreationDialog =
-  | { type: 'blank'; category?: AppListCategory }
+  | { type: 'blank' }
   | { type: 'template' }
   | { type: 'dsl'; droppedFile?: File }
   | null
@@ -41,8 +38,7 @@ export function AppListCreationModals({
   onOpenTemplate: () => void
 }) {
   if (!canCreateApp) return null
-  const blankCategory = dialog?.type === 'blank' ? (dialog.category ?? category) : category
-  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(blankCategory)
+  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(category)
 
   return (
     <>
@@ -58,12 +54,7 @@ export function AppListCreationModals({
         />
       )}
       {dialog?.type === 'template' && (
-        <CreateAppTemplateDialog
-          show
-          onClose={onClose}
-          onCreated={keepOpenAfterCreating}
-          onCreateFromBlank={onOpenBlank}
-        />
+        <CreateAppTemplateDialog show onClose={onClose} onCreateFromBlank={onOpenBlank} />
       )}
     </>
   )

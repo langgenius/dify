@@ -49,12 +49,11 @@ export const appListQueryParsers = {
 
 export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
+// Studio app creation URLs. `mode` picks the default app type for blank creation.
 export const createAppPath = '/apps/create'
-/** Opens the Studio with the template creation dialog. */
 export const createAppTemplatePath = '/apps/create/template'
 export const createAppModeQueryParser = parseAsStringLiteral(APP_TYPES)
 
-/** Opens the Studio with the blank creation dialog, defaulting to `mode` when given. */
 export const getCreateAppHref = (mode?: AppType) =>
   mode ? `${createAppPath}?mode=${mode}` : createAppPath
 

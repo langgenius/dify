@@ -108,9 +108,8 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
   const openCreateBlankModal = useCallback(() => {
     if (!canCreateApp) return
-    const mode = category === 'all' ? undefined : category
-    setCreationDialog({ type: 'blank', category: mode })
-    enterCreationUrl(getCreateAppHref(mode))
+    setCreationDialog({ type: 'blank' })
+    enterCreationUrl(getCreateAppHref(category === 'all' ? undefined : category))
   }, [canCreateApp, category])
   const openCreateTemplateDialog = useCallback(() => {
     if (!canCreateApp) return

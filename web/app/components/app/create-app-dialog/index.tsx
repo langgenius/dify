@@ -8,8 +8,6 @@ type CreateAppDialogProps = {
   inline?: boolean
   show: boolean
   onClose: () => void
-  /** Runs once an app is created from a template; closes the dialog by default. */
-  onCreated?: () => void
   onCreateFromBlank?: () => void
   templateMode?: 'agent'
 }
@@ -18,7 +16,6 @@ const CreateAppTemplateDialog = ({
   inline,
   show,
   onClose,
-  onCreated,
   onCreateFromBlank,
   templateMode,
 }: CreateAppDialogProps) => {
@@ -31,12 +28,7 @@ const CreateAppTemplateDialog = ({
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}
     >
-      <AppList
-        onCreateFromBlank={onCreateFromBlank}
-        onClose={onClose}
-        onCreated={onCreated}
-        templateMode={templateMode}
-      />
+      <AppList onCreateFromBlank={onCreateFromBlank} templateMode={templateMode} />
     </CreateAppDialogShell>
   )
 }

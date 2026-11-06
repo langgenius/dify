@@ -584,11 +584,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/create-app-dialog/app-list/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

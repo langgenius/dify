@@ -25,9 +25,6 @@ function useCreationRoute() {
   return { canCreateApp, replace }
 }
 
-// Stay open until the new app replaces the page.
-const keepOpenAfterCreating = () => {}
-
 /** `/apps/create?mode=<app type>`: blank app creation. */
 export function CreateAppRoute() {
   const { canCreateApp, replace } = useCreationRoute()
@@ -55,7 +52,6 @@ export function CreateAppTemplateRoute() {
       inline
       show
       onClose={() => replace('/apps')}
-      onCreated={keepOpenAfterCreating}
       onCreateFromBlank={() => replace(createAppPath)}
     />
   )
