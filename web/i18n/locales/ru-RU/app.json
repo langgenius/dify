@@ -169,8 +169,6 @@
   "newApp.appCreated": "Приложение создано",
   "newApp.appDescriptionPlaceholder": "Введите описание приложения",
   "newApp.appNamePlaceholder": "Дайте вашему приложению имя",
-  "newApp.buildFromBlank": "Создать с нуля",
-  "newApp.builderDescription": "С помощью <builderIcon/> App Builder или вручную",
   "newApp.captionDescription": "Описание",
   "newApp.captionName": "Значок и название приложения",
   "newApp.caution": "Осторожность",

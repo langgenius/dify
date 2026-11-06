@@ -169,8 +169,6 @@
   "newApp.appCreated": "應用已建立",
   "newApp.appDescriptionPlaceholder": "輸入應用的描述",
   "newApp.appNamePlaceholder": "給你的應用起個名字",
-  "newApp.buildFromBlank": "從空白開始建構",
-  "newApp.builderDescription": "使用 <builderIcon/> App Builder 或手動建構",
   "newApp.captionDescription": "描述",
   "newApp.captionName": "應用名稱 & 圖示",
   "newApp.caution": "謹慎",

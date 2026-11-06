@@ -169,8 +169,6 @@
   "newApp.appCreated": "앱이 생성되었습니다",
   "newApp.appDescriptionPlaceholder": "앱 설명을 입력하세요",
   "newApp.appNamePlaceholder": "앱 이름을 입력하세요",
-  "newApp.buildFromBlank": "빈 앱에서 시작",
-  "newApp.builderDescription": "<builderIcon/> App Builder 또는 직접 만들기",
   "newApp.captionDescription": "설명",
   "newApp.captionName": "앱 아이콘과 이름",
   "newApp.caution": "주의",
