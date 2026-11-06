@@ -18,18 +18,18 @@ describe('ThemeSelector', () => {
     const container = document.createElement('div')
     container.innerHTML = renderToString(<ThemeSelector />)
 
-    expect(container.querySelector('button[aria-label="common.theme.theme"]')).not.toBeNull()
+    expect(container.querySelector('button[aria-label="common.theme.label"]')).not.toBeNull()
   })
 
   it.each([
     ['common.theme.light', 'light'],
     ['common.theme.dark', 'dark'],
-    ['common.theme.auto', 'system'],
+    ['common.theme.system', 'system'],
   ])('selects %s', async (name, theme) => {
     const user = userEvent.setup()
     render(<ThemeSelector />)
 
-    await user.click(screen.getByRole('button', { name: 'common.theme.theme' }))
+    await user.click(screen.getByRole('button', { name: 'common.theme.label' }))
     await user.click(await screen.findByRole('menuitemradio', { name }))
 
     expect(setTheme).toHaveBeenCalledWith(theme)
