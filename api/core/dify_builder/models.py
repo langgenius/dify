@@ -400,6 +400,10 @@ class DifyBuilderContext:
     # Server-owned submitted form keys. None means legacy/unknown provenance;
     # [] means fresh analysis with no user-confirmed requirement values.
     confirmed_requirement_keys: list[str] | None = None
+    # Server-owned real rendered submissions and source-bound semantic cognition.
+    # Empty on legacy sessions; never resource authorization or a goal waiver.
+    confirmed_requirement_sources: dict[str, dict[str, Any]] = field(default_factory=dict)
+    knowledge_source_intent: dict[str, Any] = field(default_factory=dict)
     plan_items: list[str] = field(default_factory=list)
     plan_title: str = ""
     plan_input_summary: str = ""

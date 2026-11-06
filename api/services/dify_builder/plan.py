@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from core.dify_builder.contract import PlanCard, ResourceOption
 from core.dify_builder.models import DifyBuilderContext
+from services.dify_builder.knowledge_source_intent import KnowledgeSourceIntent
 
 PLAN_PRESENTATION_INSTRUCTION = (
     "Give the plan a short, specific title describing its goal, without a step count. "
@@ -36,6 +37,8 @@ class WorkflowPlan:
     used_resource_ids: list[str] | None = None
     # Server-owned, nonexecuting knowledge preferences; never graph bindings.
     discovery_resource_ids: list[str] | None = None
+    # Optional cognition metadata, not source confirmation or resource authority.
+    knowledge_source_intent: KnowledgeSourceIntent | None = None
 
 
 @dataclass
@@ -45,6 +48,7 @@ class BuildClarification:
     fields: list[dict[str, Any]]
     values: dict[str, Any]
     kind: Literal["clarification"] = field(default="clarification", init=False)
+    knowledge_source_intent: KnowledgeSourceIntent | None = None
 
 
 class _ClarificationField(BaseModel):

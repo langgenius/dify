@@ -87,6 +87,12 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         active_entry_mode=d.get("active_entry_mode", ""),
         requirements=dict(d.get("requirements") or {}),
         confirmed_requirement_keys=validated_confirmed_requirement_keys(d.get("confirmed_requirement_keys")),
+        confirmed_requirement_sources=d["confirmed_requirement_sources"]
+        if isinstance(d.get("confirmed_requirement_sources"), dict)
+        else {},
+        knowledge_source_intent=d["knowledge_source_intent"]
+        if isinstance(d.get("knowledge_source_intent"), dict)
+        else {},
         plan_items=list(d.get("plan_items") or []),
         plan_title=d.get("plan_title", ""),
         plan_input_summary=d.get("plan_input_summary", ""),
