@@ -14,9 +14,8 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 from redis import Redis
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
