@@ -4,7 +4,6 @@ import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
-import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { ToolType } from '../../workflow/block-selector/types'
 
@@ -32,7 +31,6 @@ const getLink = (type?: ToolType) => {
 const Empty = ({ type, isAgent }: Props) => {
   const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
-  const theme = useResolvedTheme()
 
   const hasLink = type === ToolType.Custom || type === ToolType.MCP
   const renderType = isAgent ? ('agent' as const) : type
@@ -110,10 +108,7 @@ const Empty = ({ type, isAgent }: Props) => {
     <div className="flex flex-col items-center justify-center">
       <span
         aria-hidden
-        className={cn(
-          'i-custom-vender-other-no-tool-placeholder h-9 w-51',
-          theme === 'dark' ? 'invert' : '',
-        )}
+        className="i-custom-vender-other-no-tool-placeholder h-9 w-51 dark:invert"
       />
       <div className="mt-2 mb-1 text-[13px] leading-4.5 font-medium text-text-primary">
         {hasTitle && renderType

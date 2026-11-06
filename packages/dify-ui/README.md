@@ -56,7 +56,7 @@ Utilities:
 - `./use-merged-refs` exports `useMergedRefs` for combining internal and caller refs, including callback cleanup.
 - `./use-ref-with-init` exports `useRefWithInit` for lazy ref initialization. Later initializer or argument changes do not reset the ref; initialization runs during render and must be safe to retry or discard.
 - `./use-render` exports `useRender` for building a part with Base UI's `render` prop, `className(state)` callback and state data attributes; `./merge-props` exports `mergeProps` for chaining event handlers and merging `className`/`style` when composing parts.
-- `./styles.css` provides design tokens, theme variables, and shared utilities.
+- `./styles.css` provides design tokens, theme variables, the `dark` variant, and shared utilities.
 
 ## Guides
 
