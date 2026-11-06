@@ -14,9 +14,9 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import BadRequest, NotFound, TooManyRequests
 
 from constants.oauth_bearer import TokenType
+from controllers.common.errors import InvalidRequestError, NotFoundError, TooManyRequestsError
 from controllers.openapi import app_run
 from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._models import (
@@ -61,7 +61,7 @@ Both render through the ErrorBody formatter: TooManyRequests -> code "too_many_r
 
 def test_translate_maps_app_concurrency_to_too_many_requests():
     # Regression guard: this used to fall through to a 500 (it was not caught here).
-    with pytest.raises(TooManyRequests) as exc:
+    with pytest.raises(TooManyRequestsError) as exc:
         with _translate_service_errors():
             raise AppInvokeQuotaExceededError("internal: client_id=abc max=10")
     assert exc.value.code == 429
@@ -86,7 +86,7 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
 def test_translate_maps_value_error_to_a_fixed_bad_request():
     # Regression guard: an unpublished workflow used to surface as a detail-less 500.
     # The service message names internals, so the client gets a fixed text.
-    with pytest.raises(BadRequest) as exc:
+    with pytest.raises(InvalidRequestError) as exc:
         with _translate_service_errors():
             raise ValueError("variable 'secret_key' of node 42 is missing")
     assert exc.value.code == 400
@@ -191,7 +191,7 @@ def test_stop_task_enforces_resolved_caller_ownership(
         if allowed:
             assert api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
         else:
-            with pytest.raises(NotFound, match="Task not found"):
+            with pytest.raises(NotFoundError, match="Task not found"):
                 api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
@@ -342,6 +342,9 @@ def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         assert list(response.response) == [end]
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")
 
 
 def test_draft_runs_do_not_hint_the_form_submit_op() -> None:

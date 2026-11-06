@@ -3,9 +3,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -23,18 +23,19 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
+from services.app.generation.errors import AgentAppNotPublishedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
@@ -48,7 +49,7 @@ def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None
     if app_mode != AppMode.AGENT:
         return response_mode == "streaming"
     if response_mode == "blocking":
-        raise BadRequest("Agent App only supports streaming response mode.")
+        raise InvalidRequestError("Agent App only supports streaming response mode.")
     return True
 
 
@@ -132,6 +133,8 @@ class CompletionApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -143,7 +146,7 @@ class CompletionApi(WebApiResource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError as caught_error:
-            raise NotFound("Conversation Not Exists.") from caught_error
+            raise NotFoundError("Conversation Not Exists.") from caught_error
         except services.errors.conversation.ConversationCompletedError as caught_error:
             raise ConversationCompletedError() from caught_error
         except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
@@ -246,6 +249,8 @@ class ChatApi(WebApiResource):
                 )
 
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -257,7 +262,7 @@ class ChatApi(WebApiResource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError as caught_error:
-            raise NotFound("Conversation Not Exists.") from caught_error
+            raise NotFoundError("Conversation Not Exists.") from caught_error
         except services.errors.conversation.ConversationCompletedError as caught_error:
             raise ConversationCompletedError() from caught_error
         except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:

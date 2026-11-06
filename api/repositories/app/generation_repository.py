@@ -392,7 +392,9 @@ class AppGenerationRepository:
                 for fields in update.files
             )
             session.flush()
-            session.refresh(message)
+            # Every field consumed by post-commit message subscribers is assigned
+            # above. A full refresh would expire unloaded relationships before the
+            # row is detached, leaving subscribers with an unusable detached model.
             session.expunge(message)
             return message
 

@@ -1,49 +1,75 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.account import Account
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from services.tools.workflow.provider import WorkflowToolProviderController
+from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.ports import WorkflowRuntime
 
 
 class SQLAlchemyWorkflowToolSourceRepository:
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session],
+        *,
+        workflow_runtime: WorkflowRuntime | None,
+        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None,
+    ) -> None:
         self._session_maker = session_maker
+        self._workflow_runtime = workflow_runtime
+        self._draft_variable_saver = draft_variable_saver
 
     def get_by_provider_ids(self, *, tenant_id: str, provider_ids: Sequence[str]) -> Sequence[WorkflowToolSource]:
         if not provider_ids:
             return ()
         with self._session_maker() as session:
-            rows = session.execute(
-                select(Workflow, WorkflowToolProvider, Account.name)
-                .join(App, App.id == Workflow.app_id)
-                .join(
-                    WorkflowToolProvider,
-                    (WorkflowToolProvider.app_id == Workflow.app_id)
-                    & (WorkflowToolProvider.version == Workflow.version),
-                )
-                .outerjoin(Account, Account.id == WorkflowToolProvider.user_id)
-                .where(
-                    App.tenant_id == tenant_id,
-                    Workflow.tenant_id == tenant_id,
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id.in_(provider_ids),
-                    Workflow.version != Workflow.VERSION_DRAFT,
+            rows = tuple(
+                session.execute(
+                    select(Workflow, WorkflowToolProvider)
+                    .join(App, App.id == Workflow.app_id)
+                    .join(
+                        WorkflowToolProvider,
+                        (WorkflowToolProvider.app_id == Workflow.app_id)
+                        & (WorkflowToolProvider.version == Workflow.version),
+                    )
+                    .where(
+                        App.tenant_id == tenant_id,
+                        Workflow.tenant_id == tenant_id,
+                        WorkflowToolProvider.tenant_id == tenant_id,
+                        WorkflowToolProvider.id.in_(provider_ids),
+                        Workflow.version != Workflow.VERSION_DRAFT,
+                    )
                 )
             )
-            return tuple(
-                self._materialize(
-                    workflow,
-                    tool=WorkflowToolProviderController.build_tool(provider, workflow, author=author or ""),
-                )
-                for workflow, provider, author in rows
+        return tuple(
+            self._materialize(
+                workflow,
+                tool=self._build_tool(provider),
             )
+            for workflow, provider in rows
+        )
+
+    def _build_tool(self, provider: WorkflowToolProvider) -> WorkflowTool:
+        runtime = self._workflow_runtime
+        if runtime is None:
+            raise ValueError("Workflow execution dependencies are required to materialize Workflow Tools")
+        controller = WorkflowToolProviderController.from_db(
+            provider,
+            queries=runtime.tools,
+            draft_variable_saver=self._draft_variable_saver,
+            workflow_runtime=runtime,
+        )
+        tools = controller.get_tools(provider.tenant_id)
+        if len(tools) != 1:
+            raise ValueError(f"Workflow Tool provider {provider.id} did not materialize exactly one tool")
+        return tools[0]
 
     @staticmethod
     def _materialize(workflow: Workflow, *, tool: WorkflowTool | None = None) -> WorkflowToolSource:

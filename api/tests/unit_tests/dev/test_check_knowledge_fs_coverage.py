@@ -11,6 +11,7 @@ from dev.check_knowledge_fs_coverage import (
     CoverageReport,
     CoverageSummary,
     collect_changed_glue_lines,
+    discover_knowledge_fs_production_paths,
     is_core_coverage_path,
     load_glue_coverage_paths,
     parse_added_lines,
@@ -29,10 +30,10 @@ from dev.check_knowledge_fs_coverage import (
         "api/controllers/inner_api/knowledge_fs/storage.py",
         "api/controllers/openapi/knowledge_fs.py",
         "api/controllers/service_api/knowledge_fs/resources.py",
-        "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/models/knowledge_fs.py",
         "api/repositories/sqlalchemy_knowledge_fs_cutover_repository.py",
+        "api/services/agent/knowledge_spaces.py",
         "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
         "api/services/dataset_knowledge_fs_upgrade_service.py",
         "api/services/knowledge_fs/builtin_tool/knowledge_fs/knowledge_fs.py",
@@ -120,6 +121,14 @@ def test_core_coverage_rejects_unclassified_knowledge_fs_production_files(tmp_pa
 
     with pytest.raises(CoverageGateError, match="unclassified.*api/experimental/knowledge_fs_escape.py"):
         validate_core_coverage(report, workspace_root=tmp_path, minimum=0)
+
+
+def test_discovery_includes_cross_domain_knowledge_spaces_owner(tmp_path: Path) -> None:
+    owner_path = tmp_path / "api/services/agent/knowledge_spaces.py"
+    owner_path.parent.mkdir(parents=True)
+    owner_path.touch()
+
+    assert discover_knowledge_fs_production_paths(tmp_path) == ("api/services/agent/knowledge_spaces.py",)
 
 
 @pytest.mark.parametrize(

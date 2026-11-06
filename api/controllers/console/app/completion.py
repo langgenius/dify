@@ -8,9 +8,9 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -45,6 +45,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
@@ -74,7 +75,7 @@ def _resolve_debugger_chat_streaming(
     if app_mode != AppMode.AGENT:
         return response_mode != "blocking"
     if response_mode_provided and response_mode == "blocking":
-        raise BadRequest("Agent App only supports streaming response mode.")
+        raise InvalidRequestError("Agent App only supports streaming response mode.")
     return True
 
 
@@ -178,6 +179,8 @@ class CompletionMessageApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=current_user,
@@ -189,7 +192,7 @@ class CompletionMessageApi(Resource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError as caught_error:
-            raise NotFound("Conversation Not Exists.") from caught_error
+            raise NotFoundError("Conversation Not Exists.") from caught_error
         except services.errors.conversation.ConversationCompletedError as caught_error:
             raise ConversationCompletedError() from caught_error
         except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
@@ -420,7 +423,7 @@ def _resolve_current_user_agent_debug_conversation_id(
         account_id=current_user.id,
     )
     if conversation_id is None:
-        raise NotFound("Conversation Not Exists.")
+        raise NotFoundError("Conversation Not Exists.")
     return conversation_id
 
 
@@ -450,7 +453,7 @@ def _create_chat_message(
             start_new=draft_type == AgentConfigDraftType.DRAFT and not args_model.conversation_id,
         )
         if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         args["conversation_id"] = debug_conversation_id
 
     streaming = _resolve_debugger_chat_streaming(
@@ -562,6 +565,8 @@ def _generate_chat_message(
 ):
     try:
         return AppGenerateService.generate(
+            variables=application_services().workflow_variables,
+            runtime=application_services().workflow_runtime,
             session=session,
             app_model=app_model,
             user=current_user,
@@ -570,7 +575,7 @@ def _generate_chat_message(
             streaming=streaming,
         )
     except services.errors.conversation.ConversationNotExistsError as caught_error:
-        raise NotFound("Conversation Not Exists.") from caught_error
+        raise NotFoundError("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:
         raise ConversationCompletedError() from caught_error
     except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:

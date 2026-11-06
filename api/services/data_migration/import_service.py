@@ -8,26 +8,24 @@ report items and can decide how to render them.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 import sqlalchemy as sa
 import yaml
 from sqlalchemy import or_
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models import Account, ApiToken, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ApiTokenType
 from models.model import App
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.app_dsl_service import AppDslService
 from services.data_migration.dependency_discovery_service import DependencyDiscoveryService
 from services.data_migration.entities import (
     ConflictStrategy,
@@ -43,11 +41,26 @@ from services.data_migration.entities import (
     ResourceReportItem,
     ResourceType,
 )
-from services.entities.dsl_entities import ImportStatus
-from services.tools.legacy_api_tools_manage_service import ApiToolManageService
-from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
-from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
-from services.workflow_service import WorkflowService
+from services.entities.dsl_entities import Import, ImportStatus
+from services.tools.api_tools_manage_service import ApiToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+
+
+class WorkflowPublisher(Protocol):
+    def publish(self, context: RequestContext, app_id: str, *, marked_name: str, marked_comment: str) -> object: ...
+
+
+class WorkflowDslImporter(Protocol):
+    def import_app(
+        self,
+        *,
+        account: Account,
+        import_mode: str,
+        yaml_content: str,
+        app_id: str | None = None,
+        import_app_id: str | None = None,
+    ) -> Import: ...
 
 
 @dataclass(frozen=True)
@@ -147,8 +160,18 @@ class MigrationImportService:
 
     target_resolver: ImportTargetResolver
 
-    def __init__(self, *, target_resolver: ImportTargetResolver | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        workflows: WorkflowPublisher,
+        workflow_tools: WorkflowToolManageService,
+        app_dsl: Callable[[Session], WorkflowDslImporter],
+        target_resolver: ImportTargetResolver | None = None,
+    ) -> None:
         self.target_resolver = target_resolver or ImportTargetResolver()
+        self._workflow_tools = workflow_tools
+        self._workflows = workflows
+        self._app_dsl = app_dsl
 
     def import_package(self, request: ImportRequest, *, session: Session) -> ImportResult:
         target = self.target_resolver.resolve(request, session=session)
@@ -323,7 +346,7 @@ class MigrationImportService:
         options: ImportOptions,
         session: Session,
     ) -> str:
-        import_service = AppDslService(session)
+        import_service = self._app_dsl(session)
         if existing_app is not None:
             existing_app_id = existing_app.id
             if dify_config.RBAC_ENABLED:
@@ -652,7 +675,7 @@ class MigrationImportService:
             description = self._optional_string(workflow_tool_data.get("description")) or ""
             privacy_policy = self._optional_string(workflow_tool_data.get("privacy_policy")) or ""
             if existing is not None:
-                WorkflowToolManageService.update_workflow_tool(
+                self._workflow_tools.update_workflow_tool(
                     user_id=account.id,
                     tenant_id=target.tenant_id,
                     workflow_tool_id=existing.id,
@@ -668,7 +691,7 @@ class MigrationImportService:
                 identifier = existing.id
             else:
                 import_id = workflow_tool_id if options.id_strategy == IdStrategy.PRESERVE_ID else ""
-                WorkflowToolManageService.create_workflow_tool(
+                self._workflow_tools.create_workflow_tool(
                     user_id=account.id,
                     tenant_id=target.tenant_id,
                     workflow_app_id=resolved_app_id,
@@ -707,24 +730,13 @@ class MigrationImportService:
             raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
         if app.workflow_id:
             return
-        workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
-            app_in_session = session.get(App, app_id)
-            account_in_session = session.get(Account, account.id)
-            if app_in_session is None:
-                raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
-            if account_in_session is None:
-                raise MigrationDataError(f"Operator account not found: {account.id}")
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_in_session,
-                account=account_in_session,
-                marked_name="Migration import",
-                marked_comment="Published automatically for workflow tool import.",
-            )
-            app_in_session.workflow_id = workflow.id
-            app_in_session.updated_by = account.id
-            app_in_session.updated_at = naive_utc_now()
+        self._workflows.publish(
+            RequestContext("migration-import", None, account.id, target.tenant_id),
+            app_id,
+            marked_name="Migration import",
+            marked_comment="Published automatically for workflow tool import.",
+        )
+        session.refresh(app)
 
     def _import_mcp_tools(
         self,

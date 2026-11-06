@@ -35,7 +35,9 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.enterprise.rbac_service import RBACService
+from services.tools.provider_queries import ToolProviders
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
 from services.workflow_run_service import WorkflowRunPauseDetails, WorkflowRunPausedNode, WorkflowRunService
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -465,13 +467,13 @@ class TestWorkflowRunApiCases:
 
     @staticmethod
     def test_workflow_run_node_executions_return_frontend_trace_contract(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, tool_providers: ToolProviders
     ) -> None:
         _account(sqlite_session)
         execution = _workflow_run_node_execution(sqlite_session)
         workflow_runs = Mock()
         workflow_runs.get_workflow_run_node_executions.return_value = [
-            node_execution_response_source(execution, session=sqlite_session)
+            node_execution_response_source(execution, session=sqlite_session, tool_providers=tool_providers)
         ]
         _workflow_run_api_mock_application_services(monkeypatch, workflow_runs)
         monkeypatch.setattr(db, "session", lambda: sqlite_session)
@@ -521,11 +523,14 @@ class TestWorkflowRunApiCases:
 
     @staticmethod
     @pytest.fixture
-    def workflow_run_service(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRunService:
+    def workflow_run_service(
+        sqlite_session_factory: sessionmaker[Session], tool_providers: ToolProviderRepository
+    ) -> WorkflowRunService:
         return WorkflowRunService(
             session_factory=sqlite_session_factory,
             workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory),
             node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory),
+            tool_providers=tool_providers,
         )
 
     @staticmethod

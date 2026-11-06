@@ -11,7 +11,6 @@ from core.workflow.nodes.agent.exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
 )
-from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.engine_events import NodeEvent
@@ -19,6 +18,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from services.workflow.execution.adapters.agent_message_transformer import AgentMessageTransformer
 from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 
 if TYPE_CHECKING:

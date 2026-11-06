@@ -12,7 +12,11 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, UnauthorizedError
+from controllers.common.errors import (
+    AuthenticationRequiredError,
+    InternalServerError,
+    MessageFeedbackRatingRequiredError,
+)
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -92,7 +96,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
         except (AccountNotFoundError, MessageActorNotFoundError) as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
         except MoreLikeThisNotCompletionError as error:

@@ -1549,7 +1549,6 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftErrors = {
-  404: PipelineNotFoundError | ErrorResponse
   409: DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
@@ -2066,7 +2065,6 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
-  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2221,7 +2219,6 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
-  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2273,7 +2270,6 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors = {
-  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

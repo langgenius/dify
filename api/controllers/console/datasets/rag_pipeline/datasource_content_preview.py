@@ -15,7 +15,6 @@ from extensions.ext_application_services import application_services
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceContentPreviewPayload(BaseModel):
@@ -52,8 +51,7 @@ class DataSourceContentPreviewApi(Resource):
 
         inputs = req_data.inputs
         datasource_type = req_data.datasource_type
-        rag_pipeline_service = RagPipelineService(session)
-        preview_content = rag_pipeline_service.run_datasource_node_preview(
+        preview_content = application_services().knowledge.pipeline_execution.run_datasource_node_preview(
             pipeline=pipeline,
             node_id=node_id,
             user_inputs=inputs,

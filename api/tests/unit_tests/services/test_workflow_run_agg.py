@@ -9,8 +9,6 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
-from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig as CoreWorkflowAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager as CoreWorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner as CoreWorkflowAppRunner
@@ -64,6 +62,8 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
+from services.workflow.execution.adapters.pipeline.pipeline_queue_manager import PipelineQueueManager
+from services.workflow.execution.adapters.pipeline.pipeline_runner import PipelineRunner
 from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
 from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
@@ -85,6 +85,7 @@ from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form a
 
 def _pipeline_tool_runner(
     sqlite_engine: Engine,
+    workflow_runtime: WorkflowExecutionDependencies,
     invoke_from: InvokeFrom,
     source_node_data: dict[str, object],
 ) -> tuple[PipelineRunner, SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository]:
@@ -167,9 +168,10 @@ def _pipeline_tool_runner(
             app_mode=AppMode.RAG_PIPELINE,
         ),
         variable_loader=DUMMY_VARIABLE_LOADER,
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id="sys",
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
     user = Account(name="User", email="pipeline@example.com")
     user.id = entity.user_id
@@ -192,12 +194,19 @@ class TestPipelineWorkflowToolsCases:
     @staticmethod
     @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
     def test_pipeline_rejects_human_input_tool_before_creating_run_or_form(
-        sqlite_engine: Engine, invoke_from: InvokeFrom
+        sqlite_engine: Engine,
+        workflow_runtime: WorkflowExecutionDependencies,
+        invoke_from: InvokeFrom,
     ) -> None:
         human_input = HumanInputNodeData(
             title="Approval", user_actions=[UserActionConfig(id="approve", title="Approve")]
         )
-        runner, runs, nodes = _pipeline_tool_runner(sqlite_engine, invoke_from, human_input.model_dump(mode="json"))
+        runner, runs, nodes = _pipeline_tool_runner(
+            sqlite_engine,
+            workflow_runtime,
+            invoke_from,
+            human_input.model_dump(mode="json"),
+        )
 
         with pytest.raises(ValueError, match="Human Input nodes are not supported"):
             WorkflowRunAgg.run(runner, None, runs, nodes)
@@ -223,6 +232,7 @@ class TestPipelineWorkflowToolsCases:
     )
     def test_pipeline_retires_nested_agent_workspace_when_run_ends(
         sqlite_engine: Engine,
+        workflow_runtime: WorkflowExecutionDependencies,
         monkeypatch: pytest.MonkeyPatch,
         invoke_from: InvokeFrom,
         scenario: FakeAgentBackendScenario,
@@ -230,6 +240,7 @@ class TestPipelineWorkflowToolsCases:
     ) -> None:
         runner, runs, nodes = _pipeline_tool_runner(
             sqlite_engine,
+            workflow_runtime,
             invoke_from,
             {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
         )
@@ -260,7 +271,8 @@ class TestPipelineWorkflowToolsCases:
             lambda **_kwargs: FakeAgentBackendRunClient(scenario=scenario),
         )
         monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+            "services.workflow.execution.adapters.agent_v2.runtime_request_builder.resolve_model_context_window",
+            lambda **_kwargs: None,
         )
         collections: list[dict[str, object]] = []
 
@@ -746,15 +758,23 @@ class TestWorkflowRunAggCases:
 
     @staticmethod
     @pytest.mark.usefixtures("_local_storage")
-    def test_pause_before_first_tool_call_preserves_its_published_definition(sqlite_engine: Engine) -> None:
+    def test_pause_before_first_tool_call_preserves_its_published_definition(
+        sqlite_engine: Engine,
+        sqlite_session_factory: sessionmaker[Session],
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
         from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
-        from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from graphon.nodes.tool.entities import ToolNodeData
         from models.human_input import HumanInputForm
         from models.model import App
         from models.tools import WorkflowToolProvider
+        from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 
-        original, workflow_repository, node_repository = _make_legacy_workflow_runner(sqlite_engine, human_input=True)
+        original, workflow_repository, node_repository = make_workflow_runner(
+            sqlite_engine,
+            workflow_runtime,
+            human_input=True,
+        )
         original_entity = original.application_generate_entity
         tenant_id = original_entity.app_config.tenant_id
         source_app_id = str(uuid4())
@@ -853,7 +873,7 @@ class TestWorkflowRunAggCases:
         graph["nodes"][2]["data"]["outputs"] = [{"variable": "result", "value_selector": ["tool", "json"]}]
         graph["edges"][1]["target"] = "tool"
         graph["edges"].append({"source": "tool", "target": "end"})
-        original._workflow.graph = json.dumps(graph)
+        original._workflow = replace(original._workflow, graph=json.dumps(graph))
         config = PauseStateLayerConfig(sqlite_engine, original_entity.user_id)
         WorkflowRunAgg.run(original, config, workflow_repository, node_repository)
         before = [message.event for message in original._queue_manager.listen()]
@@ -870,7 +890,7 @@ class TestWorkflowRunAggCases:
             snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
             provider.version = "new"
             provider.label = "Republished source"
-        HumanInputFormSubmissionRepository().mark_submitted(
+        HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
             form_id=form_id,
             recipient_id=None,
             selected_action_id="approve",
@@ -880,8 +900,9 @@ class TestWorkflowRunAggCases:
         )
         entity = snapshot.get_generate_entity().model_copy(update={"task_id": str(uuid4())})
         assert isinstance(entity, WorkflowAppGenerateEntity)
-        queue = CoreWorkflowAppQueueManager(entity.task_id, entity.user_id, entity.invoke_from, AppMode.WORKFLOW)
-        resumed = CoreWorkflowAppRunner(
+        queue = WorkflowAppQueueManager(entity.task_id, entity.user_id, entity.invoke_from, AppMode.WORKFLOW)
+        resumed = WorkflowAppRunner(
+            runtime=workflow_runtime,
             application_generate_entity=entity,
             queue_manager=queue,
             variable_loader=DUMMY_VARIABLE_LOADER,
@@ -889,7 +910,6 @@ class TestWorkflowRunAggCases:
             system_user_id=entity.user_id,
             graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
             response_stream_filter=snapshot.get_response_stream_filter(),
-            execution_driver=WorkflowRunAgg.run,
         )
         WorkflowRunAgg.run(resumed, config, workflow_repository, node_repository)
         after = [message.event for message in queue.listen()]
@@ -907,20 +927,20 @@ class TestWorkflowRunAggCases:
         # A new execution resolves the newly published graph and parameter defaults.
         graph["nodes"] = [node for node in graph["nodes"] if node["id"] != "approval"]
         graph["edges"] = [{"source": "start", "target": "tool"}, {"source": "tool", "target": "end"}]
-        original._workflow.graph = json.dumps(graph)
+        original._workflow = replace(original._workflow, graph=json.dumps(graph))
         fresh_entity = original_entity.model_copy(
             update={"task_id": str(uuid4()), "workflow_execution_id": str(uuid4()), "extras": {}}
         )
-        fresh_queue = CoreWorkflowAppQueueManager(
+        fresh_queue = WorkflowAppQueueManager(
             fresh_entity.task_id, fresh_entity.user_id, fresh_entity.invoke_from, AppMode.WORKFLOW
         )
-        fresh = CoreWorkflowAppRunner(
+        fresh = WorkflowAppRunner(
+            runtime=workflow_runtime,
             application_generate_entity=fresh_entity,
             queue_manager=fresh_queue,
             variable_loader=DUMMY_VARIABLE_LOADER,
             workflow=original._workflow,
             system_user_id=fresh_entity.user_id,
-            execution_driver=WorkflowRunAgg.run,
         )
         WorkflowRunAgg.run(fresh, None, workflow_repository, node_repository)
         fresh_events = [message.event for message in fresh_queue.listen()]

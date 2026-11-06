@@ -7,7 +7,6 @@ import sqlalchemy as sa
 import yaml
 from sqlalchemy.orm import Session
 
-from core.tools.tool_manager import ToolManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account, Tenant
 from models.account import TenantAccountJoin
@@ -26,8 +25,10 @@ from services.data_migration.entities import (
     ResourceType,
 )
 from services.data_migration.package_service import MigrationPackageService
-from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
-from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.provider_queries import ToolProviders
+from services.tools.tool_manager import ToolManager
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 SUPPORTED_APP_MODES = {"workflow", "advanced-chat"}
 
@@ -114,9 +115,13 @@ class MigrationExportService:
     def __init__(
         self,
         *,
+        workflow_tools: WorkflowToolManageService,
+        tool_providers: ToolProviders,
         package_service: MigrationPackageService | None = None,
         dependency_discovery_service: DependencyDiscoveryService | None = None,
     ) -> None:
+        self._workflow_tools = workflow_tools
+        self._tool_providers = tool_providers
         self.package_service = package_service or MigrationPackageService()
         self.dependency_discovery_service = dependency_discovery_service or DependencyDiscoveryService()
 
@@ -254,6 +259,7 @@ class MigrationExportService:
                     provider=provider_id,
                     tenant_id=tenant_id,
                     mask=not include_secrets,
+                    tool_providers=self._tool_providers,
                 )
                 if not include_secrets:
                     tool_data.pop("credentials", None)
@@ -297,7 +303,7 @@ class MigrationExportService:
 
         for provider_id in provider_ids:
             try:
-                tool_data = WorkflowToolManageService.get_workflow_tool_by_tool_id(
+                tool_data = self._workflow_tools.get_workflow_tool_by_tool_id(
                     user_id=owner.id,
                     tenant_id=tenant.id,
                     workflow_tool_id=provider_id,

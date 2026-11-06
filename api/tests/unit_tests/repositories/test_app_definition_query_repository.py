@@ -9,7 +9,6 @@ from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from machinery.context import AppRequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -31,6 +30,7 @@ from repositories.app_definition_query_repository import (
     AppDefinitionQueryRepository,
     _get_public_agent_parameter_config,
 )
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import (
     AppDefinitionSummary,
     AppParameterConfig,

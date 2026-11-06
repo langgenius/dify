@@ -1,9 +1,9 @@
 import logging
 
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.errors import InternalServerError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -24,6 +24,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
@@ -80,6 +81,8 @@ class WorkflowRunApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,

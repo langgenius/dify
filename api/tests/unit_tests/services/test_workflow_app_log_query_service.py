@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from models.enums import AppTriggerType
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import (
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
+from services.workflow.app_log_query_service import (
     WorkflowAppLogItem,
     WorkflowAppLogPage,
     WorkflowAppLogQueryService,
@@ -60,7 +60,7 @@ def test_list_logs_enriches_plugin_icons() -> None:
     service = _service_with_metadata(json.dumps(metadata))
 
     with patch(
-        "services.workflow_app_log_query_service.PluginService.get_plugin_icon_url",
+        "services.workflow.app_log_query_service.PluginService.get_plugin_icon_url",
         side_effect=["https://cdn/light.png", "https://cdn/dark.png"],
     ) as get_icon_url:
         result = service.list_logs(tenant_id="tenant-1", app_id="app-1", detail=True)
@@ -76,7 +76,7 @@ def test_list_logs_enriches_plugin_icons() -> None:
 def test_list_logs_does_not_fetch_icons_for_non_plugin_metadata() -> None:
     service = _service_with_metadata(json.dumps({"type": AppTriggerType.TRIGGER_WEBHOOK.value}))
 
-    with patch("services.workflow_app_log_query_service.PluginService.get_plugin_icon_url") as get_icon_url:
+    with patch("services.workflow.app_log_query_service.PluginService.get_plugin_icon_url") as get_icon_url:
         result = service.list_logs(tenant_id="tenant-1", app_id="app-1", detail=True)
 
     assert result.data[0].details == {"trigger_metadata": {"type": AppTriggerType.TRIGGER_WEBHOOK.value}}
@@ -106,14 +106,14 @@ def test_safe_json_loads(value: object, expected: object) -> None:
 
 
 def test_safe_parse_uuid_rejects_short_and_invalid_values() -> None:
-    assert WorkflowAppLogQueryRepository._safe_parse_uuid("short") is None
-    assert WorkflowAppLogQueryRepository._safe_parse_uuid("x" * 40) is None
+    assert WorkflowAppLogRepository._safe_parse_uuid("short") is None
+    assert WorkflowAppLogRepository._safe_parse_uuid("x" * 40) is None
 
 
 def test_safe_parse_uuid_accepts_uuid() -> None:
     raw = str(uuid.uuid4())
 
-    result = WorkflowAppLogQueryRepository._safe_parse_uuid(raw)
+    result = WorkflowAppLogRepository._safe_parse_uuid(raw)
 
     assert result is not None
     assert str(result) == raw

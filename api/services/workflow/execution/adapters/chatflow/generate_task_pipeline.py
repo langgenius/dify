@@ -281,7 +281,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 paused_nodes=paused_nodes,
                 reasons=reasons,
                 status=WorkflowExecutionStatus.PAUSED,
-                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                elapsed_time=self._application_generate_entity.workflow_execution_timing.finish(),
                 total_tokens=runtime_state.total_tokens,
                 total_steps=runtime_state.node_run_steps,
             ),

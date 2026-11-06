@@ -9,6 +9,7 @@ from tests.unit_tests.conftest import (
     persist_service_api_dataset_owner,
     persist_service_api_tenant_owner,
 )
+from tests.unit_tests.conftest import workflow_variables as workflow_variables  # noqa: PLC0414
 from tests.unit_tests.controllers.conftest import app_query_services as app_query_services  # noqa: PLC0414
 from tests.unit_tests.controllers.conftest import (
     datasource_application_dependencies as datasource_application_dependencies,  # noqa: PLC0414

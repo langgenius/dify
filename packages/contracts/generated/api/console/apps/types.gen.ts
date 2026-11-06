@@ -5158,7 +5158,6 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5183,7 +5182,6 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5237,7 +5235,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunDa
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5263,7 +5261,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = 
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5289,7 +5287,6 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
@@ -6568,7 +6565,6 @@ export type PostAppsByAppIdConvertToWorkflowData = {
 export type PostAppsByAppIdConvertToWorkflowErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7808,7 +7804,7 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopData = {
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8372,7 +8368,6 @@ export type GetAppsByAppIdWorkflowsData = {
 }
 
 export type GetAppsByAppIdWorkflowsErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8396,7 +8391,6 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8423,7 +8417,7 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = 
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8447,7 +8441,7 @@ export type GetAppsByAppIdWorkflowsDraftData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftErrors = {
-  404: AppNotFoundError | DraftWorkflowNotExistError | ErrorResponse
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8473,7 +8467,6 @@ export type PostAppsByAppIdWorkflowsDraftData = {
 export type PostAppsByAppIdWorkflowsDraftErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   409: DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
@@ -8592,7 +8585,6 @@ export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8617,7 +8609,6 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8642,7 +8633,6 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData 
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8667,7 +8657,6 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8718,7 +8707,7 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8744,7 +8733,7 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8966,7 +8955,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8992,7 +8981,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -9019,7 +9008,6 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
   400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -9093,7 +9081,6 @@ export type PostAppsByAppIdWorkflowsDraftRunData = {
 
 export type PostAppsByAppIdWorkflowsDraftRunErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
@@ -9252,7 +9239,6 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
 export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
   400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -9280,7 +9266,6 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
   400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -9457,7 +9442,6 @@ export type GetAppsByAppIdWorkflowsPublishData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -9481,7 +9465,6 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -9643,7 +9626,6 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -9669,7 +9651,7 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdData = {
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdErrors = {
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -9695,7 +9677,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
   400: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 

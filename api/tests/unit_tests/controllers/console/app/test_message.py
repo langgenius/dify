@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from controllers.common.errors import MessageFeedbackRatingRequiredError
 from controllers.console.app import message as message_module
-from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import MessageResponseSource
+from machinery.context import RequestContext
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    InvokeFrom,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -21,6 +31,7 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
+from services.errors.message import FeedbackRatingRequiredError
 
 
 def _account() -> Account:
@@ -55,7 +66,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         invoke_from=InvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
@@ -69,14 +80,14 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="answer",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
         invoke_from=InvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
@@ -141,13 +152,19 @@ class TestMessageApiCases:
 
         assert source.inputs == {"topic": "support"}
         assert source.user_feedback is feedback
-        assert source.feedbacks[0].from_account.id == "account-1"
+        feedback_account = source.feedbacks[0].from_account
+        assert feedback_account is not None
+        assert feedback_account.id == "account-1"
         annotation_source = source.annotation
         assert annotation_source is not None
-        assert annotation_source.account.id == "account-1"
+        annotation_account = annotation_source.account
+        assert annotation_account is not None
+        assert annotation_account.id == "account-1"
         annotation_hit_history_source = source.annotation_hit_history
         assert annotation_hit_history_source is not None
-        assert annotation_hit_history_source.annotation_create_account.id == "account-1"
+        annotation_create_account = annotation_hit_history_source.annotation_create_account
+        assert annotation_create_account is not None
+        assert annotation_create_account.id == "account-1"
         assert source.agent_thoughts == [thought]
         assert source.message_files == []
 
@@ -204,6 +221,30 @@ class TestMessageApiCases:
         assert payload.rating is None
 
     @staticmethod
+    def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        services = MagicMock()
+        services.message_feedbacks.set_admin_feedback.side_effect = FeedbackRatingRequiredError()
+        monkeypatch.setattr(message_module, "application_services", lambda: services)
+        message_id = "550e8400-e29b-41d4-a716-446655440000"
+
+        with pytest.raises(MessageFeedbackRatingRequiredError):
+            message_module._update_message_feedback(
+                args=message_module.AppMessageFeedbackPayload(message_id=message_id),
+                context=RequestContext("request-1", None, "account-1", "tenant-1"),
+                app_id="app-1",
+            )
+
+        services.message_feedbacks.set_admin_feedback.assert_called_once_with(
+            app_id="app-1",
+            app_owner_tenant_id="tenant-1",
+            account_id="account-1",
+            message_id=message_id,
+            rating=None,
+            content=None,
+        )
+
     @staticmethod
     def test_message_detail_response_normalizes_aliases_and_timestamp(
         app: Flask, monkeypatch: pytest.MonkeyPatch

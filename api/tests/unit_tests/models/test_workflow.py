@@ -13,12 +13,14 @@ from sqlalchemy.orm import Session, configure_mappers
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import build_file_reference
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from extensions.storage.storage_type import StorageType
 from factories import variable_factory
 from factories.variable_factory import build_segment
 from fields.workflow_run_fields import (
+    WorkflowRunNodeExecutionResponse,
     node_execution_response_source,
     workflow_run_pagination_response_source,
     workflow_run_response_source,
@@ -57,6 +59,8 @@ from models.workflow import (
     is_system_variable_editable,
 )
 from models.workflow import WorkflowType as ModelWorkflowType
+from services.tools.provider_queries import ToolProviderIcons
+from services.tools.tool_manager import ToolManager
 
 
 class TestConversationVariableCases:
@@ -1778,15 +1782,55 @@ class TestWorkflowNodeExecutionAccessorsCases:
             assert execution.created_by_end_user(session=sqlite_session) is None
 
     class TestNodeExecutionResponseSource:
+        @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.TOOL, BuiltinNodeTypes.DATASOURCE])
+        def test_provider_icons_survive_response_serialization(
+            self,
+            sqlite_session: Session,
+            monkeypatch: pytest.MonkeyPatch,
+            node_type: str,
+            *,
+            tool_providers: ToolProviderIcons,
+        ) -> None:
+            execution = _execution(CreatorUserRole.ACCOUNT, created_by="account")
+            execution.id = "execution"
+            execution.node_type = node_type
+            execution.execution_metadata = json.dumps(
+                {
+                    "tool_info": {"provider_type": "builtin", "provider_id": "provider"},
+                    "datasource_info": {"icon": "source-icon"},
+                }
+            )
+
+            def tool_icon(
+                *, tenant_id: str, provider_type: ToolProviderType, provider_id: str, tool_providers: ToolProviderIcons
+            ) -> str:
+                assert tool_providers is not None
+                assert (tenant_id, provider_type, provider_id) == (execution.tenant_id, "builtin", "provider")
+                return "tool-icon"
+
+            monkeypatch.setattr(ToolManager, "get_tool_icon", tool_icon)
+            response = WorkflowRunNodeExecutionResponse.model_validate(
+                node_execution_response_source(
+                    execution,
+                    session=sqlite_session,
+                    tool_providers=tool_providers,
+                )
+            )
+            assert response.extras == {"icon": "tool-icon" if node_type == BuiltinNodeTypes.TOOL else "source-icon"}
+
         def test_accessors_resolve_via_wrapped_session_and_other_attributes_proxy(
-            self, sqlite_session: Session
+            self, sqlite_session: Session, *, tool_providers: ToolProviderIcons
         ) -> None:
             account = Account(name="Test Account", email="test@example.com")
             sqlite_session.add(account)
             sqlite_session.flush()
             execution = _execution(CreatorUserRole.ACCOUNT, created_by=account.id)
 
-            source = node_execution_response_source(execution, session=sqlite_session)
+            source = node_execution_response_source(
+                execution,
+                session=sqlite_session,
+                tool_providers=tool_providers,
+            )
 
             resolved = source.created_by_account
             assert resolved is not None

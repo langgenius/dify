@@ -14,8 +14,8 @@ from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.service_api.app.error import (
     CompletionRequestError,
     NotWorkflowAppError,
@@ -41,7 +41,7 @@ from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
 from services.app_generate_service import AppGenerateService
 from services.billing_client import transport
 from services.billing_service import BillingService
@@ -54,7 +54,7 @@ from services.errors.app import (
 )
 from services.errors.billing import BillingUpstreamInvalidResponseError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow.app_log_query_service import WorkflowAppLogQueryService
 from tests.helpers import billing_builders as builders
 
 """
@@ -722,7 +722,7 @@ class TestWorkflowCases:
             end_user = _make_end_user()
 
             with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
         @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -747,7 +747,7 @@ class TestWorkflowCases:
             end_user = _make_end_user()
 
             with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
-                with pytest.raises(BadRequest):
+                with pytest.raises(InvalidRequestError):
                     handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
     class TestWorkflowTaskStopApi:
@@ -798,7 +798,7 @@ class TestWorkflowCases:
             _persist_workflow_log(sqlite_session, tenant_id=app_model.tenant_id, app_id=app_model.id)
 
             workflow_app_logs = WorkflowAppLogQueryService(
-                logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory),
+                logs=WorkflowAppLogRepository(session_factory=sqlite_session_factory),
             )
             monkeypatch.setattr(
                 sys.modules["controllers.service_api.app.workflow"],
@@ -941,3 +941,6 @@ class TestWorkflowFieldsCases:
         response = dump_response(WorkflowRunResponse, _workflow_run(WorkflowExecutionStatus.RUNNING))
 
         assert response["outputs"] == {"foo": "bar"}
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

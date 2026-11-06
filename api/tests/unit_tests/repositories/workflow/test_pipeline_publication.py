@@ -309,7 +309,10 @@ def test_invalid_llm_environment_reference_is_rejected(
                 ]
             }
         )
-    with pytest.raises(ValueError, match="LLM environment variable 'missing' was not found"):
+    with pytest.raises(
+        ValueError,
+        match="LLM environment variable 'missing' was not found or is not an LLM variable",
+    ):
         service.publish(CONTEXT, "pipeline-1")
     assert indexes.dispatched == []
 

@@ -16,8 +16,8 @@ from models.enums import (
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogAccount, WorkflowAppLogEndUser
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
+from services.workflow.app_log_query_service import WorkflowAppLogAccount, WorkflowAppLogEndUser
 
 
 def _log(
@@ -117,7 +117,7 @@ def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(
     sqlite_session.commit()
     sqlite_session.close()
 
-    result = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory).get_paginated(
+    result = WorkflowAppLogRepository(session_factory=sqlite_session_factory).get_paginated(
         tenant_id=tenant.id,
         app_id="app-1",
     )
@@ -143,7 +143,7 @@ def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(
 def test_get_paginated_preserves_missing_account_filter_error(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    repository = WorkflowAppLogRepository(session_factory=sqlite_session_factory)
 
     with pytest.raises(ValueError, match=r"^Account not found: missing@example\.com$"):
         repository.get_paginated(
@@ -155,7 +155,7 @@ def test_get_paginated_preserves_missing_account_filter_error(
 
 def test_enum_value_rejects_missing_required_value() -> None:
     with pytest.raises(ValueError, match="Required enum value is missing"):
-        WorkflowAppLogQueryRepository._enum_value(None)
+        WorkflowAppLogRepository._enum_value(None)
 
 
 def test_get_paginated_projects_plugin_workflow_run_summary(
@@ -172,7 +172,7 @@ def test_get_paginated_projects_plugin_workflow_run_summary(
     sqlite_session.add_all([run, log])
     sqlite_session.commit()
 
-    result = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory).get_paginated(
+    result = WorkflowAppLogRepository(session_factory=sqlite_session_factory).get_paginated(
         tenant_id="tenant-1",
         app_id="app-1",
     )
@@ -200,7 +200,7 @@ def test_get_paginated_keeps_log_when_workflow_run_is_missing(
     sqlite_session.add(log)
     sqlite_session.commit()
 
-    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    repository = WorkflowAppLogRepository(session_factory=sqlite_session_factory)
     result = repository.get_paginated(tenant_id="tenant-1", app_id="app-1")
 
     assert result.total == 1
@@ -253,7 +253,7 @@ def test_get_paginated_includes_trigger_metadata_only_with_detail(
     )
     sqlite_session.commit()
 
-    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    repository = WorkflowAppLogRepository(session_factory=sqlite_session_factory)
 
     assert repository.get_paginated(tenant_id="tenant-1", app_id="app-1").data[0].details is None
     assert repository.get_paginated(
@@ -290,7 +290,7 @@ def test_get_paginated_does_not_attach_workflow_run_from_another_scope(
     )
     sqlite_session.commit()
 
-    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    repository = WorkflowAppLogRepository(session_factory=sqlite_session_factory)
     result = repository.get_paginated(tenant_id="tenant-1", app_id="app-1")
 
     assert result.total == 1

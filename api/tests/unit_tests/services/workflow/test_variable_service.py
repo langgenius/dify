@@ -12,18 +12,16 @@ from core.app.file_access import DatabaseFileAccessController
 from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_storage import storage
 from graphon.nodes import BuiltinNodeTypes
-from graphon.variable_loader import VariableLoader
 from graphon.variables import SegmentType, StringVariable
 from machinery.context import RequestContext
 from models import UploadFile
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.workflow.definition_repository import workflow_from_snapshot
+from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.app.generation.input_adapter import AppInputAdapter
 from services.file_service import FileService
-from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task, recover_draft_variable_file_cleanup_task
@@ -71,17 +69,13 @@ def test_core_saver_and_loader_use_injected_database_without_open_transactions_d
     monkeypatch.setattr(storage, "load", download)
     monkeypatch.setattr(storage, "delete", delete)
     variables = build_workflow_variable_service(database_client=factory)
-
-    def load_draft_variables(workflow: WorkflowSnapshot, user_id: str) -> VariableLoader:
-        return variables.workflow_loader(workflow_from_snapshot(workflow), user_id)
-
     generator = AppInputAdapter(
-        draft_variable_loader=load_draft_variables, draft_variable_saver=variables.saver_factory
+        draft_variable_loader=variables.workflow_loader, draft_variable_saver=variables.saver_factory
     )
     account = make_account()
     workflow = make_workflow()
     workflow.conversation_variables = [StringVariable(name="greeting", value="hello")]
-    loader = variables.workflow_loader(workflow, account.id)
+    loader = variables.workflow_loader(workflow_snapshot(workflow), account.id)
     assert loader.load_variables([["conversation", "greeting"]])[0].value == "hello"
 
     saver_factory = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account, tenant_id=workflow.tenant_id)
@@ -341,7 +335,7 @@ def test_offloaded_variables_use_injected_storage_outside_transactions(
     assert len(contents) == 2
 
     loader = (
-        variables.workflow_loader(workflow, account.id)
+        variables.workflow_loader(workflow_snapshot(workflow), account.id)
         if loader_entry == "workflow"
         else variables.loader(RequestContext("request", None, account.id, workflow.tenant_id), workflow.app_id, [])
     )

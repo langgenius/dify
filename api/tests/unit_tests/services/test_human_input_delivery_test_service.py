@@ -24,14 +24,16 @@ from models.human_input_delivery import (
 )
 from services import human_input_delivery_test_service as service_module
 from services.entities.feature_entities import FeatureModel
-from services.human_input_delivery_test_service import (
+from services.human_input.contracts import (
     DeliveryTestContext,
     DeliveryTestEmailRecipient,
     DeliveryTestError,
-    DeliveryTestRegistry,
     DeliveryTestResult,
     DeliveryTestStatus,
     DeliveryTestUnsupportedError,
+)
+from services.human_input_delivery_test_service import (
+    DeliveryTestRegistry,
     EmailDeliveryTestHandler,
     HumanInputDeliveryTestService,
     _build_form_link,

@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, NotRequired, TypedDict, cast
 
 from sqlalchemy.orm import Session
@@ -11,7 +11,6 @@ from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types as mcp_types
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
-from services.app_generate_service import AppGenerateService
 from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 
 logger = logging.getLogger(__name__)
@@ -67,6 +66,8 @@ def handle_mcp_request(
     end_user: EndUser | None = None,
     request_id: int | str = 1,
     protocol_version: str = mcp_types.DEFAULT_NEGOTIATED_VERSION,
+    *,
+    generate: Callable[..., Any],
 ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError:
     """
     Handle MCP request and return JSON-RPC response
@@ -130,7 +131,9 @@ def handle_mcp_request(
                 )
             case mcp_types.CallToolRequest():
                 return create_success_response(
-                    handle_call_tool(session, app, request, user_input_form, end_user, protocol_version)
+                    handle_call_tool(
+                        session, app, request, user_input_form, end_user, protocol_version, generate=generate
+                    )
                 )
             case mcp_types.PingRequest():
                 return create_success_response(handle_ping())
@@ -210,6 +213,8 @@ def handle_call_tool(
     user_input_form: list[VariableEntity],
     end_user: EndUser | None,
     protocol_version: str = mcp_types.DEFAULT_NEGOTIATED_VERSION,
+    *,
+    generate: Callable[..., Any],
 ) -> mcp_types.CallToolResult:
     """Handle call tool request"""
     request_obj = cast(mcp_types.CallToolRequest, request.root)
@@ -218,7 +223,7 @@ def handle_call_tool(
     if not end_user:
         raise ValueError("End user not found")
 
-    response = AppGenerateService.generate(
+    response = generate(
         session=session,
         app_model=app,
         user=end_user,

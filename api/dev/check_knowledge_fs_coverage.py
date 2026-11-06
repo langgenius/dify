@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+EXPLICIT_KNOWLEDGE_FS_PRODUCTION_PATHS = frozenset({"api/services/agent/knowledge_spaces.py"})
 NON_CORE_COVERAGE_ALLOWLIST = frozenset(
     {
         "api/dev/check_knowledge_fs_coverage.py",
@@ -152,11 +153,10 @@ def is_core_coverage_path(path: str) -> bool:
     """Return whether a repository-relative path belongs to the focused aggregate."""
     if not path.endswith(".py"):
         return False
-    if path in {
+    if path in EXPLICIT_KNOWLEDGE_FS_PRODUCTION_PATHS or path in {
         "api/commands/knowledge_fs.py",
         "api/configs/extra/knowledge_fs_config.py",
         "api/controllers/openapi/knowledge_fs.py",
-        "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
         "api/services/dataset_knowledge_fs_upgrade_service.py",
@@ -199,7 +199,7 @@ def discover_core_coverage_paths(workspace_root: Path) -> tuple[str, ...]:
 
 
 def discover_knowledge_fs_production_paths(workspace_root: Path) -> tuple[str, ...]:
-    """Mirror the workflow's dynamic KnowledgeFS filename discovery."""
+    """Mirror dynamic filename discovery and include explicit cross-domain owners."""
     api_root = workspace_root / "api"
     if not api_root.is_dir():
         raise CoverageGateError(f"Dify API directory does not exist: {api_root}")
@@ -211,7 +211,7 @@ def discover_knowledge_fs_production_paths(workspace_root: Path) -> tuple[str, .
         child_directories[:] = [name for name in child_directories if name != "__pycache__"]
         for filename in filenames:
             path = (current_directory / filename).relative_to(workspace_root).as_posix()
-            if filename.endswith(".py") and "knowledge_fs" in path:
+            if filename.endswith(".py") and ("knowledge_fs" in path or path in EXPLICIT_KNOWLEDGE_FS_PRODUCTION_PATHS):
                 paths.add(path)
     if not paths:
         raise CoverageGateError("Dify KnowledgeFS production target set is empty")

@@ -54,7 +54,6 @@ class AgentMessageTransformer:
         node_id: str,
         node_execution_id: str,
     ) -> Generator[NodeEventPayload]:
-
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
             user_id=user_id,
