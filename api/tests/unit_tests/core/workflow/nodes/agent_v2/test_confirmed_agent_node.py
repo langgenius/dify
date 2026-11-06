@@ -49,9 +49,9 @@ from services.dify_builder.native_testing.api_service import NativeTestApiServic
 from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.workflow_runtime.agent_node import DifyAgentNode
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeBindingResolver, _node
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeBindingResolver, _node
 
 
 def _resolved(context: BuilderAgentExecutionContext, *, generation: int = 0) -> ResolvedNativeTestContext:
@@ -316,7 +316,7 @@ def test_node_recovers_terminal_child_after_lost_continue_ack_without_second_con
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from datetime import UTC, datetime
+    from datetime import UTC, datetime, timedelta
 
     from dify_agent.protocol import (
         RunEventsResponse,
@@ -329,12 +329,14 @@ def test_node_recovers_terminal_child_after_lost_continue_ack_without_second_con
     from dify_agent.protocol.snapshot import SessionSnapshot
 
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
 
     node, context, parent, _, commands, recovery, prepare = _confirmed(
         monkeypatch, mocker, sqlite_session_factory, existing=True
     )
     protected = _protected(parent, event="100-0")
     wait = protected.wait
+    assert wait is not None
     _installed_spy_15 = installed_mock(commands.load_wait)
     _installed_spy_15.return_value = protected
     resumed = RunResumedEvent(id="101-0", run_id="original-child", data=RunResumedEventData(generation=3))
@@ -390,6 +392,26 @@ def test_node_recovers_terminal_child_after_lost_continue_ack_without_second_con
             )
         )
     mocker.patch.object(api.store, "load_context", return_value=_resolved(context, generation=1))
+    # The claimed ordinary checkpoint has no protected recovery overlay. Keep
+    # the real selector: it must read this exact owned root before returning None.
+    mocker.patch.object(
+        api.loader,
+        "load",
+        return_value=OwnedNativeTest(
+            ref=context.ref,
+            tenant_id="tenant-1",
+            actor_id="user-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            session_id="session-1",
+            test_input_id="input-1",
+            bindings={},
+            generation=1,
+            task_approved=True,
+            expires_at=datetime.now(UTC) + timedelta(minutes=1),
+            state="running",
+        ),
+    )
     checkpoint = CheckpointRef(checkpoint_id="checkpoint", payload_digest="d" * 64)
     mocker.patch.object(api.lifecycle, "claimed_resume_checkpoint", return_value=checkpoint)
     mocker.patch.object(
