@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -34,12 +35,14 @@ class _CallerSessionBoundary:
 
 
 @pytest.fixture
-def mock_queue_manager(mocker: MockerFixture):
+def mock_queue_manager(mocker: MockerFixture) -> MagicMock:
     return mocker.Mock()
 
 
 @pytest.fixture
-def handler(mock_queue_manager, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
+def handler(
+    mock_queue_manager: MagicMock, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> DatasetIndexToolCallbackHandler:
     monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
     return DatasetIndexToolCallbackHandler(
         queue_manager=mock_queue_manager,
@@ -126,7 +129,7 @@ class TestOnQuery:
         sqlite_engine: Engine,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
-        mock_queue_manager,
+        mock_queue_manager: MagicMock,
         invoke_from: InvokeFrom,
         expected_role: str,
     ) -> None:
@@ -151,15 +154,15 @@ class TestOnQuery:
         sqlite_engine: Engine,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
-        mock_queue_manager,
+        mock_queue_manager: MagicMock,
     ) -> None:
         monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
         handler = DatasetIndexToolCallbackHandler(
             queue_manager=mock_queue_manager,
-            app_id=None,
-            message_id=None,
-            user_id=None,
-            invoke_from=None,
+            app_id=None,  # pyrefly: ignore[bad-argument-type]  # None is the scenario under test
+            message_id=None,  # pyrefly: ignore[bad-argument-type]
+            user_id=None,  # pyrefly: ignore[bad-argument-type]
+            invoke_from=None,  # pyrefly: ignore[bad-argument-type]
         )
 
         with pytest.raises(IntegrityError):
@@ -263,7 +266,9 @@ class TestOnToolEnd:
 
 
 class TestReturnRetrieverResourceInfo:
-    def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
+    def test_publish_called(
+        self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager: MagicMock, mocker: MockerFixture
+    ) -> None:
         mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
         resources = [mocker.Mock()]
 
