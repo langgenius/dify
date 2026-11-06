@@ -70,7 +70,7 @@
   "gotoAnything.actions.searchApplications": "ຄົ້ນຫາແອັບພລິເຄຊັນ",
   "gotoAnything.actions.slashDesc": "ໃຊ້ຄຳສັ່ງ (ພິມ / ເພື່ອເບິ່ງຄຳສັ່ງທັງໝົດທີ່ມີ)",
   "gotoAnything.actions.slashTitle": "ຄຳສັ່ງ",
-  "gotoAnything.actions.themeCategoryDesc": "ປ່ຽນທີມ",
+  "gotoAnything.actions.themeCategoryDesc": "ປ່ຽນຮູບລັກສະນະ",
   "gotoAnything.actions.themeDarkDesc": "ໃຊ້ຮູບແບບສີມືດ",
   "gotoAnything.actions.themeLightDesc": "ໃຊ້ຮູບແບບສີແຈ້ງ",
   "gotoAnything.actions.themeSystemDesc": "ໃຊ້ຮູບແບບຕາມການຕັ້ງຄ່າຂອງລະບົບປະຕິບັດການ",
