@@ -47,6 +47,17 @@ class SQLAlchemyDatasetRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def names(self, *, tenant_id: str, limit: int) -> list[str]:
+        with self._session_factory() as session:
+            return list(
+                session.scalars(
+                    select(Dataset.name)
+                    .where(Dataset.tenant_id == tenant_id)
+                    .order_by(Dataset.created_at.desc())
+                    .limit(limit)
+                )
+            )
+
     def get_maintainer_id(self, workspace_id: str, resource_id: str) -> str | None:
         with self._session_factory() as session:
             return session.scalar(

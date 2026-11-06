@@ -7,7 +7,6 @@ from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers.time.time import WikiPediaProvider
 from core.tools.builtin_tool.providers.time.tools.current_time import CurrentTimeTool
 from core.tools.builtin_tool.tool import BuiltinTool
-from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
@@ -18,8 +17,9 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
-from core.workflow.generator.tool_catalogue import (
+from services.tools.api.provider import ApiToolProviderController
+from services.tools.tool_manager import ToolManager
+from services.workflow.generation.tool_catalogue import (
     MAX_ROUTED_TOOL_CANDIDATES,
     MAX_ROUTED_TOOLS_PER_PROVIDER,
     ToolCapabilityQuery,
@@ -32,7 +32,6 @@ from core.workflow.generator.tool_catalogue import (
     format_tool_catalogue,
     installed_tool_keys,
     select_legacy_fallback_selection,
-    select_legacy_fallback_tools,
     select_tool_candidates,
 )
 
@@ -269,19 +268,6 @@ class TestSelectToolCandidates:
         assert len(selection.entries) == 15
         assert len(selection.entries) <= MAX_ROUTED_TOOL_CANDIDATES
 
-    def test_legacy_fallback_keeps_explicit_tool_beyond_first_80(self) -> None:
-        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
-
-        selected = select_legacy_fallback_tools(
-            entries,
-            explicit_text="Use provider/tool_099 exactly.",
-        )
-
-        assert len(selected) == 80
-        assert selected[0]["tool_name"] == "tool_099"
-        assert any(entry["tool_name"] == "tool_078" for entry in selected)
-        assert all(entry["tool_name"] != "tool_079" for entry in selected)
-
 
 class TestLegacyFallbackSelection:
     def test_returns_selected_and_omitted_tools(self) -> None:
@@ -295,10 +281,19 @@ class TestLegacyFallbackSelection:
         assert selection.limit == 80
         assert selection.overflow_count == 0
 
-    def test_keeps_legacy_fallback_tools_compatible(self) -> None:
+    def test_keeps_explicit_tool_beyond_first_80(self) -> None:
         entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
 
-        assert select_legacy_fallback_tools(entries) == select_legacy_fallback_selection(entries).entries
+        selection = select_legacy_fallback_selection(
+            entries,
+            explicit_text="Use provider/tool_099 exactly.",
+        )
+
+        assert selection.entries == [entries[99], *entries[:79]]
+        assert selection.omitted_entries == entries[79:99]
+        assert selection.pinned_count == 1
+        assert selection.limit == 80
+        assert selection.overflow_count == 0
 
     def test_reports_pinned_overflow_without_fabricated_omissions(self) -> None:
         entries = [_entry("provider", f"tool_{index:03d}") for index in range(85)]
