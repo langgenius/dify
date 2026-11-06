@@ -579,17 +579,7 @@
       "count": 2
     }
   },
-  "web/app/components/app/create-app-dialog-shell.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/create-app-dialog/app-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/app/create-app-dialog/app-list/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }

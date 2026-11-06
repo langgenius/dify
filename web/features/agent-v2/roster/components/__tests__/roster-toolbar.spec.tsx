@@ -1,5 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -21,6 +21,20 @@ vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
       </div>
     ) : null,
 }))
+
+// The real template picker, plus a way to finish a creation without running the import flow.
+vi.mock('@/app/components/app/create-app-dialog', async (importOriginal) => {
+  const { default: CreateAppTemplateDialog } =
+    await importOriginal<typeof import('@/app/components/app/create-app-dialog')>()
+  return {
+    default: (props: Parameters<typeof CreateAppTemplateDialog>[0]) => (
+      <>
+        <CreateAppTemplateDialog {...props} />
+        {props.show && <button onClick={props.onCreated}>Finish template creation</button>}
+      </>
+    ),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -112,6 +126,24 @@ describe('RosterToolbar', () => {
     expect(
       await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
     ).toBeInTheDocument()
+  })
+
+  it('closes the Agent template picker once an Agent is created', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderToolbar()
+    queryClient.setQueryData(
+      consoleQuery.explore.apps.get.queryOptions({
+        input: { query: { language: 'en-US' } },
+      }).queryKey,
+      { recommended_apps: [], categories: [] },
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.newApp.startFromTemplate' }))
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+
+    // Without a bound agent the redirect lands on this roster, so the picker must close itself.
+    await user.click(screen.getByRole('button', { name: 'Finish template creation', hidden: true }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
 
   it('hides the create menu when neither action is permitted', () => {
