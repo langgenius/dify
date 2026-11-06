@@ -383,6 +383,7 @@ class KnowledgeRetrievalRepository:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+
                 documents = get_retrieval_source_documents(
                     tenant_id=request.tenant_id,
                     dataset_ids=available_datasets_ids,

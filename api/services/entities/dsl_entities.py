@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Protocol, Self
+from typing import TYPE_CHECKING, Any, Protocol, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -10,6 +12,27 @@ from core.plugin.entities.plugin import PluginDependency
 from core.tools.entities.tool_entities import EmojiIconDict, WorkflowToolParameterConfiguration
 from libs.helper import alphanumeric, uuid_value
 from models.model import App, AppMode, IconType
+
+if TYPE_CHECKING:
+    from services.workflow.contracts import WorkflowSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class AppDslOverwriteTarget:
+    mode: AppMode
+    workflow: WorkflowSnapshot | None
+
+
+class AppDslOverwriteStore(Protocol):
+    def snapshot(
+        self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool
+    ) -> AppDslOverwriteTarget | None:
+        """Authorize the target and materialize its encrypted draft in a short read session."""
+        ...
+
+    def load(self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool) -> App | None:
+        """Recheck the target in the enclosing import transaction."""
+        ...
 
 
 class ImportMode(StrEnum):
@@ -127,7 +150,7 @@ class AppImportPackage(Protocol):
         self, *, tenant_id: str, account_id: str
     ) -> tuple[dict[str, Any], list[DslImportWarning]]: ...
 
-    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> "AppImportPackage": ...
+    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> AppImportPackage: ...
 
     def close(self) -> None: ...
 
