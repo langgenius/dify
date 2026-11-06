@@ -86,6 +86,9 @@ _VALIDATION_PATH_FIELDS = frozenset(
     [
         "type",
         "title",
+        "plan",
+        "input_summary",
+        "output_summary",
         "code",
         "code_language",
         "outputs",
@@ -139,6 +142,9 @@ _VALIDATION_PATH_FIELDS = frozenset(
     ]
 ) | {"*", "unknown"}
 _VALIDATION_REASONS = {
+    "plan": frozenset(
+        {"missing", "type", "empty", "step_count", "blank", "step_length", "overview_length", "total_length", "unknown"}
+    ),
     "operation": frozenset(
         {
             "unknown_operation",
@@ -200,6 +206,7 @@ def validation_detail(record: Mapping[str, Any]) -> dict[str, Any]:
         return {}
     reason = record.get("reason_code")
     fallback = {
+        "plan": "unknown",
         "operation": "operation_invalid",
         "native_config": "native_validation_error",
         "semantic": "semantic_guard",
@@ -208,6 +215,11 @@ def validation_detail(record: Mapping[str, Any]) -> dict[str, Any]:
         "stage": stage,
         "reason_code": reason if isinstance(reason, str) and reason in _VALIDATION_REASONS[stage] else fallback[stage],
     }
+    if stage == "plan":
+        for key in ("observed_count", "limit_count"):
+            count = record.get(key)
+            if type(count) is int and 0 <= count <= 1_000_000_000:
+                safe[key] = count
     op = record.get("op")
     if isinstance(op, str) and op in _VALIDATION_OPS:
         safe["op"] = op
@@ -300,7 +312,7 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
     }:
         result["reason"] = reason
     details = record.get("validation_details")
-    if code == "validation_refused" and isinstance(details, (list, tuple)):
+    if code in {"validation_refused", "response_schema_invalid"} and isinstance(details, (list, tuple)):
         result["validation_details"] = [
             safe for detail in details[:16] if isinstance(detail, Mapping) and (safe := validation_detail(detail))
         ]
@@ -387,13 +399,22 @@ def failure_reason(error: Exception | None) -> FailureReason:
 
 
 def _failure_reason(error: BaseException) -> FailureReason:
+    """Accept a provider/setup exception and return only an observational code.
+
+    Typed status and bounded daemon envelopes carry classification, never
+    request-outcome or replay authority; unknown metadata stays unknown.
+    """
     from httpx import HTTPStatusError
 
+    from core.plugin.impl.exc import PluginInvokeError
+    from core.plugin.impl.model import _metadata_gateway_unavailable
     from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
     from services.tools.draft_tool_setup import DraftToolSetupError
 
     if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
         return error.setup_failure.reason
+    if isinstance(error, PluginInvokeError) and _metadata_gateway_unavailable(error):
+        return "service_unavailable"
     if isinstance(error, Exception) and plugin_activation_unavailable(error):
         return "service_unavailable"
     if isinstance(error, ConnectionRefusedError):
@@ -409,6 +430,10 @@ def _failure_reason(error: BaseException) -> FailureReason:
             return "authentication"
         if error.response.status_code == 403:
             return "permission_denied"
+        if error.response.status_code == 429:
+            return "rate_limit"
+        if 500 <= error.response.status_code <= 599:
+            return "service_unavailable"
     # Inspect only to classify; never copy provider bodies or URLs into Trace.
     text = str(error).lower()
     reasons: dict[FailureReason, tuple[str, ...]] = {
