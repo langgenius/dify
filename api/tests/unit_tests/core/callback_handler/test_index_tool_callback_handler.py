@@ -11,12 +11,17 @@ from sqlalchemy.orm import Session, SessionTransaction
 
 import core.callback_handler.index_tool_callback_handler as callback_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.callback_handler.index_tool_callback_handler import (
+    DatasetIndexToolCallbackHandler as DatasetQueryCallbackHandler,
+)
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource, DataSourceType, DocumentCreatedFrom
+from services.knowledge.retrieval.adapters.resource_events import (
+    DatasetIndexToolCallbackHandler as RetrievalResourceCallbackHandler,
+)
 
 
 @dataclass(eq=False, repr=False)
@@ -41,7 +46,7 @@ def mock_queue_manager(mocker: MockerFixture):
 @pytest.fixture
 def handler(mock_queue_manager, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
-    return DatasetIndexToolCallbackHandler(
+    return DatasetQueryCallbackHandler(
         queue_manager=mock_queue_manager,
         app_id=str(uuid4()),
         message_id=str(uuid4()),
@@ -131,7 +136,7 @@ class TestOnQuery:
         expected_role: str,
     ) -> None:
         monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
-        handler = DatasetIndexToolCallbackHandler(
+        handler = DatasetQueryCallbackHandler(
             queue_manager=mock_queue_manager,
             app_id=str(uuid4()),
             message_id=str(uuid4()),
@@ -154,7 +159,7 @@ class TestOnQuery:
         mock_queue_manager,
     ) -> None:
         monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
-        handler = DatasetIndexToolCallbackHandler(
+        handler = DatasetQueryCallbackHandler(
             queue_manager=mock_queue_manager,
             app_id=None,
             message_id=None,
@@ -171,7 +176,7 @@ class TestOnQuery:
 class TestOnToolEnd:
     def test_on_tool_end_no_metadata(
         self,
-        handler: DatasetIndexToolCallbackHandler,
+        handler: DatasetQueryCallbackHandler,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
         document = Document.model_construct(page_content="content", metadata=None, provider="dify")
@@ -180,7 +185,7 @@ class TestOnToolEnd:
 
     def test_on_tool_end_dataset_document_not_found(
         self,
-        handler: DatasetIndexToolCallbackHandler,
+        handler: DatasetQueryCallbackHandler,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
@@ -195,7 +200,7 @@ class TestOnToolEnd:
 
     def test_on_tool_end_parent_child_index_with_child(
         self,
-        handler: DatasetIndexToolCallbackHandler,
+        handler: DatasetQueryCallbackHandler,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
@@ -230,7 +235,7 @@ class TestOnToolEnd:
 
     def test_on_tool_end_non_parent_child_index(
         self,
-        handler: DatasetIndexToolCallbackHandler,
+        handler: DatasetQueryCallbackHandler,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
@@ -256,15 +261,16 @@ class TestOnToolEnd:
 
     def test_on_tool_end_empty_documents(
         self,
-        handler: DatasetIndexToolCallbackHandler,
+        handler: DatasetQueryCallbackHandler,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
         handler.on_tool_end([], caller_session_boundary.session)
 
 
 class TestReturnRetrieverResourceInfo:
-    def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
-        mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
+    def test_publish_called(self, mock_queue_manager, mocker: MockerFixture):
+        handler = RetrievalResourceCallbackHandler(mock_queue_manager)
+        mocker.patch("services.knowledge.retrieval.adapters.resource_events.QueueRetrieverResourcesEvent")
         resources = [mocker.Mock()]
 
         handler.return_retriever_resource_info(resources)

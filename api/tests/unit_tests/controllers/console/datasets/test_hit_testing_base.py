@@ -1,9 +1,9 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services.errors.base
+from controllers.common.errors import AccessDeniedError, InternalServerError, NotFoundError
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -25,6 +25,8 @@ from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
 from services.hit_testing_service import HitTestingService
 from services.knowledge.dataset_service import DatasetService
+
+pytestmark = pytest.mark.usefixtures("workflow_application")
 
 
 @pytest.fixture
@@ -104,7 +106,7 @@ class TestGetAndValidateDataset:
             "get_dataset",
             return_value=None,
         ):
-            with pytest.raises(NotFound, match="Dataset not found"):
+            with pytest.raises(NotFoundError, match="Dataset not found"):
                 DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
     def test_permission_denied(self, dataset, account):
@@ -120,7 +122,7 @@ class TestGetAndValidateDataset:
                 side_effect=services.errors.base.NoPermissionError("no access"),
             ),
         ):
-            with pytest.raises(Forbidden, match="no access"):
+            with pytest.raises(AccessDeniedError, match="no access"):
                 DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
 
