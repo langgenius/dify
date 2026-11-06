@@ -42,6 +42,7 @@ from models.model import Tag, TagBinding
 from models.provider_ids import ToolProviderID
 from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import trace_diagnostics as diagnostics
+from services.dify_builder.api_tool_output_context import format_selected_plugin_tool_output_context
 from services.entities.model_provider_entities import ProviderWithModelsResponse
 from services.model_provider.service import ModelProviderService
 
@@ -577,6 +578,24 @@ def tool_parameter_context(tenant_id: str, graph: dict[str, Any]) -> str:
         entry for entry in entries if (entry["provider_name"], entry["tool_name"], entry["provider_type"]) in targets
     ]
     sections = [format_tool_builder_context(entry) for entry in matched]
+    selected = [
+        (node["id"], entry)
+        for node in graph.get("nodes", [])
+        if isinstance(node.get("id"), str) and isinstance(data := node.get("data"), dict) and data.get("type") == "tool"
+        for entry in matched
+        if entry["provider_type"] != "api"
+        and (entry["provider_name"], entry["tool_name"], entry["provider_type"])
+        == (
+            str(data.get("provider_id") or data.get("provider_name") or ""),
+            str(data.get("tool_name") or ""),
+            str(data.get("provider_type") or "builtin"),
+        )
+        and (
+            not data.get("plugin_unique_identifier")
+            or data["plugin_unique_identifier"] == entry.get("plugin_unique_identifier")
+        )
+    ]
+    sections.append(format_selected_plugin_tool_output_context(selected))
     if len(matched) < len(targets):
         sections.append("Some Tool action declarations are unavailable; do not invent their parameters or meanings.")
     return "\n\n".join(sections)

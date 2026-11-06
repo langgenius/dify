@@ -8,6 +8,7 @@ from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text, text_parts
 from services.dify_builder.application.handlers_fix import action_kind, append_assistant, append_card
 from services.dify_builder.application.runner import Env, StepResult
+from services.dify_builder.repair_presentation import repair_proposal
 
 NO_REPAIR_REPLY = copy_text(BuilderCopyId.REPLIES_NO_AUTOMATIC_FIX_FOUND_TRY_AGAIN_OR_FINISH_THIS_SESSION)
 NO_REPAIR_REASON = "No safe automatic fix found — try again or finish this session."
@@ -74,13 +75,7 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         next_state = PcState.FIX_AWAIT_APPROVAL
 
     if intents:
-        proposed_changes = "\n".join(f"- `{intent.op}`" for intent in intents)
-        reply_text = text_parts(
-            copy_text(BuilderCopyId.REPAIR_PROPOSED, level=risk.level, count=len(intents)),
-            ".\n",
-            proposed_changes,
-            (text_parts("\n", copy_text(BuilderCopyId.REPAIR_RISK_NOTE, reason=risk.reason)) if risk.reason else ""),
-        )
+        reply_text = repair_proposal(graph, intents, fc.diagnosis, risk, fc.reply_language)
     else:
         reply_text = NO_REPAIR_REPLY
         if risk.reason and risk.reason != NO_REPAIR_REASON:
