@@ -41,6 +41,11 @@ class DatasourceCredentialQuery(CredentialQuery):
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:
         raise AssertionError(f"unexpected model credential lookup: {workspace_id=} {provider=} {actor_id=}")
 
+    def list_model_load_balancing_credential_ids(
+        self, *, workspace_id: str, provider: str, model: str
+    ) -> Sequence[str]:
+        raise AssertionError(f"unexpected model load-balancing credential lookup: {workspace_id=} {provider=} {model=}")
+
     def list_tools(
         self,
         *,
@@ -52,6 +57,9 @@ class DatasourceCredentialQuery(CredentialQuery):
         raise AssertionError(
             f"unexpected tool credential lookup: {workspace_id=} {provider=} {actor_id=} {include_credential_ids=}"
         )
+
+    def default_tool_credential_id(self, *, workspace_id: str, provider: str) -> str | None:
+        raise AssertionError(f"unexpected default tool credential lookup: {workspace_id=} {provider=}")
 
     def list_trigger_subscriptions(
         self, *, workspace_id: str, provider: str, actor_id: str | None
