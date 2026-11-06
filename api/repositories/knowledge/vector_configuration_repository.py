@@ -10,19 +10,36 @@ from models.vector import VectorConfiguration
 from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 
 
-def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
+def resolve_vector_type_for_tenant(*, tenant_id: str, session: Session) -> str:
+    """Resolve the tenant's default backend in the caller's session without external I/O.
+
+    Honor the vector DB whitelist and raise ValueError if no backend is configured.
+    The caller retains ownership of the session and transaction on every path.
+    """
     vector_type = dify_config.VECTOR_STORE
-    if dataset.index_struct_dict:
-        vector_type = dataset.index_struct_dict["type"]
-    elif dify_config.VECTOR_STORE_WHITELIST_ENABLE:
+    if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
         whitelist = session.scalar(
-            select(Whitelist).where(Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db")
+            select(Whitelist).where(Whitelist.tenant_id == tenant_id, Whitelist.category == "vector_db")
         )
         if whitelist:
             vector_type = VectorType.TIDB_ON_QDRANT
     if not vector_type:
         raise ValueError("Vector store must be specified.")
     return vector_type
+
+
+def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
+    """Resolve a dataset's stored backend, falling back to its tenant's default.
+
+    Use the caller-owned session only for tenant configuration reads and raise
+    ValueError if the selected backend is empty; never alter the transaction.
+    """
+    if dataset.index_struct_dict:
+        vector_type = dataset.index_struct_dict["type"]
+        if not vector_type:
+            raise ValueError("Vector store must be specified.")
+        return vector_type
+    return resolve_vector_type_for_tenant(tenant_id=dataset.tenant_id, session=session)
 
 
 def resolve_vector_configuration(dataset: Dataset, *, session: Session) -> VectorConfiguration:

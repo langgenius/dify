@@ -1376,6 +1376,19 @@ forbidden_modules =
     extensions.ext_application_services
 allow_indirect_imports = True
 
+[importlinter:contract:annotation-reply-persistence-boundary]
+name = Annotation reply service and search contracts do not expose persistence dependencies
+type = forbidden
+source_modules =
+    services.annotation.reply_service
+    models.annotation_reply
+forbidden_modules =
+    models.dataset
+    repositories
+    extensions
+    flask
+    sqlalchemy
+
 [importlinter:contract:annotation-application-boundary]
 name = Annotation application services and contracts are framework and persistence neutral
 type = forbidden
