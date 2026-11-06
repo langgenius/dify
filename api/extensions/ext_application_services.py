@@ -625,6 +625,7 @@ def build_application_services(
         provisioning=workspace_provisioning,
         registration=account_services.lifecycle,
         invitation_gateway=invitation_gateway,
+        credentials=credential_queries,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(

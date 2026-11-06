@@ -71,13 +71,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
       >
         <ResultItemFooter docType={extensionToFileType(extension)} docTitle={document.name} />
       </DialogTrigger>
-      <DialogContent
-        finalFocus={triggerRef}
-        className={cn(
-          'max-h-[calc(100dvh-2rem)] min-w-0',
-          isParentChildRetrieval ? 'w-300' : 'w-200',
-        )}
-      >
+      <DialogContent finalFocus={triggerRef} className={isParentChildRetrieval ? 'w-300' : 'w-200'}>
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}

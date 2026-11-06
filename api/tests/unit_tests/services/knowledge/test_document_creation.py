@@ -116,7 +116,7 @@ class _DatasetAccess:
 class _Datasets:
     defaults: DocumentCreationDefaults = field(
         default_factory=lambda: DocumentCreationDefaults(
-            provider="vendor", chunk_structure="text_model", indexing_technique="economy"
+            provider="vendor", doc_form="text_model", indexing_technique="economy"
         )
     )
 

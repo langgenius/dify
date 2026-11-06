@@ -1345,7 +1345,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,

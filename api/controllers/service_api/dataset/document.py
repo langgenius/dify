@@ -107,7 +107,7 @@ def _update_document_by_text(
         context,
         dataset_id=str(dataset_id),
         document_id=str(document_id),
-        settings=payload.model_dump(exclude_none=True),
+        settings=provided_values,
     )
     return _document_and_batch_response(result)
 
@@ -251,7 +251,7 @@ class DocumentAddByTextApi(DatasetApiResource):
                 dataset_id=str(dataset_id),
                 name=payload.name,
                 text=payload.text,
-                settings=payload.model_dump(exclude_none=True),
+                settings=payload.model_dump(include=payload.model_fields_set, exclude_none=True),
             )
         except Exception as error:
             _raise_document_error(error)
@@ -298,7 +298,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
                 dataset_id=str(dataset_id),
                 name=payload.name,
                 text=payload.text,
-                settings=payload.model_dump(exclude_none=True),
+                settings=payload.model_dump(include=payload.model_fields_set, exclude_none=True),
             )
         except Exception as error:
             _raise_document_error(error)

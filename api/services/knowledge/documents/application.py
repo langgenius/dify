@@ -566,16 +566,29 @@ class DatasetDocumentApplicationService:
         text: str,
         settings: Mapping[str, Any],
     ) -> dict[str, Any]:
+        """Create a text document using explicit settings over dataset defaults.
+
+        Preconditions: the admitted caller can access ``dataset_id`` and the
+        dataset has an indexing technique in either its defaults or ``settings``.
+        Postconditions: an omitted document form inherits the dataset form and an
+        omitted language falls back to English; indexing and model prerequisites
+        are checked before the source upload.
+        """
         ref = self._dataset(context, dataset_id)
         defaults = self._creation_defaults(ref)
-        if not defaults.indexing_technique and not settings.get("indexing_technique"):
+        resolved = {
+            "doc_form": defaults.doc_form or "text_model",
+            "doc_language": "English",
+            **settings,
+        }
+        if not defaults.indexing_technique and not resolved.get("indexing_technique"):
             raise ValueError("indexing_technique is required.")
-        self._validate_model_settings(ref.tenant_id, settings, embedding=True, reranking=True)
+        self._validate_model_settings(ref.tenant_id, resolved, embedding=True, reranking=True)
         upload_id = self._uploads.upload_text(context, name=name, text=text)
         return self._create_documents(
             context,
             ref,
-            self._with_upload(settings, upload_id),
+            self._with_upload(resolved, upload_id),
             created_from=DocumentCreatedFrom.API,
         )
 
@@ -587,9 +600,18 @@ class DatasetDocumentApplicationService:
         document_id: str,
         settings: Mapping[str, Any],
     ) -> dict[str, Any]:
+        """Replace text or settings on an owned document.
+
+        Preconditions: the caller can access the dataset and ``document_id`` is
+        owned by it. Postconditions: an omitted document form inherits the
+        dataset form, an omitted language falls back to English, explicit values
+        win, and a replacement upload is created only when ``text`` is present.
+        """
         ref, _ = self._document(context, dataset_id, document_id)
         defaults = self._creation_defaults(ref.dataset)
         resolved = {
+            "doc_form": defaults.doc_form or "text_model",
+            "doc_language": "English",
             **settings,
             "indexing_technique": defaults.indexing_technique,
             "original_document_id": document_id,
@@ -620,12 +642,20 @@ class DatasetDocumentApplicationService:
         settings: Mapping[str, Any],
         attribute_to_dataset_creator: bool = False,
     ) -> dict[str, Any]:
+        """Create a file document using explicit settings over dataset defaults.
+
+        Preconditions: the caller can access a non-external dataset and the
+        request supplies an indexing technique directly or through the dataset.
+        Postconditions: an omitted document form inherits the dataset form and an
+        omitted language falls back to English; indexing and model prerequisites
+        are checked before the file upload.
+        """
         ref = self._dataset(context, dataset_id)
         defaults = self._creation_defaults(ref)
         if defaults.provider == "external":
             raise ValueError("External datasets are not supported.")
         resolved = {
-            "doc_form": defaults.chunk_structure or "text_model",
+            "doc_form": defaults.doc_form or "text_model",
             "doc_language": "English",
             **settings,
             "indexing_technique": settings.get("indexing_technique") or defaults.indexing_technique,
@@ -654,12 +684,19 @@ class DatasetDocumentApplicationService:
         settings: Mapping[str, Any],
         attribute_to_dataset_creator: bool = False,
     ) -> dict[str, Any]:
+        """Replace an owned document from optional file content and settings.
+
+        Preconditions: the caller can access the non-external dataset and the
+        document belongs to it. Postconditions: an omitted document form inherits
+        the dataset form, an omitted language falls back to English, explicit
+        values win, and no upload is attempted when no filename is supplied.
+        """
         document_ref, _ = self._document(context, dataset_id, document_id)
         defaults = self._creation_defaults(document_ref.dataset)
         if defaults.provider == "external":
             raise ValueError("External datasets are not supported.")
         resolved = {
-            "doc_form": defaults.chunk_structure or "text_model",
+            "doc_form": defaults.doc_form or "text_model",
             "doc_language": "English",
             **settings,
             "indexing_technique": defaults.indexing_technique,

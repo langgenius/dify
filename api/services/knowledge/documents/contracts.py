@@ -227,7 +227,7 @@ class DocumentZip:
 @dataclass(frozen=True)
 class DocumentCreationDefaults:
     provider: str
-    chunk_structure: str | None
+    doc_form: str | None
     indexing_technique: str | None
 
 

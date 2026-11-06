@@ -888,6 +888,8 @@ def test_text_creation_uploads_source_before_persisting_document_settings() -> N
     assert ref == DATASET
     assert created_from is DocumentCreatedFrom.API
     assert config.indexing_technique == "economy"
+    assert config.doc_form == "hierarchical_model"
+    assert config.doc_language == "English"
     assert config.data_source is not None
     assert config.data_source.file_ids == ("upload-1",)
 
@@ -911,6 +913,8 @@ def test_text_update_treats_an_empty_string_as_replacement_content() -> None:
     assert ref == DATASET
     assert created_from is DocumentCreatedFrom.API
     assert config.original_document_id == "document-1"
+    assert config.doc_form == "hierarchical_model"
+    assert config.doc_language == "English"
     assert config.data_source is not None
     assert config.data_source.file_ids == ("upload-1",)
 
@@ -947,6 +951,50 @@ def test_file_creation_persists_api_source() -> None:
 
     assert uploads.files == [("guide.txt", b"contents", "text/plain")]
     assert documents.creations[0][2] is DocumentCreatedFrom.API
+    assert documents.creations[0][1].doc_form == "hierarchical_model"
+    assert documents.creations[0][1].doc_language == "English"
+
+
+def test_explicit_document_form_overrides_dataset_default() -> None:
+    access = RecordingAccess()
+    service, documents, _ = _recording_service(
+        RecordingDocumentOperations(),
+        RecordingDocumentUploads(),
+        access,
+    )
+
+    service.create_by_text(
+        CONTEXT,
+        dataset_id="dataset-1",
+        name="Guide",
+        text="Contents",
+        settings={"doc_form": "text_model", "indexing_technique": "economy"},
+    )
+
+    assert documents.creations[0][1].doc_form == "text_model"
+
+
+def test_file_update_inherits_dataset_document_form_when_omitted() -> None:
+    access = RecordingAccess()
+    service, documents, _ = _recording_service(
+        RecordingDocumentOperations(),
+        RecordingDocumentUploads(),
+        access,
+    )
+
+    service.update_by_file(
+        CONTEXT,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        filename=None,
+        content=None,
+        mimetype=None,
+        settings={"process_rule": {"mode": "automatic"}},
+    )
+
+    config = documents.creations[0][1]
+    assert config.doc_form == "hierarchical_model"
+    assert config.doc_language == "English"
 
 
 def test_external_dataset_rejection_happens_before_file_upload() -> None:

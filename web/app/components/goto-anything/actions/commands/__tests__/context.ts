@@ -8,7 +8,7 @@ export function createCommandContext(overrides: Partial<CommandContext> = {}): C
     agentsAvailable: true,
     skillsAvailable: true,
     currentApp: null,
-    setTheme: vi.fn(),
+    setThemePreference: vi.fn(),
     setLocale: vi.fn().mockResolvedValue(undefined),
     getDocsHomeUrl: () => 'https://docs.dify.ai/en',
     onError: vi.fn(),

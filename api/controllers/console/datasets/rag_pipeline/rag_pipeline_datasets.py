@@ -1,10 +1,12 @@
 from flask_restx import Resource
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
 from configs import dify_config
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.permission_keys import get_dataset_permission_keys
@@ -19,7 +21,6 @@ from controllers.console.wraps import (
 )
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
@@ -58,10 +59,12 @@ class CreateRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
+    @with_session
     @model_validate(RagPipelineDatasetImportPayload)
     def post(
         self,
         req_data: RagPipelineDatasetImportPayload,
+        session: Session,
         current_tenant_id: str,
         current_user: Account,
     ) -> JsonResponseWithStatus:
@@ -81,13 +84,14 @@ class CreateRagPipelineDatasetApi(Resource):
             yaml_content=req_data.yaml_content,
         )
         try:
-            rag_pipeline_dsl_service = RagPipelineDslService(db.session())
+            rag_pipeline_dsl_service = RagPipelineDslService(session)
             import_info = rag_pipeline_dsl_service.create_rag_pipeline_dataset(
                 tenant_id=current_tenant_id,
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
             )
             dataset_id = import_info["dataset_id"]
-            db.session.commit()
+            # Commit before the RBAC sync below, which runs outside this session.
+            session.commit()
         except services.errors.dataset.DatasetNameDuplicateError as caught_error:
             raise DatasetNameDuplicateError() from caught_error
 

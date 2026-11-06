@@ -3,7 +3,6 @@ import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -11,6 +10,7 @@ import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useMarketplaceAllPlugins } from './hooks'
@@ -28,7 +28,7 @@ const InstallFromMarketplace = ({
   stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation(['plugin', 'modelProvider'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
   const [hasEnteredViewport, setHasEnteredViewport] = useState(

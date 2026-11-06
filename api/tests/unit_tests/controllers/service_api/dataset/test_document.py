@@ -253,6 +253,7 @@ class TestDocumentControllerDelegation:
         settings = arguments["settings"]
         assert isinstance(settings, dict)
         assert settings["doc_language"] == "French"
+        assert "doc_form" not in settings
 
     def test_update_by_text_delegates_document_identity(
         self, app: Flask, documents: RecordingDocuments, request_context: RequestContext
@@ -272,8 +273,6 @@ class TestDocumentControllerDelegation:
             "settings": {
                 "name": "Renamed",
                 "text": "replacement",
-                "doc_form": "text_model",
-                "doc_language": "English",
             },
         }
 

@@ -1,10 +1,5 @@
 {
   "account.account": "Рахунок",
-  "account.appearanceDark": "Темна",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Вигляд",
-  "account.appearanceLight": "Світла",
-  "account.appearanceSystem": "Системна",
   "account.changeEmail.authTip": "Коли ви зміните свою електронну адресу, облікові записи Google або GitHub, пов'язані з вашою старою електронною адресою, більше не зможуть увійти в цей обліковий запис.",
   "account.changeEmail.changeTo": "Змінити на {{email}}",
   "account.changeEmail.codeLabel": "Код перевірки",

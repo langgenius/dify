@@ -11,7 +11,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
@@ -159,10 +160,13 @@ def _make_workflow(**overrides) -> Workflow:
 def test_publish_workflow_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     advisory: str,
 ) -> None:
     current_user = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app_model = _app(app_id="app-1", tenant_id="tenant-1")
+    sqlite_session.add(app_model)
+    sqlite_session.commit()
     graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
@@ -192,19 +196,11 @@ def test_publish_workflow_returns_success(
         monkeypatch.setattr(
             variable_reference_validator, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
         )
-    session = Mock()
-    session.get.return_value = app_model
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
         Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
     )
-    monkeypatch.setattr(
-        workflow_module,
-        "sessionmaker",
-        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
-    )
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
     with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
         response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
             workflow_module.PublishedWorkflowApi(),
@@ -214,7 +210,11 @@ def test_publish_workflow_returns_success(
         )
 
     assert response["result"] == "success"
-    assert app_model.workflow_id == workflow.id
+    sqlite_session.expire_all()
+    persisted_app = sqlite_session.get(App, app_model.id)
+    assert persisted_app is not None
+    assert persisted_app.workflow_id == workflow.id
+    assert persisted_app.updated_by == current_user.id
     assert isinstance(response["created_at"], int)
     if advisory == "warning":
         assert "Consumer" in response["warning"]
@@ -222,6 +222,41 @@ def test_publish_workflow_returns_success(
         assert "skipped branch" in response["warning"]
     else:
         assert "warning" not in response
+
+
+def test_publish_workflow_rolls_back_on_service_failure(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+) -> None:
+    app_model = _app(app_id="app-1", tenant_id="tenant-1")
+    sqlite_session.add(app_model)
+    sqlite_session.commit()
+
+    def fail_after_update(*, session: Session, **_kwargs: object) -> None:
+        persisted_app = session.get(App, app_model.id)
+        assert persisted_app is not None
+        persisted_app.name = "changed"
+        session.flush()
+        raise RuntimeError("publish failed")
+
+    service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
+    monkeypatch.setattr(service, "publish_workflow", fail_after_update)
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+    current_user = Account(name="Test", email="test@example.com")
+    current_user.id = "account-1"
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+        with pytest.raises(RuntimeError, match="publish failed"):
+            inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                workflow_module.PublishedWorkflowApi(),
+                workflow_module.PublishWorkflowPayload.model_validate({}),
+                current_user,
+                app_model,
+            )
+
+    sqlite_session.expire_all()
+    persisted_app = sqlite_session.get(App, app_model.id)
+    assert persisted_app is not None
+    assert persisted_app.name == "Workflow App"
+    assert persisted_app.workflow_id is None
 
 
 @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])

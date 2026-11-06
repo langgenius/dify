@@ -31,7 +31,6 @@ from controllers.console.wraps import (
 )
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
@@ -171,17 +170,19 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
+    @with_session
     @model_validate(CustomizedPipelineTemplatePayload)
     def patch(
         self,
         req_data: CustomizedPipelineTemplatePayload,
+        session: Session,
         current_tenant_id: str,
         current_user: Account,
         template_id: str,
     ) -> tuple[str, int]:
         pipeline_template_info = PipelineTemplateInfoEntity.model_validate(req_data.model_dump())
         RagPipelineService.update_customized_pipeline_template(
-            template_id, pipeline_template_info, current_user, current_tenant_id, session=db.session()
+            template_id, pipeline_template_info, current_user, current_tenant_id, session=session
         )
         return "", 204
 
@@ -191,8 +192,9 @@ class CustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, template_id: str) -> tuple[str, int]:
-        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id, session=db.session())
+    @with_session
+    def delete(self, session: Session, current_tenant_id: str, template_id: str) -> tuple[str, int]:
+        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id, session=session)
         return "", 204
 
     @setup_required
@@ -227,14 +229,15 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @with_current_user
     @get_rag_pipeline
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_RELEASE, DatasetByPipeline()))
+    @with_session
     @model_validate(CustomizedPipelineTemplatePayload)
     def post(
         self,
         req_data: CustomizedPipelineTemplatePayload,
+        session: Session,
         current_user: Account,
         pipeline: Pipeline,
     ) -> tuple[str, int]:
-        session = db.session()
         dataset = get_pipeline_dataset(pipeline, session=session)
         if dataset is None:
             raise NotFound("Dataset not found")

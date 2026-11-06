@@ -408,14 +408,20 @@ class SQLAlchemyDatasetRepository:
             )
 
     def get_document_creation_defaults(self, ref: DatasetRef) -> DocumentCreationDefaults | None:
-        """Return the dataset settings inherited by newly created documents."""
+        """Return tenant-scoped defaults inherited by document writes.
+
+        Preconditions: ``ref`` identifies the owning tenant and dataset.
+        Postconditions: a returned record contains the dataset's effective
+        document form, including the legacy document-row fallback; no ORM state
+        escapes the repository session. Missing datasets return ``None``.
+        """
         with self._session_factory() as session:
             dataset = _get_dataset(session, ref)
             if dataset is None:
                 return None
             return DocumentCreationDefaults(
                 provider=str(dataset.provider),
-                chunk_structure=str(dataset.chunk_structure) if dataset.chunk_structure else None,
+                doc_form=get_dataset_doc_form(dataset, session=session),
                 indexing_technique=str(dataset.indexing_technique) if dataset.indexing_technique else None,
             )
 

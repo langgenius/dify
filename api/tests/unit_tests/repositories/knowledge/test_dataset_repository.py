@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.creator import CreatorUserRole
-from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery
-from models.enums import DatasetQuerySource
+from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document
+from models.enums import DatasetQuerySource, DataSourceType, DocumentCreatedFrom
 from repositories.knowledge.dataset_read_repository import stage_dataset_queries
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository, sync_app_dataset_joins
 from services.errors.file import UploadFileReferenceNotFoundError
@@ -112,6 +112,34 @@ def test_notion_dataset_query_rejects_other_source_types(
         session.add(_dataset("dataset-1", "workspace-1", data_source_type="upload_file"))
 
     assert _repository(sqlite_session_factory).is_notion_dataset(DatasetRef("workspace-1", "dataset-1")) is False
+
+
+def test_document_creation_defaults_use_legacy_document_form(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset-1", "workspace-1"))
+        session.add(
+            Document(
+                id="document-1",
+                tenant_id="workspace-1",
+                dataset_id="dataset-1",
+                position=1,
+                data_source_type=DataSourceType.UPLOAD_FILE,
+                batch="batch-1",
+                name="source.txt",
+                created_from=DocumentCreatedFrom.API,
+                created_by="account-1",
+                doc_form="hierarchical_model",
+            )
+        )
+
+    defaults = _repository(sqlite_session_factory).get_document_creation_defaults(
+        DatasetRef("workspace-1", "dataset-1")
+    )
+
+    assert defaults is not None
+    assert defaults.doc_form == "hierarchical_model"
 
 
 def test_rag_pipeline_dataset_creation_revalidates_image_icon_upload(

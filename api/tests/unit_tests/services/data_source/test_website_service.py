@@ -944,8 +944,8 @@ def test_get_jinareader_status_completed_formats_processed_items(monkeypatch: py
             "taskId": "job-1",
             "status": "completed",
             "urls": ["u1"],
-            "processed": {"u1": {}},
-            "failed": {},
+            "processed": {"u1": dict[str, Any]()},
+            "failed": dict[str, Any](),
             "duration": 1000,
         },
     }
@@ -1076,7 +1076,7 @@ def test_get_jinareader_url_data_without_job_id_failure(monkeypatch: pytest.Monk
 def test_get_jinareader_url_data_with_job_id_completed_returns_matching_item(monkeypatch: pytest.MonkeyPatch) -> None:
     status_payload: dict[str, Any] = {
         "code": 200,
-        "data": {"taskId": "job-1", "status": "completed", "processed": {"u1": {}}},
+        "data": {"taskId": "job-1", "status": "completed", "processed": {"u1": dict[str, Any]()}},
     }
     processed_payload = {
         "code": 200,
@@ -1103,7 +1103,7 @@ def test_get_jinareader_url_data_with_job_id_completed_but_not_found_returns_non
 ) -> None:
     status_payload: dict[str, Any] = {
         "code": 200,
-        "data": {"taskId": "job-1", "status": "completed", "processed": {"u1": {}}},
+        "data": {"taskId": "job-1", "status": "completed", "processed": {"u1": dict[str, Any]()}},
     }
     processed_payload = {
         "code": 200,
