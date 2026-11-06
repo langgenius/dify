@@ -2027,8 +2027,9 @@ class TestNodeRuntimeCases:
             assert granted is not None
             assert upload_file_id in granted.granted_upload_file_ids
 
-        assert files[0].related_id == upload_file_id
+        assert files[0].id == upload_file_id
         assert files[0].filename == "diagram.png"
+        assert granted.granted_upload_file_ids == frozenset({upload_file_id})
 
     @staticmethod
     def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(

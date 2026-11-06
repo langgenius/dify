@@ -27,8 +27,6 @@ from context.flask_app_context import capture_flask_context
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.file_access import FileAccessScope, bind_file_access_scope
-from core.app.layers import execution_context_layer as module
-from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import init_app
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.helper.code_executor.code_executor import CodeExecutionError
@@ -45,10 +43,7 @@ from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
-from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from dify_app import DifyApp
@@ -137,8 +132,13 @@ from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.adapters import execution_context_layer as module
+from services.workflow.execution.adapters.execution_context_layer import ExecutionContextLayer
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.adapters.human_input_events import resolve_human_input_node_id
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.adapters.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
     WorkflowToolNestedContainerHandler,

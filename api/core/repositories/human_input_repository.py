@@ -180,6 +180,8 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
 
 @dataclasses.dataclass(frozen=True)
 class HumanInputFormRecord(SharedHumanInputFormRecord):
+    """Legacy constructor kept on the shared human-input record contract."""
+
     @classmethod
     def from_models(
         cls, form_model: HumanInputForm, recipient_model: HumanInputFormRecipient | None

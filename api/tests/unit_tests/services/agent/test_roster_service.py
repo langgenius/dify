@@ -5950,7 +5950,7 @@ class TestWorkflowAgentDraftBindingSync:
             session.add(existing_binding)
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6344,7 +6344,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.add_all([agent, self._publish_revision()])
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6468,7 +6468,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.add_all([agent, snapshot])
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6524,7 +6524,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.add(existing_binding)
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6591,7 +6591,7 @@ class TestWorkflowAgentDraftBindingSync:
             ),
         )
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6632,7 +6632,7 @@ class TestWorkflowAgentDraftBindingSync:
         )
 
         with pytest.raises(ValueError, match="unsupported agent_binding type"):
-            build_workflow_agent_service(session)._synchronize_bindings(
+            build_workflow_agent_service(session).synchronize_bindings(
                 draft_workflow=workflow_binding_scope(workflow),
                 account_id="account-1",
             )
@@ -6664,7 +6664,7 @@ class TestWorkflowAgentDraftBindingSync:
             ),
         )
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6715,7 +6715,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.commit()
 
         with pytest.raises(ValueError, match="missing inline agent config snapshot"):
-            build_workflow_agent_service(session)._synchronize_bindings(
+            build_workflow_agent_service(session).synchronize_bindings(
                 draft_workflow=workflow_binding_scope(workflow),
                 account_id="account-1",
             )
@@ -6777,7 +6777,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.add_all([agent, self._publish_revision(), existing_binding])
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -6849,7 +6849,7 @@ class TestWorkflowAgentDraftBindingSync:
         session.add_all([agent, self._publish_revision(), existing_binding])
         session.commit()
 
-        build_workflow_agent_service(session)._synchronize_bindings(
+        build_workflow_agent_service(session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
@@ -7049,7 +7049,7 @@ class TestWorkflowAgentDraftBindingSync:
             ]
         )
         sqlite_session.commit()
-        retirement_candidates = build_workflow_agent_service(sqlite_session)._synchronize_bindings(
+        retirement_candidates = build_workflow_agent_service(sqlite_session).synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id="account-1",
         )
