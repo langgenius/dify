@@ -7,13 +7,13 @@ import { zSkillResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { detectPlatform, useHotkey } from '@tanstack/react-hotkeys'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { useReactFlow } from 'reactflow'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { ThemeProvider } from '@/features/theme/provider'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -129,7 +129,7 @@ const plugin: MarketplacePlugin = {
   verification: { authorized_category: 'community' },
   from: 'marketplace',
 }
-const darkTheme = /app.gotoAnything.actions.themeDark/
+const darkTheme = /common.theme.dark/
 const isMac = detectPlatform() === 'mac'
 const triggerSearchShortcut = (target: HTMLElement = document.body) =>
   fireEvent.keyDown(target, { key: 'k', ctrlKey: !isMac, metaKey: isMac })
@@ -151,7 +151,7 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
   })
   render(
     <ConsoleWrapper>
-      <ThemeProvider defaultTheme="light" enableSystem={false}>
+      <ThemeProvider defaultPreference="light">
         <GotoAnything />
         <AppToaster timeout={0} />
       </ThemeProvider>

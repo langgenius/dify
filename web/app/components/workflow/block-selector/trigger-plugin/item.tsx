@@ -21,8 +21,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { basePath } from '@/utils/var'
 import { BlockSelectorRow } from '../block-selector-row'
 import TriggerPluginActionItem from './action-item'
@@ -58,7 +57,7 @@ const TriggerPluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation(['workflow'])
   const language = useGetLanguage()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.events
   const hasAction = !notShowProvider
@@ -92,7 +91,7 @@ const TriggerPluginItem: FC<Props> = ({
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<TriggerWithProvider['icon']>(() => {
-    if (theme === Theme.dark && normalizedIconDark) return normalizedIconDark
+    if (theme === 'dark' && normalizedIconDark) return normalizedIconDark
     return normalizedIcon
   }, [normalizedIcon, normalizedIconDark, theme])
   const providerWithResolvedIcon = useMemo(
@@ -143,7 +142,7 @@ const TriggerPluginItem: FC<Props> = ({
         >
           <div className="flex min-w-0 grow items-center">
             <BlockIcon
-              className="mr-2 shrink-0"
+              className="me-2 shrink-0"
               type={BlockEnum.TriggerPlugin}
               size="sm"
               toolIcon={providerIcon}
@@ -152,13 +151,13 @@ const TriggerPluginItem: FC<Props> = ({
               <span className="max-w-50 truncate">
                 {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
               </span>
-              <span className="ml-2 truncate system-xs-regular text-text-quaternary">
+              <span className="ms-2 truncate system-xs-regular text-text-quaternary">
                 {groupName}
               </span>
             </div>
           </div>
 
-          <div className="ml-2 flex items-center">
+          <div className="ms-2 flex items-center">
             {hasAction && (
               <FoldIcon
                 className={cn(
