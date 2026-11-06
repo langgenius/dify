@@ -31,7 +31,7 @@ from typing import Any, NamedTuple
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
-from services.dify_builder import credentials, graph_ops
+from services.dify_builder import credentials, graph_ops, trace_diagnostics
 
 # Only for the node-type knowledge the rejoin guard's REASON needs -- which
 # variable a node publishes -- stated once there so the sentence Edit's prompt
@@ -222,6 +222,31 @@ class _NodeProblem(NamedTuple):
     node: tuple[str, str]
     locations: frozenset[tuple[str, ...]]
     message: str
+    validation_details: tuple[dict[str, Any], ...] = ()
+
+
+def _native_validation_details(exc: BaseException, node_index: int) -> tuple[dict[str, Any], ...]:
+    """Observe the actual native exception without values, repr or prose.
+
+    Follow at most eight wrapped causes. Non-Pydantic exceptions have only a
+    fixed category; their private exception message is never metadata.
+    """
+    current: BaseException | None = exc
+    for _ in range(8):
+        if isinstance(current, ValidationError):
+            return tuple(
+                trace_diagnostics.validation_detail(
+                    {
+                        "stage": "native_config",
+                        "reason_code": error["type"],
+                        "node_index": node_index,
+                        "path": error["loc"],
+                    }
+                )
+                for error in current.errors(include_input=False, include_context=False, include_url=False)
+            )
+        current = (current.__cause__ or current.__context__) if current is not None else None
+    return ({"stage": "native_config", "reason_code": "native_validation_exception", "node_index": node_index},)
 
 
 def _node_problems(graph: Graph) -> list[_NodeProblem]:
@@ -231,19 +256,43 @@ def _node_problems(graph: Graph) -> list[_NodeProblem]:
     touched-node validity and unchanged-draft exemptions apply to both.
     """
     problems: list[_NodeProblem] = []
-    for node in graph.get("nodes") or []:
+    for node_index, node in enumerate(graph.get("nodes") or []):
         if not isinstance(node, Mapping) or node.get("type") == _CANVAS_ONLY_NODE_TYPE:
             continue
         exc = _validation_error(node)
         if exc is None:
             continue
         locations = _error_locations(exc)
-        problems.append(_NodeProblem(_node_key(node), locations, _withheld_message(node, exc, locations)))
+        problems.append(
+            _NodeProblem(
+                _node_key(node),
+                locations,
+                _withheld_message(node, exc, locations),
+                _native_validation_details(exc, node_index),
+            )
+        )
     problems.extend(
         _NodeProblem(
             (problem.node_id, "if-else"),
             frozenset({problem.location}),
             f"node {problem.node_id!r} (if-else): {problem.detail}",
+            (
+                trace_diagnostics.validation_detail(
+                    {
+                        "stage": "semantic",
+                        "reason_code": "native_http_condition",
+                        "path": problem.location,
+                        "node_index": next(
+                            (
+                                index
+                                for index, node in enumerate(graph.get("nodes") or [])
+                                if isinstance(node, Mapping) and node.get("id") == problem.node_id
+                            ),
+                            None,
+                        ),
+                    }
+                ),
+            ),
         )
         for problem in native_http_condition_problems(graph.get("nodes") or [])
     )
@@ -314,12 +363,21 @@ def new_preflight_problems(before: Graph, after: Graph, touched: Collection[str]
     which is why ``touched`` has to be the same set on both sides too (the
     pre-heal ``changed_nodes``; see ``graph_ops.DryRun``).
     """
+    return [problem.message for problem in _new_node_problems(before, after, touched)]
+
+
+def _new_node_problems(before: Graph, after: Graph, touched: Collection[str]) -> list[_NodeProblem]:
+    """Return the same touched/new-location refusals with their source metadata.
+
+    Inputs and exemptions match ``new_preflight_problems`` exactly; no mutation
+    occurs and neither diagnostics nor their classification affects the verdict.
+    """
     written = frozenset(touched)
     known: dict[tuple[str, str], frozenset[tuple[str, ...]]] = {}
     for problem in _node_problems(before):
         known[problem.node] = known.get(problem.node, frozenset()) | problem.locations
     return [
-        problem.message
+        problem
         for problem in _node_problems(after)
         if problem.node[0] in written or problem.locations - known.get(problem.node, frozenset())
     ]
@@ -787,6 +845,10 @@ class VettedIntents(NamedTuple):
       validation accepts it. The node policy is also enforced at the write
       boundary; the other semantic guards protect model candidate selection.
 
+    ``validation_details`` adds value-free observations from the actual sources.
+    Its empty default preserves existing three-argument constructors; historical
+    absent observations stay unknown and never become reconstructed causes.
+
     Reading which is which off the rejection PROSE would be the same mistake as
     keying control flow on the model's prose: the text is for a human and a
     re-prompt, the list is for the code.
@@ -795,6 +857,7 @@ class VettedIntents(NamedTuple):
     applicable: list[MutationIntent]
     rejections: list[str]
     would_run_wrong: list[str]
+    validation_details: tuple[dict[str, Any], ...] = ()
 
 
 def vet_intents(
@@ -832,14 +895,42 @@ def vet_intents(
     their existing filtering behavior; isolated creates with no rejected wiring
     are allowed in either mode.
     """
-    dry_run = graph_ops.filter_applicable(graph, intents, allowed_node_types)
+    details: list[dict[str, Any]] = []
+
+    def observe_rejection(intent: MutationIntent, reason_code: str) -> None:
+        """Attach only canonical operation/path and the known graph position."""
+        node_id, path = intent.args.get("node_id"), intent.args.get("path")
+        details.append(
+            trace_diagnostics.validation_detail(
+                {
+                    "stage": "operation",
+                    "reason_code": reason_code,
+                    "op": intent.op,
+                    "node_index": next(
+                        (
+                            index
+                            for index, node in enumerate(graph.get("nodes") or [])
+                            if isinstance(node, Mapping) and node.get("id") == node_id
+                        ),
+                        None,
+                    )
+                    if isinstance(node_id, str)
+                    else None,
+                    "path": path.split(".") if isinstance(path, str) else None,
+                }
+            )
+        )
+
+    dry_run = graph_ops.filter_applicable(graph, intents, allowed_node_types, on_rejection=observe_rejection)
+    node_problems = _new_node_problems(graph, dry_run.graph, dry_run.changed_nodes)
+    details.extend(detail for problem in node_problems for detail in problem.validation_details)
     rejections = [f"- {intent.op} {_withheld_args(intent)}: {reason}" for intent, reason in dry_run.rejected]
     rejections += [
-        f"- the draft would then not start: {problem}"
+        f"- the draft would then not start: {problem.message}"
         # The dry run's own record of what the batch wrote, which is the port's
         # too -- a node this batch touches has to be startable, not merely no
         # worse than it was.
-        for problem in new_preflight_problems(graph, dry_run.graph, dry_run.changed_nodes)
+        for problem in node_problems
     ]
     # The third layer: Builder policy and defects native validation accepts.
     # They are keyed on proposed native effects, never the model's verdict.
@@ -856,7 +947,8 @@ def vet_intents(
     if atomic_added_node_wiring:
         would_run_wrong += _partial_added_node_wiring_reasons(graph, dry_run)
     rejections += [f"- {reason}" for reason in would_run_wrong]
-    return VettedIntents(dry_run.applicable, rejections, would_run_wrong)
+    details.extend({"stage": "semantic", "reason_code": "semantic_guard"} for _ in would_run_wrong)
+    return VettedIntents(dry_run.applicable, rejections, would_run_wrong, tuple(details))
 
 
 def _partial_added_node_wiring_reasons(before: Graph, dry_run: graph_ops.DryRun) -> list[str]:

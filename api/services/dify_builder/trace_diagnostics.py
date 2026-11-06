@@ -80,6 +80,157 @@ _MESSAGES = {
 }
 
 
+# Paths are schema vocabulary, never arbitrary user dictionary keys or numeric
+# values. Unknown fields stay unknown, including custom Code output names.
+_VALIDATION_PATH_FIELDS = frozenset(
+    [
+        "type",
+        "title",
+        "code",
+        "code_language",
+        "outputs",
+        "variables",
+        "variable",
+        "value",
+        "value_type",
+        "variable_selector",
+        "cases",
+        "conditions",
+        "comparison_operator",
+        "logical_operator",
+        "case_id",
+        "id",
+        "authorization",
+        "config",
+        "headers",
+        "body",
+        "data",
+        "method",
+        "url",
+        "params",
+        "timeout",
+        "connect",
+        "read",
+        "write",
+        "retry_config",
+        "delivery_methods",
+        "inputs",
+        "user_actions",
+        "form_content",
+        "enabled",
+        "default",
+        "selector",
+        "classes",
+        "metadata_filtering_conditions",
+        "prompt_template",
+        "model",
+        "provider",
+        "name",
+        "api_key",
+        "query",
+        "memory",
+        "context",
+        "vision",
+        "max_tokens",
+        "temperature",
+        "options",
+        "required",
+        "label",
+    ]
+) | {"*", "unknown"}
+_VALIDATION_REASONS = {
+    "operation": frozenset(
+        {
+            "unknown_operation",
+            "missing_argument",
+            "invalid_argument",
+            "redacted_value",
+            "invalid_path",
+            "node_not_found",
+            "invalid_branch_handle",
+            "unsupported_node_type",
+            "operation_invalid",
+        }
+    ),
+    "native_config": frozenset(
+        {
+            "missing",
+            "literal_error",
+            "string_type",
+            "int_type",
+            "int_parsing",
+            "float_type",
+            "float_parsing",
+            "bool_type",
+            "bool_parsing",
+            "list_type",
+            "dict_type",
+            "model_type",
+            "enum",
+            "value_error",
+            "union_tag_invalid",
+            "union_tag_not_found",
+            "extra_forbidden",
+            "finite_number",
+            "greater_than",
+            "greater_than_equal",
+            "less_than",
+            "less_than_equal",
+            "too_short",
+            "too_long",
+            "uuid_parsing",
+            "native_validation_error",
+            "native_validation_exception",
+        }
+    ),
+    "semantic": frozenset({"semantic_guard", "native_http_condition"}),
+}
+_VALIDATION_OPS = frozenset({"set_node_config", "create_node", "delete_node", "connect", "insert_between"})
+
+
+def validation_detail(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Project a source observation to bounded schema vocabulary only.
+
+    Accept source metadata or stored records; return no proposal values, ids,
+    exception text or arbitrary field names. Unknown classifications remain
+    explicit unknown within their source stage. This never grants authority.
+    """
+    stage = record.get("stage")
+    if not isinstance(stage, str) or stage not in _VALIDATION_REASONS:
+        return {}
+    reason = record.get("reason_code")
+    fallback = {
+        "operation": "operation_invalid",
+        "native_config": "native_validation_error",
+        "semantic": "semantic_guard",
+    }
+    safe: dict[str, Any] = {
+        "stage": stage,
+        "reason_code": reason if isinstance(reason, str) and reason in _VALIDATION_REASONS[stage] else fallback[stage],
+    }
+    op = record.get("op")
+    if isinstance(op, str) and op in _VALIDATION_OPS:
+        safe["op"] = op
+    # Node position identifies the actual validator target without persisting an
+    # arbitrary graph/model-authored id that might itself contain a secret.
+    index = record.get("node_index")
+    if type(index) is int and 0 <= index <= 1_000_000:
+        safe["node_index"] = index
+    path = record.get("path")
+    if isinstance(path, (list, tuple)):
+        safe["path"] = [
+            part
+            if isinstance(part, str) and part in _VALIDATION_PATH_FIELDS
+            else "*"
+            if type(part) is int or (isinstance(part, str) and part.isdecimal())
+            else "unknown"
+            for part in path[:8]
+        ]
+        if len(path) > 8 or record.get("path_truncated") is True:
+            safe["path_truncated"] = True
+    return safe
+
+
 def project(record: Mapping[str, Any]) -> dict[str, Any]:
     """Ignore arbitrary text/extra fields, including legacy generator errors."""
     code = record.get("code")
@@ -148,6 +299,16 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
         "unknown",
     }:
         result["reason"] = reason
+    details = record.get("validation_details")
+    if code == "validation_refused" and isinstance(details, (list, tuple)):
+        result["validation_details"] = [
+            safe for detail in details[:16] if isinstance(detail, Mapping) and (safe := validation_detail(detail))
+        ]
+        count = record.get("validation_detail_count")
+        result["validation_detail_count"] = (
+            max(len(details), count) if type(count) is int and 0 <= count <= 1_000_000_000 else len(details)
+        )
+        result["validation_details_truncated"] = result["validation_detail_count"] > len(result["validation_details"])
     codes = record.get("validation_codes")
     allowed = {
         "UNRESOLVED_REFERENCE",
@@ -279,6 +440,7 @@ def report(
     attempt: int | None = None,
     fallback_used: bool | None = None,
     validation_code: str | None = None,
+    validation_details: Sequence[Mapping[str, Any]] | None = None,
     node_id: str | None = None,
     provider: str | None = None,
     model: str | None = None,
@@ -295,6 +457,7 @@ def report(
             "fallback_used": fallback_used,
             "reason": failure_reason(error) if error else None,
             "validation_codes": [validation_code] if validation_code else None,
+            "validation_details": validation_details,
             "node_id": node_id,
             "provider": provider,
             "model": model,

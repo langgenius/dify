@@ -11,6 +11,7 @@ import copy
 import hashlib
 import json
 from collections.abc import Callable
+from contextlib import suppress
 from typing import Any, NamedTuple
 
 from core.dify_builder.models import Graph, MutationIntent
@@ -59,6 +60,19 @@ _REDACTABLE_ARGS = ("value", "config")
 _MODE_KEY = "type"
 
 
+class OperationValidationError(ValueError):
+    """A structural refusal with a source-owned, value-free observation code.
+
+    Message and ValueError compatibility remain the mutation caller's contract;
+    the code is observation only and never controls applicability.
+    """
+
+    def __init__(self, message: str, reason_code: str) -> None:
+        """Preserve the original refusal text and its fixed source classification."""
+        super().__init__(message)
+        self.reason_code = reason_code
+
+
 def validate_intent_args(intent: MutationIntent) -> None:
     """Raise ``ValueError`` if ``intent.args`` is missing a required key for
     ``intent.op``, or if ``intent.op`` isn't one of ``MUTATION_ARG_KEYS``'s
@@ -77,24 +91,28 @@ def validate_intent_args(intent: MutationIntent) -> None:
     """
     required = MUTATION_ARG_KEYS.get(intent.op)
     if required is None:
-        raise ValueError(f"unknown mutation op: {intent.op!r}")
+        raise OperationValidationError(f"unknown mutation op: {intent.op!r}", "unknown_operation")
     missing = [key for key in required if key not in intent.args]
     if missing:
-        raise ValueError(f"missing required arg(s) {missing} for op {intent.op!r}")
+        raise OperationValidationError(f"missing required arg(s) {missing} for op {intent.op!r}", "missing_argument")
 
     for key in _NODE_ID_ARGS:
         if key not in intent.args:
             continue
         value = intent.args[key]
         if not isinstance(value, str) or not value:
-            raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
+            raise OperationValidationError(
+                f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}", "invalid_argument"
+            )
 
     for key in _STRING_ARGS:
         if key not in intent.args:
             continue
         value = intent.args[key]
         if not isinstance(value, str) or not value:
-            raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
+            raise OperationValidationError(
+                f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}", "invalid_argument"
+            )
 
     # KNOWN AND ACCEPTED, deliberately not closed here: this stops the model
     # handing the PLACEHOLDER back, not a rewrite that simply OMITS the
@@ -106,10 +124,11 @@ def validate_intent_args(intent: MutationIntent) -> None:
     # which is a larger design change and would break legitimate deletion.
     for key in _REDACTABLE_ARGS:
         if key in intent.args and credentials.carries_redaction(intent.args[key]):
-            raise ValueError(
+            raise OperationValidationError(
                 f"{key} for op {intent.op!r} contains the redaction placeholder "
                 f"{credentials.REDACTED!r}: that is not the real secret. Leave the field "
-                "unchanged, or set it to a real value."
+                "unchanged, or set it to a real value.",
+                "redacted_value",
             )
 
 
@@ -129,35 +148,45 @@ def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]
     """
     segments = path.split(".")
     if not path or any(segment == "" for segment in segments):
-        raise ValueError(f"empty segment in path: {path!r}")
+        raise OperationValidationError(f"empty segment in path: {path!r}", "invalid_path")
 
     cursor: Any = container
     for depth, segment in enumerate(segments[:-1]):
         walked = ".".join(segments[: depth + 1])
         if segment.isdigit():
             if not isinstance(cursor, list):
-                raise ValueError(f"path {path!r}: {walked} indexes a {type(cursor).__name__}, not a list")
+                raise OperationValidationError(
+                    f"path {path!r}: {walked} indexes a {type(cursor).__name__}, not a list", "invalid_path"
+                )
             index = int(segment)
             if index >= len(cursor):
-                raise ValueError(f"path {path!r}: index {index} out of range at {walked} (len {len(cursor)})")
+                raise OperationValidationError(
+                    f"path {path!r}: index {index} out of range at {walked} (len {len(cursor)})", "invalid_path"
+                )
             cursor = cursor[index]
             continue
         if not isinstance(cursor, dict):
-            raise ValueError(f"path {path!r}: {walked} is not a mapping")
+            raise OperationValidationError(f"path {path!r}: {walked} is not a mapping", "invalid_path")
         if segment not in cursor:
-            raise ValueError(f"path {path!r}: no key {segment!r} at {walked}")
+            raise OperationValidationError(f"path {path!r}: no key {segment!r} at {walked}", "invalid_path")
         cursor = cursor[segment]
 
     last = segments[-1]
     if last.isdigit():
         if not isinstance(cursor, list):
-            raise ValueError(f"path {path!r}: final segment indexes a {type(cursor).__name__}, not a list")
+            raise OperationValidationError(
+                f"path {path!r}: final segment indexes a {type(cursor).__name__}, not a list", "invalid_path"
+            )
         index = int(last)
         if index >= len(cursor):
-            raise ValueError(f"path {path!r}: index {index} out of range (len {len(cursor)})")
+            raise OperationValidationError(
+                f"path {path!r}: index {index} out of range (len {len(cursor)})", "invalid_path"
+            )
         return cursor, index
     if not isinstance(cursor, dict):
-        raise ValueError(f"path {path!r}: final container is a {type(cursor).__name__}, not a mapping")
+        raise OperationValidationError(
+            f"path {path!r}: final container is a {type(cursor).__name__}, not a mapping", "invalid_path"
+        )
     return cursor, last
 
 
@@ -207,7 +236,7 @@ def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> 
             parent[key] = copy.deepcopy(value)
             return new_graph, [node_id]
 
-    raise ValueError(f"node not found: {node_id}")
+    raise OperationValidationError(f"node not found: {node_id}", "node_not_found")
 
 
 def _next_unique_id(base: str, existing_ids: set) -> str:
@@ -419,7 +448,7 @@ def apply_delete_node(graph: Graph, node_id: str) -> tuple[Graph, list[str]]:
     new_graph = copy.deepcopy(graph)
     nodes = new_graph.get("nodes", [])
     if not any(n.get("id") == node_id for n in nodes):
-        raise ValueError(f"node not found: {node_id}")
+        raise OperationValidationError(f"node not found: {node_id}", "node_not_found")
 
     new_graph["nodes"] = [n for n in nodes if n.get("id") != node_id]
     new_graph["edges"] = [
@@ -465,9 +494,9 @@ def apply_connect(
     new_graph = copy.deepcopy(graph)
     nodes_by_id = {n.get("id"): n for n in new_graph.get("nodes", [])}
     if from_node not in nodes_by_id:
-        raise ValueError(f"node not found: {from_node}")
+        raise OperationValidationError(f"node not found: {from_node}", "node_not_found")
     if to_node not in nodes_by_id:
-        raise ValueError(f"node not found: {to_node}")
+        raise OperationValidationError(f"node not found: {to_node}", "node_not_found")
 
     # A branch node (if-else / question-classifier / human-input / fail-branch)
     # only routes along the handles it declares. An edge on any other handle
@@ -477,7 +506,9 @@ def apply_connect(
     declared = declared_branch_handles(nodes_by_id[from_node])
     handle = source_handle or "source"
     if declared and handle not in declared:
-        raise ValueError(f"branch node {from_node!r} has no handle {handle!r}; it declares {declared}")
+        raise OperationValidationError(
+            f"branch node {from_node!r} has no handle {handle!r}; it declares {declared}", "invalid_branch_handle"
+        )
 
     existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
     edge = _make_edge(from_node, to_node, source_handle, target_handle, existing_edge_ids)
@@ -820,6 +851,8 @@ def filter_applicable(
     graph: Graph,
     intents: list[MutationIntent],
     allowed_node_types: set[str] | None = None,
+    *,
+    on_rejection: Callable[[MutationIntent, str], None] | None = None,
 ) -> DryRun:
     """Dry-run each intent through the real validate_intent_args + apply_* on a
     working deep copy, in order (so a connect sees a node an earlier create_node
@@ -840,6 +873,9 @@ def filter_applicable(
     loop). The working copy already reflects it -- that is what "already
     present" means -- so the graph returned here is still what the port would
     write.
+
+    ``on_rejection`` receives only source-owned codes. Observation failures are
+    suppressed and cannot change any existing mutation verdict or error text.
 
     The working copy then goes through the shared deterministic heal set
     (``services.workflow_generation.graph_normalizers.heal_nodes_for_preflight``), exactly as
@@ -867,10 +903,18 @@ def filter_applicable(
                     intent.op == "create_node" and node_type == "" and intent.args.get("flow_type") == "custom-note"
                 ):
                     rejected.append((intent, f"node_type not allowed: {node_type!r}"))
+                    if on_rejection is not None:
+                        with suppress(Exception):
+                            on_rejection(intent, "unsupported_node_type")
                     continue
             working, changed = APPLY_FNS[intent.op](working, **intent.args)
         except Exception as exc:
             rejected.append((intent, str(exc)))
+            if on_rejection is not None:
+                with suppress(Exception):
+                    on_rejection(
+                        intent, exc.reason_code if isinstance(exc, OperationValidationError) else "operation_invalid"
+                    )
             continue
         # A connect writes an EDGE; its endpoints' node data is untouched (see
         # ``DryRun.changed_nodes``). Mirrored in ``dify_port.apply_repair``.

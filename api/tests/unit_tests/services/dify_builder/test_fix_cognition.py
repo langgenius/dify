@@ -1737,6 +1737,8 @@ def test_rejected_nonempty_repair_remains_validation_refused() -> None:
     assert intents == []
     assert len(model.calls) == 2
     assert [record["code"] for record in records] == ["validation_refused", "validation_refused"]
+    assert [record["attempt"] for record in records] == [1, 2]
+    assert all(record["validation_details"][0]["stage"] == "native_config" for record in records)
 
 
 @pytest.mark.parametrize("risk_payload", [{}, {"reason": "   \n"}])
@@ -1776,3 +1778,82 @@ def test_empty_repair_redacts_overlapping_credentials_with_complete_runtime_prof
     )
 
     assert risk.reason == "403 permission required: __DIFY_BUILDER_REDACTED__ __DIFY_BUILDER_REDACTED__"
+
+
+def test_refusals_keep_distinct_actual_stage_and_reason_per_attempt() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    bad_path = json.loads(_operator_repair("=="))
+    bad_path["intents"][0]["args"]["path"] = "cases.900.conditions"
+    model = _RecordingInstance([json.dumps(bad_path), _operator_repair("==")])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+    assert intents == []
+    assert risk.level == "high"
+    assert len(model.calls) == 2
+    assert [
+        (r["attempt"], r["validation_details"][0]["stage"], r["validation_details"][0]["reason_code"]) for r in records
+    ] == [
+        (1, "operation", "invalid_path"),
+        (2, "native_config", "literal_error"),
+    ]
+
+
+def test_semantic_final_early_return_keeps_both_refusal_observations() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    model = _RecordingInstance([_UNFED_BRANCH_REPAIR, _UNFED_BRANCH_REPAIR])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _REJOIN_DIAG, _REJOIN_GRAPH)
+    assert intents == []
+    assert "node5" in risk.reason
+    assert len(model.calls) == 2
+    assert [r["attempt"] for r in records] == [1, 2]
+    assert all(r["validation_details"] == [{"stage": "semantic", "reason_code": "semantic_guard"}] for r in records)
+
+
+def test_valid_code_syntax_repair_after_native_refusal_preserves_declarations() -> None:
+    from services.dify_builder import graph_ops
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    graph = deepcopy(_RG)
+    declarations = {
+        "outputs": {"result": {"type": "number", "children": None}},
+        "variables": [{"variable": "x", "value_selector": ["start", "x"]}],
+    }
+    graph["nodes"][0]["data"].update(declarations)
+    graph["nodes"][0]["data"]["code"] = "def main(x)\n    return {'result': x}"
+    payload = {
+        "intents": [
+            {
+                "op": "set_node_config",
+                "args": {"node_id": "code1", "path": "code_language", "value": "PRIVATE_INVALID_LANGUAGE"},
+            }
+        ]
+    }
+    fixed = {
+        "intents": [
+            {
+                "op": "set_node_config",
+                "args": {"node_id": "code1", "path": "code", "value": "def main(x):\n    return {'result': x}"},
+            }
+        ]
+    }
+    model = _RecordingInstance([json.dumps(payload), json.dumps(fixed)])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _DIAG, graph)
+    assert len(intents) == 1
+    assert len(model.calls) == 2
+    assert risk.level == "low"
+    after = graph_ops.filter_applicable(graph, intents).graph
+    assert after["nodes"][0]["data"]["outputs"] == declarations["outputs"]
+    assert after["nodes"][0]["data"]["variables"] == declarations["variables"]
+    assert after["nodes"][0]["data"]["code"] == "def main(x):\n    return {'result': x}"
+    assert records[0]["attempt"] == 1
+    assert records[0]["validation_details"][0]["path"] == ["code_language"]
+    assert len(records) == 1
+    assert "PRIVATE_INVALID_LANGUAGE" not in json.dumps(records)
+    assert "def main" not in json.dumps(records)

@@ -449,7 +449,7 @@ def propose_repair(
     # surface to the human; a proposal the engine still refuses is not a fix.
     vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, evidence=diagnosis.condition_evidence)
     if vetted.rejections:
-        diagnostics.report("validation_refused", attempt=1)
+        diagnostics.report("validation_refused", attempt=1, validation_details=vetted.validation_details)
         reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
         if redact_text is not None:
@@ -464,6 +464,8 @@ def propose_repair(
         if not intents:
             return _empty_repair(risk, graph, redact_text)
         vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, evidence=diagnosis.condition_evidence)
+        if vetted.rejections:
+            diagnostics.report("validation_refused", attempt=2, validation_details=vetted.validation_details)
     # Parity with Edit (``agent.edit._refuse_a_batch_already_judged_wrong``), and
     # written as its own check rather than left to the broader one below.
     # ``would_run_wrong`` is the one refusal the ENGINE DOES NOT MAKE: the draft
@@ -477,7 +479,6 @@ def propose_repair(
     if vetted.would_run_wrong:
         return _no_fix(_judged_wrong_reason(vetted))
     if vetted.rejections:
-        diagnostics.report("validation_refused")
         return _no_fix()
     if not vetted.applicable:
         diagnostics.report("repair_not_applicable")

@@ -539,3 +539,111 @@ def test_resource_plan_missing_id_code_survives_projection_report_and_history() 
     assert history[1]["validation_codes"] == []
     assert "private-resource-id" not in json.dumps(history)
     assert "provider answer" not in json.dumps(history)
+
+
+def test_repair_detail_projection_bounds_counts_and_drops_arbitrary_metadata() -> None:
+    raw = {
+        "stage": "operation",
+        "reason_code": "invalid_path",
+        "op": "set_node_config",
+        "node_index": 1,
+        "node_id": "SECRET",
+        "path": ["cases", "*", "SECRET"],
+        "value": {"SECRET": "SECRET"},
+        "message": "SECRET",
+        "exception_type": "SECRET",
+    }
+    projected = diagnostics.project({"code": "validation_refused", "validation_details": [raw] * 40})
+    assert len(projected["validation_details"]) == 16
+    assert projected["validation_detail_count"] == 40
+    assert projected["validation_details_truncated"] is True
+    assert projected["validation_details"][0]["path"] == ["cases", "*", "unknown"]
+    assert "SECRET" not in json.dumps(projected)
+    assert diagnostics.project(projected)["validation_detail_count"] == 40
+    assert "validation_details" not in diagnostics.project({"code": "validation_refused"})
+    deep = diagnostics.project(
+        {"code": "validation_refused", "validation_details": [{**raw, "path": ["cases"] * 10000}]}
+    )
+    assert len(deep["validation_details"][0]["path"]) == 8
+    assert deep["validation_details"][0]["path_truncated"] is True
+    from core.dify_builder.models import MutationIntent
+    from services.dify_builder.preflight import vet_intents
+
+    actual = vet_intents({"nodes": [], "edges": []}, [MutationIntent(op="SECRET", args={}) for _ in range(40)])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        diagnostics.report("validation_refused", attempt=1, validation_details=actual.validation_details)
+    assert len(records[0]["validation_details"]) == 16
+    assert records[0]["validation_detail_count"] == 40
+    assert records[0]["validation_details_truncated"] is True
+    for unknown in ("SECRET", {"SECRET": "SECRET"}, ["SECRET"], None):
+        detail = diagnostics.validation_detail({"stage": "native_config", "reason_code": unknown, "path": [unknown]})
+        assert detail == {"stage": "native_config", "reason_code": "native_validation_error", "path": ["unknown"]}
+    assert "SECRET" not in json.dumps(records)
+
+
+def test_repair_details_survive_real_cas_item_history_and_http_projection(repo: SqlDifyBuilderRepository) -> None:
+    from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
+    from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
+    from core.dify_builder.models import Action, DifyBuilderContext, MutationIntent, Turn
+    from core.dify_builder.state import PcState
+    from libs.helper import dump_response
+    from services.dify_builder.application.runner import Runner, StepResult
+    from services.dify_builder.preflight import vet_intents
+    from tests.unit_tests.core.dify_builder.test_runner import _actor
+
+    env, _ = _new_env()
+    env.repo = repo
+    events = []
+    env.emit_item = events.append
+    session = _session()
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    def handler(_env: Env, _turn: Turn, current: Session, context: DifyBuilderContext) -> StepResult:
+        vetted = vet_intents(
+            {"nodes": [], "edges": []}, [MutationIntent(op="PRIVATE_OP", args={"value": "PRIVATE_VALUE"})]
+        )
+        diagnostics.report("validation_refused", attempt=2, validation_details=vetted.validation_details)
+        item = AssistantTurnItem(
+            turn_id="repair-trace",
+            stage_id=str(current.current_state),
+            execution=ExecutionProgress(status="completed"),
+            reply_text="Review repair",
+            reply_mode="complete",
+        ).to_item(seq=0, at_version=2)
+        return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=context, items=[item])
+
+    Runner(env, {PcState.FIX_DIAGNOSE: handler}).advance(
+        session.id, Turn(action=Action(kind="request_fix", base_version=1, command_id="repair-command"), actor=_actor())
+    )
+    assistant = repo.list_conversation(session.id)[-1]
+    _, context = repo.get_session(session.id)
+    assert context.last_command_id == "repair-command"
+    assert events[-1].command_id == "repair-command"
+    stored = assistant.payload["diagnostics"][0]
+    assert stored["command_id"] == "repair-command"
+    assert stored["attempt"] == 2
+    assert stored["validation_details"] == [{"stage": "operation", "reason_code": "unknown_operation"}]
+    assert stored["validation_detail_count"] == 1
+    assert stored["validation_details_truncated"] is False
+    assert events[-1].item.payload["diagnostics"] == [stored]
+    history = diagnostics.from_history([assistant], session_id=session.id, version=2)
+    assert history[0]["validation_details"] == stored["validation_details"]
+    http = dump_response(
+        DifyBuilderConversationPageResponse,
+        {
+            "data": [
+                {
+                    "seq": assistant.seq,
+                    "kind": assistant.kind,
+                    "payload": assistant.payload,
+                    "at_version": assistant.at_version,
+                }
+            ],
+            "has_more": False,
+            "first_seq": 0,
+            "last_seq": 0,
+        },
+    )
+    assert http["data"][0]["payload"]["diagnostics"][0]["validation_details"] == stored["validation_details"]
+    assert "PRIVATE" not in json.dumps(history)
