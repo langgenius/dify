@@ -3,7 +3,8 @@ from __future__ import annotations
 import builtins
 import importlib
 from collections.abc import Callable, Iterator
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
+from datetime import datetime
 from inspect import unwrap
 from types import FunctionType, ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
@@ -70,6 +71,7 @@ from models.account import Account as _tool_provider_apis_Account
 from models.account import TenantAccountRole
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
+from models.tools import MCPToolProvider
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.credentials.query import CredentialQuery
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
@@ -1766,3 +1768,60 @@ class TestToolProvidersCases:
 
         _, kwargs = add_provider.call_args
         assert kwargs["visibility"] == "only_me"
+
+    @staticmethod
+    def test_mcp_provider_detail_reads_the_owner_through_the_request_session(
+        app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The MCP detail endpoint must hand its own session to the transform.
+
+        Guard for the endpoint-owned-session refactor: the owner lookup has to read
+        through the session the view opened, not through a second, scoped one.
+        """
+        user = _mock_account("user-tenant-mcp")
+        _set_current_account(monkeypatch, controller_module, user, "tenant-mcp")
+
+        provider = MCPToolProvider(
+            name="MCP Provider",
+            server_identifier="mcp-provider",
+            server_url="https://example.com/mcp",
+            server_url_hash="hash",
+            icon='{"en_US": "icon.svg", "zh_Hans": "icon.svg"}',
+            tenant_id="tenant-mcp",
+            user_id=user.id,
+            timeout=30,
+            sse_read_timeout=300,
+            identity_mode="off",
+        )
+        provider.id = _stable_uuid("mcp-provider:mcp-provider")
+        provider.created_at = datetime(2026, 1, 1, 12, 0)
+        provider.updated_at = datetime(2026, 1, 2, 12, 0)
+        # The stored URL is ciphertext; keep key material out of this test and only
+        # stub the decryption seam that the payload serialization touches.
+        monkeypatch.setattr(
+            "core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url",
+            lambda self: "https://example.com/mcp",
+        )
+        load_user = MagicMock(return_value=user)
+        monkeypatch.setattr(provider, "load_user", load_user)
+
+        # The view does `sessionmaker(db.engine).begin()`; hand it a real session so
+        # the assertion below pins the exact object the view passes to the transform.
+        request_session = Session()
+        monkeypatch.setattr(controller_module, "db", SimpleNamespace(engine=None))
+        monkeypatch.setattr(
+            controller_module,
+            "sessionmaker",
+            MagicMock(return_value=SimpleNamespace(begin=lambda: nullcontext(request_session))),
+        )
+        get_provider = MagicMock(return_value=provider)
+        monkeypatch.setattr(controller_module.MCPToolManageService, "get_provider_by_id", get_provider)
+
+        with app.test_request_context("/workspaces/current/tool-provider/mcp/tools/mcp-provider"):
+            response = controller_module.ToolMCPDetailApi().get(provider_id="mcp-provider")
+
+        assert response["id"] == provider.id
+        assert response["author"] == user.name
+        assert response["server_identifier"] == "mcp-provider"
+        get_provider.assert_called_once_with(provider_id="mcp-provider", tenant_id="tenant-mcp")
+        load_user.assert_called_once_with(request_session)

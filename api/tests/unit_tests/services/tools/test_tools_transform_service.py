@@ -28,7 +28,7 @@ class TestMcpToolsTransformCases:
     @pytest.fixture
     def caller_session():
         """Provides the caller-owned session the transform helpers must read through."""
-        return Mock(spec=Session)
+        return Session()
 
     @staticmethod
     @pytest.fixture
