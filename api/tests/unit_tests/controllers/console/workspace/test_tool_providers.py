@@ -3,7 +3,7 @@ from __future__ import annotations
 import builtins
 import importlib
 from collections.abc import Callable, Iterator
-from contextlib import ExitStack, contextmanager, nullcontext
+from contextlib import AbstractContextManager, ExitStack, contextmanager, nullcontext
 from datetime import datetime
 from inspect import unwrap
 from types import FunctionType, ModuleType, SimpleNamespace
@@ -804,6 +804,25 @@ def _mock_account(user_id: str = "user-123") -> _tool_providers_Account:
 
 def _stable_uuid(value: str) -> str:
     return str(uuid5(NAMESPACE_URL, value))
+
+
+class _SingleSessionFactory:
+    """`sessionmaker(...)` stand-in that always opens the same bound session."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def __call__(self, *_bind: object, **_options: object) -> _SingleSessionFactory:
+        return self
+
+    def begin(self) -> AbstractContextManager[Session]:
+        return nullcontext(self._session)
+
+
+class _DatabaseStub:
+    """Just enough of `extensions.ext_database.db` for `db.engine` to resolve."""
+
+    engine: object = None
 
 
 def _persist_workspace(session: Session, user: _tool_providers_Account, tenant_name: str) -> Tenant:
@@ -1796,26 +1815,34 @@ class TestToolProvidersCases:
         provider.id = _stable_uuid("mcp-provider:mcp-provider")
         provider.created_at = datetime(2026, 1, 1, 12, 0)
         provider.updated_at = datetime(2026, 1, 2, 12, 0)
-        # The stored URL is ciphertext; keep key material out of this test and only
-        # stub the decryption seam that the payload serialization touches.
+        # The stored URL is ciphertext; keep key material out of this test and stub
+        # only the decryption seam the payload serialization touches.
         monkeypatch.setattr(
             "core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url",
             lambda self: "https://example.com/mcp",
         )
-        load_user = MagicMock(return_value=user)
-        monkeypatch.setattr(provider, "load_user", load_user)
 
-        # The view does `sessionmaker(db.engine).begin()`; hand it a real session so
-        # the assertion below pins the exact object the view passes to the transform.
+        owner_lookups: list[Session] = []
+
+        def _load_user(session: Session) -> _tool_providers_Account:
+            owner_lookups.append(session)
+            return user
+
+        monkeypatch.setattr(provider, "load_user", _load_user)
+
+        provider_lookups: list[tuple[str, str]] = []
+
+        def _get_provider_by_id(self: object, *, provider_id: str, tenant_id: str) -> MCPToolProvider:
+            provider_lookups.append((provider_id, tenant_id))
+            return provider
+
+        monkeypatch.setattr(controller_module.MCPToolManageService, "get_provider_by_id", _get_provider_by_id)
+
+        # The view opens `sessionmaker(db.engine).begin()`; hand it one real session
+        # so the assertions below pin the exact object the view passes onward.
         request_session = Session()
-        monkeypatch.setattr(controller_module, "db", SimpleNamespace(engine=None))
-        monkeypatch.setattr(
-            controller_module,
-            "sessionmaker",
-            MagicMock(return_value=SimpleNamespace(begin=lambda: nullcontext(request_session))),
-        )
-        get_provider = MagicMock(return_value=provider)
-        monkeypatch.setattr(controller_module.MCPToolManageService, "get_provider_by_id", get_provider)
+        monkeypatch.setattr(controller_module, "db", _DatabaseStub())
+        monkeypatch.setattr(controller_module, "sessionmaker", _SingleSessionFactory(request_session))
 
         with app.test_request_context("/workspaces/current/tool-provider/mcp/tools/mcp-provider"):
             response = controller_module.ToolMCPDetailApi().get(provider_id="mcp-provider")
@@ -1823,5 +1850,5 @@ class TestToolProvidersCases:
         assert response["id"] == provider.id
         assert response["author"] == user.name
         assert response["server_identifier"] == "mcp-provider"
-        get_provider.assert_called_once_with(provider_id="mcp-provider", tenant_id="tenant-mcp")
-        load_user.assert_called_once_with(request_session)
+        assert provider_lookups == [("mcp-provider", "tenant-mcp")]
+        assert owner_lookups == [request_session]
