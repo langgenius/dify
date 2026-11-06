@@ -91,6 +91,9 @@ describe('AudioPlayer', () => {
   it('reports an unavailable source and prevents playback after a media error', async () => {
     const interaction = user()
     render(<AudioPlayer src="https://example.com/a.mp3" />)
+    expect(
+      screen.queryByText('common.operation.audioSourceUnavailable'),
+    ).not.toBeInTheDocument()
     fireEvent.error(getAudio())
     await interaction.click(playButton())
     expect(playButton()).toBeDisabled()

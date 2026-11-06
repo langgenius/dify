@@ -293,12 +293,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
           </div>
         </div>
       </div>
-      <div
-        className="absolute inset-s-0 top-0 flex size-full items-center justify-center text-text-quaternary"
-        hidden={isAudioAvailable}
-      >
-        {t(($) => $['operation.audioSourceUnavailable'], { ns: 'common' })}
-      </div>
+      {!isAudioAvailable && (
+        <div className="absolute inset-s-0 top-0 flex size-full items-center justify-center text-text-quaternary">
+          {t(($) => $['operation.audioSourceUnavailable'], { ns: 'common' })}
+        </div>
+      )}
     </div>
   )
 }
