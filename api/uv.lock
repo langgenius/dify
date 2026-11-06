@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -25,6 +25,7 @@ members = [
     "dify-vdb-chroma",
     "dify-vdb-clickzetta",
     "dify-vdb-couchbase",
+    "dify-vdb-dxmt",
     "dify-vdb-elasticsearch",
     "dify-vdb-hologres",
     "dify-vdb-huawei-cloud",
@@ -1425,7 +1426,6 @@ docs = [
 name = "dify-api"
 version = "1.19.0"
 source = { virtual = "." }
-default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
     { name = "alibabacloud-dingtalk" },
     { name = "aliyun-log-python-sdk" },
@@ -1616,6 +1616,7 @@ vdb-all = [
     { name = "dify-vdb-chroma" },
     { name = "dify-vdb-clickzetta" },
     { name = "dify-vdb-couchbase" },
+    { name = "dify-vdb-dxmt" },
     { name = "dify-vdb-elasticsearch" },
     { name = "dify-vdb-hologres" },
     { name = "dify-vdb-huawei-cloud" },
@@ -1655,6 +1656,9 @@ vdb-clickzetta = [
 ]
 vdb-couchbase = [
     { name = "dify-vdb-couchbase" },
+]
+vdb-dxmt = [
+    { name = "dify-vdb-dxmt" },
 ]
 vdb-elasticsearch = [
     { name = "dify-vdb-elasticsearch" },
@@ -1903,6 +1907,7 @@ vdb-all = [
     { name = "dify-vdb-chroma", editable = "providers/vdb/vdb-chroma" },
     { name = "dify-vdb-clickzetta", editable = "providers/vdb/vdb-clickzetta" },
     { name = "dify-vdb-couchbase", editable = "providers/vdb/vdb-couchbase" },
+    { name = "dify-vdb-dxmt", editable = "providers/vdb/vdb-dxmt" },
     { name = "dify-vdb-elasticsearch", editable = "providers/vdb/vdb-elasticsearch" },
     { name = "dify-vdb-hologres", editable = "providers/vdb/vdb-hologres" },
     { name = "dify-vdb-huawei-cloud", editable = "providers/vdb/vdb-huawei-cloud" },
@@ -1933,6 +1938,7 @@ vdb-baidu = [{ name = "dify-vdb-baidu", editable = "providers/vdb/vdb-baidu" }]
 vdb-chroma = [{ name = "dify-vdb-chroma", editable = "providers/vdb/vdb-chroma" }]
 vdb-clickzetta = [{ name = "dify-vdb-clickzetta", editable = "providers/vdb/vdb-clickzetta" }]
 vdb-couchbase = [{ name = "dify-vdb-couchbase", editable = "providers/vdb/vdb-couchbase" }]
+vdb-dxmt = [{ name = "dify-vdb-dxmt", editable = "providers/vdb/vdb-dxmt" }]
 vdb-elasticsearch = [{ name = "dify-vdb-elasticsearch", editable = "providers/vdb/vdb-elasticsearch" }]
 vdb-hologres = [{ name = "dify-vdb-hologres", editable = "providers/vdb/vdb-hologres" }]
 vdb-huawei-cloud = [{ name = "dify-vdb-huawei-cloud", editable = "providers/vdb/vdb-huawei-cloud" }]
@@ -2149,6 +2155,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "couchbase", specifier = "~=4.6.2" }]
+
+[[package]]
+name = "dify-vdb-dxmt"
+version = "0.0.1"
+source = { editable = "providers/vdb/vdb-dxmt" }
+dependencies = [
+    { name = "dxmt-python-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dxmt-python-sdk", specifier = "==1.6.0" }]
 
 [[package]]
 name = "dify-vdb-elasticsearch"
@@ -2468,6 +2485,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9d/a4/e44218c2b394e31a6dd0d6b095c4e1f32d0be54c2a4b250032d717647bab/durationpy-0.10.tar.gz", hash = "sha256:1fa6893409a6e739c9c72334fc65cca1f355dbdd93405d30f726deb5bde42fba", size = 3335, upload-time = "2025-05-17T13:52:37.26Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b0/0d/9feae160378a3553fa9a339b0e9c1a048e147a4127210e286ef18b730f03/durationpy-0.10-py3-none-any.whl", hash = "sha256:3b41e1b601234296b4fb368338fdcd3e13e0b4fb5b67345948f4f2bf9868b286", size = 3922, upload-time = "2025-05-17T13:52:36.463Z" },
+]
+
+[[package]]
+name = "dxmt-python-sdk"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/bb/28efd690c58b62e01100ee9491347f63ade4456150e81bff56712765c1d6/dxmt_python_sdk-1.6.0.tar.gz", hash = "sha256:71c59e68544a37a6bae1b7da9eb7518062247b2a5a7f18f6a69434a766e7c6dd", size = 135803, upload-time = "2026-11-05T13:33:20.758Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/8b/5965c6a8aa2c959b1ded785d2429f8338035c9fdc29f1b0bca62161ddb6b/dxmt_python_sdk-1.6.0-py3-none-any.whl", hash = "sha256:6b9f36e8762933bff886d8026acb885bcbffb168559ea02525e1c17729a94b5c", size = 89944, upload-time = "2026-11-05T13:33:18.922Z" },
 ]
 
 [[package]]
@@ -3405,8 +3434,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [

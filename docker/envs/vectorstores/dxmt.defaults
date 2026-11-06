@@ -1,0 +1,9 @@
+# Defaults for dxmt. Copy this file to dxmt.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+DXMT_HOST=${DXMT_HOST-dxmt}
+# DXMT_PORT=9999
+# DXMT_SSL=false
+# DXMT_API_KEY=
+# DXMT_TEXT_ANALYZER=standard

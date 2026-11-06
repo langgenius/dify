@@ -1064,6 +1064,24 @@ services:
       timeout: 3s
       retries: 30
 
+  # DXMT vector database
+  dxmt:
+    env_file:
+      - path: ./envs/vectorstores/dxmt.env
+        required: false
+      - ./envs/vectorstores/dxmt.defaults
+    image: dxmtai/dxmt:1.6.0
+    profiles:
+      - dxmt
+    restart: always
+    volumes:
+      - ./volumes/dxmt:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9999/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Chroma vector database
   chroma:
     env_file:

@@ -1,0 +1,13 @@
+[project]
+name = "dify-vdb-dxmt"
+version = "0.0.1"
+dependencies = [
+    "dxmt-python-sdk==1.6.0",
+]
+description = "Dify vector store backend (dify-vdb-dxmt)."
+
+[project.entry-points."dify.vector_backends"]
+dxmt = "dify_vdb_dxmt.dxmt_vector:DXMTVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

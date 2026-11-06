@@ -177,6 +177,7 @@ def migrate_knowledge_vector_database():
         VectorType.UPSTASH,
         VectorType.COUCHBASE,
         VectorType.OCEANBASE,
+        VectorType.DXMT,
     }
     page = 1
     db_session = db.session()

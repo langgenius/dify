@@ -60,6 +60,7 @@ def retrieval_methods(
         VectorType.ALIBABACLOUD_MYSQL,
         VectorType.IRIS,
         VectorType.HOLOGRES,
+        VectorType.DXMT,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}

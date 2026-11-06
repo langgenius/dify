@@ -29,6 +29,7 @@ VDB_SERVICE_PROFILES = {
     "pgvecto-rs": "pgvecto-rs",
     "pgvector": "pgvector",
     "chroma": "chroma",
+    "dxmt": "dxmt",
     "elasticsearch": "elasticsearch",
     "oceanbase": "oceanbase",
 }
@@ -186,6 +187,8 @@ def build_vdb_stack(repo_root: Path, services: list[str]) -> DockerComposeStack:
         warmup_urls.append("http://127.0.0.1:6333/collections")
     if "chroma" in service_names:
         warmup_urls.append("http://127.0.0.1:8000/api/v2/auth/identity")
+    if "dxmt" in service_names:
+        warmup_urls.append("http://127.0.0.1:9999/ready")
     return DockerComposeStack(
         name="vdb",
         project_name="dify-pytest-vdb",
