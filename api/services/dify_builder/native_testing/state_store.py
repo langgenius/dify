@@ -337,9 +337,9 @@ class NativeExecutionStateStore:
             association.agent_run_id,
             inspection.binding_ref,
             inspection.workspace_ref,
-            inspection.adapter,
+            # The DTO validates the exact adapter/evidence pair before this
+            # complete protected predecessor identity comparison.
             inspection.state,
-            inspection.evidence_code,
         ) != (
             expected.predecessor,
             expected.identity.parent_execution_id,
@@ -353,9 +353,7 @@ class NativeExecutionStateStore:
             evidence["agent_run_id"],
             predecessor.binding_ref,
             predecessor.workspace_ref,
-            "local",
             "definitively_gone",
-            "path_absent",
         ):
             raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
         checkpoint = self._agent_wait_relation(prepared, association, wait)
@@ -3130,10 +3128,10 @@ class NativeExecutionStateStore:
         from core.agent.publish_visibility import (
             workflow_callable_active_snapshot_filter,
         )
-        from services.agent.roster_service import AgentRosterService
+        from repositories.agent_roster_queries import build_roster_agents_stmt
 
         eligible = session.scalar(
-            AgentRosterService._build_roster_agents_stmt(tenant_id=context.tenant_id, keyword=None).where(
+            build_roster_agents_stmt(tenant_id=context.tenant_id, keyword=None).where(
                 Agent.id == agent_id,
                 Agent.active_config_has_model.is_(True),
                 workflow_callable_active_snapshot_filter(),

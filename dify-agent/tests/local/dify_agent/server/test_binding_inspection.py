@@ -1,5 +1,7 @@
 """Read-only evidence must never turn ambiguous health into recovery authority."""
 
+from collections.abc import Generator
+from contextlib import contextmanager
 import json
 import subprocess
 import sys
@@ -93,7 +95,11 @@ async def test_enterprise_health_is_never_authoritative_absence(state: str) -> N
             assert result.state == ("usable" if state == "ok" else "uncertain")
             assert result.binding_ref == result.workspace_ref == "sandbox"
             assert "private" not in result.model_dump_json()
-        assert requests == [("GET", "/proxy/healthz")]
+        assert requests == (
+            [("GET", "/proxy/healthz")]
+            if state == "ok"
+            else [("GET", "/proxy/healthz"), ("GET", "/v1/sandboxes/sandbox")]
+        )
     finally:
         server.shutdown()
         server.server_close()
@@ -348,3 +354,170 @@ async def test_client_rejects_foreign_inspection_identity(mode: str) -> None:
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "status,body,want",
+    [
+        (404, b'{"code":404,"reason":"sandbox_not_found","message":"PRIVATE_UPSTREAM_BODY"}', "definitively_gone"),
+        (404, b'{"code":404,"reason":"NOT_FOUND"}', "uncertain"),
+        (404, b'{"code":404,"reason":"sandbox_expired"}', "uncertain"),
+        (404, b'{"code":404,"reason":"job_not_found"}', "uncertain"),
+        (404, b'{"code":404,"reason":"route_not_found"}', "uncertain"),
+        (404, b'{"code":"404","reason":"sandbox_not_found"}', "uncertain"),
+        (404, b'{"code":true,"reason":"sandbox_not_found"}', "uncertain"),
+        (404, b'{"reason":"sandbox_not_found"}', "uncertain"),
+        (200, b'{"code":404,"reason":"sandbox_not_found"}', "uncertain"),
+        (401, b'{"code":404,"reason":"sandbox_not_found"}', "uncertain"),
+        (403, b'{"code":404,"reason":"sandbox_not_found"}', "uncertain"),
+        (500, b'{"code":404,"reason":"sandbox_not_found"}', "uncertain"),
+        (302, b'{"code":404,"reason":"sandbox_not_found"}', "uncertain"),
+        (404, b"", "uncertain"),
+        (404, b"PRIVATE_UPSTREAM_BODY", "uncertain"),
+        (404, b'{"code":404,"reason":"sandbox_not_found","sandboxId":"foreign"}', "uncertain"),
+        (404, b'{"code":404,"reason":"sandbox_not_found","metadata":{"sandboxId":"foreign"}}', "uncertain"),
+        (404, b'{"code":404,"reason":"other","reason":"sandbox_not_found"}', "uncertain"),
+        (404, b'[["code",404],["reason","sandbox_not_found"]]', "uncertain"),
+        (404, b'{"code":404,"reason":"sandbox_not_found","message":' + b'"' + b"x" * 4096 + b'"}', "uncertain"),
+    ],
+)
+async def test_enterprise_inspection_requires_exact_control_plane_absence(
+    status: int, body: bytes, want: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with _inspection_gateway(status=status, body=body) as (endpoint, requests):
+        backend = EnterpriseExecutionBindingBackend(gateway_endpoint=endpoint, auth_token="PRIVATE_AUTH")
+        result = await backend.inspect_binding(
+            protocol.InspectExecutionBindingRequest(binding_ref="sandbox", workspace_ref="sandbox")
+        )
+        assert result.state == want
+        assert result.evidence_code == ("sandbox_not_found" if want == "definitively_gone" else "health_unavailable")
+        assert requests == [
+            ("/proxy/healthz", "PRIVATE_AUTH"),
+            ("/v1/sandboxes/sandbox", "PRIVATE_AUTH"),
+        ]
+        assert "PRIVATE_AUTH" not in result.model_dump_json() + caplog.text
+        assert "PRIVATE_UPSTREAM_BODY" not in result.model_dump_json() + caplog.text
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "binding,expected_path",
+    [
+        ("sandbox?x=y#part", "/v1/sandboxes/sandbox%3Fx%3Dy%23part"),
+        ("sandbox space", "/v1/sandboxes/sandbox%20space"),
+        ("sandbox:version", "/v1/sandboxes/sandbox%3Aversion"),
+    ],
+)
+async def test_enterprise_inspection_keeps_one_escaped_control_plane_identifier(
+    binding: str, expected_path: str
+) -> None:
+    with _inspection_gateway() as (endpoint, requests):
+        result = await EnterpriseExecutionBindingBackend(
+            gateway_endpoint=endpoint, auth_token="PRIVATE_AUTH"
+        ).inspect_binding(protocol.InspectExecutionBindingRequest(binding_ref=binding, workspace_ref=binding))
+        assert result.state == "definitively_gone"
+        assert requests == [("/proxy/healthz", "PRIVATE_AUTH"), (expected_path, "PRIVATE_AUTH")]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("binding", [".", "..", "../foreign", "a/b", "a\\b", "a%2fb", "a\x00b", "a\nb", "native:scope"])
+async def test_enterprise_inspection_refuses_ambiguous_identifiers_without_http(binding: str) -> None:
+    with _inspection_gateway() as (endpoint, requests):
+        result = await EnterpriseExecutionBindingBackend(
+            gateway_endpoint=endpoint, auth_token="PRIVATE_AUTH"
+        ).inspect_binding(protocol.InspectExecutionBindingRequest(binding_ref=binding, workspace_ref=binding))
+        assert (result.state, result.evidence_code) == ("uncertain", "identity_mismatch")
+        assert requests == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("health_delay,control_delay,request_count", [(0.15, 0.15, 2), (0.3, 0, 1)])
+async def test_enterprise_inspection_has_one_shared_total_deadline(
+    health_delay: float, control_delay: float, request_count: int
+) -> None:
+    import asyncio
+
+    with _inspection_gateway(health_delay=health_delay, control_delay=control_delay) as (endpoint, requests):
+        backend = EnterpriseExecutionBindingBackend(
+            gateway_endpoint=endpoint, auth_token="PRIVATE_AUTH", proxy_timeout=0.25
+        )
+        started = asyncio.get_running_loop().time()
+        result = await backend.inspect_binding(
+            protocol.InspectExecutionBindingRequest(binding_ref="sandbox", workspace_ref="sandbox")
+        )
+        assert asyncio.get_running_loop().time() - started < 0.4
+        assert (result.state, result.evidence_code) == ("uncertain", "health_unavailable")
+        assert (
+            requests == [("/proxy/healthz", "PRIVATE_AUTH"), ("/v1/sandboxes/sandbox", "PRIVATE_AUTH")][:request_count]
+        )
+
+
+@pytest.mark.parametrize(
+    "adapter,state,code",
+    [
+        ("enterprise", "definitively_gone", "path_absent"),
+        ("local", "definitively_gone", "sandbox_not_found"),
+        ("enterprise", "usable", "sandbox_not_found"),
+        ("enterprise", "definitively_gone", "health_unavailable"),
+        ("unsupported", "definitively_gone", "sandbox_not_found"),
+    ],
+)
+def test_inspection_rejects_spoofed_cross_adapter_absence(adapter: str, state: str, code: str) -> None:
+    with pytest.raises(ValidationError):
+        protocol.InspectExecutionBindingResponse.model_validate(
+            dict(binding_ref="sandbox", workspace_ref="sandbox", adapter=adapter, state=state, evidence_code=code)
+        )
+
+
+@contextmanager
+def _inspection_gateway(
+    *,
+    status: int = 404,
+    body: bytes = b'{"code":404,"reason":"sandbox_not_found"}',
+    health_delay: float = 0,
+    control_delay: float = 0,
+) -> Generator[tuple[str, list[tuple[str, str | None]]]]:
+    """Serve real HTTP contract responses without running a sandbox or replacing a client."""
+    requests: list[tuple[str, str | None]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+        def do_GET(self) -> None:
+            requests.append((self.path, self.headers.get("X-Inner-Api-Key")))
+            health = self.path == "/proxy/healthz"
+            threading.Event().wait(health_delay if health else control_delay)
+            self.send_response(503 if health else status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Location", "/v1/sandboxes/foreign")
+            self.end_headers()
+            try:
+                self.wfile.write(b'{"status":"degraded"}' if health else body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.01), daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", requests
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def test_enterprise_absence_evidence_requires_coupled_refs() -> None:
+    with pytest.raises(ValidationError):
+        protocol.InspectExecutionBindingResponse.model_validate(
+            dict(
+                binding_ref="sandbox",
+                workspace_ref="foreign",
+                adapter="enterprise",
+                state="definitively_gone",
+                evidence_code="sandbox_not_found",
+            )
+        )
