@@ -1,35 +1,18 @@
 'use client'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import {
-  AvgResponseTime,
-  AvgSessionInteractions,
-  AvgUserInteractions,
-  ConversationsChart,
-  CostChart,
-  EndUsersChart,
-  MessagesChart,
-  TokenPerSecond,
-  UserSatisfactionRate,
-  WorkflowCostChart,
-  WorkflowDailyTerminalsChart,
-  WorkflowMessagesChart,
-} from '@/app/components/app/overview/app-chart'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { userProfileIdAtom } from '@/context/account-state'
+import { AppCharts } from '@/app/components/app/overview/app-chart'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
@@ -49,10 +32,11 @@ const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 type IChartViewProps = {
   appId: string
+  appMode: AppDetailWithSite['mode']
   headerRight: React.ReactNode
 }
 
-export default function ChartView({ appId, headerRight }: IChartViewProps) {
+export default function ChartView({ appId, appMode, headerRight }: IChartViewProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -61,6 +45,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   return (
     <ChartViewContent
       appId={appId}
+      appMode={appMode}
       headerRight={headerRight}
       deploymentEdition={deploymentEdition}
     />
@@ -69,27 +54,14 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
 
 function ChartViewContent({
   appId,
+  appMode,
   headerRight,
   deploymentEdition,
 }: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
-  const appDetail = useAppStore((state) => state.appDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canMonitor = React.useMemo(
-    () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
-        workspacePermissionKeys,
-      }).canMonitor,
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
-  const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
-  const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(() =>
     isCloudEdition
       ? {
@@ -108,11 +80,9 @@ function ChartViewContent({
         },
   )
 
-  if (!appDetail || !canMonitor) return null
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="h-[106px] shrink-0">
+      <div className="h-26.5 shrink-0">
         <div className="px-6 pt-3">
           <div className="flex h-6 items-center">
             <h1 className="title-2xl-semi-bold text-text-primary">
@@ -154,31 +124,7 @@ function ChartViewContent({
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
-        <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-          {!isWorkflow && (
-            <>
-              <ConversationsChart period={period} id={appId} />
-              <EndUsersChart period={period} id={appId} />
-              {isChatApp ? (
-                <AvgSessionInteractions period={period} id={appId} />
-              ) : (
-                <AvgResponseTime period={period} id={appId} />
-              )}
-              <TokenPerSecond period={period} id={appId} />
-              <UserSatisfactionRate period={period} id={appId} />
-              <CostChart period={period} id={appId} />
-              {isChatApp && <MessagesChart period={period} id={appId} />}
-            </>
-          )}
-          {isWorkflow && (
-            <>
-              <WorkflowMessagesChart period={period} id={appId} />
-              <WorkflowDailyTerminalsChart period={period} id={appId} />
-              <WorkflowCostChart period={period} id={appId} />
-              <AvgUserInteractions period={period} id={appId} />
-            </>
-          )}
-        </div>
+        <AppCharts id={appId} period={period} appMode={appMode} />
       </div>
     </div>
   )

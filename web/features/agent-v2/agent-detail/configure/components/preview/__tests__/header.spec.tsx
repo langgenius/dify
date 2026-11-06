@@ -26,9 +26,8 @@ function renderHeader({
     <AgentPreviewHeader
       mode={mode}
       previewEnabled={previewEnabled}
-      isChatFeaturesOpen={false}
       onModeChange={onModeChange}
-      onToggleChatFeatures={onToggleChatFeatures}
+      chatFeatures={{ open: false, onToggle: onToggleChatFeatures }}
       onOpenWorkingDirectory={onOpenWorkingDirectory}
       onRefresh={onRefresh}
       refreshDisabled={refreshDisabled}
@@ -106,11 +105,8 @@ describe('AgentPreviewHeader', () => {
     renderHeader({ mode: 'build', onOpenWorkingDirectory, showWorkingDirectoryAction: true })
 
     const fileSystemButton = screen.getByRole('button', {
-      name: 'agentV2.agentDetail.configure.workingDirectory.open',
+      name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
     })
-    expect(fileSystemButton).toHaveTextContent(
-      'agentV2.agentDetail.configure.workingDirectory.fileSystem',
-    )
 
     await user.click(fileSystemButton)
 
@@ -121,7 +117,9 @@ describe('AgentPreviewHeader', () => {
     renderHeader({ mode: 'build' })
 
     expect(
-      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }),
+      screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
+      }),
     ).not.toBeInTheDocument()
   })
 
@@ -134,28 +132,22 @@ describe('AgentPreviewHeader', () => {
       onModeChange,
     })
 
-    const modeControl = screen.getByRole('group', {
+    const modeControl = screen.getByRole('radiogroup', {
       name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
     })
 
     await user.click(
-      within(modeControl).getByRole('button', {
+      within(modeControl).getByRole('radio', {
         name: 'agentV2.agentDetail.configure.rightPanel.preview',
       }),
     )
 
     expect(onModeChange).not.toHaveBeenCalled()
-  })
-
-  it('should explain disabled preview mode on hover', async () => {
-    const user = userEvent.setup()
-    renderHeader({
-      mode: 'build',
-      previewEnabled: false,
-    })
 
     await user.hover(
-      screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+      screen.getByLabelText(
+        'agentV2.agentDetail.configure.rightPanel.preview. agentV2.agentDetail.configure.rightPanel.previewDisabledTip',
+      ),
     )
 
     expect(

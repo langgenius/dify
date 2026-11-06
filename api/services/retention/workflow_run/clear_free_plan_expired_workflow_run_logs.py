@@ -16,7 +16,7 @@ import click
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
@@ -25,7 +25,8 @@ from repositories.api_workflow_run_repository import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
@@ -478,7 +479,7 @@ class WorkflowRunCleanup:
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
         tenant_id_list = sorted(set(tenant_ids))
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return set(tenant_id_list)
 
         if not tenant_id_list:
@@ -502,7 +503,7 @@ class WorkflowRunCleanup:
                 logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
                 continue
 
-            if info.get("plan") != CloudPlan.SANDBOX:
+            if info.plan != CloudPlan.SANDBOX:
                 continue
 
             if self._is_within_grace_period(tenant_id, info):
@@ -522,12 +523,11 @@ class WorkflowRunCleanup:
             logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
             return None
 
-    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlan) -> bool:
+    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlanItem) -> bool:
         if self.free_plan_grace_period_days <= 0:
             return False
 
-        expiration_value = info.get("expiration_date", -1)
-        expiration_at = self._expiration_datetime(tenant_id, expiration_value)
+        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
         if expiration_at is None:
             return False
 
@@ -538,7 +538,7 @@ class WorkflowRunCleanup:
         if self._cleanup_whitelist is not None:
             return self._cleanup_whitelist
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             self._cleanup_whitelist = set()
             return self._cleanup_whitelist
 

@@ -1,21 +1,22 @@
-import type { AgentChatMessageSender } from '../chat-conversation'
+import type { ReactElement } from 'react'
 import type { AgentChatRuntimeProps } from '../chat-runtime'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { render as renderConsole } from '@/test/console/render'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentBuildChat } from '../build-chat'
-import { sendBuildChatMessage } from '../build-chat-request'
 import { AgentPreviewChat } from '../preview-chat'
-import { sendPreviewChatMessage } from '../preview-chat-request'
 
-const runtimePropsMock = vi.hoisted(() => vi.fn())
+const runtimeState = vi.hoisted(() => ({ showUnconfiguredNotice: true }))
 
+vi.mock('../../community-edition-tip', () => ({
+  CommunityEditionTip: () => null,
+}))
+
+// The independently tested runtime decides whether the draft is configured.
 vi.mock('../chat-runtime', () => ({
-  AgentChatRuntime: (
-    props: Pick<AgentChatRuntimeProps, 'draftType'> & { sendMessage: AgentChatMessageSender },
-  ) => {
-    runtimePropsMock(props)
-    return null
-  },
+  AgentChatRuntime: ({ renderEmptyState }: AgentChatRuntimeProps) => renderEmptyState(runtimeState),
 }))
 
 const commonProps = {
@@ -24,45 +25,50 @@ const commonProps = {
   onClearChatListChange: vi.fn(),
 }
 
-describe('Agent chat mode request routing', () => {
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({
+      input: { params: { agent_id: commonProps.agentId } },
+    }),
+    createAgentFixture({ name: 'Research Agent' }),
+  )
+  return renderConsole(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
+
+describe('Agent chat empty state', () => {
   beforeEach(() => {
-    runtimePropsMock.mockClear()
+    runtimeState.showUnconfiguredNotice = true
   })
 
-  it('should wire Build chat to the Build request implementation', () => {
-    render(<AgentBuildChat {...commonProps} />)
-
-    expect(runtimePropsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        draftType: 'debug_build',
-        sendMessage: sendBuildChatMessage,
-      }),
-    )
-  })
-
-  it('should wire Preview chat to the Preview request implementation', () => {
-    render(<AgentPreviewChat {...commonProps} />)
-
-    expect(runtimePropsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sendMessage: sendPreviewChatMessage,
-      }),
-    )
-    expect(runtimePropsMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('draftType')
-  })
-
-  it('should show only the agent name in the Preview empty-state title', () => {
-    render(<AgentPreviewChat {...commonProps} agentName="Research Agent" />)
-
-    const renderEmptyState = runtimePropsMock.mock.calls.at(-1)?.[0].renderEmptyState
-    render(
-      renderEmptyState({
-        agentName: 'Research Agent',
-        hasInstructions: true,
-      }),
-    )
-
-    expect(screen.getByText('Research Agent')).toBeInTheDocument()
-    expect(screen.queryByText('Preview Research Agent')).not.toBeInTheDocument()
-  })
+  it.each([
+    {
+      mode: 'Build',
+      Component: AgentBuildChat,
+      description: 'agentV2.agentDetail.configure.build.empty.description',
+    },
+    {
+      mode: 'Preview',
+      Component: AgentPreviewChat,
+      description: 'agentV2.agentDetail.configure.preview.empty.description',
+    },
+  ])(
+    'shows $mode guidance only while its runtime reports an unconfigured draft',
+    ({ mode, Component, description }) => {
+      const { rerender } = render(<Component {...commonProps} />)
+      expect(screen.getByText(description)).toBeVisible()
+      if (mode === 'Preview') expect(screen.getByText('Research Agent')).toBeInTheDocument()
+      const notice = 'agentV2.agentDetail.configure.preview.unconfiguredNotice'
+      expect(screen.getByText(notice)).toBeVisible()
+      runtimeState.showUnconfiguredNotice = false
+      rerender(<Component {...commonProps} />)
+      expect(screen.getByText(notice)).not.toBeVisible()
+    },
+  )
 })

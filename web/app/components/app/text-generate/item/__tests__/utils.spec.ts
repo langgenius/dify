@@ -1,4 +1,7 @@
-/* oxlint-disable typescript/no-explicit-any */
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
 import {
   buildPromptLogItem,
   getCopyContent,
@@ -10,26 +13,32 @@ import {
 describe('text generation utils', () => {
   it('should show workflow result tabs when workflow output is present', () => {
     expect(
-      shouldShowWorkflowResultTabs({
-        resultText: 'done',
-        files: [],
-      } as any),
+      shouldShowWorkflowResultTabs(
+        createWorkflowProcessFixture({
+          resultText: 'done',
+          files: [],
+        }),
+      ),
     ).toBe(true)
     expect(
-      getDefaultGenerationTab({
-        humanInputFormDataList: [{ formToken: 'token-1' }],
-      } as any),
+      getDefaultGenerationTab(
+        createWorkflowProcessFixture({
+          humanInputFormDataList: [createHumanInputFormFixture()],
+        }),
+      ),
     ).toBe('RESULT')
   })
 
   it('should keep the detail tab when workflow output is empty', () => {
     expect(
-      shouldShowWorkflowResultTabs({
-        files: [],
-        humanInputFilledFormDataList: [],
-        humanInputFormDataList: [],
-        resultText: '',
-      } as any),
+      shouldShowWorkflowResultTabs(
+        createWorkflowProcessFixture({
+          files: [],
+          humanInputFilledFormDataList: [],
+          humanInputFormDataList: [],
+          resultText: '',
+        }),
+      ),
     ).toBe(false)
     expect(getDefaultGenerationTab(undefined)).toBe('DETAIL')
   })
@@ -70,7 +79,7 @@ describe('text generation utils', () => {
       getCopyContent({
         content: 'fallback',
         isWorkflow: true,
-        workflowProcessData: { resultText: 'workflow-result' } as any,
+        workflowProcessData: createWorkflowProcessFixture({ resultText: 'workflow-result' }),
       }),
     ).toBe('workflow-result')
   })

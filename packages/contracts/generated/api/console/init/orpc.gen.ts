@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetInitResponse, zPostInitBody, zPostInitResponse } from './zod.gen'
+import { zGetInitResponse, zPostInitBody, zPostInitResponse } from './zod.gen.ts'
 
 /**
  * Get initialization validation status.

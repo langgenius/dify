@@ -1,14 +1,7 @@
 import type { ConversationHistoriesRole } from '@/models/debug'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import EditModal from '../edit-modal'
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
 
 describe('Conversation history edit modal', () => {
   const data: ConversationHistoriesRole = {
@@ -20,20 +13,18 @@ describe('Conversation history edit modal', () => {
     vi.clearAllMocks()
   })
 
-  it('should render provided prefixes', () => {
-    render(<EditModal isShow saveLoading={false} data={data} onClose={vi.fn()} onSave={vi.fn()} />)
-
-    expect(screen.getByDisplayValue('user')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('assistant')).toBeInTheDocument()
-  })
-
-  it('should update prefixes and save changes', () => {
+  it('should update prefixes and save changes', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     render(<EditModal isShow saveLoading={false} data={data} onClose={vi.fn()} onSave={onSave} />)
 
-    fireEvent.change(screen.getByDisplayValue('user'), { target: { value: 'member' } })
-    fireEvent.change(screen.getByDisplayValue('assistant'), { target: { value: 'helper' } })
-    fireEvent.click(screen.getByText('common.operation.save'))
+    const userInput = screen.getByDisplayValue('user')
+    await user.clear(userInput)
+    await user.type(userInput, 'member')
+    const assistantInput = screen.getByDisplayValue('assistant')
+    await user.clear(assistantInput)
+    await user.type(assistantInput, 'helper')
+    await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
       user_prefix: 'member',
@@ -41,11 +32,12 @@ describe('Conversation history edit modal', () => {
     })
   })
 
-  it('should call close handler', () => {
+  it('should call close handler', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
     render(<EditModal isShow saveLoading={false} data={data} onClose={onClose} onSave={vi.fn()} />)
 
-    fireEvent.click(screen.getByText('common.operation.cancel'))
+    await user.click(screen.getByText('common.operation.cancel'))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

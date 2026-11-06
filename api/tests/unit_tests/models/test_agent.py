@@ -1,5 +1,6 @@
 import json
-from typing import cast
+from collections.abc import Callable
+from typing import Protocol, cast
 
 import pytest
 import sqlalchemy as sa
@@ -12,19 +13,133 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentHomeSnapshot,
     AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.base import Base, TypeBase
 from models.types import JSONModelColumn, LongText
 
 
-def test_agent_enums_match_prd_boundaries():
+class _AgentModel(Protocol):
+    id: str
+
+
+@pytest.mark.parametrize(
+    ("model", "required_values"),
+    [
+        (
+            Agent,
+            {
+                "tenant_id": "tenant-1",
+                "name": "Agent",
+                "scope": AgentScope.ROSTER,
+                "source": AgentSource.ROSTER,
+            },
+        ),
+        (AgentHomeSnapshot, {"tenant_id": "tenant-1", "agent_id": "agent-1", "snapshot_ref": "backend-home"}),
+        (
+            AgentDebugConversation,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "app_id": "app-1",
+                "account_id": "account-1",
+                "conversation_id": "conversation-1",
+            },
+        ),
+        (
+            AgentConfigDraft,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "draft_type": AgentConfigDraftType.DRAFT,
+                "config_snapshot": AgentSoulConfig(),
+            },
+        ),
+        (
+            AgentConfigSnapshot,
+            {"tenant_id": "tenant-1", "agent_id": "agent-1", "version": 1, "config_snapshot": AgentSoulConfig()},
+        ),
+        (
+            AgentConfigRevision,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "current_snapshot_id": "snapshot-1",
+                "revision": 1,
+                "operation": AgentConfigRevisionOperation.CREATE_VERSION,
+            },
+        ),
+        (
+            WorkflowAgentNodeBinding,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "workflow_id": "workflow-1",
+                "workflow_version": "draft",
+                "node_id": "node-1",
+                "binding_type": WorkflowAgentBindingType.ROSTER_AGENT,
+                "node_job_config": WorkflowNodeJobConfig(),
+            },
+        ),
+        (
+            AgentWorkspace,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "owner_type": AgentWorkspaceOwnerType.CONVERSATION,
+                "owner_id": "conversation-1",
+                "owner_scope_key": "root",
+                "backend_workspace_ref": "workspace-ref",
+            },
+        ),
+        (
+            AgentWorkspaceBinding,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "workspace_id": "workspace-1",
+                "agent_id": "agent-1",
+                "agent_config_version_id": "snapshot-1",
+                "agent_config_version_kind": AgentConfigVersionKind.SNAPSHOT,
+                "backend_binding_ref": "binding-ref",
+            },
+        ),
+    ],
+)
+def test_agent_models_require_fields_and_generate_ids(
+    model: Callable[..., _AgentModel], required_values: dict[str, object]
+) -> None:
+    typebase_models = {mapper.class_ for mapper in TypeBase.registry.mappers}
+    base_models = {mapper.class_ for mapper in Base.registry.mappers}
+
+    assert model in typebase_models
+    assert model not in base_models
+    first = model(**required_values)
+    second = model(**required_values)
+    assert first.id
+    assert second.id != first.id
+    assert model(id="explicit-id", **required_values).id == "explicit-id"
+
+    for missing_field in required_values:
+        incomplete_values = {key: value for key, value in required_values.items() if key != missing_field}
+        with pytest.raises(TypeError, match=missing_field):
+            model(**incomplete_values)
+
+
+def test_agent_enums_match_prd_boundaries() -> None:
     assert AgentKind.DIFY_AGENT.value == "dify_agent"
     assert AgentIconType.EMOJI.value == "emoji"
     assert AgentScope.ROSTER.value == "roster"
@@ -43,7 +158,7 @@ def test_agent_enums_match_prd_boundaries():
     assert WorkflowAgentBindingType.INLINE_AGENT.value == "inline_agent"
 
 
-def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
+def test_agent_table_uses_db_unique_constraint_for_active_roster_names() -> None:
     agent_table = cast(sa.Table, Agent.__table__)
     unique_constraints = {
         str(constraint.name): tuple(column.name for column in constraint.columns)
@@ -64,10 +179,11 @@ def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
     assert indexes["agent_tenant_scope_idx"] == ("tenant_id", "scope")
 
 
-def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates():
-    engine = sa.create_engine("sqlite:///:memory:")
+def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates(
+    sqlite_engine: sa.Engine,
+) -> None:
+    engine = sqlite_engine
     agent_table = cast(sa.Table, Agent.__table__)
-    agent_table.create(engine)
     insert_agent = agent_table.insert()
 
     with engine.begin() as conn:
@@ -119,7 +235,7 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
             )
 
 
-def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
+def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json() -> None:
     config_snapshot = AgentSoulConfig.model_validate(
         {
             "schema_version": 1,
@@ -141,7 +257,7 @@ def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
     assert version.config_snapshot_dict["env"]["secret_refs"][0]["provider_credential_id"] == "cred-1"
 
 
-def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json():
+def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json() -> None:
     config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "draft prompt"}})
     draft = AgentConfigDraft(
         tenant_id="tenant-1",
@@ -158,7 +274,7 @@ def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json():
     assert draft.config_snapshot_dict["prompt"]["system_prompt"] == "draft prompt"
 
 
-def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
+def test_workflow_binding_stores_node_job_config_separately_from_agent_soul() -> None:
     node_job_config = {
         "schema_version": 1,
         "workflow_prompt": "Review the bid and identify clarification questions.",
@@ -166,6 +282,7 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
         "declared_outputs": [{"name": "questions", "type": "array"}],
     }
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
@@ -183,7 +300,7 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
     assert "prompt" not in binding.node_job_config_dict
 
 
-def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
+def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults() -> None:
     for column in (Agent.__table__.c.description,):
         assert isinstance(column.type, LongText)
         assert column.server_default is None
@@ -192,7 +309,7 @@ def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
     assert WorkflowAgentNodeBinding.__table__.c.node_job_config.server_default is None
 
 
-def test_agent_config_revision_links_previous_and_current_snapshots():
+def test_agent_config_revision_links_previous_and_current_snapshots() -> None:
     revision = AgentConfigRevision(
         tenant_id="tenant-1",
         agent_id="agent-1",

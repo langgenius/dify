@@ -1,219 +1,86 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import BatchAction from '../batch-action'
 
 describe('BatchAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it.each([
+    ['onBatchEnable', 'dataset.batchAction.enable'],
+    ['onBatchDisable', 'dataset.batchAction.disable'],
+    ['onBatchDownload', 'dataset.batchAction.download'],
+    ['onArchive', 'dataset.batchAction.archive'],
+    ['onEditMetadata', 'dataset.metadata.metadata'],
+    ['onBatchReIndex', 'dataset.batchAction.reIndex'],
+  ] as const)('dispatches %s for the selected documents', async (callback, name) => {
+    const user = userEvent.setup()
+    const onAction = vi.fn()
+    render(
+      <BatchAction
+        selectedIds={['doc-1', 'doc-2']}
+        onCancel={vi.fn()}
+        {...{ [callback]: onAction }}
+      />,
+    )
+
+    expect(screen.getByText('2')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name }))
+    expect(onAction).toHaveBeenCalledOnce()
   })
 
-  const defaultProps = {
-    selectedIds: ['1', '2', '3'],
-    onBatchEnable: vi.fn(),
-    onBatchDisable: vi.fn(),
-    onBatchDelete: vi.fn().mockResolvedValue(undefined),
-    onCancel: vi.fn(),
-  }
+  it('disables mutations while keeping cancellation available', async () => {
+    const user = userEvent.setup()
+    const onAction = vi.fn()
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    const onCancel = vi.fn()
+    render(
+      <BatchAction
+        selectedIds={['doc-1']}
+        disabled
+        onBatchEnable={onAction}
+        onBatchDisable={onAction}
+        onBatchDelete={onDelete}
+        onCancel={onCancel}
+      />,
+    )
 
-  describe('Rendering', () => {
-    it('should display selected count', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.getByText('3')).toBeInTheDocument()
-    })
-
-    it('should render enable button', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.getByText(/batchAction\.enable/i)).toBeInTheDocument()
-    })
-
-    it('should render disable button', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.getByText(/batchAction\.disable/i)).toBeInTheDocument()
-    })
-
-    it('should render delete button', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.getByText(/batchAction\.delete/i)).toBeInTheDocument()
-    })
-
-    it('should render cancel button', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.getByText(/batchAction\.cancel/i)).toBeInTheDocument()
-    })
+    for (const action of ['enable', 'disable', 'delete']) {
+      const button = screen.getByRole('button', { name: `dataset.batchAction.${action}` })
+      expect(button).toBeDisabled()
+      await user.click(button)
+    }
+    expect(onAction).not.toHaveBeenCalled()
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.batchAction.cancel' }))
+    expect(onCancel).toHaveBeenCalledOnce()
   })
 
-  describe('User Interactions', () => {
-    it('should call onBatchEnable when enable button is clicked', () => {
-      const mockOnBatchEnable = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchEnable={mockOnBatchEnable} />)
+  it('requires confirmation and keeps the dialog open until deletion finishes', async () => {
+    const user = userEvent.setup()
+    let resolveDelete!: () => void
+    const onDelete = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve
+        }),
+    )
+    render(<BatchAction selectedIds={['doc-1']} onBatchDelete={onDelete} onCancel={vi.fn()} />)
 
-      fireEvent.click(screen.getByText(/batchAction\.enable/i))
+    await user.click(screen.getByRole('button', { name: 'dataset.batchAction.delete' }))
+    let dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onDelete).not.toHaveBeenCalled()
 
-      expect(mockOnBatchEnable).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onBatchDisable when disable button is clicked', () => {
-      const mockOnBatchDisable = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchDisable={mockOnBatchDisable} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.disable/i))
-
-      expect(mockOnBatchDisable).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onCancel when cancel button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<BatchAction {...defaultProps} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.cancel/i))
-
-      expect(mockOnCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should show delete confirmation dialog when delete button is clicked', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.delete/i))
-
-      // Assert - Confirm dialog should appear
-      expect(screen.getByText(/list\.delete\.title/i)).toBeInTheDocument()
-    })
-
-    it('should call onBatchDelete when confirm is clicked in delete dialog', async () => {
-      const mockOnBatchDelete = vi.fn().mockResolvedValue(undefined)
-      render(<BatchAction {...defaultProps} onBatchDelete={mockOnBatchDelete} />)
-
-      // Act - open delete dialog
-      fireEvent.click(screen.getByText(/batchAction\.delete/i))
-
-      // Act - click confirm
-      const confirmButton = screen.getByText(/operation\.sure/i)
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(mockOnBatchDelete).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should close delete confirmation when cancel is clicked', async () => {
-      const mockOnBatchDelete = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchDelete={mockOnBatchDelete} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.delete/i))
-      const dialog = await screen.findByRole('alertdialog')
-
-      fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-      expect(mockOnBatchDelete).not.toHaveBeenCalled()
-    })
-  })
-
-  // Optional props tests
-  describe('Optional Props', () => {
-    it('should render download button when onBatchDownload is provided', () => {
-      render(<BatchAction {...defaultProps} onBatchDownload={vi.fn()} />)
-
-      expect(screen.getByText(/batchAction\.download/i)).toBeInTheDocument()
-    })
-
-    it('should not render download button when onBatchDownload is not provided', () => {
-      render(<BatchAction {...defaultProps} />)
-
-      expect(screen.queryByText(/batchAction\.download/i)).not.toBeInTheDocument()
-    })
-
-    it('should render archive button when onArchive is provided', () => {
-      render(<BatchAction {...defaultProps} onArchive={vi.fn()} />)
-
-      expect(screen.getByText(/batchAction\.archive/i)).toBeInTheDocument()
-    })
-
-    it('should render metadata button when onEditMetadata is provided', () => {
-      render(<BatchAction {...defaultProps} onEditMetadata={vi.fn()} />)
-
-      expect(screen.getByText(/metadata\.metadata/i)).toBeInTheDocument()
-    })
-
-    it('should render re-index button when onBatchReIndex is provided', () => {
-      render(<BatchAction {...defaultProps} onBatchReIndex={vi.fn()} />)
-
-      expect(screen.getByText(/batchAction\.reIndex/i)).toBeInTheDocument()
-    })
-
-    it('should call onBatchDownload when download button is clicked', () => {
-      const mockOnBatchDownload = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchDownload={mockOnBatchDownload} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.download/i))
-
-      expect(mockOnBatchDownload).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onArchive when archive button is clicked', () => {
-      const mockOnArchive = vi.fn()
-      render(<BatchAction {...defaultProps} onArchive={mockOnArchive} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.archive/i))
-
-      expect(mockOnArchive).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onEditMetadata when metadata button is clicked', () => {
-      const mockOnEditMetadata = vi.fn()
-      render(<BatchAction {...defaultProps} onEditMetadata={mockOnEditMetadata} />)
-
-      fireEvent.click(screen.getByText(/metadata\.metadata/i))
-
-      expect(mockOnEditMetadata).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onBatchReIndex when re-index button is clicked', () => {
-      const mockOnBatchReIndex = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchReIndex={mockOnBatchReIndex} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.reIndex/i))
-
-      expect(mockOnBatchReIndex).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Selected count display tests
-  describe('Selected Count', () => {
-    it('should display correct count for single selection', () => {
-      render(<BatchAction {...defaultProps} selectedIds={['1']} />)
-
-      expect(screen.getByText('1')).toBeInTheDocument()
-    })
-
-    it('should display correct count for multiple selections', () => {
-      render(<BatchAction {...defaultProps} selectedIds={['1', '2', '3', '4', '5']} />)
-
-      expect(screen.getByText('5')).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(<BatchAction {...defaultProps} />)
-
-      rerender(<BatchAction {...defaultProps} selectedIds={['1', '2']} />)
-
-      expect(screen.getByText('2')).toBeInTheDocument()
-    })
-
-    it('should handle empty selectedIds array', () => {
-      render(<BatchAction {...defaultProps} selectedIds={[]} />)
-
-      expect(screen.getByText('0')).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'dataset.batchAction.delete' }))
+    dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: 'common.operation.sure' })
+    await user.click(confirm)
+    expect(onDelete).toHaveBeenCalledOnce()
+    expect(dialog).toBeInTheDocument()
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    await act(async () => resolveDelete())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 })

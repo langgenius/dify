@@ -21,12 +21,6 @@ const SKELETONS = [
   { id: 'wide', width: 120 },
 ] as const
 
-// AbortController throws a DOMException in modern browsers and a plain Error in
-// older / non-DOM environments — accept both so a user-triggered abort (modal
-// close / regenerate) never surfaces as an error.
-const isAbortError = (e: unknown): boolean =>
-  (e instanceof DOMException || e instanceof Error) && e.name === 'AbortError'
-
 /**
  * "Ideas for you" chips under the instruction textarea.
  *
@@ -37,23 +31,23 @@ const isAbortError = (e: unknown): boolean =>
  * the row is never empty. Create-only — the parent hides it in refine mode.
  */
 const ExamplePrompts = ({ mode, onSelect }: Props) => {
-  const { t, i18n } = useTranslation('workflow')
+  const { t, i18n } = useTranslation(['workflow', 'workflowGenerator'])
 
   // Curated fallback, shown until AI suggestions arrive and whenever generation
   // is unavailable. The spread per mode covers a range of workflow shapes.
   const staticPrompts = useMemo(() => {
     if (mode === 'workflow') {
       return [
-        t(($) => $['workflowGenerator.examples.workflow.summarize']),
-        t(($) => $['workflowGenerator.examples.workflow.translate']),
-        t(($) => $['workflowGenerator.examples.workflow.rag']),
-        t(($) => $['workflowGenerator.examples.workflow.classify']),
+        t(($) => $['workflowGenerator.examples.workflow.summarize'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.translate'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.rag'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.classify'], { ns: 'workflowGenerator' }),
       ]
     }
     return [
-      t(($) => $['workflowGenerator.examples.chatflow.support']),
-      t(($) => $['workflowGenerator.examples.chatflow.tutor']),
-      t(($) => $['workflowGenerator.examples.chatflow.triage']),
+      t(($) => $['workflowGenerator.examples.chatflow.support'], { ns: 'workflowGenerator' }),
+      t(($) => $['workflowGenerator.examples.chatflow.tutor'], { ns: 'workflowGenerator' }),
+      t(($) => $['workflowGenerator.examples.chatflow.triage'], { ns: 'workflowGenerator' }),
     ]
   }, [mode, t])
 
@@ -64,9 +58,10 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   })
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const didInitRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   const fetchSuggestions = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     abortRef.current?.abort()
     setIsLoading(true)
     try {
@@ -74,19 +69,21 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
         { mode, language: i18n.language, count: SUGGESTION_COUNT },
         {
           getAbortController: (c) => {
-            abortRef.current = c
+            if (requestId === requestIdRef.current) abortRef.current = c
+            else c.abort()
           },
         },
       )
       const next = (res?.suggestions ?? []).map((s) => s.trim()).filter(Boolean)
       // Keep the previous set on an empty refresh so the row never flashes empty.
-      if (next.length) setCached(next)
-    } catch (e) {
-      if (isAbortError(e)) return
+      if (requestId === requestIdRef.current && next.length) setCached(next)
+    } catch {
       // Silent: the static fallback keeps the row populated.
     } finally {
-      setIsLoading(false)
-      abortRef.current = null
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false)
+        abortRef.current = null
+      }
     }
   }, [mode, i18n.language, setCached])
 
@@ -94,10 +91,9 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   // is fixed per open (the modal remounts each time), so a mount-only effect is
   // correct here.
   useEffect(() => {
-    if (didInitRef.current) return
-    didInitRef.current = true
     if (!cached || cached.length === 0) void fetchSuggestions()
     return () => {
+      requestIdRef.current += 1
       abortRef.current?.abort()
       abortRef.current = null
     }
@@ -111,12 +107,14 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
     <div className="mt-3">
       <div className="mb-1.5 flex items-center gap-1">
         <span className="system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['workflowGenerator.examples.label'])}
+          {t(($) => $['workflowGenerator.examples.label'], { ns: 'workflowGenerator' })}
         </span>
         <button
           type="button"
-          aria-label={t(($) => $['workflowGenerator.examples.refresh'])}
-          title={t(($) => $['workflowGenerator.examples.refresh'])}
+          aria-label={t(($) => $['workflowGenerator.examples.refresh'], {
+            ns: 'workflowGenerator',
+          })}
+          title={t(($) => $['workflowGenerator.examples.refresh'], { ns: 'workflowGenerator' })}
           className="flex size-4 cursor-pointer items-center justify-center rounded text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => {
             void fetchSuggestions()
@@ -134,7 +132,7 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
           ? SKELETONS.map(({ id, width }) => (
               <div
                 key={id}
-                className="h-[26px] animate-pulse rounded-md bg-components-button-secondary-bg"
+                className="h-6.5 animate-pulse rounded-md bg-components-button-secondary-bg"
                 style={{ width }}
               />
             ))

@@ -1,6 +1,6 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 type ApplyTagBindingsInput = {
   currentTagIds: string[]
@@ -21,25 +21,31 @@ export const useApplyTagBindingsMutation = () => {
 
       if (addTagIds.length) {
         operations.push(
-          consoleClient.tagBindings.post({
-            body: {
-              tag_ids: addTagIds,
-              target_id: targetId,
-              type,
+          consoleClient.tagBindings.post(
+            {
+              body: {
+                tag_ids: addTagIds,
+                target_id: targetId,
+                type,
+              },
             },
-          }),
+            { context: { silent: true } },
+          ),
         )
       }
 
       if (removeTagIds.length) {
         operations.push(
-          consoleClient.tagBindings.remove.post({
-            body: {
-              tag_ids: removeTagIds,
-              target_id: targetId,
-              type,
+          consoleClient.tagBindings.remove.post(
+            {
+              body: {
+                tag_ids: removeTagIds,
+                target_id: targetId,
+                type,
+              },
             },
-          }),
+            { context: { silent: true } },
+          ),
         )
       }
 
@@ -56,6 +62,11 @@ export const useApplyTagBindingsMutation = () => {
           },
         }),
       })
+      if (variables.type === 'app') {
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+      }
     },
   })
 }

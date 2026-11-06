@@ -1,6 +1,6 @@
 import type { ValueSelector } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
-import { useBoolean, useDebounceFn } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -43,10 +43,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
 
   const getAvailableVars = useGetAvailableVars()
 
-  const [
-    isShowRemoveVarConfirm,
-    { setTrue: showRemoveVarConfirm, setFalse: hideRemoveVarConfirm },
-  ] = useBoolean(false)
+  const [isShowRemoveVarConfirm, setIsShowRemoveVarConfirm] = useState(false)
 
   const [removedVars, setRemovedVars] = useState<ValueSelector[]>([])
   const [removeType, setRemoveType] = useState<'group' | 'enableChanged'>('group')
@@ -60,7 +57,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
 
         const groupName = groups[index]!.group_name
         if (isVarUsedInNodes([id, groupName, 'output'])) {
-          showRemoveVarConfirm()
+          setIsShowRemoveVarConfirm(true)
           setRemovedVars([[id, groupName, 'output']])
           setRemoveType('group')
           setRemovedGroupIndex(index)
@@ -69,7 +66,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
         setInputs(removeGroupByIndex(inputs, index))
       }
     },
-    [id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm],
+    [id, inputs, isVarUsedInNodes, setInputs],
   )
 
   const handleGroupEnabledChange = useCallback(
@@ -86,7 +83,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
             (item, index) => index > 0 && isVarUsedInNodes([id, item.group_name, 'output']),
           )
           if (useVars.length > 0) {
-            showRemoveVarConfirm()
+            setIsShowRemoveVarConfirm(true)
             setRemovedVars(useVars.map((item) => [id, item.group_name, 'output']))
             setRemoveType('enableChanged')
             return
@@ -99,15 +96,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       setInputs(toggleGroupEnabled({ inputs, enabled }))
       deleteNodeInspectorVars(id)
     },
-    [
-      deleteNodeInspectorVars,
-      handleOutVarRenameChange,
-      id,
-      inputs,
-      isVarUsedInNodes,
-      setInputs,
-      showRemoveVarConfirm,
-    ],
+    [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs],
   )
 
   const handleAddGroup = useCallback(() => {
@@ -148,22 +137,14 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     removedVars.forEach((v) => {
       removeUsedVarInNodes(v)
     })
-    hideRemoveVarConfirm()
+    setIsShowRemoveVarConfirm(false)
     if (removeType === 'group') {
       if (removedGroupIndex >= 0) setInputs(removeGroupByIndex(inputs, removedGroupIndex))
     } else {
       // removeType === 'enableChanged' to enabled
       setInputs(toggleGroupEnabled({ inputs, enabled: false }))
     }
-  }, [
-    removedVars,
-    hideRemoveVarConfirm,
-    removeType,
-    removeUsedVarInNodes,
-    inputs,
-    setInputs,
-    removedGroupIndex,
-  ])
+  }, [removedVars, removeType, removeUsedVarInNodes, inputs, setInputs, removedGroupIndex])
 
   return {
     readOnly,
@@ -176,7 +157,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     handleGroupRemoved,
     handleVarGroupNameChange,
     isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
+    hideRemoveVarConfirm: () => setIsShowRemoveVarConfirm(false),
     onRemoveVarConfirm,
     getAvailableVars,
     filterVar: filterVarByType,

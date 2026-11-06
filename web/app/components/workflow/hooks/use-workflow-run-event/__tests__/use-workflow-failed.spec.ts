@@ -66,10 +66,13 @@ describe('useWorkflowFailed', () => {
     })
 
     act(() => {
-      result.current.handleWorkflowFailed()
+      result.current.handleWorkflowFailed('LLM provider and model are required.')
     })
 
     expect(store.getState().workflowRunningData!.result.status).toBe(WorkflowRunningStatus.Failed)
+    expect(store.getState().workflowRunningData!.result.error).toBe(
+      'LLM provider and model are required.',
+    )
     expect(store.getState().workflowRunningData!.tracing!.map((trace) => trace.status)).toEqual([
       NodeRunningStatus.Failed,
       NodeRunningStatus.Succeeded,
@@ -114,5 +117,45 @@ describe('useWorkflowFailed', () => {
     })
 
     expect(store.getState().workflowRunningData!.result.status).toBe(WorkflowRunningStatus.Stopped)
+  })
+
+  it('adds a late error message to an already failed workflow', () => {
+    const { result, store } = renderRunEventHook(() => useWorkflowFailed(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          result: { status: WorkflowRunningStatus.Failed },
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowFailed('LLM provider and model are required.')
+    })
+
+    expect(store.getState().workflowRunningData!.result).toMatchObject({
+      status: WorkflowRunningStatus.Failed,
+      error: 'LLM provider and model are required.',
+    })
+  })
+
+  it('keeps the workflow_finished error when a generic error arrives later', () => {
+    const { result, store } = renderRunEventHook(() => useWorkflowFailed(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          result: {
+            status: WorkflowRunningStatus.Failed,
+            error: 'LLM provider and model are required.',
+          },
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowFailed('Server Error')
+    })
+
+    expect(store.getState().workflowRunningData!.result.error).toBe(
+      'LLM provider and model are required.',
+    )
   })
 })

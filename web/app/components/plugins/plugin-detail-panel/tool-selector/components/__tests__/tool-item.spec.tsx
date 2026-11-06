@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ToolItem } from '../tool-item'
 
 const renderToolItem = (item: ReactElement) => {
@@ -89,6 +89,7 @@ describe('ToolItem', () => {
   })
 
   it('blocks unsupported MCP tools and still exposes error state', async () => {
+    const user = userEvent.setup()
     mcpAllowed = false
     const { rerenderToolItem } = renderToolItem(
       <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" isMCPTool />,
@@ -106,7 +107,7 @@ describe('ToolItem', () => {
       />,
     )
 
-    await userEvent.hover(screen.getByLabelText('tool failed'))
+    await user.hover(screen.getByLabelText('tool failed'))
     expect(await screen.findByText('tool failed')).toBeInTheDocument()
   })
 

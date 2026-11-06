@@ -28,7 +28,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   isInRetrievalSetting = false,
   readonly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const handleScoreThresholdChange = (enabled: boolean) => {
     onChange({ score_threshold_enabled: enabled })
@@ -36,10 +36,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
 
   return (
     <div
-      className={cn(
-        'flex flex-col gap-2 self-stretch',
-        isInRetrievalSetting && 'w-full max-w-[480px]',
-      )}
+      className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-120')}
     >
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">

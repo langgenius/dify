@@ -1,8 +1,8 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { Buffer } from 'node:buffer'
-import { describe, expect, it, vi } from 'vitest'
-import { createConsoleClient } from '../support/api/console-client'
-import { createPlaywrightFetch } from '../support/api/playwright-fetch'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleClient } from '../support/api/console-client.ts'
+import { createPlaywrightFetch } from '../support/api/playwright-fetch.ts'
 
 const createApiResponse = ({
   body = '',
@@ -31,13 +31,26 @@ const createApiResponse = ({
     status: () => status,
     statusText: () => statusText,
     text: async () => body,
+    timing: () => ({
+      connectEnd: -1,
+      connectStart: -1,
+      domainLookupEnd: -1,
+      domainLookupStart: -1,
+      requestStart: -1,
+      responseEnd: -1,
+      responseStart: -1,
+      secureConnectionStart: -1,
+      startTime: -1,
+    }),
     url: () => url,
     [Symbol.asyncDispose]: async () => {},
   }
 }
 
 const createRequestContext = (response: APIResponse, csrfToken = 'csrf-token') => {
-  const fetch = vi.fn<APIRequestContext['fetch']>(async () => response)
+  const fetch = vi.fn<(...args: Parameters<APIRequestContext['fetch']>) => Promise<APIResponse>>(
+    async () => response,
+  )
   const context = {
     fetch,
     storageState: vi.fn<APIRequestContext['storageState']>(async () => ({

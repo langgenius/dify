@@ -1,187 +1,80 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Footer from '../footer'
 
-// Configurable mock for search params
-let mockSearchParams = new URLSearchParams()
-const mockReplace = vi.fn()
-
+const mocks = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), importDSL: vi.fn() }))
+let searchParams = new URLSearchParams()
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: mockReplace }),
-  useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
+  useSearchParams: () => searchParams,
 }))
-
-const mockInvalidDatasetList = vi.fn()
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': mocks.importDSL,
+    }),
+  }
+})
+beforeEach(() => {
+  searchParams = new URLSearchParams()
+})
 
-// Mock CreateFromDSLModal to capture props
-let capturedActiveTab: string | undefined
-let capturedDslUrl: string | undefined
-
-vi.mock('../create-options/create-from-dsl-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-    activeTab,
-    dslUrl,
-  }: {
-    show: boolean
-    onClose: () => void
-    onSuccess: () => void
-    activeTab?: string
-    dslUrl?: string
-  }) => {
-    capturedActiveTab = activeTab
-    capturedDslUrl = dslUrl
-    return show ? (
-      <div data-testid="dsl-modal">
-        <button data-testid="close-modal" onClick={onClose}>
-          Close
-        </button>
-        <button data-testid="success-modal" onClick={onSuccess}>
-          Success
-        </button>
-      </div>
-    ) : null
+it.each([false, true])(
+  'opens the import form with remote URL = %s and clears the URL on cancel',
+  async (remote) => {
+    const user = userEvent.setup()
+    if (remote) searchParams.set('remoteInstallUrl', 'https://example.com/documents.pipeline')
+    render(<Footer />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.creation.importDSL' }))
+    expect(await screen.findByRole('dialog', { name: 'app.importFromDSL' })).toBeInTheDocument()
+    if (remote) {
+      expect(screen.getByRole('tab', { name: 'app.importFromDSLUrl' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByRole('textbox', { name: 'DSL URL' })).toHaveValue(
+        'https://example.com/documents.pipeline',
+      )
+    } else {
+      expect(screen.getByRole('tab', { name: 'app.importFromDSLFile' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    }
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    if (remote) expect(mocks.replace).toHaveBeenCalledWith('/datasets/create-from-pipeline')
+    else expect(mocks.replace).not.toHaveBeenCalled()
   },
-  CreateFromDSLModalTab: {
-    FROM_URL: 'FROM_URL',
-    FROM_FILE: 'FROM_FILE',
-  },
-}))
+)
 
-// Footer Component Tests
-
-describe('Footer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockSearchParams = new URLSearchParams()
-    capturedActiveTab = undefined
-    capturedDslUrl = undefined
+it('invalidates the dataset list after a successful DSL import and opens the new pipeline', async () => {
+  const user = userEvent.setup()
+  searchParams.set('remoteInstallUrl', 'https://example.com/documents.pipeline')
+  mocks.importDSL.mockResolvedValue({
+    id: 'import-1',
+    status: 'completed',
+    dataset_id: 'dataset-1',
+    pipeline_id: 'pipeline-1',
   })
-
-  describe('Rendering', () => {
-    it('should render import button with icon', () => {
-      const { container } = render(<Footer />)
-      const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
-    })
-
-    it('should not show modal initially', () => {
-      render(<Footer />)
-      expect(screen.queryByTestId('dsl-modal')).not.toBeInTheDocument()
-    })
-
-    it('should render divider', () => {
-      const { container } = render(<Footer />)
-      const divider = container.querySelector('[class*="w-8"]')
-      expect(divider).toBeInTheDocument()
-    })
+  const { queryClient } = render(<Footer />)
+  const listKey = consoleQuery.datasets.get.queryKey({ input: { query: { page: 1, limit: 20 } } })
+  queryClient.setQueryData(listKey, { data: [], has_more: false, limit: 20, page: 1, total: 0 })
+  await user.click(screen.getByRole('button', { name: 'datasetPipeline.creation.importDSL' }))
+  await user.click(screen.getByRole('button', { name: 'app.newApp.import' }))
+  await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/datasets/dataset-1/pipeline'))
+  expect(mocks.importDSL).toHaveBeenCalledWith({
+    body: { mode: 'yaml-url', yaml_url: 'https://example.com/documents.pipeline' },
   })
-
-  describe('User Interactions', () => {
-    it('should open modal when import button is clicked', () => {
-      render(<Footer />)
-
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-
-      expect(screen.getByTestId('dsl-modal')).toBeInTheDocument()
-    })
-
-    it('should close modal when onClose is called', () => {
-      render(<Footer />)
-
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-      expect(screen.getByTestId('dsl-modal')).toBeInTheDocument()
-
-      const closeButton = screen.getByTestId('close-modal')
-      fireEvent.click(closeButton)
-      expect(screen.queryByTestId('dsl-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call invalidDatasetList on success', () => {
-      render(<Footer />)
-
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-
-      // Trigger success
-      const successButton = screen.getByTestId('success-modal')
-      fireEvent.click(successButton)
-
-      expect(mockInvalidDatasetList).toHaveBeenCalled()
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have backdrop blur-sm effect', () => {
-      const { container } = render(<Footer />)
-      const footerDiv = container.firstChild as HTMLElement
-      expect(footerDiv).toHaveClass('backdrop-blur-[6px]')
-    })
-  })
-
-  // URL Parameter Tests (Branch Coverage)
-  describe('URL Parameter Handling', () => {
-    it('should set activeTab to FROM_URL when dslUrl is present', () => {
-      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/dsl')
-
-      render(<Footer />)
-
-      // Open modal to trigger prop capture
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-
-      expect(capturedActiveTab).toBe('FROM_URL')
-      expect(capturedDslUrl).toBe('https://example.com/dsl')
-    })
-
-    it('should set activeTab to undefined when dslUrl is not present', () => {
-      mockSearchParams = new URLSearchParams()
-
-      render(<Footer />)
-
-      // Open modal to trigger prop capture
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-
-      expect(capturedActiveTab).toBeUndefined()
-      expect(capturedDslUrl).toBeUndefined()
-    })
-
-    it('should call replace when closing modal with dslUrl present', () => {
-      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/dsl')
-
-      render(<Footer />)
-
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-      expect(screen.getByTestId('dsl-modal')).toBeInTheDocument()
-
-      const closeButton = screen.getByTestId('close-modal')
-      fireEvent.click(closeButton)
-
-      expect(mockReplace).toHaveBeenCalledWith('/datasets/create-from-pipeline')
-    })
-
-    it('should not call replace when closing modal without dslUrl', () => {
-      mockSearchParams = new URLSearchParams()
-
-      render(<Footer />)
-
-      const importButton = screen.getByText(/importDSL/i)
-      fireEvent.click(importButton)
-
-      const closeButton = screen.getByTestId('close-modal')
-      fireEvent.click(closeButton)
-
-      expect(mockReplace).not.toHaveBeenCalled()
-    })
-  })
+  expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

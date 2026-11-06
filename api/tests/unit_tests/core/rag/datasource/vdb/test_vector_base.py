@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from collections.abc import Callable
 from typing import override
 
 import pytest
@@ -8,7 +8,7 @@ from core.rag.models.document import Document
 
 
 class _DummyVector(BaseVector):
-    def __init__(self, collection_name: str, existing_ids: set[str] | None = None):
+    def __init__(self, collection_name: str, existing_ids: set[str] | None = None) -> None:
         super().__init__(collection_name)
         self._existing_ids = existing_ids or set()
 
@@ -17,35 +17,35 @@ class _DummyVector(BaseVector):
         return "dummy"
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> None:
         return None
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        return None
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str]:
+        return []
 
     @override
     def text_exists(self, id: str) -> bool:
         return id in self._existing_ids
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         return None
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         return None
 
     @override
-    def search_by_vector(self, query_vector: list[float], **kwargs):
+    def search_by_vector(self, query_vector: list[float], **kwargs: object) -> list[Document]:
         return []
 
     @override
-    def search_by_full_text(self, query: str, **kwargs):
+    def search_by_full_text(self, query: str, **kwargs: object) -> list[Document]:
         return []
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         return None
 
 
@@ -64,17 +64,19 @@ class _DummyVector(BaseVector):
         (BaseVector.delete, ()),
     ],
 )
-def test_base_vector_default_methods_raise_not_implemented(base_method, args):
+def test_base_vector_default_methods_raise_not_implemented(
+    base_method: Callable[..., object], args: tuple[object, ...]
+) -> None:
     vector = _DummyVector("collection_1")
 
     with pytest.raises(NotImplementedError):
         base_method(vector, *args)
 
 
-def test_filter_duplicate_texts_removes_existing_docs():
+def test_filter_duplicate_texts_removes_existing_docs() -> None:
     vector = _DummyVector("collection_1", existing_ids={"dup"})
     docs = [
-        SimpleNamespace(page_content="keep-no-meta", metadata=None),
+        Document.model_construct(page_content="keep-no-meta", metadata=None),
         Document(page_content="keep-no-doc-id", metadata={"document_id": "d1"}),
         Document(page_content="remove-dup", metadata={"doc_id": "dup"}),
         Document(page_content="keep-unique", metadata={"doc_id": "unique"}),
@@ -85,11 +87,11 @@ def test_filter_duplicate_texts_removes_existing_docs():
     assert [d.page_content for d in filtered] == ["keep-no-meta", "keep-no-doc-id", "keep-unique"]
 
 
-def test_get_uuids_and_collection_name_property():
+def test_get_uuids_and_collection_name_property() -> None:
     vector = _DummyVector("collection_1")
     docs = [
         Document(page_content="a", metadata={"doc_id": "id-1"}),
-        SimpleNamespace(page_content="b", metadata=None),
+        Document.model_construct(page_content="b", metadata=None),
         Document(page_content="c", metadata={"document_id": "d-1"}),
         Document(page_content="d", metadata={"doc_id": "id-2"}),
     ]

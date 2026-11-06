@@ -2,7 +2,15 @@
 import type { FC } from 'react'
 import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +27,7 @@ type IBatchModalProps = {
 type BatchModalContentProps = Omit<IBatchModalProps, 'isShow'>
 
 const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const [currentCSV, setCurrentCSV] = useState<FileItem>()
   const handleFile = (file?: FileItem) => setCurrentCSV(file)
 
@@ -30,18 +38,21 @@ const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onCo
   }
 
   return (
-    <DialogContent className="w-[520px]! overflow-hidden! rounded-xl! border-0! px-8 py-6">
-      <DialogTitle className="relative pb-1 text-xl leading-[30px] font-medium text-text-primary">
-        {t(($) => $['list.batchModal.title'], { ns: 'datasetDocuments' })}
-      </DialogTitle>
-      <DialogCloseButton
-        className="top-4 right-4"
-        aria-label={t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
-      />
-      <CSVUploader file={currentCSV} updateFile={handleFile} />
-      <CSVDownloader docForm={docForm} />
-      <div className="mt-[28px] flex justify-end pt-6">
-        <Button className="mr-2" onClick={onCancel}>
+    <DialogContent className="w-130">
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $['list.batchModal.title'], { ns: 'datasetDocuments' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
+        />
+      </DialogHeader>
+      <DialogBody>
+        <CSVUploader file={currentCSV} updateFile={handleFile} />
+        <CSVDownloader docForm={docForm} />
+      </DialogBody>
+      <DialogFooter>
+        <Button onClick={onCancel}>
           {t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
         </Button>
         <Button
@@ -51,7 +62,7 @@ const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onCo
         >
           {t(($) => $['list.batchModal.run'], { ns: 'datasetDocuments' })}
         </Button>
-      </div>
+      </DialogFooter>
     </DialogContent>
   )
 }

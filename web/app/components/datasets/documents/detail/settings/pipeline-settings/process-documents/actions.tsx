@@ -8,7 +8,7 @@ type ActionsProps = {
 }
 
 const Actions = ({ onProcess, runDisabled }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex items-center justify-end">

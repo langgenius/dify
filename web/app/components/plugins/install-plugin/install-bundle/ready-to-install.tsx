@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
+import type { InstallBundleCompleteCallback } from './index'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
@@ -14,6 +15,7 @@ type Props = Readonly<{
   setIsInstalling: (isInstalling: boolean) => void
   allPlugins: Dependency[]
   onClose: () => void
+  onInstallComplete?: InstallBundleCompleteCallback
   isFromMarketPlace?: boolean
 }>
 
@@ -24,6 +26,7 @@ const ReadyToInstall: FC<Props> = ({
   setIsInstalling,
   allPlugins,
   onClose,
+  onInstallComplete,
   isFromMarketPlace,
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
@@ -36,8 +39,9 @@ const ReadyToInstall: FC<Props> = ({
       setInstalledVersionInfo(versionInfo)
       onStepChange(InstallStep.installed)
       setIsInstalling(false)
+      onInstallComplete?.(plugins, installStatus, versionInfo)
     },
-    [onStepChange, setIsInstalling],
+    [onInstallComplete, onStepChange, setIsInstalling],
   )
   return (
     <>

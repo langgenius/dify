@@ -1,13 +1,21 @@
-import { useCallback, useState } from 'react'
-import useFoldAnimInto from './use-fold-anim-into'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import createFoldAnimInto from './create-fold-anim-into'
 
 const useHideLogic = (onClose: () => void) => {
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const [controller] = useState(() => createFoldAnimInto(() => onCloseRef.current()))
   const {
     modalClassName,
     foldIntoAnim: doFoldAnimInto,
     clearCountDown,
     countDownFoldIntoAnim,
-  } = useFoldAnimInto(onClose)
+  } = controller
+
+  useEffect(() => clearCountDown, [clearCountDown])
 
   const [isInstalling, doSetIsInstalling] = useState(false)
   const setIsInstalling = useCallback(

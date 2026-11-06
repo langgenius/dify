@@ -1,30 +1,18 @@
 'use client'
 
-import type { RemixiconComponentType } from '@remixicon/react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiEqualizer2Fill,
-  RiEqualizer2Line,
-  RiFileTextFill,
-  RiFileTextLine,
-  RiFocus2Fill,
-  RiFocus2Line,
-  RiLock2Fill,
-  RiLock2Line,
-} from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetInfo from './dataset-info'
 import NavLink from './nav-link'
@@ -39,17 +27,28 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', {
-    enabled: !!datasetId && !!datasetRes,
-  })
+  const { data: datasetRes, refetch: mutateDatasetRes } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId,
+    }),
+  )
+  const { data: relatedApps } = useQuery(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId && !!datasetRes,
+    }),
+  )
   const datasetACLCapabilities = useMemo(
     () =>
       getDatasetACLCapabilities(datasetRes?.permission_keys, {
@@ -77,28 +76,34 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
-    const baseNavigation = [
+    const baseNavigation: {
+      name: string
+      href: string
+      icon: string
+      selectedIcon: string
+      disabled: boolean
+    }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
-        icon: RiFocus2Line,
-        selectedIcon: RiFocus2Fill,
+        icon: 'i-ri-focus-2-line',
+        selectedIcon: 'i-ri-focus-2-fill',
         disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t(($) => $['datasetMenus.settings'], { ns: 'common' }),
         href: `/datasets/${datasetId}/settings`,
-        icon: RiEqualizer2Line,
-        selectedIcon: RiEqualizer2Fill,
+        icon: 'i-ri-equalizer-2-line',
+        selectedIcon: 'i-ri-equalizer-2-fill',
         disabled: false,
       },
       ...(datasetACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/datasets/${datasetId}/access-config`,
-              icon: RiLock2Line,
-              selectedIcon: RiLock2Fill,
+              icon: 'i-ri-lock-2-line',
+              selectedIcon: 'i-ri-lock-2-fill',
               disabled: false,
             },
           ]
@@ -109,15 +114,15 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
+        icon: 'i-custom-vender-pipeline-pipeline-line',
+        selectedIcon: 'i-custom-vender-pipeline-pipeline-fill',
         disabled: false,
       })
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.documents'], { ns: 'common' }),
         href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
+        icon: 'i-ri-file-text-line',
+        selectedIcon: 'i-ri-file-text-fill',
         disabled: isButtonDisabledWithPipeline,
       })
     }
@@ -130,25 +135,29 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   return (
     <DatasetDetailContext.Provider
       value={{
-        indexingTechnique: datasetRes.indexing_technique,
+        indexingTechnique: datasetRes.indexing_technique ?? undefined,
         dataset: datasetRes,
         mutateDatasetRes,
       }}
     >
       <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
         {!expand && (
-          <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-[3px]">
-            <Divider
-              type="horizontal"
-              bgStyle="solid"
-              className="my-0 h-px w-[27px] bg-divider-subtle"
+          <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
+            <Separator
+              decorative
+              orientation="horizontal"
+              variant="solid"
+              className="my-0 w-6.75 bg-divider-subtle"
             />
           </div>
         )}
         <div className="py-2">
           <DatasetInfo expand={expand} />
         </div>
-        <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
+        <nav
+          aria-label={datasetRes.name}
+          className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}
+        >
           {navigation.map((item) => (
             <NavLink
               key={item.href}

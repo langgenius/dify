@@ -7,7 +7,9 @@ import type {
 } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import isEqual from 'fast-deep-equal'
 import { atom } from 'jotai'
+import { selectAtom } from 'jotai/utils'
 import { syncCliToolReferenceLabels } from '../reference-labels'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
@@ -35,6 +37,26 @@ export const agentComposerToolsAtom = atom(
       tools,
     })
   },
+)
+
+export const agentComposerToolPresentationIdentitiesAtom = selectAtom(
+  agentComposerToolsAtom,
+  (tools) =>
+    tools.flatMap((tool) => {
+      if (tool.kind !== 'provider') return []
+
+      return [
+        {
+          kind: tool.kind,
+          id: tool.id,
+          name: tool.name,
+          displayName: tool.displayName,
+          pluginId: tool.pluginId,
+          providerType: tool.providerType,
+        },
+      ]
+    }),
+  isEqual,
 )
 
 const toProviderToolAction = (tool: AgentProviderToolDefaultValue) => ({
@@ -88,6 +110,9 @@ export const addProviderTools = (
       nextTools[existingToolIndex] = {
         ...existingTool,
         displayName: existingTool.displayName ?? selectedTool.provider_show_name,
+        pluginId: existingTool.pluginId ?? selectedTool.plugin_id,
+        pluginUniqueIdentifier:
+          existingTool.pluginUniqueIdentifier ?? selectedTool.plugin_unique_identifier,
         icon: existingTool.icon ?? selectedTool.provider_icon,
         iconDark: existingTool.iconDark ?? selectedTool.provider_icon_dark,
         allowDelete: existingTool.allowDelete ?? selectedTool.allowDelete,
@@ -101,6 +126,8 @@ export const addProviderTools = (
       name: selectedTool.provider_name,
       kind: 'provider',
       displayName: selectedTool.provider_show_name,
+      pluginId: selectedTool.plugin_id,
+      pluginUniqueIdentifier: selectedTool.plugin_unique_identifier,
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       icon: selectedTool.provider_icon,
       iconDark: selectedTool.provider_icon_dark,

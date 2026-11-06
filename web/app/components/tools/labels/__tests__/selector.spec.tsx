@@ -1,71 +1,7 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import LabelSelector from '../selector'
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled) setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
-  }
-
-  const PopoverTrigger = ({
-    children,
-    className,
-    render,
-  }: {
-    children?: React.ReactNode
-    className?: string
-    render?: React.ReactNode
-  }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    if (render) {
-      return <div onClick={() => setOpen(!open)}>{render}</div>
-    }
-
-    return (
-      <button type="button" className={className} onClick={() => setOpen(!open)}>
-        {children}
-      </button>
-    )
-  }
-
-  const PopoverContent = ({
-    children,
-    ...props
-  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
-    if (!open) return null
-
-    return <div {...props}>{children}</div>
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
 
 // Mock useTags hook with controlled test data
 const mockTags = [
@@ -83,286 +19,60 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-// Mock useDebounceFn to store the function and allow manual triggering
-let debouncedFn: (() => void) | null = null
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    debouncedFn = fn
-    return {
-      run: () => {
-        // Schedule to run after React state updates
-        setTimeout(() => debouncedFn?.(), 0)
-      },
-      cancel: vi.fn(),
-    }
-  },
-}))
+const setup = () => {
+  const onChange = vi.fn()
+  const Harness = () => {
+    const [value, setValue] = useState<string[]>([])
+    return (
+      <LabelSelector
+        value={value}
+        onChange={(next) => {
+          setValue(next)
+          onChange(next)
+        }}
+      />
+    )
+  }
+  render(<Harness />)
+  return { user: userEvent.setup(), onChange }
+}
 
-describe('LabelSelector', () => {
-  const mockOnChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-    debouncedFn = null
+it('adds and removes labels while displaying the controlled selection', async () => {
+  const { user, onChange } = setup()
+  const trigger = screen.getByRole('button', {
+    name: 'tools.createTool.toolInput.labelPlaceholder',
   })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  // Rendering Tests
-  describe('Rendering', () => {
-    it('should display placeholder when no labels selected', () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
-    it('should render the trigger as a native button', () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      expect(
-        screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' }),
-      ).toHaveAttribute('type', 'button')
-    })
-
-    it('should display selected labels as comma-separated list', () => {
-      render(<LabelSelector value={['agent', 'rag']} onChange={mockOnChange} />)
-
-      expect(screen.getByText('Agent, RAG')).toBeInTheDocument()
-    })
-
-    it('should display single selected label', () => {
-      render(<LabelSelector value={['agent']} onChange={mockOnChange} />)
-
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-    })
-  })
-
-  // Dropdown Tests
-  describe('Dropdown', () => {
-    it('should open dropdown when trigger is clicked', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      const trigger = screen.getByText('tools.createTool.toolInput.labelPlaceholder')
-
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
-
-      // Checkboxes should be visible
-      mockTags.forEach((tag) => {
-        expect(screen.getByText(tag.label)).toBeInTheDocument()
-      })
-    })
-
-    it('should close dropdown when trigger is clicked again', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      const trigger = screen.getByText('tools.createTool.toolInput.labelPlaceholder')
-
-      // Open
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-
-      // Close
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    })
-  })
-
-  // Selection Tests
-  describe('Selection', () => {
-    it('should call onChange with selected label when clicking a label', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('tools.createTool.toolInput.labelPlaceholder'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(mockOnChange).toHaveBeenCalledWith(['agent'])
-    })
-
-    it('should remove label from selection when clicking already selected label', async () => {
-      render(<LabelSelector value={['agent']} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(mockOnChange).toHaveBeenCalledWith([])
-    })
-
-    it('should add label to existing selection', async () => {
-      render(<LabelSelector value={['agent']} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('checkbox', { name: 'RAG' }))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(mockOnChange).toHaveBeenCalledWith(['agent', 'rag'])
-    })
-
-    it('should show checkboxes in dropdown', async () => {
-      render(<LabelSelector value={['agent']} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
-    })
-  })
-
-  // Search Tests
-  describe('Search', () => {
-    it('should filter labels based on search input by name', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('tools.createTool.toolInput.labelPlaceholder'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-
-      await act(async () => {
-        const searchInput = screen.getByRole('textbox')
-        // Filter by 'rag' which only matches 'rag' name
-        fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
-      })
-
-      // Only RAG should be visible (rag contains 'rag')
-      expect(screen.getByText('RAG')).toBeInTheDocument()
-      // Agent should not be in the dropdown list (agent doesn't contain 'rag')
-      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
-    })
-
-    it('should show empty state when no labels match search', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('tools.createTool.toolInput.labelPlaceholder'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-
-      await act(async () => {
-        const searchInput = screen.getByRole('textbox')
-        fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
-    })
-
-    it('should show all labels when search is cleared', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('tools.createTool.toolInput.labelPlaceholder'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-
-      await act(async () => {
-        const searchInput = screen.getByRole('textbox')
-        // First filter to show only RAG
-        fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByText('RAG')).toBeInTheDocument()
-      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
-
-      await act(async () => {
-        // Clear the input
-        const searchInput = screen.getByRole('textbox')
-        fireEvent.change(searchInput, { target: { value: '' } })
-        vi.advanceTimersByTime(10)
-      })
-
-      // All labels should be visible again
-      expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
-      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
-    })
-  })
-
-  // Edge Cases
-  describe('Edge Cases', () => {
-    it('should handle empty label list', () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
-    it('should handle multiple labels display', () => {
-      render(<LabelSelector value={['agent', 'rag', 'search']} onChange={mockOnChange} />)
-
-      expect(screen.getByText('Agent, RAG, Search')).toBeInTheDocument()
-    })
-  })
-
-  // Props Tests
-  describe('Props', () => {
-    it('should receive value as array of strings', () => {
-      render(<LabelSelector value={['agent', 'rag']} onChange={mockOnChange} />)
-
-      expect(screen.getByText('Agent, RAG')).toBeInTheDocument()
-    })
-
-    it('should call onChange with updated array', async () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('tools.createTool.toolInput.labelPlaceholder'))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(mockOnChange).toHaveBeenLastCalledWith(['agent'])
-    })
-  })
+  await user.click(trigger)
+  const popup = within(screen.getByRole('dialog'))
+  await user.click(popup.getByRole('checkbox', { name: 'Agent' }))
+  expect(onChange).toHaveBeenLastCalledWith(['agent'])
+  await user.click(popup.getByRole('checkbox', { name: 'RAG' }))
+  expect(onChange).toHaveBeenLastCalledWith(['agent', 'rag'])
+  expect(trigger).toHaveTextContent('Agent, RAG')
+  await user.click(popup.getByRole('checkbox', { name: 'Agent' }))
+  expect(onChange).toHaveBeenLastCalledWith(['rag'])
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(trigger).toHaveTextContent('RAG')
+  await user.click(trigger)
+  expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Agent' })).not.toBeChecked()
+})
+
+it('filters by tag name, reports no matches, and restores choices when cleared', async () => {
+  const { user } = setup()
+  await user.click(
+    screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' }),
+  )
+  const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
+  await user.type(search, 'rag')
+  await waitFor(() =>
+    expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
+  await user.type(search, 'missing')
+  expect(await screen.findByText('common.tag.noTag')).toBeInTheDocument()
+  await user.clear(search)
+  expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
 })

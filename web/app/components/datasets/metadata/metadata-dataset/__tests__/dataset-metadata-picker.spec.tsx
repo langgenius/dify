@@ -1,17 +1,25 @@
 import type { MetadataItem } from '../../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import { DatasetMetadataPicker } from '../dataset-metadata-picker'
 
-const { mockUseDatasetMetaData } = vi.hoisted(() => ({
-  mockUseDatasetMetaData: vi.fn(),
+const { mockDatasetMetadataQuery } = vi.hoisted(() => ({
+  mockDatasetMetadataQuery: vi.fn(),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: mockUseDatasetMetaData,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': mockDatasetMetadataQuery,
+    }),
+  }
+})
 
 const metadataItems: MetadataItem[] = [
   { id: '1', name: 'field_one', type: DataType.string },
@@ -39,32 +47,7 @@ function renderDatasetMetadataPicker(
 describe('DatasetMetadataPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDatasetMetaData.mockReturnValue({
-      data: {
-        doc_metadata: metadataItems,
-      },
-    })
-  })
-
-  describe('Rendering', () => {
-    it('should render an add metadata picker trigger', () => {
-      renderDatasetMetadataPicker()
-
-      expect(
-        screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should show metadata options when opened', async () => {
-      const user = userEvent.setup()
-      renderDatasetMetadataPicker()
-
-      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
-
-      expect(await screen.findByRole('option', { name: /field_one/ })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /field_two/ })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
-    })
+    mockDatasetMetadataQuery.mockResolvedValue({ doc_metadata: metadataItems })
   })
 
   describe('Search', () => {
@@ -73,6 +56,7 @@ describe('DatasetMetadataPicker', () => {
       renderDatasetMetadataPicker()
 
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      await screen.findByRole('option', { name: /field_one/ })
       await user.type(
         screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
         'two',
@@ -88,12 +72,37 @@ describe('DatasetMetadataPicker', () => {
       renderDatasetMetadataPicker()
 
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      await screen.findByRole('option', { name: /field_one/ })
       await user.type(
         screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
         'missing',
       )
 
       expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
+    })
+
+    it('should reset the search query after the picker finishes closing', async () => {
+      const user = userEvent.setup()
+      renderDatasetMetadataPicker()
+
+      const trigger = screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })
+      await user.click(trigger)
+      await screen.findByRole('option', { name: /field_one/ })
+      await user.type(
+        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
+        'two',
+      )
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      })
+
+      await user.click(trigger)
+      expect(
+        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
+      ).toHaveValue('')
+      expect(screen.getByRole('option', { name: /field_one/ })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
     })
   })
 
@@ -120,6 +129,30 @@ describe('DatasetMetadataPicker', () => {
   })
 
   describe('Actions', () => {
+    it('should keep footer actions interactive until their click completes', async () => {
+      const user = userEvent.setup()
+      const onOpenMetadataManagement = vi.fn()
+      renderDatasetMetadataPicker({ onOpenMetadataManagement })
+
+      const trigger = screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })
+      await user.click(trigger)
+      const manageButton = screen.getByRole('button', {
+        name: 'dataset.metadata.selectMetadata.manageAction',
+      })
+
+      await user.pointer({ keys: '[MouseLeft>]', target: manageButton })
+
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      expect(onOpenMetadataManagement).not.toHaveBeenCalled()
+
+      await user.pointer({ keys: '[/MouseLeft]', target: manageButton })
+
+      expect(onOpenMetadataManagement).toHaveBeenCalledOnce()
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      })
+    })
+
     it('should switch to create view and save a new metadata item', async () => {
       const user = userEvent.setup()
       const onCreateMetadata = vi.fn().mockResolvedValue(undefined)
@@ -129,6 +162,7 @@ describe('DatasetMetadataPicker', () => {
       await user.click(
         screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
       )
+      await user.click(screen.getByRole('radio', { name: 'Number' }))
       await user.type(
         screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
         'new_field',
@@ -137,7 +171,7 @@ describe('DatasetMetadataPicker', () => {
 
       expect(onCreateMetadata).toHaveBeenCalledWith({
         name: 'new_field',
-        type: DataType.string,
+        type: DataType.number,
       })
       await waitFor(() => {
         expect(
@@ -164,34 +198,12 @@ describe('DatasetMetadataPicker', () => {
         'true',
       )
     })
-
-    it('should open metadata management and close the picker', async () => {
-      const user = userEvent.setup()
-      const onOpenMetadataManagement = vi.fn()
-      renderDatasetMetadataPicker({ onOpenMetadataManagement })
-
-      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
-      await user.click(
-        screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }),
-      )
-
-      expect(onOpenMetadataManagement).toHaveBeenCalled()
-      await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }),
-        ).toHaveAttribute('aria-expanded', 'false')
-      })
-    })
   })
 
   describe('Edge Cases', () => {
     it('should keep action buttons available when metadata list is empty', async () => {
       const user = userEvent.setup()
-      mockUseDatasetMetaData.mockReturnValue({
-        data: {
-          doc_metadata: [],
-        },
-      })
+      mockDatasetMetadataQuery.mockResolvedValue({ doc_metadata: [] })
 
       renderDatasetMetadataPicker()
 
@@ -204,6 +216,9 @@ describe('DatasetMetadataPicker', () => {
       expect(
         screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }),
       ).toBeInTheDocument()
+      expect(screen.getByRole('listbox')).not.toContainElement(
+        screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+      )
     })
   })
 })

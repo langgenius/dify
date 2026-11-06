@@ -1,15 +1,15 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, SVGProps } from 'react'
-import type { App } from '@/types/app'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { basePath } from '@/utils/var'
 
@@ -34,22 +34,24 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   )
 }
 
-const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
-  const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
+  const { t } = useTranslation(['appLog'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const getWebAppType = (appType: AppModeEnum) => {
-    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
-      return AppModeEnum.CHAT
+  const getWebAppType = (appType: AppDetailWithSite['mode']) => {
+    if (appType !== 'completion' && appType !== 'workflow') return 'chat'
     return appType
   }
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
+      <div className="box-border h-fit w-140 rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t(($) => $['table.empty.element.title'], { ns: 'appLog' })}
           <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />
@@ -59,13 +61,15 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
             i18nKey={($) => $['table.empty.element.content']}
             ns="appLog"
             components={{
-              shareLink: (
+              shareLink: appDetail.site?.access_token ? (
                 <Link
                   href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`}
                   className="text-util-colors-blue-blue-600"
                   target="_blank"
                   rel="noopener noreferrer"
                 />
+              ) : (
+                <span />
               ),
               testLink: (
                 <Link

@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from domain.workflow.agent_node import is_dify_agent_node_data
 from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredOutputConfig,
@@ -97,7 +98,7 @@ def previous_node_output_candidates(
             continue
 
         declared: list[DeclaredOutputConfig] | None = None
-        if kind == "agent" and str(data.get("version", "")) == "2":
+        if is_dify_agent_node_data(data):
             declared = declared_outputs_loader(nid)
         if declared is not None:
             for output in declared:
@@ -142,7 +143,16 @@ def soul_candidates(
 
     dataset_ids = list_agent_soul_knowledge_dataset_ids(soul)
     dataset_rows = dataset_lookup(dataset_ids) if dataset_ids else {}
-    knowledge_sets: list[dict[str, Any]] = []
+    knowledge_sets: list[dict[str, Any]] = [
+        {
+            "id": space.id,
+            "name": space.name,
+            "description": space.description,
+            "control_space_id": space.control_space_id,
+            "missing": space.is_missing,
+        }
+        for space in soul.knowledge.spaces
+    ]
     for knowledge_set in soul.knowledge.sets:
         missing_dataset_ids: list[str] = []
         datasets: list[dict[str, Any]] = []

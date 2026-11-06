@@ -1,11 +1,12 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -13,6 +14,7 @@ import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchSuggestedQuestions,
@@ -22,6 +24,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
+import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -29,7 +32,7 @@ import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const {
     appData,
     appParams,
@@ -41,14 +44,14 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
-    isMobile,
+    isBelowSm,
     isInstalledApp,
     appId,
     appMeta,
     disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
-    themeBuilder,
+    theme,
     clearChatList,
     setClearChatList,
     setIsResponding,
@@ -87,6 +90,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -119,7 +123,14 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (
+          inputValue === undefined ||
+          inputValue === null ||
+          inputValue === '' ||
+          (Array.isArray(inputValue) && inputValue.length === 0)
+        )
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -149,7 +160,8 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  // Resume paused workflows when chat history is loaded
+  // Resume once when history arrives, including histories loaded after the initial render.
+  const resumedWorkflow = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!appPrevChatList || appPrevChatList.length === 0) return
 
@@ -157,9 +169,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -168,6 +177,8 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+        // Visit children last so a paused descendant takes precedence over its parent.
+        if (node.children?.length) findLastPausedWorkflow(node.children)
       })
     }
 
@@ -175,6 +186,13 @@ const ChatWrapper = () => {
 
     // Only resume the last paused workflow
     if (lastPausedNode) {
+      const key = JSON.stringify([
+        currentConversationId,
+        lastPausedNode.id,
+        lastPausedNode.workflow_run_id,
+      ])
+      if (resumedWorkflow.current === key) return
+      resumedWorkflow.current = key
       handleSwitchSibling(lastPausedNode.id, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
@@ -182,7 +200,14 @@ const ChatWrapper = () => {
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
     }
-  }, [])
+  }, [
+    appPrevChatList,
+    currentConversationId,
+    handleSwitchSibling,
+    appSourceType,
+    appId,
+    handleNewConversationCompleted,
+  ])
 
   const [hasSent, setHasSent] = useState(false)
   const [prevConversationId, setPrevConversationId] = useState(currentConversationId)
@@ -207,6 +232,8 @@ const ChatWrapper = () => {
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
+      if (appSourceType === AppSourceType.webApp && appData?.mode)
+        trackWebAppEvent('webapp_run', { app_mode: appData.mode })
     },
     [
       currentConversationId,
@@ -217,6 +244,7 @@ const ChatWrapper = () => {
       appSourceType,
       appId,
       handleNewConversationCompleted,
+      appData?.mode,
     ],
   )
 
@@ -286,13 +314,13 @@ const ChatWrapper = () => {
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent) return null
     return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
-        <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isMobile && 'p-4')}>
+      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
+        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <div
               ref={descRef}
               className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
@@ -325,25 +353,27 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+  }, [description, isBelowSm, currentConversationId, hasSent, descExpanded, showDescToggle, t])
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
-    if (isMobile) {
+    if (isBelowSm) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return <div className="mb-4"></div>
     } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
-    [isInstalledApp],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {
@@ -358,17 +388,11 @@ const ChatWrapper = () => {
         <div
           className={cn(
             'flex items-center justify-center px-4 py-12',
-            isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+            isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
           )}
         >
-          <div className="flex max-w-[720px] grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+          <div className="flex max-w-180 grow gap-4">
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
@@ -381,17 +405,11 @@ const ChatWrapper = () => {
       <div
         className={cn(
           'flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12',
-          isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+          isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
         )}
       >
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
-        <div className="max-w-[768px] px-4">
+        <AppIcon size="xl" icon={appData?.site} />
+        <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
             content={welcomeMessage.content}
@@ -407,7 +425,7 @@ const ChatWrapper = () => {
     inputsForms.length,
     allInputsHidden,
     appData?.site,
-    isMobile,
+    isBelowSm,
   ])
 
   const answerIcon = isDify() ? (
@@ -439,8 +457,8 @@ const ChatWrapper = () => {
         'mx-auto w-full max-w-full px-4',
         messageList.length && 'pt-4',
       )}
-      chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
+      chatFooterClassName={cn('pb-4', !isBelowSm && 'rounded-b-2xl')}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isBelowSm && 'px-2')}
       onSend={doSend}
       inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
       inputsForm={inputsForms}
@@ -460,17 +478,16 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}
       hideProcessDetail
-      themeBuilder={themeBuilder}
+      theme={theme}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
       sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url ? (
-          <Avatar
-            avatar={initUserVariables.avatar_url}
-            name={initUserVariables.name || 'user'}
-            size="xl"
-          />
+          <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+            <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+            <AvatarImage src={initUserVariables.avatar_url} alt="" />
+          </Avatar>
         ) : undefined
       }
     />

@@ -1,520 +1,74 @@
-import type { ReactNode } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import type { ComponentProps } from 'react'
+import type { Tool } from '@/app/components/tools/types'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMcpProviderFixture } from '@/test/fixtures/mcp'
 import MCPCard from '../provider-card'
 
-// Mutable mock functions
-const mockUpdateMCP = vi.fn().mockResolvedValue({ result: 'success' })
-const mockDeleteMCP = vi.fn().mockResolvedValue({ result: 'success' })
-
-// Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useUpdateMCP: () => ({
-    mutateAsync: mockUpdateMCP,
-  }),
-  useDeleteMCP: () => ({
-    mutateAsync: mockDeleteMCP,
-  }),
-}))
-
-// Mock the MCPModal
-type MCPModalForm = {
-  name: string
-  server_url: string
+const tool: Tool = {
+  name: 'search',
+  author: 'Dify',
+  label: { en_US: 'Search', zh_Hans: 'Search' },
+  description: { en_US: 'Search documents', zh_Hans: 'Search documents' },
+  parameters: [],
+  labels: [],
+  output_schema: {},
+}
+const setup = (props: Partial<ComponentProps<typeof MCPCard>> = {}, canManage = true) => {
+  const handleSelect = vi.fn()
+  const onEdit = vi.fn()
+  const onDelete = vi.fn()
+  const { wrapper } = createConsoleQueryWrapper({
+    workspacePermissionKeys: canManage ? ['mcp.manage'] : [],
+  })
+  render(
+    <MCPCard
+      data={createMcpProviderFixture({ tools: [tool] })}
+      handleSelect={handleSelect}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      {...props}
+    />,
+    { wrapper },
+  )
+  return { handleSelect, onEdit, onDelete, user: userEvent.setup() }
 }
 
-type MCPModalProps = {
-  show: boolean
-  onConfirm: (form: MCPModalForm) => void
-  onHide: () => void
-}
+describe('MCP provider card', () => {
+  it.each([
+    { authorized: true, tools: [tool], configured: true },
+    { authorized: false, tools: [tool], configured: false },
+    { authorized: true, tools: [], configured: false },
+  ])(
+    'requires both authorization and tools for configured status ($authorized, $configured)',
+    ({ authorized, tools, configured }) => {
+      setup({ data: createMcpProviderFixture({ is_team_authorization: authorized, tools }) })
+      expect(
+        screen.getByRole('button', {
+          name: configured ? /tools\.mcp\.configured/ : /tools\.mcp\.noConfigured/,
+        }),
+      ).toBeInTheDocument()
+      if (!tools.length) expect(screen.getByText('tools.mcp.noTools')).toBeInTheDocument()
+    },
+  )
 
-vi.mock('../modal', () => ({
-  default: ({ show, onConfirm, onHide }: MCPModalProps) => {
-    if (!show) return null
-    return (
-      <div data-testid="mcp-modal">
-        <button
-          data-testid="modal-confirm-btn"
-          onClick={() => onConfirm({ name: 'Updated MCP', server_url: 'https://updated.com' })}
-        >
-          Confirm
-        </button>
-        <button data-testid="modal-close-btn" onClick={onHide}>
-          Close
-        </button>
-      </div>
-    )
-  },
-}))
-
-// Mock the OperationDropdown
-type OperationDropdownProps = {
-  onEdit: () => void
-  onRemove: () => void
-  onOpenChange: (open: boolean) => void
-}
-
-vi.mock('../detail/operation-dropdown', () => ({
-  default: ({ onEdit, onRemove, onOpenChange }: OperationDropdownProps) => (
-    <div data-testid="operation-dropdown">
-      <button
-        data-testid="edit-btn"
-        onClick={() => {
-          onOpenChange(true)
-          onEdit()
-        }}
-      >
-        Edit
-      </button>
-      <button
-        data-testid="remove-btn"
-        onClick={() => {
-          onOpenChange(true)
-          onRemove()
-        }}
-      >
-        Remove
-      </button>
-    </div>
-  ),
-}))
-
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['mcp.manage'] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
-
-// Mock the format time hook
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: (_timestamp: number) => '2 hours ago',
-  }),
-}))
-
-// Mock the plugins service
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
-// Mock common service
-vi.mock('@/service/common', () => ({
-  uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
-}))
-
-describe('MCPCard', () => {
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
-
-  const createMockData = (overrides = {}): ToolWithProvider =>
-    ({
-      id: 'mcp-1',
-      name: 'Test MCP Server',
-      server_identifier: 'test-server',
-      icon: { content: '🔧', background: '#FF0000' },
-      tools: [
-        { name: 'tool1', description: 'Tool 1' },
-        { name: 'tool2', description: 'Tool 2' },
-      ],
-      is_team_authorization: true,
-      updated_at: Date.now() / 1000,
-      ...overrides,
-    }) as unknown as ToolWithProvider
-
-  const defaultProps = {
-    data: createMockData(),
-    handleSelect: vi.fn(),
-    onUpdate: vi.fn(),
-    onDeleted: vi.fn(),
-  }
-
-  const getDeleteConfirmButton = () =>
-    screen.getByRole('button', { name: 'common.operation.confirm' })
-  const getDeleteCancelButton = () =>
-    screen.getByRole('button', { name: 'common.operation.cancel' })
-
-  beforeEach(() => {
-    mockUpdateMCP.mockClear()
-    mockDeleteMCP.mockClear()
-    mockUpdateMCP.mockResolvedValue({ result: 'success' })
-    mockDeleteMCP.mockResolvedValue({ result: 'success' })
-    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
+  it('selects the provider when its card is clicked', async () => {
+    const { user, handleSelect } = setup()
+    await user.click(screen.getByRole('button', { name: /Existing Server/ }))
+    expect(handleSelect).toHaveBeenCalledWith('mcp-1')
   })
 
-  describe('Rendering', () => {
-    it('should display MCP name', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
-    })
-
-    it('should display server identifier', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-server')).toBeInTheDocument()
-    })
-
-    it('should display tools count', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      // The tools count uses i18n with count parameter
-      expect(screen.getByText(/tools.mcp.toolsCount/)).toBeInTheDocument()
-    })
-
-    it('should display update time', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
-    })
-
-    it('should use the Figma card shell', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = screen.getByText('Test MCP Server').closest('.group')
-      expect(card).toHaveClass(
-        'overflow-hidden',
-        'rounded-xl',
-        'border-[0.5px]',
-        'border-components-panel-border',
-        'bg-components-panel-on-panel-item-bg',
-        'shadow-xs',
-      )
-    })
-
-    it('should render footer metadata without a tools icon', () => {
-      const { container } = render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/tools.mcp.toolsCount/)).toBeInTheDocument()
-      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
-      expect(screen.getByText('·')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-hammer-fill')).not.toBeInTheDocument()
-    })
+  it('hides management actions without mcp.manage permission', () => {
+    setup({}, false)
+    expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
   })
 
-  describe('No Tools State', () => {
-    it('should show no tools message when tools array is empty', () => {
-      const dataWithNoTools = createMockData({ tools: [] })
-      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noTools')).toBeInTheDocument()
-    })
-
-    it('should show not configured badge when not authorized', () => {
-      const dataNotAuthorized = createMockData({ is_team_authorization: false })
-      render(<MCPCard {...defaultProps} data={dataNotAuthorized} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
-    })
-
-    it('should show not configured badge when no tools', () => {
-      const dataWithNoTools = createMockData({ tools: [], is_team_authorization: true })
-      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
-    })
-  })
-
-  describe('Selected State', () => {
-    it('should apply selected styles when current provider matches', () => {
-      render(<MCPCard {...defaultProps} currentProvider={defaultProps.data} />, {
-        wrapper: createWrapper(),
-      })
-      const card = document.querySelector(
-        '[class*="border-components-option-card-option-selected-border"]',
-      )
-      expect(card).toBeInTheDocument()
-    })
-
-    it('should not apply selected styles when different provider', () => {
-      const differentProvider = createMockData({ id: 'different-id' })
-      render(<MCPCard {...defaultProps} currentProvider={differentProvider} />, {
-        wrapper: createWrapper(),
-      })
-      const card = document.querySelector(
-        '[class*="border-components-option-card-option-selected-border"]',
-      )
-      expect(card).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call handleSelect when card is clicked', () => {
-      const handleSelect = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
-        wrapper: createWrapper(),
-      })
-
-      const card = screen.getByText('Test MCP Server').closest('[class*="cursor-pointer"]')
-      if (card) {
-        fireEvent.click(card)
-        expect(handleSelect).toHaveBeenCalledWith('mcp-1')
-      }
-    })
-  })
-
-  describe('Card Icon', () => {
-    it('should render card icon', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      // Icon component is rendered
-      const iconContainer = document.querySelector('[class*="rounded-xl"][class*="border"]')
-      expect(iconContainer).toBeInTheDocument()
-    })
-  })
-
-  describe('Status Indicator', () => {
-    it('should show green indicator when authorized and has tools', () => {
-      const data = createMockData({ is_team_authorization: true, tools: [{ name: 'tool1' }] })
-      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      // Should have green indicator (not showing red badge)
-      expect(screen.queryByText('tools.mcp.noConfigured')).not.toBeInTheDocument()
-    })
-
-    it('should show red indicator when not configured', () => {
-      const data = createMockData({ is_team_authorization: false })
-      const { container } = render(<MCPCard {...defaultProps} data={data} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
-      expect(container.querySelector('.size-1\\.5')).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle long MCP name', () => {
-      const longName = 'A'.repeat(100)
-      const data = createMockData({ name: longName })
-      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      expect(screen.getByText(longName)).toBeInTheDocument()
-    })
-
-    it('should handle special characters in name', () => {
-      const data = createMockData({ name: 'Test <Script> & "Quotes"' })
-      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test <Script> & "Quotes"')).toBeInTheDocument()
-    })
-
-    it('should handle undefined currentProvider', () => {
-      render(<MCPCard {...defaultProps} currentProvider={undefined} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
-    })
-  })
-
-  describe('Operation Dropdown', () => {
-    it('should render operation dropdown when user has mcp.manage', () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
-    })
-
-    it('should not render operation dropdown when user lacks mcp.manage', () => {
-      mockConsoleState.workspacePermissionKeys = []
-
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
-    })
-
-    it('should stop propagation when clicking on dropdown container', () => {
-      const handleSelect = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
-        wrapper: createWrapper(),
-      })
-
-      // Click on the dropdown area (which should stop propagation)
-      const dropdown = screen.getByTestId('operation-dropdown')
-      const dropdownContainer = dropdown.closest('[class*="absolute"]')
-      if (dropdownContainer) {
-        fireEvent.click(dropdownContainer)
-        // handleSelect should NOT be called because stopPropagation
-        expect(handleSelect).not.toHaveBeenCalled()
-      }
-    })
-  })
-
-  describe('Update Modal', () => {
-    it('should open update modal when edit button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Click the edit button
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      // Modal should be shown
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close update modal when close button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-
-      // Close the modal
-      const closeBtn = screen.getByTestId('modal-close-btn')
-      fireEvent.click(closeBtn)
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('mcp-modal')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call updateMCP and onUpdate when form is confirmed', async () => {
-      const onUpdate = vi.fn()
-      render(<MCPCard {...defaultProps} onUpdate={onUpdate} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-
-      // Confirm the form
-      const confirmBtn = screen.getByTestId('modal-confirm-btn')
-      fireEvent.click(confirmBtn)
-
-      await waitFor(() => {
-        expect(mockUpdateMCP).toHaveBeenCalledWith({
-          name: 'Updated MCP',
-          server_url: 'https://updated.com',
-          provider_id: 'mcp-1',
-        })
-        expect(onUpdate).toHaveBeenCalledWith('mcp-1')
-      })
-    })
-
-    it('should not call onUpdate when updateMCP fails', async () => {
-      mockUpdateMCP.mockResolvedValue({ result: 'error' })
-      const onUpdate = vi.fn()
-      render(<MCPCard {...defaultProps} onUpdate={onUpdate} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-
-      // Confirm the form
-      const confirmBtn = screen.getByTestId('modal-confirm-btn')
-      fireEvent.click(confirmBtn)
-
-      await waitFor(() => {
-        expect(mockUpdateMCP).toHaveBeenCalled()
-      })
-
-      // onUpdate should not be called because result is not 'success'
-      expect(onUpdate).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Delete Confirm', () => {
-    it('should open delete confirm when remove button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Click the remove button
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      // Confirm dialog should be shown
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-    })
-
-    it('should close delete confirm when cancel button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Cancel
-      fireEvent.click(getDeleteCancelButton())
-
-      await waitFor(() => {
-        expect(screen.queryByText('tools.mcp.delete')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call deleteMCP and onDeleted when delete is confirmed', async () => {
-      const onDeleted = vi.fn()
-      render(<MCPCard {...defaultProps} onDeleted={onDeleted} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Confirm delete
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockDeleteMCP).toHaveBeenCalledWith('mcp-1')
-        expect(onDeleted).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call onDeleted when deleteMCP fails', async () => {
-      mockDeleteMCP.mockResolvedValue({ result: 'error' })
-      const onDeleted = vi.fn()
-      render(<MCPCard {...defaultProps} onDeleted={onDeleted} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Confirm delete
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockDeleteMCP).toHaveBeenCalled()
-      })
-
-      // onDeleted should not be called because result is not 'success'
-      expect(onDeleted).not.toHaveBeenCalled()
-    })
+  it.each(['edit', 'remove'] as const)('requests %s without selecting the card', async (action) => {
+    const { user, handleSelect, onEdit, onDelete } = setup()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: `tools.mcp.operation.${action}` }))
+    expect(action === 'edit' ? onEdit : onDelete).toHaveBeenCalledWith('mcp-1')
+    expect(handleSelect).not.toHaveBeenCalled()
   })
 })

@@ -1,26 +1,21 @@
 import logging
+from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-import core.db.session_factory as session_factory_module
-from core.indexing_runner import DocumentIsPausedError
 from events.event_handlers import create_document_index as handler_module
 from models.dataset import Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 
 
 @pytest.fixture
 def persisted_document(
-    sqlite_engine: Engine,
     sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> Document:
-    real_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(session_factory_module, "_session_maker", real_session_maker)
-
     document = Document(
         id="doc-1",
         tenant_id="tenant-1",
@@ -52,7 +47,7 @@ def test_handle_logs_document_pause(
 ) -> None:
     mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document is paused")
 
-    with patch.object(handler_module, "IndexingRunner", return_value=mock_indexing_runner):
+    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
         with caplog.at_level(logging.INFO, logger=handler_module.logger.name):
             handler_module.handle("dataset-1", document_ids=["doc-1"])
 
@@ -71,7 +66,7 @@ def test_handle_logs_unexpected_indexing_errors(
 ) -> None:
     mock_indexing_runner.run.side_effect = RuntimeError("Indexing failed")
 
-    with patch.object(handler_module, "IndexingRunner", return_value=mock_indexing_runner):
+    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
         with caplog.at_level(logging.ERROR, logger=handler_module.logger.name):
             handler_module.handle("dataset-1", document_ids=["doc-1"])
 
@@ -90,12 +85,16 @@ def test_handle_runs_indexing_on_success(
     mock_indexing_runner: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    def assert_status_committed(_documents: list[Document], session: Session) -> None:
-        assert not session.in_transaction()
+    def assert_status_committed(refs: Sequence[DocumentRef]) -> None:
+        with Session(sqlite_session.get_bind()) as observer:
+            row = observer.get(Document, refs[0].document_id)
+            assert row is not None
+            assert row.indexing_status == IndexingStatus.PARSING
+            assert row.processing_started_at is not None
 
     mock_indexing_runner.run.side_effect = assert_status_committed
 
-    with patch.object(handler_module, "IndexingRunner", return_value=mock_indexing_runner):
+    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
         with caplog.at_level(logging.INFO, logger=handler_module.logger.name):
             handler_module.handle("dataset-1", document_ids=["doc-1"])
 

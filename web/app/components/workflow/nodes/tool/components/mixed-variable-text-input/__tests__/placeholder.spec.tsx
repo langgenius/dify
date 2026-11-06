@@ -1,67 +1,55 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { ContentEditable } from '@lexical/react/LexicalContentEditable'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { $createParagraphNode, $getRoot } from 'lexical'
+import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import Placeholder from '../placeholder'
 
-const mockUpdate = vi.fn<(callback: () => void) => void>()
-const mockDispatchCommand = vi.fn()
-const mockInsertNodes = vi.fn()
+function renderPlaceholder(disableVariableInsertion = false) {
+  return render(
+    <LexicalComposer
+      initialConfig={{
+        namespace: 'tool-placeholder-test',
+        nodes: [CustomTextNode],
+        onError: (error) => {
+          throw error
+        },
+        editorState: () => {
+          const paragraph = $createParagraphNode()
+          $getRoot().append(paragraph)
+          paragraph.select()
+        },
+      }}
+    >
+      <PlainTextPlugin
+        contentEditable={<ContentEditable aria-label="Tool input" />}
+        placeholder={null}
+        ErrorBoundary={LexicalErrorBoundary}
+      />
+      <Placeholder disableVariableInsertion={disableVariableInsertion} />
+    </LexicalComposer>,
+  )
+}
 
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [
-    {
-      update: mockUpdate,
-      dispatchCommand: mockDispatchCommand,
-    },
-  ],
-}))
+describe('tool text placeholder', () => {
+  it('inserts the variable trigger into the real editor', async () => {
+    const user = userEvent.setup()
+    renderPlaceholder()
 
-vi.mock('lexical', () => ({
-  $insertNodes: (...args: unknown[]) => mockInsertNodes(...args),
-  FOCUS_COMMAND: 'FOCUS_COMMAND',
-}))
+    await user.click(screen.getByText('workflow.nodes.tool.insertPlaceholder2'))
 
-vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
-  CustomTextNode: class {
-    text: string
-
-    constructor(text: string) {
-      this.text = text
-    }
-  },
-}))
-
-describe('tool/mixed-variable-text-input/placeholder', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUpdate.mockImplementation((callback) => callback())
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Tool input' })).toHaveTextContent('/'),
+    )
   })
 
-  it('should insert text and focus the editor for click and slash actions', () => {
-    render(<Placeholder />)
+  it('omits variable insertion when only literal text is allowed', () => {
+    renderPlaceholder(true)
 
-    const root = screen
-      .getByText('workflow.nodes.tool.insertPlaceholder1')
-      .closest('.cursor-text') as HTMLElement
-
-    expect(screen.getByText('workflow.nodes.tool.insertPlaceholder1'))!.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.tool.insertPlaceholder2'))!.toBeInTheDocument()
-    expect(screen.getByText('String'))!.toBeInTheDocument()
-
-    fireEvent.click(root)
-    expect(mockInsertNodes.mock.calls[0]![0][0]).toMatchObject({ text: '' })
-    expect(mockDispatchCommand).toHaveBeenCalledWith('FOCUS_COMMAND', undefined)
-
-    fireEvent.mouseDown(screen.getByText('workflow.nodes.tool.insertPlaceholder2'))
-    expect(mockInsertNodes.mock.calls[1]![0][0]).toMatchObject({ text: '/' })
-    expect(mockDispatchCommand).toHaveBeenNthCalledWith(2, 'FOCUS_COMMAND', undefined)
-  })
-
-  it('should hide variable insertion affordance and badge when disabled', () => {
-    const { container } = render(<Placeholder disableVariableInsertion hideBadge />)
-
-    expect(screen.getByText('workflow.nodes.tool.insertPlaceholder1'))!.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.tool.insertPlaceholder1')).toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.tool.insertPlaceholder2')).not.toBeInTheDocument()
-    expect(screen.queryByText('String')).not.toBeInTheDocument()
-    expect(container.firstChild)!.toHaveClass('items-start')
-    expect(container.firstChild)!.toHaveClass('py-1')
   })
 })

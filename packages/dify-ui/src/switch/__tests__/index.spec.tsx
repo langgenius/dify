@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Switch } from '../index'
 
@@ -14,11 +15,6 @@ describe('Switch', () => {
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
   })
 
-  it('should apply custom className', async () => {
-    const screen = await render(<Switch checked={false} className="custom-test-class" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('custom-test-class')
-  })
-
   it('should reflect checked state on the root and thumb', async () => {
     const screen = await render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch').element()
@@ -31,6 +27,25 @@ describe('Switch', () => {
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
     expect(getThumb(screen.getByRole('switch').element())).toHaveAttribute('data-checked', '')
   })
+
+  it.each([false, true])(
+    'should keep a read-only switch unchanged on hover and click (checked: %s)',
+    async (checked) => {
+      const screen = await render(<Switch readOnly defaultChecked={checked} aria-label="Sync" />)
+      const switchElement = screen.getByRole('switch', { name: 'Sync' })
+      const rootStyle = getComputedStyle(switchElement.element())
+      const thumbStyle = getComputedStyle(getThumb(switchElement.element())!)
+      const resting = [rootStyle.backgroundColor, thumbStyle.backgroundColor, thumbStyle.boxShadow]
+
+      await userEvent.hover(switchElement)
+      expect([rootStyle.backgroundColor, thumbStyle.backgroundColor, thumbStyle.boxShadow]).toEqual(
+        resting,
+      )
+      expect(rootStyle.cursor).toBe('default')
+      await switchElement.click()
+      await expect.element(switchElement).toHaveAttribute('aria-checked', String(checked))
+    },
+  )
 
   describe('loading state', () => {
     it('should render as disabled when loading', async () => {
@@ -56,5 +71,22 @@ describe('Switch', () => {
       await screen.rerender(<Switch checked={false} loading size="sm" />)
       expect(screen.container.querySelector('span[aria-hidden="true"] i')).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('Switch change cancellation', () => {
+  it('lets event details cancel an uncontrolled change', async () => {
+    const screen = await render(
+      <Switch
+        aria-label="Notifications"
+        defaultChecked={false}
+        onCheckedChange={(checked, details) => {
+          if (checked) details.cancel()
+        }}
+      />,
+    )
+
+    await screen.getByRole('switch').click()
+    await expect.element(screen.getByRole('switch')).not.toBeChecked()
   })
 })

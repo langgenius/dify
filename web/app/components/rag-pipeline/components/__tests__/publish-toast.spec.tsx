@@ -1,112 +1,35 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import PublishToast from '../publish-toast'
 
-let mockPublishedAt = 0
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ publishedAt: mockPublishedAt })
-  },
-}))
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
-
 describe('PublishToast', () => {
-  beforeEach(() => {
-    mockPublishedAt = 0
+  it('does not show the unpublished notice for a published pipeline', () => {
+    renderWorkflowComponent(<PublishToast />, { initialStoreState: { publishedAt: 1 } })
+
+    expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
   })
 
-  describe('rendering', () => {
-    it('should render when publishedAt is 0', () => {
-      mockPublishedAt = 0
-      render(<PublishToast />)
+  it('hides the notice once the pipeline gets published', () => {
+    const { store } = renderWorkflowComponent(<PublishToast />)
+    expect(screen.getByText('pipeline.publishToast.desc')).toBeInTheDocument()
 
-      expect(screen.getByText('pipeline.publishToast.title')).toBeInTheDocument()
-    })
+    act(() => store.getState().setPublishedAt(1_700_000_000))
 
-    it('should render toast title', () => {
-      render(<PublishToast />)
-
-      expect(screen.getByText('pipeline.publishToast.title')).toBeInTheDocument()
-    })
-
-    it('should render toast description', () => {
-      render(<PublishToast />)
-
-      expect(screen.getByText('pipeline.publishToast.desc')).toBeInTheDocument()
-    })
-
-    it('should not render when publishedAt is set', () => {
-      mockPublishedAt = Date.now()
-      const { container } = render(<PublishToast />)
-
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render info icon', () => {
-      const { container } = render(<PublishToast />)
-
-      const iconContainer = container.querySelector('.text-text-accent')
-      expect(iconContainer).toBeInTheDocument()
-    })
-
-    it('should render close button', () => {
-      const { container } = render(<PublishToast />)
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
-    })
+    expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
   })
 
-  describe('user interactions', () => {
-    it('should hide toast when close button is clicked', () => {
-      const { container } = render(<PublishToast />)
+  it('allows keyboard users to dismiss the notice and keeps it dismissed on rerender', async () => {
+    const user = userEvent.setup()
+    const { rerender } = renderWorkflowComponent(<PublishToast />)
+    expect(screen.getByText('pipeline.publishToast.desc')).toBeInTheDocument()
 
-      const closeButton = container.querySelector('.cursor-pointer')
-      expect(screen.getByText('pipeline.publishToast.title')).toBeInTheDocument()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
 
-      fireEvent.click(closeButton!)
-
-      expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
-    })
-
-    it('should remain hidden after close button is clicked', () => {
-      const { container, rerender } = render(<PublishToast />)
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      fireEvent.click(closeButton!)
-
-      rerender(<PublishToast />)
-
-      expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('styling', () => {
-    it('should have gradient overlay', () => {
-      const { container } = render(<PublishToast />)
-
-      const gradientOverlay = container.querySelector('.bg-linear-to-r')
-      expect(gradientOverlay).toBeInTheDocument()
-    })
-
-    it('should have correct toast width', () => {
-      render(<PublishToast />)
-
-      const toastContainer = screen
-        .getByText('pipeline.publishToast.title')
-        .closest('.w-\\[420px\\]')
-      expect(toastContainer).toBeInTheDocument()
-    })
-
-    it('should have rounded-sm border', () => {
-      render(<PublishToast />)
-
-      const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.rounded-xl')
-      expect(toastContainer).toBeInTheDocument()
-    })
+    rerender(<PublishToast />)
+    expect(screen.queryByText('pipeline.publishToast.title')).not.toBeInTheDocument()
   })
 })

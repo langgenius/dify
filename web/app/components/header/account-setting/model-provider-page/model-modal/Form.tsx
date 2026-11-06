@@ -13,7 +13,8 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -23,8 +24,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useCallback, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { useCallback, useId, useState } from 'react'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -65,7 +65,6 @@ type FormProps<
   validatedSuccess?: boolean
   showOnVariableMap: Record<string, string[]>
   isEditMode: boolean
-  isAgentStrategy?: boolean
   readonly?: boolean
   inputClassName?: string
   isShowDefaultValue?: boolean
@@ -100,7 +99,6 @@ function Form<
   validatedSuccess,
   showOnVariableMap,
   isEditMode,
-  isAgentStrategy = false,
   readonly,
   inputClassName,
   isShowDefaultValue = false,
@@ -112,6 +110,7 @@ function Form<
   availableNodes,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
+  const formId = useId()
   const [changeKey, setChangeKey] = useState('')
   const filteredProps: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'> = {
     className,
@@ -130,19 +129,23 @@ function Form<
     fieldMoreInfo,
   }
 
-  const handleFormChange = (key: string, val: FormValue[string]) => {
-    if (isEditMode && (key === '__model_type' || key === '__model_name')) return
+  const handleFormChange = useCallback(
+    (key: string, val: FormValue[string]) => {
+      if (readonly) return
+      if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
-    setChangeKey(key)
-    const shouldClearVariable: Record<string, string | undefined> = {}
-    if (showOnVariableMap[key]?.length) {
-      showOnVariableMap[key].forEach((clearVariable) => {
-        const schema = formSchemas.find((it) => it.variable === clearVariable)
-        shouldClearVariable[clearVariable] = schema ? schema.default : undefined
-      })
-    }
-    onChange({ ...value, [key]: val, ...shouldClearVariable })
-  }
+      setChangeKey(key)
+      const shouldClearVariable: FormValue = {}
+      if (showOnVariableMap[key]?.length) {
+        showOnVariableMap[key].forEach((clearVariable) => {
+          const schema = formSchemas.find((it) => it.variable === clearVariable)
+          shouldClearVariable[clearVariable] = schema ? schema.default : undefined
+        })
+      }
+      onChange({ ...value, [key]: val, ...shouldClearVariable })
+    },
+    [readonly, isEditMode, showOnVariableMap, formSchemas, onChange, value],
+  )
 
   const handleModelChanged = useCallback(
     (key: string, model: ModelSelectorValue) => {
@@ -151,17 +154,26 @@ function Form<
         ...model,
         type: FormTypeEnum.modelSelector,
       }
-      onChange({ ...value, [key]: newValue })
+      handleFormChange(key, newValue)
     },
-    [onChange, value],
+    [handleFormChange, value],
   )
 
   const renderField = (formSchema: CredentialFormSchema | CustomFormSchema) => {
     const infotip = formSchema.tooltip
     const infotipText = infotip?.[language] || infotip?.en_US
     const infotipContent = infotipText && (
-      <Infotip aria-label={infotipText} className="ml-1" popupClassName="w-[200px] max-w-[200px]">
-        {infotipText}
+      <Infotip>
+        <InfotipTrigger
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="ms-1"
+        />
+        <InfotipContent
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="w-50"
+        >
+          {infotipText}
+        </InfotipContent>
       </Infotip>
     )
     if (override) {
@@ -189,6 +201,7 @@ function Form<
 
       const disabled =
         readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const inputId = `${formId}-${variable}`
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div
@@ -197,11 +210,18 @@ function Form<
               'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
           >
-            {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            <label htmlFor={inputId}>
+              {label[language] || label.en_US}
+              {required && (
+                <span aria-hidden className="ms-1 text-red-500">
+                  *
+                </span>
+              )}
+            </label>
             {infotipContent}
           </div>
           <Input
+            id={inputId}
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={
               isShowDefaultValue &&
@@ -245,7 +265,8 @@ function Form<
       )
         return null
 
-      const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabled =
+        readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       const gridColumnsClassName = radioGridColumnsClassNames[options.length] ?? 'grid-cols-1'
       const selectedValue = typeof value[variable] === 'string' ? value[variable] : undefined
       const translatedLabel = label[language] || label.en_US
@@ -268,7 +289,7 @@ function Form<
               )}
             >
               <span>{translatedLabel}</span>
-              {required && <span className="ml-1 text-red-500">*</span>}
+              {required && <span className="ms-1 text-red-500">*</span>}
               {infotipContent}
             </FieldsetLegend>
             {options
@@ -345,7 +366,7 @@ function Form<
           >
             {translatedLabel}
 
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <Select
@@ -392,6 +413,7 @@ function Form<
             <Fieldset
               render={
                 <RadioGroup<boolean>
+                  disabled={readonly}
                   className="flex items-center justify-between gap-3 py-2"
                   value={booleanValue}
                   onValueChange={(val) => handleFormChange(variable, val)}
@@ -405,18 +427,18 @@ function Form<
                 )}
               >
                 <span>{translatedLabel}</span>
-                {required && <span className="ml-1 text-red-500">*</span>}
+                {required && <span className="ms-1 text-red-500">*</span>}
                 {infotipContent}
               </FieldsetLegend>
               <div className="flex items-center gap-3">
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={false} />
                     False
                   </FieldLabel>
@@ -442,14 +464,13 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ModelParameterModal
             popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
-            isAgentStrategy={isAgentStrategy}
             value={value[variable]}
             setModel={(model) => handleModelChanged(variable, model)}
             readonly={readonly}
@@ -474,7 +495,7 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ToolSelector
@@ -525,7 +546,7 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.appSelector) {
-      const { variable, label, required, scope } = formSchema as
+      const { variable, label, required } = formSchema as
         | CredentialFormSchemaTextInput
         | CredentialFormSchemaSecretInput
 
@@ -538,12 +559,11 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <AppSelector
             disabled={readonly}
-            scope={scope}
             value={value[variable]}
             onSelect={(item) =>
               handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector })
@@ -569,11 +589,11 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <VarReferencePicker
-            readonly={false}
+            readonly={!!readonly}
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}

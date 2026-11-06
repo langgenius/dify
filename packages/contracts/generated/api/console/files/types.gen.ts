@@ -8,6 +8,16 @@ export type AllowedExtensionsResponse = {
   allowed_extensions: Array<string>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type UploadConfig = {
   attachment_image_file_size_limit: number
   audio_file_size_limit: number
@@ -16,7 +26,9 @@ export type UploadConfig = {
   file_upload_limit: number
   image_file_batch_limit: number
   image_file_size_limit: number
+  knowledge_file_size_limit: number
   single_chunk_attachment_limit: number
+  skill_file_size_limit: number
   video_file_size_limit: number
   workflow_file_upload_limit: number
 }
@@ -39,6 +51,36 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
 export type TextContentResponse = {
   content: string
 }
@@ -49,6 +91,12 @@ export type GetFilesSupportTypeData = {
   query?: never
   url: '/files/support-type'
 }
+
+export type GetFilesSupportTypeErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesSupportTypeError = GetFilesSupportTypeErrors[keyof GetFilesSupportTypeErrors]
 
 export type GetFilesSupportTypeResponses = {
   200: AllowedExtensionsResponse
@@ -63,6 +111,12 @@ export type GetFilesUploadData = {
   query?: never
   url: '/files/upload'
 }
+
+export type GetFilesUploadErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesUploadError = GetFilesUploadErrors[keyof GetFilesUploadErrors]
 
 export type GetFilesUploadResponses = {
   200: UploadConfig
@@ -80,6 +134,20 @@ export type PostFilesUploadData = {
   url: '/files/upload'
 }
 
+export type PostFilesUploadErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
+
 export type PostFilesUploadResponses = {
   201: FileResponse
 }
@@ -94,6 +162,13 @@ export type GetFilesByFileIdPreviewData = {
   query?: never
   url: '/files/{file_id}/preview'
 }
+
+export type GetFilesByFileIdPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesByFileIdPreviewError =
+  GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
   200: TextContentResponse

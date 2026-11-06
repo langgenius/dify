@@ -7,7 +7,7 @@ type TriggerProps = {
 }
 
 const Trigger = ({ option }: TriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (!option)
     return <span className="grow p-1">{t(($) => $['placeholder.select'], { ns: 'common' })}</span>
@@ -16,7 +16,7 @@ const Trigger = ({ option }: TriggerProps) => {
     <span className="flex min-w-0 items-center gap-x-0.5">
       <option.Icon className="size-4 shrink-0 text-text-tertiary" />
       <span className="min-w-0 grow truncate p-1">{option.label}</span>
-      <span className="relative inline-flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-xs-medium leading-3 whitespace-nowrap text-text-tertiary">
+      <span className="relative inline-flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-1.25 system-xs-medium leading-3 whitespace-nowrap text-text-tertiary">
         {option.type}
       </span>
     </span>

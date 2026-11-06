@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer'
 import http from 'node:http'
 import net from 'node:net'
 import { PassThrough } from 'node:stream'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolveCookieRewriteLocalScopeKey, toScopedLocalCookieName } from './cookies'
 import {
   buildUpstreamUrl,
