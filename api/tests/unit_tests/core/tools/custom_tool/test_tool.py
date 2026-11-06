@@ -4,12 +4,13 @@ import json
 import operator
 from collections.abc import Iterator
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qsl
 
 import httpx
 import pytest
+from httpx._models import Response
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -217,12 +218,12 @@ def _build_tool(*, openapi: dict[str, Any] | None = None) -> ApiTool:
 
 class TestCustomToolCases:
     @staticmethod
-    def test_parsed_response_to_string():
+    def test_parsed_response_to_string() -> None:
         assert ParsedResponse({"a": 1}, True).to_string() == '{"a": 1}'
         assert ParsedResponse("ok", False).to_string() == "ok"
 
     @staticmethod
-    def test_api_tool_fork_runtime_and_validate_credentials(monkeypatch: pytest.MonkeyPatch):
+    def test_api_tool_fork_runtime_and_validate_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         tool = _build_tool()
         forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
         assert isinstance(forked, ApiTool)
@@ -244,7 +245,7 @@ class TestCustomToolCases:
         assert result == '{"ok": true}'
 
     @staticmethod
-    def test_assembling_request_auth_header_assembly():
+    def test_assembling_request_auth_header_assembly() -> None:
         tool = _build_tool()
 
         headers = tool.assembling_request(parameters={})
@@ -274,10 +275,10 @@ class TestCustomToolCases:
         assert tool.assembling_request(parameters={}) == {}
 
     @staticmethod
-    def test_assembling_request_runtime_auth_errors():
+    def test_assembling_request_runtime_auth_errors() -> None:
         tool = _build_tool()
 
-        tool.runtime = None
+        tool.runtime = None  # pyrefly: ignore[bad-assignment]  # invalid state under test
         with pytest.raises(ToolProviderCredentialValidationError, match="runtime not initialized"):
             tool.assembling_request(parameters={})
 
@@ -294,17 +295,17 @@ class TestCustomToolCases:
             tool.assembling_request(parameters={})
 
     @staticmethod
-    def test_assembling_request_parameter_validation_and_defaults():
+    def test_assembling_request_parameter_validation_and_defaults() -> None:
         tool = _build_tool()
 
         tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "x"}
-        tool.api_bundle.parameters = [
+        tool.api_bundle.parameters = [  # pyrefly: ignore[bad-assignment]  # deliberately malformed parameter
             SimpleNamespace(required=True, name="required_param", default=None),
         ]
         with pytest.raises(ToolParameterValidationError, match="Missing required parameter required_param"):
             tool.assembling_request(parameters={})
 
-        tool.api_bundle.parameters = [
+        tool.api_bundle.parameters = [  # pyrefly: ignore[bad-assignment]  # deliberately malformed parameter
             SimpleNamespace(required=True, name="required_param", default="d"),
         ]
         params = {}
@@ -312,7 +313,7 @@ class TestCustomToolCases:
         assert params["required_param"] == "d"
 
     @staticmethod
-    def test_validate_and_parse_response_branches():
+    def test_validate_and_parse_response_branches() -> None:
         tool = _build_tool()
 
         with pytest.raises(ToolInvokeError, match="status code 500"):
@@ -342,7 +343,7 @@ class TestCustomToolCases:
             tool.validate_and_parse_response("invalid")  # type: ignore[arg-type]
 
     @staticmethod
-    def test_get_parameter_value_and_type_conversion_helpers():
+    def test_get_parameter_value_and_type_conversion_helpers() -> None:
         tool = _build_tool()
 
         assert tool.get_parameter_value({"name": "x"}, {"x": 1}) == 1
@@ -367,7 +368,7 @@ class TestCustomToolCases:
         assert tool._convert_body_property_type({"anyOf": [{"type": "integer"}]}, "2") == 2
 
     @staticmethod
-    def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch: pytest.MonkeyPatch):
+    def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch: pytest.MonkeyPatch) -> None:
         openapi = {
             "parameters": [
                 {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}},
@@ -393,9 +394,9 @@ class TestCustomToolCases:
         tool = _build_tool(openapi=openapi)
         tool.runtime.credentials = {"auth_type": "api_key_query", "api_key_query_param": "key", "api_key_value": "v"}
         headers = {}
-        captured = {}
+        captured: dict[str, object] = {}
 
-        def _fake_get(url, **kwargs):
+        def _fake_get(url: str, **kwargs: object) -> Response:
             captured["url"] = url
             captured["kwargs"] = kwargs
             return httpx.Response(200, text="ok")
@@ -409,10 +410,13 @@ class TestCustomToolCases:
         )
 
         assert isinstance(response, httpx.Response)
-        assert captured["url"].endswith("/items/123")
-        assert captured["kwargs"]["params"]["q"] == "search"
-        assert captured["kwargs"]["params"]["key"] == "v"
-        assert captured["kwargs"]["headers"]["Content-Type"] == "application/json"
+        captured_kwargs = cast(dict[str, object], captured["kwargs"])
+        captured_params = cast(dict[str, str], captured_kwargs["params"])
+        captured_headers = cast(dict[str, str], captured_kwargs["headers"])
+        assert cast(str, captured["url"]).endswith("/items/123")
+        assert captured_params["q"] == "search"
+        assert captured_params["key"] == "v"
+        assert captured_headers["Content-Type"] == "application/json"
 
         invalid_method_tool = _build_tool(openapi={"parameters": []})
         with pytest.raises(ValueError, match="Invalid http method"):
@@ -421,8 +425,8 @@ class TestCustomToolCases:
     @staticmethod
     def test_do_http_request_handles_file_upload_and_invoke_paths(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ):
-        openapi = {
+    ) -> None:
+        openapi: dict[str, object] = {
             "parameters": [],
             "requestBody": {
                 "content": {
@@ -438,9 +442,9 @@ class TestCustomToolCases:
         tool = _build_tool(openapi=openapi)
         tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "k"}
         fake_file = SimpleNamespace(filename="a.txt", mime_type="text/plain")
-        captured = {}
+        captured: dict[str, object] = {}
 
-        def _fake_post(url, **kwargs):
+        def _fake_post(url: str, **kwargs: dict[str, object]) -> Response:
             captured["headers"] = kwargs["headers"]
             captured["files"] = kwargs["files"]
             return httpx.Response(200, text="ok")
@@ -454,8 +458,10 @@ class TestCustomToolCases:
             parameters={"file": fake_file},
         )
         assert isinstance(response, httpx.Response)
-        assert "Content-Type" not in captured["headers"]
-        assert captured["files"][0][0] == "file"
+        captured_headers = cast(dict[str, str], captured["headers"])
+        captured_files = cast(list[tuple[str, object]], captured["files"])
+        assert "Content-Type" not in captured_headers
+        assert captured_files[0][0] == "file"
 
         # _invoke JSON path
         monkeypatch.setattr(tool, "assembling_request", lambda parameters: {})
@@ -468,7 +474,9 @@ class TestCustomToolCases:
         monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse("plain", False))
         messages = list(tool.invoke(session=sqlite_session, user_id="u1", tool_parameters={}))
         assert len(messages) == 1
-        assert messages[0].message.text == "plain"
+        message = messages[0].message
+        assert isinstance(message, ToolInvokeMessage.TextMessage)
+        assert message.text == "plain"
 
 
 def _get_message_by_type[T](msgs: list[ToolInvokeMessage], msg_type: type[T]) -> ToolInvokeMessage | None:
@@ -486,7 +494,7 @@ class TestApiToolCases:
     class TestApiToolInvoke:
         """Test suite for ApiTool._invoke method to ensure JSON responses are properly serialized."""
 
-        def setup_method(self):
+        def setup_method(self) -> None:
             """Setup test fixtures."""
             # Create a mock tool entity
             self.mock_tool_identity = ToolIdentity(
@@ -592,7 +600,7 @@ class TestApiToolCases:
             ids=operator.itemgetter(0),
         )
         def test_invoke_with_non_dict_json_response_creates_text_message_with_serialized_json(
-            self, mock_get: Mock, test_case, database_session: Session
+            self, mock_get: Mock, test_case: tuple[str, object], database_session: Session
         ) -> None:
             """Test that when upstream returns a non-dict JSON,
             the output Text message contains JSON-serialized string.
