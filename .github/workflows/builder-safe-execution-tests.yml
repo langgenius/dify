@@ -356,11 +356,25 @@ jobs:
               print(f"COMPLETENESS {problem}", flush=True)
           raise SystemExit(int(code) or (1 if problems else 0))
           PY
+      - name: Real confirmed recovery PostgreSQL and Redis owners
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -euo pipefail
+          postgres_bin="$(pg_config --bindir)"
+          test -x "$postgres_bin/initdb"
+          test -x "$postgres_bin/pg_ctl"
+          export PATH="$postgres_bin:$PATH"
+          # The API already installs this checkout's editable SDK. The fixture also imports
+          # SDK server code; its sole missing dependency is pinned by dify-agent/uv.lock.
+          timeout --kill-after=30s 18m uv run --project api --no-sync --with jwcrypto==1.5.7 python -u - < .github/scripts/builder-confirmed-recovery.py 2>&1 | tee builder-confirmed-recovery.log
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: builder-safe-execution-native-postgres
           path: |
+            builder-confirmed-recovery.xml
+            builder-confirmed-recovery.log
             builder-safe-execution.xml
             builder-safe-execution.log
   confirmed-tool-units:
@@ -960,8 +974,47 @@ jobs:
               'test_prefixed_deployment_refuses_paths_outside_its_exact_runtime_mount': 6,
               'test_request_stream_and_prebuilt_send_ignore_all_body_markers': 4,
           })
+          # ENG-1240: exact coordinated recovery protocol/backend/Redis additions.
+          for module, functions in {
+              "tests.local.dify_agent.protocol.test_confirmed_recovery": {
+                  "test_successor_roundtrip_and_handoff_binding": 1,
+                  "test_successor_rejects_invalid_or_unknown_fields": 5,
+                  "test_successor_requires_fresh_workspace_and_unique_pending_links": 1,
+                  "test_handoff_rejects_relation_digest_mismatch": 1
+              },
+              "tests.local.dify_agent.runtime.test_confirmed_recovery": {
+                  "test_manifest_rejects_unknown_version_extra_and_unpaired_home": 1,
+                  "test_confirmed_handoff_real_redis": 17,
+                  "test_snapshot_whitelist_rejects_environment_state": 12,
+                  "test_snapshot_retains_history_and_clears_only_empty_initialization": 1,
+                  "test_authenticated_route_and_async_sync_clients_use_same_wait_without_scheduling": 1,
+                  "test_conflicting_real_cas_fences_old_transport_and_restores_only_successor": 1,
+                  "test_final_cas_rechecks_cancellation_claim_and_pruned_wait_after_authority_io": 3,
+                  "test_preallocation_eligibility_requires_no_successor_resources": 8,
+                  "test_preallocation_rejects_unsupported_pending_history": 15,
+                  "test_preallocation_accepts_only_known_history_without_inventing_workspace_generation": 4,
+                  "test_full_relation_and_real_cas_reject_matching_digest_unsupported_history": 7,
+                  "test_full_config_validation_requires_exact_successor_generation_and_namespace": 1,
+                  "test_real_cas_preserves_supported_model_and_recovered_tool_history": 2
+              },
+              "tests.local.dify_agent.runtime_backend.test_binding_inspection_deadline": {
+                  "test_local_inspection_has_total_deadline_and_private_cleanup": 5,
+                  "test_inspection_helper_bounds_and_sanitizes_owned_resource_close": 2
+              },
+              "tests.local.dify_agent.server.test_binding_inspection": {
+                  "test_inspection_dto_rejects_unbounded_or_conflicting_evidence": 1,
+                  "test_enterprise_health_is_never_authoritative_absence": 8,
+                  "test_local_identity_mismatch_and_transport_failure_are_uncertain": 1,
+                  "test_local_real_transport_runs_fixed_read_only_probe": 5,
+                  "test_other_backends_and_native_scopes_are_explicitly_unsupported": 1,
+                  "test_client_rejects_foreign_inspection_identity": 2,
+                  "test_fixed_local_probe_executes_only_exact_paths": 6,
+                  "test_private_inspection_validation_never_echoes_input": 1
+              }
+          }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-native-agent.xml"
-          code = pytest.main(['tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
+          code = pytest.main(['tests/local/dify_agent/protocol/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime_backend/test_binding_inspection_deadline.py', 'tests/local/dify_agent/server/test_binding_inspection.py', 'tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
           identities = set()
           actual = {module: Counter() for module in EXPECTED}

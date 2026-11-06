@@ -32,6 +32,7 @@ from runtime_contracts.builder.native.contracts import (
     NativeTestContextRef,
     operation_digest,
 )
+from services.dify_builder.native_testing.agent_recovery import RecoveryPendingProof, recovery_record
 from services.dify_builder.native_testing.private_reads import validate_invocation_workflow
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import (
@@ -48,6 +49,7 @@ class ResolvedPendingIntent(FrozenDTO):
     generation: Counter
     checkpoint: CheckpointRef
     intent: EffectIntent
+    recovery: RecoveryPendingProof | None = None
 
 
 class PendingIntentPort(Protocol):
@@ -158,16 +160,24 @@ class ProtectedPendingIntentReader:
             app_id = request.app_id
         # State owner validates actual child-app access before decrypting anything.
         payload = self.store.read_checkpoint(ref=ref, checkpoint=checkpoint, for_projection=for_projection)
-        matches = [
-            intent
-            for journal in payload.node_journals
-            for intent in journal.intents
-            if operation_digest(intent.key) == operation.operation_digest
-        ]
+        recovery_state = self.store.load_recovery_checkpoint_state(
+            ref=ref, checkpoint=checkpoint, for_projection=for_projection
+        )
+        proof = None if recovery_state is None else recovery_state.proof
+        matches = (
+            [entry.intent for entry in proof.selection.approvals if entry.pending_id == pending_operation_id]
+            if proof is not None and checkpoint == proof.selection.original_checkpoint
+            else [
+                intent
+                for journal in payload.node_journals
+                for intent in journal.intents
+                if operation_digest(intent.key) == operation.operation_digest
+            ]
+        )
         if payload.generation != pending.generation or len(matches) != 1:
             raise BuilderExecutionPolicyError("native_pending_intent_unavailable")
         resolved = ResolvedPendingIntent(
-            ref=ref, generation=payload.generation, checkpoint=checkpoint, intent=matches[0]
+            ref=ref, generation=payload.generation, checkpoint=checkpoint, intent=matches[0], recovery=proof
         )
         validate_pending_snapshot(
             resolved=resolved,
@@ -196,6 +206,17 @@ class ProtectedPendingIntentReader:
         )
         if payload.generation != resolved.generation:
             raise BuilderExecutionPolicyError("native_pending_conflict")
+        recovery_state = self.store.load_recovery_checkpoint_state(
+            ref=resolved.ref, checkpoint=resolved.checkpoint, for_projection=for_projection
+        )
+        proof = None if recovery_state is None else recovery_state.proof
+        if proof != resolved.recovery:
+            raise BuilderExecutionPolicyError("native_pending_conflict")
+        if proof is not None and resolved.checkpoint == proof.selection.original_checkpoint:
+            matches = [entry.proposal.terms for entry in proof.selection.approvals if entry.intent == resolved.intent]
+            if len(matches) != 1:
+                raise BuilderExecutionPolicyError("native_approval_proposal_unavailable")
+            return matches[0]
         if not any(intent == resolved.intent for journal in payload.node_journals for intent in journal.intents):
             raise BuilderExecutionPolicyError("native_pending_conflict")
         matches = [proposal.terms for proposal in payload.approval_proposals if proposal.key == resolved.intent.key]
@@ -219,9 +240,31 @@ class PendingDecisionGuard(FrozenDTO):
     invocation_workflow_id: ID
     invocation_revision: Digest
 
-    def recheck(self, *, session: Session, owned: OwnedNativeTest, intent: EffectIntent, scope_digest: str) -> None:
+    def recheck(
+        self, *, session: Session, owned: OwnedNativeTest, intent: EffectIntent, scope_digest: str, recovery_state=None
+    ) -> None:
         if owned.ref != self.resolved.ref or intent != self.resolved.intent:
             raise BuilderExecutionPolicyError("native_pending_conflict")
+        # The authorization owner supplies the full selected-state recheck before
+        # this guard. A missing proof cannot turn a recovery into ordinary flow.
+        record = recovery_record(owned.bindings)
+        if (record is None) != (self.resolved.recovery is None):
+            raise BuilderExecutionPolicyError("native_pending_conflict")
+        if self.resolved.recovery is not None:
+            if recovery_state is None or recovery_state.proof != self.resolved.recovery:
+                raise BuilderExecutionPolicyError("native_pending_conflict")
+            NativeExecutionStateStore.recheck_recovery_checkpoint_state(
+                session=session, owned=owned, state=recovery_state, checkpoint=self.resolved.checkpoint
+            )
+            matches = [
+                e
+                for e in self.resolved.recovery.selection.approvals
+                if e.pending_id == self.pending_operation_id and e.intent == intent
+            ]
+            if self.resolved.checkpoint == self.resolved.recovery.selection.original_checkpoint and (
+                len(matches) != 1 or matches[0].proposal.terms != self.terms
+            ):
+                raise BuilderExecutionPolicyError("native_pending_conflict")
         pending = session.scalar(select(NativePendingAction).where(NativePendingAction.id == self.pending_operation_id))
         operation = (
             session.scalar(select(NativeEffectOperation).where(NativeEffectOperation.id == pending.operation_id))

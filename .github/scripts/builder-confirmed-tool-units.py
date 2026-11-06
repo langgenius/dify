@@ -239,6 +239,15 @@ FILES += [
     "api/tests/unit_tests/services/dify_builder/test_repair_presentation.py",
     "api/tests/unit_tests/services/dify_builder/test_tool_output_evidence.py"
 ]
+# ENG-1240: pure recovery state and reservation owner regressions.
+FILES += [
+    "api/tests/unit_tests/controllers/inner_api/test_agent_runtime_lineage.py",
+    "api/tests/unit_tests/services/dify_builder/native_testing/test_agent_associations.py",
+    "api/tests/unit_tests/services/dify_builder/native_testing/test_agent_recovery.py",
+    "api/tests/unit_tests/services/dify_builder/native_testing/test_agent_recovery_state.py",
+    "api/tests/unit_tests/services/dify_builder/native_testing/test_native_runtime.py",
+    "api/tests/unit_tests/services/dify_builder/test_agent_asset_operations.py",
+]
 code = pytest.main(
     [
         *FILES,
@@ -3095,6 +3104,150 @@ for module, functions in {
         "test_invalid_unicode_text_is_malformed_without_losing_independent_json_structure": 3,
         "test_runtime_data_keys_have_no_field_provenance_in_either_channel": 2,
         "test_anonymous_object_samples_preserve_empty_heterogeneity_and_all_shape_limits": 1
+    }
+}.items():
+    a4_expected.setdefault(module, {}).update(functions)
+# ENG-1240: exact additions from affected module collection; retain prior inventories.
+for module, functions in {
+    "tests.unit_tests.controllers.inner_api.agent.test_llm": {
+        "test_post_streams_plugin_compatible_envelope": 2
+    },
+    "tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage": {
+        "test_actual_native_identity_with_all_body_markers_removed_refuses_before_services": 20,
+        "test_agent_bearer_refuses_equality_with_existing_enterprise_or_daemon_credential": 2,
+        "test_blank_agent_credential_never_authenticates": 3,
+        "test_control_handler_itself_cannot_consume_a_physical_permit": 1,
+        "test_duplicate_selection_header_cannot_select_a_run": 1,
+        "test_expired_runtime_only_admits_existing_result_ack_and_outcome": 4,
+        "test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_authorization": 8,
+        "test_legacy_plugin_route_never_accepts_agent_bearer": 1,
+        "test_legacy_rejects_explicit_native_envelope": 1,
+        "test_ordinary_private_identity_rejects_native_envelope_before_service": 2,
+        "test_prepare_intent_refusal_logs_only_bounded_policy_category": 2,
+        "test_private_read_failure_never_reaches_model_service": 2,
+        "test_registered_resumed_config_read_requires_current_bound_exact_owner": 7,
+        "test_registered_strict_route_refuses_missing_bearer": 20,
+        "test_run_bound_claim_route_reaches_shell_owner_only_after_exact_lineage": 1,
+        "test_runtime_admission_cannot_leak_into_a_later_legacy_request_on_shared_app_context": 1,
+        "test_runtime_schema_documents_its_distinct_bearer_and_selection": 1,
+        "test_strict_initial_control_reaches_exact_s1_owner_without_effect_envelope": 2,
+        "test_strict_route_rejects_equal_agent_plugin_credentials": 1,
+        "test_strict_route_rejects_wrong_or_mixed_credentials": 4,
+        "test_strict_route_requires_complete_bounded_selection": 5,
+        "test_strict_route_requires_installed_lineage_even_without_markers": 1,
+        "test_transport_selection_refuses_noncanonical_or_duplicate_key_json": 4
+    },
+    "tests.unit_tests.services.dify_builder.native_testing.test_agent_associations": {
+        "test_actual_agent_access_and_publication_guards_precede_private_write": 5,
+        "test_actual_allocation_owner_parser_rejects_malformed_scope_and_unknown_proof": 2,
+        "test_actual_operation_cursor_finish_is_untouched_by_agent_associations": 1,
+        "test_actual_sql_workspace_backend_reference_cannot_drift": 1,
+        "test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects": 1,
+        "test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk": 1,
+        "test_agent_run_cannot_alias_workflow_native_run_or_inject_proof_fields": 1,
+        "test_backend_generation_seven_cp_local_zero_remains_readable_at_local_two_scope_three": 1,
+        "test_blank_home_never_weakens_required_fields_or_pin_equality": 3,
+        "test_blank_home_recovery_association_is_data_not_isolated_admission": 1,
+        "test_cancellation_metadata_read_ignores_only_expiry": 5,
+        "test_checkpoint_association_requires_one_exact_saved_parent_journal": 5,
+        "test_commit_checkpoint_rejects_unselected_agent_private_material": 4,
+        "test_contract_purity_guard_detects_runtime_dependencies": 9,
+        "test_current_local_generation_controls_config_write_without_shared_counter_alias": 1,
+        "test_empty_agent_checkpoint_keeps_legacy_private_payload_and_repeat_identity": 1,
+        "test_expired_projection_keeps_agent_checkpoint_proof_without_writes": 1,
+        "test_lost_post_commit_ack_reuses_existing_selected_checkpoint_without_storage_write": 1,
+        "test_missing_actual_workspace_owner_refuses_without_agent_private_write": 1,
+        "test_normal_blank_home_association_roundtrip_retains_explicit_none": 1,
+        "test_nullable_normal_home_cannot_enter_isolated_workspace_owner": 2,
+        "test_parent_locator_rejects_untyped_or_noncanonical_identity": 4,
+        "test_protected_read_timing_failure_does_not_change_guard_result": 1,
+        "test_pure_association_preserves_distinct_runs_and_no_effect_cursor": 1,
+        "test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io": 2,
+        "test_read_checkpoint_revalidates_current_agent_private_relations": 6,
+        "test_same_logical_key_rejects_changed_agent_material": 4,
+        "test_second_distinct_occurrence_cannot_silently_reuse_single_workspace": 1,
+        "test_sql_recheck_after_private_io_refuses_drift_before_ack": 3,
+        "test_stored_parent_input_owner_rejects_before_agent_write": 4,
+        "test_v2_association_validation_reads_selected_config_once": 2,
+        "test_v2_single_config_read_keeps_sql_recheck_after_io": 2,
+        "test_wait_structure_never_accepts_caller_ack_or_cleanup_authority": 7,
+        "test_workspace_data_counter_is_strict_even_without_association": 4,
+        "test_workspace_ref_remains_same_public_reexport": 1
+    },
+    "tests.unit_tests.services.dify_builder.native_testing.test_agent_recovery": {
+        "test_allocation_ack_is_strict_and_rejects_reused_physical_refs": 1,
+        "test_allocation_settlement_retains_ack_after_revocation_and_rejects_rewrite": 1,
+        "test_blocked_settlement_retains_ack_after_revocation_and_never_rewrites_ready": 1,
+        "test_checkpoint_writer_rejects_reserved_identity_before_mutation": 1,
+        "test_coalescing_never_accepts_changed_immutable_reconstruction": 1,
+        "test_completed_handshake_requires_exact_operation_prefix": 4,
+        "test_confirmed_execution_rebind_requires_exact_caller_and_old_binding": 1,
+        "test_confirmed_snapshot_refusal_is_nonfatal_and_never_uses_generic_saver": 1,
+        "test_confirmed_snapshot_capture_failure_is_nonfatal_and_logs_no_private_values": 1,
+        "test_confirmed_sql_finalization_retires_exact_participant_and_keeps_snapshot": 1,
+        "test_corrupt_present_record_fails_closed": 1,
+        "test_every_partial_recovery_blocks_mutation": 6,
+        "test_finalization_requires_exact_successor_checkpoint_object": 1,
+        "test_finalize_selection_atomically_rebinds_and_selects_acknowledged_bundle": 1,
+        "test_fresh_wait_ack_is_required_and_predecessor_never_becomes_current": 1,
+        "test_operation_owner_rejects_reserved_predecessor_before_resolving_resources": 1,
+        "test_ordinary_mutation_without_recovery_preserves_existing_generation": 2,
+        "test_pending_state_alone_never_proves_zero_dispatch": 1,
+        "test_reconnect_coalesces_advanced_attempt_without_reallocating": 5,
+        "test_recovery_config_validation_requires_original_confirmed_create_key": 1,
+        "test_reservation_and_claim_require_exact_active_sql_owner": 4,
+        "test_reservation_coalesces_keys_and_creating_has_one_winner": 1,
+        "test_snapshot_store_refuses_missing_authenticated_root": 1,
+        "test_snapshot_write_reloads_reservation_from_sql": 1,
+        "test_snapshot_write_uses_complete_original_identity_and_recovery_gate": 1,
+        "test_sql_selection_rejects_matching_digest_foreign_input_result_ref": 1
+    },
+    "tests.unit_tests.services.dify_builder.native_testing.test_agent_recovery_state": {
+        "test_attempt_identity_coalesces_interactions_but_changes_with_predecessor": 1,
+        "test_phase_transition_is_pure_and_never_retries_unknown_or_changes_immutable_args": 1,
+        "test_record_rejects_invalid_refs_versions_phases_and_identity": 7,
+        "test_sql_ready_preserves_separate_sdk_receipt_and_wait_acknowledgements": 1
+    },
+    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion": {
+        "test_terminal_projection_requires_settled_retired_intent": 4
+    },
+    "tests.unit_tests.services.dify_builder.native_testing.test_native_runtime": {
+        "test_actual_activated_startup_failure_consumes_only_original_zero_activity_verifier": 1,
+        "test_actual_delivery_capacity_is_bound_before_claim_but_lifetime_stays_inactive": 1,
+        "test_actual_inactive_retained_delivery_and_missing_cancel_handles_grant_no_cleanup": 1,
+        "test_actual_stream_cleanup_returns_without_signalling_retired_host": 1,
+        "test_actual_wait_snapshot_restores_exact_objects_journal_and_generation_gap": 2,
+        "test_broker_actor_hint_cannot_replace_persisted_request_owner": 1,
+        "test_cancel_original_joined_owner_rechecks_retained_snapshot": 2,
+        "test_cancel_projection_includes_owned_sources": 12,
+        "test_cancel_projection_never_infers_clean_from_incomplete_source_history": 5,
+        "test_cancel_projection_reloads_after_outside_writer_cleanup": 3,
+        "test_cancel_projection_repeated_cancel_observes_source_state_change": 1,
+        "test_cancel_projection_retains_older_unresolved_source": 1,
+        "test_cleanup_only_log_release_refuses_live_dispatcher_and_keeps_original_lease": 1,
+        "test_code_capability_requires_explicit_trusted_owner_and_default_stays_http": 1,
+        "test_composed_cancel_does_not_upgrade_incomplete_or_noninitial_history": 5,
+        "test_composed_start_cancel_before_delivery_reconciles_without_physical_acquisition": 1,
+        "test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one": 1,
+        "test_delivered_unclaimed_cancel_retires_logically_without_consuming_lifetime": 1,
+        "test_get_cancel_interleaving_refreshes_orm_state_and_projects_one_cancellation": 4,
+        "test_initial_dispatch_uses_no_checkpoint_and_duplicate_delivery_never_runs_again": 1,
+        "test_logical_preclaim_retirement_rechecks_proof_and_exact_retained_owners": 5,
+        "test_over_128_delivered_unclaimed_logical_cancellations_reclaim_same_worker_slots": 1,
+        "test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run": 20,
+        "test_resume_history_refuses_fake_host_before_any_repository_cache_or_io": 1,
+        "test_resume_settlement_refuses_committed_wait_before_actual_finalization": 3,
+        "test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknown_live": 1,
+        "test_unknown_joined_owner_can_release_only_actual_dead_dispatcher_lease": 1,
+        "test_unrestored_host_cannot_authorize_arbitrary_snapshot_or_resume_history": 1
+    },
+    "tests.unit_tests.services.dify_builder.test_agent_asset_operations": {
+        "test_confirmed_composer_keeps_published_config_and_shell": 4,
+        "test_runtime_shell_result_commits_before_return_and_preserves_exact_key": 1,
+        "test_saved_shell_operation_revalidates_for_public_approval_without_runtime_request": 1,
+        "test_shell_intent_uses_exact_protected_composition_and_current_workspace": 8,
+        "test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim": 3,
+        "test_stub_read_requires_claimed_unsettled_shell_operation": 4
     }
 }.items():
     a4_expected.setdefault(module, {}).update(functions)

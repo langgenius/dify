@@ -293,6 +293,8 @@ class NativeEffectSession:
         if self.continuation.native_test_profile == "confirmed":
             if self.continuation.parent_execution_id is None:
                 raise NativePolicyStopped("native_effect_owner_mismatch")
+            if self.continuation.recovery_workspace_generation:
+                path = ("recovery", str(self.continuation.recovery_workspace_generation), *path)
             path = (self.continuation.parent_execution_id, *path)
         key = AgentOperationKey(invocation_id=self.continuation.ref.invocation_id, occurrence_path=path, cursor=0)
         intent = await self.prepare_intent(

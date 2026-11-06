@@ -72,6 +72,7 @@ if TYPE_CHECKING:
     from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
     from services.agent.workflow_run_recovery import WorkflowAgentRunRecovery
     from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
+    from services.dify_builder.native_testing.agent_recovery import ConfirmedSnapshotIdentity
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 
 logger = logging.getLogger(__name__)
@@ -351,6 +352,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         attempt = 0
         while True:
             parent_node = None
+            snapshot_identity = None
             after = None
             runtime_request = None
             create_response = None
@@ -359,7 +361,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     from services.agent.workflow_run_recovery import AgentCreateAcknowledgementUnknown
 
                     try:
-                        create_response, parent_node, after = self._start_or_resume_confirmed(
+                        create_response, parent_node, after, snapshot_identity = self._start_or_resume_confirmed(
                             dify_context=dify_ctx,
                             session_scope=session_scope,
                             stored_session=stored_session,
@@ -496,6 +498,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     binding_id=stored_session.binding_id,
                     snapshot=terminal_event.session_snapshot,
                     metadata=metadata,
+                    confirmed_identity=snapshot_identity,
                 )
             if exhausted is not None:
                 # Streaming error / unexpected end — surface immediately without
@@ -530,6 +533,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 binding_id=stored_session.binding_id,
                 snapshot=terminal_event.session_snapshot,
                 metadata=metadata,
+                confirmed_identity=snapshot_identity,
             )
 
             success_event = terminal_event
@@ -669,8 +673,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
                 if continued.association.agent_run_id != response.run_id or continued.wait is None:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-                return response, parent, continued.wait.backend_wait_event_id
-            return response, parent, None
+                identity = self._capture_confirmed_snapshot(
+                    parent=parent,
+                    response=response,
+                    stored_session=stored_session,
+                    agent_generation=continued.wait.agent_generation + 1,
+                )
+                return response, parent, continued.wait.backend_wait_event_id, identity
+            identity = self._capture_confirmed_snapshot(
+                parent=parent,
+                response=response,
+                stored_session=stored_session,
+                agent_generation=0,
+            )
+            return response, parent, None, identity
         if response is not None:
             raise BuilderExecutionPolicyError("native_agent_input_unavailable")
         context = self._agent_preparation.state_store.load_context(ref=marker.ref)
@@ -711,7 +727,79 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             client=client,
             on_persisted=process_data.update,
         )
-        return response, parent, None
+        identity = self._capture_confirmed_snapshot(
+            parent=parent,
+            response=response,
+            stored_session=stored_session,
+            agent_generation=0,
+        )
+        return response, parent, None, identity
+
+    def _capture_confirmed_snapshot(self, *, parent, response, stored_session, agent_generation):
+        """Obtain acknowledged association and capture this stream's original tuple.
+
+        Initial bind uses the existing runtime identity owner, never an invented
+        association ref. Failure refuses persistence while stream/cancellation
+        retain their existing independent behavior.
+        """
+        from dify_agent.protocol.confirmed_recovery import AgentRecoveryBinding
+        from dify_agent.protocol.native_testing import AgentParentNodeRef as WireParent
+        from dify_agent.protocol.native_testing import AgentPrepareRunPayload
+
+        from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+        assert self._agent_preparation is not None
+        assert self._agent_commands is not None
+        try:
+            store = self._agent_preparation.state_store
+            context = store.load_context(ref=parent.ref)
+            config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
+            try:
+                protected = store.load_agent_association(ref=parent.ref, parent_node=parent)
+            except BuilderExecutionPolicyError as error:
+                if error.reason_code != "native_agent_object_unavailable" or agent_generation != 0:
+                    raise
+                self._agent_preparation.bind_created_run(
+                    payload=AgentPrepareRunPayload(
+                        parent_node=WireParent.model_validate(parent.model_dump(mode="json")),
+                        agent_run_id=response.run_id,
+                        request_digest=config.config_digest,
+                    )
+                )
+                protected = store.load_agent_association(ref=parent.ref, parent_node=parent)
+            workspace = protected.association.workspace
+            if (stored_session.binding_id, stored_session.workspace_id, stored_session.backend_binding_ref) != (
+                workspace.binding_id,
+                workspace.workspace_id,
+                workspace.backend_binding_ref,
+            ):
+                raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+            return self._agent_commands.capture_session_snapshot_identity(
+                parent_node=parent,
+                parent_generation=context.generation,
+                agent_run_id=response.run_id,
+                agent_generation=agent_generation,
+                binding=AgentRecoveryBinding(
+                    binding_id=workspace.binding_id,
+                    workspace_id=workspace.workspace_id,
+                    binding_ref=workspace.backend_binding_ref,
+                    workspace_ref=workspace.backend_workspace_ref,
+                    workspace_generation=workspace.workspace_generation,
+                    association_object_ref=protected.association_object_ref,
+                    config_ref=config.config_ref,
+                    config_digest=config.config_digest,
+                ),
+            )
+        except Exception as error:
+            logger.warning(
+                "Failed to capture confirmed Agent session snapshot identity: "
+                "request_id=%s node_execution_id=%s agent_run_id=%s error_type=%s",
+                parent.ref.request_id,
+                parent.execution_id,
+                response.run_id,
+                type(error).__name__,
+            )
+            return None
 
     def _control_pause(self, inputs, process_data, metadata, reason):
         metadata["agent_backend"] = {**dict(metadata.get("agent_backend") or {}), "status": reason}
@@ -959,13 +1047,31 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         binding_id: str,
         snapshot: SessionSnapshot | None,
         metadata: dict[str, Any],
+        confirmed_identity: ConfirmedSnapshotIdentity | None = None,
     ) -> None:
         try:
-            self._session_store.save_active_snapshot(
-                scope=session_scope,
-                binding_id=binding_id,
-                snapshot=snapshot,
-            )
+            context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+            if context.builder_agent_execution is not None:
+                from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+                if self._agent_commands is None or confirmed_identity is None:
+                    raise BuilderExecutionPolicyError("native_agent_snapshot_identity_unavailable")
+                if (confirmed_identity.parent_node.ref, confirmed_identity.binding.binding_id) != (
+                    context.builder_agent_execution.ref,
+                    binding_id,
+                ):
+                    raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+                self._agent_commands.save_session_snapshot(
+                    identity=confirmed_identity,
+                    session_scope=session_scope,
+                    snapshot=snapshot,
+                )
+            else:
+                self._session_store.save_active_snapshot(
+                    scope=session_scope,
+                    binding_id=binding_id,
+                    snapshot=snapshot,
+                )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
             metadata["agent_backend"] = agent_backend

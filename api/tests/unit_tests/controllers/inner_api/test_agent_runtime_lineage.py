@@ -203,7 +203,8 @@ def test_actual_native_identity_with_all_body_markers_removed_refuses_before_ser
         "native-testing/prepared-config",
     }
     assert response.status_code == (400 if initial_control else 409)
-    assert phase == ([] if initial_control else ["backend"])
+    # The exact read-result exception validates its bounded body before any I/O.
+    assert phase == ([] if initial_control or path == "native-testing/read-result" else ["backend"])
     assert all(counter.call_count == 0 for counter in counters)
 
 

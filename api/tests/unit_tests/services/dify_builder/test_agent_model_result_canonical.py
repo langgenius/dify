@@ -11,7 +11,12 @@ from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 from models.dify_builder_native_tests import NativeEffectOperation
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_json
 from runtime_contracts.builder.native.contracts import operation_digest
@@ -33,31 +38,31 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     operations_service: AgentOperationService,
 ) -> None:
     pending = envelope()
-    messages = (
+    messages: list[PromptMessage] = (
         [
-            {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {
-                        "id": "synthetic-call",
-                        "type": "function",
-                        "function": {"name": "synthetic_parse", "arguments": "{}"},
-                    }
+            AssistantPromptMessage(
+                content="",
+                tool_calls=[
+                    AssistantPromptMessage.ToolCall(
+                        id="synthetic-call",
+                        type="function",
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name="synthetic_parse", arguments="{}"
+                        ),
+                    )
                 ],
-            },
-            {"role": "tool", "content": "synthetic-result", "tool_call_id": "synthetic-call"},
+            ),
+            ToolPromptMessage(content="synthetic-result", tool_call_id="synthetic-call"),
         ]
         if with_tool_history
         else []
     )
     if repeated_prompt:
-        messages.append({"role": "user", "content": "Synthetic prompt " * 4096})
+        messages.append(UserPromptMessage(content="Synthetic prompt " * 4096))
     contents = ["synthetic-", "answer"] if not repeated_prompt else ["a"] * 24
-    # Plugins provide dict prompt messages; construct preserves that actual input
-    # shape. All fixture values are invented, rather than copied runtime payloads.
+    # Real DTOs carry invented private history; the SSE transport withholds it.
     chunks = [
-        LLMResultChunk.model_construct(
+        LLMResultChunk(
             model="synthetic-model",
             prompt_messages=messages,
             delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=content)),
@@ -118,7 +123,12 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     yielded = list(service.invoke_model(envelope=pending, invoke=provider, on_failure=unexpected_failure))
     sdk_receipt = ProtectedModelChunkReceipt()
     for chunk in yielded:
-        sdk_receipt.append(LLMResultChunk.model_validate(chunk.model_dump(mode="json")))
+        # Independently apply the current public SSE contract, including the
+        # SDK DTO's omitted prompt_messages default, rather than full provider DTOs.
+        sdk_chunk = LLMResultChunk.model_validate(chunk.model_dump(mode="json", exclude={"prompt_messages"}))
+        assert sdk_chunk.prompt_messages == []
+        assert sdk_chunk.delta == chunk.delta
+        sdk_receipt.append(sdk_chunk)
     sdk_result = sdk_receipt.value
     assert all(actual is original for actual, original in zip(yielded, chunks, strict=True))
     assert [chunk.delta.message.content for chunk in yielded] == contents
@@ -127,7 +137,6 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     assert outcomes[0]["outcome"] == "completed"
     assert canonical_json(stored["actual-result"]) == canonical_json(sdk_result)
     assert service.store_result(ref=pending.ref, key=pending.intent.key, result=sdk_result) == "actual-result"
-    changed = copy.deepcopy(sdk_result)
     protected = stored["actual-result"]
     assert isinstance(protected, dict)
     assert protected["format"] == "dify-model-chunks-v1"
@@ -136,19 +145,37 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     if repeated_prompt:
         assert len(json.dumps([chunk.model_dump(mode="json") for chunk in chunks]).encode()) > 1024 * 1024
         assert len(json.dumps(stored["actual-result"]).encode()) < 1024 * 1024
-    changed_chunks = changed["chunks"]
-    assert isinstance(changed_chunks, list)
-    changed_entry = changed_chunks[-1]
-    assert isinstance(changed_entry, dict)
-    changed_chunk = changed_entry["chunk"]
-    assert isinstance(changed_chunk, dict)
-    changed_delta = changed_chunk["delta"]
-    assert isinstance(changed_delta, dict)
-    changed_message = changed_delta["message"]
-    assert isinstance(changed_message, dict)
-    changed_message["content"] = "fabricated"
-    with pytest.raises(BuilderExecutionPolicyError, match="native_result_conflict"):
-        service.store_result(ref=pending.ref, key=pending.intent.key, result=changed)
+    for tamper in ("content", "tool_calls", "usage", "order"):
+        changed = copy.deepcopy(sdk_result)
+        changed_chunks = changed["chunks"]
+        assert isinstance(changed_chunks, list)
+        changed_entry = changed_chunks[-1]
+        assert isinstance(changed_entry, dict)
+        changed_chunk = changed_entry["chunk"]
+        assert isinstance(changed_chunk, dict)
+        changed_delta = changed_chunk["delta"]
+        assert isinstance(changed_delta, dict)
+        changed_message = changed_delta["message"]
+        assert isinstance(changed_message, dict)
+        if tamper == "content":
+            changed_message["content"] = "fabricated"
+        elif tamper == "tool_calls":
+            changed_message["tool_calls"] = [
+                {"id": "forged-call", "type": "function", "function": {"name": "forged", "arguments": "{}"}}
+            ]
+        elif tamper == "usage":
+            changed_delta["usage"] = {"total_tokens": 999}
+        else:
+            changed_chunks.reverse()
+        with pytest.raises(BuilderExecutionPolicyError, match="native_result_conflict"):
+            service.store_result(ref=pending.ref, key=pending.intent.key, result=changed)
+    # A different request cannot acknowledge the same completed operation/result.
+    with pytest.raises(BuilderExecutionPolicyError, match="native_result_unavailable"):
+        service.store_result(
+            ref=pending.ref.model_copy(update={"request_id": "different-request"}),
+            key=pending.intent.key,
+            result=sdk_result,
+        )
     assert calls == ["provider"]
 
 

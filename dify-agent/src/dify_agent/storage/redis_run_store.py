@@ -19,6 +19,13 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
+from dify_agent.adapters.native_testing.transport import bind_runtime_identity
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
+from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
+
 from dify_agent.protocol.native_continuation import (
     MAX_CHECKPOINT_BYTES,
     MAX_CHECKPOINT_EVENT_BYTES,
@@ -223,6 +230,17 @@ local cp = cjson.decode(ARGV[1])
 if r.status ~= "running" or redis.call("EXISTS", KEYS[3]) == 1 or (r.native_generation or 0) ~= cp.generation then
     return {-2, ""}
 end
+if type(r.runtime_identity) == "table" then
+    local parent = r.runtime_identity.parent_node
+    if type(parent) ~= "table" or type(parent.ref) ~= "table" or
+        r.runtime_identity.request_digest ~= cp.config_digest or
+        r.runtime_identity.native_test_profile ~= cp.native_test_profile then return {-2, ""} end
+    for _, field in ipairs({"policy_version", "request_id", "invocation_id", "context_digest"}) do
+        if parent.ref[field] ~= cp.ref[field] then return {-2, ""} end
+    end
+end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    cp.config_ref ~= cjson.decode(r.confirmed_recovery_selection_json).successor.successor.config_ref then return {-2, ""} end
 r.native_checkpoint_json = ARGV[1]
 r.status = "waiting"
 r.updated_at = ARGV[3]
@@ -242,6 +260,8 @@ local r = cjson.decode(raw)
 if redis.call("EXISTS", KEYS[2]) == 1 or r.status == "cancelled" or r.status == "failed" or r.status == "succeeded" then
     return {-2, ""}
 end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    r.runtime_identity.request_digest ~= ARGV[3] then return {-2, ""} end
 local claim = cjson.decode(ARGV[1])
 if r.native_claim and r.native_claim ~= cjson.null then
     if r.native_claim.generation == claim.generation and r.native_claim.idempotency_key == claim.idempotency_key then
@@ -283,6 +303,8 @@ local raw = redis.call("GET", KEYS[1])
 if not raw then return -1 end
 local r = cjson.decode(raw)
 if redis.call("EXISTS", KEYS[3]) == 1 or r.status ~= "waiting" or (r.native_generation or 0) ~= tonumber(ARGV[1]) then return -2 end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    r.runtime_identity.request_digest ~= ARGV[7] then return -2 end
 r.status = "failed"
 r.error = ARGV[2]
 r.updated_at = ARGV[3]
@@ -339,11 +361,13 @@ class RedisRunStore(RunEventSink):
         prefix: str = "dify-agent",
         run_retention_seconds: int = DEFAULT_RUN_RETENTION_SECONDS,
         run_event_stream_max_length: int = DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
+        confirmed_recovery_owner: ConfirmedNativeContinuationOwner | None = None,
     ) -> None:
         if run_retention_seconds <= 0:
             raise ValueError("run_retention_seconds must be positive")
         if run_event_stream_max_length <= 0:
             raise ValueError("run_event_stream_max_length must be positive")
+        self.confirmed_recovery_owner = confirmed_recovery_owner
         self.redis = redis
         self.prefix = prefix
         self.run_retention_seconds = run_retention_seconds
@@ -431,7 +455,7 @@ class RedisRunStore(RunEventSink):
             raise RunCreateConflictError("create identity unavailable") from None
 
     async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
-        """Only bounded immutable metadata is read; legacy/unknown records refuse."""
+        """Read bounded selected metadata; legacy/unknown records refuse."""
         # Redis extracts just the bounded identity, never history/config/checkpoint.
         reply = await cast(
             Awaitable[object],
@@ -521,7 +545,9 @@ class RedisRunStore(RunEventSink):
             raise NativeContinuationConflict("waiting transition lost generation or cancellation")
         return _decode_redis_text(result[1])
 
-    async def stop_native_run(self, *, run_id: str, expected_generation: int, reason_code: str) -> None:
+    async def stop_native_run(
+        self, *, run_id: str, expected_generation: int, reason_code: str, expected_config_digest: str | None = None
+    ) -> None:
         """Persist a trusted policy stop without giving denial back to the model."""
         event = RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=reason_code, reason=reason_code))
         result = await cast(
@@ -538,6 +564,7 @@ class RedisRunStore(RunEventSink):
                 event.model_dump_json(exclude={"id"}),
                 str(self.run_retention_seconds),
                 str(self.run_event_stream_max_length),
+                expected_config_digest or "",
             ),
         )
         if result == -1:
@@ -620,7 +647,7 @@ class RedisRunStore(RunEventSink):
             raise NativeContinuationConflict("selected native checkpoint unavailable") from None
 
     async def claim_continuation(
-        self, *, run_id: str, expected_generation: int, idempotency_key: str
+        self, *, run_id: str, expected_generation: int, idempotency_key: str, expected_config_digest: str | None = None
     ) -> ContinuationClaim:
         """Persist recoverable dispatch intent; duplicate deliveries share its ID."""
         claim = ContinuationClaim(
@@ -635,6 +662,7 @@ class RedisRunStore(RunEventSink):
                 run_cancel_intent_key(self.prefix, run_id),
                 claim.model_dump_json(),
                 str(self.run_retention_seconds),
+                expected_config_digest or "",
             ),
         )
         result = cast(list[object], result)
@@ -673,6 +701,104 @@ class RedisRunStore(RunEventSink):
         if result == -2:
             raise NativeContinuationConflict("continuation cancelled or claim changed")
         return result == 1
+
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Verify protected API ownership, then CAS the exact original Redis bytes.
+
+        All I/O validation precedes the Lua mutation. Concurrent cancellation,
+        continuation claim, checkpoint or identity mutation defeats that CAS.
+        A retained exact receipt reconciles an ACK-lost handoff without replay.
+        """
+        run_id = request.successor.agent_run_id
+        if self.confirmed_recovery_owner is None:
+            raise NativeContinuationConflict("confirmed recovery owner unavailable")
+        key = run_record_key(self.prefix, run_id)
+        raw = await self.redis.get(key)
+        if raw is None:
+            raise RunNotFoundError(run_id)
+        request_json = request.model_dump_json()
+        try:
+            if not isinstance(raw, (str, bytes)) or len(raw) > MAX_CHECKPOINT_RECORD_BYTES:
+                raise ValueError
+            record = RunRecord.model_validate_json(raw)
+            if record.confirmed_recovery_selection_json == request_json:
+                if record.confirmed_recovery_receipt_json is None:
+                    raise ValueError
+                return InstallConfirmedRecoverySuccessorReceipt.model_validate_json(
+                    record.confirmed_recovery_receipt_json
+                )
+            relation = request.successor
+            identity = record.runtime_identity
+            if identity is not None:
+                identity = identity.model_copy(update={"agent_generation": record.native_generation})
+            if (
+                record.run_id != run_id
+                or record.status != "waiting"
+                or record.native_claim is not None
+                or record.native_dispatch_started
+                or record.native_generation != relation.expected_agent_generation
+                or record.native_wait_event_id != relation.predecessor_waiting_event_id
+                or record.native_checkpoint_json is None
+                or identity is None
+            ):
+                raise ValueError
+            old = AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+            await self.read_native_checkpoint(
+                run_id=run_id,
+                request=ReadNativeCheckpointRequest(
+                    ref=old.ref,
+                    expected_generation=old.generation,
+                    waiting_event_id=relation.predecessor_waiting_event_id,
+                    config_ref=old.config_ref,
+                    config_digest=old.config_digest,
+                ),
+            )
+            with bind_runtime_identity(identity):
+                checkpoint = await self.confirmed_recovery_owner.prepare_confirmed_recovery_successor(
+                    request=request, predecessor=old
+                )
+            payload = checkpoint.model_dump_json()
+            if len(payload.encode()) > MAX_CHECKPOINT_BYTES:
+                raise ValueError
+            event = checkpoint.waiting_event()
+            receipt = {
+                "protocol_version": 1,
+                "attempt_id": relation.attempt_id,
+                "successor_digest": request.successor_digest,
+                "agent_run_id": run_id,
+                "parent_generation": relation.expected_parent_generation,
+                "agent_generation": relation.expected_agent_generation,
+                "workspace_generation": relation.successor.workspace_generation,
+                "config_ref": relation.successor.config_ref,
+                "config_digest": relation.successor.config_digest,
+                "checkpoint": relation.successor_checkpoint.model_dump(mode="json"),
+            }
+            reply = await self.redis.execute_command(
+                "EVAL",
+                _INSTALL_CONFIRMED_RECOVERY_SCRIPT,
+                4,
+                key,
+                run_events_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                f"{self.prefix}:run:{run_id}:confirmed-recovery:{relation.attempt_id}:predecessor",
+                raw,
+                request_json,
+                payload,
+                event.model_dump_json(exclude={"id"}),
+                json.dumps(receipt),
+                event.created_at.isoformat(),
+                str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
+            )
+            if not isinstance(reply, (bytes, str)):
+                raise ValueError
+            return InstallConfirmedRecoverySuccessorReceipt.model_validate_json(reply)
+        except RunNotFoundError:
+            raise
+        except Exception:
+            raise NativeContinuationConflict("confirmed recovery successor unavailable") from None
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""
@@ -998,4 +1124,35 @@ i.agent_generation = r.native_generation
 local result = cjson.encode(i)
 if #result > tonumber(ARGV[4]) then return false end
 return result
+"""
+
+
+_INSTALL_CONFIRMED_RECOVERY_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return false end
+local r = cjson.decode(raw)
+if r.confirmed_recovery_selection_json == ARGV[2] then return r.confirmed_recovery_receipt_json end
+if raw ~= ARGV[1] or r.status ~= "waiting" or redis.call("EXISTS", KEYS[3]) == 1 or
+    r.native_dispatch_started or (r.native_claim and r.native_claim ~= cjson.null) then return false end
+local stream_type = redis.call("TYPE", KEYS[2]).ok
+if stream_type ~= "stream" then return false end
+local previous_wait = redis.call("XRANGE", KEYS[2], r.native_wait_event_id, r.native_wait_event_id, "COUNT", 1)
+if #previous_wait ~= 1 or previous_wait[1][1] ~= r.native_wait_event_id then return false end
+local predecessor = redis.call("GET", KEYS[4])
+if predecessor and predecessor ~= raw then return false end
+local cp = cjson.decode(ARGV[3])
+local receipt = cjson.decode(ARGV[5])
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[8], "*", "payload", ARGV[4])
+receipt.waiting_event_id = event_id
+r.runtime_identity.request_digest = cp.config_digest
+r.native_checkpoint_json = ARGV[3]
+r.native_wait_event_id = event_id
+r.updated_at = ARGV[6]
+r.confirmed_recovery_selection_json = ARGV[2]
+r.confirmed_recovery_receipt_json = cjson.encode(receipt)
+redis.call("SET", KEYS[4], raw, "EX", ARGV[7], "NX")
+redis.call("EXPIRE", KEYS[4], ARGV[7])
+redis.call("EXPIRE", KEYS[2], ARGV[7])
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[7])
+return r.confirmed_recovery_receipt_json
 """

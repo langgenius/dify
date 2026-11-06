@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Generator
 
+from dify_agent.adapters.llm.provider import model_chunk_to_wire
 from flask import Response, stream_with_context
 from flask_restx import Resource
 from pydantic import ValidationError
@@ -109,7 +110,7 @@ class AgentLLMInvokeApi(Resource):
                     envelope = {
                         "code": 0,
                         "message": "",
-                        "data": chunk.model_dump(mode="json", exclude={"prompt_messages"}),
+                        "data": model_chunk_to_wire(chunk),
                     }
                     yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except GeneratorExit:

@@ -12,10 +12,12 @@ from typing import Literal
 from dify_agent.client import DifyAgentClientError
 from dify_agent.protocol.native_testing import (
     AgentNativeTestRef,
+    AgentReadResultPayload,
     AgentRuntimeIdentity,
     AgentRunTransportSelection,
     ReadAgentRuntimeIdentity,
 )
+from pydantic import JsonValue
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_contracts import (
@@ -44,10 +46,81 @@ class NativeAgentEndpointContext:
     native_test_profile: Literal["isolated", "confirmed"] = "isolated"
 
 
+@dataclass(frozen=True, slots=True)
+class NativeAgentRecoveryReadContext:
+    """One authenticated, selected predecessor result; never mutation authority."""
+
+    ref: AgentNativeTestRef
+    result_ref: str
+    result: JsonValue
+
+
 @dataclass
 class NativeAgentEndpointLineage:
     backend: AgentRuntimeIdentityReader
     preparation_for_ref: Callable[..., AgentPreparationService]
+
+    @native_payload_read_scope()
+    def read_recovery_result(self, *, principal, selection, payload: AgentReadResultPayload):
+        """Read one selected predecessor object after exact service/runtime proof.
+
+        Only native-result-read calls this port. Ordinary selections return None;
+        an existing recovery must prove the full old tuple and A's SQL predicate.
+        No identity response alone grants object access or mutation authority.
+        """
+        if not isinstance(principal, AgentServicePrincipal) or not isinstance(selection, AgentRunTransportSelection):
+            raise BuilderExecutionPolicyError("native_endpoint_principal_unavailable")
+        if selection.parent_node is None:
+            return None
+        parent = AgentParentNodeRef.model_validate(selection.parent_node.model_dump(mode="json"))
+        if payload.ref.model_dump(mode="json") != parent.ref.model_dump(mode="json"):
+            raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+        store = self.preparation_for_ref(parent.ref).state_store
+        relation = store.load_selected_recovery(ref=parent.ref, parent_node=parent)
+        if relation is None:
+            return None
+        if (selection.agent_run_id, selection.request_digest) == (
+            relation.agent_run_id,
+            relation.successor.config_digest,
+        ):
+            return None
+        if (selection.agent_run_id, selection.request_digest, selection.agent_generation) != (
+            relation.agent_run_id,
+            relation.predecessor.config_digest,
+            relation.expected_agent_generation,
+        ):
+            raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
+        try:
+            actual = AgentRuntimeIdentity.model_validate(
+                self.backend.read_run_identity_sync(
+                    selection.agent_run_id,
+                    ReadAgentRuntimeIdentity(
+                        parent_node=selection.parent_node, request_digest=selection.request_digest
+                    ),
+                ).model_dump(mode="json")
+            )
+        except (DifyAgentClientError, ValueError, OSError):
+            raise BuilderExecutionPolicyError("native_agent_identity_unavailable") from None
+        if (
+            actual.run_id,
+            actual.parent_node,
+            actual.request_digest,
+            actual.agent_generation,
+            actual.execution_mode,
+            actual.native_test_profile,
+        ) != (
+            selection.agent_run_id,
+            selection.parent_node,
+            selection.request_digest,
+            selection.agent_generation,
+            "builder_test",
+            "confirmed",
+        ):
+            raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
+        result = store.read_recovery_predecessor_result(
+            ref=parent.ref, parent_node=parent, selection=relation, result_ref=payload.result_ref
+        )
+        return NativeAgentRecoveryReadContext(payload.ref, payload.result_ref, result)
 
     @native_payload_read_scope()
     def resolve(

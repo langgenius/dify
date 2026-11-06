@@ -21,6 +21,8 @@ from urllib.parse import quote
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
 
+from dify_agent.protocol.execution_binding import InspectExecutionBindingRequest, InspectExecutionBindingResponse
+
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol, ShellProviderError
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands, ShellctlJobStatus
 from dify_agent.runtime_backend.errors import (
@@ -236,6 +238,40 @@ class EnterpriseExecutionBindingBackend:
             if isinstance(exc, Exception):
                 raise BindingCreateError(str(exc)) from exc
             raise
+
+    async def inspect_binding(self, request: InspectExecutionBindingRequest) -> InspectExecutionBindingResponse:
+        """GET exact sandbox health without acquire, retry, redirect or refresh.
+
+        Preconditions: ordinary coupled Binding/Workspace refs must agree.
+        Postconditions: only strict healthy output proves usability; no existing
+        documented resource-specific absence endpoint is available here, so all
+        failures (including sandbox_expired from the proxy) remain uncertain.
+        """
+        selection = request.model_dump()
+        if request.binding_ref != request.workspace_ref or request.binding_ref.startswith("native:"):
+            return InspectExecutionBindingResponse(
+                **selection, adapter="enterprise", state="uncertain", evidence_code="identity_mismatch"
+            )
+        try:
+            headers = {"X-Sandbox-Id": request.binding_ref, "X-Inner-Api-Key": self.auth_token}
+            async with httpx.AsyncClient(
+                base_url=self.gateway_endpoint.rstrip("/"),
+                headers=headers,
+                timeout=min(self.proxy_timeout, 5.0),
+                follow_redirects=False,
+            ) as client:
+                response = await client.get("/proxy/healthz")
+            if response.status_code == 200 and response.content and len(response.content) <= 4096:
+                payload: object = response.json()
+                if payload == {"status": "ok"}:
+                    return InspectExecutionBindingResponse(
+                        **selection, adapter="enterprise", state="usable", evidence_code="health_ok"
+                    )
+        except Exception:
+            pass
+        return InspectExecutionBindingResponse(
+            **selection, adapter="enterprise", state="uncertain", evidence_code="health_unavailable"
+        )
 
     async def read_job_status(self, binding_ref: str, job_id: str) -> ShellctlJobStatus:
         """Connect directly to the existing sandbox; GET status and close only."""

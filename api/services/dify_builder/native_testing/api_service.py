@@ -109,7 +109,7 @@ class NativeTestApiService:
         self.loader = OwnedNativeTestLoader(session_factory, actor=actor, resolver=resolver or _UnavailableMetadata())
         self.store = NativeExecutionStateStore(self.loader)
         self.pending = ProtectedPendingIntentReader(loader=self.loader, state_store=self.store)
-        self.authorization = EffectAuthorizationService(self.loader)
+        self.authorization = EffectAuthorizationService(self.loader, state_store=self.store)
         self.lifecycle = NativeTestLifecycleService(
             self.loader, state_store=self.store, resolution=resolution, runtime=runtime
         )

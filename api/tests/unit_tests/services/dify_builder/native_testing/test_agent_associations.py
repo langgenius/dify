@@ -1423,15 +1423,13 @@ def test_normal_blank_home_association_roundtrip_retains_explicit_none() -> None
     assert c.AgentNodeAssociation.model_validate_json(selected.model_dump_json()) == selected
 
 
-@pytest.mark.parametrize("fault", ["isolated", "missing_home", "missing_workspace_home", "mismatched_home"])
-def test_blank_home_never_weakens_required_fields_or_isolated_pins(fault: str) -> None:
+@pytest.mark.parametrize("fault", ["missing_home", "missing_workspace_home", "mismatched_home"])
+def test_blank_home_never_weakens_required_fields_or_pin_equality(fault: str) -> None:
     c = contracts()
     raw = association_data()
     raw["home_snapshot_id"] = None
     raw["workspace"] = {**workspace_data(), "home_snapshot_id": None, "workspace_generation": 0}
-    if fault == "isolated":
-        raw["workspace"]["workspace_generation"] = 1
-    elif fault == "missing_home":
+    if fault == "missing_home":
         del raw["home_snapshot_id"]
     elif fault == "missing_workspace_home":
         del raw["workspace"]["home_snapshot_id"]
@@ -1480,3 +1478,21 @@ def test_protected_read_timing_failure_does_not_change_guard_result(
     required_resource(c.loader, AgentWorkspace).owner_id = "foreign-run"
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)
+
+
+def test_blank_home_recovery_association_is_data_not_isolated_admission() -> None:
+    c = contracts()
+    raw = association_data()
+    raw["home_snapshot_id"] = None
+    raw["workspace"] = {**workspace_data(), "home_snapshot_id": None, "workspace_generation": 1}
+    selected = c.AgentNodeAssociation.model_validate(raw)
+    assert selected.workspace.workspace_generation == 1
+    assert selected.workspace.home_snapshot_id is None
+    assert c.AgentNodeAssociation.model_validate_json(selected.model_dump_json()) == selected
+
+
+@pytest.mark.parametrize("generation", [True, "1", 1.0, -1])
+def test_workspace_data_counter_is_strict_even_without_association(generation: object) -> None:
+    c = contracts()
+    with pytest.raises(ValidationError):
+        c.AgentTestWorkspaceRef.model_validate({**workspace_data(), "workspace_generation": generation})

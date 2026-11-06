@@ -33,7 +33,7 @@ from services.dify_builder.native_testing.private_reads import validate_invocati
 ALLOCATION = "_agent_confirmed_workspace_v1"
 
 
-def current_confirmed_workspace(*, session, owned, context, allocation, definition_receipt=None):
+def current_confirmed_workspace(*, session, owned, context, allocation, definition_receipt=None, recovery=None):
     """Current complete SQL owner chain, usable inside the existing root lock."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope
     from services.agent import access_service
@@ -46,7 +46,32 @@ def current_confirmed_workspace(*, session, owned, context, allocation, definiti
         raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
     scope = WorkflowAgentSessionScope(**allocation["scope"])
     workspace_ref = AgentTestWorkspaceRef.model_validate(allocation["workspace"])
+    from services.dify_builder.native_testing.agent_recovery import recovery_record
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    record = recovery_record(owned.bindings)
     if workspace_ref.workspace_generation != 0:
+        if recovery is None or record is None or record.phase != "ready" or recovery.record != record:
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        successor = recovery.relation.successor
+        if (
+            workspace_ref.binding_id,
+            workspace_ref.workspace_id,
+            workspace_ref.backend_binding_ref,
+            workspace_ref.backend_workspace_ref,
+            workspace_ref.workspace_generation,
+        ) != (
+            successor.binding_id,
+            successor.workspace_id,
+            successor.binding_ref,
+            successor.workspace_ref,
+            successor.workspace_generation,
+        ) or recovery.association.workspace != workspace_ref:
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        NativeExecutionStateStore._recheck_selected_recovery(
+            session=session, owned=owned, parent=recovery.config.parent_node, proof=recovery
+        )
+    elif record is not None and record.phase == "ready":
         raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
     if (
         scope.tenant_id,
@@ -168,6 +193,18 @@ def current_confirmed_workspace(*, session, owned, context, allocation, definiti
             "job": WorkflowNodeJobConfig.model_validate(node_binding.node_job_config_dict).model_dump(mode="json"),
         }
     )
+    if recovery is not None:
+        predecessor_allocation = {
+            "scope": allocation["scope"],
+            "workspace": recovery.predecessor_config.workspace.model_dump(mode="json"),
+        }
+        if (
+            canonical_digest({"allocation": predecessor_allocation, "definition": stamp})
+            != recovery.record.definition_digest
+            or (None if home is None else NativeExecutionStateStore.recovery_home_digest(home))
+            != recovery.record.home_snapshot_digest
+        ):
+            raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
     if definition_receipt is not None and (definition_receipt.node_id, definition_receipt.stamp) != (
         scope.node_id,
         stamp,

@@ -220,7 +220,7 @@ class DifyNativeRuntime:
         lifecycle._dispatch_ref = delivery
         self.delivery, self.lifecycle, self.registry = delivery, lifecycle, registry
         self.context = context
-        self.authorization = EffectAuthorizationService(lifecycle.loader)
+        self.authorization = EffectAuthorizationService(lifecycle.loader, state_store=lifecycle.store)
         journal = NodeOperationJournal(state=lifecycle.store, authorization=self.authorization)
         checkpoints = NativeCheckpointBridge(state=lifecycle.store, lifecycle=lifecycle)
         lifetime = NativeHostLifetime(context=context, dispatch_id=delivery.dispatch_id)

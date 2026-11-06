@@ -359,7 +359,7 @@ document_errors(AgentRuntimeNativeStoreResultApi, AgentRuntimeRefused)
 
 @inner_api_ns.route("/agent/runtime/native-testing/read-result")
 class AgentRuntimeNativeReadResultApi(native_testing.AgentNativeReadResultApi):
-    method_decorators = [agent_runtime_api_only("native-control")]
+    method_decorators = [agent_runtime_api_only("native-result-read")]
 
 
 document_errors(AgentRuntimeNativeReadResultApi, AgentRuntimeRefused)

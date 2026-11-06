@@ -36,6 +36,16 @@ if TYPE_CHECKING:
     from dify_agent.runtime.native_effects import NativeEffectSession
 
 
+def model_chunk_to_wire(chunk: LLMResultChunk) -> dict[str, JsonValue]:
+    """Project a provider chunk to the existing Agent SSE public fields.
+
+    Accepts a runtime chunk, including opaque provider prompt history. Returns
+    its JSON transport fields without prompt_messages; does not mutate the
+    chunk. Serialization failures propagate to the existing stream owner.
+    """
+    return chunk.model_dump(mode="json", exclude={"prompt_messages"})
+
+
 def _model_receipt_bytes(value: object) -> int:
     return len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
 

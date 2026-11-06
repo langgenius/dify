@@ -111,3 +111,52 @@ refresh its TTL. The response contains only `job_id`, `status`, `done`, and
 `exit_code`. Unsupported contexts, missing jobs, mismatched or inconsistent
 responses, and transport failures refuse the read. Anonymous deployments do not
 mount this route. A status response alone grants no execution or config access.
+
+Authenticated deployments also expose private `POST /execution-bindings/inspect`
+with exact `binding_ref` and `workspace_ref`, through `inspect_execution_binding`
+and `inspect_execution_binding_sync`. Its immutable response binds those refs,
+`adapter`, `state` (`usable`, `definitively_gone`, `uncertain`, `unsupported`) and
+one bounded `evidence_code`. Local runs a fixed read-only Python probe through
+shellctl: accessible configured roots and exact directory paths prove usability;
+only exact `lstat` ENOENT/ENOTDIR under validated roots proves absence. Symlinks,
+permissions, inaccessible roots, malformed output and transport errors remain
+uncertain. The probe closes its client and deletes only its transient control
+job. Inspection uses a single five-second absolute I/O deadline, measured
+before lease construction, with one second reserved for bounded job deletion
+and client/owned-transport close. Polling never renews this budget. Any probe
+or cleanup timeout/error yields uncertainty; cleanup warnings include only
+fixed phase/category/status fields, without raw exceptions, paths or tracebacks.
+A timed-out probe never proves remote process termination. Inspection never
+acquires, creates or destroys a Binding or Workspace.
+
+Enterprise inspects only the existing sandbox's health endpoint and requires an
+explicit healthy response. No currently established exact sandbox endpoint
+proves absence, so every health failure, including generic or sandbox-expired
+404 responses, stays uncertain. E2B, OpenShell and native test scopes are
+unsupported. Keep-alive's legacy 410 is not inspection evidence. Inspection is
+absent in anonymous migration mode. The shared confirmed-recovery relation and
+handoff DTOs describe protected predecessor/successor refs and generations only;
+parsing them performs no allocation, CAS, resume, model or tool invocation.
+
+The private authenticated `POST /runs/{run_id}/confirmed-recovery-successor`
+installs a protected successor only in an unclaimed, uncancelled confirmed wait.
+`Client.install_confirmed_recovery_successor` and its synchronous counterpart
+accept the typed request and return the exact durable receipt. A configured
+confirmed API owner must independently authorize the selected immutable relation,
+configurations, reconstruction manifest and checkpoint; parsing a request cannot
+authorize a handoff. The first whitelist accepts only empty/default reconstructible
+state with empty bootstrap and no jobs, dynamic files, eager pulls or pending
+shell/file/bootstrap work. The API separately proves that every substituted
+pending operation has never been attempted or physically claimed.
+
+The Redis CAS preserves the original create digest and acceptance, retains the
+predecessor immutably, selects the sanitized checkpoint and current config identity,
+and emits one new wait event. Repeating the identical request reads back its
+receipt without scheduling; conflicting selection, cancellation, active claims,
+changed checkpoints and missing original waits refuse the handoff. History,
+completed result references, original call IDs and the operation cursor remain
+unchanged. Fresh pending keys include the workspace recovery generation and
+require current API decisions. Old config identities cannot claim, stop, save a
+checkpoint or send through a stale runtime scope. Handoff runs no model, tool,
+bootstrap or binding lifecycle operation. API readiness alone still cannot resume
+the child until the successor receipt and refreshed wait are durably acknowledged.

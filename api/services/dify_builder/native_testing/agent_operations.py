@@ -8,7 +8,8 @@ HTTP response; response loss therefore cannot turn a completed effect unknown.
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import (
@@ -72,6 +73,9 @@ from services.dify_builder.native_testing.state_store import NativeExecutionStat
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller
 from services.entities.agent_tool_inner import AgentToolInvokeCaller
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.agent_recovery import SelectedRecovery
 
 
 @dataclass
@@ -140,6 +144,7 @@ class _ShellLayerConfigs(TypedDict):
     runtime: dict[str, JsonValue]
     config: dict[str, JsonValue]
     workspace_stamp: NotRequired[str]
+    recovery: NotRequired["SelectedRecovery | None"]
 
 
 @dataclass(frozen=True)
@@ -158,12 +163,28 @@ class AgentResolvedTool:
     account_label: str | None = None
 
 
+@dataclass(frozen=True)
+class PreparedAgentOperation:
+    """Trusted producer data shared by ordinary and inert recovery persistence."""
+
+    intent: EffectIntent
+    proposal: NativeApprovalProposal
+    assessment: AgentCallAssessment
+    descriptor: dict
+    binding: NativeBinding
+
+
 def _resource_key(key: OperationKey) -> str:
     return "agent-intent:" + operation_digest(key)
 
 
-def _sql_resource(*, session, owned, descriptor):
-    """SQL-only current pin/account recheck inside the existing C02 transaction."""
+def _sql_resource(*, session, owned, descriptor, recovery: "SelectedRecovery | None" = None):
+    """SQL-only pin/account/selected-proof recheck inside the existing root writer.
+
+    Any recovery proof must originate in a protected read outside this writer.
+    Generation-one shell resources refuse an omitted, forged or stale proof;
+    parsing descriptor/workspace data alone never supplies that authority.
+    """
     workflow = validate_invocation_workflow(
         session, tenant_id=owned.tenant_id, app_id=owned.app_id, workflow_id=owned.workflow_id
     )
@@ -218,6 +239,7 @@ def _sql_resource(*, session, owned, descriptor):
                 {"nodes": [descriptor["graph_node"]]},
             ),
             allocation=allocation,
+            recovery=recovery,
         )
         if stamp != descriptor["workspace_stamp"] or workspace.model_dump(mode="json") != descriptor["workspace"]:
             raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
@@ -237,10 +259,60 @@ def _sql_resource(*, session, owned, descriptor):
             raise BuilderExecutionPolicyError("native_credential_drift")
 
 
+def _utc_expiry(value: datetime) -> str:
+    """Preserve the instant of an aware scope deadline; naive values are UTC."""
+    return (value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)).isoformat()
+
+
 class AgentOperationBindingResolver:
     """Current SQL resources; no decryption, OAuth, runtime schema or business I/O."""
 
+    def __init__(self, recovery=None, checkpoint=None):
+        self.recovery, self.checkpoint = recovery, checkpoint
+
+    def for_operation(self, *, store, ref, key):
+        """Return a per-call resolver after protected reads outside the writer."""
+        from models.dify_builder_native_tests import NativeContinuation
+        from runtime_contracts.builder.native.contracts import CheckpointRef
+        from services.dify_builder.native_testing.agent_recovery import recovery_record
+        from services.dify_builder.native_testing.state_store import invocation_state, owner_query
+
+        owned = store.loader.load(ref=ref)
+        record = recovery_record(owned.bindings)
+        if record is None:
+            return AgentOperationBindingResolver()
+        with store.loader.session_factory() as session:
+            continuation = session.scalar(
+                owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                    NativeContinuation.checkpoint_id == invocation_state(session, ref, owned.tenant_id).checkpoint_id
+                )
+            )
+            if continuation is None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+            checkpoint = CheckpointRef(
+                checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
+            )
+        state = store.load_recovery_checkpoint_state(ref=ref, checkpoint=checkpoint)
+        if state is None or key.invocation_id != ref.invocation_id:
+            raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+        return AgentOperationBindingResolver(recovery=state, checkpoint=checkpoint)
+
     def resolve_binding(self, *, session, owned, key):
+        from services.dify_builder.native_testing.agent_recovery import require_recovery_operation
+
+        require_recovery_operation(bindings=owned.bindings, key=key)
+        from services.dify_builder.native_testing.agent_recovery import recovery_record
+        from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+        if recovery_record(owned.bindings) is not None:
+            if self.recovery is None or self.checkpoint is None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+            NativeExecutionStateStore.recheck_recovery_checkpoint_state(
+                session=session,
+                owned=owned,
+                state=self.recovery,
+                checkpoint=self.checkpoint,
+            )
         identity = operation_digest(key)
         descriptor = owned.bindings.get(_RESOURCE_KEY, {}).get(identity)
         if descriptor is None:
@@ -250,7 +322,12 @@ class AgentOperationBindingResolver:
         frozen = NativeBinding.model_validate(owned.bindings[identity])
         if key.invocation_id != owned.ref.invocation_id or key.occurrence_path[:1] != (frozen.execution_id,):
             raise BuilderExecutionPolicyError("native_binding_mismatch")
-        _sql_resource(session=session, owned=owned, descriptor=descriptor)
+        _sql_resource(
+            session=session,
+            owned=owned,
+            descriptor=descriptor,
+            recovery=None if self.recovery is None else self.recovery.graph,
+        )
         return frozen
 
     def resolve_pending(self, **_kwargs):
@@ -263,7 +340,10 @@ class AgentOperationService:
     def __init__(self, *, loader, state_store, assessor):
         self.loader, self.state_store, self.assessor = loader, state_store, assessor
         self.bridge = AgentNativeTestingBridge(
-            authorization=EffectAuthorizationService(loader), readiness=None, materializer=None, fence=None
+            authorization=EffectAuthorizationService(loader, state_store=state_store),
+            readiness=None,
+            materializer=None,
+            fence=None,
         )
         self.bridge.fence = self.bridge.authorization
         self.bridge.settlement = self.settle
@@ -413,7 +493,26 @@ class AgentOperationService:
             return self._prepare_model(
                 ref=native_ref, key=native_key, target=target, parameters=parameters, parent=parent
             )
-        context, definition, tool, selected_account = self._tool(ref=native_ref, target=target)
+        prepared = self._tool_operation(
+            ref=native_ref, key=native_key, target=target, parameters=parameters, parent=parent, descriptor=None
+        )
+        return self._persist(
+            ref=native_ref,
+            intent=prepared.intent,
+            proposal=prepared.proposal,
+            assessment=prepared.assessment,
+            descriptor=prepared.descriptor,
+            binding=prepared.binding,
+        )
+
+    def _tool_operation(self, *, ref, key, target, parameters, parent, descriptor) -> PreparedAgentOperation:
+        """Assess current actual arguments without persistence or business dispatch.
+
+        Parent and descriptor originate in a protected owner, never HTTP flags.
+        Failure creates no ledger, grant or permit. The caller rechecks SQL pins
+        before acknowledging the returned inert preparation.
+        """
+        context, definition, tool, selected_account = self._tool(ref=ref, target=target, descriptor=descriptor)
         # Expiry inspection is metadata only. Never let ordinary runtime silently refresh.
         if selected_account is not None and NativeAgentCredentialMaterializer.refresh_due(selected_account):
             raise BuilderExecutionPolicyError("native_refresh_continuation_required")
@@ -425,8 +524,39 @@ class AgentOperationService:
         assessment = AgentCallAssessment.model_validate(
             self.assessor(context=context, definition=definition, tool=tool, target=target, parameters=parameters)
         )
+        return self._tool_preparation(
+            context=context,
+            definition=definition,
+            tool=tool,
+            target=target,
+            parameters=parameters,
+            parent=parent,
+            key=key,
+            assessment=assessment,
+            expires_at=self.loader.load(ref=ref).expires_at,
+        )
+
+    @staticmethod
+    def _tool_preparation(
+        *,
+        context,
+        definition,
+        tool: AgentResolvedTool,
+        target,
+        parameters,
+        parent,
+        key,
+        assessment: AgentCallAssessment,
+        expires_at: datetime,
+    ) -> PreparedAgentOperation:
+        """Pure declared schema/validated assessment to intent, terms and binding.
+
+        Inputs are trusted current owner data; decoding this result grants no
+        permission. The control wrapper always performs actual metadata lookup
+        and fresh assessment before calling it. SQL persistence rechecks pins.
+        """
         intent = EffectIntent(
-            key=native_key,
+            key=key,
             kind="tool",
             resource_ref=canonical_digest(
                 {"snapshot": definition.snapshot_id, "target": target, "credential": tool.credential_id}
@@ -444,11 +574,13 @@ class AgentOperationService:
                 }
             ),
         )
-        owned = self.loader.load(ref=native_ref)
         proposal = NativeApprovalProposal(
-            key=native_key,
+            key=key,
             terms=NativeApprovalTerms(
-                max_calls=1, max_dispatches=1, max_cost_units=1, expires_at=owned.expires_at.isoformat()
+                max_calls=1,
+                max_dispatches=1,
+                max_cost_units=1,
+                expires_at=_utc_expiry(expires_at),
             ),
         )
         descriptor = {
@@ -481,14 +613,7 @@ class AgentOperationService:
             execution_id=parent.execution_id,
             invocation_digest=canonical_digest(intent.model_dump(mode="json")),
         )
-        return self._persist(
-            ref=native_ref,
-            intent=intent,
-            proposal=proposal,
-            assessment=assessment,
-            descriptor=descriptor,
-            binding=binding,
-        )
+        return PreparedAgentOperation(intent, proposal, assessment, descriptor, binding)
 
     def _shell(self, *, ref, boundary, target, parameters, descriptor=None, for_projection: bool = False):
         """Read immutable composition and recheck current complete workspace ownership."""
@@ -500,7 +625,7 @@ class AgentOperationService:
         context, definition = self._definition(ref=ref, descriptor=descriptor, for_projection=for_projection)
         if descriptor is None:
             endpoint = self._endpoint(ref)
-            prepared = self.state_store.load_prepared_config(
+            prepared, recovery = self.state_store.load_prepared_config_selection(
                 ref=ref, parent_node=endpoint.config.parent_node, config_ref=endpoint.config.config_ref
             )
             if prepared != endpoint.config:
@@ -513,7 +638,7 @@ class AgentOperationService:
             parent = AgentParentNodeRef.model_validate(descriptor["parent_node"])
             if parent.ref != ref:
                 raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-            prepared = self.state_store.load_prepared_config(
+            prepared, recovery = self.state_store.load_prepared_config_selection(
                 ref=ref, parent_node=parent, config_ref=descriptor["config_ref"], for_projection=for_projection
             )
             endpoint = NativeAgentEndpointContext(
@@ -558,11 +683,16 @@ class AgentOperationService:
             raise BuilderExecutionPolicyError("native_agent_target_mismatch")
         with self.loader.locked(ref=ref) as (session, owned, _scope):
             workspace, stamp = current_confirmed_workspace(
-                session=session, owned=owned, context=context, allocation=owned.bindings.get(ALLOCATION)
+                session=session,
+                owned=owned,
+                context=context,
+                allocation=owned.bindings.get(ALLOCATION),
+                recovery=recovery,
             )
         if workspace != prepared.workspace:
             raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
         configs["workspace_stamp"] = stamp
+        configs["recovery"] = recovery
         return context, definition, endpoint, configs
 
     def _prepare_shell(self, *, ref, key, boundary, target, parameters, parent):
@@ -660,11 +790,20 @@ class AgentOperationService:
         proposal = NativeApprovalProposal(
             key=key,
             terms=NativeApprovalTerms(
-                max_calls=1, max_dispatches=1, max_cost_units=1, expires_at=owned.expires_at.isoformat()
+                max_calls=1,
+                max_dispatches=1,
+                max_cost_units=1,
+                expires_at=_utc_expiry(owned.expires_at),
             ),
         )
         return self._persist(
-            ref=ref, intent=intent, proposal=proposal, assessment=assessment, descriptor=descriptor, binding=binding
+            ref=ref,
+            intent=intent,
+            proposal=proposal,
+            assessment=assessment,
+            descriptor=descriptor,
+            binding=binding,
+            recovery=configs.get("recovery"),
         )
 
     def claim_shell_dispatch(self, *, envelope):
@@ -831,7 +970,25 @@ class AgentOperationService:
         }
 
     def _prepare_model(self, *, ref, key, target, parameters, parent):
-        context, definition = self._definition(ref=ref)
+        prepared = self._model_operation(
+            ref=ref, key=key, target=target, parameters=parameters, parent=parent, descriptor=None
+        )
+        return self._persist(
+            ref=ref,
+            intent=prepared.intent,
+            proposal=prepared.proposal,
+            assessment=prepared.assessment,
+            descriptor=prepared.descriptor,
+            binding=prepared.binding,
+        )
+
+    def _model_operation(self, *, ref, key, target, parameters, parent, descriptor) -> PreparedAgentOperation:
+        """Build the selected model disclosure and binding without invoking a model.
+
+        Current definition and exact model target must match. Persistence and
+        authorization remain with the caller's separately locked owner.
+        """
+        context, definition = self._definition(ref=ref, descriptor=descriptor)
         if target != self._model_target(definition):
             raise BuilderExecutionPolicyError("native_agent_model_mismatch")
         owned = self.loader.load(ref=ref)
@@ -881,7 +1038,10 @@ class AgentOperationService:
         proposal = NativeApprovalProposal(
             key=key,
             terms=NativeApprovalTerms(
-                max_calls=1, max_dispatches=1, max_cost_units=1, expires_at=owned.expires_at.isoformat()
+                max_calls=1,
+                max_dispatches=1,
+                max_cost_units=1,
+                expires_at=_utc_expiry(owned.expires_at),
             ),
         )
         assessment = AgentCallAssessment(
@@ -892,9 +1052,7 @@ class AgentOperationService:
             risk_notice="Uses the published Agent model within the bounded outer confirmed Test Run.",
             destructive=False,
         )
-        return self._persist(
-            ref=ref, intent=intent, proposal=proposal, assessment=assessment, descriptor=descriptor, binding=binding
-        )
+        return PreparedAgentOperation(intent, proposal, assessment, descriptor, binding)
 
     def validate_caller(self, *, ref, caller: AgentToolInvokeCaller | AgentLLMInvokeCaller):
         endpoint = self._endpoint(ref)
@@ -944,7 +1102,15 @@ class AgentOperationService:
         self.validate_model(envelope=envelope)
 
     def invoke_model(self, *, envelope, invoke, on_failure: Callable[[NativeModelFailureStage, Exception], None]):
-        from dify_agent.adapters.llm.provider import ProtectedModelChunkReceipt
+        """Claim a validated model dispatch and yield original provider chunks.
+
+        Persist a bounded receipt of the public SSE DTO/defaults before marking
+        completion. Any incomplete stream retains unknown settlement; failures
+        propagate through the existing observer without replaying the provider.
+        """
+        from dify_agent.adapters.llm.provider import ProtectedModelChunkReceipt, model_chunk_to_wire
+
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 
         ref, intent, permit = api_ref(envelope.ref), api_intent(envelope.intent), api_permit(envelope.permit)
         self.validate_model(envelope=envelope)
@@ -954,9 +1120,10 @@ class AgentOperationService:
         stage: NativeModelFailureStage = "invoke"
         try:
             for chunk in invoke():
-                # Share the SDK's bounded canonical receipt before exposing a chunk.
+                # Record exactly the public SSE DTO and SDK defaults. Keep the
+                # original provider chunk/history untouched for the stream owner.
                 stage = "receipt_append"
-                receipt.append(chunk)
+                receipt.append(LLMResultChunk.model_validate(model_chunk_to_wire(chunk)))
                 yield chunk
                 stage = "invoke"
             stage = "result_store"
@@ -977,7 +1144,15 @@ class AgentOperationService:
                         on_failure("unknown_settlement", error)
                     raise
 
-    def _persist(self, *, ref, intent, proposal, assessment, descriptor, binding):
+    def _persist(
+        self, *, ref, intent, proposal, assessment, descriptor, binding, recovery: "SelectedRecovery | None" = None
+    ):
+        """Acknowledge prepared metadata after the same selected resource proof.
+
+        Recovery proof is server-read data, never a request permission flag.
+        The root recheck refuses any changed selection before acknowledgment;
+        no grants, permits or physical calls occur in this persistence owner.
+        """
         owned = self.loader.load(ref=ref)
         receipt = self.state_store.prepare_object(
             ref=ref,
@@ -991,7 +1166,7 @@ class AgentOperationService:
             },
         )
         with self.loader.locked(ref=ref) as (session, current, _scope):
-            _sql_resource(session=session, owned=current, descriptor=descriptor)
+            _sql_resource(session=session, owned=current, descriptor=descriptor, recovery=recovery)
             invocation = session.scalar(
                 select(NativeTestInvocation).where(
                     NativeTestInvocation.tenant_id == current.tenant_id,
@@ -1013,6 +1188,325 @@ class AgentOperationService:
                 _RESOURCE_KEY: {**invocation.bindings.get(_RESOURCE_KEY, {}), identity: descriptor},
             }
         return AgentEffectIntent.model_validate(intent.model_dump(mode="json"))
+
+    def _staged_recovery_operation(self, *, ref, expected, key) -> PreparedAgentOperation | None:
+        """Read an already acknowledged fresh disclosure for stable retry.
+
+        This grants no current metadata or execution authority. The production
+        staging caller revalidates it through the ordinary resource owner before
+        the allocated-root writer checks every receipt, binding and pending row.
+        A retry never replaces acknowledged risk prose with another assessment.
+        """
+        from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+        owned = self.loader.load(ref=ref)
+        if expected.phase != "allocated" or recovery_record(owned.bindings) != expected:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        identity = operation_digest(key)
+        descriptor = owned.bindings.get(_RESOURCE_KEY, {}).get(identity)
+        binding = owned.bindings.get(identity)
+        if descriptor is None and binding is None:
+            return None
+        if descriptor is None or binding is None:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        intent, proposal, assessment = self.snapshot(ref=ref, key=key)
+        return PreparedAgentOperation(intent, proposal, assessment, descriptor, NativeBinding.model_validate(binding))
+
+    def stage_recovery_pending(self, *, ref, expected):
+        """Create fresh inert approval rows from one acknowledged allocated wait.
+
+        Reuse ordinary current assessment/descriptor/binding producers outside
+        the root lock. Inside it, recheck the exact retained owner and never-
+        dispatched predecessor. No before_call, grant, permit, old operation
+        mutation or pending-list selection occurs. Replays reuse SQL identities.
+        """
+        from dify_agent.protocol.native_continuation import AgentCheckpoint
+
+        from services.dify_builder.native_testing.agent_recovery import (
+            recovery_record,
+        )
+
+        if expected.phase != "allocated" or recovery_record(self.loader.load(ref=ref).bindings) != expected:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        prepared, evidence = self.state_store.prepare_recovery_attempt(ref=ref, expected=expected)
+        association = self.state_store._agent_binding(prepared, expected.predecessor.association_object_ref)
+        from runtime_contracts.builder.native.agent_contracts import AgentWaitAssociation
+
+        checkpoint = AgentCheckpoint.model_validate(
+            self.state_store._agent_wait_relation(
+                prepared, association, AgentWaitAssociation.model_validate(evidence["wait"])
+            )
+        )
+        staged = []
+        for call in checkpoint.pending_calls:
+            old_intent = api_intent(call.intent)
+            saved, _old_proposal, _old_assessment = self.snapshot(ref=ref, key=old_intent.key)
+            descriptor = self.loader.load(ref=ref).bindings.get(_RESOURCE_KEY, {}).get(operation_digest(old_intent.key))
+            if saved != old_intent or descriptor is None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            key = OperationKey.model_validate(
+                {
+                    **old_intent.key.model_dump(mode="json"),
+                    "occurrence_path": [
+                        prepared.parent.execution_id,
+                        "recovery",
+                        str(expected.next_workspace_generation),
+                        *old_intent.key.occurrence_path[-2:],
+                    ],
+                }
+            )
+            reused = self._staged_recovery_operation(ref=ref, expected=expected, key=key)
+            if reused is not None:
+                self.revalidate(ref=ref, intent=reused.intent)
+                fresh = reused
+            elif call.stage == "model" and call.intent.kind == "model":
+                fresh = self._model_operation(
+                    ref=ref,
+                    key=key,
+                    target=old_intent.target,
+                    parameters=old_intent.parameters,
+                    parent=prepared.parent,
+                    descriptor=descriptor,
+                )
+            elif (
+                call.stage == "tool"
+                and call.intent.kind == "tool"
+                and old_intent.key.occurrence_path[-2] == "core_tool"
+            ):
+                fresh = self._tool_operation(
+                    ref=ref,
+                    key=key,
+                    target=old_intent.target,
+                    parameters=old_intent.parameters,
+                    parent=prepared.parent,
+                    descriptor=descriptor,
+                )
+            else:
+                raise BuilderExecutionPolicyError("native_agent_recovery_checkpoint_unsupported")
+            staged.append(
+                self._stage_recovery_pending_one(
+                    ref=ref, expected=expected, predecessor_pending_id=call.pending_operation_id, fresh=fresh
+                )
+            )
+        return tuple(staged)
+
+    def _stage_recovery_pending_one(self, *, ref, expected, predecessor_pending_id, fresh: PreparedAgentOperation):
+        """Persist one typed inert preparation after exact allocated-owner proof.
+
+        No assessor callback or caller permission flag is accepted. Production
+        calls this only after fresh ordinary preparation. Root checks preserve
+        original arguments/key cursor, exact descriptor/pins, fresh scope and
+        zero attempts/grants; original pending rows/list stay unchanged.
+        """
+        from dify_agent.protocol.native_continuation import AgentCheckpoint
+
+        from models.dify_builder_native_tests import NativeEffectGrant
+        from runtime_contracts.builder.native.agent_contracts import AgentWaitAssociation
+        from services.dify_builder.native_testing.agent_recovery import (
+            RecoveryStagedPending,
+            recovery_record,
+            require_never_dispatched_pending,
+        )
+        from services.dify_builder.native_testing.authorization import _scope_digest, validate_binding
+
+        if expected.phase != "allocated" or recovery_record(self.loader.load(ref=ref).bindings) != expected:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        prepared, evidence = self.state_store.prepare_recovery_attempt(ref=ref, expected=expected)
+        association = self.state_store._agent_binding(prepared, expected.predecessor.association_object_ref)
+        checkpoint = AgentCheckpoint.model_validate(
+            self.state_store._agent_wait_relation(
+                prepared, association, AgentWaitAssociation.model_validate(evidence["wait"])
+            )
+        )
+        calls = [call for call in checkpoint.pending_calls if call.pending_operation_id == predecessor_pending_id]
+        if len(calls) != 1:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        old_intent = api_intent(calls[0].intent)
+        saved, _proposal, _assessment = self.snapshot(ref=ref, key=old_intent.key)
+        source = self.state_store._agent_object(prepared, logical_key=_resource_key(old_intent.key))
+        assert source is not None
+        if not isinstance(source[1], dict) or source[1].get("intent") != old_intent.model_dump(mode="json"):
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        original = self.loader.load(ref=ref)
+        old_descriptor = original.bindings.get(_RESOURCE_KEY, {}).get(operation_digest(old_intent.key))
+        old_binding_value = original.bindings.get(operation_digest(old_intent.key))
+        if old_descriptor is None or old_binding_value is None or fresh.descriptor != old_descriptor:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        old_binding = NativeBinding.model_validate(old_binding_value)
+        validate_binding(old_intent, old_binding)
+        preserved_binding = {"intent_digest", "invocation_digest"}
+        if fresh.binding.model_dump(exclude=preserved_binding) != old_binding.model_dump(exclude=preserved_binding):
+            raise BuilderExecutionPolicyError("native_binding_drift")
+        key = fresh.intent.key
+        if (
+            saved != old_intent
+            or key
+            != OperationKey.model_validate(
+                {
+                    **old_intent.key.model_dump(mode="json"),
+                    "occurrence_path": [
+                        prepared.parent.execution_id,
+                        "recovery",
+                        str(expected.next_workspace_generation),
+                        *old_intent.key.occurrence_path[-2:],
+                    ],
+                }
+            )
+            or fresh.proposal.key != key
+        ):
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        expected_terms = NativeApprovalTerms(
+            max_calls=1,
+            max_dispatches=1,
+            max_cost_units=1,
+            expires_at=_utc_expiry(self.loader.load(ref=ref).expires_at),
+        )
+        if fresh.proposal.terms != expected_terms:
+            raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+        if fresh.intent.model_dump(exclude={"key"}) != old_intent.model_dump(exclude={"key"}):
+            raise BuilderExecutionPolicyError("native_binding_drift")
+        validate_binding(fresh.intent, fresh.binding)
+        value = {
+            "intent": fresh.intent.model_dump(mode="json"),
+            "proposal": fresh.proposal.model_dump(mode="json"),
+            "assessment": fresh.assessment.model_dump(mode="json"),
+        }
+        receipt = self.state_store.prepare_object(
+            ref=ref,
+            tenant_id=prepared.context.tenant_id,
+            kind="result",
+            logical_key=_resource_key(key),
+            payload=value,
+        )
+        self.state_store._agent_refresh_access(prepared)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            if recovery_record(owned.bindings) != expected:
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            self.state_store._agent_recheck(session, owned, scope, prepared, writing=False)
+            self.state_store.recheck_recovery_wait(
+                session=session, owned=owned, prepared=prepared, evidence=evidence, expected=expected
+            )
+            if (
+                owned.bindings.get(_RESOURCE_KEY, {}).get(operation_digest(old_intent.key)),
+                owned.bindings.get(operation_digest(old_intent.key)),
+            ) != (old_descriptor, old_binding_value):
+                raise BuilderExecutionPolicyError("native_binding_drift")
+            predecessor_pending = session.scalar(
+                select(NativePendingAction).where(
+                    NativePendingAction.tenant_id == owned.tenant_id,
+                    NativePendingAction.request_id == ref.request_id,
+                    NativePendingAction.invocation_id == ref.invocation_id,
+                    NativePendingAction.id == predecessor_pending_id,
+                )
+            )
+            predecessor_operation = (
+                None
+                if predecessor_pending is None
+                else session.scalar(
+                    select(NativeEffectOperation).where(
+                        NativeEffectOperation.tenant_id == owned.tenant_id,
+                        NativeEffectOperation.request_id == ref.request_id,
+                        NativeEffectOperation.invocation_id == ref.invocation_id,
+                        NativeEffectOperation.id == predecessor_pending.operation_id,
+                    )
+                )
+            )
+            if (
+                predecessor_pending is None
+                or predecessor_operation is None
+                or (
+                    predecessor_operation.operation_digest,
+                    predecessor_operation.intent_digest,
+                    predecessor_operation.scope_digest,
+                    predecessor_pending.reference,
+                    predecessor_pending.reference_digest,
+                    predecessor_pending.owner_version,
+                )
+                != (
+                    operation_digest(old_intent.key),
+                    old_binding.intent_digest,
+                    _scope_digest(old_intent, old_binding),
+                    predecessor_operation.id,
+                    canonical_digest(predecessor_operation.id),
+                    _scope_digest(old_intent, old_binding),
+                )
+            ):
+                raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
+            _sql_resource(session=session, owned=owned, descriptor=fresh.descriptor)
+            invocation = session.scalar(
+                select(NativeTestInvocation).where(
+                    NativeTestInvocation.tenant_id == owned.tenant_id,
+                    NativeTestInvocation.request_id == ref.request_id,
+                    NativeTestInvocation.invocation_id == ref.invocation_id,
+                    NativeTestInvocation.active.is_(True),
+                )
+            )
+            if invocation is None:
+                raise BuilderExecutionPolicyError("native_invocation_mismatch")
+            existing_binding = invocation.bindings.get(operation_digest(key))
+            if existing_binding is not None and NativeBinding.model_validate(existing_binding) != fresh.binding:
+                raise BuilderExecutionPolicyError("native_intent_conflict")
+            scoped = _scope_digest(fresh.intent, fresh.binding)
+            if (
+                session.scalar(
+                    select(NativeEffectGrant.id).where(
+                        NativeEffectGrant.tenant_id == owned.tenant_id,
+                        NativeEffectGrant.request_id == ref.request_id,
+                        NativeEffectGrant.scope_digest == scoped,
+                    )
+                )
+                is not None
+            ):
+                raise BuilderExecutionPolicyError("native_agent_recovery_dispatched")
+            operation = session.scalar(
+                select(NativeEffectOperation).where(
+                    NativeEffectOperation.tenant_id == owned.tenant_id,
+                    NativeEffectOperation.request_id == ref.request_id,
+                    NativeEffectOperation.invocation_id == ref.invocation_id,
+                    NativeEffectOperation.operation_digest == operation_digest(key),
+                )
+            )
+            if operation is None:
+                operation = NativeEffectOperation(
+                    tenant_id=owned.tenant_id,
+                    request_id=ref.request_id,
+                    invocation_id=ref.invocation_id,
+                    operation_digest=operation_digest(key),
+                    intent_digest=canonical_digest(fresh.intent.model_dump(mode="json")),
+                    scope_digest=scoped,
+                    state="pending",
+                    result_ref=None,
+                )
+                session.add(operation)
+                session.flush()
+            if (operation.intent_digest, operation.scope_digest) != (
+                canonical_digest(fresh.intent.model_dump(mode="json")),
+                scoped,
+            ):
+                raise BuilderExecutionPolicyError("native_intent_conflict")
+            pending = EffectAuthorizationService._pending(session, owned, operation)
+            require_never_dispatched_pending(
+                session=session,
+                tenant_id=owned.tenant_id,
+                ref=ref,
+                pending_ids=(pending.pending_operation_id,),
+                generation=expected.parent_generation,
+            )
+            self.state_store.acknowledge_object(session, receipt)
+            invocation.bindings = {
+                **invocation.bindings,
+                operation_digest(key): fresh.binding.model_dump(mode="json"),
+                _RESOURCE_KEY: {
+                    **invocation.bindings.get(_RESOURCE_KEY, {}),
+                    operation_digest(key): fresh.descriptor,
+                },
+            }
+            return RecoveryStagedPending(
+                predecessor_pending_id=predecessor_pending_id,
+                pending_id=pending.pending_operation_id,
+                intent=fresh.intent,
+                proposal=fresh.proposal,
+            )
 
     def snapshot(self, *, ref, key):
         native_ref = api_ref(ref) if isinstance(ref, AgentNativeTestRef) else ref

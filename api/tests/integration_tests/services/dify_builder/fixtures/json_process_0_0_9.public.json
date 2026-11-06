@@ -1,0 +1,125 @@
+{
+  "plugin_id": "langgenius/json_process",
+  "plugin_pin": "langgenius/json_process:0.0.9@593fcf07fb77a953a992801e28ce975e172cc977f441ce98b5beff0803fcf4be",
+  "version": "0.0.9",
+  "verified": true,
+  "provider_identity": {
+    "icon": "4b32596ee7e6be23265e38f20708b0bd7d6b7175c6be81d946f9d54c1decdb7e.svg",
+    "name": "json_process",
+    "tags": [
+      "utilities"
+    ],
+    "label": {
+      "en_US": "JSON Process",
+      "pt_BR": "JSON Process",
+      "zh_Hans": "JSON \u5904\u7406"
+    },
+    "author": "Mingwei_Zhang",
+    "icon_dark": "e7c879d066753e98af74d827613e62b9eacfcfbf67f92f1352f86122c7228702.svg",
+    "description": {
+      "en_US": "Tools for processing JSON content using jsonpath_ng",
+      "pt_BR": "Tools for processing JSON content using jsonpath_ng",
+      "zh_Hans": "\u5229\u7528 jsonpath_ng \u5904\u7406 JSON \u5185\u5bb9\u7684\u5de5\u5177"
+    }
+  },
+  "parse_tool": {
+    "identity": {
+      "name": "parse",
+      "label": {
+        "en_US": "JSON Parse",
+        "pt_BR": "JSON Parse",
+        "zh_Hans": "JSON \u89e3\u6790"
+      },
+      "author": "Mingwei_Zhang"
+    },
+    "parameters": [
+      {
+        "max": null,
+        "min": null,
+        "form": "llm",
+        "name": "content",
+        "type": "string",
+        "label": {
+          "en_US": "JSON data",
+          "pt_BR": "JSON data",
+          "zh_Hans": "JSON\u6570\u636e"
+        },
+        "scope": null,
+        "default": null,
+        "options": null,
+        "multiple": false,
+        "required": true,
+        "template": null,
+        "precision": null,
+        "auto_generate": null,
+        "llm_description": "JSON data to be processed",
+        "human_description": {
+          "en_US": "JSON data",
+          "pt_BR": "JSON\u6570\u636e",
+          "zh_Hans": "JSON\u6570\u636e"
+        }
+      },
+      {
+        "max": null,
+        "min": null,
+        "form": "llm",
+        "name": "json_filter",
+        "type": "string",
+        "label": {
+          "en_US": "JSON filter",
+          "pt_BR": "JSON filter",
+          "zh_Hans": "JSON\u89e3\u6790\u5bf9\u8c61"
+        },
+        "scope": null,
+        "default": null,
+        "options": null,
+        "multiple": false,
+        "required": true,
+        "template": null,
+        "precision": null,
+        "auto_generate": null,
+        "llm_description": "JSON fields to be parsed",
+        "human_description": {
+          "en_US": "JSON fields to be parsed",
+          "pt_BR": "JSON fields to be parsed",
+          "zh_Hans": "\u9700\u8981\u89e3\u6790\u7684 JSON \u5b57\u6bb5"
+        }
+      },
+      {
+        "max": null,
+        "min": null,
+        "form": "form",
+        "name": "ensure_ascii",
+        "type": "boolean",
+        "label": {
+          "en_US": "Ensure ASCII",
+          "pt_BR": "Ensure ASCII",
+          "zh_Hans": "\u786e\u4fdd ASCII"
+        },
+        "scope": null,
+        "default": true,
+        "options": null,
+        "multiple": false,
+        "required": false,
+        "template": null,
+        "precision": null,
+        "auto_generate": null,
+        "llm_description": "",
+        "human_description": {
+          "en_US": "Ensure the JSON output is ASCII encoded",
+          "pt_BR": "Ensure the JSON output is ASCII encoded",
+          "zh_Hans": "\u786e\u4fdd\u8f93\u51fa\u7684 JSON \u662f ASCII \u7f16\u7801"
+        }
+      }
+    ],
+    "description": {
+      "llm": "A tool for extracting JSON objects",
+      "human": {
+        "en_US": "A tool for extracting JSON objects",
+        "pt_BR": "A tool for extracting JSON objects",
+        "zh_Hans": "\u4e00\u4e2a\u89e3\u6790JSON\u5bf9\u8c61\u7684\u5de5\u5177"
+      }
+    },
+    "has_runtime_parameters": false
+  }
+}

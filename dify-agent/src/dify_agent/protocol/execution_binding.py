@@ -1,8 +1,8 @@
 """Private DTOs for persistent Execution Binding lifecycle operations."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer, model_validator
 
 from shellctl.shared.schemas import NativeScopeSpec
 
@@ -22,7 +22,7 @@ class CreateExecutionBindingRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     @model_serializer(mode="wrap")
-    def serialize_binding(self, handler):
+    def serialize_binding(self, handler: SerializerFunctionWrapHandler):
         value = handler(self)
         if self.native_test_scope is None:
             value.pop("native_test_scope", None)
@@ -87,3 +87,62 @@ class ReadExecutionBindingJobRequest(NativeDTO):
 
 class ReadExecutionBindingJobResponse(AgentShellJobStatus):
     pass
+
+
+class InspectExecutionBindingRequest(NativeDTO):
+    """Select exact ordinary physical refs; caller assertions are never evidence."""
+
+    binding_ref: ID
+    workspace_ref: ID
+
+
+class InspectExecutionBindingResponse(InspectExecutionBindingRequest):
+    """Bounded adapter evidence; only exact Local absence can authorize recovery."""
+
+    adapter: Literal["local", "enterprise", "unsupported"]
+    state: Literal["usable", "definitively_gone", "uncertain", "unsupported"]
+    evidence_code: Literal[
+        "paths_present",
+        "path_absent",
+        "root_unavailable",
+        "path_ambiguous",
+        "identity_mismatch",
+        "probe_unavailable",
+        "invalid_probe",
+        "health_ok",
+        "health_unavailable",
+        "backend_unsupported",
+    ]
+
+    @model_validator(mode="after")
+    def coherent_evidence(self) -> Self:
+        """Require evidence matching its state and source; reject invented absence."""
+        valid = (
+            (self.adapter == "local" and self.state == "usable" and self.evidence_code == "paths_present")
+            or (self.adapter == "local" and self.state == "definitively_gone" and self.evidence_code == "path_absent")
+            or (self.adapter == "enterprise" and self.state == "usable" and self.evidence_code == "health_ok")
+            or (
+                self.adapter == "unsupported"
+                and self.state == "unsupported"
+                and self.evidence_code == "backend_unsupported"
+            )
+            or (
+                self.state == "uncertain"
+                and self.adapter in {"local", "enterprise"}
+                and self.evidence_code
+                in {
+                    "root_unavailable",
+                    "path_ambiguous",
+                    "identity_mismatch",
+                    "probe_unavailable",
+                    "invalid_probe",
+                    "health_unavailable",
+                }
+            )
+        )
+        if not valid:
+            raise ValueError("incoherent binding inspection evidence")
+        return self
+
+
+__all__ += ["InspectExecutionBindingRequest", "InspectExecutionBindingResponse"]

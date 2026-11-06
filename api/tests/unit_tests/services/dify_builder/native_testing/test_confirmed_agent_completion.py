@@ -453,6 +453,39 @@ def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatc
     assert len([item for item in page.data if item.kind == "test_result"]) == 1
 
 
+@pytest.mark.parametrize("retired_state", ["not_dispatched", "cancelled", "claimed", "unknown"])
+def test_terminal_projection_requires_settled_retired_intent(completed: CompletedOwner, retired_state: str) -> None:
+    owner = completed
+    with owner.factory.begin() as sql:
+        sql.add(
+            NativeEffectOperation(
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                operation_digest="d" * 64,
+                intent_digest="e" * 64,
+                scope_digest="f" * 64,
+                state=retired_state,
+                result_ref=None,
+            )
+        )
+    observe(owner)
+    for identity in (owner.verify_id, owner.reservation.id):
+        run = owner.repo.get_run(identity)
+        assert run.status == ("succeeded" if retired_state == "not_dispatched" else "running")
+        assert run.dify_run_id == owner.native_id
+        assert run.verification is not None
+        assert run.verification.execution_evidence is not None
+        assert run.verification.execution_evidence.sealed is (retired_state == "not_dispatched")
+    with owner.factory() as sql:
+        completed_operation = sql.scalar(
+            select(NativeEffectOperation).where(NativeEffectOperation.state == "completed")
+        )
+        assert completed_operation is not None
+        assert completed_operation.result_ref == "result"
+        assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
+
+
 @pytest.mark.parametrize("drift", ["version", "input", "verify", "native", "revision", "effect", "c03"])
 def test_terminal_projection_refuses_stale_or_unsettled_original_attempt(completed: CompletedOwner, drift: str) -> None:
     owner = completed

@@ -15,9 +15,18 @@ from dify_agent.protocol.native_testing import (
     NativeTestCapabilities,
     executable_request_digest,
 )
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
 from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.runtime.context import Services
-from dify_agent.runtime.native_continuation import NativeContinuation, PreparedContinuation, NativeApprovalSuspended
+from dify_agent.runtime.native_continuation import (
+    NativeContinuation,
+    PreparedContinuation,
+    NativeApprovalSuspended,
+    NativeContinuationConflict,
+)
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.schemas import RunRecord
 from tests.local.dify_agent.runtime.test_native_continuation import pending
@@ -40,6 +49,11 @@ URL = "http://api/inner/api/agent/runtime/tools/invoke"
 
 
 class Store:
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
     def __init__(self):
         self.records = {}
         self.reads = []
@@ -74,7 +88,7 @@ class Store:
     async def get_checkpoint(self, run_id):
         return self.checkpoint
 
-    async def claim_continuation(self, *, run_id, expected_generation, idempotency_key):
+    async def claim_continuation(self, *, run_id, expected_generation, idempotency_key, expected_config_digest=None):
         return ContinuationClaim(
             run_id=run_id, generation=expected_generation + 1, idempotency_key=idempotency_key, claim_id="claim"
         )
@@ -168,7 +182,7 @@ def test_initial_native_preparation_and_runner_have_separate_persisted_scopes():
             await asyncio.gather(*tuple(scheduler.active_tasks.values()))
             assert [item["agent_run_id"] for item in seen] == [record.run_id, record.run_id]
             assert [item["agent_generation"] for item in seen] == [0, 0]
-            assert store.reads == [(record.run_id, 0), (record.run_id, 0)]
+            assert store.reads == [(record.run_id, 0)] * 4
 
     asyncio.run(exercise())
 
@@ -224,7 +238,7 @@ def test_restore_uses_persisted_old_generation_then_execution_rereads_after_star
             await asyncio.gather(*tuple(scheduler.active_tasks.values()))
             assert [item["agent_generation"] for item in seen] == [0, 1]
             assert all(item["request_digest"] == state.config_digest for item in seen)
-            assert store.reads == [(record.run_id, 0), (record.run_id, 1)]
+            assert store.reads == [(record.run_id, 0)] * 2 + [(record.run_id, 1)] * 2
 
     asyncio.run(exercise())
 

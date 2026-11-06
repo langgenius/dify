@@ -38,8 +38,10 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Only status and immutable private identity are persisted. Create-run requests can contain sensitive
-    layer configuration and must remain in scheduler memory rather than Redis.
+    Status, selected private identity and protected continuation references are
+    persisted. Recovery retains the immutable predecessor separately and never
+    changes original create idempotency. Create-run configurations can contain
+    secrets and remain with their existing protected API owner.
     """
 
     run_id: str
@@ -57,6 +59,8 @@ class RunRecord(BaseModel):
     native_generation: int = 0
     native_claim: ContinuationClaim | None = None
     native_dispatch_started: bool = False
+    confirmed_recovery_selection_json: str | None = None
+    confirmed_recovery_receipt_json: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

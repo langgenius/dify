@@ -27,5 +27,8 @@ def project_pending_decision(
 
 
 def decision_public_revision(observations: list[dict]) -> int:
-    """Only decisions marked by the serialized public decision owner count."""
-    return sum(record.get("public_decision_saved") is True for record in observations)
+    """Count serialized decisions and selected pending replacements."""
+    return sum(
+        record.get("public_decision_saved") is True or record.get("recovery_pending_replaced") is True
+        for record in observations
+    )

@@ -25,6 +25,10 @@ from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeTransportError,
     bind_runtime_identity,
 )
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
 from dify_agent.protocol.native_testing import (
     NATIVE_TEST_CAPABILITIES,
     AgentNativeTestRef,
@@ -95,11 +99,17 @@ class RunStore(RunEventSink, Protocol):
 
     async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity: ...
 
-    async def stop_native_run(self, *, run_id: str, expected_generation: int, reason_code: str) -> None: ...
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt: ...
+
+    async def stop_native_run(
+        self, *, run_id: str, expected_generation: int, reason_code: str, expected_config_digest: str | None = None
+    ) -> None: ...
     async def get_checkpoint(self, run_id: str) -> AgentCheckpoint: ...
     async def get_run(self, run_id: str) -> RunRecord: ...
     async def claim_continuation(
-        self, *, run_id: str, expected_generation: int, idempotency_key: str
+        self, *, run_id: str, expected_generation: int, idempotency_key: str, expected_config_digest: str | None = None
     ) -> ContinuationClaim: ...
     async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
 
@@ -237,6 +247,17 @@ class RunScheduler:
             return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
         return capabilities
 
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Control-only waiting-child handoff; no background work is scheduled."""
+        if not isinstance(self.native_owner, ConfirmedNativeContinuationOwner):
+            raise NativeContinuationConflict("confirmed recovery owner unavailable")
+        async with self._lifecycle_lock:
+            if self.stopping:
+                raise SchedulerStoppingError("run scheduler is shutting down")
+            return await self.store.install_confirmed_recovery_successor(request)
+
     async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
         if self.native_owner is None:
             raise NativeTestProtocolUnsupported()
@@ -248,7 +269,10 @@ class RunScheduler:
             if checkpoint.ref != request.ref or checkpoint.generation != request.expected_generation:
                 raise NativeContinuationConflict("checkpoint owner or generation mismatch")
             claim = await self.store.claim_continuation(
-                run_id=run_id, expected_generation=request.expected_generation, idempotency_key=request.idempotency_key
+                run_id=run_id,
+                expected_generation=request.expected_generation,
+                idempotency_key=request.idempotency_key,
+                expected_config_digest=checkpoint.config_digest,
             )
             if run_id in self.active_tasks:
                 # The local task may be a continuation paused before its Redis
@@ -275,7 +299,10 @@ class RunScheduler:
                     validate_deferred_results(checkpoint, prepared.deferred_tool_results)
             except NativePolicyStopped as stop:
                 await self.store.stop_native_run(
-                    run_id=run_id, expected_generation=request.expected_generation, reason_code=stop.reason_code
+                    run_id=run_id,
+                    expected_generation=request.expected_generation,
+                    reason_code=stop.reason_code,
+                    expected_config_digest=checkpoint.config_digest,
                 )
                 raise
             if (
@@ -463,7 +490,21 @@ class RunScheduler:
                 raise ValueError("persisted Run identity changed")
         except Exception:
             raise AgentRuntimeTransportError("agent_runtime_identity_unavailable") from None
-        with bind_runtime_identity(identity):
+
+        async def validate_send() -> None:
+            try:
+                actual = await self.store.read_run_identity(
+                    run_id=run_id,
+                    selection=ReadAgentRuntimeIdentity(
+                        parent_node=identity.parent_node, request_digest=identity.request_digest
+                    ),
+                )
+                if actual != identity:
+                    raise ValueError
+            except Exception:
+                raise AgentRuntimeTransportError("agent_runtime_identity_unavailable") from None
+
+        with bind_runtime_identity(identity, validate_send=validate_send):
             yield
 
     async def _run_record(

@@ -9,6 +9,8 @@ from dify_agent.protocol import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
     ReadExecutionBindingJobRequest,
@@ -111,3 +113,29 @@ def create_execution_binding_job_router(get_service: Callable[[], ExecutionBindi
             raise HTTPException(error.status_code, detail={"code": error.code, "message": error.message}) from None
 
     return router
+
+
+def create_execution_binding_inspection_router(get_service: Callable[[], ExecutionBindingService | None]) -> APIRouter:
+    """Mount only with configured existing control-plane authentication."""
+    router = APIRouter(prefix="/execution-bindings", tags=["execution-bindings"])
+
+    @router.post("/inspect", response_model=InspectExecutionBindingResponse)
+    async def inspect_binding(request: Request) -> InspectExecutionBindingResponse:
+        """Validate without echoing private input; inspection grants no mutation."""
+        try:
+            selection = InspectExecutionBindingRequest.model_validate_json(await request.body())
+        except ValueError:
+            raise HTTPException(
+                422, detail={"code": "invalid_inspection_request", "message": "invalid binding selection"}
+            ) from None
+        service = get_service()
+        if service is None:
+            raise HTTPException(
+                503, detail={"code": "runtime_backend_unavailable", "message": "runtime backend unavailable"}
+            )
+        return await service.inspect_binding(selection)
+
+    return router
+
+
+__all__ += ["create_execution_binding_inspection_router"]

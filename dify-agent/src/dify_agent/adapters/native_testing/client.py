@@ -88,15 +88,17 @@ class HttpAgentPolicyClient:
         self._require_ref(payload.ref)
         return AgentStoredResultResponse.model_validate(await self._post("results", payload)).result_ref
 
-    async def read_result(self, *, payload: AgentReadResultPayload) -> JsonValue:
+    async def read_result(self, *, payload: AgentReadResultPayload, response_limit: int | None = None) -> JsonValue:
         self._require_ref(payload.ref)
-        return AgentReadResultResponse.model_validate(await self._post("read-result", payload)).result
+        return AgentReadResultResponse.model_validate(
+            await self._post("read-result", payload, response_limit=response_limit)
+        ).result
 
     def _require_ref(self, ref: AgentNativeTestRef) -> None:
         if self.ref is None or self.ref != ref:
             raise AgentPolicyTransportUnavailable("native_policy_owner_mismatch")
 
-    async def _post(self, path: str, payload: NativeDTO):
+    async def _post(self, path: str, payload: NativeDTO, *, response_limit: int | None = None):
         url, headers = agent_api_endpoint(
             self.http_client,
             base_url=self.base_url,
@@ -105,6 +107,29 @@ class HttpAgentPolicyClient:
             api_key=self.api_key,
         )
         try:
+            if path == "read-result" and response_limit is not None:
+                async with self.http_client.stream(
+                    "POST",
+                    url,
+                    headers={**headers, "Accept-Encoding": "identity"},
+                    json=payload.model_dump(mode="json"),
+                    follow_redirects=False,
+                ) as response:
+                    if response.status_code >= 400:
+                        raise AgentPolicyTransportUnavailable(
+                            f"native_policy_http_refused:read-result:{response.status_code}:unrecognized"
+                        )
+                    if (
+                        response.status_code != 200
+                        or response.headers.get("content-encoding", "identity") != "identity"
+                    ):
+                        raise ValueError
+                    body = bytearray()
+                    async for chunk in response.aiter_bytes(chunk_size=65536):
+                        if len(body) + len(chunk) > response_limit:
+                            raise ValueError
+                        body.extend(chunk)
+                    return TypeAdapter(JsonValue).validate_json(body)
             response = await self.http_client.post(
                 url,
                 headers=headers,

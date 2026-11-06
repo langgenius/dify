@@ -42,6 +42,8 @@ from dify_agent.protocol import (
     CreateRunResponse,
     DeleteHomeSnapshotRequest,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
     ReadExecutionBindingJobRequest,
@@ -51,6 +53,10 @@ from dify_agent.protocol import (
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
+)
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
 )
 from dify_agent.protocol.run_recovery import LookupRunRequest
 from dify_agent.protocol.native_continuation import (
@@ -495,6 +501,58 @@ class Client:
         except httpx.RequestError:
             raise DifyAgentClientError("native checkpoint read failed") from None
 
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Install once; an ACK loss is reconciled by resubmitting this exact request."""
+        payload = _recovery_request_json(request)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(request.successor.agent_run_id, safe='')}/confirmed-recovery-successor"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_recovery_response(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=4096):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("confirmed recovery unavailable")
+                    body.extend(chunk)
+                return _recovery_receipt(body, request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("confirmed recovery unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("confirmed recovery unavailable") from None
+
+    def install_confirmed_recovery_successor_sync(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Synchronous bounded handoff; no automatic retry or payload diagnostics."""
+        payload = _recovery_request_json(request)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(request.successor.agent_run_id, safe='')}/confirmed-recovery-successor"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_recovery_response(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=4096):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("confirmed recovery unavailable")
+                    body.extend(chunk)
+                return _recovery_receipt(body, request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("confirmed recovery unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("confirmed recovery unavailable") from None
+
     async def continue_run(
         self, run_id: str, request: ContinueRunRequest, *, profile: Literal["isolated", "confirmed"] = "isolated"
     ) -> ContinuationClaim:
@@ -749,6 +807,20 @@ class Client:
     def create_execution_binding_sync(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = self._post_sync_json("create_execution_binding_sync", "/execution-bindings", request)
         return _parse_model_response(response, CreateExecutionBindingResponse)
+
+    async def inspect_execution_binding(
+        self, request: InspectExecutionBindingRequest
+    ) -> InspectExecutionBindingResponse:
+        """Read bounded exact binding evidence; this never allocates or acquires."""
+        response = await self._post_async_json("inspect_execution_binding", "/execution-bindings/inspect", request)
+        return _parse_binding_inspection_response(response, request)
+
+    def inspect_execution_binding_sync(
+        self, request: InspectExecutionBindingRequest
+    ) -> InspectExecutionBindingResponse:
+        """Read bounded exact binding evidence through the private control plane."""
+        response = self._post_sync_json("inspect_execution_binding_sync", "/execution-bindings/inspect", request)
+        return _parse_binding_inspection_response(response, request)
 
     async def read_execution_binding_job(
         self, request: ReadExecutionBindingJobRequest
@@ -1249,6 +1321,22 @@ def _build_request_model[_RequestModelT: BaseModel](
         raise DifyAgentValidationError(detail=exc.errors(include_url=False)) from exc
 
 
+def _parse_binding_inspection_response(
+    response: httpx.Response, request: InspectExecutionBindingRequest
+) -> InspectExecutionBindingResponse:
+    """Require bounded evidence for the selected refs; foreign replies grant nothing."""
+    _raise_for_status(response)
+    try:
+        result = InspectExecutionBindingResponse.model_validate_json(response.content)
+        if (result.binding_ref, result.workspace_ref) != (request.binding_ref, request.workspace_ref):
+            raise ValueError("binding inspection identity mismatch")
+        return result
+    except ValueError:
+        raise DifyAgentValidationError(
+            detail={"code": "invalid_binding_inspection_response"}, status_code=response.status_code
+        ) from None
+
+
 def _parse_model_response(response: httpx.Response, model_type: type[_ResponseModelT]) -> _ResponseModelT:
     """Map HTTP errors and parse a Pydantic response DTO."""
     _raise_for_status(response)
@@ -1295,7 +1383,7 @@ def _extract_error_detail(response: httpx.Response) -> object:
         return response.text or response.reason_phrase
     if isinstance(payload, dict) and "detail" in payload:
         return cast(object, payload["detail"])
-    return cast(object, payload)
+    return payload
 
 
 def _next_reconnect_attempt(
@@ -1418,3 +1506,60 @@ def _identity_response(
         return identity
     except ValueError:
         raise DifyAgentValidationError("native identity unavailable") from None
+
+
+def _recovery_request_json(request: InstallConfirmedRecoverySuccessorRequest) -> bytes:
+    try:
+        payload = request.model_dump_json().encode()
+        InstallConfirmedRecoverySuccessorRequest.model_validate_json(payload)
+        if len(payload) > MAX_CHECKPOINT_RESPONSE_BYTES:
+            raise ValueError
+        return payload
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None
+
+
+def _check_recovery_response(response: httpx.Response) -> None:
+    if response.status_code >= 400:
+        raise DifyAgentHTTPError(response.status_code, "confirmed recovery unavailable")
+    try:
+        if response.status_code != 200 or response.headers.get("content-encoding", "identity").lower() != "identity":
+            raise ValueError
+        length = response.headers.get("content-length")
+        if length is not None and not 0 <= int(length) <= MAX_AGENT_CONTROL_BYTES:
+            raise ValueError
+    except ValueError:
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None
+
+
+def _recovery_receipt(
+    body: bytearray, request: InstallConfirmedRecoverySuccessorRequest
+) -> InstallConfirmedRecoverySuccessorReceipt:
+    try:
+        receipt = InstallConfirmedRecoverySuccessorReceipt.model_validate_json(body)
+        relation = request.successor
+        if (
+            receipt.attempt_id,
+            receipt.successor_digest,
+            receipt.agent_run_id,
+            receipt.parent_generation,
+            receipt.agent_generation,
+            receipt.workspace_generation,
+            receipt.config_ref,
+            receipt.config_digest,
+            receipt.checkpoint,
+        ) != (
+            relation.attempt_id,
+            request.successor_digest,
+            relation.agent_run_id,
+            relation.expected_parent_generation,
+            relation.expected_agent_generation,
+            relation.successor.workspace_generation,
+            relation.successor.config_ref,
+            relation.successor.config_digest,
+            relation.successor_checkpoint,
+        ) or receipt.waiting_event_id == relation.predecessor_waiting_event_id:
+            raise ValueError
+        return receipt
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None

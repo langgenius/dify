@@ -258,7 +258,22 @@ def test_resume_publishes_only_after_committed_lifecycle_resume(mocker: pytest_m
     api = _api()
     mocker.patch.object(api.lifecycle, "resume", side_effect=lambda **_: events.append("committed") or receipt)
     commands = commands_module.ConfirmedAgentCommands(api=api, continuation=None, backend=None, publish=None)
-    mocker.patch.object(commands, "_request", return_value=None)
+    from models.dify_builder import DifyBuilderExecutionRequest
+
+    # Existing running/outbox retries cannot allocate a recovery replacement.
+    request = DifyBuilderExecutionRequest(
+        id=REF.request_id,
+        tenant_id=ACTOR.tenant_id,
+        app_id="app",
+        workflow_id="workflow",
+        actor_id=ACTOR.account_id,
+        session_id="session",
+        test_input_id="input",
+        context={},
+        context_digest=REF.context_digest,
+        state="running",
+    )
+    mocker.patch.object(commands, "_request", return_value=request)
     mocker.patch.object(commands, "_root_ref", return_value=REF)
     mocker.patch.object(commands, "_publish_one", side_effect=lambda **_: events.append("published") or True)
     mocker.patch.object(commands, "get", return_value="receipt")

@@ -11,6 +11,10 @@ from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolRetu
 from pydantic_ai.models.function import FunctionModel
 
 from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef, AgentOperationKey
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
 from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, CreateRunRequest
 from dify_agent.runtime.context import Deps, Services
 from dify_agent.runtime.native_continuation import (
@@ -18,6 +22,7 @@ from dify_agent.runtime.native_continuation import (
     AgentPendingCall,
     NativeApprovalSuspended,
     NativeContinuation,
+    NativeContinuationConflict,
     NativePolicyStopped,
     defer_native_call,
     validate_deferred_results,
@@ -171,6 +176,11 @@ def test_scheduler_rejects_native_before_persistence():
     from dify_agent.runtime.run_scheduler import RunScheduler
 
     class NoCallsStore:
+        async def install_confirmed_recovery_successor(
+            self, request: InstallConfirmedRecoverySuccessorRequest
+        ) -> InstallConfirmedRecoverySuccessorReceipt:
+            raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
         async def create_run(self, *, identity=None):
             raise AssertionError("capability check must precede persistence")
 
@@ -379,6 +389,11 @@ def test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling():
     cp = continuation().capture_wait(NativeApprovalSuspended(pending()))
 
     class Store:
+        async def install_confirmed_recovery_successor(
+            self, request: InstallConfirmedRecoverySuccessorRequest
+        ) -> InstallConfirmedRecoverySuccessorReceipt:
+            raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
         async def get_checkpoint(self, run_id):
             return cp
 
@@ -441,13 +456,23 @@ def test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement(finishi
     claim = ContinuationClaim(run_id="run-1", generation=1, idempotency_key="continue-1", claim_id="claim-1")
 
     class Store:
+        async def install_confirmed_recovery_successor(
+            self, request: InstallConfirmedRecoverySuccessorRequest
+        ) -> InstallConfirmedRecoverySuccessorReceipt:
+            raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
         started = False
 
         async def get_checkpoint(self, run_id):
             return cp
 
         async def claim_continuation(self, **kwargs):
-            assert kwargs == {"run_id": "run-1", "expected_generation": 0, "idempotency_key": "continue-1"}
+            assert kwargs == {
+                "run_id": "run-1",
+                "expected_generation": 0,
+                "idempotency_key": "continue-1",
+                "expected_config_digest": cp.config_digest,
+            }
             return claim
 
         async def get_run(self, run_id):
@@ -538,6 +563,11 @@ def test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback(
     failed_reasons = []
 
     class Store:
+        async def install_confirmed_recovery_successor(
+            self, request: InstallConfirmedRecoverySuccessorRequest
+        ) -> InstallConfirmedRecoverySuccessorReceipt:
+            raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
         async def create_run(self, *, identity=None):
             from dify_agent.server.schemas import RunRecord
 
@@ -555,7 +585,7 @@ def test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback(
         async def claim_continuation(self, **kwargs):
             return ContinuationClaim(run_id="run-1", generation=1, idempotency_key="continue-1", claim_id="claim-1")
 
-        async def stop_native_run(self, *, run_id, expected_generation, reason_code):
+        async def stop_native_run(self, *, run_id, expected_generation, reason_code, expected_config_digest=None):
             stopped.append((run_id, expected_generation, reason_code))
 
     class Owner:
@@ -624,6 +654,11 @@ def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdo
         executions = []
 
         class Store:
+            async def install_confirmed_recovery_successor(
+                self, request: InstallConfirmedRecoverySuccessorRequest
+            ) -> InstallConfirmedRecoverySuccessorReceipt:
+                raise NativeContinuationConflict("confirmed recovery unavailable in this fixture")
+
             started = False
 
             async def get_checkpoint(self, run_id):

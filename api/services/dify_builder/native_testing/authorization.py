@@ -173,11 +173,22 @@ def _completed_config_read_readiness(session: Session, owned: OwnedNativeTest) -
 
 
 class EffectAuthorizationService:
-    def __init__(self, loader: OwnedNativeTestLoader, *, clock: Callable[[], datetime] = utc_now):
+    def __init__(self, loader: OwnedNativeTestLoader, *, clock: Callable[[], datetime] = utc_now, state_store=None):
         self.loader = loader
         self.clock = clock
+        self.state_store = state_store
 
-    def _binding(self, session: Session, owned: OwnedNativeTest, intent: EffectIntent) -> NativeBinding:
+    def _resolver(self, ref, key):
+        from services.dify_builder.native_testing.agent_operations import AgentOperationBindingResolver
+
+        resolver = self.loader.resolver
+        if self.state_store is not None and isinstance(resolver, AgentOperationBindingResolver):
+            return resolver.for_operation(store=self.state_store, ref=ref, key=key)
+        return resolver
+
+    def _binding(
+        self, session: Session, owned: OwnedNativeTest, intent: EffectIntent, *, resolver=None
+    ) -> NativeBinding:
         if intent.key.invocation_id != owned.ref.invocation_id:
             raise BuilderExecutionPolicyError("native_binding_mismatch")
         raw = owned.bindings.get(operation_digest(intent.key))
@@ -185,7 +196,7 @@ class EffectAuthorizationService:
             raise BuilderExecutionPolicyError("native_cursor_mismatch")
         try:
             frozen = NativeBinding.model_validate(raw)
-            current = self.loader.resolver.resolve_binding(session=session, owned=owned, key=intent.key)
+            current = (resolver or self.loader.resolver).resolve_binding(session=session, owned=owned, key=intent.key)
             current = NativeBinding.model_validate(current.model_dump(mode="json"))
         except (ValidationError, AttributeError, TypeError):
             raise BuilderExecutionPolicyError("native_binding_mismatch") from None
@@ -200,8 +211,9 @@ class EffectAuthorizationService:
             ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
             intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
             self.loader.load(ref=ref)
+            resolver = self._resolver(ref, intent.key)
             with self.loader.locked(ref=ref) as (session, owned, scope):
-                result = self._claim(session, owned, scope, intent)
+                result = self._claim(session, owned, scope, intent, resolver=resolver)
             # The transaction committed before the permit crosses the I/O boundary.
             return result
         except BuilderExecutionPolicyError as error:
@@ -210,7 +222,7 @@ class EffectAuthorizationService:
             return PolicyStop(reason_code="invalid_native_effect")
 
     def _claim(
-        self, session: Session, owned: OwnedNativeTest, scope: NativeTestScope, intent: EffectIntent
+        self, session: Session, owned: OwnedNativeTest, scope: NativeTestScope, intent: EffectIntent, *, resolver=None
     ) -> EffectDecision:
         now = self.clock()
         operation = session.scalar(
@@ -221,7 +233,7 @@ class EffectAuthorizationService:
         digest = canonical_digest(intent.model_dump(mode="json"))
         if operation is not None and operation.intent_digest != digest:
             return PolicyStop(reason_code="native_intent_conflict")
-        binding = self._binding(session, owned, intent)
+        binding = self._binding(session, owned, intent, resolver=resolver)
         scoped = _scope_digest(intent, binding)
         if operation is not None and operation.state != "pending":
             return self._existing(session, owned, operation, now)
@@ -433,6 +445,7 @@ class EffectAuthorizationService:
         decisions are idempotent; a retry cannot mint a new quota allowance.
         """
         self.loader.load(ref=ref)
+        resolver = self._resolver(ref, intent.key)
         if pending_guard is not None:
             # Refresh actual child permission at the final public authorization
             # boundary, before SQL locking. Like root RBAC, this external check
@@ -457,9 +470,11 @@ class EffectAuthorizationService:
         with self.loader.locked(ref=ref) as (session, owned, scope):
             if expires_at.tzinfo is None or not self.clock() < expires_at <= scope.expires_at:
                 raise BuilderExecutionPolicyError("invalid_native_grant")
-            binding = self._binding(session, owned, intent)
+            binding = self._binding(session, owned, intent, resolver=resolver)
             digest = _scope_digest(intent, binding)
             if pending_guard is not None:
+                from services.dify_builder.native_testing.agent_operations import AgentOperationBindingResolver
+
                 terms = pending_guard.terms
                 if (max_calls, max_dispatches, max_cost_units, expires_at) != (
                     terms.max_calls,
@@ -468,7 +483,13 @@ class EffectAuthorizationService:
                     datetime.fromisoformat(terms.expires_at),
                 ):
                     raise BuilderExecutionPolicyError("native_pending_conflict")
-                pending_guard.recheck(session=session, owned=owned, intent=intent, scope_digest=digest)
+                pending_guard.recheck(
+                    session=session,
+                    owned=owned,
+                    intent=intent,
+                    scope_digest=digest,
+                    recovery_state=resolver.recovery if isinstance(resolver, AgentOperationBindingResolver) else None,
+                )
             grant = session.scalar(
                 select(NativeEffectGrant).where(
                     NativeEffectGrant.tenant_id == owned.tenant_id,
@@ -562,8 +583,11 @@ class EffectAuthorizationService:
         if self._permit_ref(permit) != ref:
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
         self.loader.load(ref=ref)
+        resolver = self._resolver(ref, intent.key)
         with self.loader.locked(ref=ref) as (session, owned, scope):
-            self._validate_dispatch_locked(session=session, owned=owned, scope=scope, intent=intent, permit=permit)
+            self._validate_dispatch_locked(
+                session=session, owned=owned, scope=scope, intent=intent, permit=permit, resolver=resolver
+            )
 
     def validate_completed_config_claim(
         self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit
@@ -583,9 +607,10 @@ class EffectAuthorizationService:
         ):
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
         self.loader.load(ref=ref)
+        resolver = self._resolver(ref, intent.key)
         with self.loader.locked(ref=ref) as (session, owned, scope):
             attempt = self._attempt(session, owned, permit)
-            binding = self._binding(session, owned, intent)
+            binding = self._binding(session, owned, intent, resolver=resolver)
             operation = session.scalar(
                 _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
             )
@@ -641,12 +666,13 @@ class EffectAuthorizationService:
         if self._permit_ref(permit) != ref:
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
         self.loader.load(ref=ref)
+        resolver = self._resolver(ref, intent.key)
         # Child-app RBAC may perform RPC, so refresh before the writer lock.
         # SQL provenance and state are checked again inside the transaction.
         authority = validate_private_read(self.loader, ref)
         with self.loader.locked(ref=ref) as (session, owned, scope):
             attempt = self._validate_dispatch_locked(
-                session=session, owned=owned, scope=scope, intent=intent, permit=permit
+                session=session, owned=owned, scope=scope, intent=intent, permit=permit, resolver=resolver
             )
             require_ancestor_authority(session, ref, owned.tenant_id)
             state = session.scalar(_owned_query(NativeInvocationState, owned))
@@ -694,6 +720,7 @@ class EffectAuthorizationService:
         scope: NativeTestScope,
         intent: EffectIntent,
         permit: DispatchPermit,
+        resolver=None,
     ) -> NativeEffectAttempt:
         """Shared local validation inside the caller's existing root transaction.
 
@@ -705,7 +732,7 @@ class EffectAuthorizationService:
         operation = session.scalar(
             _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
         )
-        binding = self._binding(session, owned, intent)
+        binding = self._binding(session, owned, intent, resolver=resolver)
         now = self.clock()
         if (
             operation is None
