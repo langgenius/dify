@@ -157,6 +157,12 @@ class Jieba(BaseKeyword):
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
+        """Return ranked keyword matches for a persisted dataset using an open session.
+
+        Apply the optional document filter before selecting the top k node IDs,
+        then load full segment rows only for those IDs within the same scope.
+        The caller retains session and transaction ownership; read failures propagate.
+        """
         keyword_table = None
         keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
@@ -165,30 +171,28 @@ class Jieba(BaseKeyword):
 
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
-        segment_map: dict[str, DocumentSegment] | None = None
         candidate_ids: set[str] | None = None
         if document_ids_filter is not None:
-            segments = session.scalars(
-                select(DocumentSegment).where(
+            node_ids = session.scalars(
+                select(DocumentSegment.index_node_id).where(
                     DocumentSegment.tenant_id == self.dataset.tenant_id,
                     DocumentSegment.dataset_id == self.dataset.id,
                     DocumentSegment.document_id.in_(document_ids_filter),
                 )
             ).all()
-            segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
-            candidate_ids = set(segment_map)
+            candidate_ids = {node_id for node_id in node_ids if node_id is not None}
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k, candidate_ids=candidate_ids)
 
         documents = []
-        if segment_map is None:
-            segments = session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.tenant_id == self.dataset.tenant_id,
-                    DocumentSegment.dataset_id == self.dataset.id,
-                    DocumentSegment.index_node_id.in_(sorted_chunk_indices),
-                )
-            ).all()
-            segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
+        segment_query_stmt = select(DocumentSegment).where(
+            DocumentSegment.tenant_id == self.dataset.tenant_id,
+            DocumentSegment.dataset_id == self.dataset.id,
+            DocumentSegment.index_node_id.in_(sorted_chunk_indices),
+        )
+        if document_ids_filter is not None:
+            segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
+        segments = session.scalars(segment_query_stmt).all()
+        segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
         for chunk_index in sorted_chunk_indices:
             segment = segment_map.get(chunk_index)
 
