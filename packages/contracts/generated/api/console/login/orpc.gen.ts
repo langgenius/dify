@@ -17,19 +17,19 @@ import {
 import { zGetLoginQuery, zGetLoginResponse, zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
- * Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
+ * Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
  */
 export const get = oc
   .route({
     description:
-      'Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.',
+      'Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getLogin',
     path: '/login',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetLoginQuery }))
+  .input(z.object({ query: zGetLoginQuery.optional() }).optional())
   .output(zGetLoginResponse)
   .errors({ web_login_unavailable: { status: 503, data: zWebLoginUnavailableError } })
 

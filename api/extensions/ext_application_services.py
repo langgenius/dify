@@ -639,6 +639,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
         activation_accounts=activation_accounts,
     )
+    credential_queries = CredentialQueryRepository(session_factory=database_client)
     workspace_services = build_workspace_services(
         database_client=database_client,
         workspaces=workspace_repository,
@@ -649,6 +650,7 @@ def build_application_services(
         provisioning=workspace_provisioning,
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
+        credentials=credential_queries,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
@@ -735,7 +737,7 @@ def build_application_services(
         conversation_queries=conversation_queries,
         accounts=account_services,
         apps=apps,
-        credential_queries=CredentialQueryRepository(session_factory=database_client),
+        credential_queries=credential_queries,
         workflow_test_credentials=WorkflowTestCredentialService(
             drafts=AppDefinitionQueryRepository(session_factory=database_client),
             access=BuilderTestAccessGateway(
