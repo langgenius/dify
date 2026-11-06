@@ -65,8 +65,6 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 ## Quick start
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/8Goqlh)
-
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 >
 > - CPU >= 2 Core
