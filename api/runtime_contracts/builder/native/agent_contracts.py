@@ -31,6 +31,12 @@ from runtime_contracts.builder.native.contracts import (
 
 
 class AgentTestWorkspaceRef(BaseModel):
+    """Workspace data only; SQL owners separately prove isolation and selection.
+
+    Nullable Home is independent of generation. Isolated admission owns its
+    mandatory pin, while ordinary recovery requires an acknowledged relation.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     binding_id: str
     workspace_id: str
@@ -38,13 +44,7 @@ class AgentTestWorkspaceRef(BaseModel):
     backend_workspace_ref: str
     pinned_snapshot_id: str
     home_snapshot_id: str | None
-    workspace_generation: int
-
-    @model_validator(mode="after")
-    def blank_home_is_normal_workspace_only(self) -> Self:
-        if self.home_snapshot_id is None and self.workspace_generation != 0:
-            raise ValueError("isolated workspace requires a pinned Home Snapshot")
-        return self
+    workspace_generation: Counter
 
 
 class AgentParentNodeRef(FrozenDTO):
@@ -80,12 +80,7 @@ class AgentNodeAssociation(FrozenDTO):
         if not isinstance(raw, dict):
             raise ValueError("expected workspace reference")
         for name in AgentTestWorkspaceRef.model_fields:
-            if (
-                name == "home_snapshot_id"
-                and name in raw
-                and raw[name] is None
-                and raw.get("workspace_generation") == 0
-            ):
+            if name == "home_snapshot_id" and name in raw and raw[name] is None:
                 continue
             TypeAdapter(Counter if name == "workspace_generation" else ID).validate_python(raw.get(name))
         return value

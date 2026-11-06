@@ -1,6 +1,7 @@
 """Redis-backed run admission, records, event streams, and cancellation intents.
 
-The store writes run metadata as JSON strings and events as Redis streams.
+The store writes run metadata, including private native identity and protected
+continuation references, as JSON strings and events as Redis streams.
 HTTP event cursors are Redis stream ids; ``0-0`` means replay from the beginning
 for polling and SSE. Records, event streams, and intents share one retention
 window that is refreshed when status or event data is written. Execution is scheduled
@@ -15,15 +16,36 @@ import hashlib
 import json
 from collections.abc import AsyncIterator, Awaitable
 from typing import cast, override
+from uuid import uuid4
 
-from pydantic import JsonValue
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
+from dify_agent.adapters.native_testing.transport import bind_runtime_identity
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
+from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
+
+from dify_agent.protocol.native_continuation import (
+    MAX_CHECKPOINT_BYTES,
+    MAX_CHECKPOINT_EVENT_BYTES,
+    MAX_CHECKPOINT_RECORD_BYTES,
+    MAX_CHECKPOINT_RESPONSE_BYTES,
+    ReadNativeCheckpointRequest,
+    SelectedNativeCheckpoint,
+)
 from dify_agent.protocol.native_testing import (
+    MAX_AGENT_CONTROL_BYTES,
     AgentNativeTestRef,
     AgentOperationKey,
     AgentRuntimeIdentity,
     AgentRuntimeIdentitySeed,
+    ContinuationClaim,
+    Counter,
+    ReadAgentRuntimeIdentity,
 )
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
@@ -33,10 +55,17 @@ from dify_agent.protocol.schemas import (
     RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
+    RunFailedEvent,
+    RunFailedEventData,
+    RunResumedEvent,
+    RunResumedEventData,
     RunStatus,
+    RunWaitingEvent,
     utc_now,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.run_recovery import LookupRunRequest
+from dify_agent.protocol.schemas import CreateRunResponse
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
@@ -46,7 +75,7 @@ from dify_agent.runtime.event_sink import (
     TerminalRunEvent,
     terminal_event_status_fields,
 )
-from dify_agent.runtime.native_continuation import NativeContinuationConflict
+from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import (
@@ -101,6 +130,26 @@ class IdempotencyConflictError(RuntimeError):
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+_LOOKUP_IDEMPOTENT_RUN_SCRIPT = """
+-- KEYS: claim. ARGV: key digest, fingerprint, max record bytes, prefix.
+-- Return {1, run id, status} on match, {-1, "", ""} if unclaimed or expired,
+-- {-2, "", ""} if the retained record is another request or unreadable.
+-- A read-only selection: it never writes, schedules, or refreshes any TTL.
+local run_id = redis.call("GET", KEYS[1])
+if not run_id then return {-1, "", ""} end
+local record_key = ARGV[4] .. ":runs:" .. run_id .. ":record"
+local kind = redis.call("TYPE", record_key).ok
+if kind == "none" then return {-1, "", ""} end
+if kind ~= "string" or redis.call("STRLEN", record_key) > tonumber(ARGV[3]) then return {-2, "", ""} end
+local ok, r = pcall(cjson.decode, redis.call("GET", record_key))
+if not ok or type(r) ~= "table" or r.run_id ~= run_id or
+    r.idempotency_key_digest ~= ARGV[1] or r.idempotency_fingerprint ~= ARGV[2] or
+    (r.status ~= "running" and r.status ~= "waiting" and r.status ~= "succeeded" and
+    r.status ~= "failed" and r.status ~= "cancelled") then return {-2, "", ""} end
+return {1, r.run_id, r.status}
+"""
 
 
 _FINALIZE_RUN_SCRIPT = (
@@ -203,7 +252,7 @@ redis.call("EXPIRE", KEYS[3], ttl)
 """
     + _REFRESH_IDEMPOTENCY_CLAIM
     + """
-return {1, "running"}
+return {1, tostring(record.status)}
 """
 )
 
@@ -254,7 +303,8 @@ return {1, "cancelled", event_id}
 )
 
 
-_PERSIST_WAITING_SCRIPT = """
+_PERSIST_WAITING_SCRIPT = (
+    """
 local raw = redis.call("GET", KEYS[1])
 if not raw then return {-1, ""} end
 local r = cjson.decode(raw)
@@ -262,6 +312,17 @@ local cp = cjson.decode(ARGV[1])
 if r.status ~= "running" or redis.call("EXISTS", KEYS[3]) == 1 or (r.native_generation or 0) ~= cp.generation then
     return {-2, ""}
 end
+if type(r.runtime_identity) == "table" then
+    local parent = r.runtime_identity.parent_node
+    if type(parent) ~= "table" or type(parent.ref) ~= "table" or
+        r.runtime_identity.request_digest ~= cp.config_digest or
+        r.runtime_identity.native_test_profile ~= cp.native_test_profile then return {-2, ""} end
+    for _, field in ipairs({"policy_version", "request_id", "invocation_id", "context_digest"}) do
+        if parent.ref[field] ~= cp.ref[field] then return {-2, ""} end
+    end
+end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    cp.config_ref ~= cjson.decode(r.confirmed_recovery_selection_json).successor.successor.config_ref then return {-2, ""} end
 r.native_checkpoint_json = ARGV[1]
 r.status = "waiting"
 r.updated_at = ARGV[3]
@@ -271,16 +332,24 @@ local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[5], "*", "paylo
 r.native_wait_event_id = event_id
 redis.call("EXPIRE", KEYS[2], ARGV[4])
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[4])
+local record, ttl = r, ARGV[4]
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, event_id}
 """
+)
 
-_CLAIM_CONTINUATION_SCRIPT = """
+_CLAIM_CONTINUATION_SCRIPT = (
+    """
 local raw = redis.call("GET", KEYS[1])
 if not raw then return {-1, ""} end
 local r = cjson.decode(raw)
 if redis.call("EXISTS", KEYS[2]) == 1 or r.status == "cancelled" or r.status == "failed" or r.status == "succeeded" then
     return {-2, ""}
 end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    r.runtime_identity.request_digest ~= ARGV[3] then return {-2, ""} end
 local claim = cjson.decode(ARGV[1])
 if r.native_claim and r.native_claim ~= cjson.null then
     if r.native_claim.generation == claim.generation and r.native_claim.idempotency_key == claim.idempotency_key then
@@ -293,10 +362,16 @@ if r.status ~= "waiting" or not r.native_checkpoint_json or r.native_checkpoint_
 end
 r.native_claim = claim
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[2])
+local record, ttl = r, ARGV[2]
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, ARGV[1]}
 """
+)
 
-_START_CONTINUATION_SCRIPT = """
+_START_CONTINUATION_SCRIPT = (
+    """
 local raw = redis.call("GET", KEYS[1])
 if not raw then return -1 end
 local r = cjson.decode(raw)
@@ -313,15 +388,23 @@ r.updated_at = ARGV[3]
 redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[5], "*", "payload", ARGV[2])
 redis.call("EXPIRE", KEYS[2], ARGV[4])
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[4])
+local record, ttl = r, ARGV[4]
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return 1
 """
+)
 
 
-_STOP_NATIVE_SCRIPT = """
+_STOP_NATIVE_SCRIPT = (
+    """
 local raw = redis.call("GET", KEYS[1])
 if not raw then return -1 end
 local r = cjson.decode(raw)
 if redis.call("EXISTS", KEYS[3]) == 1 or r.status ~= "waiting" or (r.native_generation or 0) ~= tonumber(ARGV[1]) then return -2 end
+if type(r.confirmed_recovery_selection_json) == "string" and
+    r.runtime_identity.request_digest ~= ARGV[7] then return -2 end
 r.status = "failed"
 r.error = ARGV[2]
 r.updated_at = ARGV[3]
@@ -331,8 +414,13 @@ r.native_claim = cjson.null
 redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
 redis.call("EXPIRE", KEYS[2], ARGV[5])
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[5])
+local record, ttl = r, ARGV[5]
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return 1
 """
+)
 
 
 _READ_NATIVE_CHECKPOINT_SCRIPT = """
@@ -384,11 +472,13 @@ class RedisRunStore(RunEventSink):
         prefix: str = "dify-agent",
         run_retention_seconds: int = DEFAULT_RUN_RETENTION_SECONDS,
         run_event_stream_max_length: int = DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
+        confirmed_recovery_owner: ConfirmedNativeContinuationOwner | None = None,
     ) -> None:
         if run_retention_seconds <= 0:
             raise ValueError("run_retention_seconds must be positive")
         if run_event_stream_max_length <= 0:
             raise ValueError("run_event_stream_max_length must be positive")
+        self.confirmed_recovery_owner = confirmed_recovery_owner
         self.redis = redis
         self.prefix = prefix
         self.run_retention_seconds = run_retention_seconds
@@ -413,7 +503,13 @@ class RedisRunStore(RunEventSink):
         )
         return record
 
-    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+    async def create_run_idempotent(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        identity: AgentRuntimeIdentitySeed | None = None,
+    ) -> tuple[RunRecord, bool]:
         """Atomically claim a key and persist its run, returning ``(record, created)``.
 
         The Lua script serializes admission across Redis clients, so concurrent
@@ -421,13 +517,20 @@ class RedisRunStore(RunEventSink):
         with its current status without refreshing TTLs; a fingerprint mismatch
         raises ``IdempotencyConflictError``. Missing claims or expired records
         allow a new run. Only digests and a run id are stored for admission.
+        A created record carries its immutable private identity in the same write.
         """
         key_digest = hashlib.sha256(idempotency_key.encode()).hexdigest()
+        run_id = new_run_id()
         record = RunRecord(
-            run_id=new_run_id(),
+            run_id=run_id,
             status="running",
             idempotency_key_digest=key_digest,
             idempotency_fingerprint=request_fingerprint,
+            runtime_identity=(
+                AgentRuntimeIdentity(run_id=run_id, agent_generation=0, **identity.model_dump())
+                if identity is not None
+                else None
+            ),
         )
         claim_key = run_idempotency_key(self.prefix, key_digest)
         raw_result = await cast(
@@ -451,6 +554,386 @@ class RedisRunStore(RunEventSink):
         if status == 1:
             return record, True
         return RunRecord.model_validate_json(_decode_redis_text(result[1])), False
+
+    async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse:
+        """Select retained keyed acceptance through the admission claim, read-only.
+
+        Missing or expired claims/records raise ``RunNotFoundError``. A record for
+        another fingerprint, or one that cannot be read within bounds, raises
+        ``IdempotencyConflictError``. Lookup never schedules or refreshes TTLs.
+        """
+        key_digest = hashlib.sha256(selection.idempotency_key.encode()).hexdigest()
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _LOOKUP_IDEMPOTENT_RUN_SCRIPT,
+                1,
+                run_idempotency_key(self.prefix, key_digest),
+                key_digest,
+                selection.request_digest,
+                str(MAX_CHECKPOINT_RECORD_BYTES),
+                self.prefix,
+            ),
+        )
+        try:
+            if not isinstance(reply, (list, tuple)) or len(reply) != 3:
+                raise ValueError
+            code = int(reply[0])
+            if code == -1:
+                raise RunNotFoundError("keyed run")
+            if code != 1:
+                raise ValueError
+            return CreateRunResponse.model_validate(
+                {"run_id": _decode_redis_text(reply[1]), "status": _decode_redis_text(reply[2])}
+            )
+        except (TypeError, ValueError):
+            raise IdempotencyConflictError("idempotency key does not select this create-run request") from None
+
+    async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Read bounded selected metadata; legacy/unknown records refuse."""
+        # Redis extracts just the bounded identity, never history/config/checkpoint.
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(_READ_RUN_IDENTITY_SCRIPT, 1, run_record_key(self.prefix, run_id), MAX_AGENT_CONTROL_BYTES),
+        )
+        if not isinstance(reply, (list, tuple)):
+            raise NativeContinuationConflict("native identity unavailable")
+        try:
+            status, raw, generation = reply
+            if int(status) == -1:
+                raise RunNotFoundError(run_id)
+            if int(status) != 1 or not isinstance(raw, (str, bytes)) or len(raw) > MAX_AGENT_CONTROL_BYTES:
+                raise ValueError
+            identity = AgentRuntimeIdentity.model_validate_json(raw)
+            if (identity.run_id, identity.parent_node, identity.request_digest) != (
+                run_id,
+                selection.parent_node,
+                selection.request_digest,
+            ) or (identity.execution_mode == "builder_test") != (selection.parent_node is not None):
+                raise ValueError
+            return identity.model_copy(
+                update={"agent_generation": TypeAdapter(Counter).validate_python(int(generation))}
+            )
+        except RunNotFoundError:
+            raise
+        except (ValueError, TypeError):
+            raise NativeContinuationConflict("native identity unavailable") from None
+
+    async def read_active_stub_identity(self, selection: AgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Atomically select a running uncancelled Run for bounded Stub admission."""
+        if selection.execution_mode == "builder_test" and selection.native_test_profile != "confirmed":
+            raise NativeContinuationConflict("confirmed Stub identity required")
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _READ_ACTIVE_STUB_SCRIPT,
+                2,
+                run_record_key(self.prefix, selection.run_id),
+                run_cancel_intent_key(self.prefix, selection.run_id),
+                selection.run_id,
+                selection.request_digest,
+                selection.agent_generation,
+                MAX_AGENT_CONTROL_BYTES,
+                MAX_CHECKPOINT_BYTES * 2,
+            ),
+        )
+        if not isinstance(reply, (bytes, str)) or len(reply) > MAX_AGENT_CONTROL_BYTES:
+            raise NativeContinuationConflict("active Stub identity unavailable")
+        try:
+            actual = AgentRuntimeIdentity.model_validate_json(reply)
+        except ValueError:
+            raise NativeContinuationConflict("active Stub identity unavailable") from None
+        if actual != selection:
+            raise NativeContinuationConflict("active Stub identity changed")
+        return actual
+
+    @override
+    async def persist_waiting(self, *, run_id: str, checkpoint: AgentCheckpoint, event: RunWaitingEvent) -> str:
+        """Commit protected checkpoint and public waiting event in one Lua CAS."""
+        if run_id != checkpoint.run_id or event.run_id != run_id or event.data != checkpoint.waiting_event().data:
+            raise NativeContinuationConflict("checkpoint/event identity mismatch")
+        payload = checkpoint.model_dump_json()
+        if (
+            len(payload.encode()) > MAX_CHECKPOINT_BYTES
+            or len(event.model_dump_json().encode()) > MAX_CHECKPOINT_EVENT_BYTES
+        ):
+            raise ValueError("native checkpoint exceeds protected payload limit")
+        result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _PERSIST_WAITING_SCRIPT,
+                3,
+                run_record_key(self.prefix, run_id),
+                run_events_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                payload,
+                event.model_dump_json(exclude={"id"}),
+                event.created_at.isoformat(),
+                str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
+            ),
+        )
+        result = cast(list[object], result)
+        if int(cast(int | bytes | str, result[0])) == -1:
+            raise RunNotFoundError(run_id)
+        if int(cast(int | bytes | str, result[0])) != 1:
+            raise NativeContinuationConflict("waiting transition lost generation or cancellation")
+        return _decode_redis_text(result[1])
+
+    async def stop_native_run(
+        self, *, run_id: str, expected_generation: int, reason_code: str, expected_config_digest: str | None = None
+    ) -> None:
+        """Persist a trusted policy stop without giving denial back to the model."""
+        event = RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=reason_code, reason=reason_code))
+        result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _STOP_NATIVE_SCRIPT,
+                3,
+                run_record_key(self.prefix, run_id),
+                run_events_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                str(expected_generation),
+                reason_code,
+                event.created_at.isoformat(),
+                event.model_dump_json(exclude={"id"}),
+                str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
+                expected_config_digest or "",
+            ),
+        )
+        if result == -1:
+            raise RunNotFoundError(run_id)
+        if result != 1:
+            raise NativeContinuationConflict("policy stop lost generation or cancellation")
+
+    async def get_checkpoint(self, run_id: str) -> AgentCheckpoint:
+        record = await self.get_run(run_id)
+        if record.native_checkpoint_json is None:
+            raise NativeContinuationConflict("protected checkpoint unavailable")
+        return AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+
+    async def read_native_checkpoint(
+        self, *, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Read an exact ACKed wait atomically; never grants resume/cleanup authority.
+
+        This intentionally refuses current-only, expired, pruned, cancelled or
+        started state. No retries, scheduling, stream scan or TTL refresh occurs.
+        """
+        try:
+            reply = await cast(
+                Awaitable[object],
+                self.redis.eval(
+                    _READ_NATIVE_CHECKPOINT_SCRIPT,
+                    3,
+                    run_record_key(self.prefix, run_id),
+                    run_events_key(self.prefix, run_id),
+                    run_cancel_intent_key(self.prefix, run_id),
+                    str(request.expected_generation),
+                    request.waiting_event_id,
+                    str(MAX_CHECKPOINT_RECORD_BYTES),
+                    str(MAX_CHECKPOINT_BYTES),
+                    str(MAX_CHECKPOINT_EVENT_BYTES),
+                ),
+            )
+            if not isinstance(reply, list) or len(reply) != 4:
+                raise ValueError("invalid checkpoint reply")
+            code = int(reply[0])
+            if code == -1:
+                raise RunNotFoundError(run_id)
+            if code != 1:
+                raise ValueError("checkpoint unavailable")
+            raw, event_id, event_raw = (_decode_redis_text(value) for value in reply[1:])
+            if len(raw.encode()) > MAX_CHECKPOINT_RECORD_BYTES or len(event_raw.encode()) > MAX_CHECKPOINT_EVENT_BYTES:
+                raise ValueError("checkpoint unavailable")
+            record_json = json.loads(raw)
+            if (
+                not isinstance(record_json, dict)
+                or type(record_json.get("native_generation")) is not int
+                or type(record_json.get("native_dispatch_started")) is not bool
+            ):
+                raise ValueError("checkpoint record unavailable")
+            record = RunRecord.model_validate(record_json)
+            if (
+                record.run_id != run_id
+                or record.status != "waiting"
+                or record.native_dispatch_started
+                or record.native_generation != request.expected_generation
+                or record.native_wait_event_id != request.waiting_event_id
+                or event_id != request.waiting_event_id
+                or record.native_checkpoint_json is None
+                or len(record.native_checkpoint_json.encode()) > MAX_CHECKPOINT_BYTES
+            ):
+                raise ValueError("checkpoint selection mismatch")
+            checkpoint = AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+            event = RunWaitingEvent.model_validate_json(event_raw)
+            if event.id is not None:
+                raise ValueError("checkpoint event unavailable")
+            event = event.model_copy(update={"id": event_id})
+            selected = SelectedNativeCheckpoint(checkpoint=checkpoint, waiting_event=event)
+            selected.validate_selection(run_id=run_id, request=request)
+            if len(selected.model_dump_json().encode()) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                raise ValueError("checkpoint unavailable")
+            return selected
+        except RunNotFoundError:
+            raise
+        except (RedisError, ValidationError, ValueError, TypeError, UnicodeError, IndexError, OverflowError):
+            raise NativeContinuationConflict("selected native checkpoint unavailable") from None
+
+    async def claim_continuation(
+        self, *, run_id: str, expected_generation: int, idempotency_key: str, expected_config_digest: str | None = None
+    ) -> ContinuationClaim:
+        """Persist recoverable dispatch intent; duplicate deliveries share its ID."""
+        claim = ContinuationClaim(
+            run_id=run_id, generation=expected_generation + 1, idempotency_key=idempotency_key, claim_id=str(uuid4())
+        )
+        result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _CLAIM_CONTINUATION_SCRIPT,
+                2,
+                run_record_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                claim.model_dump_json(),
+                str(self.run_retention_seconds),
+                expected_config_digest or "",
+            ),
+        )
+        result = cast(list[object], result)
+        if int(cast(int | bytes | str, result[0])) == -1:
+            raise RunNotFoundError(run_id)
+        if int(cast(int | bytes | str, result[0])) != 1:
+            raise NativeContinuationConflict("continuation generation, claim or cancellation conflict")
+        return ContinuationClaim.model_validate_json(_decode_redis_text(result[1]))
+
+    async def start_continuation(self, claim: ContinuationClaim) -> bool:
+        """Consume a scheduling intent once; ambiguous dispatch is never retried.
+
+        A crash before this CAS can recover the same intent. A crash after it
+        leaves running/unavailable state for the owner to reconcile, never a
+        second execution. This is deliberately not a lease that expires/replays.
+        """
+        event = RunResumedEvent(run_id=claim.run_id, data=RunResumedEventData(generation=claim.generation))
+        result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _START_CONTINUATION_SCRIPT,
+                3,
+                run_record_key(self.prefix, claim.run_id),
+                run_events_key(self.prefix, claim.run_id),
+                run_cancel_intent_key(self.prefix, claim.run_id),
+                claim.claim_id,
+                event.model_dump_json(exclude={"id"}),
+                event.created_at.isoformat(),
+                str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
+            ),
+        )
+        result = cast(int, result)
+        if result == -1:
+            raise RunNotFoundError(claim.run_id)
+        if result == -2:
+            raise NativeContinuationConflict("continuation cancelled or claim changed")
+        return result == 1
+
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Verify protected API ownership, then CAS the exact original Redis bytes.
+
+        All I/O validation precedes the Lua mutation. Concurrent cancellation,
+        continuation claim, checkpoint or identity mutation defeats that CAS.
+        A retained exact receipt reconciles an ACK-lost handoff without replay.
+        """
+        run_id = request.successor.agent_run_id
+        if self.confirmed_recovery_owner is None:
+            raise NativeContinuationConflict("confirmed recovery owner unavailable")
+        key = run_record_key(self.prefix, run_id)
+        raw = await self.redis.get(key)
+        if raw is None:
+            raise RunNotFoundError(run_id)
+        request_json = request.model_dump_json()
+        try:
+            if not isinstance(raw, (str, bytes)) or len(raw) > MAX_CHECKPOINT_RECORD_BYTES:
+                raise ValueError
+            record = RunRecord.model_validate_json(raw)
+            if record.confirmed_recovery_selection_json == request_json:
+                if record.confirmed_recovery_receipt_json is None:
+                    raise ValueError
+                return InstallConfirmedRecoverySuccessorReceipt.model_validate_json(
+                    record.confirmed_recovery_receipt_json
+                )
+            relation = request.successor
+            identity = record.runtime_identity
+            if identity is not None:
+                identity = identity.model_copy(update={"agent_generation": record.native_generation})
+            if (
+                record.run_id != run_id
+                or record.status != "waiting"
+                or record.native_claim is not None
+                or record.native_dispatch_started
+                or record.native_generation != relation.expected_agent_generation
+                or record.native_wait_event_id != relation.predecessor_waiting_event_id
+                or record.native_checkpoint_json is None
+                or identity is None
+            ):
+                raise ValueError
+            old = AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+            await self.read_native_checkpoint(
+                run_id=run_id,
+                request=ReadNativeCheckpointRequest(
+                    ref=old.ref,
+                    expected_generation=old.generation,
+                    waiting_event_id=relation.predecessor_waiting_event_id,
+                    config_ref=old.config_ref,
+                    config_digest=old.config_digest,
+                ),
+            )
+            with bind_runtime_identity(identity):
+                checkpoint = await self.confirmed_recovery_owner.prepare_confirmed_recovery_successor(
+                    request=request, predecessor=old
+                )
+            payload = checkpoint.model_dump_json()
+            if len(payload.encode()) > MAX_CHECKPOINT_BYTES:
+                raise ValueError
+            event = checkpoint.waiting_event()
+            receipt = {
+                "protocol_version": 1,
+                "attempt_id": relation.attempt_id,
+                "successor_digest": request.successor_digest,
+                "agent_run_id": run_id,
+                "parent_generation": relation.expected_parent_generation,
+                "agent_generation": relation.expected_agent_generation,
+                "workspace_generation": relation.successor.workspace_generation,
+                "config_ref": relation.successor.config_ref,
+                "config_digest": relation.successor.config_digest,
+                "checkpoint": relation.successor_checkpoint.model_dump(mode="json"),
+            }
+            reply = await self.redis.execute_command(
+                "EVAL",
+                _INSTALL_CONFIRMED_RECOVERY_SCRIPT,
+                4,
+                key,
+                run_events_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                f"{self.prefix}:run:{run_id}:confirmed-recovery:{relation.attempt_id}:predecessor",
+                raw,
+                request_json,
+                payload,
+                event.model_dump_json(exclude={"id"}),
+                json.dumps(receipt),
+                event.created_at.isoformat(),
+                str(self.run_retention_seconds),
+                str(self.run_event_stream_max_length),
+            )
+            if not isinstance(reply, (bytes, str)):
+                raise ValueError
+            return InstallConfirmedRecoverySuccessorReceipt.model_validate_json(reply)
+        except RunNotFoundError:
+            raise
+        except Exception:
+            raise NativeContinuationConflict("confirmed recovery successor unavailable") from None
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""
@@ -780,3 +1263,40 @@ local result = cjson.encode(i)
 if #result > tonumber(ARGV[4]) then return false end
 return result
 """
+
+
+_INSTALL_CONFIRMED_RECOVERY_SCRIPT = (
+    """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return false end
+local r = cjson.decode(raw)
+if r.confirmed_recovery_selection_json == ARGV[2] then return r.confirmed_recovery_receipt_json end
+if raw ~= ARGV[1] or r.status ~= "waiting" or redis.call("EXISTS", KEYS[3]) == 1 or
+    r.native_dispatch_started or (r.native_claim and r.native_claim ~= cjson.null) then return false end
+local stream_type = redis.call("TYPE", KEYS[2]).ok
+if stream_type ~= "stream" then return false end
+local previous_wait = redis.call("XRANGE", KEYS[2], r.native_wait_event_id, r.native_wait_event_id, "COUNT", 1)
+if #previous_wait ~= 1 or previous_wait[1][1] ~= r.native_wait_event_id then return false end
+local predecessor = redis.call("GET", KEYS[4])
+if predecessor and predecessor ~= raw then return false end
+local cp = cjson.decode(ARGV[3])
+local receipt = cjson.decode(ARGV[5])
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[8], "*", "payload", ARGV[4])
+receipt.waiting_event_id = event_id
+r.runtime_identity.request_digest = cp.config_digest
+r.native_checkpoint_json = ARGV[3]
+r.native_wait_event_id = event_id
+r.updated_at = ARGV[6]
+r.confirmed_recovery_selection_json = ARGV[2]
+r.confirmed_recovery_receipt_json = cjson.encode(receipt)
+redis.call("SET", KEYS[4], raw, "EX", ARGV[7], "NX")
+redis.call("EXPIRE", KEYS[4], ARGV[7])
+redis.call("EXPIRE", KEYS[2], ARGV[7])
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[7])
+local record, ttl = r, ARGV[7]
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
+return r.confirmed_recovery_receipt_json
+"""
+)

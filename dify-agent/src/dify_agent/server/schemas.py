@@ -6,28 +6,14 @@ imports from silently depending on implementation modules while preserving the
 internal ``RunRecord`` model used by schedulers and Redis storage.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar
-from uuid import UUID, uuid4, uuid5
-import hashlib
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
 from dify_agent.protocol.native_testing import AgentRuntimeIdentity, ContinuationClaim
-
-
-_KEYED_RUN_NAMESPACE_V1 = UUID("b67a4252-c731-4d53-8521-b79cc362474a")
-
-
-def keyed_run_id(key_digest: str) -> str:
-    """Server-only v1 mapping; callers retain the key, never derive public IDs."""
-    return str(uuid5(_KEYED_RUN_NAMESPACE_V1, key_digest))
-
-
-def create_key_digest(key: str) -> str:
-    return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
 def new_run_id() -> str:
@@ -38,11 +24,13 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Status metadata and optional admission digests are persisted; legacy records
-    without digests remain valid. The digests let active writes refresh only
-    their own idempotency claim and are excluded from public status responses.
-    Raw keys and create-run requests can contain sensitive data and remain in
-    scheduler memory rather than Redis.
+    Status metadata, optional admission digests, selected private identity and
+    protected continuation references are persisted; legacy records without
+    digests remain valid. The digests let active writes refresh only their own
+    idempotency claim and are excluded from public status responses. Recovery
+    retains the immutable predecessor separately and never changes original
+    create idempotency. Raw keys and create-run requests can contain sensitive
+    data and remain in scheduler memory rather than Redis.
     """
 
     run_id: str
@@ -55,13 +43,13 @@ class RunRecord(BaseModel):
     idempotency_fingerprint: str | None = None
     # Unknown on legacy records; absence is never evidence of ordinary origin.
     runtime_identity: AgentRuntimeIdentity | None = None
-    create_key_digest: str | None = Field(default=None, exclude_if=lambda value: value is None)
-    create_request_digest: str | None = Field(default=None, exclude_if=lambda value: value is None)
     native_checkpoint_json: str | None = None
     native_wait_event_id: str | None = None
     native_generation: int = 0
     native_claim: ContinuationClaim | None = None
     native_dispatch_started: bool = False
+    confirmed_recovery_selection_json: str | None = None
+    confirmed_recovery_receipt_json: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -72,14 +60,6 @@ class RunRecord(BaseModel):
         if value.tzinfo is None:
             raise ValueError("updated_at must be timezone-aware")
         return value
-
-
-@dataclass(frozen=True)
-class RunCreateClaim:
-    """One atomic creation result; only an inserted record admits scheduling."""
-
-    record: RunRecord
-    inserted: bool
 
 
 __all__ = ["RunRecord", "new_run_id"]

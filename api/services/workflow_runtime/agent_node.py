@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, suppress
+from functools import singledispatchmethod
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal, override
 
@@ -26,8 +27,14 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.agent_log_events import (
+    AgentLogEvent,
+    NodeRunAgentLogEvent,
+    node_run_agent_log_event,
+)
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.output_failure_orchestrator import (
     FailedOutput,
     OutputFailureDecision,
@@ -41,8 +48,13 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuildError,
 )
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from core.workflow.nodes.agent_v2.tool_activity import (
+    FinishStatus,
+    WorkflowAgentToolActivity,
+    WorkflowAgentToolActivityProjector,
+)
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.engine_events import NodeRunPauseRequestedEvent
+from graphon.engine_events import NodeEvent, NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -51,19 +63,29 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.node_events import NodeEventPayload, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import (
+    NodeEventPayload,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
+from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 from services.workflow_runtime.agent_binding import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 
 if TYPE_CHECKING:
+    from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
+    from core.workflow.nodes.agent_v2.tool_snapshot import AgentRuntimeToolDefinition
     from graphon.runtime import InitParams, RuntimeState
     from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
     from services.agent.workflow_run_recovery import WorkflowAgentRunRecovery
     from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
+    from services.dify_builder.native_testing.agent_recovery import ConfirmedSnapshotIdentity
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 
 logger = logging.getLogger(__name__)
@@ -175,6 +197,22 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
     @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        return node_run_agent_log_event(
+            event,
+            execution_id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+        )
+
+    @override
     def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
@@ -267,6 +305,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 conversation_id=conversation_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -275,7 +314,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
-                conversation_id=conversation_id,
+                conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
                 **builder_resolution,
             )
         except (AgentSnapshotChanged, BuilderExecutionPolicyError) as error:
@@ -313,6 +352,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -324,6 +365,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
@@ -339,15 +381,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         attempt = 0
         while True:
             parent_node = None
+            snapshot_identity = None
             after = None
             runtime_request = None
             create_response = None
+            evaluation_trace_collector: AgentV2TraceCollector | None = None
             try:
                 if confirmed is not None:
                     from services.agent.workflow_run_recovery import AgentCreateAcknowledgementUnknown
 
                     try:
-                        create_response, parent_node, after = self._start_or_resume_confirmed(
+                        create_response, parent_node, after, snapshot_identity = self._start_or_resume_confirmed(
                             dify_context=dify_ctx,
                             session_scope=session_scope,
                             stored_session=stored_session,
@@ -410,6 +454,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 metadata.clear()
                 metadata.update(runtime_request.metadata)
                 metadata["attempt"] = attempt
+                evaluation_trace_collector = self._build_evaluation_trace_collector(
+                    enabled=dify_ctx.capture_agent_evaluation_trace,
+                    available_tools=runtime_request.available_tools,
+                )
                 try:
                     create_response = self._agent_backend_client.create_run(runtime_request.request)
                 except AgentBackendError as error:
@@ -438,6 +486,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
                 after=after,
+                evaluation_trace_collector=evaluation_trace_collector,
             )
             if isinstance(terminal_event, AgentBackendRunWaitingInternalEvent):
                 if confirmed is None or parent_node is None:
@@ -472,6 +521,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             ):
                 yield self._control_pause(inputs, process_data, metadata, "agent_stream_ack_unknown")
                 return
+            if metadata.get("knowledge_fs_sources"):
+                yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
                 isinstance(terminal_event, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)
@@ -482,6 +533,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     binding_id=stored_session.binding_id,
                     snapshot=terminal_event.session_snapshot,
                     metadata=metadata,
+                    confirmed_identity=snapshot_identity,
                 )
             if exhausted is not None:
                 # Streaming error / unexpected end — surface immediately without
@@ -516,6 +568,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 binding_id=stored_session.binding_id,
                 snapshot=terminal_event.session_snapshot,
                 metadata=metadata,
+                confirmed_identity=snapshot_identity,
             )
 
             success_event = terminal_event
@@ -590,6 +643,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     return
                 edge_source_handle = selected
 
+            if evaluation_trace_collector is not None:
+                metadata["evaluation_trace"] = evaluation_trace_collector.build_trace_snapshot(
+                    output=success_event.output
+                ).model_dump(mode="json")
+
             yield StreamCompletedEvent(
                 node_run_result=self._output_adapter.build_success_result(
                     event=success_event,
@@ -655,8 +713,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
                 if continued.association.agent_run_id != response.run_id or continued.wait is None:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-                return response, parent, continued.wait.backend_wait_event_id
-            return response, parent, None
+                identity = self._capture_confirmed_snapshot(
+                    parent=parent,
+                    response=response,
+                    stored_session=stored_session,
+                    agent_generation=continued.wait.agent_generation + 1,
+                )
+                return response, parent, continued.wait.backend_wait_event_id, identity
+            identity = self._capture_confirmed_snapshot(
+                parent=parent,
+                response=response,
+                stored_session=stored_session,
+                agent_generation=0,
+            )
+            return response, parent, None, identity
         if response is not None:
             raise BuilderExecutionPolicyError("native_agent_input_unavailable")
         context = self._agent_preparation.state_store.load_context(ref=marker.ref)
@@ -697,7 +767,79 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             client=client,
             on_persisted=process_data.update,
         )
-        return response, parent, None
+        identity = self._capture_confirmed_snapshot(
+            parent=parent,
+            response=response,
+            stored_session=stored_session,
+            agent_generation=0,
+        )
+        return response, parent, None, identity
+
+    def _capture_confirmed_snapshot(self, *, parent, response, stored_session, agent_generation):
+        """Obtain acknowledged association and capture this stream's original tuple.
+
+        Initial bind uses the existing runtime identity owner, never an invented
+        association ref. Failure refuses persistence while stream/cancellation
+        retain their existing independent behavior.
+        """
+        from dify_agent.protocol.confirmed_recovery import AgentRecoveryBinding
+        from dify_agent.protocol.native_testing import AgentParentNodeRef as WireParent
+        from dify_agent.protocol.native_testing import AgentPrepareRunPayload
+
+        from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+        assert self._agent_preparation is not None
+        assert self._agent_commands is not None
+        try:
+            store = self._agent_preparation.state_store
+            context = store.load_context(ref=parent.ref)
+            config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
+            try:
+                protected = store.load_agent_association(ref=parent.ref, parent_node=parent)
+            except BuilderExecutionPolicyError as error:
+                if error.reason_code != "native_agent_object_unavailable" or agent_generation != 0:
+                    raise
+                self._agent_preparation.bind_created_run(
+                    payload=AgentPrepareRunPayload(
+                        parent_node=WireParent.model_validate(parent.model_dump(mode="json")),
+                        agent_run_id=response.run_id,
+                        request_digest=config.config_digest,
+                    )
+                )
+                protected = store.load_agent_association(ref=parent.ref, parent_node=parent)
+            workspace = protected.association.workspace
+            if (stored_session.binding_id, stored_session.workspace_id, stored_session.backend_binding_ref) != (
+                workspace.binding_id,
+                workspace.workspace_id,
+                workspace.backend_binding_ref,
+            ):
+                raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+            return self._agent_commands.capture_session_snapshot_identity(
+                parent_node=parent,
+                parent_generation=context.generation,
+                agent_run_id=response.run_id,
+                agent_generation=agent_generation,
+                binding=AgentRecoveryBinding(
+                    binding_id=workspace.binding_id,
+                    workspace_id=workspace.workspace_id,
+                    binding_ref=workspace.backend_binding_ref,
+                    workspace_ref=workspace.backend_workspace_ref,
+                    workspace_generation=workspace.workspace_generation,
+                    association_object_ref=protected.association_object_ref,
+                    config_ref=config.config_ref,
+                    config_digest=config.config_digest,
+                ),
+            )
+        except Exception as error:
+            logger.warning(
+                "Failed to capture confirmed Agent session snapshot identity: "
+                "request_id=%s node_execution_id=%s agent_run_id=%s error_type=%s",
+                parent.ref.request_id,
+                parent.execution_id,
+                response.run_id,
+                type(error).__name__,
+            )
+            return None
 
     def _control_pause(self, inputs, process_data, metadata, reason):
         metadata["agent_backend"] = {**dict(metadata.get("agent_backend") or {}), "status": reason}
@@ -725,8 +867,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
         after: str | None = None,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
@@ -743,6 +886,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         the variable pool, so a configured fallback ``text`` would be dropped
         after a partial stream.
 
+        Tool lifecycle stream events are projected into ``AgentLogEvent``
+        payloads so chat UIs can render live tool activity, but only when
+        ``stream_text`` is set: structured-output, output-route, and
+        default-value runs stay fully buffered and do not project logs.
+        ``finish`` closes any still-started calls before this generator
+        returns.
+
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
           or ``None`` if the stream ended without one.
@@ -751,21 +901,39 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
-        result = yield from self._read_event_stream(
+        projector = (
+            WorkflowAgentToolActivityProjector(
+                node_id=self._node_id,
+                node_execution_id=self.execution_id,
+                node_title=self.title,
+            )
+            if stream_text
+            else None
+        )
+        terminal_event, transport_failure = yield from self._read_event_stream(
             run_id,
             inputs=inputs,
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
             after=after,
+            evaluation_trace_collector=evaluation_trace_collector,
+            projector=projector,
         )
-        if (
-            not isinstance(result[0], AgentBackendRunWaitingInternalEvent)
-            and stream_text
-            and (metadata.get("agent_backend") or {}).get("agent_message_delta_count")
-        ):
+        # A confirmed Waiting terminal pauses the node instead of ending the run: tool
+        # calls awaiting approval stay open, and the resumed stream (same run, read from
+        # ``after``) emits their terminal snapshots under the same activity IDs.
+        waiting = isinstance(terminal_event, AgentBackendRunWaitingInternalEvent)
+        if projector is not None and not waiting:
+            finish_status, finish_error = self._tool_activity_finish(
+                terminal_event=terminal_event,
+                transport_failure=transport_failure,
+            )
+            for activity in projector.finish(finish_status, error=finish_error):
+                yield self._agent_log_event(activity)
+        if not waiting and stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
-        return result
+        return terminal_event, transport_failure  # noqa: B901  # StopIteration.value is the generator completion result.
 
     def _read_event_stream(
         self,
@@ -776,11 +944,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
         after: str | None = None,
+        projector: WorkflowAgentToolActivityProjector | None,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
+        """Read one Agent backend SSE stream into workflow events.
+
+        ``projector=None`` disables tool-activity projection; raw backend
+        event consumption and stream metadata recording remain active.
+        An evaluation trace collector observes every adapted internal event.
+        """
         stream_event_count = 0
         last_event_id: str | None = None
         confirmed = (
@@ -797,6 +973,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 if public_event.id is not None:
                     last_event_id = public_event.id
                 for internal_event in self._event_adapter.adapt(public_event):
+                    if evaluation_trace_collector is not None:
+                        evaluation_trace_collector.consume(internal_event)
                     if internal_event.type in (
                         AgentBackendInternalEventType.RUN_STARTED,
                         AgentBackendInternalEventType.RUN_RESUMED,
@@ -805,6 +983,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            if projector is not None:
+                                for activity in projector.handle(internal_event):
+                                    yield self._agent_log_event(activity)
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
@@ -892,7 +1073,31 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 after=last_event_id,
             )
         )
-        return cancellation, None
+        return cancellation, None  # noqa: B901  # StopIteration.value is the generator completion result.
+
+    @staticmethod
+    def _build_evaluation_trace_collector(
+        *, enabled: bool, available_tools: Sequence[AgentRuntimeToolDefinition]
+    ) -> AgentV2TraceCollector | None:
+        if not enabled:
+            return None
+
+        from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
+        from core.evaluation.entities.evaluation_entity import AgentToolDefinition
+
+        return AgentV2TraceCollector(
+            [
+                AgentToolDefinition(
+                    tool_ref=tool.tool_ref,
+                    name=tool.name,
+                    display_name=tool.display_name,
+                    description=tool.description,
+                    input_schema=tool.input_schema,
+                    schema_available=tool.schema_available,
+                )
+                for tool in available_tools
+            ]
+        )
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""
@@ -945,13 +1150,31 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         binding_id: str,
         snapshot: SessionSnapshot | None,
         metadata: dict[str, Any],
+        confirmed_identity: ConfirmedSnapshotIdentity | None = None,
     ) -> None:
         try:
-            self._session_store.save_active_snapshot(
-                scope=session_scope,
-                binding_id=binding_id,
-                snapshot=snapshot,
-            )
+            context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+            if context.builder_agent_execution is not None:
+                from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+                if self._agent_commands is None or confirmed_identity is None:
+                    raise BuilderExecutionPolicyError("native_agent_snapshot_identity_unavailable")
+                if (confirmed_identity.parent_node.ref, confirmed_identity.binding.binding_id) != (
+                    context.builder_agent_execution.ref,
+                    binding_id,
+                ):
+                    raise BuilderExecutionPolicyError("native_agent_snapshot_identity_mismatch")
+                self._agent_commands.save_session_snapshot(
+                    identity=confirmed_identity,
+                    session_scope=session_scope,
+                    snapshot=snapshot,
+                )
+            else:
+                self._session_store.save_active_snapshot(
+                    scope=session_scope,
+                    binding_id=binding_id,
+                    snapshot=snapshot,
+                )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
             metadata["agent_backend"] = agent_backend
@@ -1023,12 +1246,62 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return "agent_backend_error"
 
     @staticmethod
+    def _tool_activity_finish(
+        *,
+        terminal_event: _TerminalAgentBackendEvent | None,
+        transport_failure: StreamCompletedEvent | None,
+    ) -> tuple[FinishStatus, str | None]:
+        """Map the stream outcome to the projector's terminal status and error.
+
+        A transport failure wins over any accompanying cancellation terminal
+        because it carries the real stream error; a cancellation terminal
+        closes activity as ``cancelled``. A ``None`` terminal with no
+        transport failure mirrors the ``_run_inner`` stream-exhausted path,
+        which fails the node, so unfinished calls close as ``failed``.
+        """
+        if transport_failure is not None:
+            return "failed", transport_failure.node_run_result.error
+        if isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
+            return "succeeded", None
+        if isinstance(terminal_event, AgentBackendRunFailedInternalEvent):
+            return "failed", terminal_event.error
+        if isinstance(terminal_event, AgentBackendRunCancelledInternalEvent):
+            return "cancelled", terminal_event.message or terminal_event.reason
+        return "failed", STREAM_EXHAUSTED_ERROR
+
+    @staticmethod
+    def _agent_log_event(activity: WorkflowAgentToolActivity) -> AgentLogEvent:
+        return AgentLogEvent(
+            message_id=activity.id,
+            label=activity.label,
+            node_execution_id=activity.node_execution_id,
+            parent_id=None,
+            error=activity.error,
+            status=activity.status,
+            data=activity.data.model_dump(mode="json"),
+            metadata=dict(activity.metadata),
+            node_id=activity.node_id,
+        )
+
+    @staticmethod
     def _record_stream_metadata(metadata: dict[str, Any], event: AgentBackendStreamInternalEvent) -> None:
         agent_backend = dict(metadata.get("agent_backend") or {})
         agent_backend["last_stream_event_id"] = event.source_event_id
         if event.event_kind:
             agent_backend["last_stream_event_kind"] = event.event_kind
         if isinstance(event.data, Mapping):
+            sources = knowledge_sources_from_stream_event(event.data)
+            if sources:
+                current = metadata.setdefault("knowledge_fs_sources", [])
+                seen = {source["knowledge_fs_citation"]["id"] for source in current}
+                for source in sources:
+                    if (
+                        source.knowledge_fs_citation
+                        and source.knowledge_fs_citation.id not in seen
+                        and len(current) < 200
+                    ):
+                        current.append(source.model_dump(mode="json"))
+                        seen.add(source.knowledge_fs_citation.id)
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)

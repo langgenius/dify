@@ -18,27 +18,27 @@ instance owned by the app lifespan and injected into each run's runner.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import httpx
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
-from typing_extensions import cast
 
 from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeHTTPClient,
     AgentRuntimeTransportError,
     LegacyPluginDaemonTransport,
+    current_runtime_identity,
 )
 from dify_agent.agent_stub.server.admission import AgentStubAdmission
-from dify_agent.adapters.native_testing.transport import current_runtime_identity
 from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol.native_testing import AgentRuntimeIdentity, NativeTestCapabilities
+from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.native_continuation import NativeContinuationOwner
-from dify_agent.protocol.native_testing import NativeTestCapabilities
-from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.server.auth import create_bearer_token_dependency
@@ -53,13 +53,14 @@ from dify_agent.server.observability import (
 from dify_agent.server.routes.binding_files import create_binding_files_router
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.execution_bindings import (
+    create_execution_binding_inspection_router,
     create_execution_binding_keep_alive_router,
     create_execution_binding_job_router,
     create_execution_bindings_router,
 )
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.native_testing import create_native_testing_router
+from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -118,9 +119,8 @@ def create_app(
             )
 
         agent_stub_token_factory = issue_agent_stub_token
-    state: dict[str, object] = {}
 
-    async def read_active_stub(identity):
+    async def read_active_stub(identity: AgentRuntimeIdentity) -> AgentRuntimeIdentity:
         store = state.get("store")
         if not isinstance(store, RedisRunStore):
             raise AgentRuntimeTransportError("agent_stub_live_owner_unavailable")
@@ -183,9 +183,6 @@ def create_app(
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
-        knowledge_store = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
-        state["knowledge_store"] = knowledge_store
-        state["knowledge_http"] = dify_api_inner_http_client
         confirmed_api_http_client = (
             AgentRuntimeHTTPClient(
                 api_url=resolved_settings.inner_api_url,
@@ -201,11 +198,17 @@ def create_app(
             resolved_native_owner = ConfirmedNativeContinuationOwner(
                 http_client=confirmed_api_http_client, base_url=resolved_settings.inner_api_url
             )
+        knowledge_store = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
+        state["knowledge_store"] = knowledge_store
+        state["knowledge_http"] = dify_api_inner_http_client
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
             run_retention_seconds=resolved_settings.run_retention_seconds,
             run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
+            confirmed_recovery_owner=(
+                resolved_native_owner if isinstance(resolved_native_owner, ConfirmedNativeContinuationOwner) else None
+            ),
         )
         scheduler = RunScheduler(
             native_owner=resolved_native_owner,
@@ -283,7 +286,10 @@ def create_app(
     )
     # Ordinary anonymous migration mode must never expose protected checkpoint history.
     if resolved_settings.api_token is not None:
-        control_plane_router.include_router(create_native_testing_router(get_store))
+        control_plane_router.include_router(create_native_testing_router(get_store, get_scheduler))
+        control_plane_router.include_router(
+            create_execution_binding_inspection_router(lambda: execution_binding_service)
+        )
         control_plane_router.include_router(create_execution_binding_job_router(lambda: execution_binding_service))
         control_plane_router.include_router(
             create_execution_binding_keep_alive_router(lambda: execution_binding_service)

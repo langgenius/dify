@@ -77,6 +77,7 @@ class NativeContinuation:
     parent_execution_id: str | None = None
     create_idempotency_key: str | None = None
     capabilities: list[AbstractCapability[Deps]] = field(default_factory=list, repr=False)
+    recovery_workspace_generation: int = 0
     operation_cursor: int = 0
     result_refs: dict[str, str] = field(default_factory=dict)
     job_refs: tuple[str, ...] = ()

@@ -16,8 +16,6 @@ only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
-import hashlib
-import json
 import logging
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
@@ -28,6 +26,10 @@ from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeHTTPClient,
     AgentRuntimeTransportError,
     bind_runtime_identity,
+)
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
 )
 from dify_agent.protocol.native_testing import (
     NATIVE_TEST_CAPABILITIES,
@@ -42,7 +44,7 @@ from dify_agent.protocol.native_testing import (
     executable_request_digest,
     require_native_test_capabilities,
 )
-from dify_agent.protocol.run_recovery import LookupRunRequest
+from dify_agent.protocol.run_recovery import LookupRunRequest, create_run_fingerprint
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     CancelRunRequest,
@@ -70,7 +72,7 @@ from dify_agent.runtime.native_continuation import (
 )
 from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
-from dify_agent.server.schemas import RunCreateClaim, RunRecord
+from dify_agent.server.schemas import RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -85,11 +87,15 @@ class RunCancellationConflictError(RuntimeError):
 
 @runtime_checkable
 class IdempotentRunStore(Protocol):
-    """Existing keyed-create storage API needed for capability advertisement."""
+    """Keyed-create storage API needed for capability advertisement."""
 
-    async def claim_run(
-        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
-    ) -> RunCreateClaim: ...
+    async def create_run_idempotent(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        identity: AgentRuntimeIdentitySeed | None = None,
+    ) -> tuple[RunRecord, bool]: ...
 
     async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse: ...
 
@@ -99,31 +105,38 @@ class RunStore(RunEventSink, Protocol):
 
     async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity: ...
 
-    async def stop_native_run(self, *, run_id: str, expected_generation: int, reason_code: str) -> None: ...
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt: ...
+
+    async def stop_native_run(
+        self, *, run_id: str, expected_generation: int, reason_code: str, expected_config_digest: str | None = None
+    ) -> None: ...
     async def get_checkpoint(self, run_id: str) -> AgentCheckpoint: ...
     async def get_run(self, run_id: str) -> RunRecord: ...
     async def claim_continuation(
-        self, *, run_id: str, expected_generation: int, idempotency_key: str
+        self, *, run_id: str, expected_generation: int, idempotency_key: str, expected_config_digest: str | None = None
     ) -> ContinuationClaim: ...
     async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
-
-    async def claim_run(
-        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
-    ) -> RunCreateClaim:
-        """Atomically admit one keyed create; an existing record never schedules."""
-        ...
 
     async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
         ...
 
-    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+    async def create_run_idempotent(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        identity: AgentRuntimeIdentitySeed | None = None,
+    ) -> tuple[RunRecord, bool]:
         """Atomically return ``(record, created)`` across clients sharing storage.
 
         A retained matching request replays its current record without extending
         retention. A different fingerprint raises ``IdempotencyConflictError``
         from the storage adapter. Persist only digests and run metadata; active
         writes refresh absent or same-run claims without overwriting a new owner.
+        An existing record never schedules again.
         """
         ...
 
@@ -210,8 +223,8 @@ class RunScheduler:
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
         runner_factory: RunRunnerFactory | None = None,
         agent_observability: AgentObservability | None = None,
-        application_observability: ApplicationAgentObservability | None = None,
         native_owner: NativeContinuationOwner | None = None,
+        application_observability: ApplicationAgentObservability | None = None,
     ) -> None:
         if (
             native_owner is not None
@@ -245,11 +258,22 @@ class RunScheduler:
         if (
             self.services.confirmed_api_http_client is not None
             and isinstance(self.store, IdempotentRunStore)
-            and callable(self.store.claim_run)
+            and callable(self.store.create_run_idempotent)
             and callable(self.store.lookup_run)
         ):
             return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
         return capabilities
+
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Control-only waiting-child handoff; no background work is scheduled."""
+        if not isinstance(self.native_owner, ConfirmedNativeContinuationOwner):
+            raise NativeContinuationConflict("confirmed recovery owner unavailable")
+        async with self._lifecycle_lock:
+            if self.stopping:
+                raise SchedulerStoppingError("run scheduler is shutting down")
+            return await self.store.install_confirmed_recovery_successor(request)
 
     async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
         if self.native_owner is None:
@@ -262,7 +286,10 @@ class RunScheduler:
             if checkpoint.ref != request.ref or checkpoint.generation != request.expected_generation:
                 raise NativeContinuationConflict("checkpoint owner or generation mismatch")
             claim = await self.store.claim_continuation(
-                run_id=run_id, expected_generation=request.expected_generation, idempotency_key=request.idempotency_key
+                run_id=run_id,
+                expected_generation=request.expected_generation,
+                idempotency_key=request.idempotency_key,
+                expected_config_digest=checkpoint.config_digest,
             )
             if run_id in self.active_tasks:
                 # The local task may be a continuation paused before its Redis
@@ -289,7 +316,10 @@ class RunScheduler:
                     validate_deferred_results(checkpoint, prepared.deferred_tool_results)
             except NativePolicyStopped as stop:
                 await self.store.stop_native_run(
-                    run_id=run_id, expected_generation=request.expected_generation, reason_code=stop.reason_code
+                    run_id=run_id,
+                    expected_generation=request.expected_generation,
+                    reason_code=stop.reason_code,
+                    expected_config_digest=checkpoint.config_digest,
                 )
                 raise
             if (
@@ -357,12 +387,14 @@ class RunScheduler:
             if request.idempotency_key is None:
                 record = await self.store.create_run(identity=identity)
             else:
-                fingerprint = _create_run_fingerprint(request)
                 record, created = await self.store.create_run_idempotent(
                     idempotency_key=request.idempotency_key,
-                    request_fingerprint=fingerprint,
+                    request_fingerprint=create_run_fingerprint(request),
+                    identity=identity,
                 )
                 if not created:
+                    # Retention proves acceptance, not worker liveness. Never
+                    # replay even if the winner crashed before task registration.
                     return record
             prepared = None
             if request.execution_mode == "builder_test" and self.native_owner is not None:
@@ -475,7 +507,21 @@ class RunScheduler:
                 raise ValueError("persisted Run identity changed")
         except Exception:
             raise AgentRuntimeTransportError("agent_runtime_identity_unavailable") from None
-        with bind_runtime_identity(identity):
+
+        async def validate_send() -> None:
+            try:
+                actual = await self.store.read_run_identity(
+                    run_id=run_id,
+                    selection=ReadAgentRuntimeIdentity(
+                        parent_node=identity.parent_node, request_digest=identity.request_digest
+                    ),
+                )
+                if actual != identity:
+                    raise ValueError
+            except Exception:
+                raise AgentRuntimeTransportError("agent_runtime_identity_unavailable") from None
+
+        with bind_runtime_identity(identity, validate_send=validate_send):
             yield
 
     async def _run_record(
@@ -691,13 +737,6 @@ class RunScheduler:
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
             return None
-
-
-def _create_run_fingerprint(request: CreateRunRequest) -> str:
-    """Hash the normalized request body without its idempotency key."""
-    payload = request.model_dump(mode="json", exclude={"idempotency_key"})
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]
