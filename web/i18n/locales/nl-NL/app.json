@@ -70,7 +70,7 @@
   "gotoAnything.actions.searchApplications": "Search Applications",
   "gotoAnything.actions.slashDesc": "Execute commands (type / to see all available commands)",
   "gotoAnything.actions.slashTitle": "Commands",
-  "gotoAnything.actions.themeCategoryDesc": "Thema wijzigen",
+  "gotoAnything.actions.themeCategoryDesc": "Weergave wijzigen",
   "gotoAnything.actions.themeDarkDesc": "Donkere weergave gebruiken",
   "gotoAnything.actions.themeLightDesc": "Lichte weergave gebruiken",
   "gotoAnything.actions.themeSystemDesc": "Systeemweergave volgen",
