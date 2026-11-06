@@ -51,6 +51,7 @@
   "history.notNow": "Pas maintenant",
   "history.signedInAs": "Connecté en tant que {{email}}",
   "history.title": "Données antérieures",
+  "history.transferWarning": "Certaines données, y compris les exécutions encore en cours, peuvent ne pas être transférées. Les données dont le transfert échoue risquent de ne plus pouvoir être récupérées ultérieurement.",
   "history.unsupportedDescription": "Ce type d’application ne prend pas en charge le transfert des données de conversation. Vous ne pourrez pas consulter ces conversations précédentes dans ce compte.",
   "history.unsupportedTitle": "Les conversations ne peuvent pas être ajoutées à ce compte",
   "history.useDifferentAccount": "Utiliser un autre compte",

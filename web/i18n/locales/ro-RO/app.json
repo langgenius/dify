@@ -74,6 +74,7 @@
   "endUser.noProviderConnectionsDescription": "Conexiunile pe care le autorizezi cu {{provider}} vor apărea aici.",
   "endUser.noResults": "Nu s-au găsit aplicații",
   "endUser.noResultsDescription": "Încearcă alt nume sau șterge căutarea.",
+  "endUser.notConfigured": "Neconfigurat",
   "endUser.oauthAccount": "Cont OAuth",
   "endUser.providerConnectionsDescription": "Gestionează autorizările {{provider}}. Deconectarea elimină o autorizare din toate aplicațiile asociate.",
   "endUser.removeFromList": "Elimină din listă",

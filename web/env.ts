@@ -40,6 +40,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_API_PREFIX: z.string().optional(),
   /**
+   * The public base URL of the WebApp frontend, independent of the public API URL.
+   */
+  NEXT_PUBLIC_APP_WEB_URL: z.url().optional(),
+  /**
    * The base path for the application
    */
   NEXT_PUBLIC_BASE_PATH: z
@@ -225,6 +229,9 @@ export const env = createEnv({
     NEXT_PUBLIC_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_API_PREFIX
       : getRuntimeEnv('apiPrefix'),
+    NEXT_PUBLIC_APP_WEB_URL: isServer
+      ? process.env.NEXT_PUBLIC_APP_WEB_URL
+      : getRuntimeEnv('appWebUrl'),
     NEXT_PUBLIC_BASE_PATH: isServer ? process.env.NEXT_PUBLIC_BASE_PATH : getRuntimeEnv('basePath'),
     NEXT_PUBLIC_BATCH_CONCURRENCY: isServer
       ? process.env.NEXT_PUBLIC_BATCH_CONCURRENCY

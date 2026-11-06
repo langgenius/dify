@@ -51,6 +51,7 @@
   "history.notNow": "Ne zdaj",
   "history.signedInAs": "Prijavljeni ste kot {{email}}",
   "history.title": "Prejšnji podatki",
+  "history.transferWarning": "Prenos nekaterih podatkov, vključno z izvajanji, ki še potekajo, morda ne bo uspel. Podatkov, katerih prenos ne uspe, pozneje morda ne bo mogoče obnoviti.",
   "history.unsupportedDescription": "Ta vrsta aplikacije ne podpira prenosa podatkov pogovorov. Teh prejšnjih pogovorov v tem računu ne boste mogli videti.",
   "history.unsupportedTitle": "Pogovorov ni mogoče dodati v ta račun",
   "history.useDifferentAccount": "Uporabi drug račun",

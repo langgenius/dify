@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "اتصال‌هایی که با {{provider}} مجاز می‌کنید در اینجا نمایش داده می‌شوند.",
   "endUser.noResults": "برنامه‌ای پیدا نشد",
   "endUser.noResultsDescription": "نام دیگری را امتحان کنید یا جستجوی خود را پاک کنید.",
+  "endUser.notConfigured": "پیکربندی نشده",
   "endUser.oauthAccount": "حساب OAuth",
   "endUser.providerConnectionsDescription": "مجوزهای {{provider}} را مدیریت کنید. قطع اتصال، مجوز را از همهٔ برنامه‌های مرتبط حذف می‌کند.",
   "endUser.removeFromList": "حذف از فهرست",

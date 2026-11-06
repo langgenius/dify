@@ -51,6 +51,7 @@
   "history.notNow": "Şimdi değil",
   "history.signedInAs": "{{email}} olarak oturum açıldı",
   "history.title": "Önceki veriler",
+  "history.transferWarning": "Devam eden çalıştırmalar da dahil olmak üzere bazı veriler aktarılamayabilir. Aktarımı başarısız olan veriler daha sonra kurtarılamayabilir.",
   "history.unsupportedDescription": "Bu uygulama türü konuşma verilerinin aktarılmasını desteklemez. Bu önceki konuşmaları bu hesapta görüntüleyemezsiniz.",
   "history.unsupportedTitle": "Konuşmalar bu hesaba eklenemez",
   "history.useDifferentAccount": "Farklı bir hesap kullan",

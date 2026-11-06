@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "你透過 {{provider}} 授權的連線會顯示在這裡。",
   "endUser.noResults": "找不到應用程式",
   "endUser.noResultsDescription": "請嘗試其他名稱或清除搜尋內容。",
+  "endUser.notConfigured": "未設定",
   "endUser.oauthAccount": "OAuth 帳戶",
   "endUser.providerConnectionsDescription": "管理 {{provider}} 授權。中斷連線會從所有關聯應用程式中移除此授權。",
   "endUser.removeFromList": "從清單中移除",

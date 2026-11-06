@@ -75,6 +75,7 @@
   "endUser.noProviderConnectionsDescription": "Połączenia autoryzowane przez Ciebie w {{provider}} pojawią się tutaj.",
   "endUser.noResults": "Nie znaleziono aplikacji",
   "endUser.noResultsDescription": "Spróbuj innej nazwy lub wyczyść wyszukiwanie.",
+  "endUser.notConfigured": "Nie skonfigurowano",
   "endUser.oauthAccount": "Konto OAuth",
   "endUser.providerConnectionsDescription": "Zarządzaj autoryzacjami {{provider}}. Rozłączenie usuwa autoryzację ze wszystkich powiązanych aplikacji.",
   "endUser.removeFromList": "Usuń z listy",

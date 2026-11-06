@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "你通过 {{provider}} 授权的连接会显示在这里。",
   "endUser.noResults": "未找到应用",
   "endUser.noResultsDescription": "请尝试其他名称或清除搜索内容。",
+  "endUser.notConfigured": "未配置",
   "endUser.oauthAccount": "OAuth 账户",
   "endUser.providerConnectionsDescription": "管理 {{provider}} 授权。断开连接会从所有关联应用中移除该授权。",
   "endUser.removeFromList": "从列表中移除",

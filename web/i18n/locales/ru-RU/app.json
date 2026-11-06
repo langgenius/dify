@@ -75,6 +75,7 @@
   "endUser.noProviderConnectionsDescription": "Подключения, которые вы авторизуете через {{provider}}, появятся здесь.",
   "endUser.noResults": "Приложения не найдены",
   "endUser.noResultsDescription": "Попробуйте другое название или очистите поиск.",
+  "endUser.notConfigured": "Не настроено",
   "endUser.oauthAccount": "Аккаунт OAuth",
   "endUser.providerConnectionsDescription": "Управляйте авторизациями {{provider}}. При отключении авторизация удаляется из всех связанных приложений.",
   "endUser.removeFromList": "Убрать из списка",

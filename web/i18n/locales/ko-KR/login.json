@@ -51,6 +51,7 @@
   "history.notNow": "나중에",
   "history.signedInAs": "{{email}} 계정으로 로그인됨",
   "history.title": "이전 데이터",
+  "history.transferWarning": "아직 진행 중인 실행을 포함한 일부 데이터는 전송에 실패할 수 있습니다. 전송에 실패한 데이터는 나중에 복구하지 못할 수 있습니다.",
   "history.unsupportedDescription": "이 유형의 앱은 대화 데이터 전송을 지원하지 않습니다. 이 계정에서 이전 대화를 볼 수 없습니다.",
   "history.unsupportedTitle": "대화를 이 계정에 추가할 수 없습니다",
   "history.useDifferentAccount": "다른 계정 사용",

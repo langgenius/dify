@@ -221,10 +221,12 @@ export async function webAppLoginStatus(shareCode: string, userId?: string) {
   }
 }
 
-export async function webAppLogout(address: WebAppAddress | null) {
+export async function webAppLogout(address: WebAppAddress | null, options?: { silent?: boolean }) {
   const isAuthSessionCurrent = captureWebAppAuthSession()
   const { webAppClient } = await import('./webapp')
   if (!isAuthSessionCurrent()) throw new DOMException('The Web App account changed.', 'AbortError')
-  await webAppClient.logout.post(undefined, { context: address ? { address } : {} })
+  await webAppClient.logout.post(undefined, {
+    context: { ...(address ? { address } : {}), silent: options?.silent },
+  })
   if (isAuthSessionCurrent()) expireWebAppAccountSession()
 }

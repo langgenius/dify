@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "{{provider}} ilə avtorizasiya etdiyiniz bağlantılar burada görünəcək.",
   "endUser.noResults": "Tətbiq tapılmadı",
   "endUser.noResultsDescription": "Başqa ad sınayın və ya axtarışınızı təmizləyin.",
+  "endUser.notConfigured": "Konfiqurasiya edilməyib",
   "endUser.oauthAccount": "OAuth hesabı",
   "endUser.providerConnectionsDescription": "{{provider}} avtorizasiyalarını idarə edin. Bağlantının kəsilməsi avtorizasiyanı bütün əlaqəli tətbiqlərdən çıxarır.",
   "endUser.removeFromList": "Siyahıdan çıxar",

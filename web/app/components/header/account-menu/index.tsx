@@ -28,11 +28,13 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { APP_WEB_URL } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
+import { basePath } from '@/utils/var'
 import LogoutMenuItem from './logout-menu-item'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
@@ -118,7 +120,7 @@ type MainNavMenuContentProps = {
 }
 
 function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation(['common', 'accountSettings', 'navigation'])
+  const { t } = useTranslation(['common', 'accountSettings', 'navigation', 'app'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -187,6 +189,19 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
       <MenuSeparator className="my-0" />
       <MenuGroup className="py-1">
         <LogoutMenuItem onLogout={onLogout} />
+      </MenuGroup>
+      <MenuSeparator className="my-0" />
+      <MenuGroup className="py-1">
+        <MenuLinkItem
+          className="justify-between px-3 py-1"
+          href={`${APP_WEB_URL.replace(/\/+$/, '')}${basePath}/my-apps`}
+        >
+          <MenuItemContent
+            iconClassName="i-ri-apps-2-line"
+            label={t(($) => $['endUser.myApps'], { ns: 'app' })}
+            trailing={<ExternalLinkIndicator />}
+          />
+        </MenuLinkItem>
       </MenuGroup>
     </>
   )

@@ -51,6 +51,7 @@
   "history.notNow": "Nicht jetzt",
   "history.signedInAs": "Angemeldet als {{email}}",
   "history.title": "Frühere Daten",
+  "history.transferWarning": "Einige Daten, einschließlich noch laufender Ausführungen, können möglicherweise nicht übertragen werden. Daten, deren Übertragung fehlschlägt, lassen sich später möglicherweise nicht wiederherstellen.",
   "history.unsupportedDescription": "Dieser App-Typ unterstützt die Übertragung von Unterhaltungsdaten nicht. Sie können diese früheren Unterhaltungen in diesem Konto nicht ansehen.",
   "history.unsupportedTitle": "Unterhaltungen können diesem Konto nicht hinzugefügt werden",
   "history.useDifferentAccount": "Ein anderes Konto verwenden",

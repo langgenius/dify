@@ -73,6 +73,7 @@
   "endUser.noProviderConnectionsDescription": "{{provider}} के साथ आपकी अनुमति वाले कनेक्शन यहाँ दिखाई देंगे।",
   "endUser.noResults": "कोई ऐप नहीं मिला",
   "endUser.noResultsDescription": "दूसरा नाम आज़माएँ या अपनी खोज साफ़ करें।",
+  "endUser.notConfigured": "कॉन्फ़िगर नहीं है",
   "endUser.oauthAccount": "OAuth खाता",
   "endUser.providerConnectionsDescription": "{{provider}} की अनुमतियाँ प्रबंधित करें। कनेक्शन हटाने से सभी जुड़े ऐप से अनुमति हट जाती है।",
   "endUser.removeFromList": "सूची से हटाएँ",
