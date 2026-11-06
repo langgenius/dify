@@ -39,7 +39,8 @@ def _metadata_gateway_unavailable(error: PluginInvokeError) -> bool:
     """Recognize only the daemon's bounded exhausted-gateway envelope.
 
     This identifies a gateway failure, not startup or an unsent inference.
-    Callers may use it only to repeat credential-free schema metadata.
+    Observation may retain this classification without granting replay.
+    Only credential-free schema metadata may be repeated on this evidence.
     """
     if type(error) is not PluginInvokeError or not isinstance(error.description, str) or len(error.description) > 2048:
         return False

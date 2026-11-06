@@ -267,38 +267,117 @@ class EditPlanNotActionableError(RuntimeError):
         super().__init__(reason)
 
 
+class PlanValidationError(ValueError):
+    """Existing plan refusal with value-free facts for optional diagnostics."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        path: tuple[str, ...],
+        observed_count: int | None = None,
+        limit_count: int | None = None,
+    ) -> None:
+        """Accept validator-owned facts; retain ValueError behavior and safe feedback.
+
+        Postcondition: detail contains only the supplied category, schema path,
+        and optional aggregate counts. Projection remains the privacy boundary.
+        """
+        super().__init__(message)
+        self.detail: dict[str, Any] = {"stage": "plan", "reason_code": reason_code, "path": path}
+        if observed_count is not None and limit_count is not None:
+            self.detail.update(observed_count=observed_count, limit_count=limit_count)
+
+
 def parse_plan_response(data: object) -> WorkflowPlan:
-    """Decode the complete proposal; failures never quote source or generated prose."""
+    """Decode an untrusted proposal without changing acceptance or quoting values.
+
+    Postcondition: return the complete valid proposal or raise a ValueError
+    carrying only validator-owned diagnostic facts; perform no I/O or retries.
+    """
     if not isinstance(data, dict):
-        raise ValueError(f"The response must be an object, received {type(data).__name__}.")
+        raise PlanValidationError(
+            f"The response must be an object, received {type(data).__name__}.", reason_code="type", path=()
+        )
     if "plan" not in data:
-        raise ValueError("The required plan field is missing.")
+        raise PlanValidationError("The required plan field is missing.", reason_code="missing", path=("plan",))
     plan = data["plan"]
     if not isinstance(plan, list):
-        raise ValueError(f"The plan field must be a nonempty list of strings, received {type(plan).__name__}.")
+        raise PlanValidationError(
+            f"The plan field must be a nonempty list of strings, received {type(plan).__name__}.",
+            reason_code="type",
+            path=("plan",),
+        )
     if not plan:
-        raise ValueError("The plan field must contain at least one nonblank string.")
+        raise PlanValidationError(
+            "The plan field must contain at least one nonblank string.",
+            reason_code="empty",
+            path=("plan",),
+            observed_count=0,
+            limit_count=1,
+        )
     if len(plan) > 30:
-        raise ValueError("The plan exceeds the 30-step limit.")
+        raise PlanValidationError(
+            "The plan exceeds the 30-step limit.",
+            reason_code="step_count",
+            path=("plan",),
+            observed_count=len(plan),
+            limit_count=30,
+        )
     items: list[str] = []
     for index, item in enumerate(plan):
         if not isinstance(item, str):
-            raise ValueError(f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}.")
+            raise PlanValidationError(
+                f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}.",
+                reason_code="type",
+                path=("plan", "*"),
+            )
         if not item.strip():
-            raise ValueError(f"The plan[{index}] field is blank; every item must be a nonblank string.")
+            raise PlanValidationError(
+                f"The plan[{index}] field is blank; every item must be a nonblank string.",
+                reason_code="blank",
+                path=("plan", "*"),
+                observed_count=0,
+                limit_count=1,
+            )
         if len(item) > 2000:
-            raise ValueError("A plan step exceeds the 2000-character limit.")
+            raise PlanValidationError(
+                "A plan step exceeds the 2000-character limit.",
+                reason_code="step_length",
+                path=("plan", "*"),
+                observed_count=len(item),
+                limit_count=2000,
+            )
         items.append(item)
     overview: dict[str, str] = {}
     for key in ("title", "input_summary", "output_summary"):
         value = data.get(key)
         if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"The {key} field must be a nonblank string.")
+            raise PlanValidationError(
+                f"The {key} field must be a nonblank string.",
+                reason_code="missing" if key not in data else "type" if not isinstance(value, str) else "blank",
+                path=(key,),
+                observed_count=0 if isinstance(value, str) else None,
+                limit_count=1 if isinstance(value, str) else None,
+            )
         if len(value) > (200 if key == "title" else 2000):
-            raise ValueError(f"The {key} field exceeds its character limit.")
+            raise PlanValidationError(
+                f"The {key} field exceeds its character limit.",
+                reason_code="overview_length",
+                path=(key,),
+                observed_count=len(value),
+                limit_count=200 if key == "title" else 2000,
+            )
         overview[key] = value
     if sum(map(len, [*items, *overview.values()])) > 24_000:
-        raise ValueError("The complete plan exceeds the 24000-character limit.")
+        raise PlanValidationError(
+            "The complete plan exceeds the 24000-character limit.",
+            reason_code="total_length",
+            path=(),
+            observed_count=sum(map(len, [*items, *overview.values()])),
+            limit_count=24000,
+        )
     return WorkflowPlan(
         title=overview["title"],
         input_summary=overview["input_summary"],

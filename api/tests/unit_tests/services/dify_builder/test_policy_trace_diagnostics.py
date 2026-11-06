@@ -38,6 +38,17 @@ from tests.helpers.unit.core.model_fixtures import make_model_instance
             ),
             "permission_denied",
         ),
+        *[
+            (
+                httpx.HTTPStatusError(
+                    "private-token",
+                    request=httpx.Request("POST", "https://private/?key=secret"),
+                    response=httpx.Response(status),
+                ),
+                reason,
+            )
+            for status, reason in [(429, "rate_limit"), (502, "service_unavailable"), (503, "service_unavailable")]
+        ],
         (PermissionError("private-token"), "permission_denied"),
         (RuntimeError("private-token"), "unknown"),
     ],
@@ -104,3 +115,36 @@ def test_diagnostic_cause_walk_is_bounded_and_does_not_use_implicit_context() ->
     context = RuntimeError("private-token")
     context.__context__ = TimeoutError()
     assert diagnostics.failure_reason(context) == "unknown"
+
+
+@pytest.mark.parametrize("typed", [True, False])
+def test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    typed: bool,
+) -> None:
+    from core.plugin.impl.model import PluginModelClient
+    from tests.unit_tests.core.plugin.impl.test_model_readiness import GATEWAY_MESSAGE
+
+    instance = make_model_instance(provider="openai", model="gpt")
+    calls = []
+
+    def invoke(**_kwargs: object) -> Never:
+        calls.append("invoke")
+        message = json.dumps({"error_type": "PluginDaemonInnerError", "message": GATEWAY_MESSAGE})
+        if typed:
+            PluginModelClient()._handle_plugin_daemon_error("PluginInvokeError", message)
+        raise RuntimeError(message)
+
+    def resolve() -> ModelInstance:
+        calls.append("resolve")
+        return instance
+
+    monkeypatch.setattr(instance, "invoke_llm", invoke)
+    records = []
+    with diagnostics.scope(records.append, "plan"), pytest.raises(CognitionPolicyDeniedError):
+        llm.invoke_json(PolicyModelInstance(resolve), system="PRIVATE", user="PRIVATE")
+    assert calls == ["resolve", "invoke"]
+    assert records[0]["reason"] == ("service_unavailable" if typed else "unknown")
+    assert "serverless" not in json.dumps(records)
+    assert "status code: 502" not in json.dumps(records)
+    assert "PRIVATE" not in json.dumps(records)
