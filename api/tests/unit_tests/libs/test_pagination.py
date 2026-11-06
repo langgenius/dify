@@ -136,3 +136,20 @@ class TestPaginateQueryCount:
 
         count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
         assert "ORDER BY" not in count_sql.upper()
+
+    def test_page_query_retains_order_by(self) -> None:
+        """The page query must keep its ORDER BY — only the count loses it."""
+        captured: dict[str, object] = {}
+
+        session = MagicMock()
+        session.scalar.return_value = 0
+        session.scalars.side_effect = lambda stmt: (
+            captured.__setitem__("page_stmt", stmt),
+            MagicMock(all=lambda: []),
+        )[1]
+
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
+        paginate_query(stmt, session=session, page=1, per_page=10)
+
+        page_sql = str(captured["page_stmt"].compile(dialect=postgresql.dialect()))
+        assert "ORDER BY" in page_sql.upper()
