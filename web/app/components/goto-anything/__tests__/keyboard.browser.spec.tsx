@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import type { consoleClient } from '@/service/console'
 import type { marketplaceClient } from '@/service/marketplace'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { ThemeProvider } from 'next-themes'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MainNavSearchButton } from '@/app/components/main-nav/components/search-button'
 import { MainNavMobileBar } from '@/app/components/main-nav/mobile-nav'
+import { ThemeProvider } from '@/features/theme/provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
@@ -118,7 +118,7 @@ function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
   })
   return render(
     <ConsoleWrapper>
-      <ThemeProvider defaultTheme="light" enableSystem={false}>
+      <ThemeProvider defaultPreference="light">
         {trigger}
         <GotoAnything />
       </ThemeProvider>
@@ -268,7 +268,7 @@ describe('desktop dialog', () => {
     await page.getByRole('option', { name: theme }).click()
     await expect.element(searchField(theme)).toHaveFocus()
     await expect
-      .element(page.getByRole('option', { name: /app.gotoAnything.actions.themeDark/ }))
+      .element(page.getByRole('option', { name: /common.theme.dark/ }))
       .toBeInTheDocument()
 
     await userEvent.keyboard('{Backspace}')
