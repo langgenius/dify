@@ -4,7 +4,6 @@ import json
 
 from sqlalchemy.orm import Session
 
-from models import snippet as snippet_module
 from models.account import Account
 from models.base import Base, TypeBase
 from models.enums import TagType
