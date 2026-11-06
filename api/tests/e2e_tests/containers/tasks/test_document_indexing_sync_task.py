@@ -8,17 +8,19 @@ This module validates SQL-backed behavior for document sync flows:
 """
 
 import json
+from datetime import datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from tasks.document_indexing_sync_task import document_indexing_sync_task
@@ -28,7 +30,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
     """Create real DB entities for document indexing sync integration tests."""
 
     @staticmethod
-    def create_account_with_tenant(db_session_with_containers) -> tuple[Account, Tenant]:
+    def create_account_with_tenant(db_session_with_containers: Session) -> tuple[Account, Tenant]:
         account = Account(
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
@@ -54,7 +56,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
         return account, tenant
 
     @staticmethod
-    def create_dataset(db_session_with_containers, tenant_id: str, created_by: str) -> Dataset:
+    def create_dataset(db_session_with_containers: Session, tenant_id: str, created_by: str) -> Dataset:
         dataset = Dataset(
             tenant_id=tenant_id,
             name=f"dataset-{uuid4()}",
@@ -69,13 +71,14 @@ class DocumentIndexingSyncTaskTestDataFactory:
 
     @staticmethod
     def create_document(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         *,
         tenant_id: str,
         dataset_id: str,
         created_by: str,
-        data_source_info: dict | None,
-        indexing_status: str = "completed",
+        data_source_info: dict[str, object] | None,
+        indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
+        completed_at: datetime | None = None,
     ) -> Document:
         document = Document(
             tenant_id=tenant_id,
@@ -88,6 +91,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             indexing_status=indexing_status,
+            completed_at=completed_at,
             enabled=True,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
@@ -98,7 +102,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
 
     @staticmethod
     def create_segments(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         *,
         tenant_id: str,
         dataset_id: str,
@@ -161,9 +165,16 @@ class TestDocumentIndexingSyncTask:
                 "index_processor": index_processor,
                 "index_processor_factory": mock_index_processor_factory,
                 "indexing_runner": indexing_runner,
+                "indexing_runner_class": mock_indexing_runner_class,
             }
 
-    def _create_notion_sync_context(self, db_session_with_containers: Session, *, data_source_info: dict | None = None):
+    def _create_notion_sync_context(
+        self,
+        db_session_with_containers: Session,
+        *,
+        data_source_info: dict[str, object] | None = None,
+        published_index: bool = True,
+    ):
         account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
             db_session_with_containers,
@@ -185,7 +196,8 @@ class TestDocumentIndexingSyncTask:
             dataset_id=dataset.id,
             created_by=account.id,
             data_source_info=notion_info,
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status=IndexingStatus.COMPLETED if published_index else IndexingStatus.ERROR,
+            completed_at=datetime(2024, 1, 1) if published_index else None,
         )
 
         segments = DocumentIndexingSyncTaskTestDataFactory.create_segments(
@@ -196,6 +208,13 @@ class TestDocumentIndexingSyncTask:
             created_by=account.id,
             count=3,
         )
+
+        repository = SQLAlchemyDocumentRepository(
+            session_factory=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        repository.sync_notion(DatasetRef(tenant.id, dataset.id).document(document.id))
+        db_session_with_containers.expire_all()
+        document = db_session_with_containers.get_one(Document, document.id)
 
         return {
             "account": account,
@@ -273,7 +292,7 @@ class TestDocumentIndexingSyncTask:
     def test_credential_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task sets document error state when credential is missing."""
         # Arrange
-        context = self._create_notion_sync_context(db_session_with_containers)
+        context = self._create_notion_sync_context(db_session_with_containers, published_index=False)
         mock_external_dependencies["datasource_provider"].get_stored_notion_access_token.side_effect = ValueError(
             "credential not found"
         )
@@ -288,8 +307,11 @@ class TestDocumentIndexingSyncTask:
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR
+        assert updated_document.error is not None
         assert "Datasource credential not found" in updated_document.error
         assert updated_document.stopped_at is not None
+        mock_external_dependencies["datasource_provider"].get_stored_notion_access_token.assert_called_once()
+        mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
     def test_page_not_updated(self, db_session_with_containers: Session, mock_external_dependencies):
@@ -317,6 +339,7 @@ class TestDocumentIndexingSyncTask:
         assert remaining_segments == 3
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
+        mock_external_dependencies["notion_extractor"].get_notion_last_edited_time.assert_called_once()
 
     def test_successful_sync_when_page_updated(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test full successful sync flow with SQL state updates and side effects."""
@@ -365,14 +388,12 @@ class TestDocumentIndexingSyncTask:
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
 
-        def _delete_dataset_before_clean() -> str:
+        def _delete_dataset_before_clean(*_args: object, **_kwargs: object) -> Mock:
             db_session_with_containers.execute(delete(Dataset).where(Dataset.id == context["dataset"].id))
             db_session_with_containers.commit()
-            return "2024-01-02T00:00:00Z"
+            return mock_external_dependencies["indexing_runner"]
 
-        mock_external_dependencies[
-            "notion_extractor"
-        ].get_notion_last_edited_time.side_effect = _delete_dataset_before_clean
+        mock_external_dependencies["indexing_runner_class"].side_effect = _delete_dataset_before_clean
 
         # Act
         document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
@@ -384,6 +405,12 @@ class TestDocumentIndexingSyncTask:
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
+            .where(DocumentSegment.document_id == context["document"].id)
+        )
+        assert remaining_segments == 0
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
@@ -411,6 +438,7 @@ class TestDocumentIndexingSyncTask:
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         assert remaining_segments == 0
+        mock_external_dependencies["index_processor"].clean.assert_called_once()
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
     def test_indexing_runner_document_paused_error(
@@ -432,6 +460,8 @@ class TestDocumentIndexingSyncTask:
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         assert updated_document.error is None
+        mock_external_dependencies["index_processor"].clean.assert_called_once()
+        mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
     def test_indexing_runner_general_error(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that indexing errors are persisted to document state."""
@@ -449,12 +479,15 @@ class TestDocumentIndexingSyncTask:
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR
+        assert updated_document.error is not None
         assert "Indexing error" in updated_document.error
         assert updated_document.stopped_at is not None
+        mock_external_dependencies["index_processor"].clean.assert_called_once()
+        mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
     def test_index_processor_clean_called_with_correct_params(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         mock_external_dependencies,
     ):
         """Test that clean is called with dataset instance and collected node ids."""
