@@ -383,7 +383,7 @@ def test_hit_testing_uses_default_external_retrieval_settings(
 
 @pytest.mark.parametrize(
     ("status_code", "message"),
-    [(401, "Unauthorized"), (403, "Forbidden")],
+    [(401, "Forbidden"), (403, "Forbidden")],
 )
 def test_gateway_rejects_authorization_failures(status_code: int, message: str) -> None:
     with patch(
@@ -397,6 +397,38 @@ def test_gateway_rejects_authorization_failures(status_code: int, message: str) 
             )
 
 
+@pytest.mark.parametrize(
+    ("endpoint", "status_code"),
+    [
+        ("http://ragflow.example.com/api/v1/dify/", 200),
+        ("http://ragflow.example.com/api/v1/dify", 400),
+    ],
+)
+def test_gateway_normalizes_ragflow_probe_url_and_accepts_argument_errors(endpoint: str, status_code: int) -> None:
+    with patch(
+        "services.knowledge.external.adapters.ssrf_proxy.post",
+        autospec=True,
+        return_value=httpx.Response(status_code),
+    ) as request:
+        ExternalKnowledgeGateway.check_endpoint_and_api_key({"endpoint": endpoint, "api_key": "ragflow-test-key"})
+
+    assert request.call_args.args[0] == "http://ragflow.example.com/api/v1/dify/retrieval"
+
+
+def test_gateway_rejects_ragflow_wrong_base_that_returns_unauthorized() -> None:
+    with patch(
+        "services.knowledge.external.adapters.ssrf_proxy.post",
+        autospec=True,
+        return_value=httpx.Response(401),
+    ) as request:
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(
+                {"endpoint": "http://ragflow.example.com/api/v1", "api_key": "ragflow-test-key"}
+            )
+
+    assert request.call_args.args[0] == "http://ragflow.example.com/api/v1/retrieval"
+
+
 @pytest.mark.parametrize("status_code", [400, 405, 429])
 def test_gateway_allows_non_authorization_client_responses(status_code: int) -> None:
     with patch(
@@ -407,6 +439,22 @@ def test_gateway_allows_non_authorization_client_responses(status_code: int) -> 
         ExternalKnowledgeGateway.check_endpoint_and_api_key(
             {"endpoint": "https://provider.example", "api_key": "secret"}
         )
+
+
+@pytest.mark.parametrize("trailing_slashes", ["", "/", "///"])
+def test_gateway_normalizes_retrieval_request_url(trailing_slashes: str) -> None:
+    request = ExternalKnowledgeRetrievalRequest(
+        endpoint=f"http://ragflow.example.com/api/v1/dify{trailing_slashes}",
+        api_key="ragflow-test-key",
+        knowledge_id="knowledge",
+        query="question",
+        retrieval_model=ExternalRetrievalConfig(top_k=2),
+        metadata_filters=None,
+    )
+
+    prepared = ExternalKnowledgeGateway.build_external_knowledge_retrieval_request(request)
+
+    assert prepared.url == "http://ragflow.example.com/api/v1/dify/retrieval"
 
 
 @pytest.mark.parametrize(

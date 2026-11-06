@@ -23,6 +23,15 @@ from services.rbac.contracts import RBACResourceType
 _METADATA_ADAPTER = TypeAdapter(dict[str, JsonValue])
 
 
+def _retrieval_url(endpoint: str) -> str:
+    """Append the retrieval path to a nonempty provider endpoint.
+
+    Preconditions: ``endpoint`` is the validated or persisted external-provider base URL. Postconditions: the returned
+    URL preserves the base and contains exactly one slash before ``retrieval``; ``endpoint`` is not mutated.
+    """
+    return f"{endpoint.rstrip('/')}/retrieval"
+
+
 def sync_external_dataset_creator_access(context: RequestContext, ref: DatasetRef) -> None:
     rbac_service.try_sync_creator_access_policy_member_bindings(
         context.active_workspace_id,
@@ -44,8 +53,14 @@ class ExternalKnowledgeGateway:
 
     @staticmethod
     def check_endpoint_and_api_key(settings: Mapping[str, Any]) -> None:
+        """Probe a configured endpoint and API key without changing the settings.
+
+        Preconditions: settings must contain a valid HTTP(S) endpoint and a nonempty API key. Postconditions: the
+        provider is probed at its normalized retrieval URL; connection, routing, and authorization failures raise a
+        secret-free ``ValueError`` while provider argument errors remain acceptable.
+        """
         validate_external_knowledge_api_settings(settings)
-        endpoint = f"{settings['endpoint']}/retrieval"
+        endpoint = _retrieval_url(settings["endpoint"])
         payload = {
             "knowledge_id": "",
             "query": "",
@@ -63,9 +78,7 @@ class ExternalKnowledgeGateway:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
-        if response.status_code == 401:
-            raise ValueError("Unauthorized: Authorization failed with the provided api_key")
-        if response.status_code == 403:
+        if response.status_code in {401, 403}:
             raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
@@ -81,13 +94,18 @@ class ExternalKnowledgeGateway:
     def build_external_knowledge_retrieval_request(
         request: ExternalKnowledgeRetrievalRequest,
     ) -> ExternalKnowledgeApiSetting:
+        """Build one provider request from tenant-owned configuration.
+
+        Preconditions: ``request.endpoint`` is a nonempty persisted provider base URL. Postconditions: the returned
+        request has one slash before ``retrieval`` and carries only the supplied query, binding, and retrieval options.
+        """
         headers = {"Content-Type": "application/json"}
         if request.api_key:
             headers["Authorization"] = f"Bearer {request.api_key}"
         parameters = request.retrieval_model
         threshold = parameters.score_threshold if parameters.score_threshold_enabled else 0.0
         return ExternalKnowledgeApiSetting(
-            url=f"{request.endpoint}/retrieval",
+            url=_retrieval_url(request.endpoint),
             headers=headers,
             params={
                 "retrieval_setting": {"top_k": parameters.top_k, "score_threshold": threshold},

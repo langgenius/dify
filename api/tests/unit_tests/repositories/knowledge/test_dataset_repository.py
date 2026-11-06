@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums.creator import CreatorUserRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document
 from models.enums import DatasetQuerySource, DataSourceType, DocumentCreatedFrom
@@ -130,7 +131,7 @@ def test_document_creation_defaults_use_legacy_document_form(
                 name="source.txt",
                 created_from=DocumentCreatedFrom.API,
                 created_by="account-1",
-                doc_form="hierarchical_model",
+                doc_form=IndexStructureType.PARENT_CHILD_INDEX,
             )
         )
 

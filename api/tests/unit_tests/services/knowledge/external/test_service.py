@@ -487,7 +487,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_response.status_code = 401
         mock_proxy.post.return_value = mock_response
 
-        with pytest.raises(ValueError, match="Unauthorized.*Authorization failed"):
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
             ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     @patch("services.knowledge.external.adapters.ssrf_proxy")

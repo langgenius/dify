@@ -226,6 +226,12 @@ class DocumentZip:
 
 @dataclass(frozen=True)
 class DocumentCreationDefaults:
+    """Dataset defaults inherited by document writes.
+
+    ``doc_form=None`` means neither dataset settings nor an existing document
+    defines a form. ``indexing_technique=None`` means it has not been selected.
+    """
+
     provider: str
     doc_form: str | None
     indexing_technique: str | None
