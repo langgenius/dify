@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController
 from core.human_input_v2.entities import DebugChannel, EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, MessageSendingError
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
@@ -55,6 +56,7 @@ from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmail
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
+from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService
 from services.human_input_v2.message_template_test_service import (
     MessageTemplateSendError,
@@ -67,7 +69,8 @@ from services.human_input_v2.submission_service import (
     HumanInputFormErrorCode,
     HumanInputSubmissionService,
 )
-from services.workflow_draft_variable_service import DraftVarLoader
+from services.workflow.draft_variable_service import DraftVarLoader
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _ACCOUNT = AccountId("00000000-0000-0000-0000-000000000002")
@@ -141,6 +144,8 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     adapter = create_autospec(IMProviderAdapter, instance=True)
     adapter_errors: list[Exception] = []
     requested_channels: list[IMChannel] = []
+    draft_variables = WorkflowDraftVariableRepository(sessions=sessions)
+    variable_files = WorkflowVariableFileGateway(sessions, DatabaseFileAccessController())
 
     def adapter_factory(_channel: IMChannel) -> IMProviderAdapter:
         requested_channels.append(_channel)
@@ -161,7 +166,12 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
             tenant_id=_TENANT,
             account_id=_ACCOUNT,
             variable_loader_factory=lambda app_id: DraftVarLoader(
-                engine=engine, app_id=app_id, tenant_id=str(_TENANT), user_id=str(_ACCOUNT)
+                draft_variables,
+                app_id,
+                str(_TENANT),
+                str(_ACCOUNT),
+                load_file=lambda _key: pytest.fail("message-template variables should not load an offloaded file"),
+                file_inputs=variable_files,
             ),
         ),
     )

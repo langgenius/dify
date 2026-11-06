@@ -1481,6 +1481,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK: bool = Field(
+        description="Enable recovery of persisted workflow draft upload cleanup requests",
+        default=True,
+    )
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,
