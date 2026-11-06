@@ -316,7 +316,7 @@ def test_public_callback_invalid_builder_data_is_a_bad_request(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json()["error"] == "Endpoint processing failed"
-    assert "Invalid JSON" in response.get_json()["message"]
+    assert response.get_json()["message"] == "Invalid webhook request or plugin response."
     assert daemon.requests == []
 
 
