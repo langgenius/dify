@@ -2,7 +2,6 @@
 
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Annotated, Protocol
 from uuid import UUID
 
@@ -27,7 +26,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.policy import require_applicable_connection, require_personal_connection_access
 from services.end_user_connections.revision import ConnectionRevisionAcceptance
-from services.end_user_connections.status import resolve_node_connection_state
+from services.end_user_connections.status import resolve_node_connection_status
 
 ConnectionId = Annotated[UUID, Field(strict=False)]
 NodeId = Annotated[str, Field(min_length=1, max_length=255)]
@@ -47,14 +46,6 @@ class ConnectionPreflightInput(ConnectionContractInput):
             "Missing/null choices remain disconnected; saved choices are never inferred."
         ),
     )
-
-
-@dataclass(frozen=True)
-class ConnectionRequirement:
-    target: ToolConnectionTarget
-    title: str
-    purpose: str
-    node_ids: tuple[str, ...]
 
 
 class ConnectionPreflightStatus(BaseModel):
@@ -94,7 +85,7 @@ class PreflightRequirements(Protocol):
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]: ...
+    ) -> tuple[str, str, tuple[ToolConnectionTarget, ...]]: ...
 
 
 class PreflightConnections(Protocol):
@@ -127,6 +118,13 @@ class ConnectionPreflightService:
     def check(
         self, context: WebConnectionContext, command: ConnectionPreflightInput, *, workflow_id: str | None = None
     ) -> ConnectionPreflightView:
+        """Check explicit choices against the stored graph and submitted authorization revision.
+
+        Return readiness without exposing secrets or saving choices. Revalidate graph
+        requirements and credential revisions after external checks; concurrent changes
+        fail rather than certify stale readiness. Missing and foreign IDs remain
+        indistinguishable, with no Connection metadata disclosed.
+        """
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
         selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
         ids = frozenset(value for value in selections.values() if value is not None)
@@ -145,12 +143,11 @@ class ConnectionPreflightService:
         )
         if requirements:
             require_personal_connection_access(context)
-        if command.connections.keys() - {requirement.target.node_id for requirement in requirements}:
+        if command.connections.keys() - {target.node_id for target in requirements}:
             raise ConnectionConfigurationError()
         snapshots: dict[str, ConnectionCheckSnapshot] = {}
         unavailable: set[str] = set()
-        for requirement in requirements:
-            target = requirement.target
+        for target in requirements:
             connection_id = selections.get(target.node_id)
             record = records.get(connection_id) if connection_id is not None else None
             if record is None:
@@ -201,8 +198,7 @@ class ConnectionPreflightService:
                 raise ConnectionConflictError()
 
         views: list[ConnectionPreflightStatus] = []
-        for requirement in requirements:
-            target = requirement.target
+        for target in requirements:
             connection_id = selections.get(target.node_id)
             record = current.get(connection_id) if connection_id is not None else None
             # Missing and foreign IDs produce the same disconnected response.
@@ -211,15 +207,14 @@ class ConnectionPreflightService:
             snapshot = snapshots.get(connection_id) if connection_id is not None else None
             check = snapshot.result if snapshot is not None else None
             try:
-                state = resolve_node_connection_state(
+                status = resolve_node_connection_status(
                     context,
                     selection=NodeConnectionSelection(workflow_id, target.node_id, connection_id),
                     target=target,
                     record=record,
                     check=snapshot,
                 )
-                status = state.status
-                visible_id = state.connection_id
+                visible_id = None if status == NodeConnectionStatus.DISCONNECTED else connection_id
             except ConnectionCheckUnavailableError:
                 status = None
                 visible_id = record.id if record is not None else None

@@ -265,8 +265,8 @@ def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_se
     assert stored.access.revision == 1
 
 
-@pytest.mark.parametrize("change", ["version", "graph", "connection"])
-def test_changes_during_checks_cannot_produce_ready(
+@pytest.mark.parametrize("change", ["version", "graph", "connection", "title", "reuse"])
+def test_preflight_revalidates_authorization_changes_during_checks(
     harness: OAuthHarness, service: ConnectionPreflightService, change: str
 ) -> None:
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
@@ -285,10 +285,21 @@ def test_changes_during_checks_cannot_produce_ready(
                 workflow = session.get(Workflow, harness.base.workflow_id)
                 assert workflow is not None
                 graph = workflow.graph_dict
-                graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Changed purpose"
+                if change == "title":
+                    graph["nodes"][0]["data"]["title"] = "Renamed tool"
+                elif change == "reuse":
+                    node = deepcopy(graph["nodes"][0])
+                    node["id"] = "reuse"
+                    node["data"].update(credential_source="reuse_node", reuse_node_id="tool-1")
+                    graph["nodes"].append(node)
+                else:
+                    graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Changed purpose"
                 workflow.graph = json.dumps(graph)
 
     harness.base.auth.on_check = mutate
+    if change == "title":
+        assert service.check(harness.base.context, command(harness, {"tool-1": connection.id})).ready
+        return
     with pytest.raises(ConnectionConflictError if change == "connection" else ConnectionRevisionChangedError):
         service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
 

@@ -128,6 +128,13 @@ class OAuthConnectionLifecycle(Protocol):
 
 
 class ConnectionService:
+    """Manage owned credentials without requiring workspace membership or saved selections.
+
+    Missing and foreign IDs are indistinguishable. Validate external results before
+    encryption and apply writes with owner/revision guards; failed checks preserve
+    stored credentials. Management never chooses a Connection for an App or Session.
+    """
+
     def __init__(
         self,
         *,
@@ -271,14 +278,17 @@ class ConnectionService:
         if record.access.credential_type == ConnectionCredentialType.OAUTH2:
             self._oauth.revoke_deleted(context, record)
 
-    def check_connection(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
-    ) -> ConnectionCheckView:
-        return self.check_connection_result(context, connection_id, connection_revision=connection_revision).view
-
     def check_connection_result(
         self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
     ) -> ConnectionCheckOutcome:
+        """Check an owned Connection against the submitted Provider authorization revision.
+
+        Refresh expired OAuth when supported, then return check evidence pinned to
+        the checked credential revision. Unsupported and transient checks preserve
+        stored validity; unrefreshable expiry is invalid. Revalidate after external
+        I/O and propagate stale-owner/revision failures without touching activity
+        or saved selections.
+        """
         record = self._load(context, connection_id)
         source = record.access.oauth_client.source if record.access.oauth_client is not None else None
         admitted = self._revisions.require(

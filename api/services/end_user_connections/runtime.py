@@ -24,7 +24,7 @@ from services.end_user_connections.policy import (
     require_applicable_connection,
     require_personal_connection_access,
 )
-from services.end_user_connections.status import resolve_node_connection_state
+from services.end_user_connections.status import resolve_node_connection_status
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +47,12 @@ class ConnectionRuntimeService:
         target: ToolConnectionTarget,
         connection_revision: str,
     ) -> ResolvedConnectionCredentials:
+        """Resolve a fixed execution choice under its authenticated owner and authorization revision.
+
+        Recheck applicability and readiness before decryption. Return process-local
+        credentials only after the final owner/revision guard succeeds; propagate
+        invalidity, reauthorization and concurrent mutation without changing selections.
+        """
         require_personal_connection_access(context)
         connection_id = connection.id
         access = require_applicable_connection(
@@ -71,18 +77,18 @@ class ConnectionRuntimeService:
         )
         if latest.revision != outcome.revision:
             raise ConnectionConflictError()
-        state = resolve_node_connection_state(
+        status = resolve_node_connection_status(
             context,
             selection=NodeConnectionSelection(target.workflow_id, target.node_id, connection_id),
             target=target,
             record=latest,
             check=ConnectionCheckSnapshot(connection_id, outcome.revision, outcome.view.check),
         )
-        if state.status == NodeConnectionStatus.INVALID:
+        if status == NodeConnectionStatus.INVALID:
             raise ConnectionInvalidCredentialsError()
-        if state.status == NodeConnectionStatus.RECONNECT_REQUIRED:
+        if status == NodeConnectionStatus.RECONNECT_REQUIRED:
             raise ConnectionReauthorizationRequiredError()
-        if state.status != NodeConnectionStatus.CONNECTED:
+        if status != NodeConnectionStatus.CONNECTED:
             raise ConnectionConflictError()
         assert current is not None
         credentials = self._cipher.decrypt(context.tenant_id, current.encrypted_credentials)
