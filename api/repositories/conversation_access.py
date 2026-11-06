@@ -63,13 +63,18 @@ def message_owner_scope(app_id: str, user: Account | EndUser | None) -> sa.Colum
 def require_web_message_access(
     session: Session, *, tenant_id: str, app_id: str, end_user_id: str, conversation_id: str | None
 ) -> None:
-    """Fence Message creation against migration before accepting its references."""
+    """Authorize the original Web actor while fencing migration until commit or rollback.
+
+    Call before accessing conversation data in a short caller-owned transaction.
+    The identity lock precedes snapshot reads, including on MySQL. Missing or
+    transferred resources raise ConversationAccessDeniedError without mutation.
+    """
+    actor = lock_end_user(session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, exclusive=False)
     app = session.scalar(
         sa.select(App.id).where(
             App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL, App.enable_site.is_(True)
         )
     )
-    actor = lock_end_user(session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, exclusive=False)
     if app is None or actor is None:
         raise ConversationAccessDeniedError("Conversation ownership changed")
     if (
@@ -82,6 +87,27 @@ def require_web_message_access(
         is None
     ):
         raise ConversationAccessDeniedError("Conversation ownership changed")
+
+
+def require_web_message_owner(
+    session: Session, *, tenant_id: str, app_id: str, end_user_id: str, message_id: str
+) -> None:
+    """Fence a message write using its current conversation and original caller.
+
+    The caller commits or rolls back the transaction before external I/O. A
+    missing message or changed owner raises without granting a replacement actor.
+    """
+    require_web_message_access(
+        session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, conversation_id=None
+    )
+    conversation_id = session.scalar(
+        sa.select(Message.conversation_id).where(Message.id == message_id, Message.app_id == app_id)
+    )
+    if conversation_id is None:
+        raise ConversationAccessDeniedError("Conversation ownership changed")
+    require_web_message_access(
+        session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, conversation_id=conversation_id
+    )
 
 
 def may_read_conversation_run(

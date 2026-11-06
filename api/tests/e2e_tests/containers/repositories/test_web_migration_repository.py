@@ -13,8 +13,9 @@ from configs import dify_config
 from models.account import Account, AccountStatus
 from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_access
 from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
@@ -24,8 +25,9 @@ from tests.helpers.unit.model_factories import make_upload_file
 
 
 @pytest.mark.parametrize("same_account", [False, True])
+@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.CHAT])
 def test_concurrent_passport_claims_transfer_all_resources_once(
-    db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, same_account: bool
+    db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, same_account: bool, mode: AppMode
 ) -> None:
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     harness = make_harness(sessions)
@@ -54,7 +56,12 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         session.add_all([upload, tool])
         session.flush()
         upload_id, tool_id = upload.id, tool.id
-        session.execute(sa.update(App).where(App.id == harness.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
+        config = AppModelConfig(app_id=harness.context.app_id)
+        session.add(config)
+        session.flush()
+        session.execute(
+            sa.update(App).where(App.id == harness.context.app_id).values(mode=mode, app_model_config_id=config.id)
+        )
         session.add(
             Site(
                 app_id=harness.context.app_id,
@@ -66,7 +73,7 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         )
         conversation = Conversation(
             app_id=harness.context.app_id,
-            mode=AppMode.ADVANCED_CHAT,
+            mode=mode,
             name="Guest",
             _inputs={},
             from_source=ConversationFromSource.API,
@@ -133,6 +140,78 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         assert stored.from_end_user_id == winner.id
         assert session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id)) == winner.id
         assert session.scalar(sa.select(ToolFile.user_id).where(ToolFile.id == tool_id)) == winner.id
+
+
+@pytest.mark.timeout(30)
+def test_chatbot_writes_are_fenced_before_and_after_claim(db_session_with_containers: Session) -> None:
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    harness = make_harness(sessions)
+    with sessions.begin() as session:
+        guest = EndUser(
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        config = AppModelConfig(app_id=harness.context.app_id)
+        session.add_all([guest, config])
+        session.flush()
+        guest_id = guest.id
+        session.execute(
+            sa.update(App)
+            .where(App.id == harness.context.app_id)
+            .values(mode=AppMode.CHAT, app_model_config_id=config.id)
+        )
+        code = f"chatbot-write-race-{uuid4()}"
+        session.add(
+            Site(
+                app_id=harness.context.app_id,
+                code=code,
+                title="Chatbot",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            )
+        )
+        conversation = Conversation(
+            app_id=harness.context.app_id,
+            mode=AppMode.CHAT,
+            name="Guest",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=guest_id,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+        session.add(conversation)
+        session.flush()
+        conversation_id = conversation.id
+    repository = WebMigrationRepository(session_factory=sessions)
+    source = repository.get_claim_source(app_code=code, app_id=harness.context.app_id, end_user_id=guest_id)
+    assert source is not None
+    with sessions.begin() as writer:
+        require_web_message_access(
+            writer,
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            end_user_id=guest_id,
+            conversation_id=conversation_id,
+        )
+        writer.execute(sa.update(Conversation).where(Conversation.id == conversation_id).values(name="Committed first"))
+        with pytest.raises(EndUserBusyError):
+            repository.claim_guest(source, account_end_user_id=harness.context.end_user_id)
+    assert repository.claim_guest(source, account_end_user_id=harness.context.end_user_id) == MigrationCounts(0, 1)
+    with sessions.begin() as late_writer, pytest.raises(ConversationAccessDeniedError):
+        require_web_message_access(
+            late_writer,
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            end_user_id=guest_id,
+            conversation_id=conversation_id,
+        )
+    with sessions() as session:
+        stored = session.get(Conversation, conversation_id)
+        assert stored is not None
+        assert stored.name == "Committed first"
+        assert stored.from_end_user_id == harness.context.end_user_id
 
 
 @pytest.mark.timeout(30)

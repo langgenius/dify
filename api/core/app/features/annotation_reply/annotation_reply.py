@@ -3,12 +3,21 @@ from typing import cast
 
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
 from models.enums import CollectionBindingType, ConversationFromSource
-from models.model import AnnotationReplyEnabledConfig, App, Message, MessageAnnotation, load_annotation_reply_config
+from models.model import (
+    AnnotationReplyEnabledConfig,
+    App,
+    AppMode,
+    Message,
+    MessageAnnotation,
+    load_annotation_reply_config,
+)
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_owner
 from services.annotation_service import AppAnnotationService
 from services.knowledge.dataset_service import DatasetCollectionBindingService
 
@@ -76,6 +85,18 @@ class AnnotationReplyFeature:
                         from_source = ConversationFromSource.CONSOLE
 
                     # insert annotation history
+                    if (
+                        invoke_from == InvokeFrom.WEB_APP
+                        and app_record.mode == AppMode.CHAT
+                        and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                    ):
+                        require_web_message_owner(
+                            session,
+                            tenant_id=app_record.tenant_id,
+                            app_id=app_record.id,
+                            end_user_id=user_id,
+                            message_id=message.id,
+                        )
                     AppAnnotationService.add_annotation_history(
                         annotation.id,
                         app_record.id,
@@ -90,6 +111,8 @@ class AnnotationReplyFeature:
                     )
 
                     return annotation
+        except ConversationAccessDeniedError:
+            raise
         except Exception:
             logger.warning("Query annotation failed.", exc_info=True)
             return None

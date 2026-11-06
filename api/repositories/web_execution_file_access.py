@@ -42,8 +42,15 @@ def require_execution_file_ownership(
     user: EndUser,
     upload_ids: frozenset[str],
     tool_ids: frozenset[str],
+    granted_upload_ids: frozenset[str] = frozenset(),
 ) -> None:
-    """Validate final file ownership while the caller holds the identity fence."""
+    """Validate current file access while the caller holds the identity fence.
+
+    Granted uploads come only from trusted execution-local App defaults, never
+    request-owned identifiers. They still require matching persistent tenant
+    scope. An empty grant preserves strict original-user ownership validation.
+    Missing or inaccessible files raise without mutation.
+    """
     if (user.tenant_id, user.app_id) != (tenant_id, app_id):
         raise WebExecutionResourcesChangedError()
     visible_uploads: set[str] = set()
@@ -54,8 +61,13 @@ def require_execution_file_ownership(
                 sa.select(UploadFile.id).where(
                     UploadFile.id.in_(upload_ids),
                     UploadFile.tenant_id == tenant_id,
-                    UploadFile.created_by_role == CreatorUserRole.END_USER,
-                    UploadFile.created_by == user.id,
+                    sa.or_(
+                        sa.and_(
+                            UploadFile.created_by_role == CreatorUserRole.END_USER,
+                            UploadFile.created_by == user.id,
+                        ),
+                        UploadFile.id.in_(granted_upload_ids),
+                    ),
                 )
             )
         )

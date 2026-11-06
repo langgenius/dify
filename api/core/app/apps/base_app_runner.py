@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
@@ -45,6 +46,8 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_owner
+from repositories.entities.web_execution import EndUserBusyError
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -332,6 +335,9 @@ class AppRunner:
                                                     "QueueMessageFileEvent published for message_file_id: %s",
                                                     message_file_id,
                                                 )
+                                        except (ConversationAccessDeniedError, EndUserBusyError):
+                                            invoke_result.close()
+                                            raise
                                         except Exception:
                                             _logger.exception("Failed to handle multimodal image output")
                                     else:
@@ -433,6 +439,16 @@ class AppRunner:
         except Exception:
             _logger.exception("Failed to save image file")
             return None
+
+        if isinstance(queue_manager, MessageBasedAppQueueManager) and queue_manager.web_chat_actor is not None:
+            actor = queue_manager.web_chat_actor
+            require_web_message_owner(
+                session,
+                tenant_id=actor.tenant_id,
+                app_id=actor.app_id,
+                end_user_id=actor.end_user_id,
+                message_id=message_id,
+            )
 
         # Create MessageFile record.
         # Use an independent session so this side-effect write does not
