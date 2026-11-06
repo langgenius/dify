@@ -54,6 +54,8 @@ class _Daemon:
     observed_lock_key: str | None = None
     response_code: int = 0
     response_message: str = ""
+    get_response_code: int = 0
+    get_response_message: str = ""
     status: HTTPStatus = HTTPStatus.OK
     post_status: HTTPStatus = HTTPStatus.OK
     requests: list[_DaemonRequest] = field(default_factory=list)
@@ -89,8 +91,10 @@ def daemon(harness: _Harness) -> Iterator[_Daemon]:
             )
             body = json.dumps(
                 {
-                    "code": daemon.response_codes_by_path.get(self.path, daemon.response_code) if streamed else 0,
-                    "message": daemon.response_message if streamed else "",
+                    "code": daemon.response_codes_by_path.get(self.path, daemon.response_code)
+                    if streamed
+                    else daemon.get_response_code,
+                    "message": daemon.response_message if streamed else daemon.get_response_message,
                     "data": data,
                 }
             )
