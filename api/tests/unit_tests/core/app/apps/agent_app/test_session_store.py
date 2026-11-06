@@ -12,6 +12,7 @@ from models.agent import (
 )
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 
 
@@ -137,7 +138,7 @@ def test_load_or_create_uses_exact_caller_binding(
     create = MagicMock()
     store = AgentAppWorkspaceStore()
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceRepository, "validate_binding_generation", MagicMock())
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
     stored = store.load_or_create(_scope())

@@ -11,7 +11,6 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
@@ -20,6 +19,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
+from services.agent.chat.cot_runner import CotAgentRunner
 
 
 def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
@@ -88,10 +88,12 @@ class DummyRunner(CotAgentRunner):
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner]:
+def runner(
+    mocker: MockerFixture, sqlite_engine: Engine, app_records, agent_tool_invoker: MagicMock
+) -> Iterator[DummyRunner]:
     # Prevent BaseAgentRunner __init__ from hitting database
     mocker.patch(
-        "core.agent.base_agent_runner.BaseAgentRunner.organize_agent_history",
+        "services.agent.chat.base_runner.BaseAgentRunner.organize_agent_history",
         return_value=[],
     )
     # Prepare required constructor dependencies for BaseAgentRunner
@@ -121,6 +123,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner
     message = _make_message()
 
     runner = DummyRunner(
+        _tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=_make_conversation(),
@@ -146,6 +149,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner
     runner.session = Session(sqlite_engine)
 
     try:
+        runner._records = app_records
         yield runner
     finally:
         runner.session.close()
@@ -165,18 +169,6 @@ class TestFillInputs:
     def test_fill_in_inputs(self, runner: DummyRunner, instruction, inputs, expected):
         result = runner._fill_in_inputs_from_external_data_tools(instruction, inputs)
         assert result == expected
-
-
-class TestConvertDictToAction:
-    def test_convert_valid_dict(self, runner: DummyRunner):
-        action_dict = {"action": "test", "action_input": {"a": 1}}
-        action = runner._convert_dict_to_action(action_dict)
-        assert action.action_name == "test"
-        assert action.action_input == {"a": 1}
-
-    def test_convert_missing_keys(self, runner: DummyRunner):
-        with pytest.raises(KeyError):
-            runner._convert_dict_to_action({"invalid": 1})
 
 
 class TestFormatAssistantMessage:
@@ -230,27 +222,24 @@ class TestFormatAssistantMessage:
 class TestHandleInvokeAction:
     def test_handle_invoke_action_tool_not_present(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="missing", action_input={})
-        response, meta = runner._handle_invoke_action(runner.session, action, {}, [], trace_scope=None)
+        response, meta = runner._handle_invoke_action(action, {}, [], trace_scope=None)
         assert "there is not a tool named" in response
 
-    def test_tool_with_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
+    def test_tool_with_json_string_args(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="tool", action_input=json.dumps({"a": 1}))
         tool_instance = MagicMock()
         tool_instances = {"tool": tool_instance}
 
-        mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("result", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("result", [], MagicMock(to_dict=lambda: {}))
 
-        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [], trace_scope=None)
+        response, meta = runner._handle_invoke_action(action, tool_instances, [], trace_scope=None)
         assert response == "result"
 
 
 class TestOrganizeHistoricPromptMessages:
     def test_empty_history(self, runner: DummyRunner, mocker: MockerFixture):
         mocker.patch(
-            "core.agent.cot_agent_runner.AgentHistoryPromptTransform.get_prompt",
+            "services.agent.chat.cot_runner.AgentHistoryPromptTransform.get_prompt",
             return_value=[],
         )
         result = runner._organize_historic_prompt_messages([])
@@ -263,11 +252,11 @@ class TestRun:
         message.id = "msg-id"
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[],
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         assert isinstance(results, list)
         assert "session" not in runner.create_agent_thought.call_args.kwargs
         assert all("session" not in call.kwargs for call in runner.save_agent_thought.call_args_list)
@@ -279,19 +268,16 @@ class TestRun:
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
-        mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
+            list(runner.run(message, "query", {"tool": MagicMock()}))
 
     def test_run_respects_max_iteration_boundary(self, runner: DummyRunner, mocker: MockerFixture):
         runner.app_config.agent.max_iteration = 1
@@ -301,30 +287,27 @@ class TestRun:
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
-        mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
+            list(runner.run(message, "query", {"tool": MagicMock()}))
 
     def test_run_basic_flow(self, runner: DummyRunner, mocker: MockerFixture):
         message = _make_message()
         message.id = "msg-id"
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[],
         )
 
-        results = list(runner.run(runner.session, message, "query", {"name": "John"}))
+        results = list(runner.run(message, "query", {"name": "John"}))
         assert results
 
     def test_run_max_iteration_error(self, runner: DummyRunner, mocker: MockerFixture):
@@ -335,12 +318,12 @@ class TestRun:
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(runner.session, message, "query", {}))
+            list(runner.run(message, "query", {}))
 
     def test_run_increase_usage_aggregation(self, runner: DummyRunner, mocker: MockerFixture):
         message = _make_message()
@@ -366,7 +349,7 @@ class TestRun:
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
         handle_output = mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             side_effect=[
                 [action],
                 [],
@@ -380,16 +363,13 @@ class TestRun:
 
         handle_output.side_effect = _handle_side_effect
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
-        mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         fake_prompt_tool = MagicMock()
         fake_prompt_tool.name = "tool"
         runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         final_usage = results[-1].delta.usage
         assert final_usage is not None
         assert final_usage.prompt_tokens == 2
@@ -423,12 +403,12 @@ class TestRun:
 
         runner.model_instance.invoke_llm.return_value = provider_chunks()
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             side_effect=lambda chunks, _usage: list(chunks),
         )
 
-        results = list(runner.run(session, message, "query", {}))
-        assert events == ["commit", "close", "first-chunk"]
+        results = list(runner.run(message, "query", {}))
+        assert events == ["first-chunk"]
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
             "app_id": "app",
             "app_type": CreditUsageAppType.AGENT,
@@ -441,13 +421,13 @@ class TestRun:
         message.id = "msg-id"
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[],
         )
 
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
 
-        list(runner.run(runner.session, message, "query", {}))
+        list(runner.run(message, "query", {}))
 
     def test_run_prompt_tool_update_branch(self, runner: DummyRunner, mocker: MockerFixture):
         message = _make_message()
@@ -460,14 +440,11 @@ class TestRun:
         # First iteration → action
         # Second iteration → no action (empty list)
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             side_effect=[[action], []],
         )
 
-        agent_invoke = mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.app_config.agent.max_iteration = 5
 
@@ -479,10 +456,10 @@ class TestRun:
         runner.update_prompt_message_tool = MagicMock()
         runner.agent_callback = None
 
-        list(runner.run(runner.session, message, "query", {}))
+        list(runner.run(message, "query", {}))
 
         runner.update_prompt_message_tool.assert_called_once()
-        assert agent_invoke.call_args.kwargs["trace_scope"] is trace_scope
+        assert runner._tool_invoker.call_args.kwargs["trace_scope"] is trace_scope
 
     def test_historic_with_assistant_and_tool_calls(self, runner: DummyRunner):
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ToolPromptMessage
@@ -521,20 +498,15 @@ class TestInitReactState:
 
 
 class TestHandleInvokeActionExtended:
-    def test_tool_with_invalid_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
+    def test_tool_with_invalid_json_string_args(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="tool", action_input="not-json")
         tool_instance = MagicMock()
         tool_instances = {"tool": tool_instance}
 
-        mocker.patch(
-            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], MagicMock(to_dict=lambda: {"k": "v"})),
-        )
+        runner._tool_invoker.return_value = ("ok", ["file1"], MagicMock(to_dict=lambda: {"k": "v"}))
 
         message_file_ids = []
-        response, meta = runner._handle_invoke_action(
-            runner.session, action, tool_instances, message_file_ids, trace_scope=None
-        )
+        response, meta = runner._handle_invoke_action(action, tool_instances, message_file_ids, trace_scope=None)
 
         assert response == "ok"
         assert message_file_ids == ["file1"]
@@ -565,7 +537,7 @@ class TestOrganizeHistoricPromptMessagesExtended:
         runner.history_prompt_messages = [user_message]
 
         mock_transform = mocker.patch(
-            "core.agent.cot_agent_runner.AgentHistoryPromptTransform",
+            "services.agent.chat.cot_runner.AgentHistoryPromptTransform",
         )
         mock_transform.return_value.get_prompt.return_value = ["final"]
 
@@ -585,7 +557,7 @@ class TestOrganizeHistoricPromptMessagesExtended:
         mock_transform.get_prompt.return_value = []
 
         mocker.patch(
-            "core.agent.cot_agent_runner.AgentHistoryPromptTransform",
+            "services.agent.chat.cot_runner.AgentHistoryPromptTransform",
             return_value=mock_transform,
         )
 
@@ -600,11 +572,11 @@ class TestRunAdditionalBranches:
         message.id = "msg-id"
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=["thinking"],
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         assert any(hasattr(r, "delta") for r in results)
 
     def test_run_with_final_answer_action_string(self, runner: DummyRunner, mocker: MockerFixture):
@@ -614,11 +586,11 @@ class TestRunAdditionalBranches:
         action = AgentScratchpadUnit.Action(action_name="Final Answer", action_input="done")
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         assert results[-1].delta.message.content == "done"
 
     def test_run_with_final_answer_action_dict(self, runner: DummyRunner, mocker: MockerFixture):
@@ -628,11 +600,11 @@ class TestRunAdditionalBranches:
         action = AgentScratchpadUnit.Action(action_name="Final Answer", action_input={"a": 1})
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         assert json.loads(results[-1].delta.message.content) == {"a": 1}
 
     def test_run_with_string_final_answer(self, runner: DummyRunner, mocker: MockerFixture):
@@ -643,9 +615,9 @@ class TestRunAdditionalBranches:
         action = AgentScratchpadUnit.Action(action_name="Final Answer", action_input="12345")
 
         mocker.patch(
-            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            "services.agent.chat.cot_runner.CotAgentOutputParser.handle_react_stream_output",
             return_value=[action],
         )
 
-        results = list(runner.run(runner.session, message, "query", {}))
+        results = list(runner.run(message, "query", {}))
         assert results[-1].delta.message.content == "12345"

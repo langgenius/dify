@@ -33,7 +33,6 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps import base_app_queue_manager
-from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.session_store import AgentAppSessionScope
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -47,7 +46,6 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
 )
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from domain.tracing.trace_run_agg import TraceInvocation, TraceRunState
 from events.event_handlers import update_provider_when_message_created as receiver
@@ -61,10 +59,13 @@ from models.application_trace import ApplicationTraceInvocation, ApplicationTrac
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from models.workflow import WorkflowRun, WorkflowType
+from repositories.app.generation_repository import AppGenerationRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
+from services.app.generation.ports import MessageIdentity
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings, TraceRun
@@ -511,19 +512,18 @@ def save_agent_stop(
     answer: str,
     *,
     mode: AppMode = AppMode.AGENT,
-    consumer_session: Session | None = None,
     process_stream: bool = False,
     notify: Callable[[Message, ChatAppGenerateEntity], None] | None = None,
 ) -> list[TraceEvent]:
-    """Run the real consumer save against the owned SQL rows; returns the trace events it emitted."""
+    """Save through the injected repository's transaction; preserve worker usage and return emitted events."""
 
     def send(message: Message, *, application_generate_entity: ChatAppGenerateEntity) -> None:
         if notify is not None:
             notify(message, application_generate_entity)
 
-    monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send", send)
+    monkeypatch.setattr("services.app.generation.adapters.message_pipeline.message_was_created.send", send)
     monkeypatch.setattr(
-        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.naive_utc_now",
+        "repositories.app.generation_repository.naive_utc_now",
         lambda: case.now - timedelta(seconds=10),
     )
     with case.collection.sessions.begin() as session:
@@ -572,7 +572,12 @@ def save_agent_stop(
         event=QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL),
     )
     pipeline = EasyUIBasedGenerateTaskPipeline(
-        entity, _QueueManager([stop] if process_stream else []), conversation, message, stream=True
+        entity,
+        _QueueManager([stop] if process_stream else []),
+        conversation,
+        message,
+        stream=True,
+        records=AppGenerationRepository(case.collection.sessions),
     )
     pipeline._task_state.llm_result.message.content = answer
     if process_stream:
@@ -581,12 +586,8 @@ def save_agent_stop(
         monkeypatch.setattr(pipeline, "_handle_stop", lambda _event: None)
         monkeypatch.setattr(pipeline, "handle_output_moderation_when_task_finished", lambda _answer: None)
         list(pipeline._process_stream_response(publisher=None))
-    elif consumer_session is None:
-        with case.collection.sessions.begin() as session:
-            pipeline._save_message(session=session, preserve_existing_usage=True)
     else:
-        pipeline._save_message(session=consumer_session, preserve_existing_usage=True)
-        consumer_session.commit()
+        pipeline._save_message(preserve_existing_usage=True, agent_stop_requested=mode == AppMode.AGENT)
     return recorder.events
 
 
@@ -603,10 +604,10 @@ def test_stopped_agent_notifies_the_real_provider_receiver_once_after_commit(
     )
 
     def notify(message: Message, entity: ChatAppGenerateEntity) -> None:
-        # The production session factory does not expire on commit. Check real
-        # detached fields used by the actual receiver, not a mocked send order.
+        # The repository returns detached scalar data; lazy relationships are
+        # outside the notification contract. Exercise the real receiver below.
         assert inspect(message).detached is True
-        assert not inspect(message).expired_attributes
+        assert not set(inspect(Message).column_attrs.keys()) & inspect(message).expired_attributes
         assert message.answer == "partial answer"
         with case.collection.sessions() as session:
             saved = session.get(Message, message.id)
@@ -746,8 +747,18 @@ def test_worker_usage_flush_preserves_stop_intent_from_a_newer_consumer_save(
     assert cached_message is not None
     assert cached_message.message_metadata is None
     save_agent_stop(case, monkeypatch, "partial answer")
-    AgentAppRunner._persist_message_usage(
-        message_id=cached_message.id,
+    runner = _runner(
+        FakeAgentBackendRunClient(),
+        _FakeSessionStore(),
+        app_records=AppGenerationRepository(case.collection.sessions),
+    )
+    runner._persist_message_usage(
+        identity=MessageIdentity(
+            case.collection.run.tenant_id,
+            case.collection.run.app_id,
+            cached_message.conversation_id,
+            cached_message.id,
+        ),
         usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
     )
     assert stop_requested(case.collection) is True
@@ -772,11 +783,21 @@ def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_rea
         cached = consumer.get(Message, case.collection.run.source_id)
         assert cached is not None
         assert cached.message_tokens == 0
-        AgentAppRunner._persist_message_usage(
-            message_id=cached.id,
+        runner = _runner(
+            FakeAgentBackendRunClient(),
+            _FakeSessionStore(),
+            app_records=AppGenerationRepository(case.collection.sessions),
+        )
+        runner._persist_message_usage(
+            identity=MessageIdentity(
+                case.collection.run.tenant_id,
+                case.collection.run.app_id,
+                cached.conversation_id,
+                cached.id,
+            ),
             usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
         )
-        save_agent_stop(case, monkeypatch, "partial answer", consumer_session=consumer)
+        save_agent_stop(case, monkeypatch, "partial answer")
     assert stop_requested(case.collection) is True
     with case.collection.sessions() as session:
         message = session.get(Message, case.collection.run.source_id)
@@ -793,6 +814,7 @@ def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_rea
 def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     case: RecoveryCase,
     monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
     runtime_outcome: str,
     final_batch_arrived: bool,
     snapshot_save_fails: bool,
@@ -824,7 +846,7 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
 
         monkeypatch.setattr(client, "cancel_run_and_wait", unexpected_cancel)
     store = _ExplodingSessionStore() if snapshot_save_fails else _FakeSessionStore()
-    runner = _runner(client, store)
+    runner = _runner(client, store, app_records=app_records)
     run = case.collection.run
     context = DifyRunContext(
         tenant_id=run.tenant_id,
@@ -914,7 +936,10 @@ def test_missing_runtime_stop_terminal_converges_without_inventing_success(
 
 @pytest.mark.parametrize("stop_on_end", [False, True])
 def test_stop_during_final_queue_publication_preserves_the_already_observed_success(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, stop_on_end: bool
+    case: RecoveryCase,
+    monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
+    stop_on_end: bool,
 ) -> None:
     save_agent_stop(case, monkeypatch, "partial answer")
     # Only Redis storage is in memory. Use the real queue's publish stop check
@@ -925,7 +950,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
         base_app_queue_manager.redis_client, "setex", lambda key, _ttl, value: flags.__setitem__(key, value)
     )
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+        "services.app.generation.adapters.agent_request_builder.resolve_model_context_window", lambda **_kwargs: None
     )
     task_id = identifier("stop-at-final-publish")
     queue_manager = MessageBasedAppQueueManager(
@@ -939,7 +964,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
     clock = [0.0]
     queue_manager._stopped_cache = TTLCache(maxsize=1, ttl=1, timer=lambda: clock[0])
     store = _FakeSessionStore()
-    runner = _runner(FakeAgentBackendRunClient(), store)
+    runner = _runner(FakeAgentBackendRunClient(), store, app_records=app_records)
     original_publish = queue_manager._publish
 
     def publish_after_stop(event: AppQueueEvent, pub_from: PublishFrom) -> None:
@@ -988,7 +1013,10 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
 
 @pytest.mark.parametrize("stop_during_cleanup", [False, True])
 def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_failure(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, stop_during_cleanup: bool
+    case: RecoveryCase,
+    monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
+    stop_during_cleanup: bool,
 ) -> None:
     client = _UsageCancellationClient()
     queue_manager = _FakeQueueManager()
@@ -1007,7 +1035,7 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
 
         monkeypatch.setattr(client, "cancel_run_and_wait", cancel_then_stop)
     store = _FakeSessionStore()
-    runner = _runner(client, store)
+    runner = _runner(client, store, app_records=app_records)
     run = case.collection.run
     context = DifyRunContext(
         tenant_id=run.tenant_id,

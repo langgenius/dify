@@ -42,7 +42,6 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from services.app.file_input_defaults import grant_file_default_access
 from services.app.generation.input_adapter import AppInputAdapter
 from services.workflow.contracts import WorkflowSnapshot
@@ -60,6 +59,7 @@ from services.workflow.execution.ports import WorkflowRuntime
 
 if TYPE_CHECKING:
     from services.workflow.execution.contracts import WorkflowRunDriver
+    from services.workflow_execution_identity import WorkflowExecutionIdentity
 
 logger = logging.getLogger(__name__)
 

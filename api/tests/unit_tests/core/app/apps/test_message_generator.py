@@ -1,10 +1,10 @@
 from collections.abc import Iterator
 from unittest.mock import Mock, patch
 
-from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.task_entities import StreamEvent
 from libs.broadcast_channel.channel import Subscription, SupportsPreparedSubscription
 from models.model import AppMode
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 
 
 class _StubSubscription(Subscription):
@@ -47,16 +47,18 @@ class _TopicWithSeparateSubscriberView:
         raise AssertionError("event retrieval must use the topic's subscriber view")
 
 
-class TestMessageGenerator:
+class TestWorkflowEventStream:
     def test_get_response_topic(self) -> None:
         channel = Mock()
         channel.topic.return_value = "topic"
 
-        with patch("core.app.apps.message_generator.get_pubsub_broadcast_channel", return_value=channel):
-            topic = MessageGenerator.get_response_topic(AppMode.WORKFLOW, "run-1")
+        with patch(
+            "services.workflow.execution.adapters.response_stream.get_pubsub_broadcast_channel", return_value=channel
+        ):
+            topic = WorkflowEventStream.get_response_topic(AppMode.WORKFLOW, "run-1")
 
         assert topic == "topic"
-        expected_key = MessageGenerator._make_channel_key(AppMode.WORKFLOW, "run-1")
+        expected_key = WorkflowEventStream._make_channel_key(AppMode.WORKFLOW, "run-1")
         channel.topic.assert_called_once_with(expected_key)
 
     def test_retrieve_events_passes_arguments(self) -> None:
@@ -64,13 +66,17 @@ class TestMessageGenerator:
         topic.as_subscriber.return_value = topic
         topic.subscribe.return_value = "subscription"
         with (
-            patch("core.app.apps.message_generator.MessageGenerator.get_response_topic", return_value=topic),
             patch(
-                "core.app.apps.message_generator.stream_topic_events", return_value=iter([{"event": "ping"}])
+                "services.workflow.execution.adapters.response_stream.WorkflowEventStream.get_response_topic",
+                return_value=topic,
+            ),
+            patch(
+                "services.workflow.execution.adapters.response_stream.stream_topic_events",
+                return_value=iter([{"event": "ping"}]),
             ) as mock_stream,
         ):
             events = list(
-                MessageGenerator.retrieve_events(
+                WorkflowEventStream.retrieve_events(
                     AppMode.WORKFLOW,
                     "run-1",
                     idle_timeout=1,
@@ -93,10 +99,15 @@ class TestMessageGenerator:
     def test_retrieve_events_uses_prepared_subscription_capability(self) -> None:
         topic = _TopicWithSeparateSubscriberView()
         with (
-            patch("core.app.apps.message_generator.MessageGenerator.get_response_topic", return_value=topic),
-            patch("core.app.apps.message_generator.stream_topic_events", return_value=iter([])) as mock_stream,
+            patch(
+                "services.workflow.execution.adapters.response_stream.WorkflowEventStream.get_response_topic",
+                return_value=topic,
+            ),
+            patch(
+                "services.workflow.execution.adapters.response_stream.stream_topic_events", return_value=iter([])
+            ) as mock_stream,
         ):
-            events = MessageGenerator.retrieve_events(AppMode.WORKFLOW, "run-1")
+            events = WorkflowEventStream.retrieve_events(AppMode.WORKFLOW, "run-1")
 
         assert topic.subscriber.prepare_calls == 1
         mock_stream.assert_called_once_with(

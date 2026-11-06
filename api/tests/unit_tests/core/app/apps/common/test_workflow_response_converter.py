@@ -3,7 +3,6 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -11,9 +10,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
@@ -49,7 +45,10 @@ from models.account import Account as _workflow_response_converter_resumption_Ac
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource, UserActionConfig
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowType
+from models.workflow import WorkflowNodeExecutionModel
+from services.workflow.execution.adapters import response_converter as workflow_response_converter
+from services.workflow.execution.adapters.events import WorkflowEventPublisher
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
 
 class TestWorkflowResponseConverterCases:
@@ -306,7 +305,9 @@ class TestWorkflowResponseConverterCases:
             assert result[1]["id"] == "complex_obj"
 
 
-def _workflow_response_converter_human_input_build_converter() -> WorkflowResponseConverter:
+def _workflow_response_converter_human_input_build_converter(
+    *, workflow_contexts, tool_providers
+) -> WorkflowResponseConverter:
     system_variables = build_system_variables(
         files=[],
         user_id="user-1",
@@ -331,16 +332,22 @@ def _workflow_response_converter_human_input_build_converter() -> WorkflowRespon
     account = _workflow_response_converter_human_input_Account(name="tester", email="tester@example.com")
     account.id = "acc-1"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=app_entity,
         user=account,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
 class TestWorkflowResponseConverterHumanInputCases:
     @staticmethod
-    def test_human_input_form_filled_stream_response_contains_rendered_content() -> None:
-        converter = _workflow_response_converter_human_input_build_converter()
+    def test_human_input_form_filled_stream_response_contains_rendered_content(
+        *, workflow_contexts, tool_providers
+    ) -> None:
+        converter = _workflow_response_converter_human_input_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -368,8 +375,12 @@ class TestWorkflowResponseConverterHumanInputCases:
         assert resp.data.action_id == "Approve"
 
     @staticmethod
-    def test_human_input_form_filled_stream_response_serializes_submitted_data() -> None:
-        converter = _workflow_response_converter_human_input_build_converter()
+    def test_human_input_form_filled_stream_response_serializes_submitted_data(
+        *, workflow_contexts, tool_providers
+    ) -> None:
+        converter = _workflow_response_converter_human_input_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -399,8 +410,12 @@ class TestWorkflowResponseConverterHumanInputCases:
         }
 
     @staticmethod
-    def test_human_input_form_timeout_stream_response_contains_timeout_metadata() -> None:
-        converter = _workflow_response_converter_human_input_build_converter()
+    def test_human_input_form_timeout_stream_response_contains_timeout_metadata(
+        *, workflow_contexts, tool_providers
+    ) -> None:
+        converter = _workflow_response_converter_human_input_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -425,7 +440,9 @@ class TestWorkflowResponseConverterHumanInputCases:
         assert resp.data.expiration_time == 1735689600
 
 
-def _workflow_response_converter_resumption_build_converter() -> WorkflowResponseConverter:
+def _workflow_response_converter_resumption_build_converter(
+    *, workflow_contexts, tool_providers
+) -> WorkflowResponseConverter:
     """Construct a minimal WorkflowResponseConverter for testing."""
     system_variables = build_system_variables(
         files=[],
@@ -451,16 +468,20 @@ def _workflow_response_converter_resumption_build_converter() -> WorkflowRespons
     account = _workflow_response_converter_resumption_Account(name="tester", email="tester@example.com")
     account.id = "acc-1"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=app_entity,
         user=account,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
 class TestWorkflowResponseConverterResumptionCases:
     @staticmethod
-    def test_workflow_start_stream_response_carries_resumption_reason() -> None:
-        converter = _workflow_response_converter_resumption_build_converter()
+    def test_workflow_start_stream_response_carries_resumption_reason(*, workflow_contexts, tool_providers) -> None:
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         resp = converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -470,8 +491,10 @@ class TestWorkflowResponseConverterResumptionCases:
         assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
     @staticmethod
-    def test_workflow_start_stream_response_carries_initial_reason() -> None:
-        converter = _workflow_response_converter_resumption_build_converter()
+    def test_workflow_start_stream_response_carries_initial_reason(*, workflow_contexts, tool_providers) -> None:
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         resp = converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -481,8 +504,12 @@ class TestWorkflowResponseConverterResumptionCases:
         assert resp.data.reason is WorkflowStartReason.INITIAL
 
     @staticmethod
-    def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_order():
-        converter = _workflow_response_converter_resumption_build_converter()
+    def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_order(
+        *, workflow_contexts, tool_providers
+    ):
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
         )
@@ -505,9 +532,14 @@ class TestWorkflowResponseConverterResumptionCases:
 
     @staticmethod
     @pytest.mark.parametrize("provider_type", ["workflow", "builtin"])
-    def test_workflow_tool_detail_hint_in_live_and_saved_traces(monkeypatch, provider_type):
+    def test_workflow_tool_detail_hint_in_live_and_saved_traces(
+        monkeypatch, provider_type, *, workflow_contexts, tool_providers
+    ):
         monkeypatch.setattr(workflow_response_converter.ToolManager, "get_tool_icon", lambda **_kwargs: "icon")
-        converter = _workflow_response_converter_resumption_build_converter()
+        monkeypatch.setattr("core.tools.tool_manager.ToolManager.get_tool_icon", lambda **_kwargs: "icon")
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
         )
@@ -533,9 +565,11 @@ class TestWorkflowResponseConverterResumptionCases:
 
     @staticmethod
     @pytest.mark.parametrize("next_node_already_persisted", [False, True])
-    def test_resumed_node_metadata_and_sequence(next_node_already_persisted):
+    def test_resumed_node_metadata_and_sequence(next_node_already_persisted, *, workflow_contexts, tool_providers):
         started_at = datetime(2026, 9, 7)
-        converter = _workflow_response_converter_resumption_build_converter()
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
         )
@@ -570,7 +604,9 @@ class TestWorkflowResponseConverterResumptionCases:
             QueueWorkflowStartedEvent(node_execution_snapshots=tuple(snapshots)).model_dump_json()
         )
 
-        converter = _workflow_response_converter_resumption_build_converter()
+        converter = _workflow_response_converter_resumption_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task-1",
             workflow_run_id="run-1",
@@ -636,7 +672,7 @@ class TestConverterTruncationCases:
                 stream=True,
             )
 
-        def create_workflow_response_converter(self) -> WorkflowResponseConverter:
+        def create_workflow_response_converter(self, *, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
             """Create a WorkflowResponseConverter for testing."""
 
             entity = self.create_generate_entity()
@@ -648,9 +684,11 @@ class TestConverterTruncationCases:
 
             system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
             return WorkflowResponseConverter(
+                contexts=workflow_contexts,
                 application_generate_entity=entity,
                 user=mock_user,
                 system_variables=system_variables,
+                tool_providers=tool_providers,
             )
 
         def create_node_started_event(self, *, node_execution_id: str | None = None) -> QueueNodeStartedEvent:
@@ -711,9 +749,11 @@ class TestConverterTruncationCases:
                 in_loop_id=None,
             )
 
-        def test_workflow_node_finish_response_uses_truncated_process_data(self):
+        def test_workflow_node_finish_response_uses_truncated_process_data(self, *, workflow_contexts, tool_providers):
             """Test that node finish response uses get_response_process_data()."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             original_data = {"large_field": "x" * 10000, "metadata": "info"}
             truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
@@ -753,9 +793,11 @@ class TestConverterTruncationCases:
             assert response.data.process_data != original_data
             assert response.data.process_data_truncated is True
 
-        def test_workflow_node_finish_response_without_truncation(self):
+        def test_workflow_node_finish_response_without_truncation(self, *, workflow_contexts, tool_providers):
             """Test node finish response when no truncation is applied."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             original_data = {"small": "data"}
 
@@ -791,9 +833,11 @@ class TestConverterTruncationCases:
             assert response.data.process_data == original_data
             assert response.data.process_data_truncated is False
 
-        def test_workflow_node_finish_response_with_none_process_data(self):
+        def test_workflow_node_finish_response_with_none_process_data(self, *, workflow_contexts, tool_providers):
             """Test node finish response when process_data is None."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             converter.workflow_start_to_stream_response(
                 task_id="bootstrap",
@@ -830,15 +874,20 @@ class TestConverterTruncationCases:
         def test_workflow_node_finish_response_prefers_event_finished_at(
             self,
             monkeypatch: pytest.MonkeyPatch,
+            *,
+            workflow_contexts,
+            tool_providers,
         ) -> None:
             """Finished timestamps should come from the event, not delayed queue processing time."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
             start_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
             finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
             delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
 
             monkeypatch.setattr(
-                "core.app.apps.common.workflow_response_converter.naive_utc_now",
+                "services.workflow.execution.adapters.response_converter.naive_utc_now",
                 lambda: delayed_processing_time,
             )
             converter.workflow_start_to_stream_response(
@@ -871,9 +920,11 @@ class TestConverterTruncationCases:
             assert response.data.elapsed_time == 2.0
             assert response.data.finished_at == int(finished_at.timestamp())
 
-        def test_workflow_node_retry_response_uses_truncated_process_data(self):
+        def test_workflow_node_retry_response_uses_truncated_process_data(self, *, workflow_contexts, tool_providers):
             """Test that node retry response uses get_response_process_data()."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             original_data = {"large_field": "x" * 10000, "metadata": "info"}
             truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
@@ -913,9 +964,11 @@ class TestConverterTruncationCases:
             assert response.data.process_data != original_data
             assert response.data.process_data_truncated is True
 
-        def test_workflow_node_retry_response_without_truncation(self):
+        def test_workflow_node_retry_response_without_truncation(self, *, workflow_contexts, tool_providers):
             """Test node retry response when no truncation is applied."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             original_data = {"small": "data"}
 
@@ -950,9 +1003,11 @@ class TestConverterTruncationCases:
             assert response.data.process_data == original_data
             assert response.data.process_data_truncated is False
 
-        def test_iteration_and_loop_nodes_return_none(self):
+        def test_iteration_and_loop_nodes_return_none(self, *, workflow_contexts, tool_providers):
             """Test that iteration and loop nodes return None (no streaming events)."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             iteration_event = QueueNodeSucceededEvent(
                 node_id="iteration-node",
@@ -980,9 +1035,11 @@ class TestConverterTruncationCases:
             )
             assert response is None
 
-        def test_finish_without_start_raises(self):
+        def test_finish_without_start_raises(self, *, workflow_contexts, tool_providers):
             """Ensure finish responses require a prior workflow start."""
-            converter = self.create_workflow_response_converter()
+            converter = self.create_workflow_response_converter(
+                workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
             event = self.create_node_succeeded_event(
                 node_execution_id=str(uuid.uuid4()),
                 process_data={},
@@ -1037,16 +1094,20 @@ class TestConverterTruncationCases:
             """Create test system variables."""
             return build_system_variables()
 
-        def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
+        def create_test_converter(
+            self, invoke_from: InvokeFrom, *, workflow_contexts, tool_providers
+        ) -> WorkflowResponseConverter:
             """Create WorkflowResponseConverter with specified invoke_from."""
             entity = self.create_test_app_generate_entity(invoke_from)
             user = self.create_test_user()
             system_variables = self.create_test_system_variables()
 
             converter = WorkflowResponseConverter(
+                contexts=workflow_contexts,
                 application_generate_entity=entity,
                 user=user,
                 system_variables=system_variables,
+                tool_providers=tool_providers,
             )
             # ensure `workflow_run_id` is set.
             converter.workflow_start_to_stream_response(
@@ -1093,9 +1154,13 @@ class TestConverterTruncationCases:
             ],
             ids=lambda x: x.name,
         )
-        def test_truncator_selection_based_on_invoke_from(self, test_case: TestCase):
+        def test_truncator_selection_based_on_invoke_from(
+            self, test_case: TestCase, *, workflow_contexts, tool_providers
+        ):
             """Test that the correct truncator is selected based on invoke_from."""
-            converter = self.create_test_converter(test_case.invoke_from)
+            converter = self.create_test_converter(
+                test_case.invoke_from, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Test truncation behavior instead of checking private attribute
 
@@ -1136,9 +1201,11 @@ class TestConverterTruncationCases:
                 assert not response.data.process_data_truncated
                 assert not response.data.outputs_truncated
 
-        def test_service_api_truncator_no_op_mapping(self):
+        def test_service_api_truncator_no_op_mapping(self, *, workflow_contexts, tool_providers):
             """Test that Service API truncator doesn't truncate variable mappings."""
-            converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+            converter = self.create_test_converter(
+                InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Create a test event with large data
             large_value: dict[str, Any] = {
@@ -1176,9 +1243,11 @@ class TestConverterTruncationCases:
             assert data.process_data_truncated is False
             assert data.outputs_truncated is False
 
-        def test_web_app_truncator_works_normally(self):
+        def test_web_app_truncator_works_normally(self, *, workflow_contexts, tool_providers):
             """Test that web app truncator still works normally."""
-            converter = self.create_test_converter(InvokeFrom.WEB_APP)
+            converter = self.create_test_converter(
+                InvokeFrom.WEB_APP, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Create a test event with large data
             large_value = {
@@ -1276,9 +1345,13 @@ class TestConverterTruncationCases:
                 QueueEvent.NODE_EXCEPTION,
             ],
         )
-        def test_service_api_node_finish_event_no_truncation(self, event_type: QueueEvent):
+        def test_service_api_node_finish_event_no_truncation(
+            self, event_type: QueueEvent, *, workflow_contexts, tool_providers
+        ):
             """Test that Service API doesn't truncate node finish events."""
-            converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+            converter = self.create_test_converter(
+                InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
             # Create test event with large data
             large_inputs = {"input1": "x" * 5000, "input2": list(range(2000))}
             large_process_data = {"process1": "y" * 5000, "process2": {"nested": ["z"] * 2000}}
@@ -1306,9 +1379,11 @@ class TestConverterTruncationCases:
             assert not response.data.process_data_truncated
             assert not response.data.outputs_truncated
 
-        def test_service_api_node_retry_event_no_truncation(self):
+        def test_service_api_node_retry_event_no_truncation(self, *, workflow_contexts, tool_providers):
             """Test that Service API doesn't truncate node retry events."""
-            converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+            converter = self.create_test_converter(
+                InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Create test event with large data
             large_inputs = {"retry_input": "x" * 5000}
@@ -1367,9 +1442,11 @@ class TestConverterTruncationCases:
             assert not response.data.process_data_truncated
             assert not response.data.outputs_truncated
 
-        def test_service_api_iteration_events_no_truncation(self):
+        def test_service_api_iteration_events_no_truncation(self, *, workflow_contexts, tool_providers):
             """Test that Service API doesn't truncate iteration events."""
-            converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+            converter = self.create_test_converter(
+                InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Test iteration start event
             large_value = {"iteration_input": ["x"] * 2000}
@@ -1394,9 +1471,11 @@ class TestConverterTruncationCases:
             assert response.data.inputs == large_value
             assert not response.data.inputs_truncated
 
-        def test_service_api_loop_events_no_truncation(self):
+        def test_service_api_loop_events_no_truncation(self, *, workflow_contexts, tool_providers):
             """Test that Service API doesn't truncate loop events."""
-            converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+            converter = self.create_test_converter(
+                InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Test loop start event
             large_inputs = {"loop_input": ["x"] * 2000}
@@ -1421,9 +1500,11 @@ class TestConverterTruncationCases:
             assert response.data.inputs == large_inputs
             assert not response.data.inputs_truncated
 
-        def test_web_app_node_finish_event_truncation_works(self):
+        def test_web_app_node_finish_event_truncation_works(self, *, workflow_contexts, tool_providers):
             """Test that web app still truncates node finish events."""
-            converter = self.create_test_converter(InvokeFrom.WEB_APP)
+            converter = self.create_test_converter(
+                InvokeFrom.WEB_APP, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+            )
 
             # Create test event with large data that should be truncated
             large_inputs = {"input1": ["x"] * 2000}
@@ -1464,12 +1545,11 @@ class TestConverterTruncationCases:
             assert response.data.outputs_truncated
 
 
-class _RecordingWorkflowAppRunner(WorkflowAppRunner):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class _RecordingQueueManager:
+    def __init__(self) -> None:
         self.published_events = []
 
-    def _publish_event(self, event):
+    def publish(self, event, _pub_from) -> None:
         self.published_events.append(event)
 
 
@@ -1506,45 +1586,15 @@ def _persist_human_input_form(
     return expiration_time
 
 
-def _build_runner():
-    app_entity = SimpleNamespace(
-        app_config=SimpleNamespace(app_id="app-id"),
-        inputs={},
-        files=[],
-        invoke_from=InvokeFrom.SERVICE_API,
-        single_iteration_run=None,
-        single_loop_run=None,
-        workflow_execution_id="run-id",
-        user_id="user-id",
-    )
-    workflow = Workflow.new(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({}),
-        features="{}",
-        created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    workflow.id = "workflow-id"
-    queue_manager = SimpleNamespace(publish=lambda event, pub_from: None)
-    return _RecordingWorkflowAppRunner(
-        application_generate_entity=app_entity,
-        queue_manager=queue_manager,
-        variable_loader=MagicMock(),
-        workflow=workflow,
-        system_user_id="sys-user",
-        root_node_id=None,
-        graph_engine_layers=(),
-        graph_runtime_state=None,
-    )
+def _build_event_publisher() -> tuple[WorkflowEventPublisher, _RecordingQueueManager, MagicMock]:
+    queue_manager = _RecordingQueueManager()
+    notify_pause = MagicMock()
+    publisher = WorkflowEventPublisher(queue_manager, notify_pause=notify_pause)  # type: ignore[arg-type]
+    return publisher, queue_manager, notify_pause
 
 
 def _workflow_pause_events_build_converter(
-    *, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
+    *, workflow_contexts, tool_providers, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
 ) -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.END_USER,
@@ -1568,18 +1618,27 @@ def _workflow_pause_events_build_converter(
     user = _workflow_pause_events_Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=application_generate_entity,
         user=user,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
 def _build_paused_human_input_response(
     session: Session,
     recipients: list[tuple[RecipientType, str]],
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     """Drive the live OPENAPI pause path with persisted forms and recipients."""
-    converter = _workflow_pause_events_build_converter(invoke_from=InvokeFrom.OPENAPI)
+    converter = _workflow_pause_events_build_converter(
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+        invoke_from=InvokeFrom.OPENAPI,
+    )
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -1615,20 +1674,22 @@ def _build_paused_human_input_response(
 
 class TestWorkflowPauseEventsCases:
     @staticmethod
-    @pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
-    def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
-        monkeypatch: pytest.MonkeyPatch, source_node_id: str
-    ):
-        from tests.unit_tests.core.app.apps.test_workflow_app_runner import _workflow_entry
+    @pytest.fixture
+    def sqlite_pause_session(sqlite_session: Session) -> Session:
+        """Provide the shared SQLite session used by the injected context repository."""
+        return sqlite_session
 
-        runner = _build_runner()
+    @staticmethod
+    @pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
+    def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(source_node_id: str):
+        publisher, queue_manager, notify_pause = _build_event_publisher()
         graph_reason = HitlRequired(
             session_id="form-1",
             node_id=source_node_id,
             node_title="Human Step",
         )
         event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
-        workflow_entry = _workflow_entry(runner)
+        workflow_entry = MagicMock()
 
         enriched_reason = HumanInputRequired(
             form_id="form-1",
@@ -1638,12 +1699,11 @@ class TestWorkflowPauseEventsCases:
             node_id="node-human",
             node_title="Human Step",
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", MagicMock())
+        publisher.publish(workflow_entry, event, pause_reasons=[enriched_reason])
 
-        runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
-
-        assert len(runner.published_events) == 1
-        queue_event = runner.published_events[0]
+        notify_pause.assert_called_once_with([enriched_reason])
+        assert len(queue_manager.published_events) == 1
+        queue_event = queue_manager.published_events[0]
         assert isinstance(queue_event, QueueWorkflowPausedEvent)
         assert queue_event.reasons == [enriched_reason]
         assert queue_event.outputs == {"foo": "bar"}
@@ -1656,8 +1716,12 @@ class TestWorkflowPauseEventsCases:
         [(HumanInputForm, HumanInputFormRecipient)],
         indirect=True,
     )
-    def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: Session):
-        converter = _workflow_pause_events_build_converter()
+    def test_queue_workflow_paused_event_to_stream_responses(
+        sqlite_pause_session: Session, *, workflow_contexts, tool_providers
+    ):
+        converter = _workflow_pause_events_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task",
             workflow_run_id="run-id",
@@ -1719,13 +1783,17 @@ class TestWorkflowPauseEventsCases:
         [(HumanInputForm, HumanInputFormRecipient)],
         indirect=True,
     )
-    def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_session: Session):
+    def test_openapi_pause_without_web_app_recipient_emits_approval_channels(
+        sqlite_pause_session: Session, *, workflow_contexts, tool_providers
+    ):
         responses = _build_paused_human_input_response(
             sqlite_pause_session,
             recipients=[
                 (RecipientType.EMAIL_MEMBER, "email-token"),
                 (RecipientType.BACKSTAGE, "backstage-token"),
             ],
+            workflow_contexts=workflow_contexts,
+            tool_providers=tool_providers,
         )
 
         hi_resp = responses[0]
@@ -1741,13 +1809,17 @@ class TestWorkflowPauseEventsCases:
         [(HumanInputForm, HumanInputFormRecipient)],
         indirect=True,
     )
-    def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_session: Session):
+    def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(
+        sqlite_pause_session: Session, *, workflow_contexts, tool_providers
+    ):
         responses = _build_paused_human_input_response(
             sqlite_pause_session,
             recipients=[
                 (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
                 (RecipientType.BACKSTAGE, "backstage-token"),
             ],
+            workflow_contexts=workflow_contexts,
+            tool_providers=tool_providers,
         )
 
         hi_resp = responses[0]
@@ -1763,8 +1835,12 @@ class TestWorkflowPauseEventsCases:
         [(HumanInputForm, HumanInputFormRecipient)],
         indirect=True,
     )
-    def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pause_session: Session):
-        converter = _workflow_pause_events_build_converter()
+    def test_queue_workflow_paused_event_resolves_variable_select_options(
+        sqlite_pause_session: Session, *, workflow_contexts, tool_providers
+    ):
+        converter = _workflow_pause_events_build_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         converter.workflow_start_to_stream_response(
             task_id="task",
             workflow_run_id="run-id",
@@ -1815,7 +1891,9 @@ class TestWorkflowPauseEventsCases:
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm, HumanInputFormRecipient)], indirect=True)
-def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_pause_session: Session):
+def test_mixed_human_input_versions_preserve_order_and_wire_payloads(
+    sqlite_session: Session, *, workflow_contexts, tool_providers
+) -> None:
     from pydantic import SecretStr
 
     from core.human_input_v2.resolved_form import ResolvedForm, SelectInput
@@ -1826,7 +1904,7 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
     from graphon.entities.pause_reason import SchedulingPause
     from repositories.human_input_v2.form_repository import Form
 
-    _persist_human_input_form(sqlite_pause_session)
+    _persist_human_input_form(sqlite_session)
     now = datetime(2024, 1, 1)
     form = Form(
         id="form-2",
@@ -1874,7 +1952,10 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     state.variable_pool.add(["upstream", "options"], ["One", "Two"])
-    converter = _workflow_pause_events_build_converter()
+    converter = _workflow_pause_events_build_converter(
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -1898,10 +1979,3 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
     assert v1["form_version"] == "1"
     assert reasons[0]["form_version"] == "2"
     assert reasons[2]["form_version"] == "1"
-
-
-@pytest.fixture
-def sqlite_pause_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind pause-response queries to the shared SQLite session's database."""
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
-    return sqlite_session

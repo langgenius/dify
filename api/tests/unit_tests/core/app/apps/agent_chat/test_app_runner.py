@@ -1,16 +1,12 @@
 from collections.abc import Generator, Iterator, Mapping
+from unittest.mock import create_autospec
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.agent.cot_agent_runner import CotAgentRunner
-from core.agent.cot_chat_agent_runner import CotChatAgentRunner
-from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from core.agent.entities import AgentEntity
-from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
-from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueLLMChunkEvent, QueueMessageEndEvent
@@ -18,11 +14,19 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.plugin.entities.plugin_daemon import PluginLLMNumTokensResponse
 from core.plugin.impl.model import PluginModelClient
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from models.annotation_reply import AnnotationReplies
 from models.model import App, Conversation, Message, MessageAgentThought, MessageAnnotation
-from services.workflow_run_agg import WorkflowRunAgg
+from repositories.app.generation_repository import AppGenerationRepository
+from services.agent.chat.cot_chat_runner import CotChatAgentRunner
+from services.agent.chat.cot_completion_runner import CotCompletionAgentRunner
+from services.agent.chat.cot_runner import CotAgentRunner
+from services.agent.chat.function_call_runner import FunctionCallAgentRunner
+from services.agent.chat.ports import AgentToolInvoker
+from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 
 
 def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text: str) -> None:
@@ -36,36 +40,33 @@ def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text
 
 
 @pytest.fixture
-def runner(agent_records: tuple[Conversation, Message]) -> AgentChatAppRunner:
+def runner(
+    agent_records: tuple[Conversation, Message],
+    *,
+    app_records: AppGenerationRepository,
+    workflow_runtime: WorkflowExecutionDependencies,
+) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
-    return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppRunner(
+        dataset_tools=workflow_runtime.dataset_tools,
+        records=app_records,
+        tool_invoker=create_autospec(AgentToolInvoker, instance=True, spec_set=True),
+    )
 
 
-def _records(session: Session) -> tuple[Conversation, Message]:
+def _runtime_records(session: Session) -> tuple[App, Conversation, Message]:
+    app = session.get(App, "app1")
     conversation = session.get(Conversation, "conv")
     message = session.get(Message, "msg")
+    assert app is not None
     assert conversation is not None
     assert message is not None
-    return conversation, message
+    session.expunge_all()
+    session.rollback()
+    return app, conversation, message
 
 
 class TestAgentChatAppRunnerRun:
-    def test_run_app_not_found(
-        self,
-        runner: AgentChatAppRunner,
-        sqlite_session: Session,
-        agent_generate_entity: AgentChatAppGenerateEntity,
-        agent_queue_manager: MessageBasedAppQueueManager,
-    ) -> None:
-        app = sqlite_session.get(App, "app1")
-        assert app is not None
-        sqlite_session.delete(app)
-        sqlite_session.commit()
-        conversation, message = _records(sqlite_session)
-
-        with pytest.raises(ValueError, match="App not found"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
-
     def test_run_moderation_error_direct_output(
         self,
         runner: AgentChatAppRunner,
@@ -73,15 +74,23 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         def reject_input(_moderation: InputModeration, **kwargs: object) -> None:
             assert kwargs["query"] == "q"
             raise ModerationError("bad")
 
         monkeypatch.setattr(InputModeration, "check", reject_input)
-        conversation, message = _records(sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
 
-        runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+        runner.run(
+            agent_generate_entity,
+            agent_queue_manager,
+            conversation,
+            message,
+            app_record=app,
+            annotations=annotation_replies,
+        )
 
         _assert_direct_output(agent_queue_manager, "bad")
 
@@ -92,6 +101,7 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         annotation = MessageAnnotation(
             app_id="app1",
@@ -101,21 +111,32 @@ class TestAgentChatAppRunnerRun:
         )
         sqlite_session.add(annotation)
         sqlite_session.commit()
-        sessions: list[Session] = []
+        calls: list[dict[str, object]] = []
 
-        def query_annotation(*, session: Session, **_kwargs: object) -> MessageAnnotation | None:
-            sessions.append(session)
-            return session.get(MessageAnnotation, annotation.id)
+        def query_annotation(**kwargs: object) -> MessageAnnotation:
+            calls.append(kwargs)
+            return annotation
 
-        monkeypatch.setattr(runner, "query_app_annotations_to_reply", query_annotation)
-        conversation, message = _records(sqlite_session)
-        runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+        monkeypatch.setattr(annotation_replies, "query", query_annotation)
+        app, conversation, message = _runtime_records(sqlite_session)
+        runner.run(
+            agent_generate_entity,
+            agent_queue_manager,
+            conversation,
+            message,
+            app_record=app,
+            annotations=annotation_replies,
+        )
 
         event_message = agent_queue_manager._q.get_nowait()
         assert event_message is not None
         assert isinstance(event_message.event, QueueAnnotationReplyEvent)
         assert event_message.event.message_annotation_id == annotation.id
-        assert sessions == [sqlite_session]
+        assert calls[0]["tenant_id"] == "tenant"
+        assert calls[0]["app_id"] == "app1"
+        assert calls[0]["message_id"] == "msg"
+        assert calls[0]["query"] == "q"
+        assert calls[0]["user_id"] == "user"
         _assert_direct_output(agent_queue_manager, "answer")
 
     def test_run_hosting_moderation_short_circuits(
@@ -125,6 +146,7 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         def reject_hosted_input(**kwargs: object) -> bool:
             assert kwargs["tenant_id"] == "tenant"
@@ -132,9 +154,16 @@ class TestAgentChatAppRunnerRun:
             return True
 
         monkeypatch.setattr("core.helper.moderation.check_moderation", reject_hosted_input)
-        conversation, message = _records(sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
 
-        runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+        runner.run(
+            agent_generate_entity,
+            agent_queue_manager,
+            conversation,
+            message,
+            app_record=app,
+            annotations=annotation_replies,
+        )
 
         _assert_direct_output(
             agent_queue_manager,
@@ -148,12 +177,20 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         monkeypatch.setattr(PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: None)
-        conversation, message = _records(sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
 
         with pytest.raises(ValueError, match="Model schema not found"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+            runner.run(
+                agent_generate_entity,
+                agent_queue_manager,
+                conversation,
+                message,
+                app_record=app,
+                annotations=annotation_replies,
+            )
 
     @pytest.mark.parametrize(
         ("mode", "expected_runner"),
@@ -172,6 +209,7 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         agent_generate_entity.model_conf.mode = mode
         agent_generate_entity.model_conf.model_schema.model_properties[ModelPropertyKey.MODE] = mode
@@ -183,12 +221,12 @@ class TestAgentChatAppRunnerRun:
         original_run = CotAgentRunner.run
 
         def observe_run(
-            agent: CotAgentRunner, *, session: Session, message: Message, query: str, inputs: Mapping[str, str]
+            agent: CotAgentRunner, *, message: Message, query: str, inputs: Mapping[str, str]
         ) -> Generator[LLMResultChunk]:
             assert not sqlite_session.in_transaction()
             selected_runners.append(agent)
             events.append("agent-run")
-            return original_run(agent, session=session, message=message, query=query, inputs=inputs)
+            return original_run(agent, message=message, query=query, inputs=inputs)
 
         def dispatch(
             _client: PluginModelClient, **kwargs: object
@@ -213,19 +251,19 @@ class TestAgentChatAppRunnerRun:
                 ),
             )
 
-        def record_commit(_session: Session) -> None:
-            events.append("commit")
-
         monkeypatch.setattr(CotAgentRunner, "run", observe_run)
         monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response_stream", dispatch)
-        conversation, message = _records(sqlite_session)
-        event.listen(sqlite_session, "after_commit", record_commit)
-        try:
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
-        finally:
-            event.remove(sqlite_session, "after_commit", record_commit)
+        app, conversation, message = _runtime_records(sqlite_session)
+        runner.run(
+            agent_generate_entity,
+            agent_queue_manager,
+            conversation,
+            message,
+            app_record=app,
+            annotations=annotation_replies,
+        )
 
-        assert events == ["commit", "commit", "agent-run", "commit", "invoke"]
+        assert events == ["agent-run", "invoke"]
         assert len(selected_runners) == 1
         assert type(selected_runners[0]) is expected_runner
         assert len(daemon_calls) == 1
@@ -251,12 +289,19 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
-        # Simulate corrupt provider metadata without replacing the runtime or validated app config.
         agent_generate_entity.model_conf.model_schema.model_properties[ModelPropertyKey.MODE] = "invalid"
-        conversation, message = _records(sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
         with pytest.raises(ValueError, match="Invalid LLM mode: invalid"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+            runner.run(
+                agent_generate_entity,
+                agent_queue_manager,
+                conversation,
+                message,
+                app_record=app,
+                annotations=annotation_replies,
+            )
 
     @pytest.mark.parametrize("feature", [ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL])
     @pytest.mark.parametrize("stream_tool_call", [False, True])
@@ -268,6 +313,7 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
         feature: ModelFeature,
         stream_tool_call: bool,
     ) -> None:
@@ -278,11 +324,11 @@ class TestAgentChatAppRunnerRun:
         original_run = FunctionCallAgentRunner.run
 
         def run_agent(
-            agent: FunctionCallAgentRunner, *, session: Session, message: Message, query: str, **kwargs: object
+            agent: FunctionCallAgentRunner, *, message: Message, query: str, **kwargs: object
         ) -> Generator[LLMResultChunk]:
-            assert not session.in_transaction()
+            assert not sqlite_session.in_transaction()
             selected.append(agent)
-            return original_run(agent, session=session, message=message, query=query, **kwargs)
+            return original_run(agent, message=message, query=query, **kwargs)
 
         def dispatch(_client: PluginModelClient, **kwargs: object) -> Iterator[LLMResultChunk]:
             assert not sqlite_session.in_transaction()
@@ -297,8 +343,15 @@ class TestAgentChatAppRunnerRun:
 
         monkeypatch.setattr(FunctionCallAgentRunner, "run", run_agent)
         monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response_stream", dispatch)
-        conversation, message = _records(sqlite_session)
-        runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
+        runner.run(
+            agent_generate_entity,
+            agent_queue_manager,
+            conversation,
+            message,
+            app_record=app,
+            annotations=annotation_replies,
+        )
 
         app_config = agent_generate_entity.app_config
         assert isinstance(app_config, AgentChatAppConfig)
@@ -321,33 +374,6 @@ class TestAgentChatAppRunnerRun:
         assert len(thoughts) == 1
         assert thoughts[0].answer == "answer"
 
-    def test_run_conversation_not_found(
-        self,
-        runner: AgentChatAppRunner,
-        sqlite_session: Session,
-        agent_generate_entity: AgentChatAppGenerateEntity,
-        agent_queue_manager: MessageBasedAppQueueManager,
-    ) -> None:
-        conversation_record, message_record = _records(sqlite_session)
-        sqlite_session.delete(conversation_record)
-        sqlite_session.commit()
-
-        with pytest.raises(ValueError, match="Conversation not found"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation_record, message_record, sqlite_session)
-
-    def test_run_message_not_found(
-        self,
-        runner: AgentChatAppRunner,
-        sqlite_session: Session,
-        agent_generate_entity: AgentChatAppGenerateEntity,
-        agent_queue_manager: MessageBasedAppQueueManager,
-    ) -> None:
-        conversation, message = _records(sqlite_session)
-        sqlite_session.delete(message)
-        sqlite_session.commit()
-        with pytest.raises(ValueError, match="Message not found"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
-
     def test_run_invalid_agent_strategy_raises(
         self,
         runner: AgentChatAppRunner,
@@ -355,13 +381,20 @@ class TestAgentChatAppRunnerRun:
         sqlite_session: Session,
         agent_generate_entity: AgentChatAppGenerateEntity,
         agent_queue_manager: MessageBasedAppQueueManager,
+        annotation_replies: AnnotationReplies,
     ) -> None:
         app_config = agent_generate_entity.app_config
         assert isinstance(app_config, AgentChatAppConfig)
         agent = app_config.agent
         assert isinstance(agent, AgentEntity)
-        # Fault injection after validation covers the defensive runtime branch for corrupted state.
         monkeypatch.setattr(agent, "strategy", "invalid")
-        conversation, message = _records(sqlite_session)
+        app, conversation, message = _runtime_records(sqlite_session)
         with pytest.raises(ValueError, match="Invalid agent strategy: invalid"):
-            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+            runner.run(
+                agent_generate_entity,
+                agent_queue_manager,
+                conversation,
+                message,
+                app_record=app,
+                annotations=annotation_replies,
+            )
