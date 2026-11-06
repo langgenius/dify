@@ -2930,6 +2930,7 @@ a4_expected.update(
             "test_diagnosis_does_not_expand_unbound_or_mismatched_source": 6,
             "test_diagnosis_expanded_source_redacts_credentials_and_excludes_neighbors": 1,
             "test_diagnosis_oversized_source_is_explicitly_omitted_without_a_prefix": 1,
+            "test_code_diagnosis_and_proposal_share_failure_policy_at_source_boundary": 6,
         },
         "tests.unit_tests.services.dify_builder.test_testdata_code_refresh": {
             "test_initial_file_submission_refreshes_low_risk_code_and_saves_inputs_once": 6,

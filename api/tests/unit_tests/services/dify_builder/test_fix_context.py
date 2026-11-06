@@ -386,3 +386,62 @@ def test_diagnosis_oversized_source_is_explicitly_omitted_without_a_prefix(monke
     assert '"outputs": {"result": {"type": "string"}}' in prompt
     assert "Do not reconstruct or replace omitted fields" in prompt
     assert len(prompt.encode()) < 40_000
+
+
+@pytest.mark.parametrize(
+    "boundary", ["bound", "source-omitted", "unbound", "non-code", "changed-binding", "code-drift"]
+)
+def test_code_diagnosis_and_proposal_share_failure_policy_at_source_boundary(
+    monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    """A diagnosis must not prescribe identity grouping that the repair policy forbids."""
+    from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+
+    source = (
+        "def classify(record, input_index):\n"
+        "    identity = record.get('record_key')\n"
+        "    if not isinstance(identity, str) or not identity.strip():\n"
+        "        return {'status': 'invalid', 'record': record, 'input_index': input_index}\n"
+        "    return {'status': 'valid', 'record': record}\n"
+    )
+    if boundary == "source-omitted":
+        source = "# SOURCE_REQUIRES_MANUAL_REVIEW\n" * 2000 + source
+    graph: Graph = {
+        "nodes": [{"id": "culprit", "data": {"type": "code", "code": source, "variables": []}}],
+        "edges": [],
+    }
+    historical = deepcopy(graph)
+    if boundary == "non-code":
+        graph["nodes"][0]["data"]["type"] = "tool"
+        historical = deepcopy(graph)
+    elif boundary == "changed-binding":
+        graph["nodes"][0]["data"]["variables"] = [{"variable": "different", "value_selector": ["start", "new"]}]
+    elif boundary == "code-drift":
+        historical["nodes"][0]["data"]["code"] = "def classify(record, input_index): return record"
+    outputs = [NodeOutput(node_id="culprit", status="failed", inputs={"text": '[{"record_key":[]}]'})]
+    run = Run(status="failed")
+    evidence = build_evidence(run, graph, None if boundary == "unbound" else historical, outputs)[3]
+    prompts: list[dict[str, str]] = []
+
+    def answer(_model: object, *, system: str, user: str, **_kwargs: object) -> dict[str, object]:
+        prompts.append({"system": system, "user": user})
+        if len(prompts) == 1:
+            return {"culprit_node_id": "culprit", "root_cause": "Review invalid-record contract", "severity": "high"}
+        return {"intents": []}
+
+    monkeypatch.setattr(fix.llm, "invoke_json", answer)
+    model = make_model_instance(provider="openai", model="test-model")
+    diagnosis = fix.diagnose(model, run, graph, outputs, evidence=evidence)
+    diagnosis.condition_evidence = evidence
+    fix.propose_repair(model, diagnosis, graph)
+
+    assert len(prompts) == 2
+    assert CODE_FAILURE_POLICY_RULES in prompts[1]["system"]
+    bound_code = boundary in {"bound", "source-omitted", "code-drift"}
+    assert (CODE_FAILURE_POLICY_RULES in prompts[0]["system"]) is bound_code
+    assert ("CURRENT CULPRIT SOURCE CONTEXT" in prompts[0]["user"]) is bound_code
+    if boundary in {"bound", "code-drift"}:
+        assert json.dumps(source, ensure_ascii=False) in prompts[0]["user"]
+    elif boundary == "source-omitted":
+        assert "SOURCE_REQUIRES_MANUAL_REVIEW" not in prompts[0]["user"]
+        assert "Omitted source requires manual review" in prompts[0]["user"]
