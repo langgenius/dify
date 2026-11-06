@@ -188,33 +188,25 @@ class TestRateLimit:
 class TestRateLimitEnterExit:
     """Rate limiting enter/exit logic tests."""
 
+    def _make_admit_script_mock(self, redis_patch, results):
+        """Wires the registered admission script to return `results` in order."""
+        admit_script = MagicMock(side_effect=results)
+        redis_patch.register_script.return_value = admit_script
+        return admit_script
+
     def test_should_allow_request_within_limit(self, redis_patch):
         """Test allowing requests within the rate limit."""
-        redis_patch.configure_mock(
-            **{
-                "exists.return_value": False,
-                "setex.return_value": True,
-                "hlen.return_value": 2,
-                "hset.return_value": True,
-            }
-        )
+        self._make_admit_script_mock(redis_patch, [1])
 
         rate_limit = RateLimit("test_client", 5)
         request_id = rate_limit.enter()
 
         assert request_id != RateLimit._UNLIMITED_REQUEST_ID
-        redis_patch.hset.assert_called_once()
+        assert redis_patch.register_script.return_value.call_count == 1
 
     def test_should_generate_request_id_if_not_provided(self, redis_patch):
         """Test auto-generation of request ID."""
-        redis_patch.configure_mock(
-            **{
-                "exists.return_value": False,
-                "setex.return_value": True,
-                "hlen.return_value": 0,
-                "hset.return_value": True,
-            }
-        )
+        self._make_admit_script_mock(redis_patch, [1])
 
         rate_limit = RateLimit("test_client", 5)
         request_id = rate_limit.enter()
@@ -223,20 +215,25 @@ class TestRateLimitEnterExit:
 
     def test_should_use_provided_request_id(self, redis_patch):
         """Test using provided request ID."""
-        redis_patch.configure_mock(
-            **{
-                "exists.return_value": False,
-                "setex.return_value": True,
-                "hlen.return_value": 0,
-                "hset.return_value": True,
-            }
-        )
+        self._make_admit_script_mock(redis_patch, [1])
 
         rate_limit = RateLimit("test_client", 5)
-        custom_id = "custom_request_123"
-        request_id = rate_limit.enter(custom_id)
+        request_id = rate_limit.enter("custom_request_123")
 
-        assert request_id == custom_id
+        assert request_id == "custom_request_123"
+
+    def test_should_pass_request_id_cap_and_timestamp_to_script(self, redis_patch):
+        """The admission script receives the hash key, request id, timestamp
+        and cap — the inputs the atomic Lua check-and-set depends on."""
+        admit_script = self._make_admit_script_mock(redis_patch, [1])
+
+        rate_limit = RateLimit("test_client", 5)
+        rate_limit.enter("req-1")
+
+        call = admit_script.call_args
+        assert call.kwargs["keys"] == ["dify:rate_limit:test_client:active_requests"]
+        assert call.kwargs["args"][0] == "req-1"
+        assert call.kwargs["args"][2] == 5
 
     def test_should_remove_request_on_exit(self, redis_patch):
         """Test request removal on exit."""
@@ -252,14 +249,8 @@ class TestRateLimitEnterExit:
         redis_patch.hdel.assert_called_once_with("dify:rate_limit:test_client:active_requests", "test_request_id")
 
     def test_should_raise_quota_exceeded_when_at_limit(self, redis_patch):
-        """Test quota exceeded error when at limit."""
-        redis_patch.configure_mock(
-            **{
-                "exists.return_value": False,
-                "setex.return_value": True,
-                "hlen.return_value": 5,  # At limit
-            }
-        )
+        """Test quota exceeded error when the atomic admission is refused."""
+        self._make_admit_script_mock(redis_patch, [None])
 
         rate_limit = RateLimit("test_client", 5)
 
@@ -271,15 +262,7 @@ class TestRateLimitEnterExit:
 
     def test_should_allow_request_after_previous_exit(self, redis_patch):
         """Test allowing new request after previous exit."""
-        redis_patch.configure_mock(
-            **{
-                "exists.return_value": False,
-                "setex.return_value": True,
-                "hlen.return_value": 4,  # Under limit after exit
-                "hset.return_value": True,
-                "hdel.return_value": 1,
-            }
-        )
+        self._make_admit_script_mock(redis_patch, [1, 1])
 
         rate_limit = RateLimit("test_client", 5)
 
@@ -292,11 +275,11 @@ class TestRateLimitEnterExit:
     @patch("time.time")
     def test_should_flush_cache_when_interval_exceeded(self, mock_time, redis_patch):
         """Test cache flush when time interval exceeded."""
+        self._make_admit_script_mock(redis_patch, [1])
         redis_patch.configure_mock(
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 0,
             }
         )
 
@@ -306,6 +289,7 @@ class TestRateLimitEnterExit:
         # Advance time beyond flush interval
         mock_time.return_value = 1400.0  # 400 seconds later
         redis_patch.reset_mock()
+        self._make_admit_script_mock(redis_patch, [1])
 
         rate_limit.enter()
 
@@ -325,6 +309,48 @@ class TestRateLimitEnterExit:
         rate_limit.exit(RateLimit._UNLIMITED_REQUEST_ID)
 
         redis_patch.hdel.assert_not_called()
+
+    def test_concurrent_enter_never_exceeds_cap(self, redis_patch):
+        """Regression for #39177: with the atomic admission script, N racing
+        callers can never over-admit beyond max_active_requests.
+
+        The mock emulates Redis's serial execution of the Lua script with a
+        lock around the check-and-increment, so interleavings cannot lose an
+        HLEN between two HSETs as the old two-call implementation allowed.
+        """
+        import threading
+
+        counter = {"active": 0}
+        lock = threading.Lock()
+
+        def atomic_admit(keys=None, args=None, **kwargs):
+            with lock:
+                if counter["active"] >= int(args[2]):
+                    return None
+                counter["active"] += 1
+                return counter["active"]
+
+        self._make_admit_script_mock(redis_patch, None)
+        redis_patch.register_script.return_value.side_effect = atomic_admit
+
+        rate_limit = RateLimit("test_client", 5)
+        admitted, rejected = [], []
+
+        def worker():
+            try:
+                admitted.append(rate_limit.enter())
+            except AppInvokeQuotaExceededError:
+                rejected.append(1)
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(admitted) == 5
+        assert len(rejected) == 15
+        assert counter["active"] == 5
 
 
 class TestRateLimitGenerator:
