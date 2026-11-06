@@ -647,3 +647,176 @@ def test_repair_details_survive_real_cas_item_history_and_http_projection(repo: 
     )
     assert http["data"][0]["payload"]["diagnostics"][0]["validation_details"] == stored["validation_details"]
     assert "PRIVATE" not in json.dumps(history)
+
+
+@pytest.mark.parametrize(
+    ("change", "reason", "path", "observed", "limit"),
+    [
+        ({"plan": None}, "type", ["plan"], None, None),
+        ({"plan": []}, "empty", ["plan"], 0, 1),
+        ({"plan": ["step"] * 31}, "step_count", ["plan"], 31, 30),
+        ({"plan": [False]}, "type", ["plan", "*"], None, None),
+        ({"plan": [" "]}, "blank", ["plan", "*"], 0, 1),
+        ({"plan": ["x" * 2001]}, "step_length", ["plan", "*"], 2001, 2000),
+        ({"title": None}, "type", ["title"], None, None),
+        ({"title": " "}, "blank", ["title"], 0, 1),
+        ({"title": "x" * 201}, "overview_length", ["title"], 201, 200),
+        ({"input_summary": "x" * 2001}, "overview_length", ["input_summary"], 2001, 2000),
+        ({"output_summary": "x" * 2001}, "overview_length", ["output_summary"], 2001, 2000),
+        ({"plan": ["x" * 2000] * 12}, "total_length", [], 24003, 24000),
+        ({}, "missing", ["plan"], None, None),
+    ],
+)
+def test_plan_failure_facts_survive_actual_capture_without_values(
+    diagnostic_model: DiagnosticFactory,
+    change: dict[str, object],
+    reason: str,
+    path: list[str],
+    observed: int | None,
+    limit: int | None,
+) -> None:
+    payload: dict[str, object] = {"title": "t", "input_summary": "i", "output_summary": "o", "plan": ["PRIVATE"]}
+    if change:
+        payload.update(change)
+    else:
+        del payload["plan"]
+    records = []
+    with diagnostics.scope(records.append, "plan"):
+        assert build.propose_plan_v1(diagnostic_model(json.dumps(payload)), {}, goal_text="PRIVATE") is None
+    failures = [record for record in records if record["code"] == "response_schema_invalid"]
+    expected: dict[str, object] = {"stage": "plan", "reason_code": reason, "path": path}
+    if observed is not None:
+        expected.update(observed_count=observed, limit_count=limit)
+    assert [record["attempt"] for record in failures] == [1, 2]
+    assert [record.get("validation_details") for record in failures] == [[expected], [expected]]
+    assert "PRIVATE" not in json.dumps(records)
+
+
+def test_plan_generic_validation_failure_remains_unknown(
+    monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
+) -> None:
+    def unknown(_data: object) -> None:
+        raise ValueError("PRIVATE plan exceeds 30-step limit")
+
+    monkeypatch.setattr(build, "parse_build_plan_response", unknown)
+    records = []
+    with diagnostics.scope(records.append, "plan"):
+        assert build.propose_plan_v1(diagnostic_model(), {}) is None
+    assert records[0].get("validation_details") == [{"stage": "plan", "reason_code": "unknown"}]
+    assert "PRIVATE" not in json.dumps(records)
+
+
+def test_plan_detail_projection_rejects_private_paths_and_invalid_counts() -> None:
+    safe = diagnostics.project(
+        {
+            "code": "response_schema_invalid",
+            "validation_details": [
+                {
+                    "stage": "plan",
+                    "reason_code": "PRIVATE",
+                    "path": ["PRIVATE", "input_summary", 5],
+                    "observed_count": True,
+                    "limit_count": -1,
+                    "message": "PRIVATE",
+                }
+            ],
+        }
+    )
+    assert safe.get("validation_details") == [
+        {"stage": "plan", "reason_code": "unknown", "path": ["unknown", "input_summary", "*"]}
+    ]
+    assert "PRIVATE" not in json.dumps(safe)
+
+
+@pytest.mark.parametrize("provider_failure", [False, True])
+def test_planning_facts_survive_sql_cas_and_public_trace_export(
+    repo: SqlDifyBuilderRepository,
+    diagnostic_model: DiagnosticFactory,
+    provider_failure: bool,
+) -> None:
+    from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
+    from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
+    from core.dify_builder.models import Action, DifyBuilderContext, Turn
+    from core.dify_builder.state import PcState
+    from core.plugin.impl.exc import PluginInvokeError
+    from libs.helper import dump_response
+    from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+    from services.dify_builder.application.runner import Runner, StepResult
+    from services.dify_builder.cognition_model_gateway import PolicyModelInstance
+    from tests.unit_tests.core.dify_builder.test_runner import _actor
+    from tests.unit_tests.core.plugin.impl.test_model_readiness import GATEWAY_MESSAGE
+
+    model = diagnostic_model(
+        "{}",
+        failure=PluginInvokeError(
+            description=json.dumps(
+                {
+                    "error_type": "PluginDaemonInnerError",
+                    "message": GATEWAY_MESSAGE,
+                }
+            )
+        )
+        if provider_failure
+        else None,
+    )
+    agent = LlmBuilderAgent("tenant")
+    agent._model_instance = PolicyModelInstance(lambda: model)
+    env, _ = _new_env()
+    env.repo, env.agent = repo, agent
+    session = _session()
+    repo.create_session(session, DifyBuilderContext(), [])
+    events = []
+    env.emit_item = events.append
+
+    def handler(_env: Env, _turn: Turn, current: Session, context: DifyBuilderContext) -> StepResult:
+        if provider_failure:
+            with pytest.raises(CognitionPolicyDeniedError):
+                agent.propose_plan_v1({}, goal_text="PRIVATE")
+        else:
+            assert agent.propose_plan_v1({}, goal_text="PRIVATE") is None
+        return StepResult(
+            next=PcState.FIX_AWAIT_APPROVAL,
+            context=context,
+            items=[
+                AssistantTurnItem(
+                    turn_id="plan-trace",
+                    stage_id=str(current.current_state),
+                    execution=ExecutionProgress(status="completed"),
+                    reply_text="Review result",
+                    reply_mode="complete",
+                ).to_item(seq=0, at_version=2)
+            ],
+        )
+
+    Runner(env, {PcState.FIX_DIAGNOSE: handler}).advance(
+        session.id,
+        Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()),
+    )
+    assistant = repo.list_conversation(session.id)[-1]
+    stored = assistant.payload["diagnostics"]
+    assert events[-1].item.payload["diagnostics"] == stored
+    history = diagnostics.from_history([assistant], session_id=session.id, version=2)
+    http = dump_response(
+        DifyBuilderConversationPageResponse,
+        {
+            "data": [
+                {
+                    "seq": assistant.seq,
+                    "kind": assistant.kind,
+                    "payload": assistant.payload,
+                    "at_version": assistant.at_version,
+                }
+            ],
+            "has_more": False,
+            "first_seq": assistant.seq,
+            "last_seq": assistant.seq,
+        },
+    )
+    exported = http["data"][0]["payload"]["diagnostics"]
+    if provider_failure:
+        assert history[0]["reason"] == exported[0]["reason"] == "service_unavailable"
+    else:
+        expected = [{"stage": "plan", "reason_code": "missing", "path": ["plan"]}]
+        assert history[0]["validation_details"] == exported[0]["validation_details"] == expected
+    assert "PRIVATE" not in json.dumps(exported)
+    assert "serverless" not in json.dumps(exported)

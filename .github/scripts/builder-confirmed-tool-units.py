@@ -54,6 +54,7 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_llm_agent.py",
     "api/tests/unit_tests/services/dify_builder/test_mock_inputs.py",
     "api/tests/unit_tests/services/dify_builder/test_trace_diagnostics.py",
+    "api/tests/unit_tests/services/dify_builder/test_policy_trace_diagnostics.py",
     "api/tests/unit_tests/services/dify_builder/test_bound_resource_plan_reconciliation.py",
     "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
     "api/tests/unit_tests/services/dify_builder/test_initial_chatflow.py",
@@ -2947,6 +2948,20 @@ a4_expected.update(
 a4_expected["tests.unit_tests.core.dify_builder.test_handlers_fix"].update(
     {"test_re_fix_selects_only_current_owned_known_native_failure": 19}
 )
+# ENG-1429: bounded planning facts and typed provider observations.
+a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"].update({
+    "test_plan_failure_facts_survive_actual_capture_without_values": 13,
+    "test_plan_generic_validation_failure_remains_unknown": 1,
+    "test_plan_detail_projection_rejects_private_paths_and_invalid_counts": 1,
+    "test_planning_facts_survive_sql_cas_and_public_trace_export": 2,
+})
+a4_expected["tests.unit_tests.services.dify_builder.test_policy_trace_diagnostics"] = {
+    "test_policy_wrapped_provider_reason_survives_without_retry_or_secret_projection": 10,
+    "test_explicit_setup_refusal_keeps_priority_over_underlying_timeout": 1,
+    "test_nested_explicit_causes_preserve_known_reason_and_terminate_cycles": 1,
+    "test_diagnostic_cause_walk_is_bounded_and_does_not_use_implicit_context": 1,
+    "test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay": 2,
+}
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:

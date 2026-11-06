@@ -38,6 +38,7 @@ from services.dify_builder.native_constant_output_contract import (
 from services.dify_builder.plan import (
     PLAN_PRESENTATION_INSTRUCTION,
     BuildClarification,
+    PlanValidationError,
     ResourceDiscovery,
     WorkflowPlan,
     parse_build_plan_response,
@@ -779,6 +780,9 @@ def propose_plan_v1(
                     "response_schema_invalid",
                     error=exc,
                     attempt=attempt + 1,
+                    validation_details=[exc.detail]
+                    if isinstance(exc, PlanValidationError)
+                    else [{"stage": "plan", "reason_code": "unknown"}],
                     validation_code="RESOURCE_PLAN_ID_MISSING"
                     if isinstance(exc, _ResourcePlanIdMissingError)
                     else None,
