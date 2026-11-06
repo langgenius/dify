@@ -607,7 +607,7 @@ class SnippetService:
             snippet.updated_by = account.id
             snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         retirement_candidates: set[str] = set()
         with self._session_scope() as session:
@@ -670,7 +670,7 @@ class SnippetService:
         with self._session_scope() as session:
             session.add(draft_workflow)
             session.flush()
-            from services.agent.workflow_publish_service import WorkflowAgentPublishService
+            from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
             retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
                 session=session,
@@ -722,7 +722,7 @@ class SnippetService:
             environment_variables=draft_workflow.environment_variables,
         )
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         WorkflowAgentPublishService.validate_agent_nodes_for_publish(
             session=session,
