@@ -1,4 +1,4 @@
-"""Consumer-owned read contracts for credential lists and their visibility policy."""
+"""Consumer-owned credential snapshots, lists, and visibility contracts."""
 
 from __future__ import annotations
 
@@ -61,6 +61,15 @@ class WorkflowToolCredentialMetadata(ToolCredentialMetadata):
     workflow_ref: WorkflowRef
     node_id: str
     action: str
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCredentialSnapshot:
+    """Stored credentials for a tenant- and provider-scoped invocation."""
+
+    id: str
+    credential_type: str
+    credentials: Mapping[str, object]
 
 
 @dataclass(frozen=True, slots=True)
