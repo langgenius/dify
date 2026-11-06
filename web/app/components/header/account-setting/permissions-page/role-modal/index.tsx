@@ -75,7 +75,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
+      <DialogContent className="h-[85dvh] w-140" backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}</DialogTitle>
           <DialogDescription>

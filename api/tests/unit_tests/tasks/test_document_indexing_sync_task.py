@@ -6,6 +6,7 @@ Notion extraction, index cleanup, and indexing remain mocked I/O boundaries.
 
 import json
 import uuid
+from collections.abc import Generator
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -124,7 +125,7 @@ def _bind_sqlite_session_factory(monkeypatch: pytest.MonkeyPatch, sqlite_session
 
 
 @pytest.fixture
-def mock_datasource_provider_service():
+def mock_datasource_provider_service() -> Generator[MagicMock]:
     """Mock datasource credential provider."""
     with patch("tasks.document_indexing_sync_task.build_data_source_credentials", autospec=True) as mock_service_class:
         mock_service = MagicMock()
@@ -134,7 +135,7 @@ def mock_datasource_provider_service():
 
 
 @pytest.fixture
-def mock_notion_extractor():
+def mock_notion_extractor() -> Generator[dict[str, MagicMock]]:
     """Mock notion extractor class and instance."""
     with patch("tasks.document_indexing_sync_task.NotionExtractor", autospec=True) as mock_extractor_class:
         mock_extractor = MagicMock()
@@ -148,14 +149,14 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_notion_extractor_initialized_with_correct_params(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         dataset_id: str,
         document_id: str,
         notion_workspace_id: str,
         notion_page_id: str,
-    ):
+    ) -> None:
         """Test that NotionExtractor is initialized with expected arguments."""
         # Arrange
         expected_token = "test_token"
@@ -175,13 +176,13 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_datasource_credentials_requested_correctly(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         dataset_id: str,
         document_id: str,
         credential_id: str,
-    ):
+    ) -> None:
         """Test that datasource credentials are requested with expected identifiers."""
         # Arrange
         expected_tenant_id = document.tenant_id
@@ -199,13 +200,13 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_credential_id_missing_uses_none(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         sqlite_session: Session,
         dataset_id: str,
         document_id: str,
-    ):
+    ) -> None:
         """Test that missing credential_id is forwarded as None."""
         # Arrange
         document.data_source_info = json.dumps(
@@ -244,7 +245,7 @@ class TestDataSourceInfoSerialization:
         sqlite_session: Session,
         dataset_id: str,
         document_id: str,
-    ):
+    ) -> None:
         """data_source_info must be serialized with json.dumps before DB write."""
         with (
             patch("tasks.document_indexing_sync_task.build_data_source_credentials") as mock_service_class,
