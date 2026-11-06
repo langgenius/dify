@@ -237,7 +237,7 @@ FILES += [
     "api/tests/unit_tests/core/dify_builder/test_fix_flow.py",
     "api/tests/unit_tests/core/dify_builder/test_repair_readability.py",
     "api/tests/unit_tests/services/dify_builder/test_repair_presentation.py",
-    "api/tests/unit_tests/services/dify_builder/test_tool_output_evidence.py"
+    "api/tests/unit_tests/services/dify_builder/test_tool_output_evidence.py",
 ]
 # ENG-1240: pure recovery state and reservation owner regressions.
 FILES += [
@@ -2965,12 +2965,14 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_fix"].update(
     {"test_re_fix_selects_only_current_owned_known_native_failure": 19}
 )
 # ENG-1429: bounded planning facts and typed provider observations.
-a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"].update({
-    "test_plan_failure_facts_survive_actual_capture_without_values": 13,
-    "test_plan_generic_validation_failure_remains_unknown": 1,
-    "test_plan_detail_projection_rejects_private_paths_and_invalid_counts": 1,
-    "test_planning_facts_survive_sql_cas_and_public_trace_export": 2,
-})
+a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"].update(
+    {
+        "test_plan_failure_facts_survive_actual_capture_without_values": 13,
+        "test_plan_generic_validation_failure_remains_unknown": 1,
+        "test_plan_detail_projection_rejects_private_paths_and_invalid_counts": 1,
+        "test_planning_facts_survive_sql_cas_and_public_trace_export": 2,
+    }
+)
 a4_expected["tests.unit_tests.services.dify_builder.test_policy_trace_diagnostics"] = {
     "test_policy_wrapped_provider_reason_survives_without_retry_or_secret_projection": 16,
     "test_explicit_setup_refusal_keeps_priority_over_underlying_timeout": 1,
@@ -2984,11 +2986,11 @@ for module, functions in {
     "tests.unit_tests.core.dify_builder.test_fix_flow": {
         "test_full_fix_flow_request_fix_to_publish_success": 1,
         "test_full_fix_flow_stale_base_version_raises_conflict": 1,
-        "test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision": 1
+        "test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision": 1,
     },
     "tests.unit_tests.core.dify_builder.test_repair_readability": {
         "test_apply_owners_name_real_changed_fields_and_do_not_infer_verification": 6,
-        "test_proposal_owners_show_business_title_rationale_and_retest_boundary": 3
+        "test_proposal_owners_show_business_title_rationale_and_retest_boundary": 3,
     },
     "tests.unit_tests.services.dify_builder.test_api_tool_output_context": {
         "test_direct_public_response_schema_stays_separate_from_native_outputs": 1,
@@ -3001,7 +3003,7 @@ for module, functions in {
         "test_api_code_system_rules_resolve_actual_no_filter_plan_and_independent_result_bound": 1,
         "test_api_code_system_rules_do_not_change_unrelated_or_non_code_builders": 3,
         "test_api_code_system_rules_keep_undeclared_shapes_unknown": 2,
-        "test_fixed_system_rules_use_context_only_as_gate_without_promoting_workspace_data": 1
+        "test_fixed_system_rules_use_context_only_as_gate_without_promoting_workspace_data": 1,
     },
     "tests.unit_tests.services.dify_builder.test_condition_evidence": {
         "test_diagnosis_shows_active_condition_even_without_historical_binding": 1,
@@ -3055,7 +3057,7 @@ for module, functions in {
         "test_code_format_facts_bound_input_count_without_exposing_authored_keys": 1,
         "test_code_format_facts_degrade_when_current_graph_is_malformed": 3,
         "test_normal_historical_owner_carries_tool_structure_to_both_requests": 1,
-        "test_invalid_unicode_tool_text_cannot_abort_historical_diagnosis_or_proposal": 1
+        "test_invalid_unicode_tool_text_cannot_abort_historical_diagnosis_or_proposal": 1,
     },
     "tests.unit_tests.services.dify_builder.test_llm_agent": {
         "test_is_dify_builder_agent": 1,
@@ -3074,7 +3076,7 @@ for module, functions in {
         "test_initial_plan_defers_catalogue_and_discovery_receives_goal_and_requirements": 1,
         "test_every_tool_owner_receives_the_acting_account": 1,
         "test_an_agent_without_an_actor_passes_none_rather_than_inventing_one": 1,
-        "test_repair_public_output_declaration_uses_exact_existing_catalogue_read": 3
+        "test_repair_public_output_declaration_uses_exact_existing_catalogue_read": 3,
     },
     "tests.unit_tests.services.dify_builder.test_repair_presentation": {
         "test_proposal_groups_fields_and_bindings_with_business_titles": 1,
@@ -3090,7 +3092,7 @@ for module, functions in {
         "test_blank_result_title_does_not_replace_native_fallback": 1,
         "test_sensitive_url_schemes_are_case_insensitive": 1,
         "test_dotted_private_proposal_values_are_redacted_without_hiding_field_and_selector_names": 8,
-        "test_insertion_names_authoritative_node_and_original_edge_endpoints": 4
+        "test_insertion_names_authoritative_node_and_original_edge_endpoints": 4,
     },
     "tests.unit_tests.services.dify_builder.test_tool_output_evidence": {
         "test_text_json_and_native_json_remain_distinct_without_values": 1,
@@ -3103,8 +3105,8 @@ for module, functions in {
         "test_unsafe_field_names_are_omitted_even_when_they_look_like_identifiers": 9,
         "test_invalid_unicode_text_is_malformed_without_losing_independent_json_structure": 3,
         "test_runtime_data_keys_have_no_field_provenance_in_either_channel": 2,
-        "test_anonymous_object_samples_preserve_empty_heterogeneity_and_all_shape_limits": 1
-    }
+        "test_anonymous_object_samples_preserve_empty_heterogeneity_and_all_shape_limits": 1,
+    },
 }.items():
     a4_expected.setdefault(module, {}).update(functions)
 # ENG-1240: exact additions from affected module collection; retain prior inventories.
@@ -3135,7 +3137,7 @@ for module, functions in {
         "test_strict_route_rejects_wrong_or_mixed_credentials": 4,
         "test_strict_route_requires_complete_bounded_selection": 5,
         "test_strict_route_requires_installed_lineage_even_without_markers": 1,
-        "test_transport_selection_refuses_noncanonical_or_duplicate_key_json": 4
+        "test_transport_selection_refuses_noncanonical_or_duplicate_key_json": 4,
     },
     "tests.unit_tests.services.dify_builder.native_testing.test_agent_associations": {
         "test_actual_agent_access_and_publication_guards_precede_private_write": 5,
@@ -3172,7 +3174,7 @@ for module, functions in {
         "test_v2_single_config_read_keeps_sql_recheck_after_io": 2,
         "test_wait_structure_never_accepts_caller_ack_or_cleanup_authority": 7,
         "test_workspace_data_counter_is_strict_even_without_association": 4,
-        "test_workspace_ref_remains_same_public_reexport": 1
+        "test_workspace_ref_remains_same_public_reexport": 1,
     },
     "tests.unit_tests.services.dify_builder.native_testing.test_agent_recovery": {
         "test_allocation_ack_is_strict_and_rejects_reused_physical_refs": 1,
@@ -3200,13 +3202,13 @@ for module, functions in {
         "test_snapshot_store_refuses_missing_authenticated_root": 1,
         "test_snapshot_write_reloads_reservation_from_sql": 1,
         "test_snapshot_write_uses_complete_original_identity_and_recovery_gate": 1,
-        "test_sql_selection_rejects_matching_digest_foreign_input_result_ref": 1
+        "test_sql_selection_rejects_matching_digest_foreign_input_result_ref": 1,
     },
     "tests.unit_tests.services.dify_builder.native_testing.test_agent_recovery_state": {
         "test_attempt_identity_coalesces_interactions_but_changes_with_predecessor": 1,
         "test_phase_transition_is_pure_and_never_retries_unknown_or_changes_immutable_args": 1,
         "test_record_rejects_invalid_refs_versions_phases_and_identity": 7,
-        "test_sql_ready_preserves_separate_sdk_receipt_and_wait_acknowledgements": 1
+        "test_sql_ready_preserves_separate_sdk_receipt_and_wait_acknowledgements": 1,
     },
     "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion": {
         "test_terminal_projection_requires_settled_retired_intent": 4
@@ -3239,7 +3241,7 @@ for module, functions in {
         "test_resume_settlement_refuses_committed_wait_before_actual_finalization": 3,
         "test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknown_live": 1,
         "test_unknown_joined_owner_can_release_only_actual_dead_dispatcher_lease": 1,
-        "test_unrestored_host_cannot_authorize_arbitrary_snapshot_or_resume_history": 1
+        "test_unrestored_host_cannot_authorize_arbitrary_snapshot_or_resume_history": 1,
     },
     "tests.unit_tests.services.dify_builder.test_agent_asset_operations": {
         "test_confirmed_composer_keeps_published_config_and_shell": 4,
@@ -3247,8 +3249,8 @@ for module, functions in {
         "test_saved_shell_operation_revalidates_for_public_approval_without_runtime_request": 1,
         "test_shell_intent_uses_exact_protected_composition_and_current_workspace": 8,
         "test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim": 3,
-        "test_stub_read_requires_claimed_unsettled_shell_operation": 4
-    }
+        "test_stub_read_requires_claimed_unsettled_shell_operation": 4,
+    },
 }.items():
     a4_expected.setdefault(module, {}).update(functions)
 for module, expected in {**a3_expected, **a4_expected}.items():
