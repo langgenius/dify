@@ -169,8 +169,6 @@
   "newApp.appCreated": "ສ້າງແອັບແລ້ວ",
   "newApp.appDescriptionPlaceholder": "ປ້ອນຄຳອະທິບາຍຂອງແອັບ",
   "newApp.appNamePlaceholder": "ຕັ້ງຊື່ແອັບຂອງທ່ານ",
-  "newApp.buildFromBlank": "ສ້າງຈາກແອັບເປົ່າ",
-  "newApp.builderDescription": "ດ້ວຍ <builderIcon/> App Builder ຫຼື ສ້າງດ້ວຍຕົນເອງ",
   "newApp.captionDescription": "ຄຳອະທິບາຍ",
   "newApp.captionName": "ຊື່ແອັບ ແລະ ໄອຄອນ",
   "newApp.caution": "ຂໍ้ຄວນລະວັງ",
