@@ -29,7 +29,7 @@ type TextGenerationResultPanelProps = {
   handleSaveMessage: (messageId: string) => Promise<void>
   inputs: Record<string, InputValueTypes>
   isCallBatchAPI: boolean
-  isPC: boolean
+  isBelowMd: boolean
   isShowResultPanel: boolean
   isWorkflow: boolean
   moreLikeThisEnabled: boolean
@@ -62,7 +62,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   handleSaveMessage,
   inputs,
   isCallBatchAPI,
-  isPC,
+  isBelowMd,
   isShowResultPanel,
   isWorkflow,
   moreLikeThisEnabled,
@@ -85,8 +85,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
       key={task?.id}
       isWorkflow={isWorkflow}
       isCallBatchAPI={isCallBatchAPI}
-      isPC={isPC}
-      isMobile={!isPC}
+      isBelowMd={isBelowMd}
       appSourceType={appSourceType}
       appId={appId}
       isError={task?.status === TaskStatus.failed}
@@ -113,21 +112,21 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   return (
     <div
       className={cn(
-        isPC
-          ? 'h-full w-0 grow'
-          : isShowResultPanel
+        isBelowMd
+          ? isShowResultPanel
             ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-xs'
             : resultExisted
               ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
-              : '',
+              : ''
+          : 'h-full w-0 grow',
       )}
     >
-      {!isPC && (
+      {isBelowMd && (
         <div
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
+              : 'absolute inset-s-0 top-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
           )}
           onClick={() => {
             if (isShowResultPanel) onHideResultPanel()
@@ -140,8 +139,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
       <div
         className={cn(
           'relative flex h-full flex-col',
-          !isPC && 'h-[calc(100vh-36px)] rounded-t-2xl shadow-lg backdrop-blur-xs',
-          !isPC
+          isBelowMd && 'h-[calc(100vh-36px)] rounded-t-2xl shadow-lg backdrop-blur-xs',
+          isBelowMd
             ? isShowResultPanel
               ? 'bg-background-default-burn'
               : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
@@ -152,21 +151,22 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           <div
             className={cn(
               'flex shrink-0 items-center justify-between px-14 pt-9 pb-2',
-              !isPC && 'px-4 pt-3 pb-1',
+              isBelowMd && 'px-4 pt-3 pb-1',
             )}
           >
             <div className="system-md-semibold-uppercase text-text-primary">
               {t(($) => $['generation.executions'], { ns: 'share', num: allTaskList.length })}
             </div>
-            {allSuccessTaskList.length > 0 && <ResDownload isMobile={!isPC} values={exportRes} />}
+            {allSuccessTaskList.length > 0 && (
+              <ResDownload compact={isBelowMd} values={exportRes} />
+            )}
           </div>
         )}
         <div
           className={cn(
             'flex h-0 grow flex-col overflow-y-auto',
-            isPC && 'px-14 py-8',
-            isPC && isCallBatchAPI && 'pt-0',
-            !isPC && 'p-0 pb-2',
+            isBelowMd ? 'p-0 pb-2' : 'px-14 py-8',
+            !isBelowMd && isCallBatchAPI && 'pt-0',
           )}
         >
           {isCallBatchAPI ? showTaskList.map((task) => renderResult(task)) : renderResult()}

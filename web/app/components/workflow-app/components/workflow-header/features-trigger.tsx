@@ -33,13 +33,13 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const isChatflow = useAtomValue(isChatflowAtom)
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()

@@ -576,7 +576,9 @@ function ReadyBlocks({ children }: { children: ReactNode }) {
 function render(ui: ReactElement) {
   return baseRender(ui, {
     wrapper: ({ children }) => (
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
         <ReactFlowProvider>
           <ReactFlow nodes={runtimeState.nodes} edges={[]} />
           <ReadyBlocks>{children}</ReadyBlocks>

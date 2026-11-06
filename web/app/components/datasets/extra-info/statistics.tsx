@@ -57,7 +57,7 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
             className="border-0 bg-transparent p-0 shadow-none"
           >
             {hasRelatedApps ? (
-              <LinkedAppsPanel relatedApps={relatedApps.data} isMobile={!expand} />
+              <LinkedAppsPanel relatedApps={relatedApps.data} compact={!expand} />
             ) : (
               <NoLinkedAppsPanel />
             )}
