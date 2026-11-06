@@ -292,6 +292,7 @@ def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
     sqlite_session_factory: sessionmaker[Session],
     enabled: bool,
 ) -> None:
+    """Both execution registries expose the KnowledgeFS tool only when its feature is enabled."""
     app = Flask(__name__)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
     monkeypatch.setattr(
@@ -300,12 +301,14 @@ def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
         lambda: KnowledgeFSFeatures(enabled=enabled, upload_enabled=False, agent_enabled=False),
     )
     monkeypatch.setattr(ext_application_services.LegacyToolManager, "_external_hardcoded_provider_classes", [])
+    monkeypatch.setattr(ext_application_services.ToolManager, "_external_hardcoded_provider_classes", [])
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
 
     ext_application_services.init_app(app)
 
     registered = ext_application_services.LegacyToolManager._external_hardcoded_provider_classes
     assert (KnowledgeFSProvider in registered) is enabled
+    assert (KnowledgeFSProvider in ext_application_services.ToolManager._external_hardcoded_provider_classes) is enabled
 
 
 @pytest.mark.parametrize("enabled", [True, False])

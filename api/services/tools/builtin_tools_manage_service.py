@@ -23,7 +23,7 @@ from core.tools.entities.api_entities import (
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.encryption import create_provider_encrypter
+from core.tools.utils.encryption import ProviderConfigCache, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account
@@ -156,6 +156,7 @@ class BuiltinToolManageService:
         """
         update builtin tool provider
         """
+        cache: ProviderConfigCache | None = None
         with sessionmaker(bind=db.engine).begin() as session:
             # get if the provider exists
             db_provider = session.scalar(
@@ -191,8 +192,6 @@ class BuiltinToolManageService:
                     # encrypt credentials
                     db_provider.encrypted_credentials = json.dumps(encrypter.encrypt(new_credentials))
 
-                    cache.delete()
-
                 # update name if provided
                 if name and name != db_provider.name:
                     # check if the name is already used
@@ -214,6 +213,8 @@ class BuiltinToolManageService:
 
             except Exception as e:
                 raise ValueError(str(e)) from e
+        if cache is not None:
+            cache.delete()
         return {"result": "success"}
 
     @staticmethod
@@ -230,14 +231,21 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            try:
-                lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
-                with redis_client.lock(lock, timeout=20):
-                    provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                    if not provider_controller.need_credentials:
-                        raise ValueError(f"provider {provider} does not need credentials")
+        try:
+            provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+            if not provider_controller.need_credentials:
+                raise ValueError(f"provider {provider} does not need credentials")
 
+            # Validation may call external services, so it runs before the lock is taken
+            # to keep its duration independent of the lock timeout.
+            if CredentialType.of(api_type).is_validate_allowed():
+                provider_controller.validate_credentials(user_id, credentials)
+
+            lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
+            # The transaction commits before the lock is released, so concurrent requests
+            # see this credential when they check the count limit and the name.
+            with redis_client.lock(lock, timeout=20):
+                with sessionmaker(bind=db.engine).begin() as session:
                     provider_count = (
                         session.scalar(
                             select(func.count(BuiltinToolProvider.id)).where(
@@ -251,10 +259,6 @@ class BuiltinToolManageService:
                     # check if the provider count is reached the limit
                     if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
                         raise ValueError(f"you have reached the maximum number of providers for {provider}")
-
-                    # validate credentials if allowed
-                    if CredentialType.of(api_type).is_validate_allowed():
-                        provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided
                     if name is None or name == "":
@@ -304,8 +308,8 @@ class BuiltinToolManageService:
                     session.add(db_provider)
                     session.flush()
                     credential_id = db_provider.id
-            except Exception as e:
-                raise ValueError(str(e)) from e
+        except Exception as e:
+            raise ValueError(str(e)) from e
 
         return {"result": "success", "id": credential_id}
 

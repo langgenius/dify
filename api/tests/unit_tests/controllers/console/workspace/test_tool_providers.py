@@ -4,6 +4,7 @@ import builtins
 import importlib
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
+from dataclasses import dataclass
 from inspect import unwrap
 from types import FunctionType, ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
@@ -13,8 +14,8 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import AccessDeniedError
 from controllers.common.rbac import RBACPermission, Workspace
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuthOauthCustomClient
 from controllers.console.workspace.tool_providers import (
@@ -64,6 +65,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolPr
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter
 from enums import DeploymentEdition
+from extensions.application_services.tools import ToolServices, build_tool_services
 from models import Account as _tool_providers_Account
 from models import BuiltinToolProvider, Tenant, TenantAccountJoin
 from models.account import Account as _tool_provider_apis_Account
@@ -276,6 +278,7 @@ class TestToolProviderApisCases:
             assert not is_valid_url("not-a-url")
             assert not is_valid_url(None)  # type: ignore[arg-type]
 
+    @pytest.mark.usefixtures("workflow_application")
     class TestToolProviderListApi:
         def test_get_success(self, app: Flask) -> None:
             api = ToolProviderListApi()
@@ -297,6 +300,7 @@ class TestToolProviderApisCases:
             assert result[0]["tools"][0]["name"] == "ping"
 
     class TestBuiltinProviderApis:
+        @pytest.mark.usefixtures("workflow_application")
         def test_list_tools(self, app: Flask) -> None:
             api = ToolBuiltinProviderListToolsApi()
             method = unwrap(api.get)
@@ -513,6 +517,7 @@ class TestToolProviderApisCases:
             ):
                 assert method(api, "t", make_account()) == {"schema": openapi_schema}
 
+        @pytest.mark.usefixtures("workflow_application")
         def test_list_tools(self, app: Flask) -> None:
             api = ToolApiProviderListToolsApi()
             method = unwrap(api.get)
@@ -569,6 +574,7 @@ class TestToolProviderApisCases:
                 req = ApiToolProviderDeletePayload(provider="p")
                 assert method(api, req, "t", make_account())["result"] == "success"
 
+        @pytest.mark.usefixtures("workflow_application")
         def test_get(self, app: Flask) -> None:
             api = ToolApiProviderGetApi()
             method = unwrap(api.get)
@@ -582,6 +588,7 @@ class TestToolProviderApisCases:
             ):
                 assert method(api, "t", make_account())["schema"] == "{}"
 
+    @pytest.mark.usefixtures("workflow_application")
     class TestWorkflowApis:
         def test_create(self, app: Flask) -> None:
             api = ToolWorkflowProviderCreateApi()
@@ -599,7 +606,7 @@ class TestToolProviderApisCases:
             with (
                 app.test_request_context("/", json=payload),
                 patch(
-                    "controllers.console.workspace.tool_providers.WorkflowToolManageService.create_workflow_tool",
+                    "services.tools.workflow_tools_manage_service.WorkflowToolManageService.create_workflow_tool",
                     return_value={"result": "success"},
                 ) as create_workflow_tool,
             ):
@@ -623,7 +630,7 @@ class TestToolProviderApisCases:
             with (
                 app.test_request_context("/", json=payload),
                 patch(
-                    "controllers.console.workspace.tool_providers.WorkflowToolManageService.update_workflow_tool",
+                    "services.tools.workflow_tools_manage_service.WorkflowToolManageService.update_workflow_tool",
                     return_value={"result": "success"},
                 ) as update_workflow_tool,
             ):
@@ -640,7 +647,7 @@ class TestToolProviderApisCases:
             with (
                 app.test_request_context("/", json={"workflow_tool_id": "123e4567-e89b-12d3-a456-426614174000"}),
                 patch(
-                    "controllers.console.workspace.tool_providers.WorkflowToolManageService.delete_workflow_tool",
+                    "services.tools.workflow_tools_manage_service.WorkflowToolManageService.delete_workflow_tool",
                     return_value={"result": "success"},
                 ),
             ):
@@ -663,6 +670,7 @@ class TestToolProviderApisCases:
                 ):
                     method(api, "t", make_account())
 
+    @pytest.mark.usefixtures("workflow_application")
     class TestLists:
         def test_builtin_list(self, app: Flask) -> None:
             api = ToolBuiltinListApi()
@@ -697,7 +705,7 @@ class TestToolProviderApisCases:
             with (
                 app.test_request_context("/"),
                 patch(
-                    "controllers.console.workspace.tool_providers.WorkflowToolManageService.list_tenant_workflow_tools",
+                    "services.tools.workflow_tools_manage_service.WorkflowToolManageService.list_tenant_workflow_tools",
                     return_value=[provider_entity(provider_id="workflow-1", provider_type="workflow")],
                 ),
             ):
@@ -717,6 +725,7 @@ class TestToolProviderApisCases:
             ):
                 assert method(api)[0]["name"] == "utilities"
 
+    @pytest.mark.usefixtures("workflow_application")
     class TestOAuth:
         def test_oauth_no_client(self, app: Flask) -> None:
             api = ToolPluginOAuthApi()
@@ -729,7 +738,7 @@ class TestToolProviderApisCases:
                     return_value=None,
                 ),
             ):
-                with pytest.raises(Forbidden):
+                with pytest.raises(AccessDeniedError):
                     method(api, "t", make_account(), "provider")
 
         def test_oauth_callback_no_cookie(self, app: Flask) -> None:
@@ -737,7 +746,7 @@ class TestToolProviderApisCases:
             method = unwrap(api.get)
 
             with app.test_request_context("/"):
-                with pytest.raises(Forbidden):
+                with pytest.raises(AccessDeniedError):
                     method(api, "provider")
 
     class TestOAuthCustomClient:
@@ -787,6 +796,12 @@ class TestToolProviderApisCases:
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+@dataclass(frozen=True)
+class ProviderApplicationStub:
+    tools: ToolServices
+    credential_queries: CredentialQuery | CredentialQueryRepository
 
 
 _CONTROLLER_MODULE: ModuleType | None = None
@@ -846,8 +861,9 @@ def _bind_database_session(session: Session):
             patch("extensions.ext_database.db.session", database_session),
             patch(
                 "controllers.console.workspace.tool_providers.application_services",
-                return_value=SimpleNamespace(
-                    credential_queries=CredentialQueryRepository(session_factory=session_factory)
+                return_value=ProviderApplicationStub(
+                    tools=build_tool_services(session_factory),
+                    credential_queries=CredentialQueryRepository(session_factory=session_factory),
                 ),
             ),
         ):
@@ -863,7 +879,7 @@ def _mock_credential_encryption(controller_module: ModuleType):
     encrypter.mask_plugin_credentials.return_value = {"api_key": "[__HIDDEN__]"}
     with (
         patch(
-            "services.tools.legacy_builtin_tools_manage_service.ToolManager.get_builtin_provider",
+            "services.tools.builtin_tools_manage_service.ToolManager.get_builtin_provider",
             return_value=MagicMock(),
         ),
         patch.object(
@@ -1137,9 +1153,7 @@ class TestToolProvidersCases:
 
     @staticmethod
     @pytest.fixture
-    def controller_module(
-        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], sqlite_session_factory
-    ):
+    def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], workflow_application):
         """
         Import the controller with auth decorators neutralized only during import.
 
@@ -1177,13 +1191,11 @@ class TestToolProvidersCases:
 
         login_module = importlib.import_module("libs.login")
         monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
-        monkeypatch.setattr(
-            module,
-            "application_services",
-            lambda: SimpleNamespace(
-                credential_queries=CredentialQueryRepository(session_factory=sqlite_session_factory)
-            ),
+        registry = ProviderApplicationStub(
+            tools=workflow_application.tools,
+            credential_queries=create_autospec(CredentialQuery, instance=True),
         )
+        monkeypatch.setattr(module, "application_services", lambda: registry)
         return module
 
     @staticmethod
@@ -1201,7 +1213,13 @@ class TestToolProvidersCases:
             response = controller_module.ToolProviderListApi().get()
 
         assert response == [expected_response]
-        service_mock.assert_called_once_with(user.id, "tenant-456", "builtin")
+        service_mock.assert_called_once_with(
+            user.id,
+            "tenant-456",
+            "builtin",
+            workflow_queries=controller_module.application_services().tools.workflow_queries,
+            tool_providers=controller_module.application_services().tools.tool_providers,
+        )
 
     @staticmethod
     def test_builtin_provider_add_passes_payload(
@@ -1437,7 +1455,12 @@ class TestToolProvidersCases:
             resp = controller_module.ToolApiProviderListToolsApi().get()
 
         assert resp == [expected_response]
-        service_mock.assert_called_once_with(user.id, "tenant-11", "foo")
+        service_mock.assert_called_once_with(
+            user.id,
+            "tenant-11",
+            "foo",
+            tool_providers=controller_module.application_services().tools.tool_providers,
+        )
 
     @staticmethod
     def test_api_provider_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
@@ -1451,7 +1474,12 @@ class TestToolProvidersCases:
             resp = controller_module.ToolApiProviderGetApi().get()
 
         assert resp == expected_response
-        service_mock.assert_called_once_with(user.id, "tenant-12", "foo")
+        service_mock.assert_called_once_with(
+            user.id,
+            "tenant-12",
+            "foo",
+            tool_providers=controller_module.application_services().tools.tool_providers,
+        )
 
     @staticmethod
     def test_builtin_provider_credentials_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
@@ -1480,7 +1508,7 @@ class TestToolProvidersCases:
         service_payload, expected_response = _workflow_detail_response(controller_module)
         tool_service = MagicMock(return_value=service_payload)
         monkeypatch.setattr(
-            controller_module.WorkflowToolManageService,
+            controller_module.application_services().tools.workflows,
             "get_workflow_tool_by_tool_id",
             tool_service,
         )
@@ -1499,7 +1527,7 @@ class TestToolProvidersCases:
         service_payload, expected_response = _workflow_detail_response(controller_module)
         service_mock = MagicMock(return_value=service_payload)
         monkeypatch.setattr(
-            controller_module.WorkflowToolManageService,
+            controller_module.application_services().tools.workflows,
             "get_workflow_tool_by_app_id",
             service_mock,
         )
@@ -1517,7 +1545,11 @@ class TestToolProvidersCases:
         _set_current_account(monkeypatch, controller_module, user, "tenant-wf3")
         service_payload, expected_response = _tool_response(controller_module, "workflow-tool")
         service_mock = MagicMock(return_value=[service_payload])
-        monkeypatch.setattr(controller_module.WorkflowToolManageService, "list_single_workflow_tools", service_mock)
+        monkeypatch.setattr(
+            controller_module.application_services().tools.workflows,
+            "list_single_workflow_tools",
+            service_mock,
+        )
 
         tool_id = "00000000-0000-0000-0000-000000000003"
         with app.test_request_context(f"/workflow/tools?workflow_tool_id={tool_id}"):
@@ -1567,7 +1599,7 @@ class TestToolProvidersCases:
 
         provider, expected_response = _provider_entity_response(controller_module, "wf", "workflow")
         monkeypatch.setattr(
-            controller_module.WorkflowToolManageService,
+            controller_module.application_services().tools.workflows,
             "list_tenant_workflow_tools",
             MagicMock(return_value=[provider]),
         )
@@ -1726,7 +1758,7 @@ class TestToolProvidersCases:
         monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
         api = controller_module.ToolOAuthCallback()
         with app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}):
-            with pytest.raises(Forbidden, match="Plugin changed"):
+            with pytest.raises(AccessDeniedError, match="Plugin changed"):
                 unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
 
     @staticmethod
