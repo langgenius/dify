@@ -5,7 +5,7 @@ from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import Table, inspect, select
+from sqlalchemy import insert, inspect, select
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
@@ -1595,10 +1595,8 @@ class TestAppModelsCases:
             """Core bulk inserts generate an ID for every site row."""
             app_ids = [str(uuid4()), str(uuid4())]
 
-            site_table = Site.__table__
-            assert isinstance(site_table, Table)
             sqlite_session.execute(
-                site_table.insert(),
+                insert(Site),
                 [
                     {
                         "app_id": app_id,
