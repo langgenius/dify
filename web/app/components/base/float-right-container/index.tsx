@@ -59,7 +59,7 @@ const FloatRightContainer = ({
                   panelClassName,
                 )}
               >
-                <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                <DrawerContent className="p-6">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
                       {title && (

@@ -18,12 +18,14 @@ from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.application_services.workspace import WorkspaceServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import register_external_error_handlers
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -31,6 +33,8 @@ from services.errors.workspace import (
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
+from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -39,8 +43,11 @@ from services.trigger.oauth_gateway import (
 )
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
-from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.subscription_service import TriggerSubscriptionService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
@@ -118,11 +125,18 @@ class TestWorkspaceCases:
         )
         redis = RedisClientWrapper()
         redis.initialize(Redis())
+        subscription_management = TriggerSubscriptionService(
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            providers=PluginTriggerSubscriptionGateway(),
+            locks=RedisTriggerSubscriptionLocks(redis=redis),
+            codec=ProviderTriggerSubscriptionCodec(),
+            invalidate_cache=delete_cache_for_subscription,
+        )
         builders = TriggerSubscriptionBuilderService(
             builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
             get_provider=TriggerManager.get_trigger_provider,
             subscribe=TriggerManager.subscribe_trigger,
-            create_subscription=TriggerProviderService.add_trigger_subscription,
+            create_subscription=subscription_management.create,
         )
         services = WorkspaceServices(
             queries=create_autospec(WorkspaceQueryService, instance=True),
@@ -140,6 +154,13 @@ class TestWorkspaceCases:
                 schemas=PluginTriggerProviderQuery(),
             ),
             trigger_builders=builders,
+            trigger_endpoints=TriggerEndpointService(
+                subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                provider=PluginTriggerEndpointGateway(),
+                requests=TriggerHttpRequestCachingService,
+                publish=enqueue_triggered_workflows,
+            ),
+            trigger_subscription_management=subscription_management,
             trigger_oauth_clients=oauth_clients,
             trigger_oauth=TriggerOAuthService(
                 clients=oauth_clients,

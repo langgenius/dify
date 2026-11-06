@@ -27,6 +27,42 @@ class TriggerOAuthClientChangedError(BaseHTTPException):
     description = "The trigger OAuth client configuration changed. Reload it before saving again."
 
 
+class TriggerSubscriptionNotFoundError(BaseHTTPException):
+    error_code = "trigger_subscription_not_found"
+    code = HTTPStatus.NOT_FOUND
+    description = "The trigger subscription does not exist in this workspace and provider."
+
+
+class TriggerSubscriptionNameConflictError(BaseHTTPException):
+    error_code = "trigger_subscription_name_conflict"
+    code = HTTPStatus.CONFLICT
+    description = "A trigger subscription with this name already exists for the provider."
+
+
+class TriggerSubscriptionChangedError(BaseHTTPException):
+    error_code = "trigger_subscription_changed"
+    code = HTTPStatus.CONFLICT
+    description = "The trigger subscription changed. Reload it before trying again."
+
+
+class TriggerSubscriptionLimitError(BaseHTTPException):
+    error_code = "trigger_subscription_limit_reached"
+    code = HTTPStatus.BAD_REQUEST
+    description = "The maximum number of trigger subscriptions for this provider has been reached."
+
+
+class TriggerSubscriptionProviderError(BaseHTTPException):
+    error_code = "trigger_subscription_provider_error"
+    code = HTTPStatus.BAD_GATEWAY
+    description = "The trigger provider could not complete the subscription operation."
+
+
+class TriggerSubscriptionInvalidError(BaseHTTPException):
+    error_code = "trigger_subscription_invalid"
+    code = HTTPStatus.BAD_REQUEST
+    description = "The trigger subscription configuration or credentials are invalid."
+
+
 class CurrentWorkspaceArchivedError(BaseHTTPException):
     error_code = "current_workspace_archived"
     description = "The current workspace has been archived."

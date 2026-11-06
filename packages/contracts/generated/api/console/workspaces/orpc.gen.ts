@@ -42,6 +42,12 @@ import {
   zTriggerOauthClientChangedError,
   zTriggerOauthClientConfigInvalidError,
   zTriggerOauthProviderError,
+  zTriggerSubscriptionChangedError,
+  zTriggerSubscriptionInvalidError,
+  zTriggerSubscriptionLimitReachedError,
+  zTriggerSubscriptionNameConflictError,
+  zTriggerSubscriptionNotFoundError,
+  zTriggerSubscriptionProviderError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -5870,6 +5876,17 @@ export const post85 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    trigger_subscription_limit_reached: {
+      status: 400,
+      data: zTriggerSubscriptionLimitReachedError,
+    },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionBuilderId = {
   post: post85,
@@ -6088,7 +6105,7 @@ export const oauth3 = {
 }
 
 /**
- * Verify credentials for an existing subscription (edit mode only)
+ * Verify credentials against the subscription's own provider without updating it
  */
 export const post89 = oc
   .route({
@@ -6097,7 +6114,7 @@ export const post89 = oc
     operationId:
       'postWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionId',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}',
-    summary: 'Verify credentials for an existing subscription (edit mode only)',
+    summary: "Verify credentials against the subscription's own provider without updating it",
     tags: ['console'],
   })
   .input(
@@ -6110,6 +6127,11 @@ export const post89 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse,
   )
+  .errors({
+    trigger_subscription_invalid: { status: 400, data: zTriggerSubscriptionInvalidError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionId = {
   post: post89,
@@ -6134,7 +6156,7 @@ export const byProvider3 = {
 }
 
 /**
- * Delete a subscription instance
+ * Delete the subscription and its workflow trigger bindings
  */
 export const post90 = oc
   .route({
@@ -6142,7 +6164,7 @@ export const post90 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDelete',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete',
-    summary: 'Delete a subscription instance',
+    summary: 'Delete the subscription and its workflow trigger bindings',
     tags: ['console'],
   })
   .input(
@@ -6151,13 +6173,18 @@ export const post90 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const delete27 = {
   post: post90,
 }
 
 /**
- * Update a subscription instance
+ * Rename a subscription or rebuild its provider configuration
  */
 export const post91 = oc
   .route({
@@ -6165,7 +6192,7 @@ export const post91 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdate',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/update',
-    summary: 'Update a subscription instance',
+    summary: 'Rename a subscription or rebuild its provider configuration',
     tags: ['console'],
   })
   .input(
@@ -6175,6 +6202,15 @@ export const post91 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const update7 = {
   post: post91,

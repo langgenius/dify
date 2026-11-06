@@ -5,10 +5,10 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore } from '@/app/components/workflow/store'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { t } = useTranslation(['workflow'])
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const showEnvPanel = useStore((s) => s.showEnvPanel)

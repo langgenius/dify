@@ -164,14 +164,35 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module.encrypter, "decrypt_token", lambda *, tenant_id, token: token)
 
     @staticmethod
+    @pytest.fixture
+    def app_with_draft(sqlite_session: Session) -> _workflow_App:
+        app = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        draft = _make_workflow(
+            app_id=app.id,
+            tenant_id=app.tenant_id,
+            version=Workflow.VERSION_DRAFT,
+            graph_dict=POPULATED_GRAPH,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        sqlite_session.add_all([app, draft])
+        sqlite_session.commit()
+        return app
+
+    @staticmethod
     @pytest.mark.parametrize(
         "advisory", ["clean", "warning", "checker-error", "formatter-error", "empty", "non-object", "invalid-json"]
     )
     def test_publish_workflow_returns_success(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, advisory: str, sqlite_engine, mocker
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        app_with_draft: _workflow_App,
+        advisory: str,
     ) -> None:
-        current_user = SimpleNamespace(id="account-1")
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        current_user = _account()
         graph = {
             "nodes": [
                 {"id": "start", "data": {"type": "start"}},
@@ -202,25 +223,22 @@ class TestWorkflowCases:
                 "format_variable_reference_errors",
                 Mock(side_effect=RuntimeError("format")),
             )
-        session = Mock()
-        session.get.return_value = app_model
-        workflow_service = workflow_module.WorkflowService(sessionmaker(bind=sqlite_engine))
-        mocker.patch.object(workflow_service, "prepare_draft_tool_publish", return_value=None)
-        mocker.patch.object(workflow_service, "publish_workflow", return_value=workflow)
-        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: workflow_service)
-        monkeypatch.setattr(
-            workflow_module, "sessionmaker", lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session))
-        )
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        service = workflow_module.WorkflowService(session_maker=sqlite_session_factory)
+        monkeypatch.setattr(service, "publish_workflow", Mock(return_value=workflow))
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
                 workflow_module.PublishWorkflowPayload.model_validate({}),
                 current_user,
-                app_model,
+                app_with_draft,
             )
         assert response["result"] == "success"
-        assert app_model.workflow_id == workflow.id
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_with_draft.id)
+        assert persisted_app is not None
+        assert persisted_app.workflow_id == workflow.id
+        assert persisted_app.updated_by == current_user.id
         assert isinstance(response["created_at"], int)
         if advisory == "warning":
             assert "Consumer" in response["warning"]
@@ -228,6 +246,40 @@ class TestWorkflowCases:
             assert "skipped branch" in response["warning"]
         else:
             assert "warning" not in response
+
+    @staticmethod
+    def test_publish_workflow_rolls_back_on_service_failure(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        app_with_draft: _workflow_App,
+    ) -> None:
+        def fail_after_update(*, session: Session, **_kwargs: object) -> None:
+            persisted_app = session.get(_workflow_App, app_with_draft.id)
+            assert persisted_app is not None
+            persisted_app.name = "changed"
+            session.flush()
+            raise RuntimeError("publish failed")
+
+        service = workflow_module.WorkflowService(session_maker=sqlite_session_factory)
+        monkeypatch.setattr(service, "publish_workflow", fail_after_update)
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+        current_user = _account()
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(RuntimeError, match="publish failed"):
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_with_draft,
+                )
+
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_with_draft.id)
+        assert persisted_app is not None
+        assert persisted_app.name == "Workflow App"
+        assert persisted_app.workflow_id is None
 
     @staticmethod
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])

@@ -24,12 +24,12 @@ describe('command journeys', () => {
   it('lists and filters themes, and activates the selected theme', () => {
     const context = createCommandContext()
     expect(slashCommandRegistry.search('/theme', context).map((result) => result.id)).toEqual([
-      'system',
       'light',
       'dark',
+      'system',
     ])
     executeResult('/theme dark', context)
-    expect(context.setTheme).toHaveBeenCalledExactlyOnceWith('dark')
+    expect(context.setThemePreference).toHaveBeenCalledExactlyOnceWith('dark')
   })
 
   it('finds a language by its native name and activates it through the alias', async () => {
@@ -109,8 +109,8 @@ describe('command journeys', () => {
     executeResult('/theme dark', second)
     expect(first.openExternal).toHaveBeenCalledExactlyOnceWith('https://one.example/docs')
     expect(second.openExternal).toHaveBeenCalledExactlyOnceWith('https://two.example/docs')
-    expect(first.setTheme).not.toHaveBeenCalled()
-    expect(second.setTheme).toHaveBeenCalledExactlyOnceWith('dark')
+    expect(first.setThemePreference).not.toHaveBeenCalled()
+    expect(second.setThemePreference).toHaveBeenCalledExactlyOnceWith('dark')
   })
 
   it('renders localized commands on the server without a browser or activation effects', async () => {
@@ -118,8 +118,8 @@ describe('command journeys', () => {
     await i18n.init({
       lng: 'en-US',
       resources: {
-        'en-US': { app: { 'gotoAnything.actions.themeDark': 'Dark' } },
-        'zh-Hans': { app: { 'gotoAnything.actions.themeDark': '深色' } },
+        'en-US': { common: { 'theme.dark': 'Dark' } },
+        'zh-Hans': { common: { 'theme.dark': '深色' } },
       },
     })
     const first = createCommandContext({ t: i18n.t as CommandContext['t'] })
@@ -143,7 +143,7 @@ describe('command journeys', () => {
       for (const context of [first, second]) {
         slashCommandRegistry.search('/', context)
         languageCommand.search('', context)
-        expect(context.setTheme).not.toHaveBeenCalled()
+        expect(context.setThemePreference).not.toHaveBeenCalled()
         expect(context.openExternal).not.toHaveBeenCalled()
         expect(context.navigate).not.toHaveBeenCalled()
         expect(context.openGenerator).not.toHaveBeenCalled()
