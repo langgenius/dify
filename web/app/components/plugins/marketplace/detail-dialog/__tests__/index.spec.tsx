@@ -9,6 +9,7 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { stubIframeContentWindow } from '@/test/iframe'
 import MarketplaceDetailDialog from '../index'
 
 const mocks = vi.hoisted(() => ({
@@ -54,6 +55,7 @@ const plugin = createMarketplacePluginFixture()
 
 describe('MarketplaceDetailDialog', () => {
   beforeEach(() => {
+    stubIframeContentWindow()
     mocks.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
   })
 

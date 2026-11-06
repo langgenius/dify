@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { stubIframeContentWindow } from '@/test/iframe'
 import MarketplaceDetailDialogFrame from '../frame'
 
 const title = 'Plugin details'
@@ -23,6 +24,14 @@ function sendMessage(data: unknown, options?: MessageEventInit) {
 }
 
 describe('MarketplaceDetailDialogFrame image preview', () => {
+  beforeEach(() => {
+    stubIframeContentWindow()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('lets the preview own closing until it closes, even without another message handler', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
