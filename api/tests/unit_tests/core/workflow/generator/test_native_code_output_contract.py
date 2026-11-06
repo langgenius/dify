@@ -5,7 +5,23 @@ from pydantic import ValidationError
 
 from core.workflow.generator.prompts.builder_prompts import get_node_config_snippet
 from core.workflow.generator.prompts.node_builder_prompts import get_node_builder_system_prompt
+from core.workflow.generator.prompts.planner_prompts import PLANNER_SYSTEM_PROMPT
 from graphon.nodes.code.entities import CodeNodeData
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [PLANNER_SYSTEM_PROMPT, get_node_config_snippet("code"), get_node_builder_system_prompt("code")],
+    ids=["planner", "code-config", "code-builder"],
+)
+def test_batch_code_contract_validates_identity_before_grouping(prompt: str) -> None:
+    """Wire identity guidance to each generation entry; generated behavior needs separate acceptance."""
+    assert "Validate business identity fields before grouping or hash-based deduplication" in prompt
+    assert "preserve each invalid record's original value and input index" in prompt
+    assert "do not merge distinct invalid identities into one duplicate/conflict group" in prompt
+    assert "continue processing valid records" in prompt
+    assert "Preserve approved valid-identity duplicate and conflict semantics" in prompt
+    assert "Do not replace unrelated calculations or rewrite the whole Code node" in prompt
 
 
 def test_generation_prompts_declare_native_numeric_output_types() -> None:
