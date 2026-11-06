@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import cast
 from unittest import mock
 
@@ -13,10 +13,11 @@ from extensions import ext_login
 from extensions.ext_application_services import ApplicationServices
 from extensions.ext_login import unauthorized_handler
 from models.account import TenantAccountRole
+from models.enums import EndUserType
 
 
 @pytest.fixture(autouse=True)
-def _reset_logging_context():
+def _reset_logging_context() -> Generator[None]:
     clear_request_context()
     yield
     clear_request_context()
@@ -51,7 +52,7 @@ def test_on_user_logged_in_sets_end_user_logging_identity() -> None:
     end_user = ext_login.EndUser(
         id="end-user-id",
         tenant_id="tenant-id",
-        type="browser",
+        type=EndUserType.BROWSER,
     )
     clear_request_context()
 
