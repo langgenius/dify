@@ -86,7 +86,7 @@ class TestClampPagination:
         assert clamp_pagination(3, 500, 100) == (3, 100)
 
     def test_the_floor_wins_over_a_cap_below_one(self) -> None:
-        """Whatever the cap says, a page size of zero is the input that breaks the caller."""
+        """whatever the cap says, a page size of zero is the input that breaks the caller."""
         assert clamp_pagination(1, 20, 0) == (1, 1)
 
     def test_no_cap_leaves_a_large_per_page_alone(self) -> None:
@@ -127,7 +127,7 @@ class TestPaginateQueryCount:
     def test_count_strips_order_by_from_the_wrapped_statement(self) -> None:
         captured: dict[str, object] = {}
 
-        session = MagicMock()
+        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
         session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
         session.scalars.return_value.all.return_value = []
 
@@ -141,7 +141,7 @@ class TestPaginateQueryCount:
         """The page query must keep its ORDER BY — only the count loses it."""
         captured: dict[str, object] = {}
 
-        session = MagicMock()
+        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination page-query test needs a mock session to capture the compiled page SQL without a real DB
         session.scalar.return_value = 0
         session.scalars.side_effect = lambda stmt: (
             captured.__setitem__("page_stmt", stmt),
