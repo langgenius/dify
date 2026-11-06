@@ -2,13 +2,13 @@
 
 import json
 from copy import deepcopy
-from unittest.mock import MagicMock
 
 import pytest
 
 from core.dify_builder.models import Diagnosis, Graph, NodeOutput, Run
 from services.dify_builder.agent import fix
 from services.dify_builder.condition_evidence import build_evidence
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 def _repair_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph) -> str:
@@ -19,7 +19,11 @@ def _repair_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph) -> str:
         return {"intents": [], "risk": {"level": "low", "reason": "Needs review"}}
 
     monkeypatch.setattr(fix.llm, "invoke_json", answer)
-    fix.propose_repair(MagicMock(), Diagnosis(culprit_node_id="culprit", root_cause="bad parser"), graph)
+    fix.propose_repair(
+        make_model_instance(provider="openai", model="test-model"),
+        Diagnosis(culprit_node_id="culprit", root_cause="bad parser"),
+        graph,
+    )
     return prompts[0]
 
 
@@ -159,7 +163,9 @@ def test_preflight_correction_keeps_complete_source_in_both_repair_attempts(monk
 
     monkeypatch.setattr(fix.llm, "invoke_json", answer)
 
-    intents, _risk = fix.propose_repair(MagicMock(), Diagnosis(culprit_node_id="culprit"), graph)
+    intents, _risk = fix.propose_repair(
+        make_model_instance(provider="openai", model="test-model"), Diagnosis(culprit_node_id="culprit"), graph
+    )
 
     assert len(prompts) == 2
     assert all(json.dumps(source, ensure_ascii=False) in prompt for prompt in prompts)
@@ -213,7 +219,9 @@ def test_repair_cannot_replace_a_field_omitted_from_its_context(
 
     monkeypatch.setattr(fix.llm, "invoke_json", answer)
 
-    intents, risk = fix.propose_repair(MagicMock(), Diagnosis(culprit_node_id="culprit"), graph)
+    intents, risk = fix.propose_repair(
+        make_model_instance(provider="openai", model="test-model"), Diagnosis(culprit_node_id="culprit"), graph
+    )
 
     assert intents == []
     assert risk.level == "high"
@@ -249,7 +257,9 @@ def test_omitted_source_does_not_block_a_visible_unrelated_field_repair(monkeypa
 
     monkeypatch.setattr(fix.llm, "invoke_json", answer)
 
-    intents, _risk = fix.propose_repair(MagicMock(), Diagnosis(culprit_node_id="culprit"), graph)
+    intents, _risk = fix.propose_repair(
+        make_model_instance(provider="openai", model="test-model"), Diagnosis(culprit_node_id="culprit"), graph
+    )
 
     assert [(intent.args["path"], intent.args["value"]) for intent in intents] == [("title", "Updated parser")]
 
@@ -262,7 +272,13 @@ def _diagnosis_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph, outputs: li
         return {"culprit_node_id": "culprit", "root_cause": "Review parser assumptions", "severity": "high"}
 
     monkeypatch.setattr(fix.llm, "invoke_json", answer)
-    fix.diagnose(MagicMock(), Run(status="failed"), graph, outputs, evidence=evidence)
+    fix.diagnose(
+        make_model_instance(provider="openai", model="test-model"),
+        Run(status="failed"),
+        graph,
+        outputs,
+        evidence=evidence,
+    )
     return prompts[0]
 
 
