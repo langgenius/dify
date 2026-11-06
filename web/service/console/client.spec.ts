@@ -1047,7 +1047,7 @@ describe('consoleQuery app mutation defaults', () => {
     const context = createMutationContext(queryClient)
 
     const results = [
-      consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions().onSuccess!(
+      consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions().onSettled!(
         {
           id: 'app-key-1',
           token: 'app-token',
@@ -1055,11 +1055,12 @@ describe('consoleQuery app mutation defaults', () => {
           dataset_ids: [],
           knowledge_space_ids: [],
         },
+        null,
         { params: { resource_id: 'app-1' } },
         undefined,
         context,
       ),
-      consoleQuery.datasets.apiKeys.post.mutationOptions().onSuccess!(
+      consoleQuery.datasets.apiKeys.post.mutationOptions().onSettled!(
         {
           id: 'dataset-key-1',
           token: 'dataset-token',
@@ -1067,6 +1068,7 @@ describe('consoleQuery app mutation defaults', () => {
           dataset_ids: [],
           knowledge_space_ids: [],
         },
+        null,
         { body: {} },
         undefined,
         context,
@@ -1116,7 +1118,7 @@ describe('consoleQuery agent mutation defaults', () => {
       const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const context = createMutationContext(queryClient)
       if (operation === 'creation') {
-        await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSuccess!(
+        await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSettled!(
           {
             id: 'key-1',
             token: 'app-secret',
@@ -1124,6 +1126,7 @@ describe('consoleQuery agent mutation defaults', () => {
             dataset_ids: [],
             knowledge_space_ids: [],
           },
+          null,
           { params: { agent_id: 'agent-1' } },
           undefined,
           context,
