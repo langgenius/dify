@@ -86,6 +86,7 @@
   "history.status.cancelled": "Cancelled",
   "history.status.completed": "Completed",
   "history.status.failed": "Failed",
+  "history.status.partiallyFailed": "Mit Fehlern abgeschlossen",
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",

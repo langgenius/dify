@@ -86,6 +86,7 @@
   "history.status.cancelled": "已取消",
   "history.status.completed": "已完成",
   "history.status.failed": "失败",
+  "history.status.partiallyFailed": "部分失败",
   "history.status.pending": "等待中",
   "history.status.running": "运行中",
   "history.title": "测试历史",

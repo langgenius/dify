@@ -149,3 +149,49 @@ describe('evaluation history result preview', () => {
     expect(within(dialog).getByText('0.9')).toBeInTheDocument()
   })
 })
+
+describe('evaluation history run status', () => {
+  it.each([
+    [
+      'all items failed',
+      { completed_items: 0, failed_items: 3 },
+      'evaluation.history.status.failed',
+    ],
+    [
+      'some items failed',
+      { completed_items: 2, failed_items: 1 },
+      'evaluation.history.status.partiallyFailed',
+    ],
+    [
+      'no items failed',
+      { completed_items: 3, failed_items: 0 },
+      'evaluation.history.status.completed',
+    ],
+  ] as const)('labels a completed run when %s', (_, counts, expectedLabel) => {
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
+        input: {
+          params: { dataset_id: resourceId },
+          query: { page: 1, page_size: 16 },
+        },
+      }),
+      {
+        data: [{ ...createRun('run-1', 1793894400), ...counts, total_items: 3 }],
+        page: 1,
+        page_size: 16,
+        total: 1,
+      },
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource('datasets', resourceId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType="datasets" resourceId={resourceId} />, {
+      queryClient,
+    })
+
+    expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument()
+  })
+})
