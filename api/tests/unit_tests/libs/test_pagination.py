@@ -1,8 +1,22 @@
 import math
+from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Integer, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from libs.pagination import PaginatedResult, clamp_pagination
+from libs.pagination import PaginatedResult, clamp_pagination, paginate_query
+
+
+class _PaginationTestBase(DeclarativeBase):
+    pass
+
+
+class _CountTestRow(_PaginationTestBase):
+    __tablename__ = "_count_order_by_test"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class TestPaginatedResultPages:
@@ -100,3 +114,25 @@ class TestClampPagination:
         page, size = clamp_pagination(total, per_page, 100)
         result = PaginatedResult(items=[object()], total=total, page=page, per_page=size)
         assert (page * size < total) is result.has_next is False
+
+
+class TestPaginateQueryCount:
+    """The count subquery must not carry the statement's ORDER BY.
+
+    A retained ORDER BY forces PostgreSQL to sort the entire match set inside
+    COUNT(*) — on large tables that saturates read IOPS for a value the
+    ordering cannot change (#45734).
+    """
+
+    def test_count_strips_order_by_from_the_wrapped_statement(self) -> None:
+        captured: dict[str, object] = {}
+
+        session = MagicMock()
+        session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
+        session.scalars.return_value.all.return_value = []
+
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
+        paginate_query(stmt, session=session, page=1, per_page=10)
+
+        count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
+        assert "ORDER BY" not in count_sql.upper()

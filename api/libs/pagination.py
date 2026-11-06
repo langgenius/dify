@@ -74,8 +74,12 @@ def paginate_query(
     """
     page, per_page = clamp_pagination(page, per_page, max_per_page)
 
-    # total count — wrap in a scalar subquery so arbitrary selects work
-    count_stmt = select(func.count()).select_from(stmt.subquery())
+    # total count — wrap in a scalar subquery so arbitrary selects work.
+    # Strip ORDER BY / LIMIT / OFFSET first: they cannot change the count,
+    # but a retained ORDER BY forces PostgreSQL to sort the entire match set
+    # inside the COUNT(*) subquery, saturating read IOPS on large tables (#45734).
+    count_base = stmt.order_by(None).limit(None).offset(None)
+    count_stmt = select(func.count()).select_from(count_base.subquery())
     total: int = session.scalar(count_stmt) or 0  # type: ignore[assignment]
 
     # fetch the page
