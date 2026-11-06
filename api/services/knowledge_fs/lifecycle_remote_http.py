@@ -223,6 +223,8 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
     def revoke_capability_grant(
         self, request: KnowledgeFSCapabilityGrantRevokeRequest
     ) -> KnowledgeFSCapabilityGrantRevokeAck:
+        """Return only a valid 200 revoke ACK; preserve typed deleted-Space conflicts as errors."""
+
         token = self._issue_capability(
             namespace_id=request.namespace_id,
             control_space_id=request.control_space_id,
@@ -242,6 +244,7 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                 "revokeSequence": request.revoke_sequence,
             },
             expected_statuses=(HTTPStatus.OK,),
+            terminal_conflict_code="CAPABILITY_SPACE_DELETED",
         )
         try:
             ack = _CapabilityGrantRevokeResponse.model_validate(response)
@@ -496,7 +499,14 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
         payload: JsonValue | None,
         expected_statuses: tuple[HTTPStatus, ...],
         query: tuple[tuple[str, str], ...] = (),
+        terminal_conflict_code: str | None = None,
     ) -> JsonValue:
+        """Read bounded JSON for allowed statuses; reject all others with a typed remote error.
+
+        A configured terminal conflict code only identifies the remote condition. Callers
+        must independently verify local deletion before treating it as a settled command.
+        """
+
         headers = {
             "Accept": "application/json",
             "Accept-Encoding": "identity",
@@ -534,6 +544,16 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                     "KnowledgeFS returned an unsupported lifecycle media type",
                 )
             if response.status_code not in {int(status) for status in expected_statuses}:
+                if response.status_code == HTTPStatus.CONFLICT and terminal_conflict_code is not None:
+                    try:
+                        error_payload = response.json()
+                    except ValueError:
+                        error_payload = None
+                    if isinstance(error_payload, dict) and error_payload.get("code") == terminal_conflict_code:
+                        raise KnowledgeFSLifecycleRemoteError(
+                            terminal_conflict_code,
+                            "KnowledgeFS reported a completed Space deletion",
+                        )
                 raise KnowledgeFSLifecycleRemoteError(
                     f"KNOWLEDGE_FS_HTTP_{response.status_code}",
                     f"KnowledgeFS lifecycle request returned HTTP {response.status_code}",

@@ -538,6 +538,50 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
     assert issued.resource.id == request.knowledge_space_id
 
 
+@pytest.mark.parametrize(
+    ("response_code", "expected_error_code"),
+    [
+        ("CAPABILITY_SPACE_DELETED", "CAPABILITY_SPACE_DELETED"),
+        ("CAPABILITY_REVOKE_CONFLICT", "KNOWLEDGE_FS_HTTP_409"),
+    ],
+)
+def test_revoke_distinguishes_completed_space_deletion_from_other_conflicts(
+    monkeypatch: pytest.MonkeyPatch, response_code: str, expected_error_code: str
+) -> None:
+    """Only the typed deleted-Space response receives a distinct retry reason."""
+
+    issuer = RecordingCapabilityIssuer(token="revoke-capability")
+    response = httpx.Response(
+        409,
+        json={"code": response_code, "error": "Capability revoke conflicts with durable state"},
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    remote = HTTPKnowledgeFSLifecycleRemoteClient(
+        base_url="https://knowledge-fs.test",
+        issuer=issuer.as_issuer(),
+        timeout_seconds=3,
+    )
+    request = KnowledgeFSCapabilityGrantRevokeRequest(
+        namespace_id="tenant-1",
+        control_space_id="30000000-0000-4000-8000-000000000001",
+        operation_id="40000000-0000-4000-8000-000000000002",
+        idempotency_key="revoke-grant-once",
+        knowledge_space_id="10000000-0000-4000-8000-000000000001",
+        grant_id="50000000-0000-4000-8000-000000000001",
+        event_id="60000000-0000-4000-8000-000000000001",
+        reason_code="permission_revoked",
+        revoke_sequence=7,
+        expected_revision=4,
+    )
+
+    with pytest.raises(KnowledgeFSLifecycleRemoteError) as error:
+        remote.revoke_capability_grant(request)
+
+    assert error.value.code == expected_error_code
+
+
 def test_list_paginates_with_one_namespace_capability_and_reconstructs_provisioning_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
