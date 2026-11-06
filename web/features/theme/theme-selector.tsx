@@ -11,16 +11,25 @@ import {
   MenuRadioItemIndicator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useIsClient } from 'foxact/use-is-client'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useThemePreference } from './hooks'
 import { themeOptions } from './theme'
+
+const subscribeToNothing = () => () => {}
+
+const useIsHydrated = () =>
+  useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  )
 
 export function ThemeSelector() {
   const direction = useDirection()
   const { t } = useTranslation(['common'])
   const { preference, setPreference } = useThemePreference()
-  const isClient = useIsClient()
+  const isHydrated = useIsHydrated()
   const currentOption = themeOptions.find((option) => option.value === preference)
 
   return (
@@ -32,7 +41,7 @@ export function ThemeSelector() {
             size="lg"
             className="data-popup-open:bg-state-base-hover"
           >
-            {isClient && currentOption ? (
+            {isHydrated && currentOption ? (
               <span
                 aria-hidden
                 className={`${currentOption.iconClassName} size-4 text-text-tertiary`}
