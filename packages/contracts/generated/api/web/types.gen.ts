@@ -1281,30 +1281,6 @@ export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
-export type SystemFeatureModel = {
-  agent_tracing_api_collection_enabled: boolean
-  branding: BrandingModel
-  deployment_edition: DeploymentEdition
-  enable_app_deploy: boolean
-  enable_change_email: boolean
-  enable_creators_platform: boolean
-  enable_email_code_login: boolean
-  enable_email_password_login: boolean
-  enable_explore_banner: boolean
-  enable_learn_app: boolean
-  enable_marketplace: boolean
-  enable_social_oauth_login: boolean
-  enable_step_by_step_tour: boolean
-  is_allow_register: boolean
-  is_email_setup: boolean
-  license: LicenseStatusModel
-  plugin_installation_permission: PluginInstallationPermissionModel
-  rbac_enabled: boolean
-  sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: SsoProtocol | null
-  webapp_auth: WebAppAuthModel
-}
-
 export type SystemParameters = {
   audio_file_size_limit: number
   file_size_limit: number
@@ -1368,7 +1344,6 @@ export type VerificationTokenResponse = {
 }
 
 export type WebAccountProfileResponse = {
-  readonly account_login_url: string | null
   avatar: string | null
   readonly avatar_url: string | null
   has_owned_tenant?: boolean | null
@@ -1837,6 +1812,31 @@ export type WebSiteResponse = {
   show_workflow_steps?: boolean | null
   title: string
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type WebSystemFeatureResponse = {
+  account_login_url: string | null
+  agent_tracing_api_collection_enabled: boolean
+  branding: BrandingModel
+  deployment_edition: DeploymentEdition
+  enable_app_deploy: boolean
+  enable_change_email: boolean
+  enable_creators_platform: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_explore_banner: boolean
+  enable_learn_app: boolean
+  enable_marketplace: boolean
+  enable_social_oauth_login: boolean
+  enable_step_by_step_tour: boolean
+  is_allow_register: boolean
+  is_email_setup: boolean
+  license: LicenseStatusModel
+  plugin_installation_permission: PluginInstallationPermissionModel
+  rbac_enabled: boolean
+  sso_enforced_for_signin: boolean
+  sso_enforced_for_signin_protocol: SsoProtocol | null
+  webapp_auth: WebAppAuthModel
 }
 
 export type WebappResourcesChangedError = ErrorResponse & {
@@ -3860,7 +3860,7 @@ export type GetSystemFeaturesErrors = {
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
 
 export type GetSystemFeaturesResponses = {
-  200: SystemFeatureModel
+  200: WebSystemFeatureResponse
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]

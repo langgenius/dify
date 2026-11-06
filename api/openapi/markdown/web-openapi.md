@@ -1520,12 +1520,16 @@ This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/cons
 except it is intended for use by the web app, instead of the console dashboard.
 
 Authentication configuration must be available before the authentication flow can be selected.
+No Account, App Passport, or app code is required. Return the configured
+Account sign-in URL, preserving its base path, or null when disabled.
+Read deployment settings without issuing credentials or changing state;
+feature-query failures propagate unchanged.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System features retrieved successfully | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| 200 | System features retrieved successfully | **application/json**: [WebSystemFeatureResponse](#websystemfeatureresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3363,34 +3367,6 @@ Default configuration for form inputs.
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
 
-#### SystemFeatureModel
-
-Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
-| branding | [BrandingModel](#brandingmodel) |  | Yes |
-| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
-| enable_app_deploy | boolean |  | Yes |
-| enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_creators_platform | boolean |  | Yes |
-| enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
-| enable_explore_banner | boolean |  | Yes |
-| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_marketplace | boolean |  | Yes |
-| enable_social_oauth_login | boolean |  | Yes |
-| enable_step_by_step_tour | boolean |  | Yes |
-| is_allow_register | boolean |  | Yes |
-| is_email_setup | boolean |  | Yes |
-| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| rbac_enabled | boolean |  | Yes |
-| sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
-
 #### SystemParameters
 
 | Name | Type | Description | Required |
@@ -3497,7 +3473,6 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
 | avatar | string |  | Yes |
 | avatar_url | string |  | Yes |
 | has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
@@ -3682,6 +3657,35 @@ Web App login is temporarily unavailable. Please retry.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WebSystemFeatureResponse
+
+Extend public bootstrap with the Web-only Account sign-in entry point.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### WebappResourcesChangedError
 

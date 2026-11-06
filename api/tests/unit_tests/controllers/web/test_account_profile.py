@@ -12,7 +12,6 @@ from services.account_errors import AccountNotFoundError
 from services.consumer_service import ConsumerIdentity
 from services.web_identity_service import WebIdentityError
 from services.web_passport_service import WebPassportUnauthorizedError
-from tests.helpers.unit.config_override import apply_config_overrides
 
 type ProfileClient = tuple[FlaskClient, Mock, Mock]
 
@@ -41,11 +40,6 @@ def test_profile_returns_console_avatar_fields(
     membership: str,
 ) -> None:
     client, consumer, profile = profile_client
-    apply_config_overrides(
-        monkeypatch,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
-        CONSOLE_WEB_URL="https://console.example.com/base/",
-    )
     profile.get.return_value = SimpleNamespace(
         name="Alice",
         avatar=avatar,
@@ -65,7 +59,6 @@ def test_profile_returns_console_avatar_fields(
         "avatar_url": "signed:file-id" if avatar == "file-id" else avatar,
         "has_owned_tenant": membership == "owner",
         "has_tenant": membership != "none",
-        "account_login_url": "https://console.example.com/base/signin",
     }
     context = profile.get.call_args.args[0]
     assert isinstance(context, AccountRequestContext)

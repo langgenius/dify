@@ -1,55 +1,75 @@
 """Unit tests for controllers.web.feature endpoints."""
 
-from __future__ import annotations
-
-from unittest.mock import MagicMock, create_autospec
-
 import pytest
 from flask import Flask
-from pytest_mock import MockerFixture
+from pydantic import ValidationError
 
-from controllers.web.feature import SystemFeatureApi
+from controllers.console import bp as console_bp
+from controllers.web import bp as web_bp
+from controllers.web.feature import WebSystemFeatureResponse
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from services.entities.feature_entities import SystemFeatureModel
-from services.feature_query_service import FeatureQueryService
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def _install_feature_queries(mocker: MockerFixture) -> MagicMock:
-    feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
-    application_services = mocker.patch("controllers.web.feature.application_services")
-    application_services.return_value.feature_queries = feature_queries
-    return feature_queries
+@pytest.mark.parametrize("login_enabled", [True, False])
+@pytest.mark.parametrize("console_url", ["https://console.example.com", "https://console.example.com/base///", ""])
+def test_public_system_features_exposes_web_account_login_url(
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+    login_enabled: bool,
+    console_url: str,
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=login_enabled,
+        CONSOLE_WEB_URL=console_url,
+        LOGIN_DISABLED=False,
+    )
+    app = Flask(__name__)
+    app.extensions["application_services"] = account_application_services
+    app.register_blueprint(web_bp)
+    app.register_blueprint(console_bp)
+    client = app.test_client()
+
+    response = client.get("/api/system-features")
+    console_response = client.get("/console/api/system-features")
+
+    assert response.status_code == console_response.status_code == 200
+    payload = response.get_json()
+    assert payload == {
+        **console_response.get_json(),
+        "account_login_url": f"{console_url.rstrip('/')}/signin" if login_enabled else None,
+    }
+    assert "account_login_url" not in console_response.get_json()
+    assert "Set-Cookie" not in response.headers
+    assert client.get("/api/account/profile").status_code == 401
 
 
-class TestSystemFeatureApi:
-    @pytest.mark.parametrize("deployment_edition", list(DeploymentEdition))
-    def test_returns_system_features(
-        self,
-        deployment_edition: DeploymentEdition,
-        app: Flask,
-        mocker: MockerFixture,
-    ) -> None:
-        system_features = SystemFeatureModel(
-            agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition
+@pytest.mark.parametrize("deployment_edition", list(DeploymentEdition))
+def test_web_system_features_preserves_shared_bootstrap(deployment_edition: DeploymentEdition) -> None:
+    features = SystemFeatureModel(agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition)
+
+    response = WebSystemFeatureResponse(**features.model_dump(mode="json"), account_login_url=None)
+
+    assert response.model_dump(mode="json") == {**features.model_dump(mode="json"), "account_login_url": None}
+
+
+def test_web_system_features_schema_requires_nullable_login_url() -> None:
+    schema = WebSystemFeatureResponse.model_json_schema(mode="serialization")
+
+    assert "account_login_url" in schema["required"]
+    assert schema["properties"]["account_login_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "default" not in schema["properties"]["account_login_url"]
+    assert "account_login_url" not in SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
+
+
+def test_web_system_features_cannot_default_missing_login_url_to_disabled() -> None:
+    with pytest.raises(ValidationError) as error:
+        WebSystemFeatureResponse.model_validate(
+            {"deployment_edition": DeploymentEdition.COMMUNITY, "agent_tracing_api_collection_enabled": False}
         )
-        feature_queries = _install_feature_queries(mocker)
-        feature_queries.get_public_system_features.return_value = system_features
 
-        with app.test_request_context("/system-features"):
-            result = SystemFeatureApi().get()
-
-        assert result == system_features.model_dump(mode="json")
-        assert result["deployment_edition"] == deployment_edition.value
-        assert result["sso_enforced_for_signin_protocol"] is None
-        assert result["webapp_auth"]["sso_config"]["protocol"] is None
-        feature_queries.get_public_system_features.assert_called_once_with()
-
-    def test_unauthenticated_access(self) -> None:
-        """SystemFeatureApi is unauthenticated by design — no WebApiResource decorator."""
-        # Verify it's a bare Resource, not WebApiResource
-        from flask_restx import Resource
-
-        from controllers.web.wraps import WebApiResource
-
-        assert issubclass(SystemFeatureApi, Resource)
-        assert not issubclass(SystemFeatureApi, WebApiResource)
+    assert error.value.errors(include_input=False)[0]["loc"] == ("account_login_url",)

@@ -2257,7 +2257,6 @@ export const zVerificationTokenResponse = z.object({
  * WebAccountProfileResponse
  */
 export const zWebAccountProfileResponse = z.object({
-  account_login_url: z.string().nullable(),
   avatar: z.string().nullable(),
   avatar_url: z.string().nullable(),
   has_owned_tenant: z.boolean().nullish(),
@@ -2282,44 +2281,6 @@ export const zWebAppAuthModel = z.object({
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
   sso_config: zWebAppAuthSsoModel,
-})
-
-/**
- * SystemFeatureModel
- *
- * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
- */
-export const zSystemFeatureModel = z.object({
-  agent_tracing_api_collection_enabled: z.boolean(),
-  branding: zBrandingModel.default({
-    application_title: '',
-    enabled: false,
-    favicon: '',
-    login_page_logo: '',
-    workspace_logo: '',
-  }),
-  deployment_edition: zDeploymentEdition,
-  enable_app_deploy: z.boolean().default(false),
-  enable_change_email: z.boolean().default(true),
-  enable_creators_platform: z.boolean().default(false),
-  enable_email_code_login: z.boolean().default(false),
-  enable_email_password_login: z.boolean().default(true),
-  enable_explore_banner: z.boolean().default(false),
-  enable_learn_app: z.boolean().default(true),
-  enable_marketplace: z.boolean().default(false),
-  enable_social_oauth_login: z.boolean().default(false),
-  enable_step_by_step_tour: z.boolean().default(false),
-  is_allow_register: z.boolean().default(false),
-  is_email_setup: z.boolean().default(false),
-  license: zLicenseStatusModel.default({ status: 'none' }),
-  plugin_installation_permission: zPluginInstallationPermissionModel.default({
-    plugin_installation_scope: 'all',
-    restrict_to_marketplace_only: false,
-  }),
-  rbac_enabled: z.boolean().default(false),
-  sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
-  webapp_auth: zWebAppAuthModel,
 })
 
 /**
@@ -2825,6 +2786,45 @@ export const zHumanInputFormDefinitionResponse = z.object({
   resolved_default_values: z.record(z.string(), z.string()),
   site: zWebAppSiteResponse.nullish(),
   user_actions: z.array(zUserActionConfig),
+})
+
+/**
+ * WebSystemFeatureResponse
+ *
+ * Extend public bootstrap with the Web-only Account sign-in entry point.
+ */
+export const zWebSystemFeatureResponse = z.object({
+  account_login_url: z.string().nullable(),
+  agent_tracing_api_collection_enabled: z.boolean(),
+  branding: zBrandingModel.default({
+    application_title: '',
+    enabled: false,
+    favicon: '',
+    login_page_logo: '',
+    workspace_logo: '',
+  }),
+  deployment_edition: zDeploymentEdition,
+  enable_app_deploy: z.boolean().default(false),
+  enable_change_email: z.boolean().default(true),
+  enable_creators_platform: z.boolean().default(false),
+  enable_email_code_login: z.boolean().default(false),
+  enable_email_password_login: z.boolean().default(true),
+  enable_explore_banner: z.boolean().default(false),
+  enable_learn_app: z.boolean().default(true),
+  enable_marketplace: z.boolean().default(false),
+  enable_social_oauth_login: z.boolean().default(false),
+  enable_step_by_step_tour: z.boolean().default(false),
+  is_allow_register: z.boolean().default(false),
+  is_email_setup: z.boolean().default(false),
+  license: zLicenseStatusModel.default({ status: 'none' }),
+  plugin_installation_permission: zPluginInstallationPermissionModel.default({
+    plugin_installation_scope: 'all',
+    restrict_to_marketplace_only: false,
+  }),
+  rbac_enabled: z.boolean().default(false),
+  sso_enforced_for_signin: z.boolean().default(false),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**
@@ -3614,7 +3614,7 @@ export const zGetSiteResponse = zWebAppSiteResponse
 /**
  * System features retrieved successfully
  */
-export const zGetSystemFeaturesResponse = zSystemFeatureModel
+export const zGetSystemFeaturesResponse = zWebSystemFeatureResponse
 
 export const zPostTextToAudioBody = zTextToAudioPayload
 

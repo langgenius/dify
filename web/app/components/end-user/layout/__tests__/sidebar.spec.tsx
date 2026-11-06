@@ -12,7 +12,6 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
 const profile: WebAccountProfileResponse = {
-  account_login_url: 'https://accounts.example/signin',
   name: 'Joel',
   avatar: null,
   avatar_url: null,
