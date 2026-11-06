@@ -955,6 +955,8 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_native_model_projection_keeps_allowlisted_stage_and_category": 10,
     "test_native_model_projection_rejects_malformed_classification": 4,
     "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1,
+    "test_repair_detail_projection_bounds_counts_and_drops_arbitrary_metadata": 1,
+    "test_repair_details_survive_real_cas_item_history_and_http_projection": 1,
 }
 a4_expected["tests.unit_tests.services.workflow_generation.test_runner"] = {
     "test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root": 1,
@@ -2032,6 +2034,9 @@ a4_expected.update(
             "test_rejected_nonempty_repair_remains_validation_refused": 1,
             "test_empty_repair_without_explanation_uses_existing_generic_reason": 2,
             "test_empty_repair_redacts_overlapping_credentials_with_complete_runtime_profile": 2,
+            "test_refusals_keep_distinct_actual_stage_and_reason_per_attempt": 1,
+            "test_semantic_final_early_return_keeps_both_refusal_observations": 1,
+            "test_valid_code_syntax_repair_after_native_refusal_preserves_declarations": 1,
         },
         "tests.unit_tests.core.dify_builder.test_handlers_edit": {
             "test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate": 3
