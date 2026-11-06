@@ -3,6 +3,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.errors.dataset import DatasetIndexingInProgressError
@@ -36,7 +37,7 @@ def _persist_document(
         created_by="owner",
         indexing_status=indexing_status,
         is_paused=is_paused,
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
     session.add(document)
     session.commit()
@@ -47,9 +48,9 @@ class _SignalRecorder:
     """Stand-in for the real dataset deletion signal that only records dispatches."""
 
     def __init__(self) -> None:
-        self.sent: list[tuple] = []
+        self.sent: list[tuple[object, ...]] = []
 
-    def send(self, *args) -> None:
+    def send(self, *args: object) -> None:
         self.sent.append(args)
 
 
@@ -67,7 +68,7 @@ class _NoopResourceAccessTokenCleanupService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def delete_resource_relations(self, **kwargs) -> None:
+    def delete_resource_relations(self, **kwargs: object) -> None:
         pass
 
 
