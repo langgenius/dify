@@ -72,7 +72,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse
 from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.providers import Provider
-from pydantic_ai.settings import ModelSettings
+from pydantic_ai.settings import ModelSettings, Timeout
 from pydantic_ai.usage import RequestUsage
 
 from .provider import DifyLLMClient
@@ -92,6 +92,8 @@ class _DifyRequestInput:
     model_parameters: dict[str, object]
     tools: list[PromptMessageTool] | None
     stop_sequences: list[str] | None
+    timeout: int | float | Timeout | None
+    extra_headers: dict[str, str] | None
 
 
 @dataclass(slots=True)
@@ -161,6 +163,8 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
                 stop=request_input.stop_sequences,
+                timeout=request_input.timeout,
+                extra_headers=request_input.extra_headers,
                 stream=False,
             ),
             response_model_name=self.model_name,
@@ -194,6 +198,8 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
                 stop=request_input.stop_sequences,
+                timeout=request_input.timeout,
+                extra_headers=request_input.extra_headers,
                 stream=True,
             ),
             response_model_name=self.model_name,
@@ -222,6 +228,8 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
             stop_sequences=_get_stop_sequences(model_settings),
+            timeout=model_settings.get("timeout") if model_settings else None,
+            extra_headers=model_settings.get("extra_headers") if model_settings else None,
         )
 
 
@@ -665,7 +673,7 @@ def _map_model_settings_to_parameters(model_settings: ModelSettings | None) -> d
     parameters: dict[str, object] = {
         key: value
         for key, value in model_settings.items()
-        if value is not None and key not in {"extra_body", "stop_sequences"}
+        if value is not None and key not in {"extra_body", "stop_sequences", "timeout", "extra_headers"}
     }
 
     extra_body = model_settings.get("extra_body")

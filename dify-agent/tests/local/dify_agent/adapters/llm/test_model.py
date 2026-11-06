@@ -1029,6 +1029,87 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(str(context.exception), "missing endpoint config")
 
+    async def test_request_sends_client_only_settings_to_gateway_transport(self) -> None:
+        seen_request: httpx.Request | None = None
+        seen_timeout: httpx.Timeout | None = None
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal seen_request
+            seen_request = request
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["target"]["model_parameters"], {"temperature": 0.2})
+            return build_stream_response(*single_text_chunk("ok"))
+
+        @asynccontextmanager
+        async def mock_stream(
+            client: httpx.AsyncClient,
+            method: str,
+            url: str,
+            **kwargs: object,
+        ):
+            nonlocal seen_timeout
+            timeout = kwargs.get("timeout")
+            self.assertIsInstance(timeout, httpx.Timeout)
+            seen_timeout = cast(httpx.Timeout, timeout)
+            request = client.build_request(
+                method,
+                url,
+                headers=cast(dict[str, str] | None, kwargs.get("headers")),
+                json=kwargs.get("json"),
+            )
+            yield handler(request)
+
+        with patch.object(httpx.AsyncClient, "stream", new=mock_stream):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            await adapter.request(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings={
+                    "temperature": 0.2,
+                    "timeout": httpx.Timeout(30),
+                    "extra_headers": {
+                        "X-Test": "1",
+                        "X-Inner-Api-Key": "user-override",
+                        "Content-Type": "text/plain",
+                    },
+                },
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        assert seen_request is not None
+        assert seen_timeout is not None
+        self.assertEqual(seen_timeout.connect, 30)
+        self.assertEqual(seen_request.headers["X-Test"], "1")
+        self.assertEqual(seen_request.headers["X-Inner-Api-Key"], "inner-secret")
+        self.assertEqual(seen_request.headers["Content-Type"], "application/json")
+
+    async def test_request_stream_sends_client_only_settings_to_gateway_transport(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(payload["target"]["model_parameters"], {"temperature": 0.2})
+            self.assertEqual(request.headers["X-Test"], "1")
+            return build_stream_response(*single_text_chunk("ok"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings={
+                    "temperature": 0.2,
+                    "timeout": httpx.Timeout(30),
+                    "extra_headers": {"X-Test": "1"},
+                },
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+
 
 @pytest.mark.parametrize(
     "part",
